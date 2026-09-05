@@ -14,6 +14,7 @@ export type Track = {
   prompt: string;
   lyrics: string;
   audioUrl?: string;
+  audioType?: "link" | "upload";
 };
 
 export const GENRES = [
