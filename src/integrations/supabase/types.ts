@@ -14,33 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generations: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          artist_alias: string | null
           avatar_url: string | null
+          bio: string | null
           created_at: string
           display_name: string | null
           handle: string
           id: string
+          instagram_url: string | null
+          profile_completed: boolean
+          tiktok_url: string | null
           updated_at: string
+          website_url: string | null
           welcome_email_sent_at: string | null
+          x_url: string | null
+          youtube_url: string | null
         }
         Insert: {
+          artist_alias?: string | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
           handle: string
           id: string
+          instagram_url?: string | null
+          profile_completed?: boolean
+          tiktok_url?: string | null
           updated_at?: string
+          website_url?: string | null
           welcome_email_sent_at?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
         }
         Update: {
+          artist_alias?: string | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
           handle?: string
           id?: string
+          instagram_url?: string | null
+          profile_completed?: boolean
+          tiktok_url?: string | null
           updated_at?: string
+          website_url?: string | null
           welcome_email_sent_at?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      saved_prompts: {
+        Row: {
+          created_at: string
+          genre: string
+          id: string
+          language: string
+          lyrics: string
+          mood: string
+          note: string
+          tags: string
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          genre?: string
+          id?: string
+          language?: string
+          lyrics?: string
+          mood?: string
+          note?: string
+          tags?: string
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          genre?: string
+          id?: string
+          language?: string
+          lyrics?: string
+          mood?: string
+          note?: string
+          tags?: string
+          theme?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
