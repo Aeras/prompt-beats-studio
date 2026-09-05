@@ -33,6 +33,7 @@ function Onboarding() {
   const [alias, setAlias] = useState("");
   const [bio, setBio] = useState("");
   const [links, setLinks] = useState({ website_url: "", instagram_url: "", tiktok_url: "", youtube_url: "", x_url: "" });
+  const [donation, setDonation] = useState({ provider: "", url: "", customName: "" });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,20 +63,27 @@ function Onboarding() {
     return data?.signedUrl;
   };
 
-  const save = async (completed: boolean) => {
+  const save = async (persist: boolean) => {
     setBusy(true);
     setError(null);
     try {
-      const avatarUrl = completed ? await uploadAvatar() : undefined;
+      const avatarUrl = persist ? await uploadAvatar() : undefined;
+      // Profile counts as complete once there is an artist name and an avatar.
+      const completed = persist
+        ? Boolean(alias.trim()) && Boolean(avatarUrl ?? profile?.avatar_url)
+        : Boolean((profile?.artist_alias ?? profile?.display_name ?? "").trim()) && Boolean(profile?.avatar_url);
       await updateMyProfile({
         data: {
           profile_completed: completed,
-          ...(completed
+          ...(persist
             ? {
                 artist_alias: alias.trim(),
                 bio: bio.trim(),
                 ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
                 ...links,
+                donation_provider: (donation.provider || null) as "paypal" | "revolut" | "custom" | null,
+                donation_url: donation.url.trim() || null,
+                donation_custom_name: donation.provider === "custom" ? donation.customName.trim() || null : null,
               }
             : {}),
         },
@@ -155,6 +163,45 @@ function Onboarding() {
               className={inputClass}
             />
           ))}
+
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p className="text-xs uppercase tracking-widest text-accent">Donations (optional)</p>
+            <select
+              value={donation.provider}
+              onChange={(e) => setDonation({ ...donation, provider: e.target.value })}
+              aria-label="Donation provider"
+              className={inputClass}
+            >
+              <option value="" className="bg-[#0a0a0c]">
+                No donations
+              </option>
+              <option value="paypal" className="bg-[#0a0a0c]">
+                PayPal
+              </option>
+              <option value="revolut" className="bg-[#0a0a0c]">
+                Revolut
+              </option>
+              <option value="custom" className="bg-[#0a0a0c]">
+                Custom
+              </option>
+            </select>
+            <input
+              value={donation.url}
+              onChange={(e) => setDonation({ ...donation, url: e.target.value })}
+              placeholder="Donation URL or IBAN"
+              aria-label="Donation URL or IBAN"
+              className={inputClass}
+            />
+            {donation.provider === "custom" && (
+              <input
+                value={donation.customName}
+                onChange={(e) => setDonation({ ...donation, customName: e.target.value })}
+                placeholder="Custom provider name"
+                aria-label="Custom provider name"
+                className={inputClass}
+              />
+            )}
+          </div>
         </div>
 
         {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}
