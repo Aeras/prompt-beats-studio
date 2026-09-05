@@ -14,6 +14,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as ArtistIdRouteImport } from './routes/artist.$id'
+import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
 import { Route as ApiPublicWebhooksStripeRouteImport } from './routes/api/public/webhooks/stripe'
 
@@ -42,6 +44,16 @@ const ApiUploadRoute = ApiUploadRouteImport.update({
   path: '/api/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArtistIdRoute = ArtistIdRouteImport.update({
+  id: '/artist/$id',
+  path: '/artist/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrackIdRoute = TrackIdRouteImport.update({
+  id: '/track/$id',
+  path: '/track/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UHandleRoute = UHandleRouteImport.update({
   id: '/u/$handle',
   path: '/u/$handle',
@@ -59,6 +71,8 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/artist/$id': typeof ArtistIdRoute
+  '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
@@ -68,6 +82,8 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/artist/$id': typeof ArtistIdRoute
+  '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
@@ -78,6 +94,8 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/artist/$id': typeof ArtistIdRoute
+  '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/artist/$id'
+    | '/track/$id'
     | '/u/$handle'
     | '/api/public/webhooks/stripe'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +118,8 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/artist/$id'
+    | '/track/$id'
     | '/u/$handle'
     | '/api/public/webhooks/stripe'
   id:
@@ -107,6 +129,8 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/artist/$id'
+    | '/track/$id'
     | '/u/$handle'
     | '/api/public/webhooks/stripe'
   fileRoutesById: FileRoutesById
@@ -117,6 +141,8 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   OnboardingRoute: typeof OnboardingRoute
   ApiUploadRoute: typeof ApiUploadRoute
+  ArtistIdRoute: typeof ArtistIdRoute
+  TrackIdRoute: typeof TrackIdRoute
   UHandleRoute: typeof UHandleRoute
   ApiPublicWebhooksStripeRoute: typeof ApiPublicWebhooksStripeRoute
 }
@@ -158,6 +184,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/artist/$id': {
+      id: '/artist/$id'
+      path: '/artist/$id'
+      fullPath: '/artist/$id'
+      preLoaderRoute: typeof ArtistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/track/$id': {
+      id: '/track/$id'
+      path: '/track/$id'
+      fullPath: '/track/$id'
+      preLoaderRoute: typeof TrackIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/u/$handle': {
       id: '/u/$handle'
       path: '/u/$handle'
@@ -181,6 +221,8 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   OnboardingRoute: OnboardingRoute,
   ApiUploadRoute: ApiUploadRoute,
+  ArtistIdRoute: ArtistIdRoute,
+  TrackIdRoute: TrackIdRoute,
   UHandleRoute: UHandleRoute,
   ApiPublicWebhooksStripeRoute: ApiPublicWebhooksStripeRoute,
 }
