@@ -33,6 +33,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [handle, setHandle] = useState("");
+  const [alias, setAlias] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -53,7 +54,7 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { handle: handle.replace(/^@/, "") },
+            data: { handle: handle.replace(/^@/, ""), display_name: alias.trim() || undefined },
           },
         });
         if (error) throw error;
@@ -63,7 +64,7 @@ function AuthPage() {
           } catch {
             /* email failure must not block signup */
           }
-          navigate({ to: "/" });
+          navigate({ to: "/onboarding" });
         } else {
           setMessage("Check your inbox to confirm your email address.");
         }
@@ -129,6 +130,15 @@ function AuthPage() {
         </div>
 
         <form onSubmit={submit} className="space-y-3">
+          {mode === "signup" && (
+            <input
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              placeholder="Artist alias"
+              aria-label="Artist alias"
+              className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+            />
+          )}
           {mode === "signup" && (
             <input
               value={handle}

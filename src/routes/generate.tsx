@@ -1,0 +1,260 @@
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+
+import { useAuth } from "@/hooks/useAuth";
+import {
+  generateSongPrompt,
+  getGenerationUsage,
+  savePromptToLibrary,
+  HOURLY_LIMIT,
+} from "@/lib/ai.functions";
+
+export const Route = createFileRoute("/generate")({
+  head: () => ({
+    meta: [
+      { title: "AI Prompt & Lyrics Generator for Suno and Udio — PromptBeats" },
+      {
+        name: "description",
+        content:
+          "Turn one idea into a Suno/Udio-ready style prompt, structured lyrics, and a producer's note in seconds.",
+      },
+      { property: "og:title", content: "AI Prompt & Lyrics Generator — PromptBeats" },
+      {
+        property: "og:description",
+        content: "Generate optimized metatags, structured lyrics and producer notes for AI music platforms.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: GeneratePage,
+});
+
+const GENRE_OPTIONS = [
+  "Reggaeton", "Cumbia", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
+  "Pop", "Rock", "R&B", "House", "Techno", "Drum & Bass", "Trap", "Jazz",
+  "Lo-fi", "Country", "Metal", "Afrobeats", "Custom…",
+];
+const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic"];
+const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese"];
+
+const fieldClass =
+  "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      aria-label="Copy"
+      onClick={async () => {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="shrink-0 rounded-lg border border-white/10 p-2 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+    >
+      {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function OutputCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="glass rounded-2xl p-5">
+      <div className="flex items-start gap-3">
+        <h2 className="min-w-0 flex-1 font-display text-sm font-semibold tracking-wide text-gradient-neon">{title}</h2>
+        <CopyButton value={body} />
+      </div>
+      <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-sm text-muted-foreground">{body || "—"}</pre>
+    </div>
+  );
+}
+
+function GeneratePage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [theme, setTheme] = useState("");
+  const [genre, setGenre] = useState("Synthwave");
+  const [customGenre, setCustomGenre] = useState("");
+  const [mood, setMood] = useState("Energetic");
+  const [language, setLanguage] = useState("English");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [result, setResult] = useState<{ tags: string; lyrics: string; note: string } | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/auth", replace: true });
+  }, [loading, user, navigate]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const { data: usage } = useQuery({
+    queryKey: ["ai-usage"],
+    queryFn: () => getGenerationUsage(),
+    enabled: !!user,
+  });
+
+  const remaining = usage?.remaining ?? HOURLY_LIMIT;
+  const minutesLeft = useMemo(() => {
+    if (!usage?.resetAt) return 0;
+    return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000));
+  }, [usage?.resetAt, now]);
+
+  const blocked = remaining <= 0;
+
+  const generate = async () => {
+    setBusy(true);
+    setStatus(null);
+    setSaved(false);
+    try {
+      const res = await generateSongPrompt({
+        data: {
+          theme: theme.trim(),
+          genre: genre === "Custom…" ? customGenre.trim() || "Pop" : genre,
+          mood,
+          language,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited") {
+        setStatus("You've hit the hourly limit. Try again soon.");
+        return;
+      }
+      setResult(res.result);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = async () => {
+    if (!result) return;
+    try {
+      await savePromptToLibrary({
+        data: {
+          theme: theme.trim(),
+          genre: genre === "Custom…" ? customGenre.trim() : genre,
+          mood,
+          language,
+          ...result,
+        },
+      });
+      setSaved(true);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not save");
+    }
+  };
+
+  return (
+    <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-6 md:px-8">
+      <div className="mx-auto max-w-3xl">
+        <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to the feed
+        </Link>
+
+        <div className="mt-4 flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-neon glow-neon">
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-bold tracking-tight">AI Prompt &amp; Lyrics Generator</h1>
+            <p className="truncate text-xs text-muted-foreground">Optimized for Suno &amp; Udio</p>
+          </div>
+        </div>
+
+        <div className="glass-strong mt-6 space-y-3 rounded-3xl p-5 sm:p-6">
+          <div>
+            <textarea
+              value={theme}
+              onChange={(e) => setTheme(e.target.value.slice(0, 300))}
+              maxLength={300}
+              rows={3}
+              placeholder="Your theme or topic — e.g. a late-night drive through a neon city after a breakup"
+              aria-label="Theme or topic"
+              className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+            />
+            <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <select value={genre} onChange={(e) => setGenre(e.target.value)} aria-label="Genre" className={fieldClass}>
+              {GENRE_OPTIONS.map((g) => (
+                <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
+              ))}
+            </select>
+            <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
+              {MOOD_OPTIONS.map((m) => (
+                <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
+              ))}
+            </select>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+              {LANGUAGE_OPTIONS.map((l) => (
+                <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
+              ))}
+            </select>
+          </div>
+
+          {genre === "Custom…" && (
+            <input
+              value={customGenre}
+              onChange={(e) => setCustomGenre(e.target.value)}
+              placeholder="Your own genre"
+              aria-label="Custom genre"
+              className={fieldClass}
+            />
+          )}
+
+          <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
+            <button
+              onClick={generate}
+              disabled={busy || blocked || theme.trim().length < 3}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              Generate with AI
+            </button>
+            <span className="text-xs text-muted-foreground">
+              {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
+            </span>
+          </div>
+
+          {status && <p className="text-xs text-accent">{status}</p>}
+        </div>
+
+        {busy && (
+          <div className="mt-6 space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="glass h-32 animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        )}
+
+        {!busy && result && (
+          <div className="mt-6 space-y-4 pb-16">
+            <OutputCard title="STYLE PROMPT (METATAGS)" body={result.tags} />
+            <OutputCard title="LYRICS & STRUCTURE" body={result.lyrics} />
+            <OutputCard title="PRODUCER'S NOTE" body={result.note} />
+            <button
+              onClick={save}
+              disabled={saved}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
+            >
+              {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
+              {saved ? "Saved to your library" : "Save to My Library"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
