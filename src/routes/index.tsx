@@ -64,7 +64,27 @@ function Index() {
     if (id === "studio") setStudio(true);
   };
 
-  const list = TRACKS.filter(
+  const { data } = useQuery({
+    queryKey: ["tracks", "published"],
+    queryFn: () => listPublishedTracks(),
+  });
+
+  const uploaded: Track[] = (data?.tracks ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    handle: t.handle,
+    genre: t.genre,
+    art: t.art_url ?? artFallback,
+    duration: formatDuration(t.duration_seconds),
+    plays: String(t.plays),
+    prompt: t.prompt,
+    lyrics: t.lyrics,
+    audioUrl: t.audio_url,
+  }));
+
+  const all = [...uploaded, ...TRACKS];
+
+  const list = all.filter(
     (t) =>
       (genre === "All" || t.genre === genre) &&
       (t.title + t.handle + t.prompt).toLowerCase().includes(query.toLowerCase()),
@@ -77,8 +97,8 @@ function Index() {
   };
 
   const step = (dir: 1 | -1) => {
-    const i = TRACKS.findIndex((t) => t.id === current.id);
-    setCurrent(TRACKS[(i + dir + TRACKS.length) % TRACKS.length]!);
+    const i = all.findIndex((t) => t.id === current.id);
+    setCurrent(all[(i + dir + all.length) % all.length]!);
     setPlaying(true);
   };
 
