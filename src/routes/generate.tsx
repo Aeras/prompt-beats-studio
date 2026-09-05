@@ -114,6 +114,13 @@ function GeneratePage() {
 
   const blocked = remaining <= 0;
 
+  // Resolve the effective value: the typed custom text when "Custom…" is chosen.
+  const effectiveGenre = genre === CUSTOM ? customGenre.trim() : genre;
+  const effectiveMood = mood === CUSTOM ? customMood.trim() : mood;
+  const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
+  const ready =
+    theme.trim().length >= 3 && !!effectiveGenre && !!effectiveMood && !!effectiveLanguage;
+
   const generate = async () => {
     setBusy(true);
     setStatus(null);
@@ -122,9 +129,9 @@ function GeneratePage() {
       const res = await generateSongPrompt({
         data: {
           theme: theme.trim(),
-          genre: genre === "Custom…" ? customGenre.trim() || "Pop" : genre,
-          mood,
-          language,
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -146,9 +153,9 @@ function GeneratePage() {
       await savePromptToLibrary({
         data: {
           theme: theme.trim(),
-          genre: genre === "Custom…" ? customGenre.trim() : genre,
-          mood,
-          language,
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
           ...result,
         },
       });
