@@ -120,9 +120,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
             <select
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              aria-label="Genre"
-              className="h-11 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60"
+              aria-label="Music Genre"
+              required
+              className={
+                "h-11 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60 " +
+                (genre ? "text-foreground" : "text-muted-foreground")
+              }
             >
+              <option value="" disabled className="bg-[#0a0a0c]">
+                Select Music Genre
+              </option>
               {GENRES.filter((g) => g !== "All").map((g) => (
                 <option key={g} value={g} className="bg-[#0a0a0c]">
                   {g}
