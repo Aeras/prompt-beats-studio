@@ -39,6 +39,9 @@ export type Database = {
           bio: string | null
           created_at: string
           display_name: string | null
+          donation_custom_name: string | null
+          donation_provider: string | null
+          donation_url: string | null
           handle: string
           id: string
           instagram_url: string | null
@@ -56,6 +59,9 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          donation_custom_name?: string | null
+          donation_provider?: string | null
+          donation_url?: string | null
           handle: string
           id: string
           instagram_url?: string | null
@@ -73,6 +79,9 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          donation_custom_name?: string | null
+          donation_provider?: string | null
+          donation_url?: string | null
           handle?: string
           id?: string
           instagram_url?: string | null
@@ -168,6 +177,7 @@ export type Database = {
         Row: {
           art_url: string | null
           audio_key: string | null
+          audio_type: string
           audio_url: string
           created_at: string
           duration_seconds: number | null
@@ -184,6 +194,7 @@ export type Database = {
         Insert: {
           art_url?: string | null
           audio_key?: string | null
+          audio_type?: string
           audio_url: string
           created_at?: string
           duration_seconds?: number | null
@@ -200,6 +211,7 @@ export type Database = {
         Update: {
           art_url?: string | null
           audio_key?: string | null
+          audio_type?: string
           audio_url?: string
           created_at?: string
           duration_seconds?: number | null
