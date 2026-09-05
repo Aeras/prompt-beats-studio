@@ -197,29 +197,56 @@ function GeneratePage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} aria-label="Genre" className={fieldClass}>
+            <select value={genre} onChange={(e) => setGenre(e.target.value)} aria-label="Music style" className={fieldClass}>
+              <option value="" disabled className="bg-[#0a0a0c]">
+                Select Music Style (e.g., Reggaeton, Pop...)
+              </option>
               {GENRE_OPTIONS.map((g) => (
                 <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
               ))}
             </select>
             <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
+              <option value="" disabled className="bg-[#0a0a0c]">
+                Select Mood / Vibe (e.g., Energetic, Chill...)
+              </option>
               {MOOD_OPTIONS.map((m) => (
                 <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
               ))}
             </select>
             <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+              <option value="" disabled className="bg-[#0a0a0c]">
+                Select Language (e.g., English, Greek...)
+              </option>
               {LANGUAGE_OPTIONS.map((l) => (
                 <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
               ))}
             </select>
           </div>
 
-          {genre === "Custom…" && (
+          {genre === CUSTOM && (
             <input
               value={customGenre}
               onChange={(e) => setCustomGenre(e.target.value)}
-              placeholder="Your own genre"
-              aria-label="Custom genre"
+              placeholder="Type your own music style"
+              aria-label="Custom music style"
+              className={fieldClass}
+            />
+          )}
+          {mood === CUSTOM && (
+            <input
+              value={customMood}
+              onChange={(e) => setCustomMood(e.target.value)}
+              placeholder="Type your own mood / vibe"
+              aria-label="Custom mood"
+              className={fieldClass}
+            />
+          )}
+          {language === CUSTOM && (
+            <input
+              value={customLanguage}
+              onChange={(e) => setCustomLanguage(e.target.value)}
+              placeholder="Type your own language"
+              aria-label="Custom language"
               className={fieldClass}
             />
           )}
@@ -227,7 +254,7 @@ function GeneratePage() {
           <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
             <button
               onClick={generate}
-              disabled={busy || blocked || theme.trim().length < 3}
+              disabled={busy || blocked || !ready}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
