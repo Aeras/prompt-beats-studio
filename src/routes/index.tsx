@@ -155,7 +155,7 @@ function Index() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1600px] px-4 pb-[190px] pt-6 md:px-8 md:pb-[150px]">
+        <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
           <h1 className="font-display text-2xl font-bold md:text-3xl">
             <span className="text-gradient-neon">Discover</span> what the machines are humming
           </h1>
@@ -191,7 +191,7 @@ function Index() {
       />
 
       {/* Mobile bottom tabs */}
-      <nav className="glass-strong fixed inset-x-0 bottom-[92px] z-30 border-t sm:hidden">
+      <nav className="glass-strong fixed inset-x-0 bottom-[124px] z-30 border-t sm:hidden">
         <div className="grid grid-cols-4">
           {MOBILE_TABS.map((t) => (
             <button
