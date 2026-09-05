@@ -15,7 +15,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
-  const [genre, setGenre] = useState("Synthwave");
+  const [genre, setGenre] = useState("");
   const [audioType, setAudioType] = useState<"link" | "upload">("link");
   const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
