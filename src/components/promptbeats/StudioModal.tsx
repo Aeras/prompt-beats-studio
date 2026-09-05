@@ -35,22 +35,31 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       return;
     }
     if (!title.trim()) return setStatus("Give your track a title first.");
-    if (!file) return setStatus("Choose an .mp3 or .wav file to upload.");
+    if (audioType === "upload" && !file) return setStatus("Choose an .mp3 or .wav file to upload.");
+    if (audioType === "link" && !/^https?:\/\//i.test(externalUrl.trim()))
+      return setStatus("Paste a valid link (Suno, Udio, …) starting with https://");
 
     setBusy(true);
-    setStatus("Uploading audio…");
+    setStatus(audioType === "upload" ? "Uploading audio…" : "Saving track…");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body,
-      });
-      const payload = (await res.json()) as { url?: string; key?: string; error?: string };
-      if (!res.ok || !payload.url) throw new Error(payload.error ?? "Upload failed");
+      let audioUrl = externalUrl.trim();
+      let audioKey: string | undefined;
+
+      if (audioType === "upload" && file) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body,
+        });
+        const payload = (await res.json()) as { url?: string; key?: string; error?: string };
+        if (!res.ok || !payload.url) throw new Error(payload.error ?? "Upload failed");
+        audioUrl = payload.url;
+        audioKey = payload.key;
+      }
 
       setStatus("Saving track…");
       await createTrack({
@@ -59,8 +68,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
           genre,
           prompt,
           lyrics,
-          audio_url: payload.url,
-          ...(payload.key ? { audio_key: payload.key } : {}),
+          audio_url: audioUrl,
+          audio_type: audioType,
+          ...(audioKey ? { audio_key: audioKey } : {}),
           is_published: isPublished,
         },
       });
