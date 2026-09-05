@@ -79,10 +79,12 @@ function GeneratePage() {
   const queryClient = useQueryClient();
 
   const [theme, setTheme] = useState("");
-  const [genre, setGenre] = useState("Synthwave");
+  const [genre, setGenre] = useState("");
   const [customGenre, setCustomGenre] = useState("");
-  const [mood, setMood] = useState("Energetic");
-  const [language, setLanguage] = useState("English");
+  const [mood, setMood] = useState("");
+  const [customMood, setCustomMood] = useState("");
+  const [language, setLanguage] = useState("");
+  const [customLanguage, setCustomLanguage] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
