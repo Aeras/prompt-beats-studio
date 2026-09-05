@@ -42,7 +42,7 @@ function Index() {
   const [query, setQuery] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
-  const [current, setCurrent] = useState<Track>(TRACKS[0]);
+  const [current, setCurrent] = useState<Track>(TRACKS[0]!);
   const [playing, setPlaying] = useState(false);
 
   const openStudio = () => {
@@ -70,7 +70,7 @@ function Index() {
 
   const step = (dir: 1 | -1) => {
     const i = TRACKS.findIndex((t) => t.id === current.id);
-    setCurrent(TRACKS[(i + dir + TRACKS.length) % TRACKS.length]);
+    setCurrent(TRACKS[(i + dir + TRACKS.length) % TRACKS.length]!);
     setPlaying(true);
   };
 
