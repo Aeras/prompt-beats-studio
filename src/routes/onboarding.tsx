@@ -4,7 +4,7 @@ import { Loader2, Sparkles, Upload } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { updateMyProfile } from "@/lib/profile.functions";
+import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -42,6 +42,31 @@ function Onboarding() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    getMyProfile().then(({ profile: p }) => {
+      if (!active || !p) return;
+      setAlias((a) => a || p.artist_alias || p.display_name || "");
+      setBio((b) => b || p.bio || "");
+      setLinks((l) => ({
+        website_url: l.website_url || p.website_url || "",
+        instagram_url: l.instagram_url || p.instagram_url || "",
+        tiktok_url: l.tiktok_url || p.tiktok_url || "",
+        youtube_url: l.youtube_url || p.youtube_url || "",
+        x_url: l.x_url || p.x_url || "",
+      }));
+      setDonation((d) => ({
+        provider: d.provider || p.donation_provider || "",
+        url: d.url || p.donation_url || "",
+        customName: d.customName || p.donation_custom_name || "",
+      }));
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (profile?.display_name && !alias) setAlias(profile.display_name);
