@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const trackInput = z.object({
   title: z.string().trim().min(1).max(120),
-  genre: z.string().trim().min(1).max(60).default("Other"),
+  genre: z.string().trim().min(1).max(60).default("Other / Experimental"),
   prompt: z.string().trim().max(4000).default(""),
   lyrics: z.string().trim().max(8000).default(""),
   audio_url: z.string().url(),

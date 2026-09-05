@@ -15,7 +15,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
-  const [genre, setGenre] = useState("Synthwave");
+  const [genre, setGenre] = useState("");
   const [audioType, setAudioType] = useState<"link" | "upload">("link");
   const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -35,6 +35,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       return;
     }
     if (!title.trim()) return setStatus("Give your track a title first.");
+    if (!genre) return setStatus("Pick a music genre.");
     if (audioType === "upload" && !file) return setStatus("Choose an .mp3 or .wav file to upload.");
     if (audioType === "link" && !/^https?:\/\//i.test(externalUrl.trim()))
       return setStatus("Paste a valid link (Suno, Udio, …) starting with https://");
@@ -78,6 +79,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       await queryClient.invalidateQueries({ queryKey: ["tracks"] });
       setStatus(isPublished ? "Track published!" : "Draft saved.");
       setTitle("");
+      setGenre("");
+      setExternalUrl("");
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
@@ -117,9 +120,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
             <select
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              aria-label="Genre"
-              className="h-11 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60"
+              aria-label="Music Genre"
+              required
+              className={
+                "h-11 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60 " +
+                (genre ? "text-foreground" : "text-muted-foreground")
+              }
             >
+              <option value="" disabled className="bg-[#0a0a0c]">
+                Select Music Genre
+              </option>
               {GENRES.filter((g) => g !== "All").map((g) => (
                 <option key={g} value={g} className="bg-[#0a0a0c]">
                   {g}
