@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, X, Compass, Flame, Sparkles, Library } from "lucide-react";
 import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { GENRES, TRACKS, type Track } from "@/lib/tracks";
+import { listPublishedTracks } from "@/lib/tracks.functions";
+import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) return "--:--";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
