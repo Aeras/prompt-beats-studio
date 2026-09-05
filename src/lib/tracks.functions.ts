@@ -61,7 +61,12 @@ export const createTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("tracks")
-      .insert({ ...data, user_id: context.userId })
+      .insert({
+        ...data,
+        audio_key: data.audio_key ?? null,
+        duration_seconds: data.duration_seconds ?? null,
+        user_id: context.userId,
+      })
       .select(TRACK_COLUMNS)
       .single();
     if (error) throw new Error(error.message);
