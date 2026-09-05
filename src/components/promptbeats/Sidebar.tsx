@@ -23,6 +23,17 @@ export function SidebarNav({
   onSelect: (id: NavId) => void;
   onSubmit: () => void;
 }) {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const signOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  };
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-5 pb-28">
       <div className="flex items-center gap-3">
