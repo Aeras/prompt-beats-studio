@@ -62,7 +62,8 @@ Return the result as strict JSON only, no markdown fences, with exactly these ke
 }
 
 async function callGemini(apiKey: string, prompt: string) {
-  const models = ["gemini-1.5-flash", "gemini-2.0-flash"];
+  // gemini-1.5-flash is retired on the API; these are its current successors.
+  const models = ["gemini-3.6-flash", "gemini-2.5-flash"];
   let lastError = "AI request failed";
   for (const model of models) {
     const res = await fetch(
