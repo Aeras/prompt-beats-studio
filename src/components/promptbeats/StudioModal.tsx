@@ -79,6 +79,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       await queryClient.invalidateQueries({ queryKey: ["tracks"] });
       setStatus(isPublished ? "Track published!" : "Draft saved.");
       setTitle("");
+      setGenre("");
+      setExternalUrl("");
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
