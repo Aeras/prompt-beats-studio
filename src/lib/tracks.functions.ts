@@ -9,13 +9,14 @@ const trackInput = z.object({
   prompt: z.string().trim().max(4000).default(""),
   lyrics: z.string().trim().max(8000).default(""),
   audio_url: z.string().url(),
+  audio_type: z.enum(["link", "upload"]).default("upload"),
   audio_key: z.string().max(500).optional(),
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   is_published: z.boolean().default(true),
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, art_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, art_url, duration_seconds, plays, is_published, created_at";
 
 /** Public feed: published tracks with their creator handle. */
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {

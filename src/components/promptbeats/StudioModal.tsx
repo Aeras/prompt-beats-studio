@@ -16,6 +16,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("Synthwave");
+  const [audioType, setAudioType] = useState<"link" | "upload">("link");
+  const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -33,22 +35,31 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       return;
     }
     if (!title.trim()) return setStatus("Give your track a title first.");
-    if (!file) return setStatus("Choose an .mp3 or .wav file to upload.");
+    if (audioType === "upload" && !file) return setStatus("Choose an .mp3 or .wav file to upload.");
+    if (audioType === "link" && !/^https?:\/\//i.test(externalUrl.trim()))
+      return setStatus("Paste a valid link (Suno, Udio, …) starting with https://");
 
     setBusy(true);
-    setStatus("Uploading audio…");
+    setStatus(audioType === "upload" ? "Uploading audio…" : "Saving track…");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body,
-      });
-      const payload = (await res.json()) as { url?: string; key?: string; error?: string };
-      if (!res.ok || !payload.url) throw new Error(payload.error ?? "Upload failed");
+      let audioUrl = externalUrl.trim();
+      let audioKey: string | undefined;
+
+      if (audioType === "upload" && file) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body,
+        });
+        const payload = (await res.json()) as { url?: string; key?: string; error?: string };
+        if (!res.ok || !payload.url) throw new Error(payload.error ?? "Upload failed");
+        audioUrl = payload.url;
+        audioKey = payload.key;
+      }
 
       setStatus("Saving track…");
       await createTrack({
@@ -57,8 +68,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
           genre,
           prompt,
           lyrics,
-          audio_url: payload.url,
-          ...(payload.key ? { audio_key: payload.key } : {}),
+          audio_url: audioUrl,
+          audio_type: audioType,
+          ...(audioKey ? { audio_key: audioKey } : {}),
           is_published: isPublished,
         },
       });
@@ -116,25 +128,58 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
             </select>
           </section>
 
-          <section className="space-y-2">
-            <label htmlFor="pb-audio" className="text-xs uppercase tracking-widest text-accent">
-              Audio file (.mp3 / .wav)
-            </label>
-            <label
-              htmlFor="pb-audio"
-              className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-            >
-              <Music className="h-4 w-4 shrink-0" />
-              <span className="truncate">{file ? file.name : "Choose a file to upload"}</span>
-            </label>
-            <input
-              ref={fileRef}
-              id="pb-audio"
-              type="file"
-              accept=".mp3,.wav,audio/mpeg,audio/wav"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-widest text-accent">Audio source</p>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/40 p-1">
+              {(
+                [
+                  ["link", "External URL"],
+                  ["upload", "Direct MP3 Upload"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setAudioType(value)}
+                  aria-pressed={audioType === value}
+                  className={
+                    audioType === value
+                      ? "rounded-xl bg-gradient-neon px-3 py-2 text-xs font-semibold text-primary-foreground glow-neon"
+                      : "rounded-xl px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-accent"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {audioType === "link" ? (
+              <input
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                placeholder="https://suno.com/song/… or Udio link"
+                aria-label="External track URL"
+                className="h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+            ) : (
+              <>
+                <label
+                  htmlFor="pb-audio"
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                >
+                  <Music className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{file ? file.name : "Choose an .mp3 / .wav file to upload"}</span>
+                </label>
+                <input
+                  ref={fileRef}
+                  id="pb-audio"
+                  type="file"
+                  accept=".mp3,.wav,audio/mpeg,audio/wav"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+              </>
+            )}
           </section>
 
           <section className="space-y-2">

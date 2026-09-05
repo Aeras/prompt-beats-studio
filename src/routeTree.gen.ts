@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as UHandleRouteImport } from './routes/u.$handle'
 import { Route as ApiPublicWebhooksStripeRouteImport } from './routes/api/public/webhooks/stripe'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const ApiUploadRoute = ApiUploadRouteImport.update({
   path: '/api/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UHandleRoute = UHandleRouteImport.update({
+  id: '/u/$handle',
+  path: '/u/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksStripeRoute = ApiPublicWebhooksStripeRouteImport.update({
   id: '/api/public/webhooks/stripe',
   path: '/api/public/webhooks/stripe',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
   '/api/upload': typeof ApiUploadRoute
+  '/u/$handle': typeof UHandleRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/u/$handle'
     | '/api/public/webhooks/stripe'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/u/$handle'
     | '/api/public/webhooks/stripe'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/onboarding'
     | '/api/upload'
+    | '/u/$handle'
     | '/api/public/webhooks/stripe'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   OnboardingRoute: typeof OnboardingRoute
   ApiUploadRoute: typeof ApiUploadRoute
+  UHandleRoute: typeof UHandleRoute
   ApiPublicWebhooksStripeRoute: typeof ApiPublicWebhooksStripeRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$handle': {
+      id: '/u/$handle'
+      path: '/u/$handle'
+      fullPath: '/u/$handle'
+      preLoaderRoute: typeof UHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/stripe': {
       id: '/api/public/webhooks/stripe'
       path: '/api/public/webhooks/stripe'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   OnboardingRoute: OnboardingRoute,
   ApiUploadRoute: ApiUploadRoute,
+  UHandleRoute: UHandleRoute,
   ApiPublicWebhooksStripeRoute: ApiPublicWebhooksStripeRoute,
 }
 export const routeTree = rootRouteImport
