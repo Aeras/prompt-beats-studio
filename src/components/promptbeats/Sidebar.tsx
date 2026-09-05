@@ -103,7 +103,17 @@ export function SidebarNav({
               className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">@{profile?.handle ?? "you"}</p>
+              {profile?.handle ? (
+                <Link
+                  to="/u/$handle"
+                  params={{ handle: profile.handle }}
+                  className="truncate text-sm font-medium hover:text-accent"
+                >
+                  @{profile.handle}
+                </Link>
+              ) : (
+                <p className="truncate text-sm font-medium">@you</p>
+              )}
               <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Signed in
               </p>
