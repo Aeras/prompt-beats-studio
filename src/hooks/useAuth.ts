@@ -3,7 +3,13 @@ import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
 
-export type ProfileSummary = { handle: string; display_name: string | null; avatar_url: string | null };
+export type ProfileSummary = {
+  handle: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  artist_alias: string | null;
+  profile_completed: boolean;
+};
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -38,7 +44,7 @@ export function useAuth() {
     let active = true;
     supabase
       .from("profiles")
-      .select("handle, display_name, avatar_url")
+      .select("handle, display_name, avatar_url, artist_alias, profile_completed")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
