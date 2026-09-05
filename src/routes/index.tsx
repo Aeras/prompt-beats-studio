@@ -6,6 +6,7 @@ import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
+import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
 import { GENRES, TRACKS, type Track } from "@/lib/tracks";
 import { listPublishedTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
@@ -182,6 +183,10 @@ function Index() {
             </div>
           </div>
         </header>
+
+        <div className="px-4 pt-4 md:px-8">
+          <ProfileBanner />
+        </div>
 
         <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
           <h1 className="font-display text-2xl font-bold md:text-3xl">
