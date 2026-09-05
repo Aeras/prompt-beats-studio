@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Pause, Copy, Check, ChevronDown, Heart } from "lucide-react";
+import { Play, Pause, Copy, Check, ChevronDown, Heart, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 

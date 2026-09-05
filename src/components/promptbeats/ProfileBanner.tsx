@@ -8,7 +8,11 @@ export function ProfileBanner() {
   const { user, profile } = useAuth();
   const [dismissed, setDismissed] = useState(false);
 
-  if (!user || dismissed || !profile || profile.profile_completed) return null;
+  // Complete = artist name + avatar. Bio, website and socials stay optional.
+  const hasName = Boolean((profile?.artist_alias ?? profile?.display_name ?? "").trim());
+  const hasAvatar = Boolean(profile?.avatar_url);
+
+  if (!user || dismissed || !profile || (hasName && hasAvatar)) return null;
 
   return (
     <div className="glass mx-auto flex max-w-[1600px] items-center gap-3 rounded-2xl px-4 py-3 text-sm">

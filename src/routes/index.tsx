@@ -81,6 +81,7 @@ function Index() {
     prompt: t.prompt,
     lyrics: t.lyrics,
     audioUrl: t.audio_url,
+    audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
   }));
 
   const all = [...uploaded, ...TRACKS];
