@@ -63,6 +63,28 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Public artist page data by profile id, including track prompts. */
+export const getPublicArtistById = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS)
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!profile) return { profile: null, tracks: [] };
+    const { data: tracks } = await supabase
+      .from("tracks")
+      .select("id, title, genre, prompt, audio_url, audio_type, created_at")
+      .eq("user_id", profile.id)
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    return { profile, tracks: tracks ?? [] };
+  });
+
 /** Public creator page data by handle (no auth required). */
 export const getPublicProfile = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(input))

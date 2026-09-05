@@ -42,6 +42,27 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   };
 });
 
+/** Public: a single published track with its creator handle/name. */
+export const getPublicTrackById = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const { data: track } = await supabase
+      .from("tracks")
+      .select(TRACK_COLUMNS)
+      .eq("id", data.id)
+      .eq("is_published", true)
+      .maybeSingle();
+    if (!track) return { track: null, artist: null };
+    const { data: artist } = await supabase
+      .from("profiles")
+      .select("id, handle, display_name, artist_alias, avatar_url")
+      .eq("id", track.user_id)
+      .maybeSingle();
+    return { track, artist: artist ?? null };
+  });
+
 /** Signed-in user's own tracks, published or not. */
 export const listMyTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
