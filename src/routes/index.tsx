@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, X, Compass, Flame, Sparkles, Library } from "lucide-react";
 import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { GENRES, TRACKS, type Track } from "@/lib/tracks";
+import { listPublishedTracks } from "@/lib/tracks.functions";
+import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) return "--:--";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,7 +64,27 @@ function Index() {
     if (id === "studio") setStudio(true);
   };
 
-  const list = TRACKS.filter(
+  const { data } = useQuery({
+    queryKey: ["tracks", "published"],
+    queryFn: () => listPublishedTracks(),
+  });
+
+  const uploaded: Track[] = (data?.tracks ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    handle: t.handle,
+    genre: t.genre,
+    art: t.art_url ?? artFallback,
+    duration: formatDuration(t.duration_seconds),
+    plays: String(t.plays),
+    prompt: t.prompt,
+    lyrics: t.lyrics,
+    audioUrl: t.audio_url,
+  }));
+
+  const all = [...uploaded, ...TRACKS];
+
+  const list = all.filter(
     (t) =>
       (genre === "All" || t.genre === genre) &&
       (t.title + t.handle + t.prompt).toLowerCase().includes(query.toLowerCase()),
@@ -69,8 +97,8 @@ function Index() {
   };
 
   const step = (dir: 1 | -1) => {
-    const i = TRACKS.findIndex((t) => t.id === current.id);
-    setCurrent(TRACKS[(i + dir + TRACKS.length) % TRACKS.length]!);
+    const i = all.findIndex((t) => t.id === current.id);
+    setCurrent(all[(i + dir + all.length) % all.length]!);
     setPlaying(true);
   };
 

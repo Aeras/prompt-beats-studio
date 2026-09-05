@@ -13,6 +13,7 @@ export type Track = {
   plays: string;
   prompt: string;
   lyrics: string;
+  audioUrl?: string;
 };
 
 export const GENRES = [

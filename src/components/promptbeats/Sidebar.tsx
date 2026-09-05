@@ -1,4 +1,8 @@
-import { Compass, Flame, Sparkles, Library, Plus, LogIn } from "lucide-react";
+import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 export const NAV = [
@@ -19,6 +23,17 @@ export function SidebarNav({
   onSelect: (id: NavId) => void;
   onSubmit: () => void;
 }) {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const signOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  };
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-5 pb-28">
       <div className="flex items-center gap-3">
@@ -69,23 +84,41 @@ export function SidebarNav({
       </button>
 
       <div className="mt-auto">
-        <div className="glass flex items-center gap-3 rounded-2xl p-3">
-          <img
-            src="https://i.pravatar.cc/80?img=15"
-            alt="Your profile avatar"
-            width={40}
-            height={40}
-            loading="lazy"
-            className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">@nikos.k</p>
-            <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Signed in · Pro
-            </p>
+        {user ? (
+          <div className="glass flex items-center gap-3 rounded-2xl p-3">
+            <img
+              src={profile?.avatar_url ?? `https://i.pravatar.cc/80?u=${user.id}`}
+              alt="Your profile avatar"
+              width={40}
+              height={40}
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">@{profile?.handle ?? "you"}</p>
+              <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Signed in
+              </p>
+            </div>
+            <button
+              aria-label="Sign out"
+              onClick={signOut}
+              className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
-          <LogIn className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </div>
+        ) : (
+          <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10">
+              <LogIn className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">Sign in</p>
+              <p className="truncate text-[11px] text-muted-foreground">Upload tracks &amp; save prompts</p>
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );
