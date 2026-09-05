@@ -32,13 +32,14 @@ export const Route = createFileRoute("/generate")({
   component: GeneratePage,
 });
 
+const CUSTOM = "Custom…";
 const GENRE_OPTIONS = [
   "Reggaeton", "Cumbia", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
   "Pop", "Rock", "R&B", "House", "Techno", "Drum & Bass", "Trap", "Jazz",
-  "Lo-fi", "Country", "Metal", "Afrobeats", "Custom…",
+  "Lo-fi", "Country", "Metal", "Afrobeats", CUSTOM,
 ];
-const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic"];
-const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese"];
+const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
+const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
