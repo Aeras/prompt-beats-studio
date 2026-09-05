@@ -41,7 +41,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => profileInput.parse(input))
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = { profile_completed: data.profile_completed };
+    const patch: Record<string, any> = { profile_completed: data.profile_completed };
     if (data.artist_alias !== undefined) {
       patch['artist_alias'] = data.artist_alias;
       if (data.artist_alias) patch['display_name'] = data.artist_alias;
@@ -52,7 +52,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       patch[key] = data[key] ?? null;
     }
 
-    const { error } = await context.supabase.from("profiles").update(patch).eq("id", context.userId);
+    const { error } = await context.supabase.from("profiles").update(patch as never).eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
