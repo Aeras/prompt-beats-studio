@@ -35,6 +35,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       return;
     }
     if (!title.trim()) return setStatus("Give your track a title first.");
+    if (!genre) return setStatus("Pick a music genre.");
     if (audioType === "upload" && !file) return setStatus("Choose an .mp3 or .wav file to upload.");
     if (audioType === "link" && !/^https?:\/\//i.test(externalUrl.trim()))
       return setStatus("Paste a valid link (Suno, Udio, …) starting with https://");
