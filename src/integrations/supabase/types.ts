@@ -357,6 +357,21 @@ export type Database = {
         }
         Relationships: []
       }
+      track_like_counts: {
+        Row: {
+          like_count: number | null
+          track_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
