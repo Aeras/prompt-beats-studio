@@ -110,15 +110,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       const uploads = await Promise.all(
         rows.map(async (r) => {
           const payload = await uploadOne(r.file!, token);
+          const cover_url = r.cover ? await uploadCover(r.cover) : null;
           done += 1;
           setStatus(`Uploaded ${done}/${rows.length} file(s)…`);
-          return { row: r, payload };
+          return { row: r, payload, cover_url };
         }),
       );
 
       setStatus("Saving tracks…");
       await Promise.all(
-        uploads.map(({ row, payload }) =>
+        uploads.map(({ row, payload, cover_url }) =>
           createTrack({
             data: {
               title: row.title.trim(),
@@ -128,6 +129,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
               audio_url: payload.url!,
               audio_type: "upload",
               ...(payload.key ? { audio_key: payload.key } : {}),
+              ...(cover_url ? { cover_url } : {}),
               is_published: true,
             },
           }),
