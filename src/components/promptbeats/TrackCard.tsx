@@ -15,7 +15,9 @@ export function TrackCard({
   onPlay: (t: Track) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
 
   const copy = async () => {
     try {
