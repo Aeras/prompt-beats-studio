@@ -23,6 +23,7 @@ type PlayerState = {
   prev: () => void;
   seek: (seconds: number) => void;
   setVolume: (v: number) => void;
+  audioElement: HTMLAudioElement | null;
 };
 
 const PlayerContext = createContext<PlayerState | null>(null);
@@ -41,13 +42,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.8);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   // One audio element for the whole app so playback survives navigation.
   useEffect(() => {
     const el = new Audio();
     el.preload = "metadata";
+    // Required so the Web Audio analyser can read frequency data from
+    // cross-origin (storage) audio without the element being blocked.
+    el.crossOrigin = "anonymous";
     el.volume = volume;
     audioRef.current = el;
+    setAudioElement(el);
 
     const onTime = () => setPosition(el.currentTime);
     const onMeta = () => setDuration(Number.isFinite(el.duration) ? el.duration : 0);
@@ -68,6 +74,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
       audioRef.current = null;
+      setAudioElement(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -146,8 +153,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       prev: () => step(-1),
       seek,
       setVolume,
+      audioElement,
     }),
-    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume],
+    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
