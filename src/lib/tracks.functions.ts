@@ -209,8 +209,18 @@ export const discardUploads = createServerFn({ method: "POST" })
     }
 
     if (data.coverPath && data.coverPath.startsWith(`${context.userId}/`)) {
-      const { error } = await supabaseAdmin.storage.from("track-covers").remove([data.coverPath]);
-      if (error) console.error("[tracks] orphan cover cleanup failed", error.message);
+      // Same safety rule as audio: only remove a cover that no track row
+      // references. Tracks store the public URL, which always ends with
+      // `/track-covers/<coverPath>` — match on that object identity.
+      const { data: coverInUse } = await supabaseAdmin
+        .from("tracks")
+        .select("id")
+        .like("cover_url", `%/track-covers/${data.coverPath}`)
+        .limit(1);
+      if (!coverInUse || coverInUse.length === 0) {
+        const { error } = await supabaseAdmin.storage.from("track-covers").remove([data.coverPath]);
+        if (error) console.error("[tracks] orphan cover cleanup failed", error.message);
+      }
     }
 
     return { ok: true };
