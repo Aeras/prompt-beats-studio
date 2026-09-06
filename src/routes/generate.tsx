@@ -89,7 +89,7 @@ function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [result, setResult] = useState<{ tags: string; lyrics: string; note: string } | null>(null);
+  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
