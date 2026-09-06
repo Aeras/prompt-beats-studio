@@ -63,22 +63,21 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Portrait canvas: the OS PiP window is usually a vertical rectangle.
-    const W = (canvas.width = 800);
-    const H = (canvas.height = 1100);
-    const CX = 400;
-    const CY = 450;
-    const DISC_RADIUS = 350; // fixed absolute radius -> perfectly round
-    const LABEL_RADIUS = Math.round(DISC_RADIUS * 0.28);
+    // High-res portrait canvas — exact absolute dimensions.
+    const W = (canvas.width = 1000);
+    const H = (canvas.height = 1400);
+    const CX = 500;
+    const CY = 550;
+    const DISC_RADIUS = 420; // fixed absolute radius -> perfectly round
+    const LABEL_RADIUS = 140;
     const CENTER_HOLE_RADIUS = 5;
-    const PIVOT = { x: W - 54, y: 54 };
+    const PIVOT = { x: 880, y: 150 };
 
     const draw = () => {
-      // Sleek light metallic deck background.
-      const bgGradient = ctx.createLinearGradient(0, 0, W, H);
-      bgGradient.addColorStop(0, "#E5E7EB");
-      bgGradient.addColorStop(0.5, "#D1D5DB");
-      bgGradient.addColorStop(1, "#9CA3AF");
+      // Premium light-silver deck background.
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
+      bgGradient.addColorStop(0, "#F3F4F6");
+      bgGradient.addColorStop(1, "#D1D5DB");
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, W, H);
 
@@ -96,12 +95,12 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         rotationRef.current += 0.018;
       }
 
-      // --- Vinyl disc (with strong drop shadow) ---
+      // --- Vinyl disc (with deep drop shadow) ---
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 40;
       ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 10;
+      ctx.shadowOffsetY = 15;
       ctx.beginPath();
       ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
       ctx.fillStyle = "#0a0a0a";
@@ -123,7 +122,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.rotate(rotationRef.current);
 
       // Concentric groove rings.
-      ctx.strokeStyle = "#333333";
+      ctx.strokeStyle = "#1f1f1f";
       ctx.lineWidth = 1;
       for (let i = 0; i < 5; i++) {
         const r = LABEL_RADIUS + (DISC_RADIUS - LABEL_RADIUS) * ((i + 1) / 6);
@@ -278,19 +277,20 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.fill();
       ctx.restore();
 
-      // --- Track info at bottom ---
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#111111";
-      ctx.font = "600 28px Inter, system-ui, sans-serif";
-      ctx.shadowColor = "rgba(255,255,255,0.4)";
-      ctx.shadowBlur = 8;
-      ctx.fillText(truncate(ctx, title ?? "", W - 80), 40, 950);
-      if (subtitle) {
-        ctx.fillStyle = "rgba(17,17,17,0.78)";
-        ctx.font = "400 18px Inter, system-ui, sans-serif";
-        ctx.fillText(truncate(ctx, subtitle, W - 80), 40, 1020);
-      }
+      // --- Bold centered typography at bottom ---
       ctx.shadowBlur = 0;
+      ctx.textAlign = "center";
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "bold 76px sans-serif";
+      ctx.fillText(truncate(ctx, title ?? "", 900), 500, 1180);
+
+      if (subtitle) {
+        ctx.fillStyle = "#4B5563";
+        ctx.font = "50px sans-serif";
+        const handle = subtitle.startsWith("@") ? subtitle : `@${subtitle}`;
+        ctx.fillText(truncate(ctx, handle, 900), 500, 1270);
+      }
 
       rafRef.current = requestAnimationFrame(draw);
     };
