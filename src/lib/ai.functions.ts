@@ -238,6 +238,7 @@ CONSISTENCY — REDUCE FALSE POSITIVES:
 - Before reporting a contradiction, determine whether the two statements refer to the SAME underlying fact, event, person, timeline, setting, or narrative state.
 - Example: "a song from a year ago" and "my heart is still stuck three years ago" can coexist; they refer to different things (the song vs. the emotional wound) and must NOT be flagged.
 - Only report a consistency issue when one statement clearly makes the other impossible or mutually incompatible about the same thing.
+- HARD RULE: If you conclude the details are compatible, explainable, or merely create a minor tension but are NOT actually contradictory, you MUST treat it as NO consistency issue. Do NOT add it to consistencyIssues, do NOT add it to issues, and do NOT lower the score because of it.
 
 LANGUAGE INTEGRITY IS STRICT:
 - The sung lyrics must be entirely in the requested language, apart from legitimate unavoidable loanwords or established genre terminology.
