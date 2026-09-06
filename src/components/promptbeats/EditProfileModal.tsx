@@ -47,8 +47,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!user || user.id !== profile.id) return null;
-
   const openModal = () => {
     setName(profile.artist_alias || profile.display_name || "");
     setBio(profile.bio || "");
@@ -77,6 +75,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       setPlayerMode("fixed");
     };
   }, [setPlayerMode]);
+
+  if (!user || user.id !== profile.id) return null;
 
   const pickAvatar = (file: File | null) => {
     setAvatarFile(file);
