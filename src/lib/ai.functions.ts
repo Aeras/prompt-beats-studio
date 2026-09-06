@@ -469,19 +469,14 @@ const repairInput = z.object({
 });
 
 /**
- * Admin-only manual repair. Authorization comes from the existing server-side
- * has_role(userId, 'admin') security-definer RPC through the authenticated
- * Supabase client — never from client-supplied data.
+ * Manual repair, available to every authenticated user. Runs exactly one
+ * repair call plus one post-repair quality check, on the server-selected model.
  */
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
-    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
-
-    const apiKey = process.env['ANTHROPIC_API_KEY'];
-    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+  .handler(async ({ data }) => {
+    const { call, schemas } = await activeCaller();
 
     const constraints = {
       theme: data.theme,
@@ -490,13 +485,14 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       language: data.language,
     };
 
-    const { text, stopReason } = await callRepairModel(
-      apiKey,
-      REPAIR_SYSTEM_PROMPT,
-      buildRepairPrompt(constraints, data.result, data.quality),
-    );
+    const { text, stopReason } = await call({
+      system: REPAIR_SYSTEM_PROMPT,
+      prompt: buildRepairPrompt(constraints, data.result, data.quality),
+      maxTokens: 8192,
+      schema: schemas.song,
+    });
     if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+    if (stopReason !== "end_turn") {
       throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
@@ -504,7 +500,8 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
     if (!repaired.success) throw new Error("The repair returned an invalid response. Please try again.");
 
     // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(apiKey, constraints, repaired.data);
+    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data);
+
 
     return { result: repaired.data, quality };
   });
