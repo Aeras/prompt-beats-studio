@@ -108,7 +108,11 @@ Generate exactly three sections:
 Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
-async function callAnthropic(apiKey: string, prompt: string) {
+async function callAnthropic(
+  apiKey: string,
+  prompt: string,
+  opts?: { system?: string; maxTokens?: number },
+) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -118,11 +122,12 @@ async function callAnthropic(apiKey: string, prompt: string) {
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      max_tokens: opts?.maxTokens ?? 8192,
+      system: opts?.system ?? SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     }),
   });
+
   if (res.ok) {
     const payload = (await res.json()) as {
       stop_reason?: string | null;
