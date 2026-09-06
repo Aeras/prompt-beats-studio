@@ -144,6 +144,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       await queryClient.invalidateQueries({ refetchType: "active" });
       toast.success("Profile updated");
       setOpen(false);
+      setPlayerMode("fixed");
     } catch (error: unknown) {
       const message =
         typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
