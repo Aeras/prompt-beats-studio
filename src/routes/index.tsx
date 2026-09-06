@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, X, Compass, Flame, Sparkles, Library } from "lucide-react";
 import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
-import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
 import { GENRES, TRACKS, type Track } from "@/lib/tracks";
+import { usePlayer } from "@/lib/player";
 import { listPublishedTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
@@ -194,8 +194,8 @@ function Index() {
               <TrackCard
                 key={t.id}
                 track={t}
-                isPlaying={playing && current.id === t.id}
-                onPlay={play}
+                isPlaying={playing && current?.id === t.id}
+                onPlay={onPlay}
               />
             ))}
           </div>
