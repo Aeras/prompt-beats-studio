@@ -49,9 +49,28 @@ async function readUsage(supabase: Supa, userId: string) {
   return { used, remaining, limit: HOURLY_LIMIT, resetAt: remaining === 0 ? resetAt : null };
 }
 
+// Server-side admin check via the existing has_role security-definer function.
+// The 10/hour limit is bypassed only for admins (administrative/testing purposes);
+// it is never derived from client-supplied data and cannot apply to anonymous users
+// because requireSupabaseAuth guarantees an authenticated userId.
+async function isAdminUser(supabase: Supa, userId: string): Promise<boolean> {
+  const { data } = await (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" });
+  return data === true;
+}
+
+// Admin usage view: reports an unlimited, never-blocked state so the Generator UI
+// keeps working unchanged (remaining stays at the limit, resetAt stays null).
+async function usageFor(supabase: Supa, userId: string) {
+  const usage = await readUsage(supabase, userId);
+  if (await isAdminUser(supabase, userId)) {
+    return { ...usage, remaining: HOURLY_LIMIT, resetAt: null, unlimited: true };
+  }
+  return usage;
+}
+
 export const getGenerationUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => readUsage(context.supabase as unknown as Supa, context.userId));
+  .handler(async ({ context }) => usageFor(context.supabase as unknown as Supa, context.userId));
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
@@ -265,8 +284,11 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => generateInput.parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as Supa;
+    // Admin bypass (administrative/testing): checked server-side before the
+    // normal 10/hour rejection; all other users keep the existing limit.
+    const isAdmin = await isAdminUser(supabase, context.userId);
     const usage = await readUsage(supabase, context.userId);
-    if (usage.remaining <= 0) {
+    if (!isAdmin && usage.remaining <= 0) {
       return { error: "rate_limited" as const, status: 429, usage, result: null, quality: null };
     }
 
@@ -291,7 +313,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     const quality = await runQualityCheck(apiKey, data, result.data);
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
-    const after = await readUsage(supabase, context.userId);
+    const after = await usageFor(supabase, context.userId);
     return {
       error: null,
       status: 200,
