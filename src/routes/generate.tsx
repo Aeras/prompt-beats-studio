@@ -219,15 +219,35 @@ function GeneratePage() {
             <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} aria-label="Music style" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Music Style (e.g., Reggaeton, Pop...)
-              </option>
-              {GENRE_OPTIONS.map((g) => (
-                <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
-              ))}
-            </select>
+          <div>
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              Music Style — pick one or more to fuse
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {GENRE_OPTIONS.map((g) => {
+                const active = genres.includes(g);
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+                    }
+                    className={
+                      active
+                        ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
+                        : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                    }
+                  >
+                    {g}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
               <option value="" disabled className="bg-[#0a0a0c]">
                 Select Mood / Vibe (e.g., Energetic, Chill...)
@@ -246,15 +266,16 @@ function GeneratePage() {
             </select>
           </div>
 
-          {genre === CUSTOM && (
+          {customGenreSelected && (
             <input
               value={customGenre}
               onChange={(e) => setCustomGenre(e.target.value)}
-              placeholder="Type your own music style"
+              placeholder="Type your own style tags (merged with the selected genres)"
               aria-label="Custom music style"
               className={fieldClass}
             />
           )}
+
           {mood === CUSTOM && (
             <input
               value={customMood}
