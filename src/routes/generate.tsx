@@ -173,9 +173,13 @@ function GeneratePage() {
         </Link>
 
         <div className="mt-4 flex items-center gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-neon glow-neon">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="PromptBeats logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-xl glow-neon"
+          />
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-bold tracking-tight">AI Prompt &amp; Lyrics Generator</h1>
             <p className="truncate text-xs text-muted-foreground">Optimized for Suno &amp; Udio</p>
