@@ -202,7 +202,20 @@ function GeneratePage() {
     setStatus(null);
     setSaved(false);
     setQuality(null);
-...
+    try {
+      const res = await generateSongPrompt({
+        data: {
+          theme: theme.trim(),
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited") {
+        setStatus("You've hit the hourly limit. Try again soon.");
+        return;
+      }
       setResult(res.result);
       setQuality(res.quality ?? null);
     } catch (err) {
