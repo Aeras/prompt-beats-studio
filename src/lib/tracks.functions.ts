@@ -146,22 +146,32 @@ export const deleteTrack = createServerFn({ method: "POST" })
     // RLS restricts this delete to the track owner (or an admin). We chain
     // .select() so the returned rows tell us whether a row was actually
     // deleted — only then is it safe to remove the audio file from R2.
+    // audio_key is internal-only (not selectable by anon/authenticated), so we
+    // read it server-side with the admin client before performing the delete.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: keyRow } = await supabaseAdmin
+      .from("tracks")
+      .select("audio_key")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { data: deleted, error } = await context.supabase
       .from("tracks")
       .delete()
       .eq("id", data.id)
-      .select("audio_key");
+      .select("id");
     if (error) throw new Error(error.message);
     if (!deleted || deleted.length === 0) {
       throw new Error("Track not found or you don't have permission to delete it.");
     }
-    const audioKey = (deleted[0] as { audio_key?: string | null }).audio_key;
+    const audioKey = keyRow?.audio_key ?? null;
     if (audioKey) {
       const { deleteFromR2 } = await import("@/lib/r2.server");
       await deleteFromR2(audioKey);
     }
     return { ok: true };
   });
+
 
 /** Public trending feed: published tracks ranked by likes + plays. */
 export const listTrendingTracks = createServerFn({ method: "GET" }).handler(async () => {
