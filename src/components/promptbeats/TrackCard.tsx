@@ -92,13 +92,15 @@ export function TrackCard({
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? "Copied" : "Copy prompt"}
           </button>
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Lyrics
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-          </button>
+          {track.lyrics?.trim() && (
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {open ? "Hide lyrics" : "Show lyrics"}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+            </button>
+          )}
         </div>
 
         <div

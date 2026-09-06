@@ -15,6 +15,7 @@ type Row = {
   title: string;
   genre: string;
   prompt: string;
+  lyrics: string;
 };
 
 const emptyRow = (): Row => ({
@@ -23,6 +24,7 @@ const emptyRow = (): Row => ({
   title: "",
   genre: "",
   prompt: "",
+  lyrics: "",
 });
 
 const stripExt = (name: string) => name.replace(/\.(mp3|wav)$/i, "");
@@ -107,7 +109,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
               title: row.title.trim(),
               genre: row.genre,
               prompt: row.prompt,
-              lyrics: "",
+              lyrics: row.lyrics,
               audio_url: payload.url!,
               audio_type: "upload",
               ...(payload.key ? { audio_key: payload.key } : {}),
@@ -211,6 +213,15 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                 placeholder="AI prompt used to create this track"
                 aria-label={`Track ${i + 1} AI prompt`}
                 className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_25%,transparent)]"
+              />
+
+              <textarea
+                value={r.lyrics}
+                onChange={(e) => update(r.key, { lyrics: e.target.value })}
+                rows={4}
+                placeholder="Lyrics (optional) — line breaks are preserved"
+                aria-label={`Track ${i + 1} lyrics (optional)`}
+                className="w-full resize-y whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_25%,transparent)]"
               />
             </section>
           ))}
