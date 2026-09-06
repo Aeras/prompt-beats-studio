@@ -78,6 +78,61 @@ function OutputCard({ title, body }: { title: string; body: string }) {
   );
 }
 
+// TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
+// evaluator response from the current generation. Remove after testing.
+function QualityIssueList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      {items.length === 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground/70">None</p>
+      ) : (
+        <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-foreground/90">
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function QualityDebugPanel({ quality }: { quality: QualityReport | null }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
+      <div className="flex items-center gap-2">
+        <FlaskConical className="h-4 w-4 text-accent" />
+        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">
+          Quality Debug (temporary — admin only)
+        </h2>
+      </div>
+      {!quality ? (
+        <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center gap-4 text-sm">
+            <span>
+              Passed:{" "}
+              <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
+                {quality.passed ? "Yes" : "No"}
+              </strong>
+            </span>
+            <span>
+              Score: <strong className="text-foreground">{quality.score}/10</strong>
+            </span>
+          </div>
+          <QualityIssueList label="Issues" items={quality.issues} />
+          <QualityIssueList label="Language Issues" items={quality.languageIssues} />
+          <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
+          <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
+          <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
+          <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GeneratePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
