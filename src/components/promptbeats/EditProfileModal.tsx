@@ -77,7 +77,16 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   }, [setPlayerMode]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || typeof document === "undefined") return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
 
     const trackPlayers = Array.from(document.querySelectorAll<HTMLAudioElement>("audio[controls]"));
     const previousVisibility = trackPlayers.map((player) => player.style.visibility);
