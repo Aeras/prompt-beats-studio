@@ -7,6 +7,7 @@ import { GENRES } from "@/lib/tracks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack } from "@/lib/tracks.functions";
+import { useModeration } from "@/hooks/useModeration";
 
 type Row = {
   key: string;

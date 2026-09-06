@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useModeration } from "@/hooks/useModeration";
 import { cn } from "@/lib/utils";
 
 export const NAV = [
@@ -24,6 +25,7 @@ export function SidebarNav({
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
+  const { isBanned } = useModeration();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
