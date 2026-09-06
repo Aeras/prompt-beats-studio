@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Play, Pause, Copy, Check, ChevronDown, Heart, ExternalLink } from "lucide-react";
+import { Play, Pause, Copy, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
+import { LikeButton } from "@/components/promptbeats/LikeButton";
+import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 
 export function TrackCard({
   track,
@@ -61,9 +63,24 @@ export function TrackCard({
               {track.handle} · {track.plays} plays
             </p>
           </div>
-          <button aria-label="Like track" className="shrink-0 text-muted-foreground hover:text-primary">
-            <Heart className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
+            {track.userId && (
+              <TrackOwnerActions
+                compact
+                track={{
+                  id: track.id,
+                  user_id: track.userId,
+                  title: track.title,
+                  genre: track.genre,
+                  prompt: track.prompt,
+                  lyrics: track.lyrics,
+                  audio_url: track.audioUrl ?? "",
+                  audio_type: track.audioType ?? "upload",
+                }}
+              />
+            )}
+          </div>
         </div>
 
         {track.audioType === "link" && track.audioUrl && (

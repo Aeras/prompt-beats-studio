@@ -72,6 +72,7 @@ function Index() {
 
   const uploaded: Track[] = (data?.tracks ?? []).map((t) => ({
     id: t.id,
+    userId: t.user_id,
     title: t.title,
     handle: t.handle,
     genre: t.genre,
@@ -84,7 +85,8 @@ function Index() {
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
   }));
 
-  const all = [...uploaded, ...TRACKS];
+  // Real community tracks drive the feed; the demo set only fills an empty database.
+  const all = uploaded.length ? uploaded : TRACKS;
 
   const list = all.filter(
     (t) =>

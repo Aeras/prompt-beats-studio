@@ -5,6 +5,8 @@ import { Check, Copy, ExternalLink, Music } from "lucide-react";
 
 import { getPublicArtistById } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
+import { LikeButton } from "@/components/promptbeats/LikeButton";
+import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 
 export const Route = createFileRoute("/artist/$id")({
   head: () => ({
@@ -110,6 +112,20 @@ function ArtistPage() {
                         {t.title}
                       </Link>
                       {t.prompt ? <CopyPromptButton prompt={t.prompt} /> : null}
+                      <LikeButton trackId={t.id} />
+                      <TrackOwnerActions
+                        compact
+                        track={{
+                          id: t.id,
+                          user_id: t.user_id,
+                          title: t.title,
+                          genre: t.genre,
+                          prompt: t.prompt ?? "",
+                          lyrics: t.lyrics ?? "",
+                          audio_url: t.audio_url,
+                          audio_type: t.audio_type,
+                        }}
+                      />
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t.genre}</p>
                     {t.audio_type === "link" ? (

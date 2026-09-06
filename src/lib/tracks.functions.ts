@@ -95,6 +95,36 @@ export const createTrack = createServerFn({ method: "POST" })
     return { track: row };
   });
 
+/** Updates one of the user's own tracks (RLS restricts this to the owner). */
+export const updateTrack = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        title: z.string().trim().min(1).max(120),
+        genre: z.string().trim().min(1).max(60),
+        prompt: z.string().trim().max(4000).default(""),
+        lyrics: z.string().trim().max(8000).default(""),
+        audio_url: z.string().url(),
+        audio_type: z.enum(["link", "upload"]),
+        is_published: z.boolean().default(true),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...fields } = data;
+    const { data: row, error } = await context.supabase
+      .from("tracks")
+      .update(fields)
+      .eq("id", id)
+      .eq("user_id", context.userId)
+      .select(TRACK_COLUMNS)
+      .single();
+    if (error) throw new Error(error.message);
+    return { track: row };
+  });
+
 /** Deletes one of the user's own tracks (and its audio file). */
 export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
