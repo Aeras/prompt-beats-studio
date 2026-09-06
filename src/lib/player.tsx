@@ -48,9 +48,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = new Audio();
     el.preload = "metadata";
-    // Required so the Web Audio analyser can read frequency data from
-    // cross-origin (storage) audio without the element being blocked.
-    el.crossOrigin = "anonymous";
     el.volume = volume;
     audioRef.current = el;
     setAudioElement(el);
@@ -92,11 +89,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (track: Track, nextQueue?: Track[]) => {
       if (nextQueue) setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
       const el = audioRef.current;
-      // User gesture: make sure the AudioContext is running before playback.
-      if (el) {
-        ensureAudioGraph(el);
-        resumeAudioGraph();
-      }
       if (current && current.id === track.id && el) {
         if (el.paused) void el.play().catch(() => setPlaying(false));
         else el.pause();
@@ -110,9 +102,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     const el = audioRef.current;
     if (!el || !current) return;
-    // User gesture: resume the AudioContext so routed audio is not silent.
-    ensureAudioGraph(el);
-    resumeAudioGraph();
     if (el.paused) void el.play().catch(() => setPlaying(false));
     else el.pause();
   }, [current]);
