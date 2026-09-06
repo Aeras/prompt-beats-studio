@@ -1,7 +1,8 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, PictureInPicture2, Shuffle, Repeat } from "lucide-react";
-import { useState } from "react";
 import { Visualizer } from "./Visualizer";
 import { usePlayer } from "@/lib/player";
+import { usePipPlayer } from "@/hooks/usePipPlayer";
+
 
 function fmt(sec: number) {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
