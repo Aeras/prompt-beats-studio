@@ -5,6 +5,7 @@ import { Sparkles, Loader2, MailCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { sendWelcomeEmail } from "@/lib/email.functions";
+import { checkSignupAvailability } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -37,6 +38,49 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [handleTaken, setHandleTaken] = useState(false);
+  const [aliasTaken, setAliasTaken] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const cleanHandleValue = handle.replace(/^@/, "").trim().toLowerCase();
+  const handleFormatError =
+    cleanHandleValue.length > 0 && !/^[a-z0-9]{3,30}$/.test(cleanHandleValue)
+      ? "Username must be 3-30 letters or numbers, with no spaces or symbols."
+      : null;
+
+  useEffect(() => {
+    if (mode !== "signup") return;
+    if (!cleanHandleValue && !alias.trim()) {
+      setHandleTaken(false);
+      setAliasTaken(false);
+      return;
+    }
+    let active = true;
+    setChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkSignupAvailability({
+          data: { handle: cleanHandleValue, displayName: alias.trim() },
+        });
+        if (!active) return;
+        setHandleTaken(res.handleTaken);
+        setAliasTaken(res.displayNameTaken);
+      } catch {
+        /* availability check is best-effort */
+      } finally {
+        if (active) setChecking(false);
+      }
+    }, 450);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      setChecking(false);
+    };
+  }, [mode, cleanHandleValue, alias]);
+
+  const signupBlocked =
+    mode === "signup" &&
+    (handleTaken || aliasTaken || checking || Boolean(handleFormatError) || !alias.trim() || !cleanHandleValue);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -190,6 +234,9 @@ function AuthPage() {
               className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
             />
           )}
+          {mode === "signup" && aliasTaken && (
+            <p className="px-1 text-[11px] text-destructive">This display name is already taken</p>
+          )}
           {mode === "signup" && (
             <>
               <input
@@ -201,6 +248,12 @@ function AuthPage() {
                 aria-label="Username"
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
               />
+              {handleFormatError && (
+                <p className="px-1 text-[11px] text-destructive">{handleFormatError}</p>
+              )}
+              {handleTaken && !handleFormatError && (
+                <p className="px-1 text-[11px] text-destructive">This username is already taken</p>
+              )}
               <p className="px-1 text-[11px] text-muted-foreground">
                 Letters and numbers only, 3-30 characters. Your page will be promptbeats.app/@
                 {handle.replace(/^@/, "") || "username"}
@@ -229,7 +282,7 @@ function AuthPage() {
           />
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || signupBlocked}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60"
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
