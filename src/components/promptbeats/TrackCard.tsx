@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Play, Pause, Copy, Check, ChevronDown } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
@@ -18,6 +19,21 @@ export function TrackCard({
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const togglePrompt = () => {
+    setPromptOpen((v) => {
+      const next = !v;
+      if (next) setOpen(false);
+      return next;
+    });
+  };
+
+  const toggleLyrics = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (next) setPromptOpen(false);
+      return next;
+    });
+  };
 
   const copy = async () => {
     try {
@@ -62,7 +78,19 @@ export function TrackCard({
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{track.title}</h3>
             <p className="truncate text-xs text-muted-foreground">
-              {track.handle} · {track.plays} plays
+              {track.userId ? (
+                <Link
+                  to="/$handle"
+                  params={{ handle: track.handle }}
+                  className="transition-colors hover:text-accent"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {track.handle}
+                </Link>
+              ) : (
+                <span>{track.handle}</span>
+              )}
+              {" · "}{track.plays} plays
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -88,7 +116,7 @@ export function TrackCard({
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setPromptOpen((v) => !v)}
+            onClick={togglePrompt}
             className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
           >
             {promptOpen ? "Hide prompt" : "Show prompt"}
@@ -96,7 +124,7 @@ export function TrackCard({
           </button>
           {track.lyrics?.trim() && (
             <button
-              onClick={() => setOpen((v) => !v)}
+              onClick={toggleLyrics}
               className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               {open ? "Hide lyrics" : "Show lyrics"}
