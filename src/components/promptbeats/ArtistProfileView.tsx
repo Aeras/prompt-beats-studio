@@ -25,7 +25,6 @@ type Profile = {
   youtube_url: string | null;
   x_url: string | null;
   profile_completed: boolean;
-  is_banned?: boolean | null;
   donation_provider: string | null;
   donation_url: string | null;
   donation_custom_name: string | null;

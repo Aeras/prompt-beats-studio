@@ -8,13 +8,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getMyModeration = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: isAdmin }, { data: profile }] = await Promise.all([
+    const [{ data: isAdmin }, { data: priv }] = await Promise.all([
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
-      context.supabase.from("profiles").select("is_banned").eq("id", context.userId).maybeSingle(),
+      context.supabase.from("profile_private").select("is_banned").eq("user_id", context.userId).maybeSingle(),
     ]);
     return {
       isAdmin: isAdmin === true,
-      isBanned: Boolean((profile as { is_banned?: boolean } | null)?.is_banned),
+      isBanned: Boolean((priv as { is_banned?: boolean } | null)?.is_banned),
     };
   });
 
@@ -28,12 +28,12 @@ export const getUserBanStatus = createServerFn({ method: "GET" })
       _role: "admin",
     });
     if (isAdmin !== true) throw new Error("Not allowed");
-    const { data: profile } = await context.supabase
-      .from("profiles")
+    const { data: priv } = await context.supabase
+      .from("profile_private")
       .select("is_banned")
-      .eq("id", data.userId)
+      .eq("user_id", data.userId)
       .maybeSingle();
-    return { banned: Boolean((profile as { is_banned?: boolean } | null)?.is_banned) };
+    return { banned: Boolean((priv as { is_banned?: boolean } | null)?.is_banned) };
   });
 
 /** Admin-only: ban or unban a creator. RLS enforces the admin requirement. */
@@ -49,10 +49,10 @@ export const setUserBanned = createServerFn({ method: "POST" })
     });
     if (isAdmin !== true) throw new Error("Not allowed");
 
-    const { error } = await context.supabase
-      .from("profiles")
-      .update({ is_banned: data.banned } as never)
-      .eq("id", data.userId);
+    const { error } = await context.supabase.rpc("set_user_banned", {
+      _user_id: data.userId,
+      _banned: data.banned,
+    });
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.banned };
   });

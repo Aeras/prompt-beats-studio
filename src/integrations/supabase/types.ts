@@ -61,6 +61,30 @@ export type Database = {
           },
         ]
       }
+      profile_private: {
+        Row: {
+          created_at: string
+          is_banned: boolean
+          updated_at: string
+          user_id: string
+          welcome_email_sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          is_banned?: boolean
+          updated_at?: string
+          user_id: string
+          welcome_email_sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          is_banned?: boolean
+          updated_at?: string
+          user_id?: string
+          welcome_email_sent_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           artist_alias: string | null
@@ -74,12 +98,10 @@ export type Database = {
           handle: string
           id: string
           instagram_url: string | null
-          is_banned: boolean
           profile_completed: boolean
           tiktok_url: string | null
           updated_at: string
           website_url: string | null
-          welcome_email_sent_at: string | null
           x_url: string | null
           youtube_url: string | null
         }
@@ -95,12 +117,10 @@ export type Database = {
           handle: string
           id: string
           instagram_url?: string | null
-          is_banned?: boolean
           profile_completed?: boolean
           tiktok_url?: string | null
           updated_at?: string
           website_url?: string | null
-          welcome_email_sent_at?: string | null
           x_url?: string | null
           youtube_url?: string | null
         }
@@ -116,12 +136,10 @@ export type Database = {
           handle?: string
           id?: string
           instagram_url?: string | null
-          is_banned?: boolean
           profile_completed?: boolean
           tiktok_url?: string | null
           updated_at?: string
           website_url?: string | null
-          welcome_email_sent_at?: string | null
           x_url?: string | null
           youtube_url?: string | null
         }
@@ -294,6 +312,10 @@ export type Database = {
       }
       is_banned: { Args: { _user_id: string }; Returns: boolean }
       like_count: { Args: { _track_id: string }; Returns: number }
+      set_user_banned: {
+        Args: { _banned: boolean; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
