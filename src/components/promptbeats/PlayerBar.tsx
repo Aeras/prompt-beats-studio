@@ -134,11 +134,12 @@ export function PlayerBar() {
       </div>
 
       {/* Hidden canvas + video: powers the picture-in-picture window. */}
-      <canvas ref={canvasRef} width={640} height={360} className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
+      <canvas ref={canvasRef} width={800} height={1100} className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
       <video
         ref={videoRef}
         muted
         playsInline
+        style={{ aspectRatio: "8 / 11", objectFit: "contain" }}
         className="pointer-events-none absolute h-px w-px opacity-0"
         aria-hidden
       />
