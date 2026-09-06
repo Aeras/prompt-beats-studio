@@ -200,7 +200,7 @@ function Section({
   tracks: Track[];
   empty: string;
   playing: boolean;
-  currentId?: string;
+  currentId?: string | undefined;
   onPlay: (t: Track) => void;
 }) {
   return (

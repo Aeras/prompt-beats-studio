@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as HandleRouteImport } from './routes/$handle'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GenerateRouteImport } from './routes/generate'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
@@ -41,6 +42,11 @@ const AuthRoute = AuthRouteImport.update({
 const GenerateRoute = GenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/$handle': typeof HandleRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/$handle': typeof HandleRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/$handle': typeof HandleRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/$handle'
     | '/auth'
     | '/generate'
+    | '/library'
     | '/onboarding'
     | '/trending'
     | '/api/upload'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/$handle'
     | '/auth'
     | '/generate'
+    | '/library'
     | '/onboarding'
     | '/trending'
     | '/api/upload'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/$handle'
     | '/auth'
     | '/generate'
+    | '/library'
     | '/onboarding'
     | '/trending'
     | '/api/upload'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   HandleRoute: typeof HandleRoute
   AuthRoute: typeof AuthRoute
   GenerateRoute: typeof GenerateRoute
+  LibraryRoute: typeof LibraryRoute
   OnboardingRoute: typeof OnboardingRoute
   TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/generate'
       fullPath: '/generate'
       preLoaderRoute: typeof GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   HandleRoute: HandleRoute,
   AuthRoute: AuthRoute,
   GenerateRoute: GenerateRoute,
+  LibraryRoute: LibraryRoute,
   OnboardingRoute: OnboardingRoute,
   TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,
