@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+import { Check, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +11,9 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   HOURLY_LIMIT,
+  type QualityReport,
 } from "@/lib/ai.functions";
+import { getMyModeration } from "@/lib/moderation.functions";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -76,6 +78,61 @@ function OutputCard({ title, body }: { title: string; body: string }) {
   );
 }
 
+// TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
+// evaluator response from the current generation. Remove after testing.
+function QualityIssueList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      {items.length === 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground/70">None</p>
+      ) : (
+        <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-foreground/90">
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function QualityDebugPanel({ quality }: { quality: QualityReport | null }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
+      <div className="flex items-center gap-2">
+        <FlaskConical className="h-4 w-4 text-accent" />
+        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">
+          Quality Debug (temporary — admin only)
+        </h2>
+      </div>
+      {!quality ? (
+        <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center gap-4 text-sm">
+            <span>
+              Passed:{" "}
+              <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
+                {quality.passed ? "Yes" : "No"}
+              </strong>
+            </span>
+            <span>
+              Score: <strong className="text-foreground">{quality.score}/10</strong>
+            </span>
+          </div>
+          <QualityIssueList label="Issues" items={quality.issues} />
+          <QualityIssueList label="Language Issues" items={quality.languageIssues} />
+          <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
+          <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
+          <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
+          <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GeneratePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -93,6 +150,7 @@ function GeneratePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
+  const [quality, setQuality] = useState<QualityReport | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -107,6 +165,13 @@ function GeneratePage() {
   const { data: usage } = useQuery({
     queryKey: ["ai-usage"],
     queryFn: () => getGenerationUsage(),
+    enabled: !!user,
+  });
+
+  // Server-derived admin status (has_role RPC) — gates the temporary debug panel.
+  const { data: moderation } = useQuery({
+    queryKey: ["my-moderation"],
+    queryFn: () => getMyModeration(),
     enabled: !!user,
   });
 
@@ -136,6 +201,7 @@ function GeneratePage() {
     setBusy(true);
     setStatus(null);
     setSaved(false);
+    setQuality(null);
     try {
       const res = await generateSongPrompt({
         data: {
@@ -151,6 +217,7 @@ function GeneratePage() {
         return;
       }
       setResult(res.result);
+      setQuality(res.quality ?? null);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -334,6 +401,7 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
+            {moderation?.isAdmin && <QualityDebugPanel quality={quality} />}
           </div>
         )}
       </div>
