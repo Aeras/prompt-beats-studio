@@ -78,7 +78,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
@@ -86,7 +86,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 /** Public artist page data by vanity handle, including track prompts. */
@@ -101,7 +101,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
@@ -109,7 +109,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 
@@ -125,7 +125,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, title, genre, audio_url, audio_type, created_at")
@@ -133,7 +133,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(50);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 /** Public: real-time signup availability check for handle and display name. */
