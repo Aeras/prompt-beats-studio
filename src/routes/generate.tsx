@@ -402,6 +402,8 @@ function GeneratePage() {
           </div>
         </div>
 
+        {moderation?.isAdmin && <AdminModelSelector />}
+
         <div className="glass-strong mt-6 space-y-3 rounded-3xl p-5 sm:p-6">
           <div>
             <textarea
