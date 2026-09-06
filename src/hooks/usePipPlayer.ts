@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Options = {
-  art?: string;
-  title?: string;
-  subtitle?: string;
+  art: string | undefined;
+  title: string | undefined;
+  subtitle: string | undefined;
   playing: boolean;
   toggle: () => void;
 };
