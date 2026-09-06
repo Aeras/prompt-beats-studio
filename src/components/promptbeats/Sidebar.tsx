@@ -83,6 +83,7 @@ export function SidebarNav({
         <span className="truncate">AI Generator</span>
       </Link>
 
+      {!isBanned && (
       <button
         onClick={onSubmit}
         className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
@@ -90,6 +91,7 @@ export function SidebarNav({
         <Plus className="h-4 w-4" />
         Submit Track
       </button>
+      )}
 
       <div className="mt-auto">
         {user ? (
