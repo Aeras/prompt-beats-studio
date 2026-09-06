@@ -6,14 +6,16 @@ type Options = {
   subtitle: string | undefined;
   playing: boolean;
   toggle: () => void;
+  audioElement: HTMLAudioElement | null;
 };
 
 /**
  * HTML5 <audio> can't enter Picture-in-Picture, so we paint the cover art plus a
- * simple animated visualizer onto a canvas, capture that as a video stream, and
- * put THAT video into PiP. Play/pause from the OS PiP window is synced back.
+ * real-time retro hi-fi equalizer (Web Audio AnalyserNode -> canvas) onto a canvas,
+ * capture that as a video stream, and put THAT video into PiP. Play/pause from the
+ * OS PiP window is synced back to the real audio element.
  */
-export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options) {
+export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -23,6 +25,12 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
   const [pipActive, setPipActive] = useState(false);
   const [supported, setSupported] = useState(false);
 
+  // Web Audio graph (created lazily on first user interaction).
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const freqRef = useRef<Uint8Array | null>(null);
+
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
@@ -30,6 +38,45 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
   useEffect(() => {
     setSupported(typeof document !== "undefined" && "pictureInPictureEnabled" in document);
   }, []);
+
+  /**
+   * Build the AudioContext -> MediaElementSource -> Analyser -> destination graph.
+   * Must run inside a user gesture (PiP button click) so the context may resume.
+   * createMediaElementSource may only be called once per element, hence the guard.
+   */
+  const ensureAudioGraph = useCallback(() => {
+    const el = audioElement;
+    if (!el || sourceRef.current) return;
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = audioCtxRef.current ?? new Ctx();
+      audioCtxRef.current = ctx;
+      const source = ctx.createMediaElementSource(el);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      sourceRef.current = source;
+      analyserRef.current = analyser;
+      freqRef.current = new Uint8Array(analyser.frequencyBinCount);
+      if (ctx.state === "suspended") void ctx.resume();
+    } catch {
+      /* Web Audio unavailable or element already captured */
+    }
+  }, [audioElement]);
+
+  // If the audio element changes (provider remount), rebuild the graph next time.
+  useEffect(() => {
+    return () => {
+      sourceRef.current = null;
+      analyserRef.current = null;
+      freqRef.current = null;
+      if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    };
+  }, [audioElement]);
 
   // Load cover art (crossOrigin so the canvas stays untainted / capturable).
   useEffect(() => {
@@ -52,7 +99,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
     };
   }, [art]);
 
-  // Draw loop.
+  // Draw loop: cover art background + retro hi-fi equalizer from live frequency data.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -74,7 +121,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
         const w = img.width * scale;
         const h = img.height * scale;
         ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
-        ctx.fillStyle = "rgba(8,8,12,0.55)";
+        ctx.fillStyle = "rgba(8,8,12,0.45)";
         ctx.fillRect(0, 0, W, H);
       } else {
         const g = ctx.createLinearGradient(0, 0, W, H);
@@ -84,47 +131,56 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
         ctx.fillRect(0, 0, W, H);
       }
 
-      // Pulsing ring
-      const pulse = playingRef.current ? 1 + Math.sin(t / 14) * 0.06 : 1;
-      ctx.save();
-      ctx.translate(W / 2, H / 2 - 18);
-      ctx.beginPath();
-      ctx.arc(0, 0, 54 * pulse, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(168,85,247,0.85)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.restore();
+      // Live frequency data (or null if the analyser isn't wired yet / CORS-blocked).
+      const analyser = analyserRef.current;
+      const freq = freqRef.current;
+      let live: Uint8Array | null = null;
+      if (analyser && freq) {
+        analyser.getByteFrequencyData(freq);
+        live = freq;
+      }
 
-      // Bars
-      const bars = 18;
-      const bw = 8;
+      // Retro hi-fi equalizer: solid white vertical bars bouncing with the music.
+      const bars = 24;
+      const bw = 10;
       const gap = 6;
       const totalW = bars * bw + (bars - 1) * gap;
       const startX = (W - totalW) / 2;
+      const maxH = 150;
+      const baseline = H - 74;
+
+      // Skip the lowest bins (rumble) and only use the musical range.
+      const usable = live ? Math.floor(live.length * 0.72) : 0;
+
       for (let i = 0; i < bars; i++) {
-        const seed = playingRef.current
-          ? (Math.sin(t / (8 + (i % 5)) + i) + 1) / 2
-          : 0.12;
-        const bh = 8 + seed * 60;
+        let level: number;
+        if (live && playingRef.current && usable > 0) {
+          const bin = Math.floor((i / bars) * usable) + 2;
+          level = live[Math.min(bin, live.length - 1)] / 255;
+        } else {
+          // Idle shimmer when paused or no analyser.
+          level = playingRef.current ? 0.08 + ((Math.sin(t / (8 + (i % 5)) + i) + 1) / 2) * 0.1 : 0.06;
+        }
+        const bh = Math.max(3, level * maxH);
         const x = startX + i * (bw + gap);
-        const y = H - 58 - bh;
-        const grad = ctx.createLinearGradient(0, y + bh, 0, y);
-        grad.addColorStop(0, "#22c55e");
-        grad.addColorStop(0.62, "#eab308");
-        grad.addColorStop(1, "#ef4444");
-        ctx.fillStyle = grad;
+        const y = baseline - bh;
+
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(x, y, bw, bh);
+        // Soft glow beneath the bars for the retro hi-fi look.
+        ctx.fillStyle = "rgba(255,255,255,0.25)";
+        ctx.fillRect(x, baseline, bw, 2);
       }
 
       // Text
       ctx.fillStyle = "#ffffff";
       ctx.font = "600 24px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(truncate(ctx, title ?? "", W - 60), W / 2, H - 26);
+      ctx.fillText(truncate(ctx, title ?? "", W - 60), W / 2, H - 34);
       if (subtitle) {
         ctx.fillStyle = "rgba(255,255,255,0.6)";
         ctx.font = "400 15px system-ui, sans-serif";
-        ctx.fillText(truncate(ctx, subtitle, W - 60), W / 2, H - 6);
+        ctx.fillText(truncate(ctx, subtitle, W - 60), W / 2, H - 12);
       }
 
       rafRef.current = requestAnimationFrame(draw);
@@ -170,8 +226,10 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
         await document.exitPictureInPicture();
         return;
       }
+      // Wire the analyser inside this user gesture so the AudioContext can resume.
+      ensureAudioGraph();
       if (!video.srcObject) {
-        video.srcObject = canvas.captureStream(24);
+        video.srcObject = canvas.captureStream(30);
       }
       video.muted = true;
       await video.play();
@@ -179,7 +237,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
     } catch {
       /* PiP unsupported or blocked */
     }
-  }, []);
+  }, [ensureAudioGraph]);
 
   // Native events (incl. play/pause from the OS PiP window).
   useEffect(() => {

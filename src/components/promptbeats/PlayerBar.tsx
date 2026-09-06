@@ -13,13 +13,14 @@ function fmt(sec: number) {
 
 /** Persistent global player: mounted once at app level, keeps playing across pages. */
 export function PlayerBar() {
-  const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume } = usePlayer();
+  const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume, audioElement } = usePlayer();
   const { canvasRef, videoRef, pipActive, supported: pipSupported, togglePip } = usePipPlayer({
     art: current?.art,
     title: current?.title,
     subtitle: current?.handle,
     playing,
     toggle,
+    audioElement,
   });
 
   if (!current) return null;
