@@ -51,8 +51,7 @@ function Index() {
   const [query, setQuery] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
-  const [current, setCurrent] = useState<Track>(TRACKS[0]!);
-  const [playing, setPlaying] = useState(false);
+  const { current, playing, play } = usePlayer();
 
   const openStudio = () => {
     setStudio(true);
@@ -94,17 +93,8 @@ function Index() {
       (t.title + t.handle + t.prompt).toLowerCase().includes(query.toLowerCase()),
   );
 
-  const play = (t: Track) => {
-    if (current.id === t.id) return setPlaying((p) => !p);
-    setCurrent(t);
-    setPlaying(true);
-  };
+  const onPlay = (t: Track) => play(t, list);
 
-  const step = (dir: 1 | -1) => {
-    const i = all.findIndex((t) => t.id === current.id);
-    setCurrent(all[(i + dir + all.length) % all.length]!);
-    setPlaying(true);
-  };
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c]">
