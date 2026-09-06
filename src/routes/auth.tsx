@@ -49,12 +49,24 @@ function AuthPage() {
     setMessage(null);
     try {
       if (mode === "signup") {
+        const cleanHandle = handle.replace(/^@/, "").trim().toLowerCase();
+        if (!alias.trim()) throw new Error("Please enter a display name.");
+        if (!/^[a-z0-9]{3,30}$/.test(cleanHandle)) {
+          throw new Error("Username must be 3-30 letters or numbers, with no spaces or symbols.");
+        }
+        const { data: taken } = await supabase
+          .from("profiles")
+          .select("handle")
+          .eq("handle", cleanHandle)
+          .maybeSingle();
+        if (taken) throw new Error("That username is already taken. Try another one.");
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { handle: handle.replace(/^@/, ""), display_name: alias.trim() || undefined },
+            data: { handle: cleanHandle, display_name: alias.trim() },
           },
         });
         if (error) throw error;
@@ -68,6 +80,7 @@ function AuthPage() {
         } else {
           setMessage("Check your inbox to confirm your email address.");
         }
+
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
