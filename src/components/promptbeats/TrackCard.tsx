@@ -86,11 +86,11 @@ export function TrackCard({
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={copy}
+            onClick={() => setPromptOpen((v) => !v)}
             className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
           >
-            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? "Copied" : "Copy prompt"}
+            {promptOpen ? "Hide prompt" : "Show prompt"}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", promptOpen && "rotate-180")} />
           </button>
           {track.lyrics?.trim() && (
             <button
@@ -106,6 +106,30 @@ export function TrackCard({
         <div
           className={cn(
             "grid transition-all duration-300",
+            promptOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="rounded-xl bg-black/40 p-3">
+              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">
+                {track.prompt?.trim() || "No prompt provided for this track."}
+              </pre>
+              {track.prompt?.trim() && (
+                <button
+                  onClick={copy}
+                  className="mt-2 flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "grid transition-all duration-300",
             open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
           )}
         >
@@ -115,6 +139,7 @@ export function TrackCard({
             </pre>
           </div>
         </div>
+
       </div>
     </article>
   );
