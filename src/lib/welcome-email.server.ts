@@ -42,7 +42,7 @@ export async function sendWelcomeEmailViaResend(to: string, handle: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "PromptBeats <onboarding@promptbeats.app>",
+      from: "PromptBeats <no-reply@promptbeats.app>",
       to: [to],
       subject: "Welcome to PromptBeats",
       html: renderWelcomeEmail(handle),
