@@ -33,7 +33,7 @@ export function PlayerBar() {
     <div
       className={
         isInline
-          ? "glass-strong rounded-2xl border p-2 md:p-3"
+          ? "glass-strong relative w-full min-w-0 overflow-hidden rounded-2xl border p-2 md:p-3"
           : "glass-strong fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:bottom-0"
       }
     >
