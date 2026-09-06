@@ -10,6 +10,7 @@ import {
   generateSongPrompt,
   getGenerationUsage,
   savePromptToLibrary,
+  repairSongPrompt,
   HOURLY_LIMIT,
   type QualityReport,
 } from "@/lib/ai.functions";
@@ -211,6 +212,13 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
+  // Admin-only manual repair state (never triggered automatically).
+  const [repairing, setRepairing] = useState(false);
+  const [repairError, setRepairError] = useState<string | null>(null);
+  const [repaired, setRepaired] = useState<{
+    result: { title: string; tags: string; lyrics: string; note: string };
+    quality: QualityReport | null;
+  } | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -262,6 +270,8 @@ function GeneratePage() {
     setStatus(null);
     setSaved(false);
     setQuality(null);
+    setRepaired(null);
+    setRepairError(null);
     try {
       const res = await generateSongPrompt({
         data: {
@@ -282,6 +292,30 @@ function GeneratePage() {
       setStatus(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Manual, admin-only: exactly one repair request per click, no retries.
+  const repair = async () => {
+    if (!result || !quality) return;
+    setRepairing(true);
+    setRepairError(null);
+    try {
+      const res = await repairSongPrompt({
+        data: {
+          theme: theme.trim(),
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
+          result,
+          quality,
+        },
+      });
+      setRepaired(res);
+    } catch (err) {
+      setRepairError(err instanceof Error ? err.message : "Repair failed");
+    } finally {
+      setRepairing(false);
     }
   };
 
@@ -461,7 +495,16 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
-            {moderation?.isAdmin && <QualityDebugPanel quality={quality} />}
+            {moderation?.isAdmin && (
+              <QualityDebugPanel
+                quality={quality}
+                canRepair={hasQualityIssues(quality) && !repaired}
+                repairing={repairing}
+                onRepair={repair}
+                repairError={repairError}
+                repaired={repaired}
+              />
+            )}
           </div>
         )}
       </div>
