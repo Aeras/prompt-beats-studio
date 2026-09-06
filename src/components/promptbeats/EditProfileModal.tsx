@@ -78,6 +78,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         avatarUrl = data.publicUrl;
       }
       const nextAvatar = avatarUrl ?? profile.avatar_url;
+      const paypal = paypalUrl.trim();
+      const revolut = revolutUrl.trim();
       await updateMyProfile({
         data: {
           profile_completed: Boolean(name.trim()) && Boolean(nextAvatar),
@@ -87,6 +89,9 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           instagram_url: instagram.trim(),
           x_url: xUrl.trim(),
           youtube_url: youtube.trim(),
+          donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
+          donation_url: paypal || revolut || null,
+          donation_custom_name: null,
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         },
       });
@@ -196,6 +201,29 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                 aria-label="YouTube URL"
                 className={inputClass}
               />
+
+              <div className="space-y-3 rounded-2xl border border-white/10 p-4">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent">
+                  <Heart className="h-3.5 w-3.5" /> Donations
+                </p>
+                <input
+                  value={paypalUrl}
+                  onChange={(e) => setPaypalUrl(e.target.value.slice(0, 300))}
+                  placeholder="PayPal URL (optional)"
+                  aria-label="PayPal URL"
+                  className={inputClass}
+                />
+                <input
+                  value={revolutUrl}
+                  onChange={(e) => setRevolutUrl(e.target.value.slice(0, 300))}
+                  placeholder="Revolut / Support URL (optional)"
+                  aria-label="Revolut or Support URL"
+                  className={inputClass}
+                />
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Shown as a Support / Tip button on your public creator page. If both are filled, PayPal is used.
+                </p>
+              </div>
             </div>
 
             {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}
