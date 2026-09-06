@@ -31,6 +31,7 @@ const inputClass =
 export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { setPlayerMode } = usePlayer();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
