@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Volume2, PictureInPicture2, Shuffle, Repeat } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, PictureInPicture2, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { Visualizer } from "./Visualizer";
 import { usePlayer } from "@/lib/player";
 import { usePipPlayer } from "@/hooks/usePipPlayer";
@@ -13,7 +13,7 @@ function fmt(sec: number) {
 
 /** Persistent global player: mounted once at app level, keeps playing across pages. */
 export function PlayerBar() {
-  const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume, audioElement } = usePlayer();
+  const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat } = usePlayer();
   const { canvasRef, videoRef, pipActive, supported: pipSupported, togglePip } = usePipPlayer({
     art: current?.art,
     title: current?.title,
@@ -50,7 +50,13 @@ export function PlayerBar() {
         {/* Controls */}
         <div className="order-3 col-span-2 flex flex-col gap-1.5 md:order-none md:col-span-1">
           <div className="flex items-center justify-center gap-4 md:gap-5">
-            <button aria-label="Shuffle" className="hidden text-muted-foreground hover:text-accent sm:block">
+            <button
+              aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
+              aria-pressed={shuffle}
+              title={shuffle ? "Shuffle: on" : "Shuffle: off"}
+              onClick={toggleShuffle}
+              className={`hidden hover:text-accent sm:block ${shuffle ? "text-accent drop-shadow-[0_0_6px_var(--neon)]" : "text-muted-foreground"}`}
+            >
               <Shuffle className="h-4 w-4" />
             </button>
             <button aria-label="Previous track" onClick={prev} className="text-muted-foreground hover:text-foreground">
@@ -70,8 +76,14 @@ export function PlayerBar() {
             <button aria-label="Next track" onClick={next} className="text-muted-foreground hover:text-foreground">
               <SkipForward className="h-5 w-5" />
             </button>
-            <button aria-label="Repeat" className="hidden text-muted-foreground hover:text-accent sm:block">
-              <Repeat className="h-4 w-4" />
+            <button
+              aria-label={repeat === "one" ? "Repeat one" : repeat === "all" ? "Repeat all" : "Repeat off"}
+              aria-pressed={repeat !== "off"}
+              title={repeat === "one" ? "Repeat: one track" : repeat === "all" ? "Repeat: all tracks" : "Repeat: off"}
+              onClick={cycleRepeat}
+              className={`hidden hover:text-accent sm:block ${repeat !== "off" ? "text-accent drop-shadow-[0_0_6px_var(--neon)]" : "text-muted-foreground"}`}
+            >
+              {repeat === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
             </button>
           </div>
 
