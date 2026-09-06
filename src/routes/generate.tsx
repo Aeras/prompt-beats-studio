@@ -283,6 +283,7 @@ function GeneratePage() {
 
         {!busy && result && (
           <div className="mt-6 space-y-4 pb-16">
+            <OutputCard title="SONG TITLE" body={result.title} />
             <OutputCard title="STYLE PROMPT (METATAGS)" body={result.tags} />
             <OutputCard title="LYRICS & STRUCTURE" body={result.lyrics} />
             <OutputCard title="PRODUCER'S NOTE" body={result.note} />

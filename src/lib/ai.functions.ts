@@ -166,7 +166,7 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, theme, genre, mood, language, tags, lyrics, note, created_at")
+      .select("id, title, theme, genre, mood, language, tags, lyrics, note, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
