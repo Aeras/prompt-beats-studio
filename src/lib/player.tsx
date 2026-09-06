@@ -12,7 +12,7 @@ import {
 import type { Track } from "@/lib/tracks";
 
 export type RepeatMode = "off" | "all" | "one";
-export type PlayerMode = "fixed" | "inline";
+export type PlayerMode = "fixed" | "inline" | "hidden";
 
 type PlayerState = {
   current: Track | null;

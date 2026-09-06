@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayer } from "@/lib/player";
-import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 
 type EditableProfile = {
   id: string;
@@ -60,7 +59,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
-    setPlayerMode("inline");
+    setPlayerMode("hidden");
     setOpen(true);
   };
 
@@ -297,10 +296,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               Save changes
             </button>
-
-            <div className="relative mt-6 w-full min-w-0">
-              <PlayerBar />
-            </div>
           </div>
         </div>
       )}
