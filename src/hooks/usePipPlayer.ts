@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudioGraph, getAnalyser, resumeAudioGraph } from "@/lib/audioGraph";
 
 type Options = {
   art: string | undefined;
@@ -10,11 +9,14 @@ type Options = {
   audioElement: HTMLAudioElement | null;
 };
 
+const BARS = 24;
+
 /**
  * HTML5 <audio> can't enter Picture-in-Picture, so we paint the cover art plus a
- * real-time retro hi-fi equalizer (Web Audio AnalyserNode -> canvas) onto a canvas,
- * capture that as a video stream, and put THAT video into PiP. Play/pause from the
- * OS PiP window is synced back to the real audio element.
+ * fake retro equalizer (pure canvas math — no Web Audio, no CORS concerns) onto a
+ * canvas, capture that as a video stream, and put THAT video into PiP. The bars
+ * bounce only while the track is actually playing and rest at the bottom when
+ * paused. Play/pause from the OS PiP window is synced back to the real audio.
  */
 export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -23,15 +25,18 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
   const rafRef = useRef<number | null>(null);
   const syncing = useRef(false);
   const playingRef = useRef(playing);
+  // Per-bar animation state so motion looks organic instead of uniform noise.
+  const levelsRef = useRef<number[]>(Array.from({ length: BARS }, () => 0.05));
   const [pipActive, setPipActive] = useState(false);
   const [supported, setSupported] = useState(false);
-
-  // Frequency buffer for the shared analyser (allocated lazily when available).
-  const freqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
+
+  useEffect(() => {
+    setSupported(typeof document !== "undefined" && "pictureInPictureEnabled" in document);
+  }, []);
 
   // Load cover art (crossOrigin so the canvas stays untainted / capturable).
   useEffect(() => {
@@ -54,7 +59,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     };
   }, [art]);
 
-  // Draw loop: cover art background + retro hi-fi equalizer from live frequency data.
+  // Draw loop: cover art background + fake equalizer bars driven by simple math.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -63,10 +68,8 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
 
     const W = (canvas.width = 640);
     const H = (canvas.height = 360);
-    let t = 0;
 
     const draw = () => {
-      t += 1;
       ctx.clearRect(0, 0, W, H);
 
       const img = imgRef.current;
@@ -86,40 +89,23 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         ctx.fillRect(0, 0, W, H);
       }
 
-      // Live frequency data (or null if the analyser isn't wired yet / CORS-blocked).
-      const analyser = getAnalyser();
-      if (analyser && (!freqRef.current || freqRef.current.length !== analyser.frequencyBinCount)) {
-        freqRef.current = new Uint8Array(analyser.frequencyBinCount);
-      }
-      const freq = analyser ? freqRef.current : null;
-      let live: Uint8Array<ArrayBuffer> | null = null;
-      if (analyser && freq) {
-        analyser.getByteFrequencyData(freq);
-        live = freq;
-      }
-
-      // Retro hi-fi equalizer: solid white vertical bars bouncing with the music.
-      const bars = 24;
+      // Fake hi-fi equalizer: solid white vertical bars. While playing, each bar
+      // eases toward a fresh random target; when paused, everything settles to rest.
       const bw = 10;
       const gap = 6;
-      const totalW = bars * bw + (bars - 1) * gap;
+      const totalW = BARS * bw + (BARS - 1) * gap;
       const startX = (W - totalW) / 2;
       const maxH = 150;
       const baseline = H - 74;
+      const isPlaying = playingRef.current;
+      const levels = levelsRef.current;
 
-      // Skip the lowest bins (rumble) and only use the musical range.
-      const usable = live ? Math.floor(live.length * 0.72) : 0;
-
-      for (let i = 0; i < bars; i++) {
-        let level: number;
-        if (live && playingRef.current && usable > 0) {
-          const bin = Math.floor((i / bars) * usable) + 2;
-          level = (live[Math.min(bin, live.length - 1)] ?? 0) / 255;
-        } else {
-          // Idle shimmer when paused or no analyser.
-          level = playingRef.current ? 0.08 + ((Math.sin(t / (8 + (i % 5)) + i) + 1) / 2) * 0.1 : 0.06;
-        }
-        const bh = Math.max(3, level * maxH);
+      for (let i = 0; i < BARS; i++) {
+        const rest = 0.06;
+        const target = isPlaying ? 0.15 + Math.random() * 0.85 : rest;
+        // Smooth easing so bars bounce instead of jittering.
+        levels[i] = (levels[i] ?? rest) + (target - (levels[i] ?? rest)) * (isPlaying ? 0.35 : 0.12);
+        const bh = Math.max(3, (levels[i] ?? rest) * maxH);
         const x = startX + i * (bw + gap);
         const y = baseline - bh;
 
@@ -184,9 +170,6 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         await document.exitPictureInPicture();
         return;
       }
-      // Wire/resume the analyser inside this user gesture so the AudioContext can run.
-      ensureAudioGraph(audioElement);
-      resumeAudioGraph();
       if (!video.srcObject) {
         video.srcObject = canvas.captureStream(30);
       }
@@ -196,7 +179,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     } catch {
       /* PiP unsupported or blocked */
     }
-  }, [audioElement]);
+  }, []);
 
   // Native events (incl. play/pause from the OS PiP window).
   useEffect(() => {
