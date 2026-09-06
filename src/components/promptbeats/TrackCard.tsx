@@ -114,7 +114,7 @@ export function TrackCard({
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setPromptOpen((v) => !v)}
+            onClick={togglePrompt}
             className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
           >
             {promptOpen ? "Hide prompt" : "Show prompt"}
@@ -122,7 +122,7 @@ export function TrackCard({
           </button>
           {track.lyrics?.trim() && (
             <button
-              onClick={() => setOpen((v) => !v)}
+              onClick={toggleLyrics}
               className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               {open ? "Hide lyrics" : "Show lyrics"}
