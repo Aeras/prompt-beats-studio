@@ -62,8 +62,21 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
+    setPlayerMode("inline");
     setOpen(true);
   };
+
+  const closeModal = () => {
+    if (busy) return;
+    setOpen(false);
+    setPlayerMode("fixed");
+  };
+
+  useEffect(() => {
+    return () => {
+      setPlayerMode("fixed");
+    };
+  }, [setPlayerMode]);
 
   const pickAvatar = (file: File | null) => {
     setAvatarFile(file);
