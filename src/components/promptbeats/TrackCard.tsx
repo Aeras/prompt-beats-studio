@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Play, Pause, Copy, Check, ChevronDown } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
