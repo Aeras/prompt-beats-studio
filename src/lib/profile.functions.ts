@@ -135,3 +135,37 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .limit(50);
     return { profile, tracks: tracks ?? [] };
   });
+
+/** Public: real-time signup availability check for handle and display name. */
+export const checkSignupAvailability = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        handle: z.string().trim().max(40).optional(),
+        displayName: z.string().trim().max(60).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const handle = (data.handle ?? "").replace(/^@/, "").toLowerCase();
+    const displayName = (data.displayName ?? "").trim();
+
+    let handleTaken = false;
+    let displayNameTaken = false;
+
+    if (handle.length >= 3) {
+      const { data: row } = await supabase.from("profiles").select("id").eq("handle", handle).maybeSingle();
+      handleTaken = Boolean(row);
+    }
+    if (displayName.length >= 2) {
+      const { data: rows } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("display_name", displayName)
+        .limit(1);
+      displayNameTaken = Boolean(rows && rows.length > 0);
+    }
+    return { handleTaken, displayNameTaken };
+  });
