@@ -162,3 +162,87 @@ export const deleteTrack = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/** Public trending feed: published tracks ranked by likes + plays. */
+export const listTrendingTracks = createServerFn({ method: "GET" }).handler(async () => {
+  const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+  const supabase = createPublicServerClient();
+  const { data, error } = await supabase
+    .from("tracks")
+    .select(TRACK_COLUMNS)
+    .eq("is_published", true)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) return { tracks: [], error: error.message };
+
+  const rows = data ?? [];
+  const ids = [...new Set(rows.map((t) => t.user_id))];
+  const handles = new Map<string, string>();
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, handle, display_name, artist_alias")
+      .in("id", ids);
+    for (const p of profiles ?? []) {
+      handles.set(p.id, p.handle);
+      names.set(p.id, p.artist_alias || p.display_name || p.handle);
+    }
+  }
+
+  // Aggregate like counts (counts only — no user identities leave the server).
+  const likeCounts = new Map<string, number>();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: likes } = await supabaseAdmin.from("likes").select("track_id");
+  for (const l of likes ?? []) {
+    likeCounts.set(l.track_id, (likeCounts.get(l.track_id) ?? 0) + 1);
+  }
+
+  const tracks = rows
+    .map((t) => ({
+      ...t,
+      handle: `@${handles.get(t.user_id) ?? "unknown"}`,
+      creator_name: names.get(t.user_id) ?? "",
+      likes: likeCounts.get(t.id) ?? 0,
+    }))
+    .sort((a, b) => b.likes * 3 + b.plays - (a.likes * 3 + a.plays));
+
+  return { tracks, error: null as string | null };
+});
+
+/** Tracks the signed-in user has liked. */
+export const listLikedTracks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: likes, error } = await context.supabase
+      .from("likes")
+      .select("track_id, created_at")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    const ids = (likes ?? []).map((l) => l.track_id);
+    if (!ids.length) return { tracks: [] };
+
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const { data: tracks } = await supabase
+      .from("tracks")
+      .select(TRACK_COLUMNS)
+      .in("id", ids)
+      .eq("is_published", true);
+
+    const rows = tracks ?? [];
+    const userIds = [...new Set(rows.map((t) => t.user_id))];
+    const handles = new Map<string, string>();
+    if (userIds.length) {
+      const { data: profiles } = await supabase.from("profiles").select("id, handle").in("id", userIds);
+      for (const p of profiles ?? []) handles.set(p.id, p.handle);
+    }
+    const order = new Map(ids.map((id, i) => [id, i]));
+    return {
+      tracks: rows
+        .map((t) => ({ ...t, handle: `@${handles.get(t.user_id) ?? "unknown"}` }))
+        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)),
+    };
+  });
