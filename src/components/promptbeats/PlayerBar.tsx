@@ -1,7 +1,8 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, PictureInPicture2, Shuffle, Repeat } from "lucide-react";
-import { useState } from "react";
 import { Visualizer } from "./Visualizer";
 import { usePlayer } from "@/lib/player";
+import { usePipPlayer } from "@/hooks/usePipPlayer";
+
 
 function fmt(sec: number) {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -13,7 +14,13 @@ function fmt(sec: number) {
 /** Persistent global player: mounted once at app level, keeps playing across pages. */
 export function PlayerBar() {
   const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume } = usePlayer();
-  const [pip, setPip] = useState(false);
+  const { canvasRef, videoRef, pipActive, supported: pipSupported, togglePip } = usePipPlayer({
+    art: current?.art,
+    title: current?.title,
+    subtitle: current?.handle,
+    playing,
+    toggle,
+  });
 
   if (!current) return null;
 
@@ -114,15 +121,26 @@ export function PlayerBar() {
           </div>
           <button
             aria-label="Toggle picture in picture"
-            onClick={() => setPip((v) => !v)}
+            onClick={() => void togglePip()}
+            disabled={!pipSupported}
             className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors ${
-              pip ? "border-accent/60 bg-accent/15 text-accent glow-electric" : "border-white/10 text-muted-foreground hover:text-foreground"
+              pipActive ? "border-accent/60 bg-accent/15 text-accent glow-electric" : "border-white/10 text-muted-foreground hover:text-foreground"
             }`}
           >
             <PictureInPicture2 className="h-4 w-4" />
           </button>
         </div>
       </div>
+
+      {/* Hidden canvas + video: powers the picture-in-picture window. */}
+      <canvas ref={canvasRef} width={640} height={360} className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        className="pointer-events-none absolute h-px w-px opacity-0"
+        aria-hidden
+      />
     </div>
   );
 }
