@@ -285,16 +285,19 @@ Return the strict JSON object only.`;
 }
 
 async function runQualityCheck(
-  apiKey: string,
+  call: ModelCaller,
+  schema: Record<string, unknown>,
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
 ): Promise<QualityReport | null> {
   try {
-    const { text, stopReason } = await callAnthropic(apiKey, buildQualityPrompt(d, r), {
+    const { text, stopReason } = await call({
       system: QUALITY_SYSTEM_PROMPT,
+      prompt: buildQualityPrompt(d, r),
       maxTokens: 2048,
+      schema,
     });
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") return null;
+    if (stopReason !== "end_turn") return null;
     const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
@@ -319,14 +322,19 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       return { error: "rate_limited" as const, status: 429, usage, result: null, quality: null };
     }
 
-    const apiKey = process.env['ANTHROPIC_API_KEY'];
-    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+    // Provider/model is resolved server-side only; clients cannot influence it.
+    const { call, model, schemas } = await activeCaller();
 
-    const { text: raw, stopReason } = await callAnthropic(apiKey, buildPrompt(data));
+    const { text: raw, stopReason } = await call({
+      system: SYSTEM_PROMPT,
+      prompt: buildPrompt(data),
+      maxTokens: 8192,
+      schema: schemas.song,
+    });
     if (stopReason === "max_tokens") {
       throw new Error("The AI response was incomplete. Please try again.");
     }
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+    if (stopReason !== "end_turn") {
       throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
@@ -337,9 +345,11 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     }
 
     // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(apiKey, data, result.data);
+    const quality = await runQualityCheck(call, schemas.quality, data, result.data);
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
+    // Server-side usage visibility of which model served the request.
+    console.log(`[ai] generation served by model=${model}`);
     const after = await usageFor(supabase, context.userId);
     return {
       error: null,
@@ -350,6 +360,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       remainingGenerations: after.remaining,
     };
   });
+
 
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
