@@ -1,39 +1,24 @@
-import { useEffect, useState } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, PictureInPicture2, Shuffle, Repeat } from "lucide-react";
+import { useState } from "react";
 import { Visualizer } from "./Visualizer";
-import type { Track } from "@/lib/tracks";
+import { usePlayer } from "@/lib/player";
 
 function fmt(sec: number) {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0;
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function PlayerBar({
-  track,
-  playing,
-  onToggle,
-  onNext,
-  onPrev,
-}: {
-  track: Track;
-  playing: boolean;
-  onToggle: () => void;
-  onNext: () => void;
-  onPrev: () => void;
-}) {
-  const total = 212;
-  const [pos, setPos] = useState(48);
-  const [volume, setVolume] = useState(72);
+/** Persistent global player: mounted once at app level, keeps playing across pages. */
+export function PlayerBar() {
+  const { current, playing, position, duration, volume, toggle, next, prev, seek, setVolume } = usePlayer();
   const [pip, setPip] = useState(false);
 
-  useEffect(() => {
-    if (!playing) return;
-    const t = setInterval(() => setPos((p) => (p >= total ? 0 : p + 1)), 1000);
-    return () => clearInterval(t);
-  }, [playing]);
+  if (!current) return null;
 
-  const pct = (pos / total) * 100;
+  const total = duration || 0;
+  const pct = total ? (position / total) * 100 : 0;
 
   return (
     <div className="glass-strong fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:bottom-0">
@@ -41,16 +26,16 @@ export function PlayerBar({
         {/* Now playing */}
         <div className="flex min-w-0 items-center gap-3">
           <img
-            src={track.art}
-            alt={`${track.title} cover art`}
+            src={current.art}
+            alt={`${current.title} cover art`}
             width={640}
             height={640}
             loading="lazy"
             className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-white/15 md:h-14 md:w-14"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{track.title}</p>
-            <p className="truncate text-xs text-muted-foreground">{track.handle}</p>
+            <p className="truncate text-sm font-semibold">{current.title}</p>
+            <p className="truncate text-xs text-muted-foreground">{current.handle}</p>
           </div>
         </div>
 
@@ -60,12 +45,12 @@ export function PlayerBar({
             <button aria-label="Shuffle" className="hidden text-muted-foreground hover:text-accent sm:block">
               <Shuffle className="h-4 w-4" />
             </button>
-            <button aria-label="Previous track" onClick={onPrev} className="text-muted-foreground hover:text-foreground">
+            <button aria-label="Previous track" onClick={prev} className="text-muted-foreground hover:text-foreground">
               <SkipBack className="h-5 w-5" />
             </button>
             <button
               aria-label={playing ? "Pause" : "Play"}
-              onClick={onToggle}
+              onClick={toggle}
               className="grid h-10 w-10 place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-105 active:scale-95"
             >
               {playing ? (
@@ -74,7 +59,7 @@ export function PlayerBar({
                 <Play className="ml-0.5 h-5 w-5 text-primary-foreground" />
               )}
             </button>
-            <button aria-label="Next track" onClick={onNext} className="text-muted-foreground hover:text-foreground">
+            <button aria-label="Next track" onClick={next} className="text-muted-foreground hover:text-foreground">
               <SkipForward className="h-5 w-5" />
             </button>
             <button aria-label="Repeat" className="hidden text-muted-foreground hover:text-accent sm:block">
@@ -83,7 +68,7 @@ export function PlayerBar({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="w-9 text-right text-[10px] tabular-nums text-muted-foreground">{fmt(pos)}</span>
+            <span className="w-9 text-right text-[10px] tabular-nums text-muted-foreground">{fmt(position)}</span>
             <div className="relative h-1.5 flex-1 rounded-full bg-white/10">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-gradient-neon"
@@ -96,9 +81,9 @@ export function PlayerBar({
               <input
                 type="range"
                 min={0}
-                max={total}
-                value={pos}
-                onChange={(e) => setPos(Number(e.target.value))}
+                max={Math.max(total, 1)}
+                value={position}
+                onChange={(e) => seek(Number(e.target.value))}
                 aria-label="Seek"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
@@ -115,13 +100,13 @@ export function PlayerBar({
           <div className="hidden items-center gap-2 md:flex">
             <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="relative h-1.5 w-24 rounded-full bg-white/10">
-              <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${volume}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${volume * 100}%` }} />
               <input
                 type="range"
                 min={0}
                 max={100}
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
+                value={Math.round(volume * 100)}
+                onChange={(e) => setVolume(Number(e.target.value) / 100)}
                 aria-label="Volume"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Pause, Copy, Check, ChevronDown, ExternalLink } from "lucide-react";
+import { Play, Pause, Copy, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
@@ -83,22 +83,6 @@ export function TrackCard({
           </div>
         </div>
 
-        {track.audioType === "link" && track.audioUrl && (
-          <a
-            href={track.audioUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Listen on Platform
-          </a>
-        )}
-        {track.audioType === "upload" && track.audioUrl && (
-          <audio controls preload="none" src={track.audioUrl} className="w-full">
-            Your browser does not support audio playback.
-          </audio>
-        )}
 
         <div className="flex flex-wrap gap-2">
           <button

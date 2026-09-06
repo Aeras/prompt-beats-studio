@@ -32,8 +32,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [title, setTitle] = useState(track.title);
   const [genre, setGenre] = useState(track.genre);
   const [prompt, setPrompt] = useState(track.prompt);
-  const [lyrics, setLyrics] = useState(track.lyrics);
-  const [audioUrl, setAudioUrl] = useState(track.audio_url);
+  const [lyrics] = useState(track.lyrics);
 
   if (!user || !track.user_id || user.id !== track.user_id) return null;
 
@@ -58,8 +57,8 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           genre,
           prompt,
           lyrics,
-          audio_url: audioUrl.trim(),
-          audio_type: track.audio_type === "link" ? "link" : "upload",
+          audio_url: track.audio_url,
+          audio_type: "upload",
           is_published: true,
         },
       });
@@ -129,25 +128,12 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
                   </option>
                 ))}
               </select>
-              <input
-                value={audioUrl}
-                onChange={(e) => setAudioUrl(e.target.value)}
-                aria-label="Audio URL"
-                className={inputCls}
-              />
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={3}
                 aria-label="Style prompt"
                 className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60"
-              />
-              <textarea
-                value={lyrics}
-                onChange={(e) => setLyrics(e.target.value)}
-                rows={8}
-                aria-label="Lyrics"
-                className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 font-mono text-sm outline-none focus:border-accent/60"
               />
               {error && <p className="text-center text-xs text-destructive">{error}</p>}
               <div className="flex gap-3">

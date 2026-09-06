@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, X, Compass, Flame, Sparkles, Library } from "lucide-react";
 import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
-import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
 import { GENRES, TRACKS, type Track } from "@/lib/tracks";
+import { usePlayer } from "@/lib/player";
 import { listPublishedTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
@@ -51,8 +51,7 @@ function Index() {
   const [query, setQuery] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
-  const [current, setCurrent] = useState<Track>(TRACKS[0]!);
-  const [playing, setPlaying] = useState(false);
+  const { current, playing, play } = usePlayer();
 
   const openStudio = () => {
     setStudio(true);
@@ -94,17 +93,8 @@ function Index() {
       (t.title + t.handle + t.prompt).toLowerCase().includes(query.toLowerCase()),
   );
 
-  const play = (t: Track) => {
-    if (current.id === t.id) return setPlaying((p) => !p);
-    setCurrent(t);
-    setPlaying(true);
-  };
+  const onPlay = (t: Track) => play(t, list);
 
-  const step = (dir: 1 | -1) => {
-    const i = all.findIndex((t) => t.id === current.id);
-    setCurrent(all[(i + dir + all.length) % all.length]!);
-    setPlaying(true);
-  };
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c]">
@@ -204,8 +194,8 @@ function Index() {
               <TrackCard
                 key={t.id}
                 track={t}
-                isPlaying={playing && current.id === t.id}
-                onPlay={play}
+                isPlaying={playing && current?.id === t.id}
+                onPlay={onPlay}
               />
             ))}
           </div>
@@ -218,13 +208,6 @@ function Index() {
         </main>
       </div>
 
-      <PlayerBar
-        track={current}
-        playing={playing}
-        onToggle={() => setPlaying((p) => !p)}
-        onNext={() => step(1)}
-        onPrev={() => step(-1)}
-      />
 
       {/* Mobile bottom tabs */}
       <nav className="glass-strong fixed inset-x-0 bottom-[124px] z-30 border-t sm:hidden">
