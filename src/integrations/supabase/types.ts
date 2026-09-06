@@ -156,6 +156,7 @@ export type Database = {
           note: string
           tags: string
           theme: string
+          title: string | null
           updated_at: string
           user_id: string
         }
@@ -169,6 +170,7 @@ export type Database = {
           note?: string
           tags?: string
           theme?: string
+          title?: string | null
           updated_at?: string
           user_id: string
         }
@@ -182,6 +184,7 @@ export type Database = {
           note?: string
           tags?: string
           theme?: string
+          title?: string | null
           updated_at?: string
           user_id?: string
         }

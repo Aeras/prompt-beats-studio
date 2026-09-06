@@ -1,0 +1,1 @@
+alter table public.saved_prompts add column if not exists title text;
