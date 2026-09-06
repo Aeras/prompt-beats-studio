@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLikes } from "@/lib/likes";
 
-/** Heart toggle with a live like counter. `enabled` false for demo tracks with no DB row. */
+/** Heart toggle with a live like counter. */
 export function LikeButton({ trackId, enabled = true }: { trackId: string; enabled?: boolean }) {
   const { count, liked, canLike, toggle } = useLikes(trackId, enabled);
 
