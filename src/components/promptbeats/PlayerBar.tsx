@@ -23,7 +23,7 @@ export function PlayerBar() {
     audioElement,
   });
 
-  if (!current) return null;
+  if (!current || playerMode === "hidden") return null;
 
   const total = duration || 0;
   const pct = total ? (position / total) * 100 : 0;
