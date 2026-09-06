@@ -186,14 +186,14 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-label="Edit profile"
           onClick={() => closeModal()}
         >
           <div
-            className="glass-strong relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-3xl p-6"
+            className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-3xl border border-white/10 bg-[#0b0b0f] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
