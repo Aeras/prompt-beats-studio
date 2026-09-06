@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, ExternalLink, Share2 } from "lucide-react";
 
 import { getPublicTrackById } from "@/lib/tracks.functions";
+import { LikeButton } from "@/components/promptbeats/LikeButton";
+import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
