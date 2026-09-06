@@ -298,7 +298,9 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               Save changes
             </button>
 
-            <PlayerBar />
+            <div className="relative mt-6 w-full min-w-0">
+              <PlayerBar />
+            </div>
           </div>
         </div>
       )}
