@@ -32,12 +32,23 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
 
   const ids = [...new Set((data ?? []).map((t) => t.user_id))];
   const handles = new Map<string, string>();
+  const names = new Map<string, string>();
   if (ids.length) {
-    const { data: profiles } = await supabase.from("profiles").select("id, handle").in("id", ids);
-    for (const p of profiles ?? []) handles.set(p.id, p.handle);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, handle, display_name, artist_alias")
+      .in("id", ids);
+    for (const p of profiles ?? []) {
+      handles.set(p.id, p.handle);
+      names.set(p.id, p.artist_alias || p.display_name || p.handle);
+    }
   }
   return {
-    tracks: (data ?? []).map((t) => ({ ...t, handle: `@${handles.get(t.user_id) ?? "unknown"}` })),
+    tracks: (data ?? []).map((t) => ({
+      ...t,
+      handle: `@${handles.get(t.user_id) ?? "unknown"}`,
+      creator_name: names.get(t.user_id) ?? "",
+    })),
     error: null as string | null,
   };
 });

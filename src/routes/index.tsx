@@ -69,6 +69,8 @@ function Index() {
     queryFn: () => listPublishedTracks(),
   });
 
+  const creatorNames = new Map((data?.tracks ?? []).map((t) => [t.id, t.creator_name ?? ""]));
+
   const uploaded: Track[] = (data?.tracks ?? []).map((t) => ({
     id: t.id,
     userId: t.user_id,
@@ -90,7 +92,9 @@ function Index() {
   const list = all.filter(
     (t) =>
       (genre === "All" || t.genre === genre) &&
-      (t.title + t.handle + t.prompt).toLowerCase().includes(query.toLowerCase()),
+      (t.title + t.handle + (creatorNames.get(t.id) ?? "") + t.prompt)
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
 
   const onPlay = (t: Track) => play(t, list);
@@ -202,7 +206,7 @@ function Index() {
 
           {list.length === 0 && (
             <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              Nothing matches that yet. Try another genre or search.
+              No tracks found.
             </p>
           )}
         </main>
