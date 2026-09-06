@@ -1,4 +1,4 @@
-import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut, Wand2 } from "lucide-react";
+import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
