@@ -5,6 +5,8 @@ import { Check, Copy, ExternalLink, Music } from "lucide-react";
 
 import { getPublicArtistById } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
+import { LikeButton } from "@/components/promptbeats/LikeButton";
+import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 
 export const Route = createFileRoute("/artist/$id")({
   head: () => ({
