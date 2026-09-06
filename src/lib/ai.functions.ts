@@ -141,10 +141,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       return { error: "rate_limited" as const, status: 429, usage, result: null };
     }
 
-    const apiKey = process.env['GEMINI_API_KEY'];
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+    const apiKey = process.env['ANTHROPIC_API_KEY'];
+    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
-    const raw = await callGemini(apiKey, buildPrompt(data));
+    const raw = await callAnthropic(apiKey, buildPrompt(data));
     const result = parseSections(raw);
     if (!result.tags && !result.lyrics && !result.note) {
       throw new Error("The AI returned an empty response. Try again.");
