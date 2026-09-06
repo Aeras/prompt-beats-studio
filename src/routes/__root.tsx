@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { PlayerProvider } from "@/lib/player";
+import { PlayerProvider, usePlayer } from "@/lib/player";
 import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -130,9 +130,15 @@ function RootComponent() {
       <PlayerProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <PlayerBar />
+        <GlobalPlayerBar />
         <Toaster />
       </PlayerProvider>
     </QueryClientProvider>
   );
+}
+
+function GlobalPlayerBar() {
+  const { playerMode } = usePlayer();
+  if (playerMode !== "fixed") return null;
+  return <PlayerBar />;
 }

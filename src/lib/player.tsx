@@ -12,6 +12,7 @@ import {
 import type { Track } from "@/lib/tracks";
 
 export type RepeatMode = "off" | "all" | "one";
+export type PlayerMode = "fixed" | "inline";
 
 type PlayerState = {
   current: Track | null;
@@ -30,6 +31,8 @@ type PlayerState = {
   repeat: RepeatMode;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  playerMode: PlayerMode;
+  setPlayerMode: (mode: PlayerMode) => void;
 };
 
 const PlayerContext = createContext<PlayerState | null>(null);
@@ -51,6 +54,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [playerMode, setPlayerMode] = useState<PlayerMode>("fixed");
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
 
@@ -262,8 +266,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       toggleShuffle,
       cycleRepeat,
+      playerMode,
+      setPlayerMode,
     }),
-    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat],
+    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat, playerMode],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

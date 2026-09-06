@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Heart, Loader2, Upload, UserRoundPen, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlayer } from "@/lib/player";
+import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 
 type EditableProfile = {
   id: string;
@@ -29,6 +31,7 @@ const inputClass =
 export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { setPlayerMode } = usePlayer();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -59,8 +62,21 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
+    setPlayerMode("inline");
     setOpen(true);
   };
+
+  const closeModal = () => {
+    if (busy) return;
+    setOpen(false);
+    setPlayerMode("fixed");
+  };
+
+  useEffect(() => {
+    return () => {
+      setPlayerMode("fixed");
+    };
+  }, [setPlayerMode]);
 
   const pickAvatar = (file: File | null) => {
     setAvatarFile(file);
@@ -128,6 +144,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       await queryClient.invalidateQueries({ refetchType: "active" });
       toast.success("Profile updated");
       setOpen(false);
+      setPlayerMode("fixed");
     } catch (error: unknown) {
       const message =
         typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
@@ -157,17 +174,17 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           role="dialog"
           aria-modal="true"
           aria-label="Edit profile"
-          onClick={() => !busy && setOpen(false)}
+          onClick={() => closeModal()}
         >
           <div
-            className="glass-strong w-full max-w-md rounded-3xl p-6"
+            className="glass-strong max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-display text-lg font-bold">Edit profile</h2>
               <button
                 aria-label="Close"
-                onClick={() => !busy && setOpen(false)}
+                onClick={() => closeModal()}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -280,6 +297,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               Save changes
             </button>
+
+            <PlayerBar />
           </div>
         </div>
       )}
