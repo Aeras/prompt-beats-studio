@@ -16,6 +16,8 @@ type EditableProfile = {
   instagram_url?: string | null;
   x_url?: string | null;
   youtube_url?: string | null;
+  donation_provider?: string | null;
+  donation_url?: string | null;
   profile_completed: boolean;
 };
 
@@ -33,6 +35,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [instagram, setInstagram] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [youtube, setYoutube] = useState("");
+  const [paypalUrl, setPaypalUrl] = useState("");
+  const [revolutUrl, setRevolutUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,6 +51,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setInstagram(profile.instagram_url || "");
     setXUrl(profile.x_url || "");
     setYoutube(profile.youtube_url || "");
+    setPaypalUrl(profile.donation_provider === "paypal" ? profile.donation_url || "" : "");
+    setRevolutUrl(profile.donation_provider === "revolut" ? profile.donation_url || "" : "");
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
