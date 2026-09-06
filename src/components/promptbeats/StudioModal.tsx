@@ -71,6 +71,19 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     return payload;
   };
 
+  const uploadCover = async (file: File): Promise<string> => {
+    if (!user) throw new Error("You must be signed in to upload a cover.");
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("track-covers").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (error) throw new Error(`Cover upload failed: ${error.message}`);
+    const { data } = supabase.storage.from("track-covers").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const uploadAll = async () => {
     if (!user) {
       onClose();
