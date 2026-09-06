@@ -100,6 +100,22 @@ function TrackPage() {
                 {share.copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
                 {share.copied ? "Link copied" : "Share Track"}
               </button>
+
+              <div className="flex items-center gap-3 pt-1">
+                <LikeButton trackId={track.id} />
+                <TrackOwnerActions
+                  track={{
+                    id: track.id,
+                    user_id: track.user_id,
+                    title: track.title,
+                    genre: track.genre,
+                    prompt: track.prompt ?? "",
+                    lyrics: track.lyrics ?? "",
+                    audio_url: track.audio_url,
+                    audio_type: track.audio_type,
+                  }}
+                />
+              </div>
             </header>
 
             {track.prompt && (
