@@ -19,6 +19,21 @@ export function TrackCard({
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const togglePrompt = () => {
+    setPromptOpen((v) => {
+      const next = !v;
+      if (next) setOpen(false);
+      return next;
+    });
+  };
+
+  const toggleLyrics = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (next) setPromptOpen(false);
+      return next;
+    });
+  };
 
   const copy = async () => {
     try {
