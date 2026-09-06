@@ -266,8 +266,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       toggleShuffle,
       cycleRepeat,
+      playerMode,
+      setPlayerMode,
     }),
-    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat],
+    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat, playerMode],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
