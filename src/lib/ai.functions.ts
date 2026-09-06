@@ -7,7 +7,7 @@ export const HOURLY_LIMIT = 10;
 
 const generateInput = z.object({
   theme: z.string().trim().min(3).max(300),
-  genre: z.string().trim().min(1).max(60),
+  genre: z.string().trim().min(1).max(400),
   mood: z.string().trim().min(1).max(60),
   language: z.string().trim().min(1).max(40),
 });
@@ -15,7 +15,7 @@ const generateInput = z.object({
 const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
   theme: z.string().trim().max(300).default(""),
-  genre: z.string().trim().max(60).default(""),
+  genre: z.string().trim().max(400).default(""),
   mood: z.string().trim().max(60).default(""),
   language: z.string().trim().max(40).default(""),
   tags: z.string().trim().max(4000).default(""),
@@ -54,7 +54,8 @@ STRICT FORMATTING RULES (non-negotiable):
 - Always begin your response with a creative song title in the form "Title: <name>" — this comes at the very beginning, right before the Music Style and Lyrics.
 
 User's Core Idea: ${d.theme}
-Requested Genre: ${d.genre}
+Requested Genre(s): ${d.genre}
+If multiple genres are listed, seamlessly blend them into one coherent fusion style (e.g. "A rhythmic fusion of Reggaeton, Cumbia and Latin Pop with...") rather than treating them separately.
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
 
@@ -171,4 +172,17 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
       .limit(50);
     if (error) throw new Error(error.message);
     return { prompts: data ?? [] };
+  });
+
+export const deleteSavedPrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("saved_prompts")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
