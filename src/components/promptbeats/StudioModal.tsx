@@ -12,6 +12,7 @@ import { useModeration } from "@/hooks/useModeration";
 type Row = {
   key: string;
   file: File | null;
+  cover: File | null;
   title: string;
   genre: string;
   prompt: string;
@@ -21,6 +22,7 @@ type Row = {
 const emptyRow = (): Row => ({
   key: Math.random().toString(36).slice(2),
   file: null,
+  cover: null,
   title: "",
   genre: "",
   prompt: "",
