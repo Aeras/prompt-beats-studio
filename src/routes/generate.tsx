@@ -150,6 +150,7 @@ function GeneratePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
+  const [quality, setQuality] = useState<QualityReport | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -164,6 +165,13 @@ function GeneratePage() {
   const { data: usage } = useQuery({
     queryKey: ["ai-usage"],
     queryFn: () => getGenerationUsage(),
+    enabled: !!user,
+  });
+
+  // Server-derived admin status (has_role RPC) — gates the temporary debug panel.
+  const { data: moderation } = useQuery({
+    queryKey: ["my-moderation"],
+    queryFn: () => getMyModeration(),
     enabled: !!user,
   });
 
