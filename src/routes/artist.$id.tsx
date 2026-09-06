@@ -8,6 +8,7 @@ import { getPublicArtistById } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 
 export const Route = createFileRoute("/artist/$id")({
   head: () => ({
@@ -86,6 +87,7 @@ function ArtistPage() {
                 <p className="text-xs text-muted-foreground">@{profile.handle}</p>
                 {profile.bio && <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p>}
               </div>
+              <EditProfileModal profile={profile} />
             </header>
 
             <DonateButton
