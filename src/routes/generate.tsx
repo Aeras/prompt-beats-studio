@@ -5,6 +5,7 @@ import { Check, Copy, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-r
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
+import { AppShell } from "@/components/promptbeats/AppShell";
 import {
   generateSongPrompt,
   getGenerationUsage,
@@ -167,7 +168,15 @@ function GeneratePage() {
   };
 
   return (
-    <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-6 md:px-8">
+    <AppShell
+      header={
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-accent" />
+          <span className="font-display text-lg font-bold">AI Prompt Studio</span>
+        </div>
+      }
+    >
+    <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
       <div className="mx-auto max-w-3xl">
         <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to the feed
@@ -299,5 +308,6 @@ function GeneratePage() {
         )}
       </div>
     </div>
+    </AppShell>
   );
 }
