@@ -229,6 +229,7 @@ export type Database = {
           audio_key: string | null
           audio_type: string
           audio_url: string
+          cover_url: string | null
           created_at: string
           duration_seconds: number | null
           genre: string
@@ -246,6 +247,7 @@ export type Database = {
           audio_key?: string | null
           audio_type?: string
           audio_url: string
+          cover_url?: string | null
           created_at?: string
           duration_seconds?: number | null
           genre?: string
@@ -263,6 +265,7 @@ export type Database = {
           audio_key?: string | null
           audio_type?: string
           audio_url?: string
+          cover_url?: string | null
           created_at?: string
           duration_seconds?: number | null
           genre?: string
