@@ -11,10 +11,10 @@ type Options = {
 
 /**
  * HTML5 <audio> can't enter Picture-in-Picture, so we paint a realistic,
- * top-down turntable / vinyl record player onto a canvas, capture that as a
- * video stream, and put THAT video into PiP. The record spins only while the
- * track is playing and the tonearm (needle) sweeps from the outer edge toward
- * the center label in sync with playback progress.
+ * top-down turntable / vinyl record player onto a square canvas, capture that
+ * as a video stream, and put THAT video into PiP. The record spins only while
+ * the track is playing and the tonearm (needle) sweeps from the outer edge
+ * toward the center label in sync with playback progress.
  */
 export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,53 +63,60 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // 1:1 square canvas guarantees a perfectly circular record.
     const W = (canvas.width = 640);
-    const H = (canvas.height = 360);
+    const H = (canvas.height = 640);
     const CX = W / 2;
     const CY = H / 2;
-    const DISC_RADIUS = 138;
-    const LABEL_RADIUS = 52;
-    const CENTER_HOLE_RADIUS = 4;
-    const PIVOT = { x: W - 52, y: 56 };
+    const DISC_RADIUS = Math.round(H * 0.45); // 90% of height
+    const LABEL_RADIUS = Math.round(DISC_RADIUS * 0.28);
+    const CENTER_HOLE_RADIUS = 5;
+    const PIVOT = { x: W - 54, y: 54 };
 
     const draw = () => {
-      // Solid dark plinth/base.
-      ctx.fillStyle = "#111111";
+      // Soft modern dark slate background.
+      const bgGradient = ctx.createLinearGradient(0, 0, W, H);
+      bgGradient.addColorStop(0, "#1A1A24");
+      bgGradient.addColorStop(1, "#121218");
+      ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle platter ring.
-      ctx.beginPath();
-      ctx.arc(CX, CY, DISC_RADIUS + 10, 0, Math.PI * 2);
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fill();
-
-      // Update rotation angle while playing.
+      // Update rotation while playing.
       if (playingRef.current) {
-        rotationRef.current += 0.025;
+        rotationRef.current += 0.018;
       }
 
+      // --- Vinyl disc (with shadow) ---
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.55)";
+      ctx.shadowBlur = 42;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 10;
+      ctx.beginPath();
+      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fill();
+      ctx.restore();
+
+      // Subtle outer rim highlight.
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      // Spinning content: label, grooves, sheen.
       ctx.save();
       ctx.translate(CX, CY);
       ctx.rotate(rotationRef.current);
 
-      // Vinyl grooves.
-      ctx.beginPath();
-      ctx.arc(0, 0, DISC_RADIUS, 0, Math.PI * 2);
-      const grooveGradient = ctx.createRadialGradient(0, 0, LABEL_RADIUS, 0, 0, DISC_RADIUS);
-      grooveGradient.addColorStop(0, "#1c1c1c");
-      grooveGradient.addColorStop(0.15, "#111111");
-      grooveGradient.addColorStop(0.2, "#141414");
-      grooveGradient.addColorStop(0.4, "#0f0f0f");
-      grooveGradient.addColorStop(0.6, "#151515");
-      grooveGradient.addColorStop(0.8, "#111111");
-      grooveGradient.addColorStop(1, "#0a0a0a");
-      ctx.fillStyle = grooveGradient;
-      ctx.fill();
-
-      // Fine groove rings.
-      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      // Concentric groove rings.
+      ctx.strokeStyle = "#222222";
       ctx.lineWidth = 1;
-      for (let r = LABEL_RADIUS + 8; r < DISC_RADIUS - 8; r += 6) {
+      for (let i = 0; i < 5; i++) {
+        const r = LABEL_RADIUS + (DISC_RADIUS - LABEL_RADIUS) * ((i + 1) / 6);
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
@@ -128,11 +135,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         const h = img.height * scale;
         ctx.drawImage(img, -w / 2, -h / 2, w, h);
       } else {
-        ctx.fillStyle = "#222222";
+        ctx.fillStyle = "#1f1f1f";
         ctx.fillRect(-LABEL_RADIUS, -LABEL_RADIUS, LABEL_RADIUS * 2, LABEL_RADIUS * 2);
-        ctx.fillStyle = "#666666";
+        ctx.fillStyle = "#555555";
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, Math.PI * 2);
+        ctx.arc(0, 0, 16, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -143,86 +150,123 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.fillStyle = "#111111";
       ctx.fill();
 
-      // Highlight sheen on vinyl.
+      // Glossy sheen across the vinyl.
       ctx.beginPath();
       ctx.arc(0, 0, DISC_RADIUS, 0, Math.PI * 2);
       const sheen = ctx.createLinearGradient(-DISC_RADIUS, -DISC_RADIUS, DISC_RADIUS, DISC_RADIUS);
-      sheen.addColorStop(0, "rgba(255,255,255,0.08)");
-      sheen.addColorStop(0.5, "rgba(255,255,255,0)");
+      sheen.addColorStop(0, "rgba(255,255,255,0.07)");
+      sheen.addColorStop(0.45, "rgba(255,255,255,0)");
+      sheen.addColorStop(0.55, "rgba(255,255,255,0)");
       sheen.addColorStop(1, "rgba(255,255,255,0.04)");
       ctx.fillStyle = sheen;
       ctx.fill();
 
       ctx.restore(); // undo disc rotation
 
-      // Tonearm (needle) — time-synced from outer edge toward center label.
+      // --- Tonearm (needle) ---
       const currentTime = audioElement?.currentTime ?? 0;
       const duration = audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
       const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
 
-      // Needle tip sweeps from outer rim to inner label area.
-      const startAngle = -Math.PI / 3; // -60°
-      const endAngle = (-Math.PI * 2) / 3; // -120°
-      const needleRadius = DISC_RADIUS - 10 - progress * (DISC_RADIUS - LABEL_RADIUS - 24);
+      // Needle tip sweeps from outer groove to inner groove area.
+      const startAngle = -Math.PI / 4; // -45°
+      const endAngle = (-Math.PI * 5) / 9; // -100°
+      const outerR = DISC_RADIUS - 16;
+      const innerR = LABEL_RADIUS + 34;
+      const needleRadius = outerR - progress * (outerR - innerR);
       const needleAngle = startAngle + progress * (endAngle - startAngle);
       const tipX = CX + needleRadius * Math.cos(needleAngle);
       const tipY = CY + needleRadius * Math.sin(needleAngle);
 
-      // Tonearm pivot assembly.
-      ctx.fillStyle = "#2a2a2a";
+      const armAngle = Math.atan2(tipY - PIVOT.y, tipX - PIVOT.x);
+      const armLength = Math.hypot(tipX - PIVOT.x, tipY - PIVOT.y);
+
+      // Pivot base (sleek metallic cylinder).
+      const baseGradient = ctx.createRadialGradient(PIVOT.x - 4, PIVOT.y - 4, 4, PIVOT.x, PIVOT.y, 22);
+      baseGradient.addColorStop(0, "#9ca3af");
+      baseGradient.addColorStop(0.5, "#4b5563");
+      baseGradient.addColorStop(1, "#1f2937");
       ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 14, 0, Math.PI * 2);
+      ctx.arc(PIVOT.x, PIVOT.y, 22, 0, Math.PI * 2);
+      ctx.fillStyle = baseGradient;
       ctx.fill();
-      ctx.strokeStyle = "#444444";
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Tonearm line.
-      ctx.strokeStyle = "#c0c0c0";
-      ctx.lineWidth = 6;
+      // Counterweight.
+      ctx.save();
+      ctx.translate(PIVOT.x, PIVOT.y);
+      ctx.rotate(armAngle + Math.PI / 2);
+      ctx.fillStyle = "#374151";
+      ctx.beginPath();
+      ctx.roundRect(-10, -26, 20, 40, 6);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.stroke();
+      ctx.restore();
+
+      // Metallic tonearm (thick, with highlight).
+      const armGradient = ctx.createLinearGradient(PIVOT.x, PIVOT.y, tipX, tipY);
+      armGradient.addColorStop(0, "#6b7280");
+      armGradient.addColorStop(0.5, "#d1d5db");
+      armGradient.addColorStop(1, "#6b7280");
+
+      ctx.save();
+      ctx.strokeStyle = armGradient;
+      ctx.lineWidth = 9;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(PIVOT.x, PIVOT.y);
       ctx.lineTo(tipX, tipY);
       ctx.stroke();
-
-      // Inner accent line.
-      ctx.strokeStyle = "#888888";
+      // Inner highlight line.
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(PIVOT.x, PIVOT.y);
       ctx.lineTo(tipX, tipY);
       ctx.stroke();
+      ctx.restore();
 
-      // Headshell / cartridge at the tip.
-      const angleToTip = Math.atan2(tipY - PIVOT.y, tipX - PIVOT.x);
+      // Headshell / cartridge (rectangular, resting on grooves).
+      const headshellLen = 38;
+      const headshellW = 14;
       ctx.save();
       ctx.translate(tipX, tipY);
-      ctx.rotate(angleToTip);
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillRect(-4, -8, 18, 16);
-      ctx.fillStyle = "#d4af37"; // gold stylus
+      ctx.rotate(armAngle);
+      // Cartridge body.
+      const cartGradient = ctx.createLinearGradient(-headshellW / 2, 0, headshellW / 2, 0);
+      cartGradient.addColorStop(0, "#1f2937");
+      cartGradient.addColorStop(0.5, "#374151");
+      cartGradient.addColorStop(1, "#111827");
+      ctx.fillStyle = cartGradient;
       ctx.beginPath();
-      ctx.arc(12, 0, 3, 0, Math.PI * 2);
+      ctx.roundRect(-headshellW / 2, -headshellLen / 2, headshellW, headshellLen, 4);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Stylus tip.
+      ctx.fillStyle = "#d4af37";
+      ctx.beginPath();
+      ctx.arc(0, headshellLen / 2 + 3, 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Counterweight at pivot.
-      ctx.fillStyle = "#333333";
-      ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 8, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Track info overlay.
+      // --- Track info at bottom ---
       ctx.textAlign = "left";
       ctx.fillStyle = "#ffffff";
-      ctx.font = "600 20px system-ui, sans-serif";
-      ctx.fillText(truncate(ctx, title ?? "", W - 120), 24, H - 38);
+      ctx.font = "600 28px Inter, system-ui, sans-serif";
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 12;
+      ctx.fillText(truncate(ctx, title ?? "", W - 80), 40, H - 54);
       if (subtitle) {
-        ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.font = "400 14px system-ui, sans-serif";
-        ctx.fillText(truncate(ctx, subtitle, W - 120), 24, H - 16);
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        ctx.font = "400 18px Inter, system-ui, sans-serif";
+        ctx.fillText(truncate(ctx, subtitle, W - 80), 40, H - 26);
       }
+      ctx.shadowBlur = 0;
 
       rafRef.current = requestAnimationFrame(draw);
     };
