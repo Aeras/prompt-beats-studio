@@ -90,8 +90,8 @@ export function TrackCard({
               ) : (
                 <span>{track.handle}</span>
               )}
-              {
-          <div className="flex shrink-0 items-center gap-2">
+              {" · "}{track.plays} plays
+            </p>
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
             {track.userId && (
               <TrackOwnerActions
