@@ -112,7 +112,6 @@ async function callAnthropic(apiKey: string, prompt: string) {
     body: JSON.stringify({
       model: "claude-sonnet-5",
       max_tokens: 4096,
-      temperature: 0.9,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     }),
