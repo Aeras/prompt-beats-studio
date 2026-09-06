@@ -34,6 +34,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [youtube, setYoutube] = useState("");
   const [paypalUrl, setPaypalUrl] = useState("");
@@ -50,6 +51,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setBio(profile.bio || "");
     setWebsite(profile.website_url || "");
     setInstagram(profile.instagram_url || "");
+    setTiktok(profile.tiktok_url || "");
     setXUrl(profile.x_url || "");
     setYoutube(profile.youtube_url || "");
     setPaypalUrl(profile.donation_provider === "paypal" ? profile.donation_url || "" : "");
