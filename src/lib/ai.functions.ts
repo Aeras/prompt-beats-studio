@@ -199,7 +199,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
     const after = await readUsage(supabase, context.userId);
-    return { error: null, status: 200, usage: after, result, remainingGenerations: after.remaining };
+    return { error: null, status: 200, usage: after, result: result.data, remainingGenerations: after.remaining };
   });
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
