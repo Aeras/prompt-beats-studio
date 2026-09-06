@@ -108,7 +108,15 @@ export const createTrack = createServerFn({ method: "POST" })
     return { track: row };
   });
 
-/** Updates one of the user's own tracks (RLS restricts this to the owner). */
+/**
+ * Updates one of the user's own tracks (RLS restricts this to the owner).
+ *
+ * Audio replacement is roll-forward safe: the caller uploads the new object
+ * first and passes its key here. The previous object is only deleted AFTER the
+ * database row successfully points at the new one, so the track never
+ * references a deleted file. If the update fails we touch nothing — the caller
+ * rolls back the freshly uploaded object via `discardUploads`.
+ */
 export const updateTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -121,22 +129,93 @@ export const updateTrack = createServerFn({ method: "POST" })
         lyrics: z.string().trim().max(8000).default(""),
         audio_url: z.string().url(),
         audio_type: z.enum(["link", "upload"]),
+        audio_key: z.string().max(500).optional(),
         is_published: z.boolean().default(true),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { id, ...fields } = data;
+    const { id, audio_key, ...fields } = data;
+
+    // Remember the current object key before the write so we can retire it
+    // only once the new one is safely referenced.
+    let previousKey: string | null = null;
+    if (audio_key) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: current } = await supabaseAdmin
+        .from("tracks")
+        .select("audio_key, user_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (current?.user_id === context.userId) previousKey = current.audio_key ?? null;
+    }
+
     const { data: row, error } = await context.supabase
       .from("tracks")
-      .update(fields)
+      .update(audio_key ? { ...fields, audio_key } : fields)
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(TRACK_COLUMNS)
       .single();
     if (error) throw new Error(error.message);
+
+    if (audio_key && previousKey && previousKey !== audio_key) {
+      // Best-effort: a failed cleanup must not fail an already-successful save.
+      try {
+        const { deleteFromR2 } = await import("@/lib/r2.server");
+        await deleteFromR2(previousKey);
+      } catch (err) {
+        console.error("[tracks] failed to delete replaced audio object", err);
+      }
+    }
     return { track: row };
   });
+
+/**
+ * Rollback helper: deletes storage objects that were uploaded for a track that
+ * ultimately failed to be created/updated. Ownership is enforced by key prefix
+ * (R2 keys are `tracks/<userId>/…`, cover paths are `<userId>/…`) and the
+ * object must NOT be referenced by any existing track row, so this can never
+ * remove a live file. Safe to call twice — deletes are idempotent and errors
+ * are swallowed so the original failure stays the reported error.
+ */
+export const discardUploads = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        audioKey: z.string().max(500).optional(),
+        coverPath: z.string().max(500).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.audioKey && data.audioKey.startsWith(`tracks/${context.userId}/`)) {
+      const { data: inUse } = await supabaseAdmin
+        .from("tracks")
+        .select("id")
+        .eq("audio_key", data.audioKey)
+        .limit(1);
+      if (!inUse || inUse.length === 0) {
+        try {
+          const { deleteFromR2 } = await import("@/lib/r2.server");
+          await deleteFromR2(data.audioKey);
+        } catch (err) {
+          console.error("[tracks] orphan audio cleanup failed", err);
+        }
+      }
+    }
+
+    if (data.coverPath && data.coverPath.startsWith(`${context.userId}/`)) {
+      const { error } = await supabaseAdmin.storage.from("track-covers").remove([data.coverPath]);
+      if (error) console.error("[tracks] orphan cover cleanup failed", error.message);
+    }
+
+    return { ok: true };
+  });
+
 
 /** Deletes one of the user's own tracks (and its audio file). */
 export const deleteTrack = createServerFn({ method: "POST" })

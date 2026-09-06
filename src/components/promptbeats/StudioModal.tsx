@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { GENRES } from "@/lib/tracks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { createTrack } from "@/lib/tracks.functions";
+import { createTrack, discardUploads } from "@/lib/tracks.functions";
 import { useModeration } from "@/hooks/useModeration";
 
 type Row = {
@@ -71,7 +71,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     return payload;
   };
 
-  const uploadCover = async (file: File): Promise<string> => {
+  const uploadCover = async (file: File): Promise<{ url: string; path: string }> => {
     if (!user) throw new Error("You must be signed in to upload a cover.");
     const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
@@ -81,7 +81,51 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     });
     if (error) throw new Error(`Cover upload failed: ${error.message}`);
     const { data } = supabase.storage.from("track-covers").getPublicUrl(path);
-    return data.publicUrl;
+    return { url: data.publicUrl, path };
+  };
+
+  /**
+   * One track = one transaction from the user's point of view: audio → cover →
+   * database row. If any step after an upload fails, every object created by
+   * THIS row is removed server-side and the original error is re-thrown.
+   * Already-published sibling rows are untouched.
+   */
+  const publishRow = async (r: Row, token: string | undefined) => {
+    let audioKey: string | undefined;
+    let coverPath: string | undefined;
+    let coverUrl: string | undefined;
+    try {
+      const payload = await uploadOne(r.file!, token);
+      audioKey = payload.key;
+      if (r.cover) {
+        const cover = await uploadCover(r.cover);
+        coverPath = cover.path;
+        coverUrl = cover.url;
+      }
+      await createTrack({
+        data: {
+          title: r.title.trim(),
+          genre: r.genre,
+          prompt: r.prompt,
+          lyrics: r.lyrics,
+          audio_url: payload.url!,
+          audio_type: "upload",
+          ...(audioKey ? { audio_key: audioKey } : {}),
+          ...(coverUrl ? { cover_url: coverUrl } : {}),
+          is_published: true,
+        },
+      });
+    } catch (err) {
+      if (audioKey || coverPath) {
+        // Best-effort rollback; never mask the original failure.
+        try {
+          await discardUploads({ data: { audioKey, coverPath } });
+        } catch {
+          /* cleanup failure is logged server-side */
+        }
+      }
+      throw err;
+    }
   };
 
   const uploadAll = async () => {
@@ -107,37 +151,14 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       const token = sessionData.session?.access_token;
 
       let done = 0;
-      const uploads = await Promise.all(
-        rows.map(async (r) => {
-          const payload = await uploadOne(r.file!, token);
-          const cover_url = r.cover ? await uploadCover(r.cover) : null;
-          done += 1;
-          setStatus(`Uploaded ${done}/${rows.length} file(s)…`);
-          return { row: r, payload, cover_url };
-        }),
-      );
-
-      setStatus("Saving tracks…");
-      await Promise.all(
-        uploads.map(({ row, payload, cover_url }) =>
-          createTrack({
-            data: {
-              title: row.title.trim(),
-              genre: row.genre,
-              prompt: row.prompt,
-              lyrics: row.lyrics,
-              audio_url: payload.url!,
-              audio_type: "upload",
-              ...(payload.key ? { audio_key: payload.key } : {}),
-              ...(cover_url ? { cover_url } : {}),
-              is_published: true,
-            },
-          }),
-        ),
-      );
+      for (const r of rows) {
+        setStatus(`Publishing ${done + 1}/${rows.length}…`);
+        await publishRow(r, token);
+        done += 1;
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["tracks"] });
-      setStatus(`${uploads.length} track(s) published!`);
+      setStatus(`${rows.length} track(s) published!`);
       setRows([emptyRow()]);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Something went wrong");
@@ -145,6 +166,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       setBusy(false);
     }
   };
+
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
