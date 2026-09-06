@@ -105,6 +105,7 @@ function AuthPage() {
           .eq("handle", cleanHandle)
           .maybeSingle();
         if (taken) throw new Error("That username is already taken. Try another one.");
+        if (aliasTaken) throw new Error("That display name is already taken. Try another one.");
 
         const { data, error } = await supabase.auth.signUp({
           email,

@@ -147,6 +147,13 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
           </button>
         </header>
 
+        {isBanned && (
+          <p className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            Your account is suspended, so uploading is disabled.
+          </p>
+        )}
+
+        {!isBanned && (
         <div className="mt-6 space-y-5">
           {rows.map((r, i) => (
             <section key={r.key} className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-4">
