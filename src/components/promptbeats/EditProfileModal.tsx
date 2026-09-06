@@ -59,7 +59,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
-    setPlayerMode("inline");
+    setPlayerMode("hidden");
     setOpen(true);
   };
 
