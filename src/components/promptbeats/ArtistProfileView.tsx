@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Globe, Instagram, Music, Play, Pause, Share2, ShieldBan, Twitter, Youtube } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
@@ -10,7 +10,7 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
-import { setUserBanned } from "@/lib/moderation.functions";
+import { getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
 
 type Profile = {
   id: string;
@@ -204,7 +204,7 @@ export function ArtistProfileView({
               </div>
               <div className="flex shrink-0 flex-col gap-2">
                 <EditProfileModal profile={profile} />
-                <BanUserToggle userId={profile.id} banned={Boolean(profile.is_banned)} />
+                <BanUserToggle userId={profile.id} />
               </div>
             </header>
 
