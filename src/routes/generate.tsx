@@ -36,10 +36,11 @@ export const Route = createFileRoute("/generate")({
 
 const CUSTOM = "Custom…";
 const GENRE_OPTIONS = [
-  "Reggaeton", "Cumbia", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
-  "Pop", "Rock", "R&B", "House", "Techno", "Drum & Bass", "Trap", "Jazz",
+  "Reggaeton", "Cumbia", "Latin Pop", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
+  "Pop", "Rock", "R&B", "House", "Techno", "Electronic / EDM", "Drum & Bass", "Trap", "Jazz",
   "Lo-fi", "Country", "Metal", "Afrobeats", CUSTOM,
 ];
+
 const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
 const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
 
@@ -81,8 +82,9 @@ function GeneratePage() {
   const queryClient = useQueryClient();
 
   const [theme, setTheme] = useState("");
-  const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
+
   const [mood, setMood] = useState("");
   const [customMood, setCustomMood] = useState("");
   const [language, setLanguage] = useState("");
@@ -117,7 +119,14 @@ function GeneratePage() {
   const blocked = remaining <= 0;
 
   // Resolve the effective value: the typed custom text when "Custom…" is chosen.
-  const effectiveGenre = genre === CUSTOM ? customGenre.trim() : genre;
+  const customGenreSelected = genres.includes(CUSTOM);
+  const effectiveGenre = [
+    ...genres.filter((g) => g !== CUSTOM),
+    ...(customGenreSelected ? [customGenre.trim()] : []),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   const effectiveMood = mood === CUSTOM ? customMood.trim() : mood;
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
   const ready =
@@ -210,15 +219,35 @@ function GeneratePage() {
             <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} aria-label="Music style" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Music Style (e.g., Reggaeton, Pop...)
-              </option>
-              {GENRE_OPTIONS.map((g) => (
-                <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
-              ))}
-            </select>
+          <div>
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              Music Style — pick one or more to fuse
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {GENRE_OPTIONS.map((g) => {
+                const active = genres.includes(g);
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+                    }
+                    className={
+                      active
+                        ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
+                        : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                    }
+                  >
+                    {g}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
               <option value="" disabled className="bg-[#0a0a0c]">
                 Select Mood / Vibe (e.g., Energetic, Chill...)
@@ -237,15 +266,16 @@ function GeneratePage() {
             </select>
           </div>
 
-          {genre === CUSTOM && (
+          {customGenreSelected && (
             <input
               value={customGenre}
               onChange={(e) => setCustomGenre(e.target.value)}
-              placeholder="Type your own music style"
+              placeholder="Type your own style tags (merged with the selected genres)"
               aria-label="Custom music style"
               className={fieldClass}
             />
           )}
+
           {mood === CUSTOM && (
             <input
               value={customMood}
