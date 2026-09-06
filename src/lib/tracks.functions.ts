@@ -36,7 +36,7 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   const names = new Map<string, string>();
   if (ids.length) {
     const { data: profiles } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias")
       .in("id", ids);
     for (const p of profiles ?? []) {
@@ -68,7 +68,7 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!track) return { track: null, artist: null };
     const { data: artist } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias, avatar_url")
       .eq("id", track.user_id)
       .maybeSingle();
@@ -280,7 +280,7 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
   const names = new Map<string, string>();
   if (ids.length) {
     const { data: profiles } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias")
       .in("id", ids);
     for (const p of profiles ?? []) {
@@ -335,7 +335,7 @@ export const listLikedTracks = createServerFn({ method: "GET" })
     const userIds = [...new Set(rows.map((t) => t.user_id))];
     const handles = new Map<string, string>();
     if (userIds.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, handle").in("id", userIds);
+      const { data: profiles } = await supabase.from("public_profiles").select("id, handle").in("id", userIds);
       for (const p of profiles ?? []) handles.set(p.id, p.handle);
     }
     const order = new Map(ids.map((id, i) => [id, i]));

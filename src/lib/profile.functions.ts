@@ -8,7 +8,7 @@ const PROFILE_COLUMNS =
 
 /** Safe public projection: no moderation/internal fields (anon role is column-restricted). */
 const PUBLIC_PROFILE_COLUMNS =
-  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed, donation_provider, donation_url, donation_custom_name";
+  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name";
 
 const optionalUrl = z
   .string()
@@ -74,7 +74,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
@@ -97,7 +97,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
@@ -121,7 +121,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
