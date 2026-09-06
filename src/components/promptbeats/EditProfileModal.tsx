@@ -14,6 +14,7 @@ type EditableProfile = {
   bio: string | null;
   website_url?: string | null;
   instagram_url?: string | null;
+  tiktok_url?: string | null;
   x_url?: string | null;
   youtube_url?: string | null;
   donation_provider?: string | null;
