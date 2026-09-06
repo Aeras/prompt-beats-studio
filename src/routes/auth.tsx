@@ -36,6 +36,7 @@ function AuthPage() {
   const [alias, setAlias] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,8 +79,9 @@ function AuthPage() {
           }
           navigate({ to: "/onboarding" });
         } else {
-          setMessage("Check your inbox to confirm your email address.");
+          setSignupSuccess(true);
         }
+
 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
