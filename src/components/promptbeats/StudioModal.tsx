@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { GENRES } from "@/lib/tracks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { createTrack } from "@/lib/tracks.functions";
+import { createTrack, discardUploads } from "@/lib/tracks.functions";
 import { useModeration } from "@/hooks/useModeration";
 
 type Row = {
@@ -93,13 +93,14 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const publishRow = async (r: Row, token: string | undefined) => {
     let audioKey: string | undefined;
     let coverPath: string | undefined;
+    let coverUrl: string | undefined;
     try {
       const payload = await uploadOne(r.file!, token);
       audioKey = payload.key;
       if (r.cover) {
         const cover = await uploadCover(r.cover);
         coverPath = cover.path;
-        var coverUrl: string | undefined = cover.url;
+        coverUrl = cover.url;
       }
       await createTrack({
         data: {
