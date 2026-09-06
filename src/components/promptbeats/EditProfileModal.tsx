@@ -12,8 +12,13 @@ type EditableProfile = {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  website_url?: string | null;
+  instagram_url?: string | null;
+  x_url?: string | null;
+  youtube_url?: string | null;
   profile_completed: boolean;
 };
+
 
 const inputClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
