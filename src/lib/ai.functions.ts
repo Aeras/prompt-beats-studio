@@ -127,40 +127,23 @@ Generate exactly three sections:
 Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
-async function callAnthropic(
-  apiKey: string,
-  prompt: string,
-  opts?: { system?: string; maxTokens?: number },
+/**
+ * Provider-agnostic model call used by the whole pipeline.
+ * The concrete provider (Gemini / Anthropic) is resolved server-side and the
+ * shared prompts below are handed to it unchanged.
+ */
+async function aiCall(
+  call: (c: {
+    system: string;
+    prompt: string;
+    maxTokens?: number;
+    schema?: Record<string, unknown>;
+  }) => Promise<{ text: string; stopReason: string | null }>,
+  args: { system: string; prompt: string; maxTokens?: number; schema?: Record<string, unknown> },
 ) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: opts?.maxTokens ?? 8192,
-      system: opts?.system ?? SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (res.ok) {
-    const payload = (await res.json()) as {
-      stop_reason?: string | null;
-      content?: { type: string; text?: string }[];
-    };
-    const text =
-      payload.content
-        ?.filter((b) => b.type === "text")
-        .map((b) => b.text ?? "")
-        .join("") ?? "";
-    return { text, stopReason: payload.stop_reason ?? null };
-  }
-  throw new Error(`${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return call(args);
 }
+
 
 function parseSections(raw: string) {
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
