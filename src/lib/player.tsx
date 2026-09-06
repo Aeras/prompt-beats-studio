@@ -11,6 +11,8 @@ import {
 
 import type { Track } from "@/lib/tracks";
 
+export type RepeatMode = "off" | "all" | "one";
+
 type PlayerState = {
   current: Track | null;
   playing: boolean;
@@ -24,6 +26,10 @@ type PlayerState = {
   seek: (seconds: number) => void;
   setVolume: (v: number) => void;
   audioElement: HTMLAudioElement | null;
+  shuffle: boolean;
+  repeat: RepeatMode;
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
 };
 
 const PlayerContext = createContext<PlayerState | null>(null);
@@ -43,6 +49,47 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.8);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const historyRef = useRef<string[]>([]);
+  const playedRef = useRef<Set<string>>(new Set());
+
+  // Restore lightweight UI preferences (no backend storage needed).
+  useEffect(() => {
+    try {
+      setShuffle(localStorage.getItem("pb:shuffle") === "1");
+      const r = localStorage.getItem("pb:repeat");
+      if (r === "all" || r === "one" || r === "off") setRepeat(r);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffle((s) => {
+      const nextVal = !s;
+      try {
+        localStorage.setItem("pb:shuffle", nextVal ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      playedRef.current = new Set();
+      historyRef.current = [];
+      return nextVal;
+    });
+  }, []);
+
+  const cycleRepeat = useCallback(() => {
+    setRepeat((r) => {
+      const nextVal: RepeatMode = r === "off" ? "all" : r === "all" ? "one" : "off";
+      try {
+        localStorage.setItem("pb:repeat", nextVal);
+      } catch {
+        /* ignore */
+      }
+      return nextVal;
+    });
+  }, []);
 
   // One audio element for the whole app so playback survives navigation.
   useEffect(() => {
@@ -211,8 +258,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seek,
       setVolume,
       audioElement,
+      shuffle,
+      repeat,
+      toggleShuffle,
+      cycleRepeat,
     }),
-    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement],
+    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
