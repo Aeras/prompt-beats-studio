@@ -400,16 +400,12 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Package 2C — Admin-only manual AI Repair (experimental, never automatic).
+// Package 2C — Manual AI Repair (never automatic).
 // One click = exactly one repair call + one mandatory post-repair quality check.
 // No retries, no loops, no persistence, no schema changes.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Provider indirection: swapping the repair model/provider later means changing
-// only this function, not the generator.
-async function callRepairModel(apiKey: string, system: string, prompt: string) {
-  return callAnthropic(apiKey, prompt, { system, maxTokens: 8192 });
-}
+
 
 const REPAIR_SYSTEM_PROMPT = `You are a professional song EDITOR performing a targeted repair pass. You are not a new songwriter.
 
