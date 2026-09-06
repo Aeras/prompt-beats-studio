@@ -36,10 +36,11 @@ export const Route = createFileRoute("/generate")({
 
 const CUSTOM = "Custom…";
 const GENRE_OPTIONS = [
-  "Reggaeton", "Cumbia", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
-  "Pop", "Rock", "R&B", "House", "Techno", "Drum & Bass", "Trap", "Jazz",
+  "Reggaeton", "Cumbia", "Latin Pop", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
+  "Pop", "Rock", "R&B", "House", "Techno", "Electronic / EDM", "Drum & Bass", "Trap", "Jazz",
   "Lo-fi", "Country", "Metal", "Afrobeats", CUSTOM,
 ];
+
 const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
 const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
 
