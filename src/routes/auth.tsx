@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, MailCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -36,6 +36,7 @@ function AuthPage() {
   const [alias, setAlias] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,8 +79,9 @@ function AuthPage() {
           }
           navigate({ to: "/onboarding" });
         } else {
-          setMessage("Check your inbox to confirm your email address.");
+          setSignupSuccess(true);
         }
+
 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -112,6 +114,40 @@ function AuthPage() {
     }
     navigate({ to: "/" });
   };
+
+  if (signupSuccess) {
+    return (
+      <div className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
+        <div className="glass-strong w-full max-w-md rounded-3xl p-8 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-neon glow-neon">
+            <MailCheck className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <h1 className="mt-5 font-display text-2xl font-bold tracking-tight">Registration complete!</h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Please check your email and click the verification link to activate your account.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            We sent the link to <span className="text-foreground">{email}</span>
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                setSignupSuccess(false);
+                setMode("signin");
+                setMessage(null);
+              }}
+              className="w-full rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95"
+            >
+              Back to sign in
+            </button>
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+              Back to the feed
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
