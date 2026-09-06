@@ -251,6 +251,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
             {isBanned ? "Uploads disabled" : user ? "Upload All" : "Sign in to upload"}
           </button>
         </div>
+        )}
       </div>
     </div>
   );
