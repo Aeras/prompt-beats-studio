@@ -75,7 +75,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };
@@ -98,7 +98,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };
@@ -122,7 +122,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };
