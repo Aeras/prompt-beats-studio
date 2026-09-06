@@ -14,6 +14,7 @@ type EditableProfile = {
   bio: string | null;
   website_url?: string | null;
   instagram_url?: string | null;
+  tiktok_url?: string | null;
   x_url?: string | null;
   youtube_url?: string | null;
   donation_provider?: string | null;
@@ -33,6 +34,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [youtube, setYoutube] = useState("");
   const [paypalUrl, setPaypalUrl] = useState("");
@@ -49,6 +51,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setBio(profile.bio || "");
     setWebsite(profile.website_url || "");
     setInstagram(profile.instagram_url || "");
+    setTiktok(profile.tiktok_url || "");
     setXUrl(profile.x_url || "");
     setYoutube(profile.youtube_url || "");
     setPaypalUrl(profile.donation_provider === "paypal" ? profile.donation_url || "" : "");
@@ -91,6 +94,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         bio: bio.trim(),
         website_url: website.trim() || null,
         instagram_url: instagram.trim() || null,
+        tiktok_url: tiktok.trim() || null,
         x_url: xUrl.trim() || null,
         youtube_url: youtube.trim() || null,
         donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
@@ -101,7 +105,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         .from("profiles")
         .update(profilePatch)
         .eq("id", user.id)
-        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
+        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, tiktok_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
         .single();
       if (profileError) throw profileError;
       if (!savedProfile) throw new Error("Profile update returned no saved profile");
@@ -218,6 +222,13 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                 onChange={(e) => setInstagram(e.target.value.slice(0, 300))}
                 placeholder="Instagram URL (optional)"
                 aria-label="Instagram URL"
+                className={inputClass}
+              />
+              <input
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value.slice(0, 300))}
+                placeholder="TikTok URL (optional)"
+                aria-label="TikTok URL"
                 className={inputClass}
               />
               <input

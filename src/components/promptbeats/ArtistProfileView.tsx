@@ -68,6 +68,7 @@ function SocialLinks({ profile }: { profile: Profile }) {
   const links = [
     { url: profile.website_url, Icon: Globe, label: "Website" },
     { url: profile.instagram_url, Icon: Instagram, label: "Instagram" },
+    { url: profile.tiktok_url, Icon: Music, label: "TikTok" },
     { url: profile.x_url, Icon: Twitter, label: "X (Twitter)" },
     { url: profile.youtube_url, Icon: Youtube, label: "YouTube" },
   ].filter((l) => Boolean(l.url && l.url.trim()));
