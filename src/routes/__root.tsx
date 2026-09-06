@@ -139,6 +139,6 @@ function RootComponent() {
 
 function GlobalPlayerBar() {
   const { playerMode } = usePlayer();
-  if (playerMode !== "fixed") return null;
+  if (playerMode === "hidden") return null;
   return <PlayerBar />;
 }
