@@ -6,7 +6,7 @@ import { SidebarNav, type NavId } from "@/components/promptbeats/Sidebar";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
-import { GENRES, TRACKS, type Track } from "@/lib/tracks";
+import { GENRES, type Track } from "@/lib/tracks";
 import { usePlayer } from "@/lib/player";
 import { listPublishedTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
@@ -86,10 +86,7 @@ function Index() {
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
   }));
 
-  // Real community tracks drive the feed; the demo set only fills an empty database.
-  const all = uploaded.length ? uploaded : TRACKS;
-
-  const list = all.filter(
+  const list = uploaded.filter(
     (t) =>
       (genre === "All" || t.genre === genre) &&
       (t.title + t.handle + (creatorNames.get(t.id) ?? "") + t.prompt)
@@ -190,7 +187,7 @@ function Index() {
             <span className="text-gradient-neon">Discover</span> what the machines are humming
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {list.length} tracks · every prompt is copyable
+            {uploaded.length} tracks · every prompt is copyable
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -204,11 +201,20 @@ function Index() {
             ))}
           </div>
 
-          {list.length === 0 && (
+          {uploaded.length === 0 ? (
+            <div className="glass mt-6 rounded-2xl p-8 text-center">
+              <p className="text-sm font-medium text-foreground">
+                No tracks uploaded yet. Be the first to share your AI music!
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Upload your MP3s from the Studio tab.
+              </p>
+            </div>
+          ) : list.length === 0 ? (
             <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              No tracks found.
+              No tracks match your filters.
             </p>
-          )}
+          ) : null}
         </main>
       </div>
 
