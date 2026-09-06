@@ -297,6 +297,8 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               Save changes
             </button>
+
+            <PlayerBar />
           </div>
         </div>
       )}
