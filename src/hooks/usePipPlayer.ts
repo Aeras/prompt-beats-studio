@@ -11,7 +11,7 @@ type Options = {
 
 /**
  * HTML5 <audio> can't enter Picture-in-Picture, so we paint a realistic,
- * top-down turntable / vinyl record player onto a square canvas, capture that
+ * top-down turntable / vinyl record player onto a portrait canvas, capture that
  * as a video stream, and put THAT video into PiP. The record spins only while
  * the track is playing and the tonearm (needle) sweeps from the outer edge
  * toward the center label in sync with playback progress.
@@ -63,13 +63,12 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 1:1 square canvas guarantees a perfectly circular record.
-    const W = (canvas.width = 640);
-    const H = (canvas.height = 640);
-    const minDim = Math.min(W, H);
-    const CX = W / 2;
-    const CY = H / 2;
-    const DISC_RADIUS = Math.round(minDim * 0.45); // 90% of min dimension
+    // Portrait canvas: the OS PiP window is usually a vertical rectangle.
+    const W = (canvas.width = 800);
+    const H = (canvas.height = 1100);
+    const CX = 400;
+    const CY = 450;
+    const DISC_RADIUS = 350; // fixed absolute radius -> perfectly round
     const LABEL_RADIUS = Math.round(DISC_RADIUS * 0.28);
     const CENTER_HOLE_RADIUS = 5;
     const PIVOT = { x: W - 54, y: 54 };
@@ -83,7 +82,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle brushed-metal highlight across the deck.
+      // Subtle brushed-metal highlight across the upper deck.
       ctx.save();
       ctx.globalAlpha = 0.08;
       ctx.fillStyle = "#FFFFFF";
@@ -285,11 +284,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.font = "600 28px Inter, system-ui, sans-serif";
       ctx.shadowColor = "rgba(255,255,255,0.4)";
       ctx.shadowBlur = 8;
-      ctx.fillText(truncate(ctx, title ?? "", W - 80), 40, H - 54);
+      ctx.fillText(truncate(ctx, title ?? "", W - 80), 40, 950);
       if (subtitle) {
         ctx.fillStyle = "rgba(17,17,17,0.78)";
         ctx.font = "400 18px Inter, system-ui, sans-serif";
-        ctx.fillText(truncate(ctx, subtitle, W - 80), 40, H - 26);
+        ctx.fillText(truncate(ctx, subtitle, W - 80), 40, 1020);
       }
       ctx.shadowBlur = 0;
 
