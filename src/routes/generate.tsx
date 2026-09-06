@@ -82,8 +82,9 @@ function GeneratePage() {
   const queryClient = useQueryClient();
 
   const [theme, setTheme] = useState("");
-  const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
+
   const [mood, setMood] = useState("");
   const [customMood, setCustomMood] = useState("");
   const [language, setLanguage] = useState("");
