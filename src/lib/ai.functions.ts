@@ -12,6 +12,13 @@ const generateInput = z.object({
   language: z.string().trim().min(1).max(40),
 });
 
+const generationOutput = z.object({
+  title: z.string().trim().min(1).max(200),
+  tags: z.string().trim().min(1).max(4000),
+  lyrics: z.string().trim().min(1).max(12000),
+  note: z.string().trim().min(1).max(6000),
+});
+
 const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
   theme: z.string().trim().max(300).default(""),
@@ -176,10 +183,18 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     const apiKey = process.env['ANTHROPIC_API_KEY'];
     if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
-    const raw = await callAnthropic(apiKey, buildPrompt(data));
-    const result = parseSections(raw);
-    if (!result.tags && !result.lyrics && !result.note) {
-      throw new Error("The AI returned an empty response. Try again.");
+    const { text: raw, stopReason } = await callAnthropic(apiKey, buildPrompt(data));
+    if (stopReason === "max_tokens") {
+      throw new Error("The AI response was incomplete. Please try again.");
+    }
+    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+      throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
+    }
+
+    const parsed = parseSections(raw);
+    const result = generationOutput.safeParse(parsed);
+    if (!result.success) {
+      throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
