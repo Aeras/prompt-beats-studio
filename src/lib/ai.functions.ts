@@ -46,6 +46,8 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => readUsage(context.supabase as unknown as Supa, context.userId));
 
+const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
+
 function buildPrompt(d: z.infer<typeof generateInput>) {
   return `Act as a top-tier music producer and expert in composition and orchestration. Your goal is to take the user's simple idea and transform it into a professional, structured, and optimized output for AI music platforms like Suno and Udio. Incorporate precise musical characteristics (genre, bpm, instruments, mood, song structure, and vocal style) while fully preserving the user's original intent.
 
