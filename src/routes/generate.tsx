@@ -119,7 +119,14 @@ function GeneratePage() {
   const blocked = remaining <= 0;
 
   // Resolve the effective value: the typed custom text when "Custom…" is chosen.
-  const effectiveGenre = genre === CUSTOM ? customGenre.trim() : genre;
+  const customGenreSelected = genres.includes(CUSTOM);
+  const effectiveGenre = [
+    ...genres.filter((g) => g !== CUSTOM),
+    ...(customGenreSelected ? [customGenre.trim()] : []),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   const effectiveMood = mood === CUSTOM ? customMood.trim() : mood;
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
   const ready =
