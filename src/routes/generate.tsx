@@ -89,7 +89,7 @@ function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [result, setResult] = useState<{ tags: string; lyrics: string; note: string } | null>(null);
+  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -283,6 +283,7 @@ function GeneratePage() {
 
         {!busy && result && (
           <div className="mt-6 space-y-4 pb-16">
+            <OutputCard title="SONG TITLE" body={result.title} />
             <OutputCard title="STYLE PROMPT (METATAGS)" body={result.tags} />
             <OutputCard title="LYRICS & STRUCTURE" body={result.lyrics} />
             <OutputCard title="PRODUCER'S NOTE" body={result.note} />

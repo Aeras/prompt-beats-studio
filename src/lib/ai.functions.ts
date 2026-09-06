@@ -13,6 +13,7 @@ const generateInput = z.object({
 });
 
 const savedInput = z.object({
+  title: z.string().trim().max(200).default(""),
   theme: z.string().trim().max(300).default(""),
   genre: z.string().trim().max(60).default(""),
   mood: z.string().trim().max(60).default(""),
@@ -122,11 +123,7 @@ function parseSections(raw: string) {
       note: grab(/3\)\s*\*{0,2}Producer[^\n]*\n?/i, null),
     };
   }
-  // The title always leads the lyrics block, right before style/lyrics content.
-  const lyrics = title && !sections.lyrics.startsWith(`Title: ${title}`)
-    ? `Title: ${title}\n\n${sections.lyrics}`
-    : sections.lyrics;
-  return { tags: sections.tags, lyrics, note: sections.note };
+  return { title, tags: sections.tags, lyrics: sections.lyrics, note: sections.note };
 }
 
 export const generateSongPrompt = createServerFn({ method: "POST" })
@@ -169,7 +166,7 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, theme, genre, mood, language, tags, lyrics, note, created_at")
+      .select("id, title, theme, genre, mood, language, tags, lyrics, note, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
