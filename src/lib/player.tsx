@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { ensureAudioGraph, markAudioGraphBlocked, resumeAudioGraph } from "@/lib/audioGraph";
 import type { Track } from "@/lib/tracks";
 
 type PlayerState = {
@@ -84,14 +85,44 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!el || !track.audioUrl) return;
     setCurrent(track);
     setPosition(0);
-    el.src = track.audioUrl;
-    void el.play().catch(() => setPlaying(false));
+
+    // Core playback first. If the CORS-enabled request is rejected by the storage
+    // host (no Access-Control-Allow-Origin), retry once WITHOUT crossOrigin so the
+    // track still loads and plays. The visualizer is simply disabled in that case.
+    const load = (withCors: boolean) => {
+      if (withCors) el.crossOrigin = "anonymous";
+      else el.removeAttribute("crossOrigin");
+      el.src = track.audioUrl as string;
+      void el.play().catch(() => setPlaying(false));
+    };
+
+    const onLoadError = () => {
+      el.removeEventListener("error", onLoadError);
+      if (el.crossOrigin) {
+        markAudioGraphBlocked();
+        load(false);
+      }
+    };
+    el.addEventListener("error", onLoadError);
+    load(true);
+
+    // This runs from a Play-button click (user gesture), so it is the safe point
+    // to create/resume the analyser graph. Never blocks playback if it fails.
+    if (el.crossOrigin) {
+      ensureAudioGraph(el);
+      resumeAudioGraph();
+    }
   }, []);
 
   const play = useCallback(
     (track: Track, nextQueue?: Track[]) => {
       if (nextQueue) setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
       const el = audioRef.current;
+      // User gesture: make sure the AudioContext is running before playback.
+      if (el) {
+        ensureAudioGraph(el);
+        resumeAudioGraph();
+      }
       if (current && current.id === track.id && el) {
         if (el.paused) void el.play().catch(() => setPlaying(false));
         else el.pause();
@@ -105,6 +136,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     const el = audioRef.current;
     if (!el || !current) return;
+    // User gesture: resume the AudioContext so routed audio is not silent.
+    ensureAudioGraph(el);
+    resumeAudioGraph();
     if (el.paused) void el.play().catch(() => setPlaying(false));
     else el.pause();
   }, [current]);

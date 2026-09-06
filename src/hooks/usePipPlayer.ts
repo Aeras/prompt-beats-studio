@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ensureAudioGraph, getAnalyser, resumeAudioGraph } from "@/lib/audioGraph";
 
 type Options = {
   art: string | undefined;
@@ -25,58 +26,12 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
   const [pipActive, setPipActive] = useState(false);
   const [supported, setSupported] = useState(false);
 
-  // Web Audio graph (created lazily on first user interaction).
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  // Frequency buffer for the shared analyser (allocated lazily when available).
   const freqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
-
-  useEffect(() => {
-    setSupported(typeof document !== "undefined" && "pictureInPictureEnabled" in document);
-  }, []);
-
-  /**
-   * Build the AudioContext -> MediaElementSource -> Analyser -> destination graph.
-   * Must run inside a user gesture (PiP button click) so the context may resume.
-   * createMediaElementSource may only be called once per element, hence the guard.
-   */
-  const ensureAudioGraph = useCallback(() => {
-    const el = audioElement;
-    if (!el || sourceRef.current) return;
-    try {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) return;
-      const ctx = audioCtxRef.current ?? new Ctx();
-      audioCtxRef.current = ctx;
-      const source = ctx.createMediaElementSource(el);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      sourceRef.current = source;
-      analyserRef.current = analyser;
-      freqRef.current = new Uint8Array(analyser.frequencyBinCount);
-      if (ctx.state === "suspended") void ctx.resume();
-    } catch {
-      /* Web Audio unavailable or element already captured */
-    }
-  }, [audioElement]);
-
-  // If the audio element changes (provider remount), rebuild the graph next time.
-  useEffect(() => {
-    return () => {
-      sourceRef.current = null;
-      analyserRef.current = null;
-      freqRef.current = null;
-      if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
-    };
-  }, [audioElement]);
 
   // Load cover art (crossOrigin so the canvas stays untainted / capturable).
   useEffect(() => {
@@ -132,8 +87,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       }
 
       // Live frequency data (or null if the analyser isn't wired yet / CORS-blocked).
-      const analyser = analyserRef.current;
-      const freq = freqRef.current;
+      const analyser = getAnalyser();
+      if (analyser && (!freqRef.current || freqRef.current.length !== analyser.frequencyBinCount)) {
+        freqRef.current = new Uint8Array(analyser.frequencyBinCount);
+      }
+      const freq = analyser ? freqRef.current : null;
       let live: Uint8Array<ArrayBuffer> | null = null;
       if (analyser && freq) {
         analyser.getByteFrequencyData(freq);
@@ -226,8 +184,9 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         await document.exitPictureInPicture();
         return;
       }
-      // Wire the analyser inside this user gesture so the AudioContext can resume.
-      ensureAudioGraph();
+      // Wire/resume the analyser inside this user gesture so the AudioContext can run.
+      ensureAudioGraph(audioElement);
+      resumeAudioGraph();
       if (!video.srcObject) {
         video.srcObject = canvas.captureStream(30);
       }
@@ -237,7 +196,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     } catch {
       /* PiP unsupported or blocked */
     }
-  }, [ensureAudioGraph]);
+  }, [audioElement]);
 
   // Native events (incl. play/pause from the OS PiP window).
   useEffect(() => {
