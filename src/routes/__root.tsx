@@ -130,9 +130,15 @@ function RootComponent() {
       <PlayerProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <PlayerBar />
+        <GlobalPlayerBar />
         <Toaster />
       </PlayerProvider>
     </QueryClientProvider>
   );
+}
+
+function GlobalPlayerBar() {
+  const { playerMode } = usePlayer();
+  if (playerMode !== "fixed") return null;
+  return <PlayerBar />;
 }
