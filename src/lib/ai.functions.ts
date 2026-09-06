@@ -95,27 +95,38 @@ async function callGemini(apiKey: string, prompt: string) {
 
 function parseSections(raw: string) {
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  let title = "";
+  let sections: { tags: string; lyrics: string; note: string } | null = null;
   try {
-    const parsed = JSON.parse(cleaned) as { tags?: string; lyrics?: string; note?: string };
-    if (parsed.tags || parsed.lyrics || parsed.note) {
-      return { tags: parsed.tags ?? "", lyrics: parsed.lyrics ?? "", note: parsed.note ?? "" };
+    const parsed = JSON.parse(cleaned) as { title?: string; tags?: string; lyrics?: string; note?: string };
+    if (parsed.tags || parsed.lyrics || parsed.note || parsed.title) {
+      title = (parsed.title ?? "").trim();
+      sections = { tags: parsed.tags ?? "", lyrics: parsed.lyrics ?? "", note: parsed.note ?? "" };
     }
   } catch {
     /* fall through to text parsing */
   }
-  const grab = (start: RegExp, end: RegExp | null) => {
-    const s = cleaned.search(start);
-    if (s === -1) return "";
-    const rest = cleaned.slice(s).replace(start, "");
-    if (!end) return rest.trim();
-    const e = rest.search(end);
-    return (e === -1 ? rest : rest.slice(0, e)).trim();
-  };
-  return {
-    tags: grab(/1\)\s*\*{0,2}Style Prompt[^\n]*\n?/i, /2\)\s*\*{0,2}Lyrics/i),
-    lyrics: grab(/2\)\s*\*{0,2}Lyrics[^\n]*\n?/i, /3\)\s*\*{0,2}Producer/i),
-    note: grab(/3\)\s*\*{0,2}Producer[^\n]*\n?/i, null),
-  };
+  if (!sections) {
+    const grab = (start: RegExp, end: RegExp | null) => {
+      const s = cleaned.search(start);
+      if (s === -1) return "";
+      const rest = cleaned.slice(s).replace(start, "");
+      if (!end) return rest.trim();
+      const e = rest.search(end);
+      return (e === -1 ? rest : rest.slice(0, e)).trim();
+    };
+    title = grab(/^Title:\s*/im, /\n/) || "";
+    sections = {
+      tags: grab(/1\)\s*\*{0,2}Style Prompt[^\n]*\n?/i, /2\)\s*\*{0,2}Lyrics/i),
+      lyrics: grab(/2\)\s*\*{0,2}Lyrics[^\n]*\n?/i, /3\)\s*\*{0,2}Producer/i),
+      note: grab(/3\)\s*\*{0,2}Producer[^\n]*\n?/i, null),
+    };
+  }
+  // The title always leads the lyrics block, right before style/lyrics content.
+  const lyrics = title && !sections.lyrics.startsWith(`Title: ${title}`)
+    ? `Title: ${title}\n\n${sections.lyrics}`
+    : sections.lyrics;
+  return { tags: sections.tags, lyrics, note: sections.note };
 }
 
 export const generateSongPrompt = createServerFn({ method: "POST" })
