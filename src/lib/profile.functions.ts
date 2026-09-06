@@ -6,6 +6,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const PROFILE_COLUMNS =
   "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed, is_banned, donation_provider, donation_url, donation_custom_name";
 
+/** Safe public projection: no moderation/internal fields (anon role is column-restricted). */
+const PUBLIC_PROFILE_COLUMNS =
+  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed, donation_provider, donation_url, donation_custom_name";
+
 const optionalUrl = z
   .string()
   .trim()
@@ -71,7 +75,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };
@@ -94,7 +98,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };
@@ -118,7 +122,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
-      .select(PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
     if (!profile) return { profile: null, tracks: [] };

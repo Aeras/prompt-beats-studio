@@ -293,6 +293,7 @@ export type Database = {
         Returns: boolean
       }
       is_banned: { Args: { _user_id: string }; Returns: boolean }
+      like_count: { Args: { _track_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
