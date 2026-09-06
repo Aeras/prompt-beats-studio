@@ -48,17 +48,21 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 function buildPrompt(d: z.infer<typeof generateInput>) {
   return `Act as a top-tier music producer and expert in composition and orchestration. Your goal is to take the user's simple idea and transform it into a professional, structured, and optimized output for AI music platforms like Suno and Udio. Incorporate precise musical characteristics (genre, bpm, instruments, mood, song structure, and vocal style) while fully preserving the user's original intent.
 
+STRICT FORMATTING RULES (non-negotiable):
+- All musical directions, structural tags, and non-sung elements (e.g., Intro, Chorus, Fade out, Guitar Solo) MUST be enclosed strictly in square brackets [ ], never in round parentheses ( ). This is critical so the music AI does not sing these instructions.
+- Always begin your response with a creative song title in the form "Title: <name>" — this comes at the very beginning, right before the Music Style and Lyrics.
+
 User's Core Idea: ${d.theme}
 Requested Genre: ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
 
 Based on this, generate exactly three sections, formatted cleanly so the frontend can parse them:
-1) **Style Prompt (Metatags):** Provide this ONLY in English. Output a highly optimized list of musical tags, instruments, vocal styles, and BPM (e.g., atmospheric synth-pop, melancholic male vocals, 115 BPM) optimized for Suno/Udio.
-2) **Lyrics & Structure:** Provide the complete lyrics strictly in ${d.language}. You must use precise structural brackets (e.g., [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Drop], [Outro]). Ensure professional rhythmic cadence, flow, and internal rhymes.
+1) **Style Prompt (Metatags):** Provide this ONLY in English. Output a highly optimized list of musical tags, instruments, vocal styles, and BPM (e.g., atmospheric synth-pop, melancholic male vocals, 115 BPM) optimized for Suno/Udio. Every tag or direction here must use square brackets where applicable, never round parentheses.
+2) **Lyrics & Structure:** Provide the complete lyrics strictly in ${d.language}. Every structural tag and non-sung direction must be in square brackets (e.g., [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Guitar Solo], [Bridge], [Drop], [Fade out], [Outro]) — NEVER round parentheses. Ensure professional rhythmic cadence, flow, and internal rhymes.
 3) **Producer's Note:** Provide a brief explanation strictly in ${d.language} explaining the musical, structural, and atmospheric choices you made to elevate the user's original idea.
 
-Return the result as strict JSON only, no markdown fences, with exactly these keys: {"tags": string, "lyrics": string, "note": string}.`;
+Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
 async function callGemini(apiKey: string, prompt: string) {
@@ -91,27 +95,38 @@ async function callGemini(apiKey: string, prompt: string) {
 
 function parseSections(raw: string) {
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  let title = "";
+  let sections: { tags: string; lyrics: string; note: string } | null = null;
   try {
-    const parsed = JSON.parse(cleaned) as { tags?: string; lyrics?: string; note?: string };
-    if (parsed.tags || parsed.lyrics || parsed.note) {
-      return { tags: parsed.tags ?? "", lyrics: parsed.lyrics ?? "", note: parsed.note ?? "" };
+    const parsed = JSON.parse(cleaned) as { title?: string; tags?: string; lyrics?: string; note?: string };
+    if (parsed.tags || parsed.lyrics || parsed.note || parsed.title) {
+      title = (parsed.title ?? "").trim();
+      sections = { tags: parsed.tags ?? "", lyrics: parsed.lyrics ?? "", note: parsed.note ?? "" };
     }
   } catch {
     /* fall through to text parsing */
   }
-  const grab = (start: RegExp, end: RegExp | null) => {
-    const s = cleaned.search(start);
-    if (s === -1) return "";
-    const rest = cleaned.slice(s).replace(start, "");
-    if (!end) return rest.trim();
-    const e = rest.search(end);
-    return (e === -1 ? rest : rest.slice(0, e)).trim();
-  };
-  return {
-    tags: grab(/1\)\s*\*{0,2}Style Prompt[^\n]*\n?/i, /2\)\s*\*{0,2}Lyrics/i),
-    lyrics: grab(/2\)\s*\*{0,2}Lyrics[^\n]*\n?/i, /3\)\s*\*{0,2}Producer/i),
-    note: grab(/3\)\s*\*{0,2}Producer[^\n]*\n?/i, null),
-  };
+  if (!sections) {
+    const grab = (start: RegExp, end: RegExp | null) => {
+      const s = cleaned.search(start);
+      if (s === -1) return "";
+      const rest = cleaned.slice(s).replace(start, "");
+      if (!end) return rest.trim();
+      const e = rest.search(end);
+      return (e === -1 ? rest : rest.slice(0, e)).trim();
+    };
+    title = grab(/^Title:\s*/im, /\n/) || "";
+    sections = {
+      tags: grab(/1\)\s*\*{0,2}Style Prompt[^\n]*\n?/i, /2\)\s*\*{0,2}Lyrics/i),
+      lyrics: grab(/2\)\s*\*{0,2}Lyrics[^\n]*\n?/i, /3\)\s*\*{0,2}Producer/i),
+      note: grab(/3\)\s*\*{0,2}Producer[^\n]*\n?/i, null),
+    };
+  }
+  // The title always leads the lyrics block, right before style/lyrics content.
+  const lyrics = title && !sections.lyrics.startsWith(`Title: ${title}`)
+    ? `Title: ${title}\n\n${sections.lyrics}`
+    : sections.lyrics;
+  return { tags: sections.tags, lyrics, note: sections.note };
 }
 
 export const generateSongPrompt = createServerFn({ method: "POST" })
