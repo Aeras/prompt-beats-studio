@@ -196,7 +196,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     } catch {
       /* PiP unsupported or blocked */
     }
-  }, [ensureAudioGraph]);
+  }, [audioElement]);
 
   // Native events (incl. play/pause from the OS PiP window).
   useEffect(() => {
