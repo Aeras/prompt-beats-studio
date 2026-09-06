@@ -401,6 +401,7 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
+            {moderation?.isAdmin && <QualityDebugPanel quality={quality} />}
           </div>
         )}
       </div>
