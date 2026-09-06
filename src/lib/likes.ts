@@ -16,10 +16,10 @@ export function useLikes(trackId: string, enabled = true) {
     queryKey: key,
     enabled,
     queryFn: async () => {
-      const { count } = await supabase
-        .from("likes")
-        .select("id", { count: "exact", head: true })
-        .eq("track_id", trackId);
+      // Public like counts come from a count-only function; the likes table
+      // itself is only readable for the signed-in user's own rows.
+      const { data: countData } = await supabase.rpc("like_count", { _track_id: trackId });
+      const count = typeof countData === "number" ? countData : 0;
       let liked = false;
       if (userId) {
         const { data } = await supabase

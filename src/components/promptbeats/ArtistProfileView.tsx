@@ -115,10 +115,16 @@ function ShareProfileButton({ handle }: { handle: string }) {
   );
 }
 
-function BanUserToggle({ userId, banned }: { userId: string; banned: boolean }) {
+function BanUserToggle({ userId }: { userId: string }) {
   const { isAdmin } = useModeration();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const { data } = useQuery({
+    queryKey: ["ban-status", userId],
+    queryFn: () => getUserBanStatus({ data: { userId } }),
+    enabled: isAdmin,
+  });
+  const banned = Boolean(data?.banned);
   if (!isAdmin) return null;
 
   return (
