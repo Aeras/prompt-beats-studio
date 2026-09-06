@@ -85,6 +85,30 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     return { profile, tracks: tracks ?? [] };
   });
 
+/** Public artist page data by vanity handle, including track prompts. */
+export const getPublicArtistByHandle = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(input))
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const handle = data.handle.replace(/^@/, "").toLowerCase();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS)
+      .eq("handle", handle)
+      .maybeSingle();
+    if (!profile) return { profile: null, tracks: [] };
+    const { data: tracks } = await supabase
+      .from("tracks")
+      .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
+      .eq("user_id", profile.id)
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    return { profile, tracks: tracks ?? [] };
+  });
+
+
 /** Public creator page data by handle (no auth required). */
 export const getPublicProfile = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(input))

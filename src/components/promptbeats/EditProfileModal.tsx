@@ -12,8 +12,13 @@ type EditableProfile = {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  website_url?: string | null;
+  instagram_url?: string | null;
+  x_url?: string | null;
+  youtube_url?: string | null;
   profile_completed: boolean;
 };
+
 
 const inputClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
@@ -24,6 +29,10 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
+  const [website, setWebsite] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [xUrl, setXUrl] = useState("");
+  const [youtube, setYoutube] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +43,10 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const openModal = () => {
     setName(profile.artist_alias || profile.display_name || "");
     setBio(profile.bio || "");
+    setWebsite(profile.website_url || "");
+    setInstagram(profile.instagram_url || "");
+    setXUrl(profile.x_url || "");
+    setYoutube(profile.youtube_url || "");
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
@@ -64,6 +77,10 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           profile_completed: Boolean(name.trim()) && Boolean(nextAvatar),
           artist_alias: name.trim(),
           bio: bio.trim(),
+          website_url: website.trim(),
+          instagram_url: instagram.trim(),
+          x_url: xUrl.trim(),
+          youtube_url: youtube.trim(),
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         },
       });
@@ -144,6 +161,34 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                 aria-label="Bio"
                 rows={4}
                 className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+              <input
+                value={website}
+                onChange={(e) => setWebsite(e.target.value.slice(0, 300))}
+                placeholder="Website URL (optional)"
+                aria-label="Website URL"
+                className={inputClass}
+              />
+              <input
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value.slice(0, 300))}
+                placeholder="Instagram URL (optional)"
+                aria-label="Instagram URL"
+                className={inputClass}
+              />
+              <input
+                value={xUrl}
+                onChange={(e) => setXUrl(e.target.value.slice(0, 300))}
+                placeholder="X (Twitter) URL (optional)"
+                aria-label="X (Twitter) URL"
+                className={inputClass}
+              />
+              <input
+                value={youtube}
+                onChange={(e) => setYoutube(e.target.value.slice(0, 300))}
+                placeholder="YouTube URL (optional)"
+                aria-label="YouTube URL"
+                className={inputClass}
               />
             </div>
 
