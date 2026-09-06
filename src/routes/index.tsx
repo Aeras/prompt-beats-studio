@@ -72,6 +72,7 @@ function Index() {
 
   const uploaded: Track[] = (data?.tracks ?? []).map((t) => ({
     id: t.id,
+    userId: t.user_id,
     title: t.title,
     handle: t.handle,
     genre: t.genre,
