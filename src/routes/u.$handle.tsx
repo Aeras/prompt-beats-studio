@@ -4,6 +4,7 @@ import { ExternalLink, Music } from "lucide-react";
 
 import { getPublicProfile } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
+import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -64,6 +65,7 @@ function CreatorPage() {
                 <p className="text-xs text-muted-foreground">@{profile.handle}</p>
                 {profile.bio && <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p>}
               </div>
+              <EditProfileModal profile={profile} />
             </header>
 
             <DonateButton
