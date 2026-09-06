@@ -201,21 +201,10 @@ function GeneratePage() {
     setBusy(true);
     setStatus(null);
     setSaved(false);
-    try {
-      const res = await generateSongPrompt({
-        data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited") {
-        setStatus("You've hit the hourly limit. Try again soon.");
-        return;
-      }
+    setQuality(null);
+...
       setResult(res.result);
+      setQuality(res.quality ?? null);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
     } finally {
