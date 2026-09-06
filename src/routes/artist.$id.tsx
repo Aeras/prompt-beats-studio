@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, Music } from "lucide-react";
+import { Check, Copy, Music, Play, Pause } from "lucide-react";
+import { usePlayer } from "@/lib/player";
 
 import { getPublicArtistById } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
@@ -51,6 +52,7 @@ function ArtistPage() {
     queryFn: () => getPublicArtistById({ data: { id } }),
   });
 
+  const { play, current, playing } = usePlayer();
   const profile = data?.profile ?? null;
   const tracks = data?.tracks ?? [];
 
@@ -128,18 +130,35 @@ function ArtistPage() {
                       />
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t.genre}</p>
-                    {t.audio_type === "link" ? (
-                      <a
-                        href={t.audio_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" /> Listen on Platform
-                      </a>
-                    ) : (
-                      <audio controls preload="none" src={t.audio_url} className="w-full" />
-                    )}
+                    <button
+                      onClick={() =>
+                        play(
+                          {
+                            id: t.id,
+                            userId: t.user_id,
+                            title: t.title,
+                            handle: `@${profile.handle}`,
+                            genre: t.genre,
+                            art: profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`,
+                            duration: "--:--",
+                            plays: "0",
+                            prompt: t.prompt ?? "",
+                            lyrics: t.lyrics ?? "",
+                            audioUrl: t.audio_url,
+                            audioType: "upload",
+                          },
+                          [],
+                        )
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
+                    >
+                      {current?.id === t.id && playing ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      {current?.id === t.id && playing ? "Pause" : "Play"}
+                    </button>
                   </article>
                 ))}
               </div>

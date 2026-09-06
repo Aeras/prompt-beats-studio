@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, Share2 } from "lucide-react";
+import { Check, Copy, Play, Pause, Share2 } from "lucide-react";
+import { usePlayer } from "@/lib/player";
 
 import { getPublicTrackById } from "@/lib/tracks.functions";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
@@ -42,6 +43,7 @@ function TrackPage() {
     queryFn: () => getPublicTrackById({ data: { id } }),
   });
 
+  const { play, current, playing } = usePlayer();
   const prompt = useCopy();
   const share = useCopy();
 
@@ -81,18 +83,31 @@ function TrackPage() {
               </p>
 
               <div className="pt-2">
-                {track.audio_type === "link" ? (
-                  <a
-                    href={track.audio_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/20"
-                  >
-                    <ExternalLink className="h-4 w-4" /> Listen on Platform
-                  </a>
-                ) : (
-                  <audio controls preload="none" src={track.audio_url} className="w-full" />
-                )}
+                <button
+                  onClick={() =>
+                    play(
+                      {
+                        id: track.id,
+                        userId: track.user_id,
+                        title: track.title,
+                        handle: artist ? `@${artist.handle}` : "",
+                        genre: track.genre,
+                        art: artist?.avatar_url ?? `https://i.pravatar.cc/120?u=${track.id}`,
+                        duration: "--:--",
+                        plays: String(track.plays ?? 0),
+                        prompt: track.prompt ?? "",
+                        lyrics: track.lyrics ?? "",
+                        audioUrl: track.audio_url,
+                        audioType: "upload",
+                      },
+                      [],
+                    )
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/20"
+                >
+                  {current?.id === track.id && playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  {current?.id === track.id && playing ? "Pause" : "Play track"}
+                </button>
               </div>
 
               <button
