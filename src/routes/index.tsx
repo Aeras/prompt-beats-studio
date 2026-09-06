@@ -85,7 +85,8 @@ function Index() {
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
   }));
 
-  const all = [...uploaded, ...TRACKS];
+  // Real community tracks drive the feed; the demo set only fills an empty database.
+  const all = uploaded.length ? uploaded : TRACKS;
 
   const list = all.filter(
     (t) =>
