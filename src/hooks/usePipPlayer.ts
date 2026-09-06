@@ -87,8 +87,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       }
 
       // Live frequency data (or null if the analyser isn't wired yet / CORS-blocked).
-      const analyser = analyserRef.current;
-      const freq = freqRef.current;
+      const analyser = getAnalyser();
+      if (analyser && (!freqRef.current || freqRef.current.length !== analyser.frequencyBinCount)) {
+        freqRef.current = new Uint8Array(analyser.frequencyBinCount);
+      }
+      const freq = analyser ? freqRef.current : null;
       let live: Uint8Array<ArrayBuffer> | null = null;
       if (analyser && freq) {
         analyser.getByteFrequencyData(freq);
@@ -181,8 +184,9 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         await document.exitPictureInPicture();
         return;
       }
-      // Wire the analyser inside this user gesture so the AudioContext can resume.
-      ensureAudioGraph();
+      // Wire/resume the analyser inside this user gesture so the AudioContext can run.
+      ensureAudioGraph(audioElement);
+      resumeAudioGraph();
       if (!video.srcObject) {
         video.srcObject = canvas.captureStream(30);
       }
