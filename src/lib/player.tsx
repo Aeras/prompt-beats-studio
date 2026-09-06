@@ -12,6 +12,7 @@ import {
 import type { Track } from "@/lib/tracks";
 
 export type RepeatMode = "off" | "all" | "one";
+export type PlayerMode = "fixed" | "inline";
 
 type PlayerState = {
   current: Track | null;
@@ -30,6 +31,8 @@ type PlayerState = {
   repeat: RepeatMode;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  playerMode: PlayerMode;
+  setPlayerMode: (mode: PlayerMode) => void;
 };
 
 const PlayerContext = createContext<PlayerState | null>(null);
