@@ -313,7 +313,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     const quality = await runQualityCheck(apiKey, data, result.data);
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
-    const after = await readUsage(supabase, context.userId);
+    const after = await usageFor(supabase, context.userId);
     return {
       error: null,
       status: 200,
