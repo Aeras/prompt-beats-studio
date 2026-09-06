@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import type { Track } from "@/lib/tracks";
 import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
-import { listSavedPrompts } from "@/lib/ai.functions";
+import { listSavedPrompts, deleteSavedPrompt } from "@/lib/ai.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 
@@ -232,6 +232,17 @@ function SavedPromptCard({
   };
 }) {
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
+  const remove = async () => {
+    setDeleting(true);
+    try {
+      await deleteSavedPrompt({ data: { id: prompt.id } });
+      await queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
+    } finally {
+      setDeleting(false);
+    }
+  };
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -253,13 +264,23 @@ function SavedPromptCard({
             {[prompt.genre, prompt.mood].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <button
-          onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
-          aria-label="Copy prompt"
-          className="shrink-0 rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:text-accent"
-        >
-          {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
+            aria-label="Copy prompt"
+            className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:text-accent"
+          >
+            {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={remove}
+            disabled={deleting}
+            aria-label="Delete prompt"
+            className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {prompt.tags && (
