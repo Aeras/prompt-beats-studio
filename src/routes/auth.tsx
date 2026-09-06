@@ -146,21 +146,32 @@ function AuthPage() {
           {mode === "signup" && (
             <input
               value={alias}
+              required
+              maxLength={60}
               onChange={(e) => setAlias(e.target.value)}
-              placeholder="Artist alias"
-              aria-label="Artist alias"
+              placeholder="Display name"
+              aria-label="Display name"
               className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
             />
           )}
           {mode === "signup" && (
-            <input
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              placeholder="@yourhandle"
-              aria-label="Handle"
-              className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
-            />
+            <>
+              <input
+                value={handle}
+                required
+                maxLength={31}
+                onChange={(e) => setHandle(e.target.value.replace(/\s/g, "").toLowerCase())}
+                placeholder="@username"
+                aria-label="Username"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+              <p className="px-1 text-[11px] text-muted-foreground">
+                Letters and numbers only, 3-30 characters. Your page will be promptbeats.app/@
+                {handle.replace(/^@/, "") || "username"}
+              </p>
+            </>
           )}
+
           <input
             type="email"
             required
