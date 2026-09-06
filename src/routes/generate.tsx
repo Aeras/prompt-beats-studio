@@ -97,7 +97,59 @@ function QualityIssueList({ label, items }: { label: string; items: string[] }) 
   );
 }
 
-function QualityDebugPanel({ quality }: { quality: QualityReport | null }) {
+function QualityReportBody({ quality }: { quality: QualityReport | null }) {
+  if (!quality) return <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>;
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center gap-4 text-sm">
+        <span>
+          Passed:{" "}
+          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
+            {quality.passed ? "Yes" : "No"}
+          </strong>
+        </span>
+        <span>
+          Score: <strong className="text-foreground">{quality.score}/10</strong>
+        </span>
+      </div>
+      <QualityIssueList label="Issues" items={quality.issues} />
+      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
+      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
+      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
+      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
+      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+    </div>
+  );
+}
+
+function hasQualityIssues(q: QualityReport | null) {
+  if (!q) return false;
+  return (
+    q.issues.length +
+      q.languageIssues.length +
+      q.grammarIssues.length +
+      q.singabilityIssues.length +
+      q.genreIssues.length +
+      q.consistencyIssues.length >
+    0
+  );
+}
+
+function QualityDebugPanel({
+  quality,
+  canRepair,
+  repairing,
+  onRepair,
+  repairError,
+  repaired,
+}: {
+  quality: QualityReport | null;
+  canRepair: boolean;
+  repairing: boolean;
+  onRepair: () => void;
+  repairError: string | null;
+  repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
+}) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
@@ -106,32 +158,40 @@ function QualityDebugPanel({ quality }: { quality: QualityReport | null }) {
           Quality Debug (temporary — admin only)
         </h2>
       </div>
-      {!quality ? (
-        <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>
-      ) : (
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center gap-4 text-sm">
-            <span>
-              Passed:{" "}
-              <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
-                {quality.passed ? "Yes" : "No"}
-              </strong>
-            </span>
-            <span>
-              Score: <strong className="text-foreground">{quality.score}/10</strong>
-            </span>
+
+      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
+      <QualityReportBody quality={quality} />
+
+      {canRepair && (
+        <div className="mt-5">
+          <button
+            onClick={onRepair}
+            disabled={repairing}
+            className="flex items-center justify-center gap-2 rounded-xl border border-accent/50 px-4 py-2.5 text-sm text-accent transition-colors hover:bg-accent/10 disabled:opacity-60"
+          >
+            {repairing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {repairing ? "Repairing..." : "Repair with AI"}
+          </button>
+          {repairError && <p className="mt-2 text-xs text-red-400">{repairError}</p>}
+        </div>
+      )}
+
+      {repaired && (
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Repaired</p>
+          <div className="mt-3 space-y-4">
+            <OutputCard title="REPAIRED SONG TITLE" body={repaired.result.title} />
+            <OutputCard title="REPAIRED STYLE PROMPT (METATAGS)" body={repaired.result.tags} />
+            <OutputCard title="REPAIRED LYRICS & STRUCTURE" body={repaired.result.lyrics} />
+            <OutputCard title="REPAIRED PRODUCER'S NOTE" body={repaired.result.note} />
           </div>
-          <QualityIssueList label="Issues" items={quality.issues} />
-          <QualityIssueList label="Language Issues" items={quality.languageIssues} />
-          <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
-          <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
-          <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
-          <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+          <QualityReportBody quality={repaired.quality} />
         </div>
       )}
     </div>
   );
 }
+
 
 function GeneratePage() {
   const { user, loading } = useAuth();
