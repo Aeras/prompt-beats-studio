@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 export const HOURLY_LIMIT = 10;
 
@@ -127,40 +128,34 @@ Generate exactly three sections:
 Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
-async function callAnthropic(
-  apiKey: string,
-  prompt: string,
-  opts?: { system?: string; maxTokens?: number },
-) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: opts?.maxTokens ?? 8192,
-      system: opts?.system ?? SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+/**
+ * Provider-agnostic model call signature. The concrete provider (Gemini /
+ * Anthropic) is resolved server-side in `ai-provider.server.ts`; the shared
+ * prompts below are handed to whichever provider is active, unchanged.
+ */
+type ModelCall = {
+  system: string;
+  prompt: string;
+  maxTokens?: number;
+  schema?: Record<string, unknown>;
+};
+type ModelCaller = (call: ModelCall) => Promise<{ text: string; stopReason: string | null }>;
 
-  if (res.ok) {
-    const payload = (await res.json()) as {
-      stop_reason?: string | null;
-      content?: { type: string; text?: string }[];
-    };
-    const text =
-      payload.content
-        ?.filter((b) => b.type === "text")
-        .map((b) => b.text ?? "")
-        .join("") ?? "";
-    return { text, stopReason: payload.stop_reason ?? null };
-  }
-  throw new Error(`${res.status}: ${(await res.text()).slice(0, 300)}`);
+/** Loads the provider layer (server-only) and binds it to the active model. */
+async function activeCaller(): Promise<{ call: ModelCaller; model: string; schemas: {
+  song: Record<string, unknown>;
+  quality: Record<string, unknown>;
+} }> {
+  const provider = await import("@/lib/ai-provider.server");
+  const model = await provider.getActiveModel();
+  return {
+    call: provider.modelCaller(model),
+    model,
+    schemas: { song: provider.SONG_SCHEMA, quality: provider.QUALITY_SCHEMA },
+  };
 }
+
+
 
 function parseSections(raw: string) {
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -291,16 +286,19 @@ Return the strict JSON object only.`;
 }
 
 async function runQualityCheck(
-  apiKey: string,
+  call: ModelCaller,
+  schema: Record<string, unknown>,
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
 ): Promise<QualityReport | null> {
   try {
-    const { text, stopReason } = await callAnthropic(apiKey, buildQualityPrompt(d, r), {
+    const { text, stopReason } = await call({
       system: QUALITY_SYSTEM_PROMPT,
+      prompt: buildQualityPrompt(d, r),
       maxTokens: 2048,
+      schema,
     });
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") return null;
+    if (stopReason !== "end_turn") return null;
     const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
@@ -325,14 +323,19 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       return { error: "rate_limited" as const, status: 429, usage, result: null, quality: null };
     }
 
-    const apiKey = process.env['ANTHROPIC_API_KEY'];
-    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+    // Provider/model is resolved server-side only; clients cannot influence it.
+    const { call, model, schemas } = await activeCaller();
 
-    const { text: raw, stopReason } = await callAnthropic(apiKey, buildPrompt(data));
+    const { text: raw, stopReason } = await call({
+      system: SYSTEM_PROMPT,
+      prompt: buildPrompt(data),
+      maxTokens: 8192,
+      schema: schemas.song,
+    });
     if (stopReason === "max_tokens") {
       throw new Error("The AI response was incomplete. Please try again.");
     }
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+    if (stopReason !== "end_turn") {
       throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
@@ -343,9 +346,11 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     }
 
     // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(apiKey, data, result.data);
+    const quality = await runQualityCheck(call, schemas.quality, data, result.data);
 
     await supabase.from("ai_generations").insert({ user_id: context.userId });
+    // Server-side usage visibility of which model served the request.
+    console.log(`[ai] generation served by model=${model}`);
     const after = await usageFor(supabase, context.userId);
     return {
       error: null,
@@ -356,6 +361,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       remainingGenerations: after.remaining,
     };
   });
+
 
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
@@ -395,16 +401,12 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Package 2C — Admin-only manual AI Repair (experimental, never automatic).
+// Package 2C — Manual AI Repair (never automatic).
 // One click = exactly one repair call + one mandatory post-repair quality check.
 // No retries, no loops, no persistence, no schema changes.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Provider indirection: swapping the repair model/provider later means changing
-// only this function, not the generator.
-async function callRepairModel(apiKey: string, system: string, prompt: string) {
-  return callAnthropic(apiKey, prompt, { system, maxTokens: 8192 });
-}
+
 
 const REPAIR_SYSTEM_PROMPT = `You are a professional song EDITOR performing a targeted repair pass. You are not a new songwriter.
 
@@ -468,19 +470,14 @@ const repairInput = z.object({
 });
 
 /**
- * Admin-only manual repair. Authorization comes from the existing server-side
- * has_role(userId, 'admin') security-definer RPC through the authenticated
- * Supabase client — never from client-supplied data.
+ * Manual repair, available to every authenticated user. Runs exactly one
+ * repair call plus one post-repair quality check, on the server-selected model.
  */
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
-    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
-
-    const apiKey = process.env['ANTHROPIC_API_KEY'];
-    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+  .handler(async ({ data }) => {
+    const { call, schemas } = await activeCaller();
 
     const constraints = {
       theme: data.theme,
@@ -489,13 +486,14 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       language: data.language,
     };
 
-    const { text, stopReason } = await callRepairModel(
-      apiKey,
-      REPAIR_SYSTEM_PROMPT,
-      buildRepairPrompt(constraints, data.result, data.quality),
-    );
+    const { text, stopReason } = await call({
+      system: REPAIR_SYSTEM_PROMPT,
+      prompt: buildRepairPrompt(constraints, data.result, data.quality),
+      maxTokens: 8192,
+      schema: schemas.song,
+    });
     if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
-    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+    if (stopReason !== "end_turn") {
       throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
@@ -503,7 +501,33 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
     if (!repaired.success) throw new Error("The repair returned an invalid response. Please try again.");
 
     // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(apiKey, constraints, repaired.data);
+    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data);
+
 
     return { result: repaired.data, quality };
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Super Admin: server-authoritative provider/model selection.
+// The selected model is stored in a table the browser cannot read or write;
+// only these admin-gated server functions touch it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAiModelSetting = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
+    const { getActiveModel } = await import("@/lib/ai-provider.server");
+    return { model: await getActiveModel() };
+  });
+
+export const setAiModelSetting = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ model: z.enum(AI_MODEL_IDS as [string, ...string[]]) }).parse(input))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
+    const { setActiveModel } = await import("@/lib/ai-provider.server");
+    return setActiveModel(data.model as never, context.userId);
   });

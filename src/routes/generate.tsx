@@ -11,10 +11,13 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   repairSongPrompt,
+  getAiModelSetting,
+  setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
 } from "@/lib/ai.functions";
 import { getMyModeration } from "@/lib/moderation.functions";
+import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -136,7 +139,7 @@ function hasQualityIssues(q: QualityReport | null) {
   );
 }
 
-function QualityDebugPanel({
+function QualityPanel({
   quality,
   canRepair,
   repairing,
@@ -155,9 +158,7 @@ function QualityDebugPanel({
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
         <FlaskConical className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">
-          Quality Debug (temporary — admin only)
-        </h2>
+        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
       </div>
 
       <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
@@ -192,6 +193,41 @@ function QualityDebugPanel({
     </div>
   );
 }
+
+/** Super Admin only: picks the AI model that serves every user's generations. */
+function AdminModelSelector() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ["ai-model"], queryFn: () => getAiModelSetting() });
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="glass mt-4 flex flex-wrap items-center gap-3 rounded-2xl p-4">
+      <span className="text-xs uppercase tracking-widest text-muted-foreground">AI model (admin)</span>
+      <select
+        aria-label="AI model"
+        value={data?.model ?? DEFAULT_AI_MODEL}
+        disabled={saving}
+        onChange={async (e) => {
+          setSaving(true);
+          try {
+            await setAiModelSetting({ data: { model: e.target.value } });
+            await queryClient.invalidateQueries({ queryKey: ["ai-model"] });
+          } finally {
+            setSaving(false);
+          }
+        }}
+        className={fieldClass + " max-w-xs"}
+      >
+        {AI_MODELS.map((m) => (
+          <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
+            {m.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 
 
 function GeneratePage() {
@@ -366,6 +402,8 @@ function GeneratePage() {
           </div>
         </div>
 
+        {moderation?.isAdmin && <AdminModelSelector />}
+
         <div className="glass-strong mt-6 space-y-3 rounded-3xl p-5 sm:p-6">
           <div>
             <textarea
@@ -495,8 +533,8 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
-            {moderation?.isAdmin && (
-              <QualityDebugPanel
+            {(
+              <QualityPanel
                 quality={quality}
                 canRepair={hasQualityIssues(quality) && !repaired}
                 repairing={repairing}
