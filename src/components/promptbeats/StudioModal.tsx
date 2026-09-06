@@ -7,6 +7,7 @@ import { GENRES } from "@/lib/tracks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack } from "@/lib/tracks.functions";
+import { useModeration } from "@/hooks/useModeration";
 
 type Row = {
   key: string;
@@ -31,6 +32,7 @@ const inputCls =
 
 export function StudioModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
+  const { isBanned } = useModeration();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -69,6 +71,10 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     if (!user) {
       onClose();
       navigate({ to: "/auth" });
+      return;
+    }
+    if (isBanned) {
+      setStatus("Your account is suspended, so uploads are disabled.");
       return;
     }
     setStatus(null);
@@ -220,11 +226,11 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
 
           <button
             onClick={uploadAll}
-            disabled={busy}
+            disabled={busy || isBanned}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-            {user ? "Upload All" : "Sign in to upload"}
+            {isBanned ? "Uploads disabled" : user ? "Upload All" : "Sign in to upload"}
           </button>
         </div>
       </div>

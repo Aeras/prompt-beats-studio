@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { GENRES } from "@/lib/tracks";
 import { deleteTrack, updateTrack } from "@/lib/tracks.functions";
 import { useAuth } from "@/hooks/useAuth";
+import { useModeration } from "@/hooks/useModeration";
 
 export type EditableTrack = {
   id: string;
@@ -23,6 +24,7 @@ const inputCls =
 /** Edit + delete controls, rendered only for the track's owner. */
 export function TrackOwnerActions({ track, compact = false }: { track: EditableTrack; compact?: boolean }) {
   const { user } = useAuth();
+  const { isAdmin } = useModeration();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -34,7 +36,8 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [prompt, setPrompt] = useState(track.prompt);
   const [lyrics] = useState(track.lyrics);
 
-  if (!user || !track.user_id || user.id !== track.user_id) return null;
+  const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
+  if (!isOwner && !isAdmin) return null;
 
   const refresh = async () => {
     await Promise.all([
@@ -91,9 +94,11 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   return (
     <>
       <div className="flex shrink-0 items-center gap-1.5">
-        <button aria-label="Edit track" title="Edit track" onClick={() => setEditing(true)} className={btn}>
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
+        {isOwner && (
+          <button aria-label="Edit track" title="Edit track" onClick={() => setEditing(true)} className={btn}>
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button
           aria-label="Delete track"
           title="Delete track"

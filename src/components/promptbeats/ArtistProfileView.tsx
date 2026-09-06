@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check, Copy, Globe, Instagram, Music, Play, Pause, Share2, Twitter, Youtube } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, Globe, Instagram, Music, Play, Pause, Share2, ShieldBan, Twitter, Youtube } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
+import { useModeration } from "@/hooks/useModeration";
+import { setUserBanned } from "@/lib/moderation.functions";
 
 type Profile = {
   id: string;
@@ -22,6 +25,7 @@ type Profile = {
   youtube_url: string | null;
   x_url: string | null;
   profile_completed: boolean;
+  is_banned?: boolean | null;
   donation_provider: string | null;
   donation_url: string | null;
   donation_custom_name: string | null;
@@ -111,6 +115,40 @@ function ShareProfileButton({ handle }: { handle: string }) {
   );
 }
 
+function BanUserToggle({ userId, banned }: { userId: string; banned: boolean }) {
+  const { isAdmin } = useModeration();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  if (!isAdmin) return null;
+
+  return (
+    <button
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await setUserBanned({ data: { userId, banned: !banned } });
+          await queryClient.invalidateQueries();
+          toast.success(banned ? "User unbanned" : "User banned");
+        } catch {
+          toast.error("Could not update this user");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className={
+        "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-60 " +
+        (banned
+          ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
+          : "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20")
+      }
+    >
+      <ShieldBan className="h-3.5 w-3.5" />
+      {banned ? "Unban user" : "Ban user"}
+    </button>
+  );
+}
+
 export function ArtistProfileView({
   profile,
   tracks,
@@ -158,7 +196,10 @@ export function ArtistProfileView({
                 {profile.bio && <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p>}
                 <SocialLinks profile={profile} />
               </div>
-              <EditProfileModal profile={profile} />
+              <div className="flex shrink-0 flex-col gap-2">
+                <EditProfileModal profile={profile} />
+                <BanUserToggle userId={profile.id} banned={Boolean(profile.is_banned)} />
+              </div>
             </header>
 
             <DonateButton

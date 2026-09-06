@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useModeration } from "@/hooks/useModeration";
 import { cn } from "@/lib/utils";
 
 export const NAV = [
@@ -24,6 +25,7 @@ export function SidebarNav({
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
+  const { isBanned } = useModeration();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -83,6 +85,7 @@ export function SidebarNav({
         <span className="truncate">AI Generator</span>
       </Link>
 
+      {!isBanned && (
       <button
         onClick={onSubmit}
         className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
@@ -90,6 +93,7 @@ export function SidebarNav({
         <Plus className="h-4 w-4" />
         Submit Track
       </button>
+      )}
 
       <div className="mt-auto">
         {user ? (
