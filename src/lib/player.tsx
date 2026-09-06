@@ -54,6 +54,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [playerMode, setPlayerMode] = useState<PlayerMode>("fixed");
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
 
