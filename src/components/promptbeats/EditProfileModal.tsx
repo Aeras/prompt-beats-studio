@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { updateMyProfile } from "@/lib/profile.functions";
 
 type EditableProfile = {
   id: string;
@@ -69,42 +68,64 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setBusy(true);
     setError(null);
     try {
-      let avatarUrl: string | undefined;
+      let avatarUrl = profile.avatar_url;
       if (avatarFile) {
         const ext = avatarFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
         const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("avatars")
+        const avatarBucket = supabase.storage.from("avatars");
+        const { error: uploadError } = await avatarBucket
           .upload(filePath, avatarFile, { upsert: true, contentType: avatarFile.type });
-        if (upErr) {
-          toast.error("Upload failed - Check storage permissions", { description: upErr.message });
-          throw new Error("Avatar upload failed. Please try another image.");
-        }
-        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-        avatarUrl = data.publicUrl;
+        if (uploadError) throw uploadError;
+
+        avatarUrl = supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
+        if (!avatarUrl) throw new Error("Avatar public URL could not be generated");
       }
-      const nextAvatar = avatarUrl ?? profile.avatar_url;
+
       const paypal = paypalUrl.trim();
       const revolut = revolutUrl.trim();
-      await updateMyProfile({
-        data: {
-          profile_completed: Boolean(name.trim()) && Boolean(nextAvatar),
-          artist_alias: name.trim(),
-          bio: bio.trim(),
-          website_url: website.trim(),
-          instagram_url: instagram.trim(),
-          x_url: xUrl.trim(),
-          youtube_url: youtube.trim(),
-          donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
-          donation_url: paypal || revolut || null,
-          donation_custom_name: null,
-          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+      const profilePatch = {
+        profile_completed: Boolean(name.trim()) && Boolean(avatarUrl),
+        artist_alias: name.trim(),
+        display_name: name.trim(),
+        avatar_url: avatarUrl,
+        bio: bio.trim(),
+        website_url: website.trim() || null,
+        instagram_url: instagram.trim() || null,
+        x_url: xUrl.trim() || null,
+        youtube_url: youtube.trim() || null,
+        donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
+        donation_url: paypal || revolut || null,
+        donation_custom_name: null,
+      };
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update(profilePatch)
+        .eq("id", user.id);
+      if (profileError) throw profileError;
+
+      queryClient.setQueriesData(
+        {
+          predicate: ({ queryKey }) =>
+            queryKey[0] === "public-artist" ||
+            queryKey[0] === "public-artist-handle" ||
+            queryKey[0] === "public-profile",
         },
-      });
-      await queryClient.invalidateQueries();
+        (current: unknown) => {
+          if (!current || typeof current !== "object" || !("profile" in current)) return current;
+          const result = current as { profile: EditableProfile | null; tracks?: unknown[] };
+          if (result.profile?.id !== user.id) return current;
+          return { ...result, profile: { ...result.profile, ...profilePatch } };
+        },
+      );
+      window.dispatchEvent(new CustomEvent("promptbeats:profile-updated", { detail: profilePatch }));
+      await queryClient.invalidateQueries({ refetchType: "active" });
+      toast.success("Profile updated");
       setOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save your profile");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Avatar/profile update failed:", error);
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }

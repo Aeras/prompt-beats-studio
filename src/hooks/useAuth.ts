@@ -42,16 +42,26 @@ export function useAuth() {
       return;
     }
     let active = true;
-    supabase
-      .from("profiles")
-      .select("handle, display_name, avatar_url, artist_alias, profile_completed")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setProfile(data ?? null);
-      });
+    const loadProfile = () => {
+      supabase
+        .from("profiles")
+        .select("handle, display_name, avatar_url, artist_alias, profile_completed")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (active) setProfile(data ?? null);
+        });
+    };
+    const handleProfileUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<ProfileSummary>>).detail;
+      setProfile((current) => (current ? { ...current, ...detail } : current));
+      loadProfile();
+    };
+    loadProfile();
+    window.addEventListener("promptbeats:profile-updated", handleProfileUpdate);
     return () => {
       active = false;
+      window.removeEventListener("promptbeats:profile-updated", handleProfileUpdate);
     };
   }, [user]);
 
