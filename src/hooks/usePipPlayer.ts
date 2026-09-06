@@ -181,25 +181,28 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle }: Options)
     }
   }, []);
 
-  const onEnterPip = useCallback(() => setPipActive(true), []);
-  const onLeavePip = useCallback(() => {
-    setPipActive(false);
-    videoRef.current?.pause();
-  }, []);
+  // Native events (incl. play/pause from the OS PiP window).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onEnter = () => setPipActive(true);
+    const onLeave = () => {
+      setPipActive(false);
+      video.pause();
+    };
+    video.addEventListener("play", onVideoPlay);
+    video.addEventListener("pause", onVideoPause);
+    video.addEventListener("enterpictureinpicture", onEnter);
+    video.addEventListener("leavepictureinpicture", onLeave);
+    return () => {
+      video.removeEventListener("play", onVideoPlay);
+      video.removeEventListener("pause", onVideoPause);
+      video.removeEventListener("enterpictureinpicture", onEnter);
+      video.removeEventListener("leavepictureinpicture", onLeave);
+    };
+  }, [onVideoPlay, onVideoPause]);
 
-  return {
-    canvasRef,
-    videoRef,
-    pipActive,
-    supported,
-    togglePip,
-    videoHandlers: {
-      onPlay: onVideoPlay,
-      onPause: onVideoPause,
-      onEnterPictureInPicture: onEnterPip,
-      onLeavePictureInPicture: onLeavePip,
-    },
-  };
+  return { canvasRef, videoRef, pipActive, supported, togglePip };
 }
 
 function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
