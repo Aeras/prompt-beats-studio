@@ -94,6 +94,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         bio: bio.trim(),
         website_url: website.trim() || null,
         instagram_url: instagram.trim() || null,
+        tiktok_url: tiktok.trim() || null,
         x_url: xUrl.trim() || null,
         youtube_url: youtube.trim() || null,
         donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
@@ -104,7 +105,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         .from("profiles")
         .update(profilePatch)
         .eq("id", user.id)
-        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
+        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, tiktok_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
         .single();
       if (profileError) throw profileError;
       if (!savedProfile) throw new Error("Profile update returned no saved profile");
@@ -221,6 +222,13 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                 onChange={(e) => setInstagram(e.target.value.slice(0, 300))}
                 placeholder="Instagram URL (optional)"
                 aria-label="Instagram URL"
+                className={inputClass}
+              />
+              <input
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value.slice(0, 300))}
+                placeholder="TikTok URL (optional)"
+                aria-label="TikTok URL"
                 className={inputClass}
               />
               <input
