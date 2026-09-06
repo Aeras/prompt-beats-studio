@@ -49,12 +49,24 @@ function AuthPage() {
     setMessage(null);
     try {
       if (mode === "signup") {
+        const cleanHandle = handle.replace(/^@/, "").trim().toLowerCase();
+        if (!alias.trim()) throw new Error("Please enter a display name.");
+        if (!/^[a-z0-9]{3,30}$/.test(cleanHandle)) {
+          throw new Error("Username must be 3-30 letters or numbers, with no spaces or symbols.");
+        }
+        const { data: taken } = await supabase
+          .from("profiles")
+          .select("handle")
+          .eq("handle", cleanHandle)
+          .maybeSingle();
+        if (taken) throw new Error("That username is already taken. Try another one.");
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { handle: handle.replace(/^@/, ""), display_name: alias.trim() || undefined },
+            data: { handle: cleanHandle, display_name: alias.trim() },
           },
         });
         if (error) throw error;
@@ -68,6 +80,7 @@ function AuthPage() {
         } else {
           setMessage("Check your inbox to confirm your email address.");
         }
+
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -133,21 +146,32 @@ function AuthPage() {
           {mode === "signup" && (
             <input
               value={alias}
+              required
+              maxLength={60}
               onChange={(e) => setAlias(e.target.value)}
-              placeholder="Artist alias"
-              aria-label="Artist alias"
+              placeholder="Display name"
+              aria-label="Display name"
               className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
             />
           )}
           {mode === "signup" && (
-            <input
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              placeholder="@yourhandle"
-              aria-label="Handle"
-              className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
-            />
+            <>
+              <input
+                value={handle}
+                required
+                maxLength={31}
+                onChange={(e) => setHandle(e.target.value.replace(/\s/g, "").toLowerCase())}
+                placeholder="@username"
+                aria-label="Username"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+              <p className="px-1 text-[11px] text-muted-foreground">
+                Letters and numbers only, 3-30 characters. Your page will be promptbeats.app/@
+                {handle.replace(/^@/, "") || "username"}
+              </p>
+            </>
           )}
+
           <input
             type="email"
             required

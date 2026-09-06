@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_handle_unique_idx ON public.profiles (lower(handle));
