@@ -78,9 +78,19 @@ export function TrackCard({
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{track.title}</h3>
             <p className="truncate text-xs text-muted-foreground">
-              {track.handle} · {track.plays} plays
-            </p>
-          </div>
+              {track.userId ? (
+                <Link
+                  to="/$handle"
+                  params={{ handle: track.handle }}
+                  className="transition-colors hover:text-accent"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {track.handle}
+                </Link>
+              ) : (
+                <span>{track.handle}</span>
+              )}
+              {
           <div className="flex shrink-0 items-center gap-2">
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
             {track.userId && (
