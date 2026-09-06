@@ -154,3 +154,21 @@
   transform-origin: bottom;
   animation: eq-bounce 900ms ease-in-out infinite;
 }
+
+/* White-label: suppress any Lovable "Made with" / "Edit with" badges or watermarks */
+.lovable-badge,
+[class*="lovable-badge" i],
+[class*="lovableBadge" i],
+[id*="lovable-badge" i],
+[id*="lovableBadge" i],
+[data-lovable-badge],
+[data-lovable="badge"],
+a[href*="lovable.dev" i],
+a[href*="lovable.app" i],
+iframe[src*="lovable" i] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
