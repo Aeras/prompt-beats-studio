@@ -282,66 +282,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          artist_alias: string | null
-          avatar_url: string | null
-          bio: string | null
-          created_at: string | null
-          display_name: string | null
-          donation_custom_name: string | null
-          donation_provider: string | null
-          donation_url: string | null
-          handle: string | null
-          id: string | null
-          instagram_url: string | null
-          profile_completed: boolean | null
-          tiktok_url: string | null
-          updated_at: string | null
-          website_url: string | null
-          x_url: string | null
-          youtube_url: string | null
-        }
-        Insert: {
-          artist_alias?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          donation_custom_name?: string | null
-          donation_provider?: string | null
-          donation_url?: string | null
-          handle?: string | null
-          id?: string | null
-          instagram_url?: string | null
-          profile_completed?: boolean | null
-          tiktok_url?: string | null
-          updated_at?: string | null
-          website_url?: string | null
-          x_url?: string | null
-          youtube_url?: string | null
-        }
-        Update: {
-          artist_alias?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          donation_custom_name?: string | null
-          donation_provider?: string | null
-          donation_url?: string | null
-          handle?: string | null
-          id?: string | null
-          instagram_url?: string | null
-          profile_completed?: boolean | null
-          tiktok_url?: string | null
-          updated_at?: string | null
-          website_url?: string | null
-          x_url?: string | null
-          youtube_url?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {
