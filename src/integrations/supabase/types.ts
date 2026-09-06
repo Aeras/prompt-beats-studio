@@ -306,7 +306,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          artist_alias: string | null
+          avatar_url: string | null
+          bio: string | null
+          display_name: string | null
+          donation_custom_name: string | null
+          donation_provider: string | null
+          donation_url: string | null
+          handle: string | null
+          id: string | null
+          instagram_url: string | null
+          tiktok_url: string | null
+          website_url: string | null
+          x_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          artist_alias?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          display_name?: string | null
+          donation_custom_name?: string | null
+          donation_provider?: string | null
+          donation_url?: string | null
+          handle?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          tiktok_url?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          artist_alias?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          display_name?: string | null
+          donation_custom_name?: string | null
+          donation_provider?: string | null
+          donation_url?: string | null
+          handle?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          tiktok_url?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

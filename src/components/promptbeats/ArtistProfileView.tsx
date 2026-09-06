@@ -24,7 +24,7 @@ type Profile = {
   tiktok_url: string | null;
   youtube_url: string | null;
   x_url: string | null;
-  profile_completed: boolean;
+  profile_completed?: boolean;
   donation_provider: string | null;
   donation_url: string | null;
   donation_custom_name: string | null;

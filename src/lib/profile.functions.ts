@@ -8,7 +8,7 @@ const PROFILE_COLUMNS =
 
 /** Safe public projection: no moderation/internal fields (anon role is column-restricted). */
 const PUBLIC_PROFILE_COLUMNS =
-  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed, donation_provider, donation_url, donation_custom_name";
+  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name";
 
 const optionalUrl = z
   .string()
@@ -74,11 +74,11 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
@@ -86,7 +86,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 /** Public artist page data by vanity handle, including track prompts. */
@@ -97,11 +97,11 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
@@ -109,7 +109,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 
@@ -121,11 +121,11 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     const supabase = createPublicServerClient();
     const handle = data.handle.replace(/^@/, "").toLowerCase();
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS)
       .eq("handle", handle)
       .maybeSingle();
-    if (!profile) return { profile: null, tracks: [] };
+    if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
       .select("id, title, genre, audio_url, audio_type, created_at")
@@ -133,7 +133,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(50);
-    return { profile, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
   });
 
 /** Public: real-time signup availability check for handle and display name. */
@@ -156,12 +156,12 @@ export const checkSignupAvailability = createServerFn({ method: "GET" })
     let displayNameTaken = false;
 
     if (handle.length >= 3) {
-      const { data: row } = await supabase.from("profiles").select("id").eq("handle", handle).maybeSingle();
+      const { data: row } = await supabase.from("public_profiles").select("id").eq("handle", handle).maybeSingle();
       handleTaken = Boolean(row);
     }
     if (displayName.length >= 2) {
       const { data: rows } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id")
         .ilike("display_name", displayName)
         .limit(1);

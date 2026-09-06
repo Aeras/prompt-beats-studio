@@ -36,12 +36,13 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   const names = new Map<string, string>();
   if (ids.length) {
     const { data: profiles } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias")
       .in("id", ids);
     for (const p of profiles ?? []) {
-      handles.set(p.id, p.handle);
-      names.set(p.id, p.artist_alias || p.display_name || p.handle);
+      if (!p.id) continue;
+      handles.set(p.id, p.handle ?? "unknown");
+      names.set(p.id, p.artist_alias || p.display_name || p.handle || "");
     }
   }
   return {
@@ -68,11 +69,11 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!track) return { track: null, artist: null };
     const { data: artist } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias, avatar_url")
       .eq("id", track.user_id)
       .maybeSingle();
-    return { track, artist: artist ?? null };
+    return { track, artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null };
   });
 
 /** Signed-in user's own tracks, published or not. */
@@ -280,12 +281,13 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
   const names = new Map<string, string>();
   if (ids.length) {
     const { data: profiles } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, handle, display_name, artist_alias")
       .in("id", ids);
     for (const p of profiles ?? []) {
-      handles.set(p.id, p.handle);
-      names.set(p.id, p.artist_alias || p.display_name || p.handle);
+      if (!p.id) continue;
+      handles.set(p.id, p.handle ?? "unknown");
+      names.set(p.id, p.artist_alias || p.display_name || p.handle || "");
     }
   }
 
@@ -335,8 +337,8 @@ export const listLikedTracks = createServerFn({ method: "GET" })
     const userIds = [...new Set(rows.map((t) => t.user_id))];
     const handles = new Map<string, string>();
     if (userIds.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, handle").in("id", userIds);
-      for (const p of profiles ?? []) handles.set(p.id, p.handle);
+      const { data: profiles } = await supabase.from("public_profiles").select("id, handle").in("id", userIds);
+      for (const p of profiles ?? []) { if (p.id) handles.set(p.id, p.handle ?? "unknown"); }
     }
     const order = new Map(ids.map((id, i) => [id, i]));
     return {

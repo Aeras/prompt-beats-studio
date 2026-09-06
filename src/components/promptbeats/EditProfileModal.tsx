@@ -18,7 +18,7 @@ type EditableProfile = {
   youtube_url?: string | null;
   donation_provider?: string | null;
   donation_url?: string | null;
-  profile_completed: boolean;
+  profile_completed?: boolean;
 };
 
 
