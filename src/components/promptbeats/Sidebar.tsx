@@ -16,13 +16,20 @@ export const NAV = [
 
 export type NavId = (typeof NAV)[number]["id"];
 
+const NAV_TO: Record<NavId, string> = {
+  discover: "/",
+  trending: "/trending",
+  studio: "/generate",
+  library: "/library",
+};
+
 export function SidebarNav({
   active,
-  onSelect,
+  onNavigate,
   onSubmit,
 }: {
   active: NavId;
-  onSelect: (id: NavId) => void;
+  onNavigate: () => void;
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
@@ -57,9 +64,10 @@ export function SidebarNav({
         {NAV.map((item) => {
           const isActive = active === item.id;
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => onSelect(item.id)}
+              to={NAV_TO[item.id]}
+              onClick={onNavigate}
               className={cn(
                 "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
                 isActive
@@ -77,18 +85,11 @@ export function SidebarNav({
               />
               <span className="truncate">{item.label}</span>
               {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
-            </button>
+            </Link>
           );
         })}
       </nav>
 
-      <Link
-        to="/generate"
-        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
-      >
-        <Wand2 className="h-[18px] w-[18px] shrink-0" />
-        <span className="truncate">AI Generator</span>
-      </Link>
 
       {!isBanned && (
       <button
