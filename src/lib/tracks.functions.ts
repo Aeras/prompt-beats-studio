@@ -141,16 +141,22 @@ export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row } = await context.supabase
+    // RLS restricts this delete to the track owner (or an admin). We chain
+    // .select() so the returned rows tell us whether a row was actually
+    // deleted — only then is it safe to remove the audio file from R2.
+    const { data: deleted, error } = await context.supabase
       .from("tracks")
-      .select("audio_key")
+      .delete()
       .eq("id", data.id)
-      .maybeSingle();
-    const { error } = await context.supabase.from("tracks").delete().eq("id", data.id);
+      .select("audio_key");
     if (error) throw new Error(error.message);
-    if (row?.audio_key) {
+    if (!deleted || deleted.length === 0) {
+      throw new Error("Track not found or you don't have permission to delete it.");
+    }
+    const audioKey = (deleted[0] as { audio_key?: string | null }).audio_key;
+    if (audioKey) {
       const { deleteFromR2 } = await import("@/lib/r2.server");
-      await deleteFromR2(row.audio_key);
+      await deleteFromR2(audioKey);
     }
     return { ok: true };
   });
