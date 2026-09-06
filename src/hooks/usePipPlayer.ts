@@ -29,7 +29,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const freqRef = useRef<Uint8Array | null>(null);
+  const freqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   useEffect(() => {
     playingRef.current = playing;
@@ -134,7 +134,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       // Live frequency data (or null if the analyser isn't wired yet / CORS-blocked).
       const analyser = analyserRef.current;
       const freq = freqRef.current;
-      let live: Uint8Array | null = null;
+      let live: Uint8Array<ArrayBuffer> | null = null;
       if (analyser && freq) {
         analyser.getByteFrequencyData(freq);
         live = freq;
@@ -156,7 +156,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         let level: number;
         if (live && playingRef.current && usable > 0) {
           const bin = Math.floor((i / bars) * usable) + 2;
-          level = live[Math.min(bin, live.length - 1)] / 255;
+          level = (live[Math.min(bin, live.length - 1)] ?? 0) / 255;
         } else {
           // Idle shimmer when paused or no analyser.
           level = playingRef.current ? 0.08 + ((Math.sin(t / (8 + (i % 5)) + i) + 1) / 2) * 0.1 : 0.06;
