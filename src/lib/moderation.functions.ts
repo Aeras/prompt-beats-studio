@@ -3,16 +3,24 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+/** Server-side admin check via the has_role() security-definer function. */
+async function callerIsAdmin(supabase: {
+  rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => Promise<{ data: boolean | null }>;
+}): Promise<boolean> {
+  const { data } = await supabase.rpc("has_role", { _user_id: "", _role: "admin" });
+  return data === true;
+}
+
 /** Current user's moderation status: admin rights and ban state. */
 export const getMyModeration = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: roles }, { data: profile }] = await Promise.all([
-      context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
+    const [{ data: isAdmin }, { data: profile }] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
       context.supabase.from("profiles").select("is_banned").eq("id", context.userId).maybeSingle(),
     ]);
     return {
-      isAdmin: (roles ?? []).some((r) => r.role === "admin"),
+      isAdmin: isAdmin === true,
       isBanned: Boolean((profile as { is_banned?: boolean } | null)?.is_banned),
     };
   });
@@ -24,11 +32,11 @@ export const setUserBanned = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), banned: z.boolean() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (!(roles ?? []).some((r) => r.role === "admin")) throw new Error("Not allowed");
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (isAdmin !== true) throw new Error("Not allowed");
 
     const { error } = await context.supabase
       .from("profiles")
