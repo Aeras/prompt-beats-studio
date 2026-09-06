@@ -110,7 +110,7 @@ async function callAnthropic(apiKey: string, prompt: string) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5",
       max_tokens: 4096,
       temperature: 0.9,
       system: SYSTEM_PROMPT,
