@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2 } from "lucide-react";
+import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -199,6 +199,31 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                 type="file"
                 accept=".mp3,.wav,audio/mpeg,audio/wav"
                 onChange={(e) => pickFile(r.key, e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+
+              <label
+                htmlFor={`pb-cover-${r.key}`}
+                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              >
+                {r.cover ? (
+                  <img
+                    src={URL.createObjectURL(r.cover)}
+                    alt={`Cover preview for track ${i + 1}`}
+                    className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/15"
+                  />
+                ) : (
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                )}
+                <span className="truncate">
+                  {r.cover ? r.cover.name : "Upload cover art (optional) — JPG / PNG / WebP"}
+                </span>
+              </label>
+              <input
+                id={`pb-cover-${r.key}`}
+                type="file"
+                accept="image/*"
+                onChange={(e) => update(r.key, { cover: e.target.files?.[0] ?? null })}
                 className="hidden"
               />
 
