@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 export const HOURLY_LIMIT = 10;
 
@@ -504,4 +505,29 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
 
 
     return { result: repaired.data, quality };
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Super Admin: server-authoritative provider/model selection.
+// The selected model is stored in a table the browser cannot read or write;
+// only these admin-gated server functions touch it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAiModelSetting = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
+    const { getActiveModel } = await import("@/lib/ai-provider.server");
+    return { model: await getActiveModel() };
+  });
+
+export const setAiModelSetting = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ model: z.enum(AI_MODEL_IDS as [string, ...string[]]) }).parse(input))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
+    const { setActiveModel } = await import("@/lib/ai-provider.server");
+    return setActiveModel(data.model as never, context.userId);
   });
