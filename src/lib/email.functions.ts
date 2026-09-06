@@ -13,21 +13,20 @@ export const sendWelcomeEmail = createServerFn({ method: "POST" })
     const email = (claims as { email?: string }).email;
     if (!email) return { sent: false, reason: "no-email" };
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("handle, welcome_email_sent_at")
-      .eq("id", userId)
-      .maybeSingle();
+    const [{ data: profile }, { data: priv }] = await Promise.all([
+      supabase.from("profiles").select("handle").eq("id", userId).maybeSingle(),
+      supabase.from("profile_private").select("welcome_email_sent_at").eq("user_id", userId).maybeSingle(),
+    ]);
 
-    if (profile?.welcome_email_sent_at) return { sent: false, reason: "already-sent" };
+    if (priv?.welcome_email_sent_at) return { sent: false, reason: "already-sent" };
 
     const { sendWelcomeEmailViaResend } = await import("@/lib/welcome-email.server");
     await sendWelcomeEmailViaResend(email, profile?.handle ?? email.split("@")[0]!);
 
     await supabase
-      .from("profiles")
+      .from("profile_private")
       .update({ welcome_email_sent_at: new Date().toISOString() })
-      .eq("id", userId);
+      .eq("user_id", userId);
 
     return { sent: true };
   });
