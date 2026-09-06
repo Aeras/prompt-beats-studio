@@ -46,6 +46,8 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => readUsage(context.supabase as unknown as Supa, context.userId));
 
+const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
+
 function buildPrompt(d: z.infer<typeof generateInput>) {
   return `Act as a top-tier music producer and expert in composition and orchestration. Your goal is to take the user's simple idea and transform it into a professional, structured, and optimized output for AI music platforms like Suno and Udio. Incorporate precise musical characteristics (genre, bpm, instruments, mood, song structure, and vocal style) while fully preserving the user's original intent.
 
@@ -67,32 +69,34 @@ Based on this, generate exactly three sections, formatted cleanly so the fronten
 Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
-async function callGemini(apiKey: string, prompt: string) {
-  // gemini-1.5-flash is retired on the API; these are its current successors.
-  const models = ["gemini-3.6-flash", "gemini-2.5-flash"];
-  let lastError = "AI request failed";
-  for (const model of models) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.9, responseMimeType: "application/json" },
-        }),
-      },
+async function callAnthropic(apiKey: string, prompt: string) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5",
+      max_tokens: 4096,
+      temperature: 0.9,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (res.ok) {
+    const payload = (await res.json()) as {
+      content?: { type: string; text?: string }[];
+    };
+    return (
+      payload.content
+        ?.filter((b) => b.type === "text")
+        .map((b) => b.text ?? "")
+        .join("") ?? ""
     );
-    if (res.ok) {
-      const payload = (await res.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      return payload.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    }
-    lastError = `${res.status}: ${(await res.text()).slice(0, 300)}`;
-    if (res.status !== 404 && res.status !== 400) break;
   }
-  throw new Error(lastError);
+  throw new Error(`${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
 
 function parseSections(raw: string) {
@@ -137,10 +141,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       return { error: "rate_limited" as const, status: 429, usage, result: null };
     }
 
-    const apiKey = process.env['GEMINI_API_KEY'];
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+    const apiKey = process.env['ANTHROPIC_API_KEY'];
+    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
-    const raw = await callGemini(apiKey, buildPrompt(data));
+    const raw = await callAnthropic(apiKey, buildPrompt(data));
     const result = parseSections(raw);
     if (!result.tags && !result.lyrics && !result.note) {
       throw new Error("The AI returned an empty response. Try again.");
