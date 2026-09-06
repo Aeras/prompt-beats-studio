@@ -3,13 +3,6 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-/** Server-side admin check via the has_role() security-definer function. */
-async function callerIsAdmin(supabase: {
-  rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => Promise<{ data: boolean | null }>;
-}): Promise<boolean> {
-  const { data } = await supabase.rpc("has_role", { _user_id: "", _role: "admin" });
-  return data === true;
-}
 
 /** Current user's moderation status: admin rights and ban state. */
 export const getMyModeration = createServerFn({ method: "GET" })
