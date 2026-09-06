@@ -156,12 +156,12 @@ export const checkSignupAvailability = createServerFn({ method: "GET" })
     let displayNameTaken = false;
 
     if (handle.length >= 3) {
-      const { data: row } = await supabase.from("profiles").select("id").eq("handle", handle).maybeSingle();
+      const { data: row } = await supabase.from("public_profiles").select("id").eq("handle", handle).maybeSingle();
       handleTaken = Boolean(row);
     }
     if (displayName.length >= 2) {
       const { data: rows } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id")
         .ilike("display_name", displayName)
         .limit(1);
