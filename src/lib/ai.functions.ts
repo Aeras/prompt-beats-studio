@@ -48,17 +48,21 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 function buildPrompt(d: z.infer<typeof generateInput>) {
   return `Act as a top-tier music producer and expert in composition and orchestration. Your goal is to take the user's simple idea and transform it into a professional, structured, and optimized output for AI music platforms like Suno and Udio. Incorporate precise musical characteristics (genre, bpm, instruments, mood, song structure, and vocal style) while fully preserving the user's original intent.
 
+STRICT FORMATTING RULES (non-negotiable):
+- All musical directions, structural tags, and non-sung elements (e.g., Intro, Chorus, Fade out, Guitar Solo) MUST be enclosed strictly in square brackets [ ], never in round parentheses ( ). This is critical so the music AI does not sing these instructions.
+- Always begin your response with a creative song title in the form "Title: <name>" — this comes at the very beginning, right before the Music Style and Lyrics.
+
 User's Core Idea: ${d.theme}
 Requested Genre: ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
 
 Based on this, generate exactly three sections, formatted cleanly so the frontend can parse them:
-1) **Style Prompt (Metatags):** Provide this ONLY in English. Output a highly optimized list of musical tags, instruments, vocal styles, and BPM (e.g., atmospheric synth-pop, melancholic male vocals, 115 BPM) optimized for Suno/Udio.
-2) **Lyrics & Structure:** Provide the complete lyrics strictly in ${d.language}. You must use precise structural brackets (e.g., [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Drop], [Outro]). Ensure professional rhythmic cadence, flow, and internal rhymes.
+1) **Style Prompt (Metatags):** Provide this ONLY in English. Output a highly optimized list of musical tags, instruments, vocal styles, and BPM (e.g., atmospheric synth-pop, melancholic male vocals, 115 BPM) optimized for Suno/Udio. Every tag or direction here must use square brackets where applicable, never round parentheses.
+2) **Lyrics & Structure:** Provide the complete lyrics strictly in ${d.language}. Every structural tag and non-sung direction must be in square brackets (e.g., [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Guitar Solo], [Bridge], [Drop], [Fade out], [Outro]) — NEVER round parentheses. Ensure professional rhythmic cadence, flow, and internal rhymes.
 3) **Producer's Note:** Provide a brief explanation strictly in ${d.language} explaining the musical, structural, and atmospheric choices you made to elevate the user's original idea.
 
-Return the result as strict JSON only, no markdown fences, with exactly these keys: {"tags": string, "lyrics": string, "note": string}.`;
+Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
 async function callGemini(apiKey: string, prompt: string) {
