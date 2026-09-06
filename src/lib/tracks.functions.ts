@@ -12,11 +12,12 @@ const trackInput = z.object({
   audio_type: z.enum(["link", "upload"]).default("upload"),
   audio_key: z.string().max(500).optional(),
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
+  cover_url: z.string().url().max(1000).optional(),
   is_published: z.boolean().default(true),
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, art_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 /** Public feed: published tracks with their creator handle. */
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {
@@ -97,6 +98,7 @@ export const createTrack = createServerFn({ method: "POST" })
       .insert({
         ...data,
         audio_key: data.audio_key ?? null,
+        cover_url: data.cover_url ?? null,
         duration_seconds: data.duration_seconds ?? null,
         user_id: context.userId,
       })

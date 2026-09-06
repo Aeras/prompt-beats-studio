@@ -92,7 +92,7 @@ function TrackPage() {
                         title: track.title,
                         handle: artist ? `@${artist.handle}` : "",
                         genre: track.genre,
-                        art: artist?.avatar_url ?? `https://i.pravatar.cc/120?u=${track.id}`,
+                        art: track.cover_url ?? artist?.avatar_url ?? `https://i.pravatar.cc/120?u=${track.id}`,
                         duration: "--:--",
                         plays: String(track.plays ?? 0),
                         prompt: track.prompt ?? "",

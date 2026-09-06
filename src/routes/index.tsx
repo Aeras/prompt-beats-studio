@@ -77,7 +77,7 @@ function Index() {
     title: t.title,
     handle: t.handle,
     genre: t.genre,
-    art: t.art_url ?? artFallback,
+    art: t.cover_url ?? t.art_url ?? artFallback,
     duration: formatDuration(t.duration_seconds),
     plays: String(t.plays),
     prompt: t.prompt,

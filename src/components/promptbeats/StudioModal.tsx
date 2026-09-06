@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2 } from "lucide-react";
+import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -12,6 +12,7 @@ import { useModeration } from "@/hooks/useModeration";
 type Row = {
   key: string;
   file: File | null;
+  cover: File | null;
   title: string;
   genre: string;
   prompt: string;
@@ -21,6 +22,7 @@ type Row = {
 const emptyRow = (): Row => ({
   key: Math.random().toString(36).slice(2),
   file: null,
+  cover: null,
   title: "",
   genre: "",
   prompt: "",
@@ -69,6 +71,19 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     return payload;
   };
 
+  const uploadCover = async (file: File): Promise<string> => {
+    if (!user) throw new Error("You must be signed in to upload a cover.");
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("track-covers").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (error) throw new Error(`Cover upload failed: ${error.message}`);
+    const { data } = supabase.storage.from("track-covers").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const uploadAll = async () => {
     if (!user) {
       onClose();
@@ -95,15 +110,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       const uploads = await Promise.all(
         rows.map(async (r) => {
           const payload = await uploadOne(r.file!, token);
+          const cover_url = r.cover ? await uploadCover(r.cover) : null;
           done += 1;
           setStatus(`Uploaded ${done}/${rows.length} file(s)…`);
-          return { row: r, payload };
+          return { row: r, payload, cover_url };
         }),
       );
 
       setStatus("Saving tracks…");
       await Promise.all(
-        uploads.map(({ row, payload }) =>
+        uploads.map(({ row, payload, cover_url }) =>
           createTrack({
             data: {
               title: row.title.trim(),
@@ -113,6 +129,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
               audio_url: payload.url!,
               audio_type: "upload",
               ...(payload.key ? { audio_key: payload.key } : {}),
+              ...(cover_url ? { cover_url } : {}),
               is_published: true,
             },
           }),
@@ -182,6 +199,31 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                 type="file"
                 accept=".mp3,.wav,audio/mpeg,audio/wav"
                 onChange={(e) => pickFile(r.key, e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+
+              <label
+                htmlFor={`pb-cover-${r.key}`}
+                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              >
+                {r.cover ? (
+                  <img
+                    src={URL.createObjectURL(r.cover)}
+                    alt={`Cover preview for track ${i + 1}`}
+                    className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/15"
+                  />
+                ) : (
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                )}
+                <span className="truncate">
+                  {r.cover ? r.cover.name : "Upload cover art (optional) — JPG / PNG / WebP"}
+                </span>
+              </label>
+              <input
+                id={`pb-cover-${r.key}`}
+                type="file"
+                accept="image/*"
+                onChange={(e) => update(r.key, { cover: e.target.files?.[0] ?? null })}
                 className="hidden"
               />
 
