@@ -72,10 +72,15 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       let avatarUrl: string | undefined;
       if (avatarFile) {
         const ext = avatarFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-        const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true });
-        if (upErr) throw new Error(upErr.message);
-        const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+        const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, avatarFile, { upsert: true, contentType: avatarFile.type });
+        if (upErr) {
+          toast.error("Upload failed - Check storage permissions", { description: upErr.message });
+          throw new Error("Avatar upload failed. Please try another image.");
+        }
+        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
         avatarUrl = data.publicUrl;
       }
       const nextAvatar = avatarUrl ?? profile.avatar_url;
