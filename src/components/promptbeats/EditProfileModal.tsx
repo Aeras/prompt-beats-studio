@@ -75,6 +75,23 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     };
   }, [setPlayerMode]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const trackPlayers = Array.from(document.querySelectorAll<HTMLAudioElement>("audio[controls]"));
+    const previousVisibility = trackPlayers.map((player) => player.style.visibility);
+
+    trackPlayers.forEach((player) => {
+      player.style.visibility = "hidden";
+    });
+
+    return () => {
+      trackPlayers.forEach((player, index) => {
+        player.style.visibility = previousVisibility[index] ?? "";
+      });
+    };
+  }, [open]);
+
   if (!user || user.id !== profile.id) return null;
 
   const pickAvatar = (file: File | null) => {
