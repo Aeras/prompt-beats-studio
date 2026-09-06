@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Play, Pause, Copy, Check, ChevronDown, Heart, ExternalLink } from "lucide-react";
+import { Play, Pause, Copy, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
+import { LikeButton } from "@/components/promptbeats/LikeButton";
+import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 
 export function TrackCard({
   track,
