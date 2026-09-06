@@ -11,10 +11,13 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   repairSongPrompt,
+  getAiModelSetting,
+  setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
 } from "@/lib/ai.functions";
 import { getMyModeration } from "@/lib/moderation.functions";
+import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -528,8 +531,8 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
-            {moderation?.isAdmin && (
-              <QualityDebugPanel
+            {(
+              <QualityPanel
                 quality={quality}
                 canRepair={hasQualityIssues(quality) && !repaired}
                 repairing={repairing}
