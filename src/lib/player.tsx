@@ -106,24 +106,84 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     else el.pause();
   }, [current]);
 
+  const pickShuffled = useCallback(() => {
+    if (queue.length === 0) return null;
+    if (queue.length === 1) return queue[0] ?? null;
+    let pool = queue.filter((t) => !playedRef.current.has(t.id) && t.id !== current?.id);
+    if (pool.length === 0) {
+      // Exhausted the queue — start a new shuffle cycle.
+      playedRef.current = new Set(current ? [current.id] : []);
+      pool = queue.filter((t) => t.id !== current?.id);
+    }
+    if (pool.length === 0) return current;
+    return pool[Math.floor(Math.random() * pool.length)] ?? null;
+  }, [queue, current]);
+
+  const goTo = useCallback(
+    (track: Track | null | undefined, pushHistory = true) => {
+      if (!track) return;
+      if (pushHistory && current) historyRef.current.push(current.id);
+      playedRef.current.add(track.id);
+      start(track);
+    },
+    [current, start],
+  );
+
   const step = useCallback(
     (dir: 1 | -1) => {
       if (!current || queue.length === 0) return;
+      if (dir === -1) {
+        if (shuffle) {
+          const prevId = historyRef.current.pop();
+          const prevTrack = prevId ? queue.find((t) => t.id === prevId) : null;
+          if (prevTrack) {
+            playedRef.current.add(prevTrack.id);
+            start(prevTrack);
+            return;
+          }
+        }
+        const i = queue.findIndex((t) => t.id === current.id);
+        goTo(queue[(Math.max(i, 0) - 1 + queue.length) % queue.length], false);
+        return;
+      }
+      if (shuffle) {
+        goTo(pickShuffled());
+        return;
+      }
       const i = queue.findIndex((t) => t.id === current.id);
-      const target = queue[(Math.max(i, 0) + dir + queue.length) % queue.length];
-      if (target) start(target);
+      goTo(queue[(Math.max(i, 0) + 1) % queue.length]);
     },
-    [current, queue, start],
+    [current, queue, shuffle, pickShuffled, goTo, start],
   );
 
-  // Auto-advance to the next queued track.
+  // Auto-advance when a track ends, honouring repeat + shuffle.
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    const onEnded = () => step(1);
+    const onEnded = () => {
+      if (!current) return;
+      if (repeat === "one") {
+        el.currentTime = 0;
+        void el.play().catch(() => setPlaying(false));
+        return;
+      }
+      if (queue.length === 0) return;
+      if (shuffle) {
+        goTo(pickShuffled());
+        return;
+      }
+      const i = queue.findIndex((t) => t.id === current.id);
+      const isLast = i === queue.length - 1 || i === -1;
+      if (isLast) {
+        if (repeat === "all") goTo(queue[0]);
+        return; // repeat off: stop at the end
+      }
+      goTo(queue[i + 1]);
+    };
     el.addEventListener("ended", onEnded);
     return () => el.removeEventListener("ended", onEnded);
-  }, [step]);
+  }, [current, queue, shuffle, repeat, goTo, pickShuffled]);
+
 
   const seek = useCallback((seconds: number) => {
     const el = audioRef.current;
