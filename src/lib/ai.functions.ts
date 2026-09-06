@@ -128,21 +128,32 @@ Return the result as strict JSON only, no markdown fences, with exactly these ke
 }
 
 /**
- * Provider-agnostic model call used by the whole pipeline.
- * The concrete provider (Gemini / Anthropic) is resolved server-side and the
- * shared prompts below are handed to it unchanged.
+ * Provider-agnostic model call signature. The concrete provider (Gemini /
+ * Anthropic) is resolved server-side in `ai-provider.server.ts`; the shared
+ * prompts below are handed to whichever provider is active, unchanged.
  */
-async function aiCall(
-  call: (c: {
-    system: string;
-    prompt: string;
-    maxTokens?: number;
-    schema?: Record<string, unknown>;
-  }) => Promise<{ text: string; stopReason: string | null }>,
-  args: { system: string; prompt: string; maxTokens?: number; schema?: Record<string, unknown> },
-) {
-  return call(args);
+type ModelCall = {
+  system: string;
+  prompt: string;
+  maxTokens?: number;
+  schema?: Record<string, unknown>;
+};
+type ModelCaller = (call: ModelCall) => Promise<{ text: string; stopReason: string | null }>;
+
+/** Loads the provider layer (server-only) and binds it to the active model. */
+async function activeCaller(): Promise<{ call: ModelCaller; model: string; schemas: {
+  song: Record<string, unknown>;
+  quality: Record<string, unknown>;
+} }> {
+  const provider = await import("@/lib/ai-provider.server");
+  const model = await provider.getActiveModel();
+  return {
+    call: provider.modelCaller(model),
+    model,
+    schemas: { song: provider.SONG_SCHEMA, quality: provider.QUALITY_SCHEMA },
+  };
 }
+
 
 
 function parseSections(raw: string) {
