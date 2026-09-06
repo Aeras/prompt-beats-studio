@@ -14,6 +14,7 @@ import { Route as HandleRouteImport } from './routes/$handle'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
@@ -45,6 +46,11 @@ const GenerateRoute = GenerateRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrendingRoute = TrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
+  '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
+  '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/onboarding': typeof OnboardingRoute
+  '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/generate'
     | '/onboarding'
+    | '/trending'
     | '/api/upload'
     | '/artist/$id'
     | '/track/$id'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/generate'
     | '/onboarding'
+    | '/trending'
     | '/api/upload'
     | '/artist/$id'
     | '/track/$id'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/generate'
     | '/onboarding'
+    | '/trending'
     | '/api/upload'
     | '/artist/$id'
     | '/track/$id'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   GenerateRoute: typeof GenerateRoute
   OnboardingRoute: typeof OnboardingRoute
+  TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
   TrackIdRoute: typeof TrackIdRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trending': {
+      id: '/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof TrendingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload': {
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   GenerateRoute: GenerateRoute,
   OnboardingRoute: OnboardingRoute,
+  TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
   TrackIdRoute: TrackIdRoute,
