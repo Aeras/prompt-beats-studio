@@ -111,21 +111,22 @@ async function callAnthropic(apiKey: string, prompt: string) {
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     }),
   });
   if (res.ok) {
     const payload = (await res.json()) as {
+      stop_reason?: string | null;
       content?: { type: string; text?: string }[];
     };
-    return (
+    const text =
       payload.content
         ?.filter((b) => b.type === "text")
         .map((b) => b.text ?? "")
-        .join("") ?? ""
-    );
+        .join("") ?? "";
+    return { text, stopReason: payload.stop_reason ?? null };
   }
   throw new Error(`${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
