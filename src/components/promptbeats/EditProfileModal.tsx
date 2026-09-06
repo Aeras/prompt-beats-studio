@@ -97,11 +97,14 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         donation_url: paypal || revolut || null,
         donation_custom_name: null,
       };
-      const { error: profileError } = await supabase
+      const { data: savedProfile, error: profileError } = await supabase
         .from("profiles")
         .update(profilePatch)
-        .eq("id", user.id);
+        .eq("id", user.id)
+        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
+        .single();
       if (profileError) throw profileError;
+      if (!savedProfile) throw new Error("Profile update returned no saved profile");
 
       queryClient.setQueriesData(
         {
@@ -114,15 +117,18 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           if (!current || typeof current !== "object" || !("profile" in current)) return current;
           const result = current as { profile: EditableProfile | null; tracks?: unknown[] };
           if (result.profile?.id !== user.id) return current;
-          return { ...result, profile: { ...result.profile, ...profilePatch } };
+          return { ...result, profile: { ...result.profile, ...savedProfile } };
         },
       );
-      window.dispatchEvent(new CustomEvent("promptbeats:profile-updated", { detail: profilePatch }));
+      window.dispatchEvent(new CustomEvent("promptbeats:profile-updated", { detail: savedProfile }));
       await queryClient.invalidateQueries({ refetchType: "active" });
       toast.success("Profile updated");
       setOpen(false);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message =
+        typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
+          ? error.message
+          : String(error);
       console.error("Avatar/profile update failed:", error);
       setError(message);
       toast.error(message);
