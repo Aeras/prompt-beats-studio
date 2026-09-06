@@ -218,13 +218,6 @@ function Index() {
         </main>
       </div>
 
-      <PlayerBar
-        track={current}
-        playing={playing}
-        onToggle={() => setPlaying((p) => !p)}
-        onNext={() => step(1)}
-        onPrev={() => step(-1)}
-      />
 
       {/* Mobile bottom tabs */}
       <nav className="glass-strong fixed inset-x-0 bottom-[124px] z-30 border-t sm:hidden">
