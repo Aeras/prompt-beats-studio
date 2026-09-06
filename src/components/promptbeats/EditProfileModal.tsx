@@ -173,17 +173,17 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           role="dialog"
           aria-modal="true"
           aria-label="Edit profile"
-          onClick={() => !busy && setOpen(false)}
+          onClick={() => closeModal()}
         >
           <div
-            className="glass-strong w-full max-w-md rounded-3xl p-6"
+            className="glass-strong max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-display text-lg font-bold">Edit profile</h2>
               <button
                 aria-label="Close"
-                onClick={() => !busy && setOpen(false)}
+                onClick={() => closeModal()}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="h-4 w-4" />
