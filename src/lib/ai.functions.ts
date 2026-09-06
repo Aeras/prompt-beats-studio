@@ -108,7 +108,11 @@ Generate exactly three sections:
 Return the result as strict JSON only, no markdown fences, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. The "title" value is just the song name itself (without the "Title:" prefix).`;
 }
 
-async function callAnthropic(apiKey: string, prompt: string) {
+async function callAnthropic(
+  apiKey: string,
+  prompt: string,
+  opts?: { system?: string; maxTokens?: number },
+) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -118,11 +122,12 @@ async function callAnthropic(apiKey: string, prompt: string) {
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      max_tokens: opts?.maxTokens ?? 8192,
+      system: opts?.system ?? SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     }),
   });
+
   if (res.ok) {
     const payload = (await res.json()) as {
       stop_reason?: string | null;
@@ -170,6 +175,91 @@ function parseSections(raw: string) {
   return { title, tags: sections.tags, lyrics: sections.lyrics, note: sections.note };
 }
 
+const issueList = z.array(z.string().trim().min(1).max(600)).max(30);
+
+const qualityOutput = z.object({
+  passed: z.boolean(),
+  score: z.number().min(0).max(10),
+  issues: issueList,
+  languageIssues: issueList,
+  grammarIssues: issueList,
+  singabilityIssues: issueList,
+  genreIssues: issueList,
+  consistencyIssues: issueList,
+});
+
+export type QualityReport = z.infer<typeof qualityOutput>;
+
+const QUALITY_SYSTEM_PROMPT = `You are a professional music editor, lyric editor and producer acting as a QUALITY EVALUATOR. You are an EDITOR, never a songwriter: you never rewrite lyrics, never propose replacement lines, never invent content and never change the creative direction. You only identify genuine problems.
+
+You output STRICT JSON ONLY — no markdown fences, no commentary, no reasoning, nothing outside the JSON object. The response must parse with JSON.parse and contain exactly these keys:
+{"passed": boolean, "score": number, "issues": string[], "languageIssues": string[], "grammarIssues": string[], "singabilityIssues": string[], "genreIssues": string[], "consistencyIssues": string[]}
+
+"score" is 0-10 (10 = flawless, production-ready). "passed" is true when the song is sufficiently clean to ship: minor stylistic imperfections, poetic licence or personal taste must NOT fail a good song. Set "passed" to false only for real defects (broken grammar, wrong or contaminated language, unsingable phrasing, wrong genre/mood, contradictions between sections).
+
+Distinguish carefully between:
+A) real errors that should be corrected — broken syntax, incomplete phrases, wrong verb tense that changes the intended meaning, non-idiomatic or nonsensical wording, foreign-script contamination, structural formatting mistakes, genre or mood mismatch, contradictions between Style Prompt, Lyrics and Producer's Note;
+B) acceptable creative choices — metaphors, imagery, chorus repetition, slang, dialect, genre conventions, deliberate fragments used as a hook, unconventional but intentional phrasing. NEVER flag category B.
+
+LANGUAGE INTEGRITY IS STRICT:
+- The sung lyrics must be entirely in the requested language, apart from legitimate unavoidable loanwords or established genre terminology.
+- Any accidental foreign script (e.g. Chinese characters such as 音 inside Russian lyrics, Cyrillic inside Greek lyrics, non-Latin script inside English or Spanish lyrics) is always a language issue, including when it appears inside a structural direction.
+- Structural production directions inside square brackets [ ] are allowed and are NOT lyric-language contamination by themselves; only flag them if the actual sung content is in the wrong language or the bracket content contains stray foreign script or malformed tags.
+- Round parentheses used for structural/non-sung directions instead of square brackets are a structural formatting issue.
+
+Report each finding as one short, concrete sentence quoting the offending fragment. Never expose your reasoning process. Use empty arrays where there is nothing to report.`;
+
+function buildQualityPrompt(
+  d: z.infer<typeof generateInput>,
+  r: z.infer<typeof generationOutput>,
+) {
+  return `Evaluate the generated song below against the user's original constraints.
+
+ORIGINAL USER CONSTRAINTS
+Core Idea: ${d.theme}
+Requested Genre(s): ${d.genre}
+Requested Mood: ${d.mood}
+Requested Language: ${d.language}
+
+GENERATED TITLE
+${r.title}
+
+GENERATED STYLE PROMPT (TAGS)
+${r.tags}
+
+GENERATED LYRICS
+${r.lyrics}
+
+GENERATED PRODUCER'S NOTE
+${r.note}
+
+Check: requested language integrity of the sung lyrics, foreign-language/script contamination, grammar and natural phrasing, singability and cadence against the implied tempo and flow, structural formatting (square brackets for all non-sung directions), genre authenticity and mood fit, faithfulness to the core idea, and consistency between the Style Prompt, the Lyrics and the Producer's Note. Also flag obviously generic or awkward wording.
+
+Return the strict JSON object only.`;
+}
+
+async function runQualityCheck(
+  apiKey: string,
+  d: z.infer<typeof generateInput>,
+  r: z.infer<typeof generationOutput>,
+): Promise<QualityReport | null> {
+  try {
+    const { text, stopReason } = await callAnthropic(apiKey, buildQualityPrompt(d, r), {
+      system: QUALITY_SYSTEM_PROMPT,
+      maxTokens: 2048,
+    });
+    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") return null;
+    const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end <= start) return null;
+    const parsed = qualityOutput.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export const generateSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => generateInput.parse(input))
@@ -177,7 +267,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     const supabase = context.supabase as unknown as Supa;
     const usage = await readUsage(supabase, context.userId);
     if (usage.remaining <= 0) {
-      return { error: "rate_limited" as const, status: 429, usage, result: null };
+      return { error: "rate_limited" as const, status: 429, usage, result: null, quality: null };
     }
 
     const apiKey = process.env['ANTHROPIC_API_KEY'];
@@ -197,10 +287,21 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
+    // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
+    const quality = await runQualityCheck(apiKey, data, result.data);
+
     await supabase.from("ai_generations").insert({ user_id: context.userId });
     const after = await readUsage(supabase, context.userId);
-    return { error: null, status: 200, usage: after, result: result.data, remainingGenerations: after.remaining };
+    return {
+      error: null,
+      status: 200,
+      usage: after,
+      result: result.data,
+      quality,
+      remainingGenerations: after.remaining,
+    };
   });
+
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
