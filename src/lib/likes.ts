@@ -16,10 +16,15 @@ export function useLikes(trackId: string, enabled = true) {
     queryKey: key,
     enabled,
     queryFn: async () => {
-      // Public like counts come from a count-only function; the likes table
-      // itself is only readable for the signed-in user's own rows.
-      const { data: countData } = await supabase.rpc("like_count", { _track_id: trackId });
-      const count = typeof countData === "number" ? countData : 0;
+      // Public like totals come from a count-only view; who liked what is never
+      // exposed (the likes table only reveals the signed-in user's own rows).
+      const { data: countData } = await supabase
+        .from("track_like_counts")
+        .select("like_count")
+        .eq("track_id", trackId)
+        .maybeSingle();
+      const raw = (countData as { like_count: number | string | null } | null)?.like_count;
+      const count = raw == null ? 0 : Number(raw);
       let liked = false;
       if (userId) {
         const { data } = await supabase
