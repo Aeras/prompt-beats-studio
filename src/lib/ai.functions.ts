@@ -393,3 +393,117 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Package 2C — Admin-only manual AI Repair (experimental, never automatic).
+// One click = exactly one repair call + one mandatory post-repair quality check.
+// No retries, no loops, no persistence, no schema changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Provider indirection: swapping the repair model/provider later means changing
+// only this function, not the generator.
+async function callRepairModel(apiKey: string, system: string, prompt: string) {
+  return callAnthropic(apiKey, prompt, { system, maxTokens: 8192 });
+}
+
+const REPAIR_SYSTEM_PROMPT = `You are a professional song EDITOR performing a targeted repair pass. You are not a new songwriter.
+
+Rules:
+- Fix ONLY the problems listed in the quality report. Everything else stays byte-for-byte as provided.
+- Preserve the core idea, genre identity, mood, language, narrative, song structure, section markers, and every line that has no reported problem.
+- Prefer the smallest possible edit: repair the offending phrase or line, not the whole verse or song.
+- For grammar issues, correct only the faulty wording. For consistency issues, adjust the minimal detail that resolves the contradiction. For language contamination, replace only the unintended foreign-language content with correct wording in the requested language.
+- Never change the requested language. Never add new sections. Never invent an unrelated storyline.
+- Keep the same tone and register of the original writing.
+
+You output STRICT JSON ONLY — no markdown fences, no commentary, nothing outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
+
+function buildRepairPrompt(
+  d: z.infer<typeof generateInput>,
+  r: z.infer<typeof generationOutput>,
+  q: QualityReport,
+) {
+  const list = (label: string, items: string[]) =>
+    items.length ? `${label}:\n${items.map((i) => `- ${i}`).join("\n")}` : `${label}: none`;
+  return `Repair the generated song below using the quality report. Change only what the report identifies.
+
+ORIGINAL USER CONSTRAINTS
+Core Idea: ${d.theme}
+Requested Genre(s): ${d.genre}
+Requested Mood: ${d.mood}
+Requested Language: ${d.language}
+
+CURRENT TITLE
+${r.title}
+
+CURRENT STYLE PROMPT (TAGS)
+${r.tags}
+
+CURRENT LYRICS
+${r.lyrics}
+
+CURRENT PRODUCER'S NOTE
+${r.note}
+
+QUALITY REPORT
+Passed: ${q.passed}
+Score: ${q.score}/10
+${list("General issues", q.issues)}
+${list("Language issues", q.languageIssues)}
+${list("Grammar issues", q.grammarIssues)}
+${list("Singability issues", q.singabilityIssues)}
+${list("Genre issues", q.genreIssues)}
+${list("Consistency issues", q.consistencyIssues)}
+
+Return the full repaired song as strict JSON only, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. Unchanged parts must be returned exactly as they are now.`;
+}
+
+const repairInput = z.object({
+  theme: generateInput.shape.theme,
+  genre: generateInput.shape.genre,
+  mood: generateInput.shape.mood,
+  language: generateInput.shape.language,
+  result: generationOutput,
+  quality: qualityOutput,
+});
+
+/**
+ * Admin-only manual repair. Authorization comes from the existing server-side
+ * has_role(userId, 'admin') security-definer RPC through the authenticated
+ * Supabase client — never from client-supplied data.
+ */
+export const repairSongPrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => repairInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
+
+    const apiKey = process.env['ANTHROPIC_API_KEY'];
+    if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+
+    const constraints = {
+      theme: data.theme,
+      genre: data.genre,
+      mood: data.mood,
+      language: data.language,
+    };
+
+    const { text, stopReason } = await callRepairModel(
+      apiKey,
+      REPAIR_SYSTEM_PROMPT,
+      buildRepairPrompt(constraints, data.result, data.quality),
+    );
+    if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
+    if (stopReason !== "end_turn" && stopReason !== "stop_sequence") {
+      throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
+    }
+
+    const repaired = generationOutput.safeParse(parseSections(text));
+    if (!repaired.success) throw new Error("The repair returned an invalid response. Please try again.");
+
+    // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
+    const quality = await runQualityCheck(apiKey, constraints, repaired.data);
+
+    return { result: repaired.data, quality };
+  });
