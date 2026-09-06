@@ -177,7 +177,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
           onClick={() => closeModal()}
         >
           <div
-            className="glass-strong max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl p-6"
+            className="glass-strong relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
