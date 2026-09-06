@@ -77,7 +77,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     if (!profile) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
-      .select("id, title, genre, prompt, audio_url, audio_type, created_at")
+      .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
