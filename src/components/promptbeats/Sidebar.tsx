@@ -40,9 +40,13 @@ export function SidebarNav({
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-5 pb-28">
       <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-neon glow-neon">
-          <Sparkles className="h-5 w-5 text-primary-foreground" />
-        </div>
+        <img
+          src={logoAsset.url}
+          alt="PromptBeats logo"
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-xl glow-neon"
+        />
         <div className="min-w-0">
           <p className="truncate font-display text-lg font-bold tracking-tight">PromptBeats</p>
           <p className="truncate text-[11px] text-muted-foreground">promptbeats.app</p>
