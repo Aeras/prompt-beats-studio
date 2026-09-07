@@ -27,13 +27,20 @@ export type ModelResult = {
   text: string;
   /** Normalized: "end_turn" (complete), "max_tokens" (truncated), or other. */
   stopReason: string | null;
+  /** Provider-reported token usage; null when the provider did not report it. */
+  usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null } | null;
+  /** The provider that actually served this request. */
+  provider: string;
+  /** The model that actually served this request. */
+  model: string;
 };
 
 export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
-function providerOf(model: string) {
+export function providerOf(model: string) {
   return AI_MODELS.find((m) => m.id === model)?.provider ?? "gemini";
 }
+
 
 async function callAnthropic(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
