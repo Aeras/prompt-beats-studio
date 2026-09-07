@@ -439,12 +439,17 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       model,
     });
 
-    const { data: inserted } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from("ai_generations")
       .insert({ user_id: context.userId })
       .select("id")
       .maybeSingle();
+    if (insertError) {
+      await flushUsage(context.userId, null, records);
+      throw new Error(`The generation could not be recorded (${insertError.message}). Please try again.`);
+    }
     const generationId = (inserted as { id?: string } | null)?.id ?? null;
+
     await flushUsage(context.userId, generationId, records);
     // Server-side usage visibility of which model served the request.
     console.log(`[ai] generation served by model=${model}`);

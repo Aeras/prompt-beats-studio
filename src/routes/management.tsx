@@ -84,7 +84,14 @@ function Table({ title, rows }: { title: string; rows: Breakdown[] }) {
                 <td className="px-4 py-2">{num(r.requests)}</td>
                 <td className="px-4 py-2">{num(r.inputTokens)}</td>
                 <td className="px-4 py-2">{num(r.outputTokens)}</td>
-                <td className="px-4 py-2">{usd(r.costUsd)}</td>
+                <td className="px-4 py-2">
+                  {usd(r.costUsd)}
+                  {r.unknownCostRequests > 0 && (
+                    <span className="ml-1 text-[11px] text-muted-foreground">
+                      (+{num(r.unknownCostRequests)} N/A)
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2">{num(r.failures)}</td>
               </tr>
             ))}
@@ -165,7 +172,11 @@ function ManagementPage() {
                 icon={Coins}
                 label="Estimated cost"
                 value={usd(data.totals.costUsd)}
-                sub={`${usd(data.forecast.monthly)} / month at this pace`}
+                sub={
+                  data.totals.unknownCostRequests > 0
+                    ? `${usd(data.forecast.monthly)} / month at this pace · ${num(data.totals.unknownCostRequests)} requests with unknown pricing (N/A)`
+                    : `${usd(data.forecast.monthly)} / month at this pace`
+                }
               />
               <Stat
                 icon={Cpu}

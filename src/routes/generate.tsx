@@ -248,14 +248,14 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
-  // Admin-only manual repair state (never triggered automatically).
+  // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
   const [repaired, setRepaired] = useState<{
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
-  // Links repair usage to the originating generation in admin analytics.
+  // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
@@ -336,7 +336,7 @@ function GeneratePage() {
     }
   };
 
-  // Manual, admin-only: exactly one repair request per click, no retries.
+  // Manual: exactly one repair request per click, no retries.
   const repair = async () => {
     if (!result || !quality) return;
     setRepairing(true);
