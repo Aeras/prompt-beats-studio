@@ -6,6 +6,7 @@
  */
 export const AI_MODELS = [
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "gemini" },
+  { id: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview", provider: "gemini" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview", provider: "gemini" },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic" },
 ] as const;
