@@ -559,6 +559,8 @@ const repairInput = z.object({
   language: generateInput.shape.language,
   result: generationOutput,
   quality: qualityOutput,
+  /** Optional: links repair usage to the originating generation for analytics. */
+  generationId: z.string().uuid().nullish(),
 });
 
 /**
@@ -568,8 +570,10 @@ const repairInput = z.object({
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
-  .handler(async ({ data }) => {
-    const { call, schemas } = await activeCaller();
+  .handler(async ({ data, context }) => {
+    const { call, model, provider, schemas } = await activeCaller();
+    const generationId = data.generationId ?? null;
+    const records: PendingUsage[] = [];
 
     const constraints = {
       theme: data.theme,
@@ -578,26 +582,56 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       language: data.language,
     };
 
-    const { text, stopReason } = await call({
-      system: REPAIR_SYSTEM_PROMPT,
-      prompt: buildRepairPrompt(constraints, data.result, data.quality),
-      maxTokens: 8192,
-      schema: schemas.song,
+    let repairRes: ModelResult;
+    try {
+      repairRes = await call({
+        system: REPAIR_SYSTEM_PROMPT,
+        prompt: buildRepairPrompt(constraints, data.result, data.quality),
+        maxTokens: 8192,
+        schema: schemas.song,
+      });
+    } catch (err) {
+      await flushUsage(context.userId, generationId, [
+        { operation: "repair", provider, model, usage: null, success: false },
+      ]);
+      throw err;
+    }
+
+    const { text, stopReason } = repairRes;
+    const repairOk = stopReason === "end_turn";
+    records.push({
+      operation: "repair",
+      provider: repairRes.provider,
+      model: repairRes.model,
+      usage: repairRes.usage,
+      success: repairOk,
     });
-    if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
-    if (stopReason !== "end_turn") {
+
+    if (!repairOk) {
+      await flushUsage(context.userId, generationId, records);
+      if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
       throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
     const repaired = generationOutput.safeParse(parseSections(text));
-    if (!repaired.success) throw new Error("The repair returned an invalid response. Please try again.");
+    if (!repaired.success) {
+      await flushUsage(context.userId, generationId, records);
+      throw new Error("The repair returned an invalid response. Please try again.");
+    }
 
     // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data);
+    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data, {
+      operation: "post_repair_quality_check",
+      records,
+      provider,
+      model,
+    });
 
+    await flushUsage(context.userId, generationId, records);
 
     return { result: repaired.data, quality };
   });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Super Admin: server-authoritative provider/model selection.
