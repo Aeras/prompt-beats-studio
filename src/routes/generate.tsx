@@ -255,7 +255,10 @@ function GeneratePage() {
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
+  // Links repair usage to the originating generation in admin analytics.
+  const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -323,7 +326,9 @@ function GeneratePage() {
         return;
       }
       setResult(res.result);
+      setGenerationId(res.generationId ?? null);
       setQuality(res.quality ?? null);
+
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -345,6 +350,8 @@ function GeneratePage() {
           language: effectiveLanguage,
           result,
           quality,
+          generationId,
+
         },
       });
       setRepaired(res);

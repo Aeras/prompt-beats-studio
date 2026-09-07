@@ -139,10 +139,41 @@ type ModelCall = {
   maxTokens?: number;
   schema?: Record<string, unknown>;
 };
-type ModelCaller = (call: ModelCall) => Promise<{ text: string; stopReason: string | null }>;
+type NormalizedUsage = {
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+};
+type ModelResult = {
+  text: string;
+  stopReason: string | null;
+  usage: NormalizedUsage | null;
+  provider: string;
+  model: string;
+};
+type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
+
+type AiOperation = "generate" | "quality_check" | "repair" | "post_repair_quality_check";
+
+/** One usage record per actual provider request, buffered until the generation id is known. */
+type PendingUsage = {
+  operation: AiOperation;
+  provider: string;
+  model: string;
+  usage: NormalizedUsage | null;
+  success: boolean;
+};
+
+async function flushUsage(userId: string, generationId: string | null, records: PendingUsage[]) {
+  if (!records.length) return;
+  const { recordAiUsage } = await import("@/lib/ai-usage.server");
+  for (const r of records) {
+    await recordAiUsage({ ...r, userId, generationId });
+  }
+}
 
 /** Loads the provider layer (server-only) and binds it to the active model. */
-async function activeCaller(): Promise<{ call: ModelCaller; model: string; schemas: {
+async function activeCaller(): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
   song: Record<string, unknown>;
   quality: Record<string, unknown>;
 } }> {
@@ -151,9 +182,11 @@ async function activeCaller(): Promise<{ call: ModelCaller; model: string; schem
   return {
     call: provider.modelCaller(model),
     model,
+    provider: provider.providerOf(model),
     schemas: { song: provider.SONG_SCHEMA, quality: provider.QUALITY_SCHEMA },
   };
 }
+
 
 
 
@@ -290,15 +323,27 @@ async function runQualityCheck(
   schema: Record<string, unknown>,
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
+  sink?: { operation: AiOperation; records: PendingUsage[]; provider: string; model: string },
 ): Promise<QualityReport | null> {
   try {
-    const { text, stopReason } = await call({
+    const res = await call({
       system: QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(d, r),
       maxTokens: 2048,
       schema,
     });
-    if (stopReason !== "end_turn") return null;
+    const { text, stopReason } = res;
+    const ok = stopReason === "end_turn";
+    if (sink) {
+      sink.records.push({
+        operation: sink.operation,
+        provider: res.provider,
+        model: res.model,
+        usage: res.usage,
+        success: ok,
+      });
+    }
+    if (!ok) return null;
     const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
@@ -306,6 +351,15 @@ async function runQualityCheck(
     const parsed = qualityOutput.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
     return parsed.success ? parsed.data : null;
   } catch {
+    if (sink) {
+      sink.records.push({
+        operation: sink.operation,
+        provider: sink.provider,
+        model: sink.model,
+        usage: null,
+        success: false,
+      });
+    }
     return null;
   }
 }
@@ -324,31 +378,67 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     }
 
     // Provider/model is resolved server-side only; clients cannot influence it.
-    const { call, model, schemas } = await activeCaller();
+    const { call, model, provider, schemas } = await activeCaller();
 
-    const { text: raw, stopReason } = await call({
-      system: SYSTEM_PROMPT,
-      prompt: buildPrompt(data),
-      maxTokens: 8192,
-      schema: schemas.song,
-    });
-    if (stopReason === "max_tokens") {
-      throw new Error("The AI response was incomplete. Please try again.");
+    // Analytics only observes real provider responses; it never adds a call.
+    const records: PendingUsage[] = [];
+
+    let generated: ModelResult;
+    try {
+      generated = await call({
+        system: SYSTEM_PROMPT,
+        prompt: buildPrompt(data),
+        maxTokens: 8192,
+        schema: schemas.song,
+      });
+    } catch (err) {
+      // Provider failed before returning usage — record the failure, no token guesses.
+      await flushUsage(context.userId, null, [
+        { operation: "generate", provider, model, usage: null, success: false },
+      ]);
+      throw err;
     }
-    if (stopReason !== "end_turn") {
+
+    const { text: raw, stopReason } = generated;
+    const generateOk = stopReason === "end_turn";
+    records.push({
+      operation: "generate",
+      provider: generated.provider,
+      model: generated.model,
+      usage: generated.usage,
+      success: generateOk,
+    });
+
+    if (!generateOk) {
+      await flushUsage(context.userId, null, records);
+      if (stopReason === "max_tokens") {
+        throw new Error("The AI response was incomplete. Please try again.");
+      }
       throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
     const parsed = parseSections(raw);
     const result = generationOutput.safeParse(parsed);
     if (!result.success) {
+      await flushUsage(context.userId, null, records);
       throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
     // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(call, schemas.quality, data, result.data);
+    const quality = await runQualityCheck(call, schemas.quality, data, result.data, {
+      operation: "quality_check",
+      records,
+      provider,
+      model,
+    });
 
-    await supabase.from("ai_generations").insert({ user_id: context.userId });
+    const { data: inserted } = await supabase
+      .from("ai_generations")
+      .insert({ user_id: context.userId })
+      .select("id")
+      .maybeSingle();
+    const generationId = (inserted as { id?: string } | null)?.id ?? null;
+    await flushUsage(context.userId, generationId, records);
     // Server-side usage visibility of which model served the request.
     console.log(`[ai] generation served by model=${model}`);
     const after = await usageFor(supabase, context.userId);
@@ -359,8 +449,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       result: result.data,
       quality,
       remainingGenerations: after.remaining,
+      generationId,
     };
   });
+
 
 
 
@@ -467,6 +559,8 @@ const repairInput = z.object({
   language: generateInput.shape.language,
   result: generationOutput,
   quality: qualityOutput,
+  /** Optional: links repair usage to the originating generation for analytics. */
+  generationId: z.string().uuid().nullish(),
 });
 
 /**
@@ -476,8 +570,10 @@ const repairInput = z.object({
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
-  .handler(async ({ data }) => {
-    const { call, schemas } = await activeCaller();
+  .handler(async ({ data, context }) => {
+    const { call, model, provider, schemas } = await activeCaller();
+    const generationId = data.generationId ?? null;
+    const records: PendingUsage[] = [];
 
     const constraints = {
       theme: data.theme,
@@ -486,26 +582,56 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       language: data.language,
     };
 
-    const { text, stopReason } = await call({
-      system: REPAIR_SYSTEM_PROMPT,
-      prompt: buildRepairPrompt(constraints, data.result, data.quality),
-      maxTokens: 8192,
-      schema: schemas.song,
+    let repairRes: ModelResult;
+    try {
+      repairRes = await call({
+        system: REPAIR_SYSTEM_PROMPT,
+        prompt: buildRepairPrompt(constraints, data.result, data.quality),
+        maxTokens: 8192,
+        schema: schemas.song,
+      });
+    } catch (err) {
+      await flushUsage(context.userId, generationId, [
+        { operation: "repair", provider, model, usage: null, success: false },
+      ]);
+      throw err;
+    }
+
+    const { text, stopReason } = repairRes;
+    const repairOk = stopReason === "end_turn";
+    records.push({
+      operation: "repair",
+      provider: repairRes.provider,
+      model: repairRes.model,
+      usage: repairRes.usage,
+      success: repairOk,
     });
-    if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
-    if (stopReason !== "end_turn") {
+
+    if (!repairOk) {
+      await flushUsage(context.userId, generationId, records);
+      if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
       throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
     const repaired = generationOutput.safeParse(parseSections(text));
-    if (!repaired.success) throw new Error("The repair returned an invalid response. Please try again.");
+    if (!repaired.success) {
+      await flushUsage(context.userId, generationId, records);
+      throw new Error("The repair returned an invalid response. Please try again.");
+    }
 
     // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data);
+    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data, {
+      operation: "post_repair_quality_check",
+      records,
+      provider,
+      model,
+    });
 
+    await flushUsage(context.userId, generationId, records);
 
     return { result: repaired.data, quality };
   });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Super Admin: server-authoritative provider/model selection.

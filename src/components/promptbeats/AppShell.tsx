@@ -10,6 +10,7 @@ export const NAV_PATHS: Record<NavId, string> = {
   trending: "/trending",
   studio: "/generate",
   library: "/library",
+  management: "/management",
 };
 
 const MOBILE_TABS = [
@@ -24,8 +25,10 @@ export function useActiveNav(): NavId {
   if (pathname.startsWith("/trending")) return "trending";
   if (pathname.startsWith("/generate")) return "studio";
   if (pathname.startsWith("/library")) return "library";
+  if (pathname.startsWith("/management")) return "management";
   return "discover";
 }
+
 
 export function AppShell({ header, children }: { header?: ReactNode; children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);

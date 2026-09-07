@@ -32,6 +32,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          estimated_cost_usd: number | null
+          generation_id: string | null
+          id: string
+          input_tokens: number | null
+          model: string
+          operation: string
+          output_tokens: number | null
+          provider: string
+          success: boolean
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost_usd?: number | null
+          generation_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          model: string
+          operation: string
+          output_tokens?: number | null
+          provider: string
+          success?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_cost_usd?: number | null
+          generation_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          operation?: string
+          output_tokens?: number | null
+          provider?: string
+          success?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string

@@ -27,13 +27,20 @@ export type ModelResult = {
   text: string;
   /** Normalized: "end_turn" (complete), "max_tokens" (truncated), or other. */
   stopReason: string | null;
+  /** Provider-reported token usage; null when the provider did not report it. */
+  usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null } | null;
+  /** The provider that actually served this request. */
+  provider: string;
+  /** The model that actually served this request. */
+  model: string;
 };
 
 export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
-function providerOf(model: string) {
+export function providerOf(model: string) {
   return AI_MODELS.find((m) => m.id === model)?.provider ?? "gemini";
 }
+
 
 async function callAnthropic(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
@@ -59,6 +66,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   const payload = (await res.json()) as {
     stop_reason?: string | null;
     content?: { type: string; text?: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text =
     payload.content
@@ -67,8 +75,15 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       .join("") ?? "";
   const reason = payload.stop_reason ?? null;
   const stopReason = reason === "stop_sequence" ? "end_turn" : reason;
-  return { text, stopReason };
+  const inputTokens = payload.usage?.input_tokens ?? null;
+  const outputTokens = payload.usage?.output_tokens ?? null;
+  const usage =
+    inputTokens == null && outputTokens == null
+      ? null
+      : { inputTokens, outputTokens, totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0) };
+  return { text, stopReason, usage, provider: "anthropic", model };
 }
+
 
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
@@ -95,7 +110,21 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     response.text ??
     candidate?.content?.parts?.map((p) => ("text" in p ? (p.text ?? "") : "")).join("") ??
     "";
-  return { text, stopReason };
+  const um = response.usageMetadata;
+  const inputTokens = um?.promptTokenCount ?? null;
+  const outputTokens =
+    um?.candidatesTokenCount == null && um?.thoughtsTokenCount == null
+      ? null
+      : (um?.candidatesTokenCount ?? 0) + (um?.thoughtsTokenCount ?? 0);
+  const totalTokens =
+    um?.totalTokenCount ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  const usage =
+    inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : { inputTokens, outputTokens, totalTokens };
+  return { text, stopReason, usage, provider: "gemini", model };
+
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
