@@ -350,6 +350,8 @@ function GeneratePage() {
           language: effectiveLanguage,
           result,
           quality,
+          generationId,
+
         },
       });
       setRepaired(res);
