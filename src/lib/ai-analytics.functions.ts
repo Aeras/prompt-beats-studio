@@ -33,13 +33,15 @@ export type Breakdown = {
   outputTokens: number;
   totalTokens: number;
   costUsd: number;
+  /** Requests whose model has no verified pricing — unknown cost, not $0. */
+  unknownCostRequests: number;
   failures: number;
 };
 
 const rangeInput = z.object({ days: z.number().int().min(1).max(365).default(30) });
 
 function empty(key: string): Breakdown {
-  return { key, requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, failures: 0 };
+  return { key, requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, unknownCostRequests: 0, failures: 0 };
 }
 
 function accumulate(map: Map<string, Breakdown>, key: string, r: UsageRow) {
@@ -48,7 +50,8 @@ function accumulate(map: Map<string, Breakdown>, key: string, r: UsageRow) {
   b.inputTokens += r.input_tokens ?? 0;
   b.outputTokens += r.output_tokens ?? 0;
   b.totalTokens += r.total_tokens ?? (r.input_tokens ?? 0) + (r.output_tokens ?? 0);
-  b.costUsd += Number(r.estimated_cost_usd ?? 0);
+  if (r.estimated_cost_usd === null || r.estimated_cost_usd === undefined) b.unknownCostRequests += 1;
+  else b.costUsd += Number(r.estimated_cost_usd);
   if (!r.success) b.failures += 1;
   map.set(key, b);
 }
@@ -66,14 +69,22 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
     if (!isAdmin) throw new Error("Forbidden");
 
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
-    const { data: rowsRaw, error } = await context.supabase
-      .from("ai_usage_logs" as never)
-      .select("*")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(10000);
-    if (error) throw new Error(error.message);
-    const rows = (rowsRaw ?? []) as unknown as UsageRow[];
+    // Paginate so totals stay correct beyond a single page of rows.
+    const PAGE = 1000;
+    const MAX_ROWS = 200000;
+    const rows: UsageRow[] = [];
+    for (let from = 0; from < MAX_ROWS; from += PAGE) {
+      const { data: pageRaw, error } = await context.supabase
+        .from("ai_usage_logs" as never)
+        .select("*")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error(error.message);
+      const page = (pageRaw ?? []) as unknown as UsageRow[];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
 
     const byProviderModel = new Map<string, Breakdown>();
     const byOperation = new Map<string, Breakdown>();
@@ -94,9 +105,10 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
         outputTokens: acc.outputTokens + b.outputTokens,
         totalTokens: acc.totalTokens + b.totalTokens,
         costUsd: acc.costUsd + b.costUsd,
+        unknownCostRequests: acc.unknownCostRequests + b.unknownCostRequests,
         failures: acc.failures + b.failures,
       }),
-      { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, failures: 0 },
+      { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, unknownCostRequests: 0, failures: 0 },
     );
 
     const songs = byGeneration.size;
