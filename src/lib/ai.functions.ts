@@ -350,7 +350,14 @@ async function runQualityCheck(
     if (start === -1 || end <= start) return null;
     const parsed = qualityOutput.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
     return parsed.success ? parsed.data : null;
-  } catch {
+  } catch (err) {
+    // Observability only: the provider error was previously discarded, which made
+    // "Quality check unavailable" impossible to diagnose from the server logs.
+    console.error(
+      `[ai] ${sink?.operation ?? "quality_check"} failed model=${sink?.model ?? "unknown"}`,
+      err instanceof Error ? err.message : err,
+    );
+
     if (sink) {
       sink.records.push({
         operation: sink.operation,
