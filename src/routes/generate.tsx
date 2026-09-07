@@ -326,7 +326,9 @@ function GeneratePage() {
         return;
       }
       setResult(res.result);
+      setGenerationId(res.generationId ?? null);
       setQuality(res.quality ?? null);
+
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
     } finally {
