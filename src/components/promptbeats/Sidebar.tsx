@@ -39,7 +39,7 @@ export function SidebarNav({
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
-  const { isBanned } = useModeration();
+  const { isBanned, isAdmin } = useModeration();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
