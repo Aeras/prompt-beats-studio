@@ -66,6 +66,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   const payload = (await res.json()) as {
     stop_reason?: string | null;
     content?: { type: string; text?: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text =
     payload.content
@@ -74,8 +75,15 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       .join("") ?? "";
   const reason = payload.stop_reason ?? null;
   const stopReason = reason === "stop_sequence" ? "end_turn" : reason;
-  return { text, stopReason };
+  const inputTokens = payload.usage?.input_tokens ?? null;
+  const outputTokens = payload.usage?.output_tokens ?? null;
+  const usage =
+    inputTokens == null && outputTokens == null
+      ? null
+      : { inputTokens, outputTokens, totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0) };
+  return { text, stopReason, usage, provider: "anthropic", model };
 }
+
 
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
