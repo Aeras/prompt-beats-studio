@@ -323,15 +323,27 @@ async function runQualityCheck(
   schema: Record<string, unknown>,
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
+  sink?: { operation: AiOperation; records: PendingUsage[]; provider: string; model: string },
 ): Promise<QualityReport | null> {
   try {
-    const { text, stopReason } = await call({
+    const res = await call({
       system: QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(d, r),
       maxTokens: 2048,
       schema,
     });
-    if (stopReason !== "end_turn") return null;
+    const { text, stopReason } = res;
+    const ok = stopReason === "end_turn";
+    if (sink) {
+      sink.records.push({
+        operation: sink.operation,
+        provider: res.provider,
+        model: res.model,
+        usage: res.usage,
+        success: ok,
+      });
+    }
+    if (!ok) return null;
     const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
@@ -339,6 +351,15 @@ async function runQualityCheck(
     const parsed = qualityOutput.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
     return parsed.success ? parsed.data : null;
   } catch {
+    if (sink) {
+      sink.records.push({
+        operation: sink.operation,
+        provider: sink.provider,
+        model: sink.model,
+        usage: null,
+        success: false,
+      });
+    }
     return null;
   }
 }
@@ -357,31 +378,67 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     }
 
     // Provider/model is resolved server-side only; clients cannot influence it.
-    const { call, model, schemas } = await activeCaller();
+    const { call, model, provider, schemas } = await activeCaller();
 
-    const { text: raw, stopReason } = await call({
-      system: SYSTEM_PROMPT,
-      prompt: buildPrompt(data),
-      maxTokens: 8192,
-      schema: schemas.song,
-    });
-    if (stopReason === "max_tokens") {
-      throw new Error("The AI response was incomplete. Please try again.");
+    // Analytics only observes real provider responses; it never adds a call.
+    const records: PendingUsage[] = [];
+
+    let generated: ModelResult;
+    try {
+      generated = await call({
+        system: SYSTEM_PROMPT,
+        prompt: buildPrompt(data),
+        maxTokens: 8192,
+        schema: schemas.song,
+      });
+    } catch (err) {
+      // Provider failed before returning usage — record the failure, no token guesses.
+      await flushUsage(context.userId, null, [
+        { operation: "generate", provider, model, usage: null, success: false },
+      ]);
+      throw err;
     }
-    if (stopReason !== "end_turn") {
+
+    const { text: raw, stopReason } = generated;
+    const generateOk = stopReason === "end_turn";
+    records.push({
+      operation: "generate",
+      provider: generated.provider,
+      model: generated.model,
+      usage: generated.usage,
+      success: generateOk,
+    });
+
+    if (!generateOk) {
+      await flushUsage(context.userId, null, records);
+      if (stopReason === "max_tokens") {
+        throw new Error("The AI response was incomplete. Please try again.");
+      }
       throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
     }
 
     const parsed = parseSections(raw);
     const result = generationOutput.safeParse(parsed);
     if (!result.success) {
+      await flushUsage(context.userId, null, records);
       throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
     // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(call, schemas.quality, data, result.data);
+    const quality = await runQualityCheck(call, schemas.quality, data, result.data, {
+      operation: "quality_check",
+      records,
+      provider,
+      model,
+    });
 
-    await supabase.from("ai_generations").insert({ user_id: context.userId });
+    const { data: inserted } = await supabase
+      .from("ai_generations")
+      .insert({ user_id: context.userId })
+      .select("id")
+      .maybeSingle();
+    const generationId = (inserted as { id?: string } | null)?.id ?? null;
+    await flushUsage(context.userId, generationId, records);
     // Server-side usage visibility of which model served the request.
     console.log(`[ai] generation served by model=${model}`);
     const after = await usageFor(supabase, context.userId);
@@ -392,8 +449,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       result: result.data,
       quality,
       remainingGenerations: after.remaining,
+      generationId,
     };
   });
+
 
 
 
