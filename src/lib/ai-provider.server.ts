@@ -110,7 +110,21 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     response.text ??
     candidate?.content?.parts?.map((p) => ("text" in p ? (p.text ?? "") : "")).join("") ??
     "";
-  return { text, stopReason };
+  const um = response.usageMetadata;
+  const inputTokens = um?.promptTokenCount ?? null;
+  const outputTokens =
+    um?.candidatesTokenCount == null && um?.thoughtsTokenCount == null
+      ? null
+      : (um?.candidatesTokenCount ?? 0) + (um?.thoughtsTokenCount ?? 0);
+  const totalTokens =
+    um?.totalTokenCount ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  const usage =
+    inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : { inputTokens, outputTokens, totalTokens };
+  return { text, stopReason, usage, provider: "gemini", model };
+
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
