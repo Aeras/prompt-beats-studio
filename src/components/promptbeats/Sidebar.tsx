@@ -1,4 +1,4 @@
-import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut } from "lucide-react";
+import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut, BarChart3 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,16 +12,22 @@ export const NAV = [
   { id: "trending", label: "Trending", icon: Flame },
   { id: "studio", label: "AI Prompt Studio", icon: Sparkles },
   { id: "library", label: "My Library", icon: Library },
+  { id: "management", label: "Management", icon: BarChart3 },
 ] as const;
 
 export type NavId = (typeof NAV)[number]["id"];
+
+/** Nav entries only visible to Super Admins. */
+const ADMIN_ONLY: NavId[] = ["management"];
 
 const NAV_TO: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
   studio: "/generate",
   library: "/library",
+  management: "/management",
 };
+
 
 export function SidebarNav({
   active,
