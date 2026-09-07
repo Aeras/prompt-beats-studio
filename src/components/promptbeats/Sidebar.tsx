@@ -67,8 +67,9 @@ export function SidebarNav({
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.map((item) => {
+        {NAV.filter((item) => !ADMIN_ONLY.includes(item.id) || isAdmin).map((item) => {
           const isActive = active === item.id;
+
           return (
             <Link
               key={item.id}
