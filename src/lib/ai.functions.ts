@@ -139,10 +139,41 @@ type ModelCall = {
   maxTokens?: number;
   schema?: Record<string, unknown>;
 };
-type ModelCaller = (call: ModelCall) => Promise<{ text: string; stopReason: string | null }>;
+type NormalizedUsage = {
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+};
+type ModelResult = {
+  text: string;
+  stopReason: string | null;
+  usage: NormalizedUsage | null;
+  provider: string;
+  model: string;
+};
+type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
+
+type AiOperation = "generate" | "quality_check" | "repair" | "post_repair_quality_check";
+
+/** One usage record per actual provider request, buffered until the generation id is known. */
+type PendingUsage = {
+  operation: AiOperation;
+  provider: string;
+  model: string;
+  usage: NormalizedUsage | null;
+  success: boolean;
+};
+
+async function flushUsage(userId: string, generationId: string | null, records: PendingUsage[]) {
+  if (!records.length) return;
+  const { recordAiUsage } = await import("@/lib/ai-usage.server");
+  for (const r of records) {
+    await recordAiUsage({ ...r, userId, generationId });
+  }
+}
 
 /** Loads the provider layer (server-only) and binds it to the active model. */
-async function activeCaller(): Promise<{ call: ModelCaller; model: string; schemas: {
+async function activeCaller(): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
   song: Record<string, unknown>;
   quality: Record<string, unknown>;
 } }> {
@@ -151,9 +182,11 @@ async function activeCaller(): Promise<{ call: ModelCaller; model: string; schem
   return {
     call: provider.modelCaller(model),
     model,
+    provider: provider.providerOf(model),
     schemas: { song: provider.SONG_SCHEMA, quality: provider.QUALITY_SCHEMA },
   };
 }
+
 
 
 
