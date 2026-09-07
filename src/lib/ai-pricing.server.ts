@@ -14,6 +14,11 @@ export type ModelPrice = {
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
   "gemini-2.5-flash": { inputPerMillion: 0.3, outputPerMillion: 2.5 },
+  // gemini-3-flash-preview — official Google Gemini API Standard paid tier
+  // (ai.google.dev/gemini-api/docs/pricing): $0.50/1M input (text), $3.00/1M
+  // output (incl. thinking tokens). Free Tier is "free of charge"; paid-tier
+  // list prices are used here for cost estimation, consistent with the other models.
+  "gemini-3-flash-preview": { inputPerMillion: 0.5, outputPerMillion: 3.0 },
   // "gemini-3.1-pro-preview": PENDING VERIFICATION — official API pricing for
   // this model is not yet configured. Do NOT fabricate a value. Until verified
   // prices are added here, estimateCostUsd returns null and the dashboard
