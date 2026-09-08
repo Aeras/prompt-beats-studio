@@ -635,15 +635,24 @@ const repairInput = z.object({
 
 /**
  * Manual repair, available to every authenticated user. Runs exactly one
- * repair call plus one post-repair quality check, on the server-selected model.
+ * repair call on the server-selected model and consumes one creation.
+ * The post-repair quality check is user-triggered (see checkSongQuality).
  */
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
   .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    const isAdmin = await isAdminUser(supabase, context.userId);
+    const preUsage = await readUsage(supabase, context.userId);
+    if (!isAdmin && preUsage.remaining <= 0) {
+      return { error: "rate_limited" as const, result: null, quality: null };
+    }
+
     const { call, model, provider, schemas } = await activeCaller();
     const generationId = data.generationId ?? null;
     const records: PendingUsage[] = [];
+
 
     const constraints = {
       theme: data.theme,
