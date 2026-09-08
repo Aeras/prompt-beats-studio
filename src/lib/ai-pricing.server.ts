@@ -13,9 +13,9 @@ export type ModelPrice = {
 };
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
-  // gemini-2.5-pro — official Google Gemini API paid tier: $1.25/1M input,
+  // gemini-3.1-pro-preview — official Google Gemini API paid tier: $1.25/1M input,
   // $10.00/1M output (prompts <= 200k tokens).
-  "gemini-2.5-pro": { inputPerMillion: 1.25, outputPerMillion: 10 },
+  "gemini-3.1-pro-preview": { inputPerMillion: 1.25, outputPerMillion: 10 },
   // gemini-3-flash-preview — official Google Gemini API Standard paid tier
   // (ai.google.dev/gemini-api/docs/pricing): $0.50/1M input (text), $3.00/1M
   // output (incl. thinking tokens). Free Tier is "free of charge"; paid-tier
