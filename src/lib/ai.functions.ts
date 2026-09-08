@@ -462,7 +462,68 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Records one consumed creation against the rolling hourly limit and returns
+ * its id. Admins keep the existing bypass; the limit logic itself is unchanged.
+ */
+async function consumeCreation(supabase: Supa, userId: string) {
+  const { data: inserted, error } = await supabase
+    .from("ai_generations")
+    .insert({ user_id: userId })
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(`The action could not be recorded (${error.message}). Please try again.`);
+  return (inserted as { id?: string } | null)?.id ?? null;
+}
 
+const qualityCheckInput = z.object({
+  theme: generateInput.shape.theme,
+  genre: generateInput.shape.genre,
+  mood: generateInput.shape.mood,
+  language: generateInput.shape.language,
+  result: generationOutput,
+  /** Optional: links the check to the originating generation for analytics. */
+  generationId: z.string().uuid().nullish(),
+  /** Distinguishes a first check from a check run after a repair. */
+  afterRepair: z.boolean().default(false),
+});
+
+/**
+ * User-triggered Quality Check. Runs exactly one evaluator call through the
+ * EXISTING Quality Layer 2A and consumes exactly one creation.
+ */
+export const checkSongQuality = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => qualityCheckInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    const isAdmin = await isAdminUser(supabase, context.userId);
+    const usage = await readUsage(supabase, context.userId);
+    if (!isAdmin && usage.remaining <= 0) {
+      return { error: "rate_limited" as const, quality: null, usage };
+    }
+
+    const { call, model, provider, schemas } = await activeCaller();
+    const records: PendingUsage[] = [];
+    const constraints = {
+      theme: data.theme,
+      genre: data.genre,
+      mood: data.mood,
+      language: data.language,
+    };
+
+    const quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
+      operation: data.afterRepair ? "post_repair_quality_check" : "quality_check",
+      records,
+      provider,
+      model,
+    });
+
+    const consumedId = await consumeCreation(supabase, context.userId);
+    await flushUsage(context.userId, data.generationId ?? consumedId, records);
+    const after = await usageFor(supabase, context.userId);
+    return { error: null, quality, usage: after };
+  });
 
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
