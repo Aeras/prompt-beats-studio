@@ -139,20 +139,87 @@ function hasQualityIssues(q: QualityReport | null) {
   );
 }
 
+function CostButton({
+  label,
+  busy,
+  busyLabel,
+  onClick,
+}: {
+  label: string;
+  busy: boolean;
+  busyLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      className="flex items-center justify-center gap-2 rounded-xl border border-accent/50 px-4 py-2.5 text-sm text-accent transition-colors hover:bg-accent/10 disabled:opacity-60"
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+      {busy ? busyLabel : label}
+    </button>
+  );
+}
+
+function ConfirmBox({
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
+      <p className="text-xs text-foreground/90">{message}</p>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={onConfirm}
+          className="rounded-lg bg-gradient-neon px-4 py-2 text-xs font-semibold text-primary-foreground"
+        >
+          {confirmLabel}
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-lg border border-white/10 px-4 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function QualityPanel({
   quality,
+  checking,
+  onCheck,
+  checkError,
   canRepair,
   repairing,
   onRepair,
   repairError,
   repaired,
+  confirm,
+  setConfirm,
+  onRecheck,
 }: {
   quality: QualityReport | null;
+  checking: boolean;
+  onCheck: () => void;
+  checkError: string | null;
   canRepair: boolean;
   repairing: boolean;
   onRepair: () => void;
   repairError: string | null;
   repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
+  confirm: "check" | "repair" | "recheck" | null;
+  setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
+  onRecheck: () => void;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
@@ -161,20 +228,53 @@ function QualityPanel({
         <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
       </div>
 
-      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
-      <QualityReportBody quality={quality} />
+      {!quality && !checking && (
+        <div className="mt-4 space-y-3">
+          {confirm === "check" ? (
+            <ConfirmBox
+              message="Quality Check will use 1 creation from your available balance."
+              confirmLabel="Check"
+              onConfirm={onCheck}
+              onCancel={() => setConfirm(null)}
+            />
+          ) : (
+            <CostButton label="Check · −1 creation" busy={false} busyLabel="" onClick={() => setConfirm("check")} />
+          )}
+          {checkError && <p className="text-xs text-red-400">{checkError}</p>}
+        </div>
+      )}
+
+      {checking && (
+        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking...
+        </p>
+      )}
+
+      {quality && (
+        <>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
+          <QualityReportBody quality={quality} />
+        </>
+      )}
 
       {canRepair && (
-        <div className="mt-5">
-          <button
-            onClick={onRepair}
-            disabled={repairing}
-            className="flex items-center justify-center gap-2 rounded-xl border border-accent/50 px-4 py-2.5 text-sm text-accent transition-colors hover:bg-accent/10 disabled:opacity-60"
-          >
-            {repairing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {repairing ? "Repairing..." : "Repair with AI"}
-          </button>
-          {repairError && <p className="mt-2 text-xs text-red-400">{repairError}</p>}
+        <div className="mt-5 space-y-3">
+          {confirm === "repair" ? (
+            <ConfirmBox
+              message="Repair will use 1 creation from your available balance."
+              confirmLabel="Repair"
+              onConfirm={onRepair}
+              onCancel={() => setConfirm(null)}
+            />
+          ) : (
+            <CostButton
+              label="Repair · −1 creation"
+              busy={repairing}
+              busyLabel="Repairing..."
+              onClick={() => setConfirm("repair")}
+            />
+          )}
+          {repairError && <p className="text-xs text-red-400">{repairError}</p>}
         </div>
       )}
 
@@ -187,12 +287,34 @@ function QualityPanel({
             <OutputCard title="REPAIRED LYRICS & STRUCTURE" body={repaired.result.lyrics} />
             <OutputCard title="REPAIRED PRODUCER'S NOTE" body={repaired.result.note} />
           </div>
-          <QualityReportBody quality={repaired.quality} />
+          {repaired.quality ? (
+            <QualityReportBody quality={repaired.quality} />
+          ) : (
+            <div className="mt-4 space-y-3">
+              {confirm === "recheck" ? (
+                <ConfirmBox
+                  message="This check will use 1 additional creation from your available balance."
+                  confirmLabel="Check Again"
+                  onConfirm={onRecheck}
+                  onCancel={() => setConfirm(null)}
+                />
+              ) : (
+                <CostButton
+                  label="Check Again · −1 creation"
+                  busy={checking}
+                  busyLabel="Checking..."
+                  onClick={() => setConfirm("recheck")}
+                />
+              )}
+              {checkError && <p className="text-xs text-red-400">{checkError}</p>}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
 
 /** Super Admin only: picks the AI model that serves every user's generations. */
 function AdminModelSelector() {

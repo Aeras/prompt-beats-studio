@@ -431,13 +431,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
-    // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(call, schemas.quality, data, result.data, {
-      operation: "quality_check",
-      records,
-      provider,
-      model,
-    });
+    // Quality Layer 2.0 — stage 1 is now user-triggered (see checkSongQuality).
+    // Generate never runs the evaluator automatically.
+    const quality: QualityReport | null = null;
+
 
     const { data: inserted, error: insertError } = await supabase
       .from("ai_generations")
@@ -465,7 +462,68 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Records one consumed creation against the rolling hourly limit and returns
+ * its id. Admins keep the existing bypass; the limit logic itself is unchanged.
+ */
+async function consumeCreation(supabase: Supa, userId: string) {
+  const { data: inserted, error } = await supabase
+    .from("ai_generations")
+    .insert({ user_id: userId })
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(`The action could not be recorded (${error.message}). Please try again.`);
+  return (inserted as { id?: string } | null)?.id ?? null;
+}
 
+const qualityCheckInput = z.object({
+  theme: generateInput.shape.theme,
+  genre: generateInput.shape.genre,
+  mood: generateInput.shape.mood,
+  language: generateInput.shape.language,
+  result: generationOutput,
+  /** Optional: links the check to the originating generation for analytics. */
+  generationId: z.string().uuid().nullish(),
+  /** Distinguishes a first check from a check run after a repair. */
+  afterRepair: z.boolean().default(false),
+});
+
+/**
+ * User-triggered Quality Check. Runs exactly one evaluator call through the
+ * EXISTING Quality Layer 2A and consumes exactly one creation.
+ */
+export const checkSongQuality = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => qualityCheckInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    const isAdmin = await isAdminUser(supabase, context.userId);
+    const usage = await readUsage(supabase, context.userId);
+    if (!isAdmin && usage.remaining <= 0) {
+      return { error: "rate_limited" as const, quality: null, usage };
+    }
+
+    const { call, model, provider, schemas } = await activeCaller();
+    const records: PendingUsage[] = [];
+    const constraints = {
+      theme: data.theme,
+      genre: data.genre,
+      mood: data.mood,
+      language: data.language,
+    };
+
+    const quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
+      operation: data.afterRepair ? "post_repair_quality_check" : "quality_check",
+      records,
+      provider,
+      model,
+    });
+
+    const consumedId = await consumeCreation(supabase, context.userId);
+    await flushUsage(context.userId, data.generationId ?? consumedId, records);
+    const after = await usageFor(supabase, context.userId);
+    return { error: null, quality, usage: after };
+  });
 
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
@@ -577,15 +635,24 @@ const repairInput = z.object({
 
 /**
  * Manual repair, available to every authenticated user. Runs exactly one
- * repair call plus one post-repair quality check, on the server-selected model.
+ * repair call on the server-selected model and consumes one creation.
+ * The post-repair quality check is user-triggered (see checkSongQuality).
  */
 export const repairSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => repairInput.parse(input))
   .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as Supa;
+    const isAdmin = await isAdminUser(supabase, context.userId);
+    const preUsage = await readUsage(supabase, context.userId);
+    if (!isAdmin && preUsage.remaining <= 0) {
+      return { error: "rate_limited" as const, result: null, quality: null };
+    }
+
     const { call, model, provider, schemas } = await activeCaller();
     const generationId = data.generationId ?? null;
     const records: PendingUsage[] = [];
+
 
     const constraints = {
       theme: data.theme,
@@ -631,18 +698,13 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       throw new Error("The repair returned an invalid response. Please try again.");
     }
 
-    // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data, {
-      operation: "post_repair_quality_check",
-      records,
-      provider,
-      model,
-    });
+    // The post-repair quality check is now user-triggered ("Check Again").
+    const consumedId = await consumeCreation(supabase, context.userId);
+    await flushUsage(context.userId, generationId ?? consumedId, records);
 
-    await flushUsage(context.userId, generationId, records);
-
-    return { result: repaired.data, quality };
+    return { error: null as null | "rate_limited", result: repaired.data, quality: null as QualityReport | null };
   });
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
