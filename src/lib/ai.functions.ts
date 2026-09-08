@@ -698,18 +698,13 @@ export const repairSongPrompt = createServerFn({ method: "POST" })
       throw new Error("The repair returned an invalid response. Please try again.");
     }
 
-    // Mandatory single post-repair pass through the EXISTING Quality Layer 2A.
-    const quality = await runQualityCheck(call, schemas.quality, constraints, repaired.data, {
-      operation: "post_repair_quality_check",
-      records,
-      provider,
-      model,
-    });
+    // The post-repair quality check is now user-triggered ("Check Again").
+    const consumedId = await consumeCreation(supabase, context.userId);
+    await flushUsage(context.userId, generationId ?? consumedId, records);
 
-    await flushUsage(context.userId, generationId, records);
-
-    return { result: repaired.data, quality };
+    return { error: null as null | "rate_limited", result: repaired.data, quality: null as QualityReport | null };
   });
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
