@@ -431,13 +431,10 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
       throw new Error("The AI returned an incomplete or invalid response. Please try again.");
     }
 
-    // Quality Layer 2.0 — stage 1: evaluator only. Never blocks a valid generation.
-    const quality = await runQualityCheck(call, schemas.quality, data, result.data, {
-      operation: "quality_check",
-      records,
-      provider,
-      model,
-    });
+    // Quality Layer 2.0 — stage 1 is now user-triggered (see checkSongQuality).
+    // Generate never runs the evaluator automatically.
+    const quality: QualityReport | null = null;
+
 
     const { data: inserted, error: insertError } = await supabase
       .from("ai_generations")
