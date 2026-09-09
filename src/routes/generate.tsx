@@ -561,24 +561,27 @@ function QualityPanel({
             <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
           )}
 
-          <div className="mt-4 space-y-3">
-            {confirm === "recheck" ? (
-              <ConfirmBox
-                message="This check will use 1 additional creation from your available balance."
-                confirmLabel="Check Again"
-                onConfirm={onRecheck}
-                onCancel={() => setConfirm(null)}
-              />
-            ) : (
-              <CostButton
-                label="Check Again · −1 creation"
-                busy={checking}
-                busyLabel="Checking..."
-                onClick={() => setConfirm("recheck")}
-              />
-            )}
-            {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-          </div>
+          {/* One-time re-analysis of the current (editable) repaired result. */}
+          {!repaired.quality && (
+            <div className="mt-4 space-y-3">
+              {confirm === "recheck" ? (
+                <ConfirmBox
+                  message="This check will use 1 additional creation from your available balance."
+                  confirmLabel="Check Again"
+                  onConfirm={onRecheck}
+                  onCancel={() => setConfirm(null)}
+                />
+              ) : (
+                <CostButton
+                  label="Check Again · −1 creation"
+                  busy={checking}
+                  busyLabel="Checking..."
+                  onClick={() => setConfirm("recheck")}
+                />
+              )}
+            </div>
+          )}
+          {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
         </div>
       )}
     </div>
