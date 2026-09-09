@@ -822,7 +822,11 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       genre: data.genre,
       mood: data.mood,
       language: data.language,
+      structure: "",
+      production: "",
+      instructions: "",
     };
+
 
     const quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
       operation: "quality_check",
