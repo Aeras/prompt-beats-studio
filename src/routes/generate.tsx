@@ -103,6 +103,20 @@ function QualityIssueList({ label, items }: { label: string; items: string[] }) 
   );
 }
 
+/** Category 1 — Actual Issues (these affect the score). */
+function ActualIssues({ quality }: { quality: QualityReport }) {
+  return (
+    <div className="space-y-4">
+      <QualityIssueList label="Issues" items={quality.issues} />
+      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
+      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
+      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
+      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
+      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+    </div>
+  );
+}
+
 function QualityReportBody({ quality }: { quality: QualityReport | null }) {
   if (!quality) return <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>;
   return (
@@ -118,12 +132,7 @@ function QualityReportBody({ quality }: { quality: QualityReport | null }) {
           Score: <strong className="text-foreground">{quality.score}/10</strong>
         </span>
       </div>
-      <QualityIssueList label="Issues" items={quality.issues} />
-      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
-      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
-      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
-      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
-      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+      <ActualIssues quality={quality} />
     </div>
   );
 }
