@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
@@ -7,7 +7,6 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
-  generateSongPrompt,
   checkSongQuality,
 
   getGenerationUsage,
@@ -21,6 +20,13 @@ import {
   type QualitySuggestion,
 } from "@/lib/ai.functions";
 import {
+  getGenerationJob,
+  getLatestGenerationJob,
+  runGenerationJobNow,
+  startGenerationJob,
+  type GenerationJob,
+} from "@/lib/generation-jobs.functions";
+import {
   addToMusicStyle,
   applyLyricCorrection,
   applyVocalArrangement,
@@ -30,6 +36,9 @@ import {
 } from "@/lib/quality-apply";
 import { getMyModeration } from "@/lib/moderation.functions";
 import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
+
+/** Survives refreshes so an in-flight generation is recovered on return. */
+const JOB_STORAGE_KEY = "pb:generation-job";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
