@@ -984,8 +984,10 @@ function GeneratePage() {
   };
 
   // Manual: exactly one quality check per confirmed click.
+  // The analyzed song is always read from the refs, so any Apply / Undo or
+  // manual edit made right before the click is included (never a stale copy).
   const runCheck = async (afterRepair: boolean, isRecheck = false) => {
-    const target = afterRepair ? repaired?.result : result;
+    const target = afterRepair ? repairedRef.current?.result : resultRef.current;
     if (!target) return;
     setConfirm(null);
     setChecking(true);
@@ -997,7 +999,7 @@ function GeneratePage() {
           genre: effectiveGenre,
           mood: effectiveMood,
           language: effectiveLanguage,
-          result: target,
+          result: { ...target },
           generationId,
           afterRepair,
         },
@@ -1009,9 +1011,10 @@ function GeneratePage() {
       }
       if (afterRepair) {
         setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
+        // A Recheck is one-time: it is spent once the check actually ran.
+        if (isRecheck) setRepairedRecheckUsed(true);
       } else {
         setQuality(res.quality);
-        // A Recheck is one-time: it is spent whether or not issues were found.
         if (isRecheck) setOrigRecheckUsed(true);
       }
       if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
@@ -1021,6 +1024,7 @@ function GeneratePage() {
       setChecking(false);
     }
   };
+
 
   // Manual: exactly one repair request per confirmed click, no retries.
   const repair = async () => {
