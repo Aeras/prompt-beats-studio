@@ -26,10 +26,25 @@ const resultShape = z.object({
   note: z.string(),
 });
 
+/**
+ * The original generation brief, persisted with the job. This is the
+ * authoritative recovery source for Quality Check after a refresh or a
+ * completely closed browser — never localStorage, never the result text.
+ */
+const inputShape = z.object({
+  theme: z.string().default(""),
+  genre: z.string().default(""),
+  mood: z.string().default(""),
+  language: z.string().default(""),
+});
+
+export type GenerationContext = z.infer<typeof inputShape>;
+
 type JobRow = {
   id: string;
   status: string;
   result: unknown;
+  input_payload: unknown;
   error: string | null;
   generation_id: string | null;
   created_at: string;
@@ -39,17 +54,22 @@ export type GenerationJob = {
   jobId: string;
   status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   result: z.infer<typeof resultShape> | null;
+  input: GenerationContext | null;
   error: string | null;
   generationId: string | null;
   createdAt: string;
 };
 
+const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,created_at";
+
 function toJob(row: JobRow): GenerationJob {
   const parsed = resultShape.safeParse(row.result);
+  const input = inputShape.safeParse(row.input_payload);
   return {
     jobId: row.id,
     status: (row.status as GenerationJob["status"]) ?? "pending",
     result: parsed.success ? parsed.data : null,
+    input: input.success ? input.data : null,
     error: row.error,
     generationId: row.generation_id,
     createdAt: row.created_at,
