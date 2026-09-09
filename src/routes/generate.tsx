@@ -609,25 +609,17 @@ function GeneratePage() {
   // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
-  // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
-  const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
-  // One-time Recheck of the repaired result.
-  const [repairedRecheckUsed, setRepairedRecheckUsed] = useState(false);
-  // Manual repair state (never triggered automatically); available to authenticated users.
-  const [repairing, setRepairing] = useState(false);
-  const [repairError, setRepairError] = useState<string | null>(null);
-  const [repaired, setRepaired] = useState<{
-    result: { title: string; tags: string; lyrics: string; note: string };
-    quality: QualityReport | null;
-  } | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "recheck" | null>(null);
 
-  // Authoritative "latest song" pointers used by Recheck, so a check always
+  // The original generation brief that produced the current result. It comes
+  // from the persisted job, so a check after a refresh still uses the real
+  // theme / genre / mood / language instead of whatever the form shows now.
+  const [songContext, setSongContext] = useState<GenerationContext | null>(null);
+
+  // Authoritative "latest song" pointer used by every check, so a check always
   // analyzes the current editable state (Apply / Undo + manual edits included).
   const resultRef = useRef(result);
-  const repairedRef = useRef(repaired);
   resultRef.current = result;
-  repairedRef.current = repaired;
 
 
   // Part 3 — collapsible result sections (UI state only, collapsed by default).
@@ -635,9 +627,6 @@ function GeneratePage() {
   const allOpen = open.title && open.tags && open.lyrics && open.note;
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
-
-  // Collapsible state for the repaired result sections (independent UI state).
-  const [repairedOpen, setRepairedOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
 
   // Clear / reset confirmation (never consumes a creation).
   const [confirmClear, setConfirmClear] = useState(false);
@@ -653,7 +642,7 @@ function GeneratePage() {
       return next;
     });
 
-  // Links repair usage to the originating generation in analytics.
+  // Links quality-check usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
@@ -676,9 +665,8 @@ function GeneratePage() {
     if (job.status === "completed" && job.result) {
       setResult(job.result);
       setGenerationId(job.generationId);
+      setSongContext(job.input);
       setQuality(null);
-      setOrigRecheckUsed(false);
-      setRepairedRecheckUsed(false);
       setOpen({ title: false, tags: false, lyrics: false, note: false });
       setStatus(null);
       setBusy(false);
@@ -739,7 +727,9 @@ function GeneratePage() {
       .then((r) => {
         const job = r.job;
         if (cancelled || !job) return;
-        if (job.status === "pending" || job.status === "processing") applyJob(job);
+        if (job.status === "pending" || job.status === "processing" || job.status === "completed") {
+          applyJob(job);
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -859,10 +849,7 @@ function GeneratePage() {
     setSaved(false);
     setResult(null);
     setQuality(null);
-    setOrigRecheckUsed(false);
-    setRepairedRecheckUsed(false);
-    setRepaired(null);
-    setRepairError(null);
+    setSongContext(null);
     setApplied({});
     setApplyErrors({});
 
@@ -910,10 +897,11 @@ function GeneratePage() {
   };
 
   // Manual: exactly one quality check per confirmed click.
-  // The analyzed song is always read from the refs, so any Apply / Undo or
+  // The analyzed song is always read from the ref, so any Apply / Undo or
   // manual edit made right before the click is included (never a stale copy).
-  const runCheck = async (afterRepair: boolean, isRecheck = false) => {
-    const target = afterRepair ? repairedRef.current?.result : resultRef.current;
+  // The brief comes from the persisted job when it is known.
+  const runCheck = async () => {
+    const target = resultRef.current;
     if (!target) return;
     setConfirm(null);
     setChecking(true);
@@ -921,13 +909,12 @@ function GeneratePage() {
     try {
       const res = await checkSongQuality({
         data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
+          theme: songContext?.theme?.trim() || theme.trim(),
+          genre: songContext?.genre || effectiveGenre,
+          mood: songContext?.mood || effectiveMood,
+          language: songContext?.language || effectiveLanguage,
           result: { ...target },
           generationId,
-          afterRepair,
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -935,55 +922,21 @@ function GeneratePage() {
         setCheckError("You've hit the hourly limit. Try again soon.");
         return;
       }
-      if (afterRepair) {
-        setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
-        // A Recheck is one-time: it is spent once the check actually ran.
-        if (isRecheck) setRepairedRecheckUsed(true);
-      } else {
+      // A new report always replaces the previous one; applied-state is reset
+      // because the new items are new suggestions against the current song.
+      if (res.quality) {
         setQuality(res.quality);
-        if (isRecheck) setOrigRecheckUsed(true);
+        setApplied({});
+        setApplyErrors({});
+      } else {
+        setCheckError("Quality check unavailable. Please try again.");
       }
-      if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
     } catch (err) {
       setCheckError(err instanceof Error ? err.message : "Check failed");
     } finally {
       setChecking(false);
     }
   };
-
-
-  // Manual: exactly one repair request per confirmed click, no retries.
-  const repair = async () => {
-    if (!result || !quality) return;
-    setConfirm(null);
-    setRepairing(true);
-    setRepairError(null);
-    try {
-      const res = await repairSongPrompt({
-        data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
-          result,
-          quality,
-          generationId,
-
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited" || !res.result) {
-        setRepairError("You've hit the hourly limit. Try again soon.");
-        return;
-      }
-      setRepaired({ result: res.result, quality: res.quality });
-    } catch (err) {
-      setRepairError(err instanceof Error ? err.message : "Repair failed");
-    } finally {
-      setRepairing(false);
-    }
-  };
-
 
   const save = async () => {
     if (!result) return;
