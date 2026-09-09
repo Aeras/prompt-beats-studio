@@ -1074,25 +1074,36 @@ function GeneratePage() {
         {moderation?.isAdmin && <AdminModelSelector />}
 
         <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
-          <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
-            {[
-              { key: false, label: "Basic" },
-              { key: true, label: "Advanced" },
-            ].map((m) => (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
+              {[
+                { key: false, label: "Basic" },
+                { key: true, label: "Advanced" },
+              ].map((m) => (
+                <button
+                  key={m.label}
+                  type="button"
+                  aria-pressed={advanced === m.key}
+                  onClick={() => setAdvanced(m.key)}
+                  className={
+                    advanced === m.key
+                      ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
+                      : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                  }
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {canClear && (
               <button
-                key={m.label}
-                type="button"
-                aria-pressed={advanced === m.key}
-                onClick={() => setAdvanced(m.key)}
-                className={
-                  advanced === m.key
-                    ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
-                    : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                }
+                onClick={() => setConfirmClear(true)}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
               >
-                {m.label}
+                <Trash2 className="h-3.5 w-3.5" /> Clear
               </button>
-            ))}
+            )}
           </div>
 
           <div>
@@ -1283,15 +1294,6 @@ function GeneratePage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               Generate with AI
             </button>
-            {canClear && (
-              <button
-                onClick={() => setConfirmClear(true)}
-                disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-red-400/50 hover:text-red-300 disabled:opacity-50 sm:w-auto"
-              >
-                <Trash2 className="h-4 w-4" /> Clear
-              </button>
-            )}
             <span className="text-xs text-muted-foreground">
               {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
             </span>
