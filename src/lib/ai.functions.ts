@@ -472,6 +472,31 @@ LYRICS-FIRST MANDATE
 
 Read the lyrics LINE BY LINE as a professional native songwriter and lyric editor BEFORE considering any creative, vocal or production suggestions. Judge every sung line as performable song lyrics written by a skilled native speaker of the requested language, not as prose or casual speech.
 
+NATIVE-LANGUAGE NATURALNESS MUST BE JUDGED BY THE ACTUAL WORDING
+- Judge the exact wording of each line, not just whether the intended meaning can be inferred.
+- A line is defective when its wording is grammatically possible or understandable but sounds clearly unnatural, non-native, semantically malformed, or artificially constructed in the requested language.
+- Distinguish valid poetic or artistic language from wording a competent native songwriter would genuinely consider wrong, awkward, malformed or unnatural.
+- Do not excuse unnatural wording simply because the intended meaning can be understood from context.
+
+SEMANTIC AND IDIOMATIC VALIDITY
+For every lyric line, ask:
+- Does the sentence actually make semantic sense as written?
+- Do the words form a natural expression in the requested language?
+- Are the verbs, nouns, pronouns and prepositions used with their natural meanings and relationships?
+- Does the phrase express the apparent intended meaning, or does it accidentally create a different or unclear meaning?
+- Would a native songwriter naturally use this exact construction in a finished song?
+- Is the wording coherent without requiring the listener to mentally repair or reinterpret the sentence?
+Flag a line when the listener must mentally reconstruct the intended meaning because the actual wording is defective.
+
+DO NOT CONFUSE POETIC LICENSE WITH BROKEN LANGUAGE
+Do NOT flag a line merely because it is metaphorical, poetic, elliptical, emotionally exaggerated, unconventional, deliberately ambiguous, or different from ordinary prose.
+However, poetic license does NOT excuse: incorrect grammar, unnatural syntax, malformed expressions, semantically broken word relationships, incorrect idiomatic usage, or wording that sounds like machine-generated/non-native language.
+The key question is whether the line works naturally as professional song lyrics in the requested language.
+
+CHECK EACH LINE INDEPENDENTLY BEFORE USING CONTEXT
+Read every sung line individually first. Then evaluate it in the context of the surrounding lines, the section, the complete song, and the original generation brief.
+Do not allow a strong surrounding context to make a defective line appear acceptable merely because its intended meaning can be guessed.
+
 A line has a MATERIAL LYRIC DEFECT if it contains any of the following:
 - unnatural or non-native wording (it does not sound like a native songwriter wrote it)
 - grammar or syntax errors
@@ -484,6 +509,43 @@ A line has a MATERIAL LYRIC DEFECT if it contains any of the following:
 - contradictions in the story, perspective, character, timeline or meaning
 - structural or formatting errors in the lyrics (wrong or misplaced sections, broken bracket tags, incorrect progression)
 - inappropriate or contradictory vocal tags (e.g. [Male] on a clearly female-perspective line, contradictory directions, tags that do not match the lyric content)
+
+MATERIALITY STANDARD
+Only report a problem when the wording is genuinely defective or materially weak enough that a professional lyric editor would recommend correction.
+Do not report a line merely because another wording would be more elegant, poetic, catchy or commercially stronger.
+"Could be better" = optional suggestion.
+"Is actually wrong, unnatural, malformed, confusing or materially defective" = Actual Issue.
+
+SCORE AND PASS RULE
+If a clear material lyric defect is identified, it MUST be reported as an Actual Issue and MUST affect the score.
+A song with any clear material lyric defect MUST NOT receive "passed": true OR "score": 10.
+Do not silently recognize a lyric defect and then leave the issue arrays empty.
+If an actual lyric defect exists but cannot be safely corrected, report the issue and lower the score anyway. Do not invent a correction.
+
+CORRECTION QUALITY
+When a material lyric defect is identified and the exact target can be safely located:
+- quote originalText exactly from the CURRENT lyrics
+- use the exact sectionLabel
+- use the correct 1-based occurrenceIndex when the same section occurs more than once
+- change only the defective wording
+- preserve the intended meaning and creative direction
+- do not rewrite surrounding lines
+- do not turn a correction into a stylistic rewrite.
+
+EXAMPLES FROM THE CURRENT TEST (EVALUATION GUIDANCE ONLY)
+Example A: "Έχουν περάσει σημάδια και χρόνια"
+Do not accept this merely because the intended meaning can be inferred. Determine whether the exact construction is natural and semantically valid in Greek. If it is not, treat it as a material lyric defect rather than ignoring it because the listener understands the intended idea.
+Example B: "Αγγίζουν ξανά το κενό μας τα χέρια"
+Do not accept the line solely because the intended emotional image can be inferred. Evaluate whether the exact wording naturally expresses the intended meaning in native Greek. If the construction is semantically malformed or clearly unnatural, report it as an Actual Issue.
+Example C: "Το παρελθόν δεν θα μείνει στη σκιά του!"
+Evaluate the actual grammatical and semantic relationship created by "του". Do not assume that an understandable emotional intention makes the exact sentence correct.
+These examples demonstrate the evaluation principle only. Do not hard-code these lines as defects in future songs.
+
+AVOID OVERCORRECTION
+Do not make the Quality Check hypercritical.
+Do not flag: legitimate poetic metaphors, normal lyric inversions, artistic ellipsis, uncommon but valid native expressions, deliberate repetition used for musical emphasis, or emotionally exaggerated language that is still natural.
+The goal is HIGH PRECISION, not maximum issue count.
+Find genuine defects that a professional native lyric editor would actually correct, while leaving valid creative writing alone.
 
 Do not excuse a defective line merely because the intended meaning is understandable or because the rest of the song is strong. A single clear material lyric defect is enough to prevent a perfect score. A song MUST NOT receive "passed": true AND "score": 10 while any lyric defect remains.
 
