@@ -442,44 +442,19 @@ function QualityPanel({
   checking,
   onCheck,
   checkError,
-  canRepair,
-  repairing,
-  onRepair,
-  repairError,
-  repaired,
   confirm,
   setConfirm,
-  onRecheck,
-  onRecheckOriginal,
-  origRecheckUsed,
-  repairedRecheckUsed,
   state,
-  repairedState,
-  repairedSections,
 }: {
   quality: QualityReport | null;
   checking: boolean;
   onCheck: () => void;
   checkError: string | null;
-  canRepair: boolean;
-  repairing: boolean;
-  onRepair: () => void;
-  repairError: string | null;
-  repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
-  confirm: "check" | "repair" | "recheck" | "recheck-orig" | null;
-  setConfirm: (v: "check" | "repair" | "recheck" | "recheck-orig" | null) => void;
-  onRecheck: () => void;
-  /** One-time re-analysis of the (possibly edited) original result. */
-  onRecheckOriginal: () => void;
-  origRecheckUsed: boolean;
-  /** One-time Recheck of the repaired result. */
-  repairedRecheckUsed: boolean;
+  confirm: "check" | "recheck" | null;
+  setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
-  /** Apply / Undo bound to the repaired result — never touches the original. */
-  repairedState: ApplyState;
-  /** Editable, collapsible sections rendering `repaired.result`. */
-  repairedSections: React.ReactNode;
 }) {
+  const mode = quality ? "recheck" : "check";
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
@@ -487,21 +462,7 @@ function QualityPanel({
         <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
       </div>
 
-      {!quality && !checking && (
-        <div className="mt-4 space-y-3">
-          {confirm === "check" ? (
-            <ConfirmBox
-              message="Quality Check will use 1 creation from your available balance."
-              confirmLabel="Check"
-              onConfirm={onCheck}
-              onCancel={() => setConfirm(null)}
-            />
-          ) : (
-            <CostButton label="Check · −1 creation" busy={false} busyLabel="" onClick={() => setConfirm("check")} />
-          )}
-          {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-        </div>
-      )}
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
 
       {checking && (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -509,80 +470,28 @@ function QualityPanel({
         </p>
       )}
 
-      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
-
-      {quality && !origRecheckUsed && !repaired && (
+      {!checking && (
         <div className="mt-4 space-y-3">
-          {confirm === "recheck-orig" ? (
+          {confirm === mode ? (
             <ConfirmBox
-              message="This check will use 1 additional creation from your available balance."
-              confirmLabel="Check Again"
-              onConfirm={onRecheckOriginal}
+              message={
+                quality
+                  ? "This check will use 1 additional creation from your available balance."
+                  : "Quality Check will use 1 creation from your available balance."
+              }
+              confirmLabel={quality ? "Check Again" : "Check"}
+              onConfirm={onCheck}
               onCancel={() => setConfirm(null)}
             />
           ) : (
             <CostButton
-              label="Check Again · −1 creation"
-              busy={checking}
-              busyLabel="Checking..."
-              onClick={() => setConfirm("recheck-orig")}
+              label={quality ? "Check Again · −1 creation" : "Check · −1 creation"}
+              busy={false}
+              busyLabel=""
+              onClick={() => setConfirm(mode)}
             />
           )}
-        </div>
-      )}
-
-      {canRepair && (
-        <div className="mt-5 space-y-3">
-          {confirm === "repair" ? (
-            <ConfirmBox
-              message="Repair will use 1 creation from your available balance."
-              confirmLabel="Repair"
-              onConfirm={onRepair}
-              onCancel={() => setConfirm(null)}
-            />
-          ) : (
-            <CostButton
-              label="Repair · −1 creation"
-              busy={repairing}
-              busyLabel="Repairing..."
-              onClick={() => setConfirm("repair")}
-            />
-          )}
-          {repairError && <p className="text-xs text-red-400">{repairError}</p>}
-        </div>
-      )}
-
-      {repaired && (
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Repaired</p>
-          <div className="mt-3 space-y-4">{repairedSections}</div>
-
-          {repaired.quality && (
-            <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
-          )}
-
-          {/* One-time re-analysis of the current (editable) repaired result. */}
-          {!repairedRecheckUsed && (
-            <div className="mt-4 space-y-3">
-              {confirm === "recheck" ? (
-                <ConfirmBox
-                  message="This check will use 1 additional creation from your available balance."
-                  confirmLabel="Check Again"
-                  onConfirm={onRecheck}
-                  onCancel={() => setConfirm(null)}
-                />
-              ) : (
-                <CostButton
-                  label="Check Again · −1 creation"
-                  busy={checking}
-                  busyLabel="Checking..."
-                  onClick={() => setConfirm("recheck")}
-                />
-              )}
-            </div>
-          )}
-
-          {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
+          {checkError && <p className="text-xs text-red-400">{checkError}</p>}
         </div>
       )}
     </div>
