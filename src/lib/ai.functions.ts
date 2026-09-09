@@ -381,13 +381,17 @@ function parseSections(raw: string) {
 
 const issueList = z.array(z.string().trim().min(1).max(600)).max(30);
 
-/** Quality Check 2.0 — a structured, deterministically applicable lyric fix. */
-const lyricCorrectionSchema = z.object({
+/**
+ * One unified, deterministically applicable correction. `field` decides which
+ * Apply path runs; lyrics additionally carry a section target.
+ */
+const correctionSchema = z.object({
+  field: z.enum(["title", "tags", "lyrics", "note"]),
   sectionLabel: z.string().trim().max(80).nullish().transform((v) => v ?? ""),
-  originalText: z.string().min(1).max(800),
+  originalText: z.string().min(1).max(4000),
   occurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? 1),
   reason: z.string().trim().min(1).max(600),
-  replacementText: z.string().min(1).max(800),
+  replacementText: z.string().min(1).max(4000),
 });
 
 const vocalInsertionSchema = z.object({
