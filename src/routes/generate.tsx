@@ -677,6 +677,12 @@ function GeneratePage() {
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
 
+  // Collapsible state for the repaired result sections (independent UI state).
+  const [repairedOpen, setRepairedOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
+
+  // Clear / reset confirmation (never consumes a creation).
+  const [confirmClear, setConfirmClear] = useState(false);
+
   // Deterministic Apply / Undo bookkeeping — no AI call is ever made here.
   const [applied, setApplied] = useState<Record<string, boolean>>({});
   const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
@@ -909,41 +915,47 @@ function GeneratePage() {
   };
 
   // ── Deterministic Apply / Undo. No AI provider request is made here. ──
-  const applyState: ApplyState = {
+  // The same logic serves the original and the repaired result; only the
+  // target (and its setter) differ, so one can never modify the other.
+  type Song = { title: string; tags: string; lyrics: string; note: string };
+  const makeApplyState = (
+    target: Song | null,
+    setTarget: (next: Song) => void,
+  ): ApplyState => ({
     applied,
     errors: applyErrors,
     onApplyCorrection: (id, c) => {
-      if (!result) return;
-      const res = applyLyricCorrection(result.lyrics, c);
+      if (!target) return;
+      const res = applyLyricCorrection(target.lyrics, c);
       if (!res.ok) return setApplyError(id, res.error);
-      setResult({ ...result, lyrics: res.text });
+      setTarget({ ...target, lyrics: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoCorrection: (id, c) => {
-      if (!result) return;
-      const res = undoLyricCorrection(result.lyrics, c);
+      if (!target) return;
+      const res = undoLyricCorrection(target.lyrics, c);
       if (!res.ok) return setApplyError(id, res.error);
-      setResult({ ...result, lyrics: res.text });
+      setTarget({ ...target, lyrics: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: false }));
     },
     onApplySuggestion: (id, s) => {
-      if (!result) return;
+      if (!target) return;
       if (s.actionType === "add_to_music_style") {
-        const res = addToMusicStyle(result.tags, s.value);
+        const res = addToMusicStyle(target.tags, s.value);
         if (!res.ok) return setApplyError(id, res.error);
-        setResult({ ...result, tags: res.text });
+        setTarget({ ...target, tags: res.text });
       } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = applyVocalArrangement(result.lyrics, s.arrangement);
+        const lyricsRes = applyVocalArrangement(target.lyrics, s.arrangement);
         if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
         // Music Style is appended to, never replaced; failure to append must not
         // leave the lyrics half-modified, so it is applied together.
-        const styleRes = s.value ? addToMusicStyle(result.tags, s.value) : null;
-        setResult({
-          ...result,
+        const styleRes = s.value ? addToMusicStyle(target.tags, s.value) : null;
+        setTarget({
+          ...target,
           lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : result.tags,
+          tags: styleRes?.ok ? styleRes.text : target.tags,
         });
       } else {
         return;
@@ -952,19 +964,19 @@ function GeneratePage() {
       setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoSuggestion: (id, s) => {
-      if (!result) return;
+      if (!target) return;
       if (s.actionType === "add_to_music_style") {
-        const res = removeFromMusicStyle(result.tags, s.value);
+        const res = removeFromMusicStyle(target.tags, s.value);
         if (!res.ok) return setApplyError(id, res.error);
-        setResult({ ...result, tags: res.text });
+        setTarget({ ...target, tags: res.text });
       } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = undoVocalArrangement(result.lyrics, s.arrangement);
+        const lyricsRes = undoVocalArrangement(target.lyrics, s.arrangement);
         if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
-        const styleRes = s.value ? removeFromMusicStyle(result.tags, s.value) : null;
-        setResult({
-          ...result,
+        const styleRes = s.value ? removeFromMusicStyle(target.tags, s.value) : null;
+        setTarget({
+          ...target,
           lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : result.tags,
+          tags: styleRes?.ok ? styleRes.text : target.tags,
         });
       } else {
         return;
@@ -972,7 +984,15 @@ function GeneratePage() {
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: false }));
     },
-  };
+  });
+
+  const applyState = makeApplyState(result, setResult);
+  const repairedApplyState = makeApplyState(repaired?.result ?? null, (next) =>
+    setRepaired((prev) => (prev ? { ...prev, result: next } : prev)),
+  );
+
+  const setRepairedField = (key: keyof Song, value: string) =>
+    setRepaired((prev) => (prev ? { ...prev, result: { ...prev.result, [key]: value } } : prev));
 
 
   return (
