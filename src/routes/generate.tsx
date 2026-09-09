@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
@@ -7,7 +7,6 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
-  generateSongPrompt,
   checkSongQuality,
 
   getGenerationUsage,
@@ -21,6 +20,13 @@ import {
   type QualitySuggestion,
 } from "@/lib/ai.functions";
 import {
+  getGenerationJob,
+  getLatestGenerationJob,
+  runGenerationJobNow,
+  startGenerationJob,
+  type GenerationJob,
+} from "@/lib/generation-jobs.functions";
+import {
   addToMusicStyle,
   applyLyricCorrection,
   applyVocalArrangement,
@@ -30,6 +36,9 @@ import {
 } from "@/lib/quality-apply";
 import { getMyModeration } from "@/lib/moderation.functions";
 import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
+
+/** Survives refreshes so an in-flight generation is recovered on return. */
+const JOB_STORAGE_KEY = "pb:generation-job";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -444,6 +453,8 @@ function QualityPanel({
   confirm,
   setConfirm,
   onRecheck,
+  onRecheckOriginal,
+  origRecheckUsed,
   state,
   repairedState,
   repairedSections,
@@ -457,9 +468,12 @@ function QualityPanel({
   onRepair: () => void;
   repairError: string | null;
   repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
-  confirm: "check" | "repair" | "recheck" | null;
-  setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
+  confirm: "check" | "repair" | "recheck" | "recheck-orig" | null;
+  setConfirm: (v: "check" | "repair" | "recheck" | "recheck-orig" | null) => void;
   onRecheck: () => void;
+  /** One-time re-analysis of the (possibly edited) original result. */
+  onRecheckOriginal: () => void;
+  origRecheckUsed: boolean;
   state: ApplyState;
   /** Apply / Undo bound to the repaired result — never touches the original. */
   repairedState: ApplyState;
@@ -497,6 +511,26 @@ function QualityPanel({
 
       {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
 
+      {quality && !origRecheckUsed && !repaired && (
+        <div className="mt-4 space-y-3">
+          {confirm === "recheck-orig" ? (
+            <ConfirmBox
+              message="This check will use 1 additional creation from your available balance."
+              confirmLabel="Check Again"
+              onConfirm={onRecheckOriginal}
+              onCancel={() => setConfirm(null)}
+            />
+          ) : (
+            <CostButton
+              label="Check Again · −1 creation"
+              busy={checking}
+              busyLabel="Checking..."
+              onClick={() => setConfirm("recheck-orig")}
+            />
+          )}
+        </div>
+      )}
+
       {canRepair && (
         <div className="mt-5 space-y-3">
           {confirm === "repair" ? (
@@ -527,24 +561,27 @@ function QualityPanel({
             <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
           )}
 
-          <div className="mt-4 space-y-3">
-            {confirm === "recheck" ? (
-              <ConfirmBox
-                message="This check will use 1 additional creation from your available balance."
-                confirmLabel="Check Again"
-                onConfirm={onRecheck}
-                onCancel={() => setConfirm(null)}
-              />
-            ) : (
-              <CostButton
-                label="Check Again · −1 creation"
-                busy={checking}
-                busyLabel="Checking..."
-                onClick={() => setConfirm("recheck")}
-              />
-            )}
-            {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-          </div>
+          {/* One-time re-analysis of the current (editable) repaired result. */}
+          {!repaired.quality && (
+            <div className="mt-4 space-y-3">
+              {confirm === "recheck" ? (
+                <ConfirmBox
+                  message="This check will use 1 additional creation from your available balance."
+                  confirmLabel="Check Again"
+                  onConfirm={onRecheck}
+                  onCancel={() => setConfirm(null)}
+                />
+              ) : (
+                <CostButton
+                  label="Check Again · −1 creation"
+                  busy={checking}
+                  busyLabel="Checking..."
+                  onClick={() => setConfirm("recheck")}
+                />
+              )}
+            </div>
+          )}
+          {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
         </div>
       )}
     </div>
@@ -662,7 +699,9 @@ function GeneratePage() {
   // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
+  // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
+  const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -697,6 +736,102 @@ function GeneratePage() {
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
+  // ---------------------------------------------------------------------------
+  // Durable generation job. The browser never waits for the AI provider: it
+  // creates a job, gets an id back immediately, and polls. Backgrounding the
+  // tab, losing signal or refreshing can no longer break a generation.
+  // ---------------------------------------------------------------------------
+  const [jobId, setJobId] = useState<string | null>(null);
+  /** Kept across retries so a resent Generate can never consume a 2nd creation. */
+  const pendingKey = useRef<string | null>(null);
+
+  function rememberJob(id: string | null) {
+    if (typeof window === "undefined") return;
+    if (id) window.localStorage.setItem(JOB_STORAGE_KEY, id);
+    else window.localStorage.removeItem(JOB_STORAGE_KEY);
+  }
+
+  function applyJob(job: GenerationJob) {
+    if (job.status === "completed" && job.result) {
+      setResult(job.result);
+      setGenerationId(job.generationId);
+      setQuality(null);
+      setOrigRecheckUsed(false);
+      setOpen({ title: false, tags: false, lyrics: false, note: false });
+      setStatus(null);
+      setBusy(false);
+      setJobId(null);
+      rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    if (job.status === "failed") {
+      setStatus(job.error ?? "The generation failed. Please try again.");
+      setBusy(false);
+      setJobId(null);
+      rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    // pending / processing
+    rememberJob(job.jobId);
+    setJobId(job.jobId);
+    setBusy(true);
+    setStatus("Generating… this keeps running even if you leave or lose signal.");
+  }
+
+  const { data: jobData, refetch: refetchJob } = useQuery({
+    queryKey: ["gen-job", jobId],
+    queryFn: () => getGenerationJob({ data: { jobId: jobId as string } }),
+    enabled: !!jobId,
+    refetchInterval: 2500,
+    refetchOnWindowFocus: true,
+    gcTime: 0,
+  });
+
+  useEffect(() => {
+    const job = jobData?.job;
+    if (!job || job.jobId !== jobId) return;
+    applyJob(job);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobData, jobId]);
+
+  // Recovery after a refresh, a crash, or a Generate whose response was lost.
+  useEffect(() => {
+    if (!user || jobId || result) return;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    if (stored) {
+      setJobId(stored);
+      setBusy(true);
+      return;
+    }
+    let cancelled = false;
+    void getLatestGenerationJob()
+      .then((r) => {
+        const job = r.job;
+        if (cancelled || !job) return;
+        if (job.status === "pending" || job.status === "processing") applyJob(job);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, jobId, result]);
+
+  // Returning to the tab or regaining connectivity re-syncs immediately.
+  useEffect(() => {
+    const sync = () => {
+      if (jobId && document.visibilityState === "visible") void refetchJob();
+    };
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("online", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("online", sync);
+    };
+  }, [jobId, refetchJob]);
 
 
 
@@ -790,17 +925,27 @@ function GeneratePage() {
     setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
+    if (busy || jobId) return;
     setBusy(true);
-    setStatus(null);
+    setStatus("Starting generation…");
     setSaved(false);
+    setResult(null);
     setQuality(null);
+    setOrigRecheckUsed(false);
     setRepaired(null);
     setRepairError(null);
     setApplied({});
     setApplyErrors({});
+
+    // Stable idempotency key: a retry after a dropped response reuses it, so the
+    // server returns the same job instead of consuming another creation.
+    const key = pendingKey.current ?? crypto.randomUUID();
+    pendingKey.current = key;
+
     try {
-      const res = await generateSongPrompt({
+      const res = await startGenerationJob({
         data: {
+          idempotencyKey: key,
           theme: theme.trim(),
           genre: effectiveGenre,
           mood: effectiveMood,
@@ -808,26 +953,38 @@ function GeneratePage() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited") {
+      if (res.rateLimited || !res.job) {
         setStatus("You've hit the hourly limit. Try again soon.");
+        setBusy(false);
+        pendingKey.current = null;
         return;
       }
-      setResult(res.result);
-      setGenerationId(res.generationId ?? null);
-      setQuality(res.quality ?? null);
-      // All four sections start collapsed after a new generation.
-      setOpen({ title: false, tags: false, lyrics: false, note: false });
-
-
+      pendingKey.current = null;
+      applyJob(res.job);
+      // Runs the job in its own request; not awaited, and safe to call twice
+      // because claiming a job is atomic.
+      if (res.job.status === "pending") {
+        void runGenerationJobNow({ data: { jobId: res.job.jobId } }).catch(() => undefined);
+      }
     } catch (err) {
+      // The job may already exist even though we never saw the response.
+      try {
+        const latest = await getLatestGenerationJob();
+        if (latest.job && latest.job.status !== "failed") {
+          pendingKey.current = null;
+          applyJob(latest.job);
+          return;
+        }
+      } catch {
+        /* still offline — keep the key so a retry reuses the same job */
+      }
       setStatus(err instanceof Error ? err.message : "Generation failed");
-    } finally {
       setBusy(false);
     }
   };
 
   // Manual: exactly one quality check per confirmed click.
-  const runCheck = async (afterRepair: boolean) => {
+  const runCheck = async (afterRepair: boolean, isRecheck = false) => {
     const target = afterRepair ? repaired?.result : result;
     if (!target) return;
     setConfirm(null);
@@ -854,6 +1011,8 @@ function GeneratePage() {
         setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
       } else {
         setQuality(res.quality);
+        // A Recheck is one-time: it is spent whether or not issues were found.
+        if (isRecheck) setOrigRecheckUsed(true);
       }
       if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
     } catch (err) {
@@ -1026,6 +1185,11 @@ function GeneratePage() {
     setResult(null);
     setGenerationId(null);
     setQuality(null);
+    setOrigRecheckUsed(false);
+    setJobId(null);
+    rememberJob(null);
+    pendingKey.current = null;
+    setBusy(false);
     setRepaired(null);
     setChecking(false);
     setRepairing(false);
@@ -1412,6 +1576,8 @@ function GeneratePage() {
                 confirm={confirm}
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
+                onRecheckOriginal={() => runCheck(false, true)}
+                origRecheckUsed={origRecheckUsed}
                 state={applyState}
                 repairedState={repairedApplyState}
                 repairedSections={

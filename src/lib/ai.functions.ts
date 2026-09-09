@@ -695,6 +695,69 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     };
   });
 
+/** Validated shape of a durable generation job's stored input payload. */
+export const generateJobInput = generateInput;
+
+/**
+ * Runs exactly one song generation against the active provider and returns the
+ * validated result. Credit accounting is NOT done here: the durable job flow
+ * consumes the creation atomically when the job is created, so this helper is
+ * called at most once per job and never re-charges the user.
+ *
+ * Prompts, model selection, output schema and analytics are unchanged.
+ */
+export async function runSongGeneration(
+  data: z.infer<typeof generateInput>,
+  userId: string,
+  generationId: string | null,
+): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
+  const { call, model, provider, schemas } = await activeCaller();
+  const records: PendingUsage[] = [];
+
+  let generated: ModelResult;
+  try {
+    generated = await call({
+      system: SYSTEM_PROMPT,
+      prompt: buildPrompt(data),
+      maxTokens: 8192,
+      schema: schemas.song,
+    });
+  } catch (err) {
+    await flushUsage(userId, generationId, [
+      { operation: "generate", provider, model, usage: null, success: false },
+    ]);
+    throw err;
+  }
+
+  const { text: raw, stopReason } = generated;
+  const generateOk = stopReason === "end_turn";
+  records.push({
+    operation: "generate",
+    provider: generated.provider,
+    model: generated.model,
+    usage: generated.usage,
+    success: generateOk,
+  });
+
+  if (!generateOk) {
+    await flushUsage(userId, generationId, records);
+    if (stopReason === "max_tokens") {
+      throw new Error("The AI response was incomplete. Please try again.");
+    }
+    throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
+  }
+
+  const result = generationOutput.safeParse(parseSections(raw));
+  if (!result.success) {
+    await flushUsage(userId, generationId, records);
+    throw new Error("The AI returned an incomplete or invalid response. Please try again.");
+  }
+
+  await flushUsage(userId, generationId, records);
+  console.log(`[ai] generation served by model=${generated.model}`);
+  return { result: result.data, provider: generated.provider, model: generated.model };
+}
+
 /**
  * Records one consumed creation against the rolling hourly limit and returns
  * its id. Admins keep the existing bypass; the limit logic itself is unchanged.
