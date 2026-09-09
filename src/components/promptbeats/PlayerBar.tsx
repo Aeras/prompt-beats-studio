@@ -34,7 +34,7 @@ export function PlayerBar() {
       className={
         isInline
           ? "glass-strong relative w-full min-w-0 overflow-hidden rounded-2xl border p-2 md:p-3"
-          : "glass-strong fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:bottom-0"
+          : "glass-strong fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] max-sm:bottom-[calc(64px+env(safe-area-inset-bottom))]"
       }
     >
       <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] md:gap-6 md:px-6 md:py-3">
