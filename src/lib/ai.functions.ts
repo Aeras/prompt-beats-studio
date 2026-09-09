@@ -513,7 +513,7 @@ function buildQualityPrompt(
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
 ) {
-  return `Evaluate the generated song below against the user's original constraints.
+  return `Evaluate the CURRENT state of the song below against the user's original constraints. This is exactly what the user sees right now, including any manual edits — analyse this text only.
 
 ORIGINAL USER CONSTRAINTS
 Core Idea: ${d.theme}
@@ -521,19 +521,21 @@ Requested Genre(s): ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
 
-GENERATED TITLE
+CURRENT TITLE
 ${r.title}
 
-GENERATED STYLE PROMPT (TAGS)
+CURRENT STYLE PROMPT (TAGS)
 ${r.tags}
 
-GENERATED LYRICS
+CURRENT LYRICS
 ${r.lyrics}
 
-GENERATED PRODUCER'S NOTE
+CURRENT PRODUCER'S NOTE
 ${r.note}
 
 Check: requested language integrity of the sung lyrics, foreign-language/script contamination, grammar and natural phrasing, singability and cadence against the implied tempo and flow, structural formatting (square brackets for all non-sung directions), genre authenticity and mood fit, faithfulness to the core idea, and consistency between the Style Prompt, the Lyrics and the Producer's Note. Also flag obviously generic or awkward wording.
+
+Then produce, in the SAME response: lyricCorrections for the fixable lyric issues (quoting the current lyrics exactly), plus any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions. Section labels and quoted text must come from the CURRENT lyrics above.
 
 Return the strict JSON object only.`;
 }
@@ -549,7 +551,7 @@ async function runQualityCheck(
     const res = await call({
       system: QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(d, r),
-      maxTokens: 2048,
+      maxTokens: 8192,
       schema,
     });
     const { text, stopReason } = res;
