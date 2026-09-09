@@ -1,9 +1,9 @@
 /**
  * Provider/model abstraction for the AI pipeline.
  *
- * The whole application pipeline (Generate → Quality Check → optional manual
- * Repair → post-repair Quality Check) lives in `ai.functions.ts` and is shared
- * by every provider. Only the raw model call differs and lives here.
+ * The whole application pipeline (Generate → Quality Check → user-approved
+ * corrections) lives in `ai.functions.ts` and is shared by every provider.
+ * Only the raw model call differs and lives here.
  *
  * API keys are read from server-side environment variables inside the call and
  * never leave the server.
@@ -214,18 +214,19 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
     singabilityIssues: { type: "ARRAY", items: { type: "STRING" } },
     genreIssues: { type: "ARRAY", items: { type: "STRING" } },
     consistencyIssues: { type: "ARRAY", items: { type: "STRING" } },
-    lyricCorrections: {
+    corrections: {
       type: "ARRAY",
       items: {
         type: "OBJECT",
         properties: {
+          field: { type: "STRING", enum: ["title", "tags", "lyrics", "note"] },
           sectionLabel: { type: "STRING" },
           originalText: { type: "STRING" },
           occurrenceIndex: { type: "NUMBER" },
           reason: { type: "STRING" },
           replacementText: { type: "STRING" },
         },
-        required: ["sectionLabel", "originalText", "occurrenceIndex", "reason", "replacementText"],
+        required: ["field", "sectionLabel", "originalText", "occurrenceIndex", "reason", "replacementText"],
       },
     },
     creativeSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
@@ -241,7 +242,7 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
     "singabilityIssues",
     "genreIssues",
     "consistencyIssues",
-    "lyricCorrections",
+    "corrections",
     "creativeSuggestions",
     "vocalSuggestions",
     "productionSuggestions",

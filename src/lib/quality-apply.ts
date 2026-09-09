@@ -197,6 +197,33 @@ function replaceOccurrence(
   };
 }
 
+/**
+ * Whole-field correction (Title / Music Style / Producer's Note).
+ * The stored original must still match the current value, otherwise nothing
+ * is changed — a later manual edit is never silently overwritten.
+ */
+export type FieldCorrection = { originalText: string; replacementText: string };
+
+export function applyFieldCorrection(current: string, c: FieldCorrection): ApplyResult {
+  if (!c.originalText.trim() || !c.replacementText.trim()) {
+    return { ok: false, error: "The correction is incomplete — nothing was changed." };
+  }
+  if (current.trim() === c.originalText.trim()) return { ok: true, text: c.replacementText };
+  const matches = findMatches(current, c.originalText);
+  if (matches.length !== 1) {
+    return { ok: false, error: "The current text no longer matches — nothing was changed." };
+  }
+  const hit = matches[0]!;
+  return { ok: true, text: current.slice(0, hit.start) + c.replacementText + current.slice(hit.end) };
+}
+
+export function undoFieldCorrection(current: string, c: FieldCorrection): ApplyResult {
+  return applyFieldCorrection(current, {
+    originalText: c.replacementText,
+    replacementText: c.originalText,
+  });
+}
+
 export type LyricCorrection = {
   sectionLabel?: string | null;
   originalText: string;

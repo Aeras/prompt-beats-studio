@@ -11,12 +11,11 @@ import {
 
   getGenerationUsage,
   savePromptToLibrary,
-  repairSongPrompt,
   getAiModelSetting,
   setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
-  type LyricCorrectionItem,
+  type CorrectionItem,
   type QualitySuggestion,
 } from "@/lib/ai.functions";
 import {
@@ -24,13 +23,16 @@ import {
   getLatestGenerationJob,
   dismissGenerationJob,
   startGenerationJob,
+  type GenerationContext,
   type GenerationJob,
 } from "@/lib/generation-jobs.functions";
 import {
   addToMusicStyle,
+  applyFieldCorrection,
   applyLyricCorrection,
   applyVocalArrangement,
   removeFromMusicStyle,
+  undoFieldCorrection,
   undoLyricCorrection,
   undoVocalArrangement,
 } from "@/lib/quality-apply";
@@ -218,19 +220,6 @@ function ActualIssues({ quality }: { quality: QualityReport }) {
 }
 
 
-function hasQualityIssues(q: QualityReport | null) {
-  if (!q) return false;
-  return (
-    q.issues.length +
-      q.languageIssues.length +
-      q.grammarIssues.length +
-      q.singabilityIssues.length +
-      q.genreIssues.length +
-      q.consistencyIssues.length >
-    0
-  );
-}
-
 function CostButton({
   label,
   busy,
@@ -289,8 +278,8 @@ function ConfirmBox({
 type ApplyState = {
   applied: Record<string, boolean>;
   errors: Record<string, string>;
-  onApplyCorrection: (id: string, c: LyricCorrectionItem) => void;
-  onUndoCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onApplyCorrection: (id: string, c: CorrectionItem) => void;
+  onUndoCorrection: (id: string, c: CorrectionItem) => void;
   onApplySuggestion: (id: string, s: QualitySuggestion) => void;
   onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
 };
@@ -320,15 +309,23 @@ function ApplyRow({ id, state, onApply, onUndo }: {
   );
 }
 
-function CorrectionCard({ id, c, state }: { id: string; c: LyricCorrectionItem; state: ApplyState }) {
+const FIELD_LABELS: Record<CorrectionItem["field"], string> = {
+  title: "Song title",
+  tags: "Music style",
+  lyrics: "Lyrics",
+  note: "Producer's note",
+};
+
+function CorrectionCard({ id, c, state }: { id: string; c: CorrectionItem; state: ApplyState }) {
   return (
     <div className="rounded-xl border border-red-400/25 bg-red-400/5 p-3">
-      {c.sectionLabel && (
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">[{c.sectionLabel}]</p>
-      )}
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {FIELD_LABELS[c.field]}
+        {c.field === "lyrics" && c.sectionLabel ? ` · [${c.sectionLabel}]` : ""}
+      </p>
       <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
-      <p className="mt-2 text-xs text-muted-foreground line-through">{c.originalText}</p>
-      <p className="text-xs text-green-300">{c.replacementText}</p>
+      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">{c.originalText}</p>
+      <p className="whitespace-pre-wrap text-xs text-green-300">{c.replacementText}</p>
       <ApplyRow
         id={id}
         state={state}
@@ -413,9 +410,9 @@ function QualityResults({ quality, prefix, state }: { quality: QualityReport; pr
         <div className="mt-2">
           <ActualIssues quality={quality} />
         </div>
-        {quality.lyricCorrections.length > 0 && (
+        {quality.corrections.length > 0 && (
           <div className="mt-3 space-y-2">
-            {quality.lyricCorrections.map((c, i) => (
+            {quality.corrections.map((c, i) => (
               <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />
             ))}
           </div>
@@ -445,44 +442,19 @@ function QualityPanel({
   checking,
   onCheck,
   checkError,
-  canRepair,
-  repairing,
-  onRepair,
-  repairError,
-  repaired,
   confirm,
   setConfirm,
-  onRecheck,
-  onRecheckOriginal,
-  origRecheckUsed,
-  repairedRecheckUsed,
   state,
-  repairedState,
-  repairedSections,
 }: {
   quality: QualityReport | null;
   checking: boolean;
   onCheck: () => void;
   checkError: string | null;
-  canRepair: boolean;
-  repairing: boolean;
-  onRepair: () => void;
-  repairError: string | null;
-  repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
-  confirm: "check" | "repair" | "recheck" | "recheck-orig" | null;
-  setConfirm: (v: "check" | "repair" | "recheck" | "recheck-orig" | null) => void;
-  onRecheck: () => void;
-  /** One-time re-analysis of the (possibly edited) original result. */
-  onRecheckOriginal: () => void;
-  origRecheckUsed: boolean;
-  /** One-time Recheck of the repaired result. */
-  repairedRecheckUsed: boolean;
+  confirm: "check" | "recheck" | null;
+  setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
-  /** Apply / Undo bound to the repaired result — never touches the original. */
-  repairedState: ApplyState;
-  /** Editable, collapsible sections rendering `repaired.result`. */
-  repairedSections: React.ReactNode;
 }) {
+  const mode = quality ? "recheck" : "check";
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
@@ -490,21 +462,7 @@ function QualityPanel({
         <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
       </div>
 
-      {!quality && !checking && (
-        <div className="mt-4 space-y-3">
-          {confirm === "check" ? (
-            <ConfirmBox
-              message="Quality Check will use 1 creation from your available balance."
-              confirmLabel="Check"
-              onConfirm={onCheck}
-              onCancel={() => setConfirm(null)}
-            />
-          ) : (
-            <CostButton label="Check · −1 creation" busy={false} busyLabel="" onClick={() => setConfirm("check")} />
-          )}
-          {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-        </div>
-      )}
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
 
       {checking && (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -512,80 +470,28 @@ function QualityPanel({
         </p>
       )}
 
-      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
-
-      {quality && !origRecheckUsed && !repaired && (
+      {!checking && (
         <div className="mt-4 space-y-3">
-          {confirm === "recheck-orig" ? (
+          {confirm === mode ? (
             <ConfirmBox
-              message="This check will use 1 additional creation from your available balance."
-              confirmLabel="Check Again"
-              onConfirm={onRecheckOriginal}
+              message={
+                quality
+                  ? "This check will use 1 additional creation from your available balance."
+                  : "Quality Check will use 1 creation from your available balance."
+              }
+              confirmLabel={quality ? "Check Again" : "Check"}
+              onConfirm={onCheck}
               onCancel={() => setConfirm(null)}
             />
           ) : (
             <CostButton
-              label="Check Again · −1 creation"
-              busy={checking}
-              busyLabel="Checking..."
-              onClick={() => setConfirm("recheck-orig")}
+              label={quality ? "Check Again · −1 creation" : "Check · −1 creation"}
+              busy={false}
+              busyLabel=""
+              onClick={() => setConfirm(mode)}
             />
           )}
-        </div>
-      )}
-
-      {canRepair && (
-        <div className="mt-5 space-y-3">
-          {confirm === "repair" ? (
-            <ConfirmBox
-              message="Repair will use 1 creation from your available balance."
-              confirmLabel="Repair"
-              onConfirm={onRepair}
-              onCancel={() => setConfirm(null)}
-            />
-          ) : (
-            <CostButton
-              label="Repair · −1 creation"
-              busy={repairing}
-              busyLabel="Repairing..."
-              onClick={() => setConfirm("repair")}
-            />
-          )}
-          {repairError && <p className="text-xs text-red-400">{repairError}</p>}
-        </div>
-      )}
-
-      {repaired && (
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Repaired</p>
-          <div className="mt-3 space-y-4">{repairedSections}</div>
-
-          {repaired.quality && (
-            <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
-          )}
-
-          {/* One-time re-analysis of the current (editable) repaired result. */}
-          {!repairedRecheckUsed && (
-            <div className="mt-4 space-y-3">
-              {confirm === "recheck" ? (
-                <ConfirmBox
-                  message="This check will use 1 additional creation from your available balance."
-                  confirmLabel="Check Again"
-                  onConfirm={onRecheck}
-                  onCancel={() => setConfirm(null)}
-                />
-              ) : (
-                <CostButton
-                  label="Check Again · −1 creation"
-                  busy={checking}
-                  busyLabel="Checking..."
-                  onClick={() => setConfirm("recheck")}
-                />
-              )}
-            </div>
-          )}
-
-          {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
+          {checkError && <p className="text-xs text-red-400">{checkError}</p>}
         </div>
       )}
     </div>
@@ -703,25 +609,17 @@ function GeneratePage() {
   // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
-  // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
-  const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
-  // One-time Recheck of the repaired result.
-  const [repairedRecheckUsed, setRepairedRecheckUsed] = useState(false);
-  // Manual repair state (never triggered automatically); available to authenticated users.
-  const [repairing, setRepairing] = useState(false);
-  const [repairError, setRepairError] = useState<string | null>(null);
-  const [repaired, setRepaired] = useState<{
-    result: { title: string; tags: string; lyrics: string; note: string };
-    quality: QualityReport | null;
-  } | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "recheck" | null>(null);
 
-  // Authoritative "latest song" pointers used by Recheck, so a check always
+  // The original generation brief that produced the current result. It comes
+  // from the persisted job, so a check after a refresh still uses the real
+  // theme / genre / mood / language instead of whatever the form shows now.
+  const [songContext, setSongContext] = useState<GenerationContext | null>(null);
+
+  // Authoritative "latest song" pointer used by every check, so a check always
   // analyzes the current editable state (Apply / Undo + manual edits included).
   const resultRef = useRef(result);
-  const repairedRef = useRef(repaired);
   resultRef.current = result;
-  repairedRef.current = repaired;
 
 
   // Part 3 — collapsible result sections (UI state only, collapsed by default).
@@ -729,9 +627,6 @@ function GeneratePage() {
   const allOpen = open.title && open.tags && open.lyrics && open.note;
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
-
-  // Collapsible state for the repaired result sections (independent UI state).
-  const [repairedOpen, setRepairedOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
 
   // Clear / reset confirmation (never consumes a creation).
   const [confirmClear, setConfirmClear] = useState(false);
@@ -747,7 +642,7 @@ function GeneratePage() {
       return next;
     });
 
-  // Links repair usage to the originating generation in analytics.
+  // Links quality-check usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
@@ -770,9 +665,8 @@ function GeneratePage() {
     if (job.status === "completed" && job.result) {
       setResult(job.result);
       setGenerationId(job.generationId);
+      setSongContext(job.input);
       setQuality(null);
-      setOrigRecheckUsed(false);
-      setRepairedRecheckUsed(false);
       setOpen({ title: false, tags: false, lyrics: false, note: false });
       setStatus(null);
       setBusy(false);
@@ -833,7 +727,9 @@ function GeneratePage() {
       .then((r) => {
         const job = r.job;
         if (cancelled || !job) return;
-        if (job.status === "pending" || job.status === "processing") applyJob(job);
+        if (job.status === "pending" || job.status === "processing" || job.status === "completed") {
+          applyJob(job);
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -953,10 +849,7 @@ function GeneratePage() {
     setSaved(false);
     setResult(null);
     setQuality(null);
-    setOrigRecheckUsed(false);
-    setRepairedRecheckUsed(false);
-    setRepaired(null);
-    setRepairError(null);
+    setSongContext(null);
     setApplied({});
     setApplyErrors({});
 
@@ -1004,10 +897,11 @@ function GeneratePage() {
   };
 
   // Manual: exactly one quality check per confirmed click.
-  // The analyzed song is always read from the refs, so any Apply / Undo or
+  // The analyzed song is always read from the ref, so any Apply / Undo or
   // manual edit made right before the click is included (never a stale copy).
-  const runCheck = async (afterRepair: boolean, isRecheck = false) => {
-    const target = afterRepair ? repairedRef.current?.result : resultRef.current;
+  // The brief comes from the persisted job when it is known.
+  const runCheck = async () => {
+    const target = resultRef.current;
     if (!target) return;
     setConfirm(null);
     setChecking(true);
@@ -1015,13 +909,12 @@ function GeneratePage() {
     try {
       const res = await checkSongQuality({
         data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
+          theme: songContext?.theme?.trim() || theme.trim(),
+          genre: songContext?.genre || effectiveGenre,
+          mood: songContext?.mood || effectiveMood,
+          language: songContext?.language || effectiveLanguage,
           result: { ...target },
           generationId,
-          afterRepair,
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -1029,55 +922,21 @@ function GeneratePage() {
         setCheckError("You've hit the hourly limit. Try again soon.");
         return;
       }
-      if (afterRepair) {
-        setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
-        // A Recheck is one-time: it is spent once the check actually ran.
-        if (isRecheck) setRepairedRecheckUsed(true);
-      } else {
+      // A new report always replaces the previous one; applied-state is reset
+      // because the new items are new suggestions against the current song.
+      if (res.quality) {
         setQuality(res.quality);
-        if (isRecheck) setOrigRecheckUsed(true);
+        setApplied({});
+        setApplyErrors({});
+      } else {
+        setCheckError("Quality check unavailable. Please try again.");
       }
-      if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
     } catch (err) {
       setCheckError(err instanceof Error ? err.message : "Check failed");
     } finally {
       setChecking(false);
     }
   };
-
-
-  // Manual: exactly one repair request per confirmed click, no retries.
-  const repair = async () => {
-    if (!result || !quality) return;
-    setConfirm(null);
-    setRepairing(true);
-    setRepairError(null);
-    try {
-      const res = await repairSongPrompt({
-        data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
-          result,
-          quality,
-          generationId,
-
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited" || !res.result) {
-        setRepairError("You've hit the hourly limit. Try again soon.");
-        return;
-      }
-      setRepaired({ result: res.result, quality: res.quality });
-    } catch (err) {
-      setRepairError(err instanceof Error ? err.message : "Repair failed");
-    } finally {
-      setRepairing(false);
-    }
-  };
-
 
   const save = async () => {
     if (!result) return;
@@ -1098,8 +957,7 @@ function GeneratePage() {
   };
 
   // ── Deterministic Apply / Undo. No AI provider request is made here. ──
-  // The same logic serves the original and the repaired result; only the
-  // target (and its setter) differ, so one can never modify the other.
+  // Corrections and suggestions are applied to the single editable result.
   type Song = { title: string; tags: string; lyrics: string; note: string };
   const makeApplyState = (
     target: Song | null,
@@ -1109,17 +967,23 @@ function GeneratePage() {
     errors: applyErrors,
     onApplyCorrection: (id, c) => {
       if (!target) return;
-      const res = applyLyricCorrection(target.lyrics, c);
+      const res =
+        c.field === "lyrics"
+          ? applyLyricCorrection(target.lyrics, c)
+          : applyFieldCorrection(target[c.field], c);
       if (!res.ok) return setApplyError(id, res.error);
-      setTarget({ ...target, lyrics: res.text });
+      setTarget({ ...target, [c.field]: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoCorrection: (id, c) => {
       if (!target) return;
-      const res = undoLyricCorrection(target.lyrics, c);
+      const res =
+        c.field === "lyrics"
+          ? undoLyricCorrection(target.lyrics, c)
+          : undoFieldCorrection(target[c.field], c);
       if (!res.ok) return setApplyError(id, res.error);
-      setTarget({ ...target, lyrics: res.text });
+      setTarget({ ...target, [c.field]: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: false }));
     },
@@ -1170,12 +1034,6 @@ function GeneratePage() {
   });
 
   const applyState = makeApplyState(result, setResult);
-  const repairedApplyState = makeApplyState(repaired?.result ?? null, (next) =>
-    setRepaired((prev) => (prev ? { ...prev, result: next } : prev)),
-  );
-
-  const setRepairedField = (key: keyof Song, value: string) =>
-    setRepaired((prev) => (prev ? { ...prev, result: { ...prev.result, [key]: value } } : prev));
 
   // ── Clear / reset. Purely local state; never calls the AI or costs a creation. ──
   const canClear =
@@ -1191,8 +1049,7 @@ function GeneratePage() {
     bpm !== "Auto" ||
     !!customBpm.trim() ||
     !!result ||
-    !!quality ||
-    !!repaired;
+    !!quality;
 
   const clearAll = () => {
     // Forget any running generation server-side too, so it is never restored
@@ -1212,17 +1069,13 @@ function GeneratePage() {
     setResult(null);
     setGenerationId(null);
     setQuality(null);
-    setOrigRecheckUsed(false);
-    setRepairedRecheckUsed(false);
+    setSongContext(null);
     setJobId(null);
     rememberJob(null);
     pendingKey.current = null;
     setBusy(false);
-    setRepaired(null);
     setChecking(false);
-    setRepairing(false);
     setCheckError(null);
-    setRepairError(null);
     setStatus(null);
     setSaved(false);
     setApplied({});
@@ -1230,7 +1083,6 @@ function GeneratePage() {
     setConfirm(null);
     setConfirmClear(false);
     setOpen({ title: false, tags: false, lyrics: false, note: false });
-    setRepairedOpen({ title: false, tags: false, lyrics: false, note: false });
   };
 
 
@@ -1590,67 +1442,15 @@ function GeneratePage() {
               {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
               {saved ? "Saved to your library" : "Save to My Library"}
             </button>
-            {(
-              <QualityPanel
-                quality={quality}
-                checking={checking}
-                onCheck={() => runCheck(false)}
-                checkError={checkError}
-                canRepair={hasQualityIssues(quality) && !repaired}
-                repairing={repairing}
-                onRepair={repair}
-                repairError={repairError}
-                repaired={repaired}
-                confirm={confirm}
-                setConfirm={setConfirm}
-                onRecheck={() => runCheck(true)}
-                onRecheckOriginal={() => runCheck(false, true)}
-                origRecheckUsed={origRecheckUsed}
-                repairedRecheckUsed={repairedRecheckUsed}
-                state={applyState}
-                repairedState={repairedApplyState}
-                repairedSections={
-                  repaired && (
-                    <>
-                      <ResultSection
-                        title="REPAIRED SONG TITLE"
-                        value={repaired.result.title}
-                        open={repairedOpen.title}
-                        onToggle={() => setRepairedOpen((p) => ({ ...p, title: !p.title }))}
-                        onChange={(v) => setRepairedField("title", v)}
-                        rows={2}
-                      />
-                      <ResultSection
-                        title="REPAIRED STYLE PROMPT (METATAGS)"
-                        value={repaired.result.tags}
-                        open={repairedOpen.tags}
-                        onToggle={() => setRepairedOpen((p) => ({ ...p, tags: !p.tags }))}
-                        onChange={(v) => setRepairedField("tags", v)}
-                        rows={4}
-                      />
-                      <ResultSection
-                        title="REPAIRED LYRICS & STRUCTURE"
-                        value={repaired.result.lyrics}
-                        open={repairedOpen.lyrics}
-                        onToggle={() => setRepairedOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
-                        onChange={(v) => setRepairedField("lyrics", v)}
-                        rows={18}
-                      />
-                      <ResultSection
-                        title="REPAIRED PRODUCER'S NOTE"
-                        value={repaired.result.note}
-                        open={repairedOpen.note}
-                        onToggle={() => setRepairedOpen((p) => ({ ...p, note: !p.note }))}
-                        onChange={(v) => setRepairedField("note", v)}
-                        rows={5}
-                      />
-                    </>
-                  )
-                }
-              />
-            )}
-
-
+            <QualityPanel
+              quality={quality}
+              checking={checking}
+              onCheck={runCheck}
+              checkError={checkError}
+              confirm={confirm}
+              setConfirm={setConfirm}
+              state={applyState}
+            />
           </div>
         )}
       </div>
