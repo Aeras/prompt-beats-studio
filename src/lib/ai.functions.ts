@@ -507,7 +507,29 @@ Each suggestion object:
 
 ACTION CLASSIFICATION: decide by WHAT the suggestion asks for, never by the presence of section words. A specific vocal performance, arrangement, effect or direction inside a specific section is "vocal_arrangement" (e.g. whispered ad-libs in the Outro → {"sectionLabel": "Outro", "sectionOccurrenceIndex": 1, "tag": "[Male - whispered ad-lib]"}); a global musical/production direction is "add_to_music_style" (e.g. a brief silent beat with piano hold before the final chorus, punchier kick and snare, warmer sub bass). Respect vocal assignments already present in the lyrics and never produce a duplicate tag.
 
-The score reflects ONLY real quality problems. Creative, vocal and production suggestions must never lower it.`;
+The score reflects ONLY real quality problems. Creative, vocal and production suggestions must never lower it.
+
+==================================================
+STRICT FINAL ASSESSMENT MANDATE
+==================================================
+
+Assess the song as a FINISHED PROFESSIONAL RELEASE. Identify ONLY clear, material and defensible defects that genuinely require correction:
+- grammatical or linguistic errors
+- unnatural or incorrect wording
+- poor singability caused by wording or phrasing
+- forced rhyme or clearly awkward lyrics
+- unnecessary or excessive repetition
+- contradictions or factual/story inconsistencies within the song
+- mismatch with the requested language, genre, mood or core idea
+- structural or formatting errors
+- contradiction between Title, Music Style, Lyrics or Producer's Note
+- inaccurate or contradictory musical directions in the Music Style
+
+Do NOT report subjective preferences, stylistic alternatives, optional enhancements, or wording that is merely different or potentially better.
+
+For every genuine defect, provide ONE exact correction targeting only the affected content. For lyric corrections, identify the exact section and 1-based occurrence so the intended text can be changed safely.
+
+If the song has no genuine defects, return "passed": true, "score": 10, and an empty "corrections" array (optional suggestions may still be returned).`;
 
 function buildQualityPrompt(
   d: z.infer<typeof generateInput>,
@@ -537,7 +559,7 @@ ${r.lyrics}
 Producer's Note:
 ${r.note}
 
-Report genuine actual issues only, and for every fixable one return a precise correction quoting the CURRENT text above exactly. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
+Report ONLY clear, material and defensible defects, and for every fixable one return a precise correction quoting the CURRENT text above exactly. Ignore subjective preferences and stylistic alternatives. If there are no genuine defects, return "passed": true, "score": 10 and an empty "corrections" array. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
 
 Return the strict JSON object only.`;
 }
