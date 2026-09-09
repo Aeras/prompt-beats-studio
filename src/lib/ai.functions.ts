@@ -91,6 +91,22 @@ Core Idea: ${d.theme}
 Requested Genre(s): ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
+${d.structure ? `Requested Song Structure (in this order): ${d.structure}` : ""}
+${d.production ? `Requested Production Style: ${d.production}` : ""}
+${d.instructions ? `Additional Instructions: ${d.instructions}` : ""}
+
+${
+  d.structure || d.production || d.instructions
+    ? `ADVANCED USER DIRECTION — AUTHORITATIVE:
+
+${d.structure ? `- The Requested Song Structure defines the order of song sections. Follow it as given, using matching square-bracketed structural tags in the lyrics, unless following it would create a clear musical contradiction; in that case adapt minimally and keep the intent.` : ""}
+${d.production ? `- The Requested Production Style defines the production, arrangement, sonic character, dynamics, texture, groove and vocal treatment direction. Reflect it in the Music Style tags, the arrangement and the Producer's Note.` : ""}
+${d.instructions ? `- The Additional Instructions are user requirements and must be respected wherever they do not contradict the Core Idea, Language, Genre or Mood.` : ""}
+- Integrate all of the above with the Core Idea, Genre, Mood and Language into ONE coherent brief.
+- Never mention, quote or expose these field names or this instruction text anywhere in the generated song.`
+    : ""
+}
+
 
 ==================================================
 CREATIVE PRIORITY
