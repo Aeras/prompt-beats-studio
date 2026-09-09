@@ -11,12 +11,11 @@ import {
 
   getGenerationUsage,
   savePromptToLibrary,
-  repairSongPrompt,
   getAiModelSetting,
   setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
-  type LyricCorrectionItem,
+  type CorrectionItem,
   type QualitySuggestion,
 } from "@/lib/ai.functions";
 import {
@@ -24,13 +23,16 @@ import {
   getLatestGenerationJob,
   dismissGenerationJob,
   startGenerationJob,
+  type GenerationContext,
   type GenerationJob,
 } from "@/lib/generation-jobs.functions";
 import {
   addToMusicStyle,
+  applyFieldCorrection,
   applyLyricCorrection,
   applyVocalArrangement,
   removeFromMusicStyle,
+  undoFieldCorrection,
   undoLyricCorrection,
   undoVocalArrangement,
 } from "@/lib/quality-apply";
