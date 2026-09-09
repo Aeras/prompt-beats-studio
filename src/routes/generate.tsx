@@ -205,6 +205,160 @@ function ConfirmBox({
   );
 }
 
+type ApplyState = {
+  applied: Record<string, boolean>;
+  errors: Record<string, string>;
+  onApplyCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onUndoCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onApplySuggestion: (id: string, s: QualitySuggestion) => void;
+  onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
+};
+
+function ApplyRow({ id, state, onApply, onUndo }: {
+  id: string;
+  state: ApplyState;
+  onApply: () => void;
+  onUndo: () => void;
+}) {
+  const done = state.applied[id];
+  const error = state.errors[id];
+  return (
+    <div className="mt-2">
+      <button
+        onClick={done ? onUndo : onApply}
+        className={
+          done
+            ? "rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            : "rounded-lg border border-accent/50 px-3 py-1.5 text-[11px] text-accent transition-colors hover:bg-accent/10"
+        }
+      >
+        {done ? "Undo" : "Apply"}
+      </button>
+      {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function CorrectionCard({ id, c, state }: { id: string; c: LyricCorrectionItem; state: ApplyState }) {
+  return (
+    <div className="rounded-xl border border-red-400/25 bg-red-400/5 p-3">
+      {c.sectionLabel && (
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">[{c.sectionLabel}]</p>
+      )}
+      <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
+      <p className="mt-2 text-xs text-muted-foreground line-through">{c.originalText}</p>
+      <p className="text-xs text-green-300">{c.replacementText}</p>
+      <ApplyRow
+        id={id}
+        state={state}
+        onApply={() => state.onApplyCorrection(id, c)}
+        onUndo={() => state.onUndoCorrection(id, c)}
+      />
+    </div>
+  );
+}
+
+function SuggestionCard({ id, s, state }: { id: string; s: QualitySuggestion; state: ApplyState }) {
+  const applicable = s.actionType !== "informational";
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-xs font-semibold text-foreground">{s.title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{s.explanation}</p>
+      {s.actionType === "add_to_music_style" && s.value && (
+        <p className="mt-2 text-[11px] text-accent">Add to Music Style: {s.value}</p>
+      )}
+      {s.actionType === "vocal_arrangement" && s.arrangement.length > 0 && (
+        <p className="mt-2 text-[11px] text-accent">
+          {s.arrangement.map((a) => `${a.tag} → ${a.sectionLabel}`).join(" · ")}
+        </p>
+      )}
+      {applicable && (
+        <ApplyRow
+          id={id}
+          state={state}
+          onApply={() => state.onApplySuggestion(id, s)}
+          onUndo={() => state.onUndoSuggestion(id, s)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SuggestionGroup({
+  heading,
+  hint,
+  items,
+  prefix,
+  state,
+}: {
+  heading: string;
+  hint: string;
+  items: QualitySuggestion[];
+  prefix: string;
+  state: ApplyState;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-5">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{heading}</p>
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
+      <div className="mt-2 space-y-2">
+        {items.map((s, i) => (
+          <SuggestionCard key={`${prefix}-${i}`} id={`${prefix}-${i}`} s={s} state={state} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityResults({ quality, prefix, state }: { quality: QualityReport; prefix: string; state: ApplyState }) {
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center gap-4 text-sm">
+        <span>
+          Passed:{" "}
+          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
+            {quality.passed ? "Yes" : "No"}
+          </strong>
+        </span>
+        <span>
+          Score: <strong className="text-foreground">{quality.score}/10</strong>
+        </span>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">1 · Actual issues</p>
+        <p className="text-[11px] text-muted-foreground">Problems that may need correction.</p>
+        <div className="mt-2">
+          <ActualIssues quality={quality} />
+        </div>
+        {quality.lyricCorrections.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {quality.lyricCorrections.map((c, i) => (
+              <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <SuggestionGroup
+        heading="2 · Creative suggestions"
+        hint="Optional improvements — they do not affect the score."
+        items={quality.creativeSuggestions}
+        prefix={`${prefix}-cre`}
+        state={state}
+      />
+      <SuggestionGroup
+        heading="3 · Vocal / production suggestions"
+        hint="Optional musical and production recommendations."
+        items={[...quality.vocalSuggestions, ...quality.productionSuggestions]}
+        prefix={`${prefix}-vop`}
+        state={state}
+      />
+    </div>
+  );
+}
+
 function QualityPanel({
   quality,
   checking,
@@ -218,6 +372,7 @@ function QualityPanel({
   confirm,
   setConfirm,
   onRecheck,
+  state,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -231,6 +386,7 @@ function QualityPanel({
   confirm: "check" | "repair" | "recheck" | null;
   setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
   onRecheck: () => void;
+  state: ApplyState;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
@@ -261,12 +417,7 @@ function QualityPanel({
         </p>
       )}
 
-      {quality && (
-        <>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
-          <QualityReportBody quality={quality} />
-        </>
-      )}
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
 
       {canRepair && (
         <div className="mt-5 space-y-3">
@@ -321,6 +472,52 @@ function QualityPanel({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Part 3 — collapsible, editable result section. Collapse is UI state only. */
+function ResultSection({
+  title,
+  value,
+  open,
+  onToggle,
+  onChange,
+  rows,
+}: {
+  title: string;
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (v: string) => void;
+  rows: number;
+}) {
+  return (
+    <div className="glass rounded-2xl p-5">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-accent transition-transform ${open ? "" : "-rotate-90"}`}
+          />
+          <h2 className="min-w-0 flex-1 truncate font-display text-sm font-semibold tracking-wide text-gradient-neon">
+            {title}
+          </h2>
+        </button>
+        <CopyButton value={value} />
+      </div>
+      {open && (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows}
+          aria-label={title}
+          className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 font-sans text-sm text-foreground outline-none transition-shadow focus:border-primary/60"
+        />
       )}
     </div>
   );
