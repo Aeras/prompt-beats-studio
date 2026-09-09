@@ -984,7 +984,7 @@ function GeneratePage() {
   };
 
   // Manual: exactly one quality check per confirmed click.
-  const runCheck = async (afterRepair: boolean) => {
+  const runCheck = async (afterRepair: boolean, isRecheck = false) => {
     const target = afterRepair ? repaired?.result : result;
     if (!target) return;
     setConfirm(null);
@@ -1011,6 +1011,8 @@ function GeneratePage() {
         setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
       } else {
         setQuality(res.quality);
+        // A Recheck is one-time: it is spent whether or not issues were found.
+        if (isRecheck) setOrigRecheckUsed(true);
       }
       if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
     } catch (err) {
@@ -1574,6 +1576,8 @@ function GeneratePage() {
                 confirm={confirm}
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
+                onRecheckOriginal={() => runCheck(false, true)}
+                origRecheckUsed={origRecheckUsed}
                 state={applyState}
                 repairedState={repairedApplyState}
                 repairedSections={
