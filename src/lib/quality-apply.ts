@@ -174,11 +174,53 @@ export function removeFromMusicStyle(tags: string, addition: string): ApplyResul
   return { ok: false, error: "The Music Style text has changed — nothing was undone." };
 }
 
-export type VocalInsertion = { sectionLabel: string; tag: string };
+export type VocalInsertion = {
+  sectionLabel: string;
+  /** 1-based occurrence among sections with the same label. */
+  sectionOccurrenceIndex?: number | null;
+  tag: string;
+};
+
+type Block = { label: string; start: number; end: number };
+
+/**
+ * Resolves one arrangement step to a single section header line.
+ * Never falls back to "the first match" when the label is ambiguous.
+ */
+function resolveSection(
+  blocks: Block[],
+  step: VocalInsertion,
+): { ok: true; headerIndex: number } | { ok: false; error: string } {
+  const wanted = cleanLabel(step.sectionLabel);
+  const exact = blocks.filter((b) => cleanLabel(b.label) === wanted);
+  const matches = exact.length ? exact : blocks.filter((b) => cleanLabel(b.label).startsWith(wanted));
+
+  if (matches.length === 0) {
+    return { ok: false, error: `Section "${step.sectionLabel}" could not be matched — nothing was changed.` };
+  }
+  if (matches.length === 1) return { ok: true, headerIndex: matches[0]!.start };
+
+  const index = step.sectionOccurrenceIndex;
+  if (!index || !Number.isInteger(index) || index < 1) {
+    return {
+      ok: false,
+      error: `There are ${matches.length} "${step.sectionLabel}" sections and the suggestion does not say which one — nothing was changed.`,
+    };
+  }
+  const block = matches[index - 1];
+  if (!block) {
+    return {
+      ok: false,
+      error: `"${step.sectionLabel}" #${index} does not exist in the current lyrics — nothing was changed.`,
+    };
+  }
+  return { ok: true, headerIndex: block.start };
+}
 
 /**
  * Inserts approved vocal tags immediately after existing section headers.
  * Sung text, section names, section count and order are never touched.
+ * All insertions are applied atomically or none at all.
  */
 export function applyVocalArrangement(lyrics: string, plan: VocalInsertion[]): ApplyResult {
   if (!plan.length) return { ok: false, error: "The arrangement has no sections to update." };
@@ -187,20 +229,16 @@ export function applyVocalArrangement(lyrics: string, plan: VocalInsertion[]): A
   const inserts: { at: number; tag: string }[] = [];
 
   for (const step of plan) {
-    const wanted = normalize(step.sectionLabel);
-    const matches = blocks.filter(
-      (b) => normalize(b.label) === wanted || normalize(b.label).startsWith(wanted),
-    );
-    if (matches.length !== 1) {
-      return { ok: false, error: `Section "${step.sectionLabel}" could not be matched — nothing was changed.` };
-    }
+    const found = resolveSection(blocks, step);
+    if (!found.ok) return { ok: false, error: found.error };
+
     const tag = step.tag.trim();
     if (!/^\[[^\]]+\]$/.test(tag)) {
       return { ok: false, error: `Invalid vocal tag "${step.tag}" — nothing was changed.` };
     }
-    const headerIndex = matches[0]!.start;
-    if (out[headerIndex + 1]?.trim() === tag) continue;
-    inserts.push({ at: headerIndex + 1, tag });
+    // Already applied at this exact section: skip, never duplicate.
+    if (out[found.headerIndex + 1]?.trim() === tag) continue;
+    inserts.push({ at: found.headerIndex + 1, tag });
   }
   if (!inserts.length) return { ok: false, error: "These vocal tags are already in place." };
 
@@ -208,19 +246,17 @@ export function applyVocalArrangement(lyrics: string, plan: VocalInsertion[]): A
   return { ok: true, text: out.join("\n") };
 }
 
-/** Undo: removes only the exact tag lines that were inserted. */
+/** Undo: removes only the exact tag lines inserted at the identified sections. */
 export function undoVocalArrangement(lyrics: string, plan: VocalInsertion[]): ApplyResult {
   const { lines, blocks } = sections(lyrics);
   const remove = new Set<number>();
   for (const step of plan) {
-    const wanted = normalize(step.sectionLabel);
-    const matches = blocks.filter(
-      (b) => normalize(b.label) === wanted || normalize(b.label).startsWith(wanted),
-    );
-    if (matches.length !== 1) continue;
-    const at = matches[0]!.start + 1;
+    const found = resolveSection(blocks, step);
+    if (!found.ok) continue;
+    const at = found.headerIndex + 1;
     if (lines[at]?.trim() === step.tag.trim()) remove.add(at);
   }
   if (!remove.size) return { ok: false, error: "The inserted vocal tags were not found — nothing was undone." };
   return { ok: true, text: lines.filter((_, i) => !remove.has(i)).join("\n") };
 }
+
