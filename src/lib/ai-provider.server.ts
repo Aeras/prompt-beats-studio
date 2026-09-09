@@ -180,6 +180,25 @@ export const SONG_SCHEMA: Record<string, unknown> = {
   required: ["title", "tags", "lyrics", "note"],
 };
 
+const SUGGESTION_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    explanation: { type: "STRING" },
+    actionType: { type: "STRING", enum: ["add_to_music_style", "vocal_arrangement", "informational"] },
+    value: { type: "STRING" },
+    arrangement: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { sectionLabel: { type: "STRING" }, tag: { type: "STRING" } },
+        required: ["sectionLabel", "tag"],
+      },
+    },
+  },
+  required: ["title", "explanation", "actionType", "value", "arrangement"],
+};
+
 export const QUALITY_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
   properties: {
@@ -191,6 +210,23 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
     singabilityIssues: { type: "ARRAY", items: { type: "STRING" } },
     genreIssues: { type: "ARRAY", items: { type: "STRING" } },
     consistencyIssues: { type: "ARRAY", items: { type: "STRING" } },
+    lyricCorrections: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          sectionLabel: { type: "STRING" },
+          originalText: { type: "STRING" },
+          occurrenceIndex: { type: "NUMBER" },
+          reason: { type: "STRING" },
+          replacementText: { type: "STRING" },
+        },
+        required: ["sectionLabel", "originalText", "occurrenceIndex", "reason", "replacementText"],
+      },
+    },
+    creativeSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
+    vocalSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
+    productionSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
   },
   required: [
     "passed",
@@ -201,5 +237,9 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
     "singabilityIssues",
     "genreIssues",
     "consistencyIssues",
+    "lyricCorrections",
+    "creativeSuggestions",
+    "vocalSuggestions",
+    "productionSuggestions",
   ],
 };

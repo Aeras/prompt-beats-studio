@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +17,17 @@ import {
   setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
+  type LyricCorrectionItem,
+  type QualitySuggestion,
 } from "@/lib/ai.functions";
+import {
+  addToMusicStyle,
+  applyLyricCorrection,
+  applyVocalArrangement,
+  removeFromMusicStyle,
+  undoLyricCorrection,
+  undoVocalArrangement,
+} from "@/lib/quality-apply";
 import { getMyModeration } from "@/lib/moderation.functions";
 import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
 
@@ -103,6 +113,20 @@ function QualityIssueList({ label, items }: { label: string; items: string[] }) 
   );
 }
 
+/** Category 1 — Actual Issues (these affect the score). */
+function ActualIssues({ quality }: { quality: QualityReport }) {
+  return (
+    <div className="space-y-4">
+      <QualityIssueList label="Issues" items={quality.issues} />
+      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
+      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
+      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
+      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
+      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+    </div>
+  );
+}
+
 function QualityReportBody({ quality }: { quality: QualityReport | null }) {
   if (!quality) return <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>;
   return (
@@ -118,12 +142,7 @@ function QualityReportBody({ quality }: { quality: QualityReport | null }) {
           Score: <strong className="text-foreground">{quality.score}/10</strong>
         </span>
       </div>
-      <QualityIssueList label="Issues" items={quality.issues} />
-      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
-      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
-      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
-      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
-      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+      <ActualIssues quality={quality} />
     </div>
   );
 }
@@ -196,6 +215,160 @@ function ConfirmBox({
   );
 }
 
+type ApplyState = {
+  applied: Record<string, boolean>;
+  errors: Record<string, string>;
+  onApplyCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onUndoCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onApplySuggestion: (id: string, s: QualitySuggestion) => void;
+  onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
+};
+
+function ApplyRow({ id, state, onApply, onUndo }: {
+  id: string;
+  state: ApplyState;
+  onApply: () => void;
+  onUndo: () => void;
+}) {
+  const done = state.applied[id];
+  const error = state.errors[id];
+  return (
+    <div className="mt-2">
+      <button
+        onClick={done ? onUndo : onApply}
+        className={
+          done
+            ? "rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            : "rounded-lg border border-accent/50 px-3 py-1.5 text-[11px] text-accent transition-colors hover:bg-accent/10"
+        }
+      >
+        {done ? "Undo" : "Apply"}
+      </button>
+      {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function CorrectionCard({ id, c, state }: { id: string; c: LyricCorrectionItem; state: ApplyState }) {
+  return (
+    <div className="rounded-xl border border-red-400/25 bg-red-400/5 p-3">
+      {c.sectionLabel && (
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">[{c.sectionLabel}]</p>
+      )}
+      <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
+      <p className="mt-2 text-xs text-muted-foreground line-through">{c.originalText}</p>
+      <p className="text-xs text-green-300">{c.replacementText}</p>
+      <ApplyRow
+        id={id}
+        state={state}
+        onApply={() => state.onApplyCorrection(id, c)}
+        onUndo={() => state.onUndoCorrection(id, c)}
+      />
+    </div>
+  );
+}
+
+function SuggestionCard({ id, s, state }: { id: string; s: QualitySuggestion; state: ApplyState }) {
+  const applicable = s.actionType !== "informational";
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-xs font-semibold text-foreground">{s.title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{s.explanation}</p>
+      {s.actionType === "add_to_music_style" && s.value && (
+        <p className="mt-2 text-[11px] text-accent">Add to Music Style: {s.value}</p>
+      )}
+      {s.actionType === "vocal_arrangement" && s.arrangement.length > 0 && (
+        <p className="mt-2 text-[11px] text-accent">
+          {s.arrangement.map((a) => `${a.tag} → ${a.sectionLabel}`).join(" · ")}
+        </p>
+      )}
+      {applicable && (
+        <ApplyRow
+          id={id}
+          state={state}
+          onApply={() => state.onApplySuggestion(id, s)}
+          onUndo={() => state.onUndoSuggestion(id, s)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SuggestionGroup({
+  heading,
+  hint,
+  items,
+  prefix,
+  state,
+}: {
+  heading: string;
+  hint: string;
+  items: QualitySuggestion[];
+  prefix: string;
+  state: ApplyState;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-5">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{heading}</p>
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
+      <div className="mt-2 space-y-2">
+        {items.map((s, i) => (
+          <SuggestionCard key={`${prefix}-${i}`} id={`${prefix}-${i}`} s={s} state={state} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityResults({ quality, prefix, state }: { quality: QualityReport; prefix: string; state: ApplyState }) {
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center gap-4 text-sm">
+        <span>
+          Passed:{" "}
+          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
+            {quality.passed ? "Yes" : "No"}
+          </strong>
+        </span>
+        <span>
+          Score: <strong className="text-foreground">{quality.score}/10</strong>
+        </span>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">1 · Actual issues</p>
+        <p className="text-[11px] text-muted-foreground">Problems that may need correction.</p>
+        <div className="mt-2">
+          <ActualIssues quality={quality} />
+        </div>
+        {quality.lyricCorrections.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {quality.lyricCorrections.map((c, i) => (
+              <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <SuggestionGroup
+        heading="2 · Creative suggestions"
+        hint="Optional improvements — they do not affect the score."
+        items={quality.creativeSuggestions}
+        prefix={`${prefix}-cre`}
+        state={state}
+      />
+      <SuggestionGroup
+        heading="3 · Vocal / production suggestions"
+        hint="Optional musical and production recommendations."
+        items={[...quality.vocalSuggestions, ...quality.productionSuggestions]}
+        prefix={`${prefix}-vop`}
+        state={state}
+      />
+    </div>
+  );
+}
+
 function QualityPanel({
   quality,
   checking,
@@ -209,6 +382,7 @@ function QualityPanel({
   confirm,
   setConfirm,
   onRecheck,
+  state,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -222,6 +396,7 @@ function QualityPanel({
   confirm: "check" | "repair" | "recheck" | null;
   setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
   onRecheck: () => void;
+  state: ApplyState;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
@@ -252,12 +427,7 @@ function QualityPanel({
         </p>
       )}
 
-      {quality && (
-        <>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
-          <QualityReportBody quality={quality} />
-        </>
-      )}
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
 
       {canRepair && (
         <div className="mt-5 space-y-3">
@@ -312,6 +482,52 @@ function QualityPanel({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Part 3 — collapsible, editable result section. Collapse is UI state only. */
+function ResultSection({
+  title,
+  value,
+  open,
+  onToggle,
+  onChange,
+  rows,
+}: {
+  title: string;
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (v: string) => void;
+  rows: number;
+}) {
+  return (
+    <div className="glass rounded-2xl p-5">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-accent transition-transform ${open ? "" : "-rotate-90"}`}
+          />
+          <h2 className="min-w-0 flex-1 truncate font-display text-sm font-semibold tracking-wide text-gradient-neon">
+            {title}
+          </h2>
+        </button>
+        <CopyButton value={value} />
+      </div>
+      {open && (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows}
+          aria-label={title}
+          className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 font-sans text-sm text-foreground outline-none transition-shadow focus:border-primary/60"
+        />
       )}
     </div>
   );
@@ -384,9 +600,28 @@ function GeneratePage() {
     quality: QualityReport | null;
   } | null>(null);
 
+  // Part 3 — collapsible result sections (UI state only, collapsed by default).
+  const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
+  const allOpen = open.title && open.tags && open.lyrics && open.note;
+  const toggleAll = () =>
+    setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
+
+  // Deterministic Apply / Undo bookkeeping — no AI call is ever made here.
+  const [applied, setApplied] = useState<Record<string, boolean>>({});
+  const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
+  const setApplyError = (id: string, msg: string | null) =>
+    setApplyErrors((prev) => {
+      const next = { ...prev };
+      if (msg) next[id] = msg;
+      else delete next[id];
+      return next;
+    });
+
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
+
 
 
   useEffect(() => {
@@ -440,6 +675,8 @@ function GeneratePage() {
     setQuality(null);
     setRepaired(null);
     setRepairError(null);
+    setApplied({});
+    setApplyErrors({});
     try {
       const res = await generateSongPrompt({
         data: {
@@ -457,6 +694,9 @@ function GeneratePage() {
       setResult(res.result);
       setGenerationId(res.generationId ?? null);
       setQuality(res.quality ?? null);
+      // All four sections start collapsed after a new generation.
+      setOpen({ title: false, tags: false, lyrics: false, note: false });
+
 
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
@@ -552,6 +792,73 @@ function GeneratePage() {
       setStatus(err instanceof Error ? err.message : "Could not save");
     }
   };
+
+  // ── Deterministic Apply / Undo. No AI provider request is made here. ──
+  const applyState: ApplyState = {
+    applied,
+    errors: applyErrors,
+    onApplyCorrection: (id, c) => {
+      if (!result) return;
+      const res = applyLyricCorrection(result.lyrics, c);
+      if (!res.ok) return setApplyError(id, res.error);
+      setResult({ ...result, lyrics: res.text });
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: true }));
+    },
+    onUndoCorrection: (id, c) => {
+      if (!result) return;
+      const res = undoLyricCorrection(result.lyrics, c);
+      if (!res.ok) return setApplyError(id, res.error);
+      setResult({ ...result, lyrics: res.text });
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: false }));
+    },
+    onApplySuggestion: (id, s) => {
+      if (!result) return;
+      if (s.actionType === "add_to_music_style") {
+        const res = addToMusicStyle(result.tags, s.value);
+        if (!res.ok) return setApplyError(id, res.error);
+        setResult({ ...result, tags: res.text });
+      } else if (s.actionType === "vocal_arrangement") {
+        const lyricsRes = applyVocalArrangement(result.lyrics, s.arrangement);
+        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
+        // Music Style is appended to, never replaced; failure to append must not
+        // leave the lyrics half-modified, so it is applied together.
+        const styleRes = s.value ? addToMusicStyle(result.tags, s.value) : null;
+        setResult({
+          ...result,
+          lyrics: lyricsRes.text,
+          tags: styleRes?.ok ? styleRes.text : result.tags,
+        });
+      } else {
+        return;
+      }
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: true }));
+    },
+    onUndoSuggestion: (id, s) => {
+      if (!result) return;
+      if (s.actionType === "add_to_music_style") {
+        const res = removeFromMusicStyle(result.tags, s.value);
+        if (!res.ok) return setApplyError(id, res.error);
+        setResult({ ...result, tags: res.text });
+      } else if (s.actionType === "vocal_arrangement") {
+        const lyricsRes = undoVocalArrangement(result.lyrics, s.arrangement);
+        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
+        const styleRes = s.value ? removeFromMusicStyle(result.tags, s.value) : null;
+        setResult({
+          ...result,
+          lyrics: lyricsRes.text,
+          tags: styleRes?.ok ? styleRes.text : result.tags,
+        });
+      } else {
+        return;
+      }
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: false }));
+    },
+  };
+
 
   return (
     <AppShell
@@ -701,10 +1008,46 @@ function GeneratePage() {
 
         {!busy && result && (
           <div className="mt-6 space-y-4 pb-16">
-            <OutputCard title="SONG TITLE" body={result.title} />
-            <OutputCard title="STYLE PROMPT (METATAGS)" body={result.tags} />
-            <OutputCard title="LYRICS & STRUCTURE" body={result.lyrics} />
-            <OutputCard title="PRODUCER'S NOTE" body={result.note} />
+            <div className="flex justify-end">
+              <button
+                onClick={toggleAll}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              >
+                {allOpen ? "Collapse All" : "Expand All"}
+              </button>
+            </div>
+            <ResultSection
+              title="SONG TITLE"
+              value={result.title}
+              open={open.title}
+              onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))}
+              onChange={(v) => setResult({ ...result, title: v })}
+              rows={2}
+            />
+            <ResultSection
+              title="STYLE PROMPT (METATAGS)"
+              value={result.tags}
+              open={open.tags}
+              onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))}
+              onChange={(v) => setResult({ ...result, tags: v })}
+              rows={4}
+            />
+            <ResultSection
+              title="LYRICS & STRUCTURE"
+              value={result.lyrics}
+              open={open.lyrics}
+              onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
+              onChange={(v) => setResult({ ...result, lyrics: v })}
+              rows={18}
+            />
+            <ResultSection
+              title="PRODUCER'S NOTE"
+              value={result.note}
+              open={open.note}
+              onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))}
+              onChange={(v) => setResult({ ...result, note: v })}
+              rows={5}
+            />
             <button
               onClick={save}
               disabled={saved}
@@ -727,8 +1070,10 @@ function GeneratePage() {
                 confirm={confirm}
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
+                state={applyState}
               />
             )}
+
 
           </div>
         )}
