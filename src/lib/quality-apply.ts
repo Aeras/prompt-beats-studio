@@ -177,7 +177,13 @@ function replaceOccurrence(
   if (matches.length === 0) {
     return { ok: false, error: "The original text no longer matches — nothing was changed." };
   }
-  const index = scope ? Math.max(1, occurrenceIndex) - 1 : 0;
+  // When a section scope is resolved, occurrenceIndex selects the section;
+  // within that section the target line is normally unique.
+  const index = scope
+    ? matches.length === 1
+      ? 0
+      : Math.max(1, occurrenceIndex) - 1
+    : 0;
   if (!scope && matches.length !== 1) {
     return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
   }
@@ -214,11 +220,11 @@ export function undoLyricCorrection(lyrics: string, c: LyricCorrection): ApplyRe
     replacementText: c.originalText,
   };
   const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel, c.occurrenceIndex) : null;
-  // The applied replacement usually exists only once, even when the original
-  // text occurred several times, so fall back to it when it is unambiguous.
+  // The applied replacement usually exists only once within the targeted section,
+  // even when the original text occurred several times across the song.
   const hay = scope ? lyrics.slice(scope.from, scope.to) : lyrics;
   if (findMatches(hay, c.replacementText).length === 1) {
-    return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: 1 });
+    return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: c.occurrenceIndex ?? 1 });
   }
   return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: c.occurrenceIndex ?? 1 });
 }
