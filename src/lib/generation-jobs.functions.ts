@@ -17,7 +17,11 @@ const jobInput = z.object({
   genre: z.string().trim().min(1).max(400),
   mood: z.string().trim().min(1).max(60),
   language: z.string().trim().min(1).max(40),
+  structure: z.string().trim().max(600).default(""),
+  production: z.string().trim().max(2000).default(""),
+  instructions: z.string().trim().max(2000).default(""),
 });
+
 
 const resultShape = z.object({
   title: z.string(),
