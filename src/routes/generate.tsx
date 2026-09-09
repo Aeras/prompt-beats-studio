@@ -463,9 +463,47 @@ function GeneratePage() {
     }
   };
 
-  // Manual: exactly one repair request per click, no retries.
+  // Manual: exactly one quality check per confirmed click.
+  const runCheck = async (afterRepair: boolean) => {
+    const target = afterRepair ? repaired?.result : result;
+    if (!target) return;
+    setConfirm(null);
+    setChecking(true);
+    setCheckError(null);
+    try {
+      const res = await checkSongQuality({
+        data: {
+          theme: theme.trim(),
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
+          result: target,
+          generationId,
+          afterRepair,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited") {
+        setCheckError("You've hit the hourly limit. Try again soon.");
+        return;
+      }
+      if (afterRepair) {
+        setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
+      } else {
+        setQuality(res.quality);
+      }
+      if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : "Check failed");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // Manual: exactly one repair request per confirmed click, no retries.
   const repair = async () => {
     if (!result || !quality) return;
+    setConfirm(null);
     setRepairing(true);
     setRepairError(null);
     try {
@@ -481,13 +519,19 @@ function GeneratePage() {
 
         },
       });
-      setRepaired(res);
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited" || !res.result) {
+        setRepairError("You've hit the hourly limit. Try again soon.");
+        return;
+      }
+      setRepaired({ result: res.result, quality: res.quality });
     } catch (err) {
       setRepairError(err instanceof Error ? err.message : "Repair failed");
     } finally {
       setRepairing(false);
     }
   };
+
 
   const save = async () => {
     if (!result) return;
