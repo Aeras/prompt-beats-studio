@@ -746,17 +746,60 @@ function GeneratePage() {
 
   // Resolve the effective value: the typed custom text when "Custom…" is chosen.
   const customGenreSelected = genres.includes(CUSTOM);
-  const effectiveGenre = [
-    ...genres.filter((g) => g !== CUSTOM),
-    ...(customGenreSelected ? [customGenre.trim()] : []),
+  const styleList = mergeValues(
+    genres.filter((g) => g !== CUSTOM),
+    customGenreSelected ? customGenre : "",
+  );
+  const baseGenre = styleList.join(", ");
+
+  const instrumentList = mergeValues(instruments, customInstruments);
+  const effectiveBpm =
+    bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
+  const bpmNumber = Number(effectiveBpm);
+  const bpmInvalid =
+    !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
+
+  // Advanced-only creative constraints ride along inside `genre` (the only field
+  // with room, 400 chars) but stay clearly labelled so they are never read as genres.
+  const direction = [
+    instrumentList.length ? `Preferred instruments: ${instrumentList.join(", ")}.` : "",
+    !bpmInvalid && effectiveBpm ? `Target tempo: ${effectiveBpm} BPM.` : "",
   ]
     .filter(Boolean)
-    .join(", ");
+    .join(" ");
+  const effectiveGenre = direction
+    ? `${baseGenre} — Additional musical direction: ${direction}`
+    : baseGenre;
+  const genreTooLong = effectiveGenre.length > 400;
 
-  const effectiveMood = mood === CUSTOM ? customMood.trim() : mood;
+  // Mood must never be silently truncated: keep whole values or ask the user to trim.
+  const moodList = mergeValues(
+    moods.filter((m) => m !== CUSTOM),
+    moods.includes(CUSTOM) || !advanced ? customMood : customMood,
+  );
+  const effectiveMood = moodList.join(", ");
+  const moodTooLong = effectiveMood.length > 60;
+
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
+  const validationError = bpmInvalid
+    ? "BPM must be a whole number between 40 and 260."
+    : moodTooLong
+      ? `Your mood selection is ${effectiveMood.length} characters — the limit is 60. Please remove a mood or shorten the custom mood.`
+      : genreTooLong
+        ? "Too many styles / instruments selected. Please remove a few."
+        : null;
   const ready =
-    theme.trim().length >= 3 && !!effectiveGenre && !!effectiveMood && !!effectiveLanguage;
+    theme.trim().length >= 3 &&
+    !!baseGenre &&
+    !!effectiveMood &&
+    !!effectiveLanguage &&
+    !validationError;
+
+  // Basic mode edits the primary selection only; Advanced extras stay stored.
+  const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
+    setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
+  const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
+    setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
     setBusy(true);
