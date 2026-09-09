@@ -30,18 +30,67 @@ function normalize(s: string) {
   return s.trim().toLowerCase();
 }
 
+/** Strips surrounding brackets and whitespace from a section label. */
+function cleanLabel(label: string) {
+  return normalize(label.replace(/^\s*\[/, "").replace(/\]\s*$/, ""));
+}
+
 /** Returns the [start,end) character range of the named section body, or null. */
 function sectionRange(lyrics: string, label: string): { from: number; to: number } | null {
   const { lines, blocks } = sections(lyrics);
-  const wanted = normalize(label);
-  const matches = blocks.filter(
-    (b) => normalize(b.label) === wanted || normalize(b.label).startsWith(wanted),
-  );
+  const wanted = cleanLabel(label);
+  if (!wanted) return null;
+  const exact = blocks.filter((b) => cleanLabel(b.label) === wanted);
+  const matches =
+    exact.length === 1
+      ? exact
+      : blocks.filter((b) => {
+          const l = cleanLabel(b.label);
+          return l === wanted || l.startsWith(wanted);
+        });
   if (matches.length !== 1) return null;
   const block = matches[0]!;
   const offset = (index: number) =>
     lines.slice(0, index).reduce((n, l) => n + l.length + 1, 0);
   return { from: offset(block.start), to: Math.min(lyrics.length, offset(block.end)) };
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Builds a safe, narrowly-normalized matcher for the needle:
+ * line breaks and whitespace runs are interchangeable, and insignificant
+ * trailing punctuation/whitespace is optional. Nothing else is relaxed.
+ */
+function normalizedPattern(needle: string): RegExp | null {
+  const core = needle.trim().replace(/[\s.,!?;:…]+$/u, "");
+  if (!core) return null;
+  const source = core
+    .split(/\s+/)
+    .map(escapeRe)
+    .join("[ \\t]*\\r?\\n?[ \\t]*");
+  return new RegExp(source + "[ \\t]*[.,!?;:…]*", "gu");
+}
+
+type Match = { start: number; end: number };
+
+function findMatches(hay: string, needle: string): Match[] {
+  const out: Match[] = [];
+  let at = hay.indexOf(needle);
+  while (at !== -1) {
+    out.push({ start: at, end: at + needle.length });
+    at = hay.indexOf(needle, at + needle.length);
+  }
+  if (out.length) return out;
+
+  const re = normalizedPattern(needle);
+  if (!re) return out;
+  for (const m of hay.matchAll(re)) {
+    if (typeof m.index === "number" && m[0].length) {
+      out.push({ start: m.index, end: m.index + m[0].length });
+    }
+  }
+  return out;
 }
 
 function replaceOccurrence(
@@ -51,26 +100,27 @@ function replaceOccurrence(
   occurrenceIndex: number,
   scope: { from: number; to: number } | null,
 ): ApplyResult {
-  if (!needle) return { ok: false, error: "The correction has no target text." };
+  if (!needle.trim()) return { ok: false, error: "The correction has no target text." };
   const from = scope?.from ?? 0;
   const to = scope?.to ?? text.length;
   const hay = text.slice(from, to);
 
-  const positions: number[] = [];
-  let at = hay.indexOf(needle);
-  while (at !== -1) {
-    positions.push(at);
-    at = hay.indexOf(needle, at + needle.length);
-  }
-  if (positions.length === 0) {
+  const matches = findMatches(hay, needle);
+  if (matches.length === 0) {
     return { ok: false, error: "The original text no longer matches — nothing was changed." };
   }
-  const index = Math.max(1, occurrenceIndex) - 1;
-  if (index >= positions.length) {
+  const index = scope ? Math.max(1, occurrenceIndex) - 1 : 0;
+  if (!scope && matches.length !== 1) {
     return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
   }
-  const abs = from + positions[index]!;
-  return { ok: true, text: text.slice(0, abs) + replacement + text.slice(abs + needle.length) };
+  if (index >= matches.length) {
+    return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
+  }
+  const hit = matches[index]!;
+  return {
+    ok: true,
+    text: text.slice(0, from + hit.start) + replacement + text.slice(from + hit.end),
+  };
 }
 
 export type LyricCorrection = {
