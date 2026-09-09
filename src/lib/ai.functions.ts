@@ -310,7 +310,7 @@ type ModelResult = {
 };
 type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
-type AiOperation = "generate" | "quality_check" | "repair" | "post_repair_quality_check";
+type AiOperation = "generate" | "quality_check";
 
 /** One usage record per actual provider request, buffered until the generation id is known. */
 type PendingUsage = {
@@ -771,8 +771,6 @@ const qualityCheckInput = z.object({
   result: generationOutput,
   /** Optional: links the check to the originating generation for analytics. */
   generationId: z.string().uuid().nullish(),
-  /** Distinguishes a first check from a check run after a repair. */
-  afterRepair: z.boolean().default(false),
 });
 
 /**
@@ -800,7 +798,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     };
 
     const quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
-      operation: data.afterRepair ? "post_repair_quality_check" : "quality_check",
+      operation: "quality_check",
       records,
       provider,
       model,
@@ -849,148 +847,6 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Package 2C — Manual AI Repair (never automatic).
-// One click = exactly one repair call + one mandatory post-repair quality check.
-// No retries, no loops, no persistence, no schema changes.
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-
-const REPAIR_SYSTEM_PROMPT = `You are a professional song EDITOR performing a targeted repair pass. You are not a new songwriter.
-
-Rules:
-- Fix ONLY the problems listed in the quality report. Everything else stays byte-for-byte as provided.
-- Preserve the core idea, genre identity, mood, language, narrative, song structure, section markers, and every line that has no reported problem.
-- Prefer the smallest possible edit: repair the offending phrase or line, not the whole verse or song.
-- For grammar issues, correct only the faulty wording. For consistency issues, adjust the minimal detail that resolves the contradiction. For language contamination, replace only the unintended foreign-language content with correct wording in the requested language.
-- Never change the requested language. Never add new sections. Never invent an unrelated storyline.
-- Keep the same tone and register of the original writing.
-
-You output STRICT JSON ONLY — no markdown fences, no commentary, nothing outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
-
-function buildRepairPrompt(
-  d: z.infer<typeof generateInput>,
-  r: z.infer<typeof generationOutput>,
-  q: QualityReport,
-) {
-  const list = (label: string, items: string[]) =>
-    items.length ? `${label}:\n${items.map((i) => `- ${i}`).join("\n")}` : `${label}: none`;
-  return `Repair the generated song below using the quality report. Change only what the report identifies.
-
-ORIGINAL USER CONSTRAINTS
-Core Idea: ${d.theme}
-Requested Genre(s): ${d.genre}
-Requested Mood: ${d.mood}
-Requested Language: ${d.language}
-
-CURRENT TITLE
-${r.title}
-
-CURRENT STYLE PROMPT (TAGS)
-${r.tags}
-
-CURRENT LYRICS
-${r.lyrics}
-
-CURRENT PRODUCER'S NOTE
-${r.note}
-
-QUALITY REPORT
-Passed: ${q.passed}
-Score: ${q.score}/10
-${list("General issues", q.issues)}
-${list("Language issues", q.languageIssues)}
-${list("Grammar issues", q.grammarIssues)}
-${list("Singability issues", q.singabilityIssues)}
-${list("Genre issues", q.genreIssues)}
-${list("Consistency issues", q.consistencyIssues)}
-
-Return the full repaired song as strict JSON only, with exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}. Unchanged parts must be returned exactly as they are now.`;
-}
-
-const repairInput = z.object({
-  theme: generateInput.shape.theme,
-  genre: generateInput.shape.genre,
-  mood: generateInput.shape.mood,
-  language: generateInput.shape.language,
-  result: generationOutput,
-  quality: qualityOutput,
-  /** Optional: links repair usage to the originating generation for analytics. */
-  generationId: z.string().uuid().nullish(),
-});
-
-/**
- * Manual repair, available to every authenticated user. Runs exactly one
- * repair call on the server-selected model and consumes one creation.
- * The post-repair quality check is user-triggered (see checkSongQuality).
- */
-export const repairSongPrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => repairInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
-    const isAdmin = await isAdminUser(supabase, context.userId);
-    const preUsage = await readUsage(supabase, context.userId);
-    if (!isAdmin && preUsage.remaining <= 0) {
-      return { error: "rate_limited" as const, result: null, quality: null };
-    }
-
-    const { call, model, provider, schemas } = await activeCaller();
-    const generationId = data.generationId ?? null;
-    const records: PendingUsage[] = [];
-
-
-    const constraints = {
-      theme: data.theme,
-      genre: data.genre,
-      mood: data.mood,
-      language: data.language,
-    };
-
-    let repairRes: ModelResult;
-    try {
-      repairRes = await call({
-        system: REPAIR_SYSTEM_PROMPT,
-        prompt: buildRepairPrompt(constraints, data.result, data.quality),
-        maxTokens: 8192,
-        schema: schemas.song,
-      });
-    } catch (err) {
-      await flushUsage(context.userId, generationId, [
-        { operation: "repair", provider, model, usage: null, success: false },
-      ]);
-      throw err;
-    }
-
-    const { text, stopReason } = repairRes;
-    const repairOk = stopReason === "end_turn";
-    records.push({
-      operation: "repair",
-      provider: repairRes.provider,
-      model: repairRes.model,
-      usage: repairRes.usage,
-      success: repairOk,
-    });
-
-    if (!repairOk) {
-      await flushUsage(context.userId, generationId, records);
-      if (stopReason === "max_tokens") throw new Error("The repair response was incomplete. Please try again.");
-      throw new Error(`The repair did not complete (${stopReason ?? "unknown"}). Please try again.`);
-    }
-
-    const repaired = generationOutput.safeParse(parseSections(text));
-    if (!repaired.success) {
-      await flushUsage(context.userId, generationId, records);
-      throw new Error("The repair returned an invalid response. Please try again.");
-    }
-
-    // The post-repair quality check is now user-triggered ("Check Again").
-    const consumedId = await consumeCreation(supabase, context.userId);
-    await flushUsage(context.userId, generationId ?? consumedId, records);
-
-    return { error: null as null | "rate_limited", result: repaired.data, quality: null as QualityReport | null };
-  });
 
 
 
