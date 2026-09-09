@@ -10,14 +10,76 @@ export type ApplyResult = { ok: true; text: string } | { ok: false; error: strin
 
 const HEADER = /^[ \t]*\[([^\]\n]+)\][ \t]*$/;
 
-/** Splits lyrics into `[Section]` blocks, keeping the exact original text. */
+/** Keywords that identify genuine song-structure headers (case-insensitive). */
+const STRUCTURE_KEYWORDS = [
+  "verse",
+  "chorus",
+  "pre-chorus",
+  "post-chorus",
+  "prechorus",
+  "postchorus",
+  "bridge",
+  "intro",
+  "outro",
+  "hook",
+  "breakdown",
+  "instrumental",
+  "solo",
+  "drop",
+  "coda",
+  "refrain",
+];
+
+/** Descriptor words allowed before a structure keyword (e.g. "[Final Chorus]"). */
+const STRUCTURE_DESCRIPTORS = new Set([
+  "final",
+  "first",
+  "second",
+  "third",
+  "fourth",
+  "last",
+  "main",
+  "double",
+  "extended",
+  "reprise",
+  "big",
+  "short",
+  "long",
+  "opening",
+  "closing",
+]);
+
+/**
+ * True only when a bracketed line is a genuine structural section header.
+ * Vocal tags ([Male], [Duet]) and production cues ([Fade Out], [Guitar Solo])
+ * stay inside the current section's body.
+ */
+function isStructuralHeader(label: string): boolean {
+  const flat = label.trim().toLowerCase().replace(/[()]/g, " ");
+  // Hyphenated keywords (pre-chorus, post-chorus) must be checked whole.
+  for (const k of STRUCTURE_KEYWORDS) {
+    if (flat.startsWith(k)) return true; // e.g. [Verse 1], [Pre-Chorus 2], [Chorus]
+  }
+  const words = flat.split(/[\s\-/]+/).filter(Boolean);
+  if (!words.length) return false;
+  return words.some((word, i) => {
+    if (i === 0 || !STRUCTURE_KEYWORDS.some((k) => word === k.replace(/-/g, ""))) return false;
+    return STRUCTURE_DESCRIPTORS.has(words[i - 1]!); // e.g. [Final Chorus]
+  });
+}
+
+/**
+ * Splits lyrics into structural `[Section]` blocks, keeping the exact original
+ * text. Non-structural bracketed tags (vocal/production cues) remain part of
+ * the enclosing section's content.
+ */
 function sections(lyrics: string) {
   const lines = lyrics.split("\n");
   const blocks: { label: string; start: number; end: number }[] = [];
   let current: { label: string; start: number } | null = null;
   lines.forEach((line, i) => {
     const m = line.match(HEADER);
-    if (m) {
+    if (m && isStructuralHeader(m[1] ?? "")) {
       if (current) blocks.push({ ...current, end: i });
       current = { label: (m[1] ?? "").trim(), start: i };
     }
