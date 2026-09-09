@@ -559,7 +559,7 @@ ${r.lyrics}
 Producer's Note:
 ${r.note}
 
-Report genuine actual issues only, and for every fixable one return a precise correction quoting the CURRENT text above exactly. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
+Report ONLY clear, material and defensible defects, and for every fixable one return a precise correction quoting the CURRENT text above exactly. Ignore subjective preferences and stylistic alternatives. If there are no genuine defects, return "passed": true, "score": 10 and an empty "corrections" array. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
 
 Return the strict JSON object only.`;
 }
