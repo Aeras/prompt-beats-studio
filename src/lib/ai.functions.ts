@@ -392,6 +392,9 @@ const lyricCorrectionSchema = z.object({
 
 const vocalInsertionSchema = z.object({
   sectionLabel: z.string().trim().min(1).max(80),
+  // 1-based occurrence among sections sharing the same label. Legacy results
+  // may omit it; Apply then only proceeds when the label is unambiguous.
+  sectionOccurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? null),
   tag: z.string().trim().min(2).max(60),
 });
 
