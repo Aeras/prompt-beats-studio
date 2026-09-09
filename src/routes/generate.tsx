@@ -146,7 +146,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-accent bg-white/[0.02] px-2.5 py-1">
+    <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
       {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
     </div>
