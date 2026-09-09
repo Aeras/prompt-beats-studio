@@ -562,7 +562,7 @@ function QualityPanel({
           )}
 
           {/* One-time re-analysis of the current (editable) repaired result. */}
-          {!repaired.quality && (
+          {!repairedRecheckUsed && (
             <div className="mt-4 space-y-3">
               {confirm === "recheck" ? (
                 <ConfirmBox
@@ -581,6 +581,7 @@ function QualityPanel({
               )}
             </div>
           )}
+
           {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
         </div>
       )}
