@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generation_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          generation_id: string | null
+          id: string
+          idempotency_key: string
+          input_payload: Json
+          model: string | null
+          provider: string | null
+          result: Json | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          generation_id?: string | null
+          id?: string
+          idempotency_key: string
+          input_payload: Json
+          model?: string | null
+          provider?: string | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          generation_id?: string | null
+          id?: string
+          idempotency_key?: string
+          input_payload?: Json
+          model?: string | null
+          provider?: string | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_generations: {
         Row: {
           created_at: string
@@ -452,6 +506,10 @@ export type Database = {
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
         Returns: undefined
+      }
+      start_generation_job: {
+        Args: { _idempotency_key: string; _input: Json }
+        Returns: Json
       }
     }
     Enums: {
