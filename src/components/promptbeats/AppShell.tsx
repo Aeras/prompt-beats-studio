@@ -75,7 +75,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         </div>
       </div>
 
-      <div className="relative z-10 max-sm:pb-[calc(64px+env(safe-area-inset-bottom))] lg:pl-[270px]">
+      <div className="relative z-10 pb-[calc(64px+env(safe-area-inset-bottom))] sm:pb-0 lg:pl-[270px]">
         <header className="glass-strong sticky top-0 z-20 border-b">
           <div className="mx-auto max-w-[1600px] px-4 py-3 md:px-8 md:py-4">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
