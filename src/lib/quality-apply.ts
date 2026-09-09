@@ -133,9 +133,8 @@ export type LyricCorrection = {
 /** Replaces exactly one verified occurrence; never a global replace. */
 export function applyLyricCorrection(lyrics: string, c: LyricCorrection): ApplyResult {
   const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel) : null;
-  if (c.sectionLabel && !scope) {
-    return { ok: false, error: `Section "${c.sectionLabel}" was not found in the current lyrics.` };
-  }
+  // Section unknown: document-wide fallback is allowed only when the target
+  // text occurs exactly once in the whole lyrics (enforced in replaceOccurrence).
   return replaceOccurrence(lyrics, c.originalText, c.replacementText, c.occurrenceIndex ?? 1, scope);
 }
 
