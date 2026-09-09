@@ -773,9 +773,10 @@ function GeneratePage() {
   const genreTooLong = effectiveGenre.length > 400;
 
   // Mood must never be silently truncated: keep whole values or ask the user to trim.
+  const useCustomMood = advanced || moods[0] === CUSTOM;
   const moodList = mergeValues(
     moods.filter((m) => m !== CUSTOM),
-    moods.includes(CUSTOM) || !advanced ? customMood : customMood,
+    useCustomMood ? customMood : "",
   );
   const effectiveMood = moodList.join(", ");
   const moodTooLong = effectiveMood.length > 60;
