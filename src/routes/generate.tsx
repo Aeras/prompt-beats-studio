@@ -768,6 +768,7 @@ function GeneratePage() {
       setGenerationId(job.generationId);
       setQuality(null);
       setOrigRecheckUsed(false);
+      setRepairedRecheckUsed(false);
       setOpen({ title: false, tags: false, lyrics: false, note: false });
       setStatus(null);
       setBusy(false);
@@ -942,6 +943,7 @@ function GeneratePage() {
     setResult(null);
     setQuality(null);
     setOrigRecheckUsed(false);
+    setRepairedRecheckUsed(false);
     setRepaired(null);
     setRepairError(null);
     setApplied({});
@@ -1200,6 +1202,7 @@ function GeneratePage() {
     setGenerationId(null);
     setQuality(null);
     setOrigRecheckUsed(false);
+    setRepairedRecheckUsed(false);
     setJobId(null);
     rememberJob(null);
     pendingKey.current = null;
