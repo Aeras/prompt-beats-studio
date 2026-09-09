@@ -381,6 +381,31 @@ function parseSections(raw: string) {
 
 const issueList = z.array(z.string().trim().min(1).max(600)).max(30);
 
+/** Quality Check 2.0 — a structured, deterministically applicable lyric fix. */
+const lyricCorrectionSchema = z.object({
+  sectionLabel: z.string().trim().max(80).nullish().transform((v) => v ?? ""),
+  originalText: z.string().min(1).max(800),
+  occurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? 1),
+  reason: z.string().trim().min(1).max(600),
+  replacementText: z.string().min(1).max(800),
+});
+
+const vocalInsertionSchema = z.object({
+  sectionLabel: z.string().trim().min(1).max(80),
+  tag: z.string().trim().min(2).max(60),
+});
+
+/** An optional improvement. `actionType` decides which deterministic Apply is offered. */
+const suggestionSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  explanation: z.string().trim().min(1).max(800),
+  actionType: z.enum(["add_to_music_style", "vocal_arrangement", "informational"]),
+  value: z.string().trim().max(600).nullish().transform((v) => v ?? ""),
+  arrangement: z.array(vocalInsertionSchema).max(40).nullish().transform((v) => v ?? []),
+});
+
+const suggestionList = z.array(suggestionSchema).max(12).nullish().transform((v) => v ?? []);
+
 const qualityOutput = z.object({
   passed: z.boolean(),
   score: z.number().min(0).max(10),
@@ -390,9 +415,17 @@ const qualityOutput = z.object({
   singabilityIssues: issueList,
   genreIssues: issueList,
   consistencyIssues: issueList,
+  /** Quality Check 2.0 additions — all optional for backwards compatibility. */
+  lyricCorrections: z.array(lyricCorrectionSchema).max(20).nullish().transform((v) => v ?? []),
+  creativeSuggestions: suggestionList,
+  vocalSuggestions: suggestionList,
+  productionSuggestions: suggestionList,
 });
 
 export type QualityReport = z.infer<typeof qualityOutput>;
+export type LyricCorrectionItem = z.infer<typeof lyricCorrectionSchema>;
+export type QualitySuggestion = z.infer<typeof suggestionSchema>;
+
 
 const QUALITY_SYSTEM_PROMPT = `You are a professional music editor, lyric editor and producer acting as a QUALITY EVALUATOR. You are an EDITOR, never a songwriter: you never rewrite lyrics, never propose replacement lines, never invent content and never change the creative direction. You only identify genuine problems.
 
