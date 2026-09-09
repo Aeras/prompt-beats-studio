@@ -1008,10 +1008,46 @@ function GeneratePage() {
 
         {!busy && result && (
           <div className="mt-6 space-y-4 pb-16">
-            <OutputCard title="SONG TITLE" body={result.title} />
-            <OutputCard title="STYLE PROMPT (METATAGS)" body={result.tags} />
-            <OutputCard title="LYRICS & STRUCTURE" body={result.lyrics} />
-            <OutputCard title="PRODUCER'S NOTE" body={result.note} />
+            <div className="flex justify-end">
+              <button
+                onClick={toggleAll}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              >
+                {allOpen ? "Collapse All" : "Expand All"}
+              </button>
+            </div>
+            <ResultSection
+              title="SONG TITLE"
+              value={result.title}
+              open={open.title}
+              onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))}
+              onChange={(v) => setResult({ ...result, title: v })}
+              rows={2}
+            />
+            <ResultSection
+              title="STYLE PROMPT (METATAGS)"
+              value={result.tags}
+              open={open.tags}
+              onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))}
+              onChange={(v) => setResult({ ...result, tags: v })}
+              rows={4}
+            />
+            <ResultSection
+              title="LYRICS & STRUCTURE"
+              value={result.lyrics}
+              open={open.lyrics}
+              onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
+              onChange={(v) => setResult({ ...result, lyrics: v })}
+              rows={18}
+            />
+            <ResultSection
+              title="PRODUCER'S NOTE"
+              value={result.note}
+              open={open.note}
+              onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))}
+              onChange={(v) => setResult({ ...result, note: v })}
+              rows={5}
+            />
             <button
               onClick={save}
               disabled={saved}
@@ -1034,8 +1070,10 @@ function GeneratePage() {
                 confirm={confirm}
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
+                state={applyState}
               />
             )}
+
 
           </div>
         )}
