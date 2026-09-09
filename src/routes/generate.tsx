@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
   generateSongPrompt,
+  checkSongQuality,
+
   getGenerationUsage,
   savePromptToLibrary,
   repairSongPrompt,
@@ -370,6 +372,10 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
+  // Manual quality check (never triggered automatically); costs 1 creation.
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | null>(null);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -377,6 +383,7 @@ function GeneratePage() {
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
+
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -458,9 +465,47 @@ function GeneratePage() {
     }
   };
 
-  // Manual: exactly one repair request per click, no retries.
+  // Manual: exactly one quality check per confirmed click.
+  const runCheck = async (afterRepair: boolean) => {
+    const target = afterRepair ? repaired?.result : result;
+    if (!target) return;
+    setConfirm(null);
+    setChecking(true);
+    setCheckError(null);
+    try {
+      const res = await checkSongQuality({
+        data: {
+          theme: theme.trim(),
+          genre: effectiveGenre,
+          mood: effectiveMood,
+          language: effectiveLanguage,
+          result: target,
+          generationId,
+          afterRepair,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited") {
+        setCheckError("You've hit the hourly limit. Try again soon.");
+        return;
+      }
+      if (afterRepair) {
+        setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
+      } else {
+        setQuality(res.quality);
+      }
+      if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : "Check failed");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // Manual: exactly one repair request per confirmed click, no retries.
   const repair = async () => {
     if (!result || !quality) return;
+    setConfirm(null);
     setRepairing(true);
     setRepairError(null);
     try {
@@ -476,13 +521,19 @@ function GeneratePage() {
 
         },
       });
-      setRepaired(res);
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (res.error === "rate_limited" || !res.result) {
+        setRepairError("You've hit the hourly limit. Try again soon.");
+        return;
+      }
+      setRepaired({ result: res.result, quality: res.quality });
     } catch (err) {
       setRepairError(err instanceof Error ? err.message : "Repair failed");
     } finally {
       setRepairing(false);
     }
   };
+
 
   const save = async () => {
     if (!result) return;
@@ -665,13 +716,20 @@ function GeneratePage() {
             {(
               <QualityPanel
                 quality={quality}
+                checking={checking}
+                onCheck={() => runCheck(false)}
+                checkError={checkError}
                 canRepair={hasQualityIssues(quality) && !repaired}
                 repairing={repairing}
                 onRepair={repair}
                 repairError={repairError}
                 repaired={repaired}
+                confirm={confirm}
+                setConfirm={setConfirm}
+                onRecheck={() => runCheck(true)}
               />
             )}
+
           </div>
         )}
       </div>
