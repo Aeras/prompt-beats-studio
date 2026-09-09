@@ -1382,6 +1382,45 @@ function GeneratePage() {
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
                 state={applyState}
+                repairedState={repairedApplyState}
+                repairedSections={
+                  repaired && (
+                    <>
+                      <ResultSection
+                        title="REPAIRED SONG TITLE"
+                        value={repaired.result.title}
+                        open={repairedOpen.title}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, title: !p.title }))}
+                        onChange={(v) => setRepairedField("title", v)}
+                        rows={2}
+                      />
+                      <ResultSection
+                        title="REPAIRED STYLE PROMPT (METATAGS)"
+                        value={repaired.result.tags}
+                        open={repairedOpen.tags}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, tags: !p.tags }))}
+                        onChange={(v) => setRepairedField("tags", v)}
+                        rows={4}
+                      />
+                      <ResultSection
+                        title="REPAIRED LYRICS & STRUCTURE"
+                        value={repaired.result.lyrics}
+                        open={repairedOpen.lyrics}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
+                        onChange={(v) => setRepairedField("lyrics", v)}
+                        rows={18}
+                      />
+                      <ResultSection
+                        title="REPAIRED PRODUCER'S NOTE"
+                        value={repaired.result.note}
+                        open={repairedOpen.note}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, note: !p.note }))}
+                        onChange={(v) => setRepairedField("note", v)}
+                        rows={5}
+                      />
+                    </>
+                  )
+                }
               />
             )}
 
