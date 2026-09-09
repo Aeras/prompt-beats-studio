@@ -191,8 +191,12 @@ const SUGGESTION_SCHEMA: Record<string, unknown> = {
       type: "ARRAY",
       items: {
         type: "OBJECT",
-        properties: { sectionLabel: { type: "STRING" }, tag: { type: "STRING" } },
-        required: ["sectionLabel", "tag"],
+        properties: {
+          sectionLabel: { type: "STRING" },
+          sectionOccurrenceIndex: { type: "INTEGER" },
+          tag: { type: "STRING" },
+        },
+        required: ["sectionLabel", "sectionOccurrenceIndex", "tag"],
       },
     },
   },

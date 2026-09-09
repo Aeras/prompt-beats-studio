@@ -392,6 +392,9 @@ const lyricCorrectionSchema = z.object({
 
 const vocalInsertionSchema = z.object({
   sectionLabel: z.string().trim().min(1).max(80),
+  // 1-based occurrence among sections sharing the same label. Legacy results
+  // may omit it; Apply then only proceeds when the label is unambiguous.
+  sectionOccurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? null),
   tag: z.string().trim().min(2).max(60),
 });
 
@@ -503,7 +506,8 @@ Each suggestion object:
 {"title": string, "explanation": string, "actionType": "add_to_music_style" | "vocal_arrangement" | "informational", "value": string, "arrangement": object[]}
 - "add_to_music_style": "value" is the SHORT text to append to the existing Music Style (it is appended, never replacing it). "arrangement" is [].
 - "vocal_arrangement": "value" is the short Music Style addition describing the arrangement (e.g. "Male/Female duet, alternating lead vocals") and "arrangement" lists the tag insertions:
-  {"sectionLabel": "Verse 1", "tag": "[Male]"}
+  {"sectionLabel": "Verse 1", "sectionOccurrenceIndex": 1, "tag": "[Male]"}
+  "sectionOccurrenceIndex" is the 1-based position of that section among the sections in the CURRENT lyrics that share the same label. If the lyrics contain [Chorus] three times and you mean the last one, return {"sectionLabel": "Chorus", "sectionOccurrenceIndex": 3, "tag": "[Both]"}. Always include it, even when the label appears only once (then it is 1). Never invent an occurrence that does not exist.
   Only reference sections that already exist in the current lyrics; never invent, rename or reorder sections; never change sung text. Tags must be square-bracketed, e.g. [Male], [Female], [Both], [Duet], [Male Backing Vocals], [Female Backing Vocals].
 - "informational": nothing can be applied automatically; "value" is "" and "arrangement" is [].
 
