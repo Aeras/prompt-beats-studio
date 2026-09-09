@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -174,17 +174,6 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function OutputCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-start gap-3">
-        <h2 className="min-w-0 flex-1 font-display text-sm font-semibold tracking-wide text-gradient-neon">{title}</h2>
-        <CopyButton value={body} />
-      </div>
-      <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-sm text-muted-foreground">{body || "—"}</pre>
-    </div>
-  );
-}
 
 // TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
 // evaluator response from the current generation. Remove after testing.
@@ -219,25 +208,6 @@ function ActualIssues({ quality }: { quality: QualityReport }) {
   );
 }
 
-function QualityReportBody({ quality }: { quality: QualityReport | null }) {
-  if (!quality) return <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>;
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-4 text-sm">
-        <span>
-          Passed:{" "}
-          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
-            {quality.passed ? "Yes" : "No"}
-          </strong>
-        </span>
-        <span>
-          Score: <strong className="text-foreground">{quality.score}/10</strong>
-        </span>
-      </div>
-      <ActualIssues quality={quality} />
-    </div>
-  );
-}
 
 function hasQualityIssues(q: QualityReport | null) {
   if (!q) return false;
@@ -475,6 +445,8 @@ function QualityPanel({
   setConfirm,
   onRecheck,
   state,
+  repairedState,
+  repairedSections,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -489,6 +461,10 @@ function QualityPanel({
   setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
   onRecheck: () => void;
   state: ApplyState;
+  /** Apply / Undo bound to the repaired result — never touches the original. */
+  repairedState: ApplyState;
+  /** Editable, collapsible sections rendering `repaired.result`. */
+  repairedSections: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
@@ -545,34 +521,30 @@ function QualityPanel({
       {repaired && (
         <div className="mt-6 border-t border-white/10 pt-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Repaired</p>
-          <div className="mt-3 space-y-4">
-            <OutputCard title="REPAIRED SONG TITLE" body={repaired.result.title} />
-            <OutputCard title="REPAIRED STYLE PROMPT (METATAGS)" body={repaired.result.tags} />
-            <OutputCard title="REPAIRED LYRICS & STRUCTURE" body={repaired.result.lyrics} />
-            <OutputCard title="REPAIRED PRODUCER'S NOTE" body={repaired.result.note} />
-          </div>
-          {repaired.quality ? (
-            <QualityReportBody quality={repaired.quality} />
-          ) : (
-            <div className="mt-4 space-y-3">
-              {confirm === "recheck" ? (
-                <ConfirmBox
-                  message="This check will use 1 additional creation from your available balance."
-                  confirmLabel="Check Again"
-                  onConfirm={onRecheck}
-                  onCancel={() => setConfirm(null)}
-                />
-              ) : (
-                <CostButton
-                  label="Check Again · −1 creation"
-                  busy={checking}
-                  busyLabel="Checking..."
-                  onClick={() => setConfirm("recheck")}
-                />
-              )}
-              {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-            </div>
+          <div className="mt-3 space-y-4">{repairedSections}</div>
+
+          {repaired.quality && (
+            <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
           )}
+
+          <div className="mt-4 space-y-3">
+            {confirm === "recheck" ? (
+              <ConfirmBox
+                message="This check will use 1 additional creation from your available balance."
+                confirmLabel="Check Again"
+                onConfirm={onRecheck}
+                onCancel={() => setConfirm(null)}
+              />
+            ) : (
+              <CostButton
+                label="Check Again · −1 creation"
+                busy={checking}
+                busyLabel="Checking..."
+                onClick={() => setConfirm("recheck")}
+              />
+            )}
+            {checkError && <p className="text-xs text-red-400">{checkError}</p>}
+          </div>
         </div>
       )}
     </div>
@@ -704,6 +676,12 @@ function GeneratePage() {
   const allOpen = open.title && open.tags && open.lyrics && open.note;
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
+
+  // Collapsible state for the repaired result sections (independent UI state).
+  const [repairedOpen, setRepairedOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
+
+  // Clear / reset confirmation (never consumes a creation).
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Deterministic Apply / Undo bookkeeping — no AI call is ever made here.
   const [applied, setApplied] = useState<Record<string, boolean>>({});
@@ -937,41 +915,47 @@ function GeneratePage() {
   };
 
   // ── Deterministic Apply / Undo. No AI provider request is made here. ──
-  const applyState: ApplyState = {
+  // The same logic serves the original and the repaired result; only the
+  // target (and its setter) differ, so one can never modify the other.
+  type Song = { title: string; tags: string; lyrics: string; note: string };
+  const makeApplyState = (
+    target: Song | null,
+    setTarget: (next: Song) => void,
+  ): ApplyState => ({
     applied,
     errors: applyErrors,
     onApplyCorrection: (id, c) => {
-      if (!result) return;
-      const res = applyLyricCorrection(result.lyrics, c);
+      if (!target) return;
+      const res = applyLyricCorrection(target.lyrics, c);
       if (!res.ok) return setApplyError(id, res.error);
-      setResult({ ...result, lyrics: res.text });
+      setTarget({ ...target, lyrics: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoCorrection: (id, c) => {
-      if (!result) return;
-      const res = undoLyricCorrection(result.lyrics, c);
+      if (!target) return;
+      const res = undoLyricCorrection(target.lyrics, c);
       if (!res.ok) return setApplyError(id, res.error);
-      setResult({ ...result, lyrics: res.text });
+      setTarget({ ...target, lyrics: res.text });
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: false }));
     },
     onApplySuggestion: (id, s) => {
-      if (!result) return;
+      if (!target) return;
       if (s.actionType === "add_to_music_style") {
-        const res = addToMusicStyle(result.tags, s.value);
+        const res = addToMusicStyle(target.tags, s.value);
         if (!res.ok) return setApplyError(id, res.error);
-        setResult({ ...result, tags: res.text });
+        setTarget({ ...target, tags: res.text });
       } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = applyVocalArrangement(result.lyrics, s.arrangement);
+        const lyricsRes = applyVocalArrangement(target.lyrics, s.arrangement);
         if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
         // Music Style is appended to, never replaced; failure to append must not
         // leave the lyrics half-modified, so it is applied together.
-        const styleRes = s.value ? addToMusicStyle(result.tags, s.value) : null;
-        setResult({
-          ...result,
+        const styleRes = s.value ? addToMusicStyle(target.tags, s.value) : null;
+        setTarget({
+          ...target,
           lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : result.tags,
+          tags: styleRes?.ok ? styleRes.text : target.tags,
         });
       } else {
         return;
@@ -980,19 +964,19 @@ function GeneratePage() {
       setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoSuggestion: (id, s) => {
-      if (!result) return;
+      if (!target) return;
       if (s.actionType === "add_to_music_style") {
-        const res = removeFromMusicStyle(result.tags, s.value);
+        const res = removeFromMusicStyle(target.tags, s.value);
         if (!res.ok) return setApplyError(id, res.error);
-        setResult({ ...result, tags: res.text });
+        setTarget({ ...target, tags: res.text });
       } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = undoVocalArrangement(result.lyrics, s.arrangement);
+        const lyricsRes = undoVocalArrangement(target.lyrics, s.arrangement);
         if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
-        const styleRes = s.value ? removeFromMusicStyle(result.tags, s.value) : null;
-        setResult({
-          ...result,
+        const styleRes = s.value ? removeFromMusicStyle(target.tags, s.value) : null;
+        setTarget({
+          ...target,
           lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : result.tags,
+          tags: styleRes?.ok ? styleRes.text : target.tags,
         });
       } else {
         return;
@@ -1000,6 +984,61 @@ function GeneratePage() {
       setApplyError(id, null);
       setApplied((p) => ({ ...p, [id]: false }));
     },
+  });
+
+  const applyState = makeApplyState(result, setResult);
+  const repairedApplyState = makeApplyState(repaired?.result ?? null, (next) =>
+    setRepaired((prev) => (prev ? { ...prev, result: next } : prev)),
+  );
+
+  const setRepairedField = (key: keyof Song, value: string) =>
+    setRepaired((prev) => (prev ? { ...prev, result: { ...prev.result, [key]: value } } : prev));
+
+  // ── Clear / reset. Purely local state; never calls the AI or costs a creation. ──
+  const canClear =
+    !!theme.trim() ||
+    genres.length > 0 ||
+    !!customGenre.trim() ||
+    moods.length > 0 ||
+    !!customMood.trim() ||
+    !!language ||
+    !!customLanguage.trim() ||
+    instruments.length > 0 ||
+    !!customInstruments.trim() ||
+    bpm !== "Auto" ||
+    !!customBpm.trim() ||
+    !!result ||
+    !!quality ||
+    !!repaired;
+
+  const clearAll = () => {
+    setTheme("");
+    setGenres([]);
+    setCustomGenre("");
+    setMoods([]);
+    setCustomMood("");
+    setLanguage("");
+    setCustomLanguage("");
+    setInstruments([]);
+    setCustomInstruments("");
+    setBpm("Auto");
+    setCustomBpm("");
+    setResult(null);
+    setGenerationId(null);
+    setQuality(null);
+    setRepaired(null);
+    setChecking(false);
+    setRepairing(false);
+    setCheckError(null);
+    setRepairError(null);
+    setStatus(null);
+    setSaved(false);
+    setApplied({});
+    setApplyErrors({});
+    setConfirm(null);
+    setConfirmClear(false);
+    setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setRepairedOpen({ title: false, tags: false, lyrics: false, note: false });
   };
 
 
@@ -1244,10 +1283,28 @@ function GeneratePage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               Generate with AI
             </button>
+            {canClear && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-red-400/50 hover:text-red-300 disabled:opacity-50 sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4" /> Clear
+              </button>
+            )}
             <span className="text-xs text-muted-foreground">
               {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
             </span>
           </div>
+
+          {confirmClear && (
+            <ConfirmBox
+              message="Clear Generator? This will clear your current inputs and generated results. This action cannot be undone."
+              confirmLabel="Clear"
+              onConfirm={clearAll}
+              onCancel={() => setConfirmClear(false)}
+            />
+          )}
 
           {status && <p className="text-xs text-accent">{status}</p>}
         </div>
@@ -1325,6 +1382,45 @@ function GeneratePage() {
                 setConfirm={setConfirm}
                 onRecheck={() => runCheck(true)}
                 state={applyState}
+                repairedState={repairedApplyState}
+                repairedSections={
+                  repaired && (
+                    <>
+                      <ResultSection
+                        title="REPAIRED SONG TITLE"
+                        value={repaired.result.title}
+                        open={repairedOpen.title}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, title: !p.title }))}
+                        onChange={(v) => setRepairedField("title", v)}
+                        rows={2}
+                      />
+                      <ResultSection
+                        title="REPAIRED STYLE PROMPT (METATAGS)"
+                        value={repaired.result.tags}
+                        open={repairedOpen.tags}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, tags: !p.tags }))}
+                        onChange={(v) => setRepairedField("tags", v)}
+                        rows={4}
+                      />
+                      <ResultSection
+                        title="REPAIRED LYRICS & STRUCTURE"
+                        value={repaired.result.lyrics}
+                        open={repairedOpen.lyrics}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
+                        onChange={(v) => setRepairedField("lyrics", v)}
+                        rows={18}
+                      />
+                      <ResultSection
+                        title="REPAIRED PRODUCER'S NOTE"
+                        value={repaired.result.note}
+                        open={repairedOpen.note}
+                        onToggle={() => setRepairedOpen((p) => ({ ...p, note: !p.note }))}
+                        onChange={(v) => setRepairedField("note", v)}
+                        rows={5}
+                      />
+                    </>
+                  )
+                }
               />
             )}
 
