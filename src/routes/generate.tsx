@@ -702,6 +702,8 @@ function GeneratePage() {
   const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
   // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
   const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
+  // One-time Recheck of the repaired result.
+  const [repairedRecheckUsed, setRepairedRecheckUsed] = useState(false);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -709,6 +711,14 @@ function GeneratePage() {
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
+
+  // Authoritative "latest song" pointers used by Recheck, so a check always
+  // analyzes the current editable state (Apply / Undo + manual edits included).
+  const resultRef = useRef(result);
+  const repairedRef = useRef(repaired);
+  resultRef.current = result;
+  repairedRef.current = repaired;
+
 
   // Part 3 — collapsible result sections (UI state only, collapsed by default).
   const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
