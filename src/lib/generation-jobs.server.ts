@@ -15,7 +15,7 @@
 import { runSongGeneration, generateJobInput } from "@/lib/ai.functions";
 
 /** A processing job older than this is considered lost infrastructure-wise. */
-const STALE_PROCESSING_MS = 3 * 60 * 1000;
+const STALE_PROCESSING_MS = 5 * 60 * 1000;
 
 type AdminClient = { from: (t: string) => any };
 
@@ -115,23 +115,13 @@ export async function pendingJobIds(limit = 5): Promise<string[]> {
     .from("ai_generation_jobs")
     .select("id")
     .eq("status", "pending")
+    .is("dismissed_at", null)
     .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
     .order("created_at", { ascending: true })
     .limit(limit);
   return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
 }
 
-/**
- * Best-effort start signal to the durable runner endpoint. It is a separate
- * HTTP request, so its lifetime is independent of the browser's request.
- * Never awaited by request handlers that must return fast.
- */
-export function kickRunner(origin: string, jobId: string): Promise<unknown> {
-  const secret = process.env["LOVABLE_CRON_SECRET"];
-  if (!secret) return Promise.resolve();
-  return fetch(`${origin}/api/public/jobs/run`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${secret}` },
-    body: JSON.stringify({ jobId }),
-  }).catch(() => undefined);
-}
+// The start signal is issued by the database itself (pg_net, from
+// `public.kick_generation_runner`), never by a browser-initiated request, so a
+// generation's lifetime is fully independent of the client connection.
