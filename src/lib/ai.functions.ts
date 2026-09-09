@@ -663,7 +663,7 @@ function buildQualityPrompt(
 ) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
-Begin by reading the LYRICS line by line as a professional native songwriter and lyric editor. Identify every material lyric defect first. Only after the lyrics review is complete should you consider Title, Music Style, Producer's Note and optional creative/vocal/production suggestions. A song MUST NOT receive "passed": true AND "score": 10 while any clear material lyric defect remains.
+Begin by reading the LYRICS line by line as a professional native songwriter and lyric editor. Identify every material lyric defect first. Judge each line by its exact wording as a native songwriter would, not by whether the listener can infer the intended meaning from context; a lyric defect remains a defect even when its meaning is guessable. Only after the lyrics review is complete should you consider Title, Music Style, Producer's Note and optional creative/vocal/production suggestions. A song MUST NOT receive "passed": true AND "score": 10 while any clear material lyric defect remains.
 
 ORIGINAL GENERATION CONTEXT — AUTHORITATIVE
 Core Idea: ${d.theme}
