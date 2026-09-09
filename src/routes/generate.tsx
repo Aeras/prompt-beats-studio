@@ -793,6 +793,73 @@ function GeneratePage() {
     }
   };
 
+  // ── Deterministic Apply / Undo. No AI provider request is made here. ──
+  const applyState: ApplyState = {
+    applied,
+    errors: applyErrors,
+    onApplyCorrection: (id, c) => {
+      if (!result) return;
+      const res = applyLyricCorrection(result.lyrics, c);
+      if (!res.ok) return setApplyError(id, res.error);
+      setResult({ ...result, lyrics: res.text });
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: true }));
+    },
+    onUndoCorrection: (id, c) => {
+      if (!result) return;
+      const res = undoLyricCorrection(result.lyrics, c);
+      if (!res.ok) return setApplyError(id, res.error);
+      setResult({ ...result, lyrics: res.text });
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: false }));
+    },
+    onApplySuggestion: (id, s) => {
+      if (!result) return;
+      if (s.actionType === "add_to_music_style") {
+        const res = addToMusicStyle(result.tags, s.value);
+        if (!res.ok) return setApplyError(id, res.error);
+        setResult({ ...result, tags: res.text });
+      } else if (s.actionType === "vocal_arrangement") {
+        const lyricsRes = applyVocalArrangement(result.lyrics, s.arrangement);
+        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
+        // Music Style is appended to, never replaced; failure to append must not
+        // leave the lyrics half-modified, so it is applied together.
+        const styleRes = s.value ? addToMusicStyle(result.tags, s.value) : null;
+        setResult({
+          ...result,
+          lyrics: lyricsRes.text,
+          tags: styleRes?.ok ? styleRes.text : result.tags,
+        });
+      } else {
+        return;
+      }
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: true }));
+    },
+    onUndoSuggestion: (id, s) => {
+      if (!result) return;
+      if (s.actionType === "add_to_music_style") {
+        const res = removeFromMusicStyle(result.tags, s.value);
+        if (!res.ok) return setApplyError(id, res.error);
+        setResult({ ...result, tags: res.text });
+      } else if (s.actionType === "vocal_arrangement") {
+        const lyricsRes = undoVocalArrangement(result.lyrics, s.arrangement);
+        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
+        const styleRes = s.value ? removeFromMusicStyle(result.tags, s.value) : null;
+        setResult({
+          ...result,
+          lyrics: lyricsRes.text,
+          tags: styleRes?.ok ? styleRes.text : result.tags,
+        });
+      } else {
+        return;
+      }
+      setApplyError(id, null);
+      setApplied((p) => ({ ...p, [id]: false }));
+    },
+  };
+
+
   return (
     <AppShell
       header={
