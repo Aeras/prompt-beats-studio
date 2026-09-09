@@ -111,7 +111,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     const { data: row } = await supabase
       .from("ai_generation_jobs")
-      .select("id,status,result,error,generation_id,created_at")
+      .select(JOB_COLUMNS)
       .eq("id", data.jobId)
       .maybeSingle();
     if (!row) return { job: null };
@@ -130,7 +130,7 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     const { data: row } = await supabase
       .from("ai_generation_jobs")
-      .select("id,status,result,error,generation_id,created_at")
+      .select(JOB_COLUMNS)
       .eq("user_id", context.userId)
       .is("dismissed_at", null)
       .in("status", ["pending", "processing", "completed"])
