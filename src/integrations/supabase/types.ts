@@ -19,6 +19,7 @@ export type Database = {
           attempts: number
           completed_at: string | null
           created_at: string
+          dismissed_at: string | null
           error: string | null
           generation_id: string | null
           id: string
@@ -36,6 +37,7 @@ export type Database = {
           attempts?: number
           completed_at?: string | null
           created_at?: string
+          dismissed_at?: string | null
           error?: string | null
           generation_id?: string | null
           id?: string
@@ -53,6 +55,7 @@ export type Database = {
           attempts?: number
           completed_at?: string | null
           created_at?: string
+          dismissed_at?: string | null
           error?: string | null
           generation_id?: string | null
           id?: string
@@ -494,6 +497,7 @@ export type Database = {
       }
     }
     Functions: {
+      dismiss_generation_job: { Args: { _job_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -502,6 +506,7 @@ export type Database = {
         Returns: boolean
       }
       is_banned: { Args: { _user_id: string }; Returns: boolean }
+      kick_generation_runner: { Args: { _job_id: string }; Returns: undefined }
       like_count: { Args: { _track_id: string }; Returns: number }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
@@ -511,6 +516,7 @@ export type Database = {
         Args: { _idempotency_key: string; _input: Json }
         Returns: Json
       }
+      sweep_generation_jobs: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

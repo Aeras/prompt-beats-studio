@@ -6,7 +6,7 @@
  * result. Execution happens in `generation-jobs.server.ts`.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -37,7 +37,7 @@ type JobRow = {
 
 export type GenerationJob = {
   jobId: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   result: z.infer<typeof resultShape> | null;
   error: string | null;
   generationId: string | null;
@@ -56,21 +56,9 @@ function toJob(row: JobRow): GenerationJob {
   };
 }
 
-function currentOrigin(): string | null {
-  try {
-    return new URL(getRequest().url).origin;
-  } catch {
-    return null;
-  }
-}
-
-/** Fire-and-forget start signal; failures are irrelevant because polling re-kicks. */
-async function signalRunner(jobId: string) {
-  const origin = currentOrigin();
-  if (!origin) return;
-  const { kickRunner } = await import("@/lib/generation-jobs.server");
-  await kickRunner(origin, jobId);
-}
+// Execution is signalled by the database (pg_net) the moment the job row is
+// created, and re-signalled by a scheduled sweep. Nothing here starts work in
+// the browser's request, so a generation cannot die with the connection.
 
 /**
  * Creates (or re-returns) a generation job. The database routine consumes
@@ -92,7 +80,6 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       return { rateLimited: true as const, job: null };
     }
     const job = toJob(raw as JobRow);
-    if (job.status === "pending") await signalRunner(job.jobId);
     return { rateLimited: false as const, job };
   });
 
@@ -108,16 +95,15 @@ export const getGenerationJob = createServerFn({ method: "POST" })
       .eq("id", data.jobId)
       .maybeSingle();
     if (!row) return { job: null };
-    const job = toJob(row as JobRow);
-    // Recovery: a job nobody picked up is safe to (re)start — the provider has
-    // not been called yet. Claimed jobs are never restarted here.
-    if (job.status === "pending" && Date.now() - new Date(job.createdAt).getTime() > 3000) {
-      await signalRunner(job.jobId);
-    }
-    return { job };
+    // Never re-signals execution: the database owns starting and recovering
+    // jobs, so polling can never cause a second provider call.
+    return { job: toJob(row as JobRow) };
   });
 
-/** Recovers the newest recent job after a refresh or a lost response. */
+/**
+ * Recovers the newest recent job after a refresh or a lost response.
+ * Dismissed jobs are never resurrected.
+ */
 export const getLatestGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -126,6 +112,8 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
       .from("ai_generation_jobs")
       .select("id,status,result,error,generation_id,created_at")
       .eq("user_id", context.userId)
+      .is("dismissed_at", null)
+      .in("status", ["pending", "processing", "completed"])
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(1)
@@ -134,21 +122,15 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
   });
 
 /**
- * Runs the job in a request of its own. The browser calls this without
- * awaiting it, so the generation is not tied to the Generate interaction.
- * Claiming is atomic, so this can never duplicate a provider call.
+ * Forgets a job (Clear / dismiss). A pending job is cancelled so the runner
+ * skips it; a job already claimed keeps running to completion but will never
+ * be shown again. No creation is refunded and none is consumed.
  */
-export const runGenerationJobNow = createServerFn({ method: "POST" })
+export const dismissGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
-    const { data: row } = await supabase
-      .from("ai_generation_jobs")
-      .select("id")
-      .eq("id", data.jobId)
-      .maybeSingle();
-    if (!row) return { ran: false };
-    const { executeGenerationJob } = await import("@/lib/generation-jobs.server");
-    return await executeGenerationJob(data.jobId);
+    await supabase.rpc("dismiss_generation_job", { _job_id: data.jobId });
+    return { ok: true };
   });

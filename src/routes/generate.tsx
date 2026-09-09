@@ -22,7 +22,7 @@ import {
 import {
   getGenerationJob,
   getLatestGenerationJob,
-  runGenerationJobNow,
+  dismissGenerationJob,
   startGenerationJob,
   type GenerationJob,
 } from "@/lib/generation-jobs.functions";
@@ -781,6 +781,13 @@ function GeneratePage() {
       void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       return;
     }
+    if (job.status === "cancelled") {
+      setBusy(false);
+      setStatus(null);
+      setJobId(null);
+      rememberJob(null);
+      return;
+    }
     if (job.status === "failed") {
       setStatus(job.error ?? "The generation failed. Please try again.");
       setBusy(false);
@@ -976,12 +983,9 @@ function GeneratePage() {
         return;
       }
       pendingKey.current = null;
+      // Execution was already signalled by the database when the job row was
+      // created; the browser only polls from here on.
       applyJob(res.job);
-      // Runs the job in its own request; not awaited, and safe to call twice
-      // because claiming a job is atomic.
-      if (res.job.status === "pending") {
-        void runGenerationJobNow({ data: { jobId: res.job.jobId } }).catch(() => undefined);
-      }
     } catch (err) {
       // The job may already exist even though we never saw the response.
       try {
@@ -1191,6 +1195,9 @@ function GeneratePage() {
     !!repaired;
 
   const clearAll = () => {
+    // Forget any running generation server-side too, so it is never restored
+    // on the next visit. No creation is consumed or refunded by this.
+    if (jobId) void dismissGenerationJob({ data: { jobId } }).catch(() => undefined);
     setTheme("");
     setGenres([]);
     setCustomGenre("");
