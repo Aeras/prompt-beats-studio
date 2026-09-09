@@ -675,6 +675,8 @@ function GeneratePage() {
     setQuality(null);
     setRepaired(null);
     setRepairError(null);
+    setApplied({});
+    setApplyErrors({});
     try {
       const res = await generateSongPrompt({
         data: {
@@ -692,6 +694,9 @@ function GeneratePage() {
       setResult(res.result);
       setGenerationId(res.generationId ?? null);
       setQuality(res.quality ?? null);
+      // All four sections start collapsed after a new generation.
+      setOpen({ title: false, tags: false, lyrics: false, note: false });
+
 
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Generation failed");
