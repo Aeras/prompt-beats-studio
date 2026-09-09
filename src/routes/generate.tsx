@@ -600,9 +600,28 @@ function GeneratePage() {
     quality: QualityReport | null;
   } | null>(null);
 
+  // Part 3 — collapsible result sections (UI state only, collapsed by default).
+  const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
+  const allOpen = open.title && open.tags && open.lyrics && open.note;
+  const toggleAll = () =>
+    setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
+
+  // Deterministic Apply / Undo bookkeeping — no AI call is ever made here.
+  const [applied, setApplied] = useState<Record<string, boolean>>({});
+  const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
+  const setApplyError = (id: string, msg: string | null) =>
+    setApplyErrors((prev) => {
+      const next = { ...prev };
+      if (msg) next[id] = msg;
+      else delete next[id];
+      return next;
+    });
+
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
+
 
 
   useEffect(() => {
