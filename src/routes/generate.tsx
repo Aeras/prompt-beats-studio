@@ -455,6 +455,7 @@ function QualityPanel({
   onRecheck,
   onRecheckOriginal,
   origRecheckUsed,
+  repairedRecheckUsed,
   state,
   repairedState,
   repairedSections,
@@ -474,6 +475,8 @@ function QualityPanel({
   /** One-time re-analysis of the (possibly edited) original result. */
   onRecheckOriginal: () => void;
   origRecheckUsed: boolean;
+  /** One-time Recheck of the repaired result. */
+  repairedRecheckUsed: boolean;
   state: ApplyState;
   /** Apply / Undo bound to the repaired result — never touches the original. */
   repairedState: ApplyState;
@@ -562,7 +565,7 @@ function QualityPanel({
           )}
 
           {/* One-time re-analysis of the current (editable) repaired result. */}
-          {!repaired.quality && (
+          {!repairedRecheckUsed && (
             <div className="mt-4 space-y-3">
               {confirm === "recheck" ? (
                 <ConfirmBox
@@ -581,6 +584,7 @@ function QualityPanel({
               )}
             </div>
           )}
+
           {checkError && <p className="mt-3 text-xs text-red-400">{checkError}</p>}
         </div>
       )}
@@ -702,6 +706,8 @@ function GeneratePage() {
   const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
   // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
   const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
+  // One-time Recheck of the repaired result.
+  const [repairedRecheckUsed, setRepairedRecheckUsed] = useState(false);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -709,6 +715,14 @@ function GeneratePage() {
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
+
+  // Authoritative "latest song" pointers used by Recheck, so a check always
+  // analyzes the current editable state (Apply / Undo + manual edits included).
+  const resultRef = useRef(result);
+  const repairedRef = useRef(repaired);
+  resultRef.current = result;
+  repairedRef.current = repaired;
+
 
   // Part 3 — collapsible result sections (UI state only, collapsed by default).
   const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
@@ -758,6 +772,7 @@ function GeneratePage() {
       setGenerationId(job.generationId);
       setQuality(null);
       setOrigRecheckUsed(false);
+      setRepairedRecheckUsed(false);
       setOpen({ title: false, tags: false, lyrics: false, note: false });
       setStatus(null);
       setBusy(false);
@@ -932,6 +947,7 @@ function GeneratePage() {
     setResult(null);
     setQuality(null);
     setOrigRecheckUsed(false);
+    setRepairedRecheckUsed(false);
     setRepaired(null);
     setRepairError(null);
     setApplied({});
@@ -984,8 +1000,10 @@ function GeneratePage() {
   };
 
   // Manual: exactly one quality check per confirmed click.
+  // The analyzed song is always read from the refs, so any Apply / Undo or
+  // manual edit made right before the click is included (never a stale copy).
   const runCheck = async (afterRepair: boolean, isRecheck = false) => {
-    const target = afterRepair ? repaired?.result : result;
+    const target = afterRepair ? repairedRef.current?.result : resultRef.current;
     if (!target) return;
     setConfirm(null);
     setChecking(true);
@@ -997,7 +1015,7 @@ function GeneratePage() {
           genre: effectiveGenre,
           mood: effectiveMood,
           language: effectiveLanguage,
-          result: target,
+          result: { ...target },
           generationId,
           afterRepair,
         },
@@ -1009,9 +1027,10 @@ function GeneratePage() {
       }
       if (afterRepair) {
         setRepaired((prev) => (prev ? { ...prev, quality: res.quality } : prev));
+        // A Recheck is one-time: it is spent once the check actually ran.
+        if (isRecheck) setRepairedRecheckUsed(true);
       } else {
         setQuality(res.quality);
-        // A Recheck is one-time: it is spent whether or not issues were found.
         if (isRecheck) setOrigRecheckUsed(true);
       }
       if (!res.quality) setCheckError("Quality check unavailable. Please try again.");
@@ -1021,6 +1040,7 @@ function GeneratePage() {
       setChecking(false);
     }
   };
+
 
   // Manual: exactly one repair request per confirmed click, no retries.
   const repair = async () => {
@@ -1186,6 +1206,7 @@ function GeneratePage() {
     setGenerationId(null);
     setQuality(null);
     setOrigRecheckUsed(false);
+    setRepairedRecheckUsed(false);
     setJobId(null);
     rememberJob(null);
     pendingKey.current = null;
@@ -1578,6 +1599,7 @@ function GeneratePage() {
                 onRecheck={() => runCheck(true)}
                 onRecheckOriginal={() => runCheck(false, true)}
                 origRecheckUsed={origRecheckUsed}
+                repairedRecheckUsed={repairedRecheckUsed}
                 state={applyState}
                 repairedState={repairedApplyState}
                 repairedSections={
