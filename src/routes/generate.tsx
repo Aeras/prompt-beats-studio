@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +17,17 @@ import {
   setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
+  type LyricCorrectionItem,
+  type QualitySuggestion,
 } from "@/lib/ai.functions";
+import {
+  addToMusicStyle,
+  applyLyricCorrection,
+  applyVocalArrangement,
+  removeFromMusicStyle,
+  undoLyricCorrection,
+  undoVocalArrangement,
+} from "@/lib/quality-apply";
 import { getMyModeration } from "@/lib/moderation.functions";
 import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
 
