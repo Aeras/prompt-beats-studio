@@ -174,17 +174,6 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function OutputCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-start gap-3">
-        <h2 className="min-w-0 flex-1 font-display text-sm font-semibold tracking-wide text-gradient-neon">{title}</h2>
-        <CopyButton value={body} />
-      </div>
-      <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-sm text-muted-foreground">{body || "—"}</pre>
-    </div>
-  );
-}
 
 // TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
 // evaluator response from the current generation. Remove after testing.
@@ -219,25 +208,6 @@ function ActualIssues({ quality }: { quality: QualityReport }) {
   );
 }
 
-function QualityReportBody({ quality }: { quality: QualityReport | null }) {
-  if (!quality) return <p className="mt-3 text-xs text-muted-foreground">Quality check unavailable</p>;
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-4 text-sm">
-        <span>
-          Passed:{" "}
-          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
-            {quality.passed ? "Yes" : "No"}
-          </strong>
-        </span>
-        <span>
-          Score: <strong className="text-foreground">{quality.score}/10</strong>
-        </span>
-      </div>
-      <ActualIssues quality={quality} />
-    </div>
-  );
-}
 
 function hasQualityIssues(q: QualityReport | null) {
   if (!q) return false;
@@ -475,6 +445,8 @@ function QualityPanel({
   setConfirm,
   onRecheck,
   state,
+  repairedState,
+  repairedSections,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -489,6 +461,10 @@ function QualityPanel({
   setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
   onRecheck: () => void;
   state: ApplyState;
+  /** Apply / Undo bound to the repaired result — never touches the original. */
+  repairedState: ApplyState;
+  /** Editable, collapsible sections rendering `repaired.result`. */
+  repairedSections: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
@@ -545,34 +521,30 @@ function QualityPanel({
       {repaired && (
         <div className="mt-6 border-t border-white/10 pt-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Repaired</p>
-          <div className="mt-3 space-y-4">
-            <OutputCard title="REPAIRED SONG TITLE" body={repaired.result.title} />
-            <OutputCard title="REPAIRED STYLE PROMPT (METATAGS)" body={repaired.result.tags} />
-            <OutputCard title="REPAIRED LYRICS & STRUCTURE" body={repaired.result.lyrics} />
-            <OutputCard title="REPAIRED PRODUCER'S NOTE" body={repaired.result.note} />
-          </div>
-          {repaired.quality ? (
-            <QualityReportBody quality={repaired.quality} />
-          ) : (
-            <div className="mt-4 space-y-3">
-              {confirm === "recheck" ? (
-                <ConfirmBox
-                  message="This check will use 1 additional creation from your available balance."
-                  confirmLabel="Check Again"
-                  onConfirm={onRecheck}
-                  onCancel={() => setConfirm(null)}
-                />
-              ) : (
-                <CostButton
-                  label="Check Again · −1 creation"
-                  busy={checking}
-                  busyLabel="Checking..."
-                  onClick={() => setConfirm("recheck")}
-                />
-              )}
-              {checkError && <p className="text-xs text-red-400">{checkError}</p>}
-            </div>
+          <div className="mt-3 space-y-4">{repairedSections}</div>
+
+          {repaired.quality && (
+            <QualityResults quality={repaired.quality} prefix="rep" state={repairedState} />
           )}
+
+          <div className="mt-4 space-y-3">
+            {confirm === "recheck" ? (
+              <ConfirmBox
+                message="This check will use 1 additional creation from your available balance."
+                confirmLabel="Check Again"
+                onConfirm={onRecheck}
+                onCancel={() => setConfirm(null)}
+              />
+            ) : (
+              <CostButton
+                label="Check Again · −1 creation"
+                busy={checking}
+                busyLabel="Checking..."
+                onClick={() => setConfirm("recheck")}
+              />
+            )}
+            {checkError && <p className="text-xs text-red-400">{checkError}</p>}
+          </div>
         </div>
       )}
     </div>
