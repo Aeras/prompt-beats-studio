@@ -98,7 +98,11 @@ function cleanLabel(label: string) {
 }
 
 /** Returns the [start,end) character range of the named section body, or null. */
-function sectionRange(lyrics: string, label: string): { from: number; to: number } | null {
+function sectionRange(
+  lyrics: string,
+  label: string,
+  occurrenceIndex?: number | null,
+): { from: number; to: number } | null {
   const { lines, blocks } = sections(lyrics);
   const wanted = cleanLabel(label);
   if (!wanted) return null;
@@ -110,8 +114,10 @@ function sectionRange(lyrics: string, label: string): { from: number; to: number
           const l = cleanLabel(b.label);
           return l === wanted || l.startsWith(wanted);
         });
-  if (matches.length !== 1) return null;
-  const block = matches[0]!;
+  if (matches.length === 0) return null;
+  const idx = Math.max(1, occurrenceIndex ?? 1) - 1;
+  const block = matches[idx];
+  if (!block) return null;
   const offset = (index: number) =>
     lines.slice(0, index).reduce((n, l) => n + l.length + 1, 0);
   return { from: offset(block.start), to: Math.min(lyrics.length, offset(block.end)) };
@@ -171,7 +177,13 @@ function replaceOccurrence(
   if (matches.length === 0) {
     return { ok: false, error: "The original text no longer matches — nothing was changed." };
   }
-  const index = scope ? Math.max(1, occurrenceIndex) - 1 : 0;
+  // When a section scope is resolved, occurrenceIndex selects the section;
+  // within that section the target line is normally unique.
+  const index = scope
+    ? matches.length === 1
+      ? 0
+      : Math.max(1, occurrenceIndex) - 1
+    : 0;
   if (!scope && matches.length !== 1) {
     return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
   }
@@ -194,7 +206,7 @@ export type LyricCorrection = {
 
 /** Replaces exactly one verified occurrence; never a global replace. */
 export function applyLyricCorrection(lyrics: string, c: LyricCorrection): ApplyResult {
-  const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel) : null;
+  const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel, c.occurrenceIndex) : null;
   // Section unknown: document-wide fallback is allowed only when the target
   // text occurs exactly once in the whole lyrics (enforced in replaceOccurrence).
   return replaceOccurrence(lyrics, c.originalText, c.replacementText, c.occurrenceIndex ?? 1, scope);
@@ -207,12 +219,12 @@ export function undoLyricCorrection(lyrics: string, c: LyricCorrection): ApplyRe
     originalText: c.replacementText,
     replacementText: c.originalText,
   };
-  const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel) : null;
-  // The applied replacement usually exists only once, even when the original
-  // text occurred several times, so fall back to it when it is unambiguous.
+  const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel, c.occurrenceIndex) : null;
+  // The applied replacement usually exists only once within the targeted section,
+  // even when the original text occurred several times across the song.
   const hay = scope ? lyrics.slice(scope.from, scope.to) : lyrics;
   if (findMatches(hay, c.replacementText).length === 1) {
-    return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: 1 });
+    return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: c.occurrenceIndex ?? 1 });
   }
   return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: c.occurrenceIndex ?? 1 });
 }
