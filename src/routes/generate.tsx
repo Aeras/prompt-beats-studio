@@ -662,7 +662,9 @@ function GeneratePage() {
   // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | "recheck-orig" | null>(null);
+  // One-time Recheck of the original result (manual, confirmed, costs 1 creation).
+  const [origRecheckUsed, setOrigRecheckUsed] = useState(false);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -697,6 +699,102 @@ function GeneratePage() {
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
+  // ---------------------------------------------------------------------------
+  // Durable generation job. The browser never waits for the AI provider: it
+  // creates a job, gets an id back immediately, and polls. Backgrounding the
+  // tab, losing signal or refreshing can no longer break a generation.
+  // ---------------------------------------------------------------------------
+  const [jobId, setJobId] = useState<string | null>(null);
+  /** Kept across retries so a resent Generate can never consume a 2nd creation. */
+  const pendingKey = useRef<string | null>(null);
+
+  function rememberJob(id: string | null) {
+    if (typeof window === "undefined") return;
+    if (id) window.localStorage.setItem(JOB_STORAGE_KEY, id);
+    else window.localStorage.removeItem(JOB_STORAGE_KEY);
+  }
+
+  function applyJob(job: GenerationJob) {
+    if (job.status === "completed" && job.result) {
+      setResult(job.result);
+      setGenerationId(job.generationId);
+      setQuality(null);
+      setOrigRecheckUsed(false);
+      setOpen({ title: false, tags: false, lyrics: false, note: false });
+      setStatus(null);
+      setBusy(false);
+      setJobId(null);
+      rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    if (job.status === "failed") {
+      setStatus(job.error ?? "The generation failed. Please try again.");
+      setBusy(false);
+      setJobId(null);
+      rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    // pending / processing
+    rememberJob(job.jobId);
+    setJobId(job.jobId);
+    setBusy(true);
+    setStatus("Generating… this keeps running even if you leave or lose signal.");
+  }
+
+  const { data: jobData, refetch: refetchJob } = useQuery({
+    queryKey: ["gen-job", jobId],
+    queryFn: () => getGenerationJob({ data: { jobId: jobId as string } }),
+    enabled: !!jobId,
+    refetchInterval: 2500,
+    refetchOnWindowFocus: true,
+    gcTime: 0,
+  });
+
+  useEffect(() => {
+    const job = jobData?.job;
+    if (!job || job.jobId !== jobId) return;
+    applyJob(job);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobData, jobId]);
+
+  // Recovery after a refresh, a crash, or a Generate whose response was lost.
+  useEffect(() => {
+    if (!user || jobId || result) return;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    if (stored) {
+      setJobId(stored);
+      setBusy(true);
+      return;
+    }
+    let cancelled = false;
+    void getLatestGenerationJob()
+      .then((r) => {
+        const job = r.job;
+        if (cancelled || !job) return;
+        if (job.status === "pending" || job.status === "processing") applyJob(job);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, jobId, result]);
+
+  // Returning to the tab or regaining connectivity re-syncs immediately.
+  useEffect(() => {
+    const sync = () => {
+      if (jobId && document.visibilityState === "visible") void refetchJob();
+    };
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("online", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("online", sync);
+    };
+  }, [jobId, refetchJob]);
 
 
 
@@ -790,17 +888,27 @@ function GeneratePage() {
     setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
+    if (busy || jobId) return;
     setBusy(true);
-    setStatus(null);
+    setStatus("Starting generation…");
     setSaved(false);
+    setResult(null);
     setQuality(null);
+    setOrigRecheckUsed(false);
     setRepaired(null);
     setRepairError(null);
     setApplied({});
     setApplyErrors({});
+
+    // Stable idempotency key: a retry after a dropped response reuses it, so the
+    // server returns the same job instead of consuming another creation.
+    const key = pendingKey.current ?? crypto.randomUUID();
+    pendingKey.current = key;
+
     try {
-      const res = await generateSongPrompt({
+      const res = await startGenerationJob({
         data: {
+          idempotencyKey: key,
           theme: theme.trim(),
           genre: effectiveGenre,
           mood: effectiveMood,
@@ -808,20 +916,32 @@ function GeneratePage() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited") {
+      if (res.rateLimited || !res.job) {
         setStatus("You've hit the hourly limit. Try again soon.");
+        setBusy(false);
+        pendingKey.current = null;
         return;
       }
-      setResult(res.result);
-      setGenerationId(res.generationId ?? null);
-      setQuality(res.quality ?? null);
-      // All four sections start collapsed after a new generation.
-      setOpen({ title: false, tags: false, lyrics: false, note: false });
-
-
+      pendingKey.current = null;
+      applyJob(res.job);
+      // Runs the job in its own request; not awaited, and safe to call twice
+      // because claiming a job is atomic.
+      if (res.job.status === "pending") {
+        void runGenerationJobNow({ data: { jobId: res.job.jobId } }).catch(() => undefined);
+      }
     } catch (err) {
+      // The job may already exist even though we never saw the response.
+      try {
+        const latest = await getLatestGenerationJob();
+        if (latest.job && latest.job.status !== "failed") {
+          pendingKey.current = null;
+          applyJob(latest.job);
+          return;
+        }
+      } catch {
+        /* still offline — keep the key so a retry reuses the same job */
+      }
       setStatus(err instanceof Error ? err.message : "Generation failed");
-    } finally {
       setBusy(false);
     }
   };
@@ -1026,6 +1146,11 @@ function GeneratePage() {
     setResult(null);
     setGenerationId(null);
     setQuality(null);
+    setOrigRecheckUsed(false);
+    setJobId(null);
+    rememberJob(null);
+    pendingKey.current = null;
+    setBusy(false);
     setRepaired(null);
     setChecking(false);
     setRepairing(false);
