@@ -994,6 +994,53 @@ function GeneratePage() {
   const setRepairedField = (key: keyof Song, value: string) =>
     setRepaired((prev) => (prev ? { ...prev, result: { ...prev.result, [key]: value } } : prev));
 
+  // ── Clear / reset. Purely local state; never calls the AI or costs a creation. ──
+  const canClear =
+    !!theme.trim() ||
+    genres.length > 0 ||
+    !!customGenre.trim() ||
+    moods.length > 0 ||
+    !!customMood.trim() ||
+    !!language ||
+    !!customLanguage.trim() ||
+    instruments.length > 0 ||
+    !!customInstruments.trim() ||
+    bpm !== "Auto" ||
+    !!customBpm.trim() ||
+    !!result ||
+    !!quality ||
+    !!repaired;
+
+  const clearAll = () => {
+    setTheme("");
+    setGenres([]);
+    setCustomGenre("");
+    setMoods([]);
+    setCustomMood("");
+    setLanguage("");
+    setCustomLanguage("");
+    setInstruments([]);
+    setCustomInstruments("");
+    setBpm("Auto");
+    setCustomBpm("");
+    setResult(null);
+    setGenerationId(null);
+    setQuality(null);
+    setRepaired(null);
+    setChecking(false);
+    setRepairing(false);
+    setCheckError(null);
+    setRepairError(null);
+    setStatus(null);
+    setSaved(false);
+    setApplied({});
+    setApplyErrors({});
+    setConfirm(null);
+    setConfirmClear(false);
+    setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setRepairedOpen({ title: false, tags: false, lyrics: false, note: false });
+  };
+
 
   return (
     <AppShell
