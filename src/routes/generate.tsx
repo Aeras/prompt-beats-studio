@@ -1236,10 +1236,28 @@ function GeneratePage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               Generate with AI
             </button>
+            {canClear && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-red-400/50 hover:text-red-300 disabled:opacity-50 sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4" /> Clear
+              </button>
+            )}
             <span className="text-xs text-muted-foreground">
               {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
             </span>
           </div>
+
+          {confirmClear && (
+            <ConfirmBox
+              message="Clear Generator? This will clear your current inputs and generated results. This action cannot be undone."
+              confirmLabel="Clear"
+              onConfirm={clearAll}
+              onCancel={() => setConfirmClear(false)}
+            />
+          )}
 
           {status && <p className="text-xs text-accent">{status}</p>}
         </div>
