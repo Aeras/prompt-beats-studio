@@ -55,11 +55,15 @@ const STRUCTURE_DESCRIPTORS = new Set([
  * stay inside the current section's body.
  */
 function isStructuralHeader(label: string): boolean {
-  const words = label.trim().toLowerCase().replace(/[()]/g, " ").split(/[\s\-/]+/).filter(Boolean);
+  const flat = label.trim().toLowerCase().replace(/[()]/g, " ");
+  // Hyphenated keywords (pre-chorus, post-chorus) must be checked whole.
+  for (const k of STRUCTURE_KEYWORDS) {
+    if (flat.startsWith(k)) return true; // e.g. [Verse 1], [Pre-Chorus 2], [Chorus]
+  }
+  const words = flat.split(/[\s\-/]+/).filter(Boolean);
   if (!words.length) return false;
   return words.some((word, i) => {
-    if (!STRUCTURE_KEYWORDS.some((k) => word === k || word === k.replace(/-/g, ""))) return false;
-    if (i === 0) return true; // e.g. [Verse 1], [Chorus], [Pre-Chorus 2]
+    if (i === 0 || !STRUCTURE_KEYWORDS.some((k) => word === k.replace(/-/g, ""))) return false;
     return STRUCTURE_DESCRIPTORS.has(words[i - 1]!); // e.g. [Final Chorus]
   });
 }
