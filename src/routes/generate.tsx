@@ -370,6 +370,10 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
+  // Manual quality check (never triggered automatically); costs 1 creation.
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<"check" | "repair" | "recheck" | null>(null);
   // Manual repair state (never triggered automatically); available to authenticated users.
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -377,6 +381,7 @@ function GeneratePage() {
     result: { title: string; tags: string; lyrics: string; note: string };
     quality: QualityReport | null;
   } | null>(null);
+
   // Links repair usage to the originating generation in analytics.
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
