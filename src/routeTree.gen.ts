@@ -21,6 +21,7 @@ import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
+import { Route as ApiPublicJobsRunRouteImport } from './routes/api/public/jobs/run'
 import { Route as ApiPublicWebhooksStripeRouteImport } from './routes/api/public/webhooks/stripe'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -85,6 +86,11 @@ const UHandleRoute = UHandleRouteImport.update({
   path: '/u/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsRunRoute = ApiPublicJobsRunRouteImport.update({
+  id: '/api/public/jobs/run',
+  path: '/api/public/jobs/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksStripeRoute = ApiPublicWebhooksStripeRouteImport.update({
   id: '/api/public/webhooks/stripe',
   path: '/api/public/webhooks/stripe',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
+  '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
+  '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/artist/$id': typeof ArtistIdRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
+  '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
   '/api/public/webhooks/stripe': typeof ApiPublicWebhooksStripeRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/artist/$id'
     | '/track/$id'
     | '/u/$handle'
+    | '/api/public/jobs/run'
     | '/api/public/webhooks/stripe'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/artist/$id'
     | '/track/$id'
     | '/u/$handle'
+    | '/api/public/jobs/run'
     | '/api/public/webhooks/stripe'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/artist/$id'
     | '/track/$id'
     | '/u/$handle'
+    | '/api/public/jobs/run'
     | '/api/public/webhooks/stripe'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   ArtistIdRoute: typeof ArtistIdRoute
   TrackIdRoute: typeof TrackIdRoute
   UHandleRoute: typeof UHandleRoute
+  ApiPublicJobsRunRoute: typeof ApiPublicJobsRunRoute
   ApiPublicWebhooksStripeRoute: typeof ApiPublicWebhooksStripeRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UHandleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/run': {
+      id: '/api/public/jobs/run'
+      path: '/api/public/jobs/run'
+      fullPath: '/api/public/jobs/run'
+      preLoaderRoute: typeof ApiPublicJobsRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/stripe': {
       id: '/api/public/webhooks/stripe'
       path: '/api/public/webhooks/stripe'
@@ -348,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArtistIdRoute: ArtistIdRoute,
   TrackIdRoute: TrackIdRoute,
   UHandleRoute: UHandleRoute,
+  ApiPublicJobsRunRoute: ApiPublicJobsRunRoute,
   ApiPublicWebhooksStripeRoute: ApiPublicWebhooksStripeRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
