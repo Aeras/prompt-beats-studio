@@ -144,6 +144,15 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
 }
 
+function SectionHeader({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-accent bg-white/[0.02] px-2.5 py-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
+      {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
+    </div>
+  );
+}
+
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
@@ -1061,13 +1070,32 @@ function GeneratePage() {
           </div>
 
           <div>
-            <FieldLabel>{advanced ? "Music Style — pick as many as you like" : "Music Style"}</FieldLabel>
-            <ChipGroup
-              label="Music style"
-              options={advanced ? ADVANCED_STYLES : GENRE_OPTIONS}
-              selected={advanced ? genres : genres.slice(0, 1)}
-              onToggle={advanced ? toggleValue(setGenres) : pickPrimary(setGenres)}
-            />
+            {!advanced && <FieldLabel>Music Style</FieldLabel>}
+            {advanced ? (
+              <>
+                <SectionHeader title="Music Style" hint="Pick as many as you like" />
+                <ChipGroup
+                  label="Music style"
+                  options={ADVANCED_STYLES}
+                  selected={genres}
+                  onToggle={toggleValue(setGenres)}
+                />
+              </>
+            ) : (
+              <select
+                value={genres[0] ?? ""}
+                onChange={(e) => pickPrimary(setGenres)(e.target.value)}
+                aria-label="Music Style"
+                className={fieldClass}
+              >
+                <option value="" disabled className="bg-[#0a0a0c]">
+                  Select Music Style
+                </option>
+                {GENRE_OPTIONS.map((g) => (
+                  <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {customGenreSelected && (
@@ -1083,7 +1111,7 @@ function GeneratePage() {
           {advanced ? (
             <>
               <div>
-                <FieldLabel>Mood — pick as many as you like</FieldLabel>
+                <SectionHeader title="Mood" hint="Pick as many as you like" />
                 <ChipGroup
                   label="Mood"
                   options={ADVANCED_MOODS}
@@ -1100,7 +1128,7 @@ function GeneratePage() {
               </div>
 
               <div>
-                <FieldLabel>Instruments</FieldLabel>
+                <SectionHeader title="Instruments" hint="Pick as many as you like" />
                 <ChipGroup
                   label="Instruments"
                   options={INSTRUMENTS}
@@ -1118,7 +1146,7 @@ function GeneratePage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <FieldLabel>BPM</FieldLabel>
+                  <SectionHeader title="BPM" hint="Choose one" />
                   <select
                     value={bpm}
                     onChange={(e) => setBpm(e.target.value)}
