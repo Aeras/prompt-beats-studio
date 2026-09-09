@@ -62,6 +62,89 @@ const GENRE_OPTIONS = [
 const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
 const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
 
+// ── Advanced mode catalogues (data-driven, easy to extend) ──
+const ADVANCED_STYLES = [
+  "Reggaeton", "Pop", "Rock", "R&B", "Hip-Hop", "Trap", "Soul", "Funk", "Jazz", "Blues",
+  "Disco", "House", "Techno", "EDM", "Latin", "Cumbia", "Salsa", "Bachata", "Reggae",
+  "Dancehall", "Afrobeat", "Country", "Folk", "Acoustic", "Ballad", "Metal", "Punk", "Indie",
+  "Alternative", "Lo-fi", "K-Pop", "J-Pop", "Classical", "Orchestral", "Cinematic", CUSTOM,
+];
+
+const ADVANCED_MOODS = [
+  "Romantic", "Happy", "Sad", "Melancholic", "Emotional", "Nostalgic", "Passionate", "Energetic",
+  "Uplifting", "Euphoric", "Dreamy", "Chill", "Relaxed", "Intimate", "Sensual", "Hopeful",
+  "Bittersweet", "Dark", "Mysterious", "Dramatic", "Powerful", "Aggressive", "Angry", "Playful",
+  "Joyful", "Peaceful", "Tender", "Warm", "Lonely", "Heartbroken", "Reflective", "Inspirational",
+  "Epic", "Triumphant", "Confident", "Rebellious", "Soulful", "Atmospheric", "Hypnotic", "Party",
+  "Festive",
+];
+
+const INSTRUMENTS = [
+  "Piano", "Acoustic Piano", "Electric Piano", "Grand Piano", "Organ", "Synth", "Synth Bass",
+  "Acoustic Guitar", "Electric Guitar", "Classical Guitar", "Bass", "Electric Bass", "Upright Bass",
+  "Drums", "Electronic Drums", "Percussion", "Congas", "Bongos", "Timbales", "Hand Claps",
+  "Violin", "Viola", "Cello", "Double Bass", "Strings", "Trumpet", "Trombone", "Saxophone",
+  "Flute", "Clarinet", "Oboe", "Harmonica", "Accordion", "Banjo", "Mandolin", "Ukulele", "Harp",
+  "Marimba", "Xylophone", "Brass", "Choir",
+];
+
+const BPM_OPTIONS = [
+  "Auto", "60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145",
+  "150", "160", "170", "180", "190", "200", "Custom",
+];
+
+/** Merges free-text custom values with selected chips, trimmed and de-duplicated. */
+function mergeValues(selected: string[], custom: string) {
+  const out: string[] = [];
+  for (const v of [...selected, ...custom.split(",")]) {
+    const t = v.trim();
+    if (!t) continue;
+    if (out.some((x) => x.toLowerCase() === t.toLowerCase())) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+function ChipGroup({
+  options,
+  selected,
+  onToggle,
+  label,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  label: string;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = selected.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onToggle(o)}
+            className={
+              active
+                ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
+                : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+            }
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
+}
+
+
 const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
 
@@ -575,12 +658,19 @@ function GeneratePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Mode is UI state only — switching it never resets any generation input.
+  const [advanced, setAdvanced] = useState(false);
+
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
 
-  const [mood, setMood] = useState("");
+  const [moods, setMoods] = useState<string[]>([]);
   const [customMood, setCustomMood] = useState("");
+  const [instruments, setInstruments] = useState<string[]>([]);
+  const [customInstruments, setCustomInstruments] = useState("");
+  const [bpm, setBpm] = useState("Auto");
+  const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -656,17 +746,61 @@ function GeneratePage() {
 
   // Resolve the effective value: the typed custom text when "Custom…" is chosen.
   const customGenreSelected = genres.includes(CUSTOM);
-  const effectiveGenre = [
-    ...genres.filter((g) => g !== CUSTOM),
-    ...(customGenreSelected ? [customGenre.trim()] : []),
+  const styleList = mergeValues(
+    genres.filter((g) => g !== CUSTOM),
+    customGenreSelected ? customGenre : "",
+  );
+  const baseGenre = styleList.join(", ");
+
+  const instrumentList = mergeValues(instruments, customInstruments);
+  const effectiveBpm =
+    bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
+  const bpmNumber = Number(effectiveBpm);
+  const bpmInvalid =
+    !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
+
+  // Advanced-only creative constraints ride along inside `genre` (the only field
+  // with room, 400 chars) but stay clearly labelled so they are never read as genres.
+  const direction = [
+    instrumentList.length ? `Preferred instruments: ${instrumentList.join(", ")}.` : "",
+    !bpmInvalid && effectiveBpm ? `Target tempo: ${effectiveBpm} BPM.` : "",
   ]
     .filter(Boolean)
-    .join(", ");
+    .join(" ");
+  const effectiveGenre = direction
+    ? `${baseGenre} — Additional musical direction: ${direction}`
+    : baseGenre;
+  const genreTooLong = effectiveGenre.length > 400;
 
-  const effectiveMood = mood === CUSTOM ? customMood.trim() : mood;
+  // Mood must never be silently truncated: keep whole values or ask the user to trim.
+  const useCustomMood = advanced || moods[0] === CUSTOM;
+  const moodList = mergeValues(
+    moods.filter((m) => m !== CUSTOM),
+    useCustomMood ? customMood : "",
+  );
+  const effectiveMood = moodList.join(", ");
+  const moodTooLong = effectiveMood.length > 60;
+
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
+  const validationError = bpmInvalid
+    ? "BPM must be a whole number between 40 and 260."
+    : moodTooLong
+      ? `Your mood selection is ${effectiveMood.length} characters — the limit is 60. Please remove a mood or shorten the custom mood.`
+      : genreTooLong
+        ? "Too many styles / instruments selected. Please remove a few."
+        : null;
   const ready =
-    theme.trim().length >= 3 && !!effectiveGenre && !!effectiveMood && !!effectiveLanguage;
+    theme.trim().length >= 3 &&
+    !!baseGenre &&
+    !!effectiveMood &&
+    !!effectiveLanguage &&
+    !validationError;
+
+  // Basic mode edits the primary selection only; Advanced extras stay stored.
+  const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
+    setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
+  const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
+    setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
     setBusy(true);
@@ -891,7 +1025,28 @@ function GeneratePage() {
 
         {moderation?.isAdmin && <AdminModelSelector />}
 
-        <div className="glass-strong mt-6 space-y-3 rounded-3xl p-5 sm:p-6">
+        <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
+          <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
+            {[
+              { key: false, label: "Basic" },
+              { key: true, label: "Advanced" },
+            ].map((m) => (
+              <button
+                key={m.label}
+                type="button"
+                aria-pressed={advanced === m.key}
+                onClick={() => setAdvanced(m.key)}
+                className={
+                  advanced === m.key
+                    ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
+                    : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                }
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
           <div>
             <textarea
               value={theme}
@@ -906,50 +1061,13 @@ function GeneratePage() {
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-              Music Style — pick one or more to fuse
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {GENRE_OPTIONS.map((g) => {
-                const active = genres.includes(g);
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
-                    }
-                    className={
-                      active
-                        ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
-                        : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                    }
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Mood / Vibe (e.g., Energetic, Chill...)
-              </option>
-              {MOOD_OPTIONS.map((m) => (
-                <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
-              ))}
-            </select>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Language (e.g., English, Greek...)
-              </option>
-              {LANGUAGE_OPTIONS.map((l) => (
-                <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
-              ))}
-            </select>
+            <FieldLabel>{advanced ? "Music Style — pick as many as you like" : "Music Style"}</FieldLabel>
+            <ChipGroup
+              label="Music style"
+              options={advanced ? ADVANCED_STYLES : GENRE_OPTIONS}
+              selected={advanced ? genres : genres.slice(0, 1)}
+              onToggle={advanced ? toggleValue(setGenres) : pickPrimary(setGenres)}
+            />
           </div>
 
           {customGenreSelected && (
@@ -962,7 +1080,112 @@ function GeneratePage() {
             />
           )}
 
-          {mood === CUSTOM && (
+          {advanced ? (
+            <>
+              <div>
+                <FieldLabel>Mood — pick as many as you like</FieldLabel>
+                <ChipGroup
+                  label="Mood"
+                  options={ADVANCED_MOODS}
+                  selected={moods}
+                  onToggle={toggleValue(setMoods)}
+                />
+                <input
+                  value={customMood}
+                  onChange={(e) => setCustomMood(e.target.value)}
+                  placeholder="Custom mood (added to the moods above)"
+                  aria-label="Custom mood"
+                  className={fieldClass + " mt-2"}
+                />
+              </div>
+
+              <div>
+                <FieldLabel>Instruments</FieldLabel>
+                <ChipGroup
+                  label="Instruments"
+                  options={INSTRUMENTS}
+                  selected={instruments}
+                  onToggle={toggleValue(setInstruments)}
+                />
+                <input
+                  value={customInstruments}
+                  onChange={(e) => setCustomInstruments(e.target.value)}
+                  placeholder="Custom instruments, comma separated (added to the ones above)"
+                  aria-label="Custom instruments"
+                  className={fieldClass + " mt-2"}
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <FieldLabel>BPM</FieldLabel>
+                  <select
+                    value={bpm}
+                    onChange={(e) => setBpm(e.target.value)}
+                    aria-label="BPM"
+                    className={fieldClass}
+                  >
+                    {BPM_OPTIONS.map((b) => (
+                      <option key={b} value={b} className="bg-[#0a0a0c]">{b}</option>
+                    ))}
+                  </select>
+                </div>
+                {bpm === "Custom" && (
+                  <div>
+                    <FieldLabel>Custom BPM (40–260)</FieldLabel>
+                    <input
+                      type="number"
+                      min={40}
+                      max={260}
+                      value={customBpm}
+                      onChange={(e) => setCustomBpm(e.target.value)}
+                      placeholder="e.g. 128"
+                      aria-label="Custom BPM"
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <FieldLabel>Language</FieldLabel>
+                <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+                  <option value="" disabled className="bg-[#0a0a0c]">
+                    Select Language (e.g., English, Greek...)
+                  </option>
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select
+                value={moods[0] ?? ""}
+                onChange={(e) => pickPrimary(setMoods)(e.target.value)}
+                aria-label="Mood"
+                className={fieldClass}
+              >
+                <option value="" disabled className="bg-[#0a0a0c]">
+                  Select Mood / Vibe (e.g., Energetic, Chill...)
+                </option>
+                {MOOD_OPTIONS.map((m) => (
+                  <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
+                ))}
+              </select>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+                <option value="" disabled className="bg-[#0a0a0c]">
+                  Select Language (e.g., English, Greek...)
+                </option>
+                {LANGUAGE_OPTIONS.map((l) => (
+                  <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!advanced && moods[0] === CUSTOM && (
             <input
               value={customMood}
               onChange={(e) => setCustomMood(e.target.value)}
@@ -980,6 +1203,9 @@ function GeneratePage() {
               className={fieldClass}
             />
           )}
+
+          {validationError && <p className="text-xs text-red-400">{validationError}</p>}
+
 
           <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
             <button
