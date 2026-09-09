@@ -220,19 +220,6 @@ function ActualIssues({ quality }: { quality: QualityReport }) {
 }
 
 
-function hasQualityIssues(q: QualityReport | null) {
-  if (!q) return false;
-  return (
-    q.issues.length +
-      q.languageIssues.length +
-      q.grammarIssues.length +
-      q.singabilityIssues.length +
-      q.genreIssues.length +
-      q.consistencyIssues.length >
-    0
-  );
-}
-
 function CostButton({
   label,
   busy,
@@ -291,8 +278,8 @@ function ConfirmBox({
 type ApplyState = {
   applied: Record<string, boolean>;
   errors: Record<string, string>;
-  onApplyCorrection: (id: string, c: LyricCorrectionItem) => void;
-  onUndoCorrection: (id: string, c: LyricCorrectionItem) => void;
+  onApplyCorrection: (id: string, c: CorrectionItem) => void;
+  onUndoCorrection: (id: string, c: CorrectionItem) => void;
   onApplySuggestion: (id: string, s: QualitySuggestion) => void;
   onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
 };
@@ -322,15 +309,23 @@ function ApplyRow({ id, state, onApply, onUndo }: {
   );
 }
 
-function CorrectionCard({ id, c, state }: { id: string; c: LyricCorrectionItem; state: ApplyState }) {
+const FIELD_LABELS: Record<CorrectionItem["field"], string> = {
+  title: "Song title",
+  tags: "Music style",
+  lyrics: "Lyrics",
+  note: "Producer's note",
+};
+
+function CorrectionCard({ id, c, state }: { id: string; c: CorrectionItem; state: ApplyState }) {
   return (
     <div className="rounded-xl border border-red-400/25 bg-red-400/5 p-3">
-      {c.sectionLabel && (
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">[{c.sectionLabel}]</p>
-      )}
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {FIELD_LABELS[c.field]}
+        {c.field === "lyrics" && c.sectionLabel ? ` · [${c.sectionLabel}]` : ""}
+      </p>
       <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
-      <p className="mt-2 text-xs text-muted-foreground line-through">{c.originalText}</p>
-      <p className="text-xs text-green-300">{c.replacementText}</p>
+      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">{c.originalText}</p>
+      <p className="whitespace-pre-wrap text-xs text-green-300">{c.replacementText}</p>
       <ApplyRow
         id={id}
         state={state}
@@ -415,9 +410,9 @@ function QualityResults({ quality, prefix, state }: { quality: QualityReport; pr
         <div className="mt-2">
           <ActualIssues quality={quality} />
         </div>
-        {quality.lyricCorrections.length > 0 && (
+        {quality.corrections.length > 0 && (
           <div className="mt-3 space-y-2">
-            {quality.lyricCorrections.map((c, i) => (
+            {quality.corrections.map((c, i) => (
               <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />
             ))}
           </div>
