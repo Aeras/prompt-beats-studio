@@ -658,12 +658,19 @@ function GeneratePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Mode is UI state only — switching it never resets any generation input.
+  const [advanced, setAdvanced] = useState(false);
+
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
 
-  const [mood, setMood] = useState("");
+  const [moods, setMoods] = useState<string[]>([]);
   const [customMood, setCustomMood] = useState("");
+  const [instruments, setInstruments] = useState<string[]>([]);
+  const [customInstruments, setCustomInstruments] = useState("");
+  const [bpm, setBpm] = useState("Auto");
+  const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [busy, setBusy] = useState(false);
