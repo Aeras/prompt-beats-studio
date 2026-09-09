@@ -99,10 +99,17 @@ const INSTRUMENTS = [
   "Marimba", "Xylophone", "Brass", "Choir",
 ];
 
+const STRUCTURE_TAGS = [
+  "Intro", "Verse", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge",
+  "Breakdown", "Build", "Drop", "Interlude", "Instrumental", "Instrumental Break", "Solo",
+  "Final Chorus", "Outro", "Coda",
+];
+
 const BPM_OPTIONS = [
   "Auto", "60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145",
   "150", "160", "170", "180", "190", "200", "Custom",
 ];
+
 
 /** Merges free-text custom values with selected chips, trimmed and de-duplicated. */
 function mergeValues(selected: string[], custom: string) {
@@ -597,7 +604,11 @@ function GeneratePage() {
   const [customMood, setCustomMood] = useState("");
   const [instruments, setInstruments] = useState<string[]>([]);
   const [customInstruments, setCustomInstruments] = useState("");
+  const [structure, setStructure] = useState<string[]>([]);
+  const [production, setProduction] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
+
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
@@ -866,6 +877,10 @@ function GeneratePage() {
           genre: effectiveGenre,
           mood: effectiveMood,
           language: effectiveLanguage,
+          structure: structure.join(" → ").slice(0, 600),
+          production: production.trim().slice(0, 2000),
+          instructions: instructions.trim().slice(0, 2000),
+
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -1048,6 +1063,10 @@ function GeneratePage() {
     !!customInstruments.trim() ||
     bpm !== "Auto" ||
     !!customBpm.trim() ||
+    structure.length > 0 ||
+    !!production.trim() ||
+    !!instructions.trim() ||
+
     !!result ||
     !!quality;
 
@@ -1064,6 +1083,10 @@ function GeneratePage() {
     setCustomLanguage("");
     setInstruments([]);
     setCustomInstruments("");
+    setStructure([]);
+    setProduction("");
+    setInstructions("");
+
     setBpm("Auto");
     setCustomBpm("");
     setResult(null);
@@ -1270,6 +1293,74 @@ function GeneratePage() {
               </div>
 
               <div>
+                <SectionHeader title="Song Structure" hint="Tap to build the order" />
+                {structure.length > 0 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
+                    {structure.map((s, i) => (
+                      <span
+                        key={`${s}-${i}`}
+                        className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent"
+                      >
+                        {s}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${s} at position ${i + 1}`}
+                          onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))}
+                          className="text-accent/70 transition-colors hover:text-accent"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setStructure([])}
+                      className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
+                    >
+                      Clear structure
+                    </button>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {STRUCTURE_TAGS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStructure((p) => [...p, s])}
+                      className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <SectionHeader title="Production Style" hint="Optional" />
+                <textarea
+                  value={production}
+                  onChange={(e) => setProduction(e.target.value)}
+                  rows={3}
+                  placeholder="Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…"
+                  aria-label="Production style"
+                  className={fieldClass + " h-auto resize-y py-3"}
+                />
+              </div>
+
+              <div>
+                <SectionHeader title="Additional Instructions" hint="Optional" />
+                <textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  rows={3}
+                  placeholder="Any other creative requirements for this song…"
+                  aria-label="Additional instructions"
+                  className={fieldClass + " h-auto resize-y py-3"}
+                />
+              </div>
+
+              <div>
+
                 <FieldLabel>Language</FieldLabel>
                 <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">
