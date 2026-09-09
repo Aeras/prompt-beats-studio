@@ -1024,7 +1024,28 @@ function GeneratePage() {
 
         {moderation?.isAdmin && <AdminModelSelector />}
 
-        <div className="glass-strong mt-6 space-y-3 rounded-3xl p-5 sm:p-6">
+        <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
+          <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
+            {[
+              { key: false, label: "Basic" },
+              { key: true, label: "Advanced" },
+            ].map((m) => (
+              <button
+                key={m.label}
+                type="button"
+                aria-pressed={advanced === m.key}
+                onClick={() => setAdvanced(m.key)}
+                className={
+                  advanced === m.key
+                    ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
+                    : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                }
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
           <div>
             <textarea
               value={theme}
@@ -1039,50 +1060,13 @@ function GeneratePage() {
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-              Music Style — pick one or more to fuse
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {GENRE_OPTIONS.map((g) => {
-                const active = genres.includes(g);
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
-                    }
-                    className={
-                      active
-                        ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
-                        : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                    }
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <select value={mood} onChange={(e) => setMood(e.target.value)} aria-label="Mood" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Mood / Vibe (e.g., Energetic, Chill...)
-              </option>
-              {MOOD_OPTIONS.map((m) => (
-                <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
-              ))}
-            </select>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
-              <option value="" disabled className="bg-[#0a0a0c]">
-                Select Language (e.g., English, Greek...)
-              </option>
-              {LANGUAGE_OPTIONS.map((l) => (
-                <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
-              ))}
-            </select>
+            <FieldLabel>{advanced ? "Music Style — pick as many as you like" : "Music Style"}</FieldLabel>
+            <ChipGroup
+              label="Music style"
+              options={advanced ? ADVANCED_STYLES : GENRE_OPTIONS}
+              selected={advanced ? genres : genres.slice(0, 1)}
+              onToggle={advanced ? toggleValue(setGenres) : pickPrimary(setGenres)}
+            />
           </div>
 
           {customGenreSelected && (
@@ -1095,7 +1079,112 @@ function GeneratePage() {
             />
           )}
 
-          {mood === CUSTOM && (
+          {advanced ? (
+            <>
+              <div>
+                <FieldLabel>Mood — pick as many as you like</FieldLabel>
+                <ChipGroup
+                  label="Mood"
+                  options={ADVANCED_MOODS}
+                  selected={moods}
+                  onToggle={toggleValue(setMoods)}
+                />
+                <input
+                  value={customMood}
+                  onChange={(e) => setCustomMood(e.target.value)}
+                  placeholder="Custom mood (added to the moods above)"
+                  aria-label="Custom mood"
+                  className={fieldClass + " mt-2"}
+                />
+              </div>
+
+              <div>
+                <FieldLabel>Instruments</FieldLabel>
+                <ChipGroup
+                  label="Instruments"
+                  options={INSTRUMENTS}
+                  selected={instruments}
+                  onToggle={toggleValue(setInstruments)}
+                />
+                <input
+                  value={customInstruments}
+                  onChange={(e) => setCustomInstruments(e.target.value)}
+                  placeholder="Custom instruments, comma separated (added to the ones above)"
+                  aria-label="Custom instruments"
+                  className={fieldClass + " mt-2"}
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <FieldLabel>BPM</FieldLabel>
+                  <select
+                    value={bpm}
+                    onChange={(e) => setBpm(e.target.value)}
+                    aria-label="BPM"
+                    className={fieldClass}
+                  >
+                    {BPM_OPTIONS.map((b) => (
+                      <option key={b} value={b} className="bg-[#0a0a0c]">{b}</option>
+                    ))}
+                  </select>
+                </div>
+                {bpm === "Custom" && (
+                  <div>
+                    <FieldLabel>Custom BPM (40–260)</FieldLabel>
+                    <input
+                      type="number"
+                      min={40}
+                      max={260}
+                      value={customBpm}
+                      onChange={(e) => setCustomBpm(e.target.value)}
+                      placeholder="e.g. 128"
+                      aria-label="Custom BPM"
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <FieldLabel>Language</FieldLabel>
+                <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+                  <option value="" disabled className="bg-[#0a0a0c]">
+                    Select Language (e.g., English, Greek...)
+                  </option>
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select
+                value={moods[0] ?? ""}
+                onChange={(e) => pickPrimary(setMoods)(e.target.value)}
+                aria-label="Mood"
+                className={fieldClass}
+              >
+                <option value="" disabled className="bg-[#0a0a0c]">
+                  Select Mood / Vibe (e.g., Energetic, Chill...)
+                </option>
+                {MOOD_OPTIONS.map((m) => (
+                  <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
+                ))}
+              </select>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+                <option value="" disabled className="bg-[#0a0a0c]">
+                  Select Language (e.g., English, Greek...)
+                </option>
+                {LANGUAGE_OPTIONS.map((l) => (
+                  <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!advanced && moods[0] === CUSTOM && (
             <input
               value={customMood}
               onChange={(e) => setCustomMood(e.target.value)}
@@ -1113,6 +1202,9 @@ function GeneratePage() {
               className={fieldClass}
             />
           )}
+
+          {validationError && <p className="text-xs text-red-400">{validationError}</p>}
+
 
           <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
             <button
