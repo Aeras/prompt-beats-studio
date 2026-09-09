@@ -62,6 +62,89 @@ const GENRE_OPTIONS = [
 const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
 const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
 
+// ── Advanced mode catalogues (data-driven, easy to extend) ──
+const ADVANCED_STYLES = [
+  "Reggaeton", "Pop", "Rock", "R&B", "Hip-Hop", "Trap", "Soul", "Funk", "Jazz", "Blues",
+  "Disco", "House", "Techno", "EDM", "Latin", "Cumbia", "Salsa", "Bachata", "Reggae",
+  "Dancehall", "Afrobeat", "Country", "Folk", "Acoustic", "Ballad", "Metal", "Punk", "Indie",
+  "Alternative", "Lo-fi", "K-Pop", "J-Pop", "Classical", "Orchestral", "Cinematic", CUSTOM,
+];
+
+const ADVANCED_MOODS = [
+  "Romantic", "Happy", "Sad", "Melancholic", "Emotional", "Nostalgic", "Passionate", "Energetic",
+  "Uplifting", "Euphoric", "Dreamy", "Chill", "Relaxed", "Intimate", "Sensual", "Hopeful",
+  "Bittersweet", "Dark", "Mysterious", "Dramatic", "Powerful", "Aggressive", "Angry", "Playful",
+  "Joyful", "Peaceful", "Tender", "Warm", "Lonely", "Heartbroken", "Reflective", "Inspirational",
+  "Epic", "Triumphant", "Confident", "Rebellious", "Soulful", "Atmospheric", "Hypnotic", "Party",
+  "Festive",
+];
+
+const INSTRUMENTS = [
+  "Piano", "Acoustic Piano", "Electric Piano", "Grand Piano", "Organ", "Synth", "Synth Bass",
+  "Acoustic Guitar", "Electric Guitar", "Classical Guitar", "Bass", "Electric Bass", "Upright Bass",
+  "Drums", "Electronic Drums", "Percussion", "Congas", "Bongos", "Timbales", "Hand Claps",
+  "Violin", "Viola", "Cello", "Double Bass", "Strings", "Trumpet", "Trombone", "Saxophone",
+  "Flute", "Clarinet", "Oboe", "Harmonica", "Accordion", "Banjo", "Mandolin", "Ukulele", "Harp",
+  "Marimba", "Xylophone", "Brass", "Choir",
+];
+
+const BPM_OPTIONS = [
+  "Auto", "60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145",
+  "150", "160", "170", "180", "190", "200", "Custom",
+];
+
+/** Merges free-text custom values with selected chips, trimmed and de-duplicated. */
+function mergeValues(selected: string[], custom: string) {
+  const out: string[] = [];
+  for (const v of [...selected, ...custom.split(",")]) {
+    const t = v.trim();
+    if (!t) continue;
+    if (out.some((x) => x.toLowerCase() === t.toLowerCase())) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+function ChipGroup({
+  options,
+  selected,
+  onToggle,
+  label,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  label: string;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = selected.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onToggle(o)}
+            className={
+              active
+                ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
+                : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+            }
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
+}
+
+
 const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
 
