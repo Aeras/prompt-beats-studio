@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
   generateSongPrompt,
+  checkSongQuality,
+
   getGenerationUsage,
   savePromptToLibrary,
   repairSongPrompt,
