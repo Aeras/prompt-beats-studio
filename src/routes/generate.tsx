@@ -455,6 +455,7 @@ function QualityPanel({
   onRecheck,
   onRecheckOriginal,
   origRecheckUsed,
+  repairedRecheckUsed,
   state,
   repairedState,
   repairedSections,
@@ -474,6 +475,8 @@ function QualityPanel({
   /** One-time re-analysis of the (possibly edited) original result. */
   onRecheckOriginal: () => void;
   origRecheckUsed: boolean;
+  /** One-time Recheck of the repaired result. */
+  repairedRecheckUsed: boolean;
   state: ApplyState;
   /** Apply / Undo bound to the repaired result — never touches the original. */
   repairedState: ApplyState;
@@ -1596,6 +1599,7 @@ function GeneratePage() {
                 onRecheck={() => runCheck(true)}
                 onRecheckOriginal={() => runCheck(false, true)}
                 origRecheckUsed={origRecheckUsed}
+                repairedRecheckUsed={repairedRecheckUsed}
                 state={applyState}
                 repairedState={repairedApplyState}
                 repairedSections={
