@@ -453,6 +453,8 @@ function QualityPanel({
   confirm,
   setConfirm,
   onRecheck,
+  onRecheckOriginal,
+  origRecheckUsed,
   state,
   repairedState,
   repairedSections,
@@ -466,9 +468,12 @@ function QualityPanel({
   onRepair: () => void;
   repairError: string | null;
   repaired: { result: { title: string; tags: string; lyrics: string; note: string }; quality: QualityReport | null } | null;
-  confirm: "check" | "repair" | "recheck" | null;
-  setConfirm: (v: "check" | "repair" | "recheck" | null) => void;
+  confirm: "check" | "repair" | "recheck" | "recheck-orig" | null;
+  setConfirm: (v: "check" | "repair" | "recheck" | "recheck-orig" | null) => void;
   onRecheck: () => void;
+  /** One-time re-analysis of the (possibly edited) original result. */
+  onRecheckOriginal: () => void;
+  origRecheckUsed: boolean;
   state: ApplyState;
   /** Apply / Undo bound to the repaired result — never touches the original. */
   repairedState: ApplyState;
@@ -505,6 +510,26 @@ function QualityPanel({
       )}
 
       {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
+
+      {quality && !origRecheckUsed && !repaired && (
+        <div className="mt-4 space-y-3">
+          {confirm === "recheck-orig" ? (
+            <ConfirmBox
+              message="This check will use 1 additional creation from your available balance."
+              confirmLabel="Check Again"
+              onConfirm={onRecheckOriginal}
+              onCancel={() => setConfirm(null)}
+            />
+          ) : (
+            <CostButton
+              label="Check Again · −1 creation"
+              busy={checking}
+              busyLabel="Checking..."
+              onClick={() => setConfirm("recheck-orig")}
+            />
+          )}
+        </div>
+      )}
 
       {canRepair && (
         <div className="mt-5 space-y-3">
