@@ -140,12 +140,19 @@ export function applyLyricCorrection(lyrics: string, c: LyricCorrection): ApplyR
 
 /** Undo of a lyric correction: the same targeted swap, reversed. */
 export function undoLyricCorrection(lyrics: string, c: LyricCorrection): ApplyResult {
-  return applyLyricCorrection(lyrics, {
+  const base = {
     sectionLabel: c.sectionLabel ?? null,
     originalText: c.replacementText,
     replacementText: c.originalText,
-    occurrenceIndex: c.occurrenceIndex ?? 1,
-  });
+  };
+  const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel) : null;
+  // The applied replacement usually exists only once, even when the original
+  // text occurred several times, so fall back to it when it is unambiguous.
+  const hay = scope ? lyrics.slice(scope.from, scope.to) : lyrics;
+  if (findMatches(hay, c.replacementText).length === 1) {
+    return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: 1 });
+  }
+  return applyLyricCorrection(lyrics, { ...base, occurrenceIndex: c.occurrenceIndex ?? 1 });
 }
 
 /** Appends to the Music Style without ever replacing the existing prompt. */
