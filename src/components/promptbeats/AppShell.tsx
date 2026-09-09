@@ -75,7 +75,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         </div>
       </div>
 
-      <div className="relative z-10 lg:pl-[270px]">
+      <div className="relative z-10 pb-[calc(64px+env(safe-area-inset-bottom))] sm:pb-0 lg:pl-[270px]">
         <header className="glass-strong sticky top-0 z-20 border-b">
           <div className="mx-auto max-w-[1600px] px-4 py-3 md:px-8 md:py-4">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
@@ -95,8 +95,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       </div>
 
       {/* Mobile bottom tabs */}
-      <nav className="glass-strong fixed inset-x-0 bottom-[124px] z-30 border-t sm:hidden">
-        <div className="grid grid-cols-4">
+      <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
+        <div className="grid h-full w-full grid-cols-4 items-center">
           {MOBILE_TABS.map((t) => {
             const item = NAV.find((n) => n.id === t.id)!;
             const isActive = active === t.id;
