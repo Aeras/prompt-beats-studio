@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Wand2, ArrowLeft } from "lucide-react";
+import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
