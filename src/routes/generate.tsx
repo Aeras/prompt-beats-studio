@@ -714,13 +714,20 @@ function GeneratePage() {
             {(
               <QualityPanel
                 quality={quality}
+                checking={checking}
+                onCheck={() => runCheck(false)}
+                checkError={checkError}
                 canRepair={hasQualityIssues(quality) && !repaired}
                 repairing={repairing}
                 onRepair={repair}
                 repairError={repairError}
                 repaired={repaired}
+                confirm={confirm}
+                setConfirm={setConfirm}
+                onRecheck={() => runCheck(true)}
               />
             )}
+
           </div>
         )}
       </div>
