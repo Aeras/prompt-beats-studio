@@ -492,7 +492,7 @@ function QualityPanel({
             />
           ) : (
             <CostButton
-              label={quality ? "Check Again · −1 creation" : "Quality Check TEST"}
+              label={quality ? "Check Again · −1 creation" : "Check -1 creation"}
               busy={false}
               busyLabel=""
               onClick={() => setConfirm(mode)}
