@@ -351,12 +351,15 @@ async function flushUsage(userId: string, generationId: string | null, records: 
 }
 
 /** Loads the provider layer (server-only) and binds it to the active model. */
-async function activeCaller(): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
+async function activeCaller(modelOverride?: string): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
   song: Record<string, unknown>;
   quality: Record<string, unknown>;
 } }> {
   const provider = await import("@/lib/ai-provider.server");
-  const model = await provider.getActiveModel();
+  const model = modelOverride ?? (await provider.getActiveModel());
+  if (modelOverride && !AI_MODEL_IDS.some((id) => id === modelOverride)) {
+    throw new Error("Unsupported AI model.");
+  }
   return {
     call: provider.modelCaller(model),
     model,
@@ -962,6 +965,7 @@ const qualityCheckInput = z.object({
   instructions: generateInput.shape.instructions,
   result: generationOutput,
   idempotencyKey: z.string().uuid(),
+  qualityCheckModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
   /** Optional: links the check to the originating generation for analytics. */
   generationId: z.string().uuid().nullish(),
 });
@@ -983,10 +987,12 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     const isAdmin = await isAdminUser(supabase, context.userId);
     const usage = await readUsage(supabase, context.userId);
     if (!isAdmin && usage.remaining <= 0) {
-      return { error: "rate_limited" as const, quality: null, usage };
+      return { error: "rate_limited" as const, quality: null, model: null, usage };
     }
 
-    const { call, model, provider, schemas } = await activeCaller();
+    const { call, model, provider, schemas } = await activeCaller(
+      isAdmin ? data.qualityCheckModel ?? undefined : undefined,
+    );
     const records: PendingUsage[] = [];
     const constraints = {
       theme: data.theme,
@@ -1007,12 +1013,12 @@ export const checkSongQuality = createServerFn({ method: "POST" })
 
     if (claim.data.status === "processing") {
       const after = await usageFor(supabase, context.userId);
-      return { error: "in_progress" as const, quality: null, usage: after };
+      return { error: "in_progress" as const, quality: null, model: null, usage: after };
     }
     if (claim.data.status === "completed") {
       if (!claim.data.qualityReport) throw new Error("The completed quality check was invalid. Please try again.");
       const after = await usageFor(supabase, context.userId);
-      return { error: null, quality: claim.data.qualityReport, usage: after };
+      return { error: null, quality: claim.data.qualityReport, model: data.qualityCheckModel, usage: after };
     }
 
     let quality: QualityReport | null;
@@ -1039,13 +1045,13 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       });
       await flushUsage(context.userId, data.generationId ?? null, records);
       const after = await usageFor(supabase, context.userId);
-      return { error: "unavailable" as const, quality: null, usage: after };
+      return { error: "unavailable" as const, quality: null, model: null, usage: after };
     }
 
     const consumedId = await consumeCreation(supabase, data.idempotencyKey, quality);
     await flushUsage(context.userId, data.generationId ?? consumedId, records);
     const after = await usageFor(supabase, context.userId);
-    return { error: null, quality, usage: after };
+    return { error: null, quality, model, usage: after };
   });
 
 

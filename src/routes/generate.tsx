@@ -37,7 +37,7 @@ import {
   undoVocalArrangement,
 } from "@/lib/quality-apply";
 import { getMyModeration } from "@/lib/moderation.functions";
-import { AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/ai-models";
+import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
 
 /** Survives refreshes so an in-flight generation is recovered on return. */
 const JOB_STORAGE_KEY = "pb:generation-job";
@@ -396,9 +396,10 @@ function SuggestionGroup({
   );
 }
 
-function QualityResults({ quality, prefix, state }: { quality: QualityReport; prefix: string; state: ApplyState }) {
+function QualityResults({ quality, prefix, state, model }: { quality: QualityReport; prefix: string; state: ApplyState; model: string | null }) {
   return (
     <div className="mt-4 space-y-4">
+      {model && <p className="text-xs text-muted-foreground">Checked with: {aiModelLabel(model)}</p>}
       <div className="flex items-center gap-4 text-sm">
         <span>
           Passed:{" "}
@@ -452,6 +453,10 @@ function QualityPanel({
   confirm,
   setConfirm,
   state,
+  qualityCheckModel,
+  onQualityCheckModelChange,
+  qualityCheckResultModel,
+  showQualityCheckModelSelector,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -460,6 +465,10 @@ function QualityPanel({
   confirm: "check" | "recheck" | null;
   setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
+  qualityCheckModel: string;
+  onQualityCheckModelChange: (model: string) => void;
+  qualityCheckResultModel: string | null;
+  showQualityCheckModelSelector: boolean;
 }) {
   const mode = quality ? "recheck" : "check";
   return (
@@ -469,7 +478,14 @@ function QualityPanel({
         <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
       </div>
 
-      {quality && <QualityResults quality={quality} prefix="orig" state={state} />}
+      {quality && (
+        <QualityResults
+          quality={quality}
+          prefix="orig"
+          state={state}
+          model={qualityCheckResultModel}
+        />
+      )}
 
       {checking && (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -479,6 +495,23 @@ function QualityPanel({
 
       {!checking && (
         <div className="mt-4 space-y-3">
+          {showQualityCheckModelSelector && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Check with:</span>
+              <select
+                aria-label="Quality Check model"
+                value={qualityCheckModel}
+                onChange={(e) => onQualityCheckModelChange(e.target.value)}
+                className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
+              >
+                {AI_MODELS.map((m) => (
+                  <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {confirm === mode ? (
             <ConfirmBox
               message={
@@ -617,6 +650,9 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
+  const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
+  const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
+  const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
   // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -679,6 +715,7 @@ function GeneratePage() {
       setGenerationId(job.generationId);
       setSongContext(job.input);
       setQuality(null);
+      setQualityCheckResultModel(null);
       setOpen({ title: false, tags: false, lyrics: false, note: false });
       setStatus(null);
       setBusy(false);
@@ -788,6 +825,18 @@ function GeneratePage() {
     enabled: !!user,
   });
 
+  const { data: generationModelSetting } = useQuery({
+    queryKey: ["ai-model"],
+    queryFn: () => getAiModelSetting(),
+    enabled: moderation?.isAdmin === true,
+  });
+
+  useEffect(() => {
+    if (!qualityCheckModelChosen && generationModelSetting?.model) {
+      setQualityCheckModel(generationModelSetting.model);
+    }
+  }, [generationModelSetting?.model, qualityCheckModelChosen]);
+
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
   const minutesLeft = useMemo(() => {
     if (!usage?.resetAt) return 0;
@@ -861,6 +910,7 @@ function GeneratePage() {
     setSaved(false);
     setResult(null);
     setQuality(null);
+    setQualityCheckResultModel(null);
     setSongContext(null);
     setApplied({});
     setApplyErrors({});
@@ -937,6 +987,7 @@ function GeneratePage() {
           instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000),
           result: { ...target },
           idempotencyKey,
+          qualityCheckModel,
           generationId,
         },
       });
@@ -949,6 +1000,7 @@ function GeneratePage() {
       // because the new items are new suggestions against the current song.
       if (res.quality) {
         setQuality(res.quality);
+        setQualityCheckResultModel(res.model ?? qualityCheckModel);
         setApplied({});
         setApplyErrors({});
       } else {
@@ -1550,6 +1602,13 @@ function GeneratePage() {
               confirm={confirm}
               setConfirm={setConfirm}
               state={applyState}
+              qualityCheckModel={qualityCheckModel}
+              onQualityCheckModelChange={(model) => {
+                setQualityCheckModel(model);
+                setQualityCheckModelChosen(true);
+              }}
+              qualityCheckResultModel={qualityCheckResultModel}
+              showQualityCheckModelSelector={moderation?.isAdmin === true}
             />
           </div>
         )}
