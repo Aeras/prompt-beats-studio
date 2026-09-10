@@ -40,6 +40,9 @@ const inputShape = z.object({
   genre: z.string().default(""),
   mood: z.string().default(""),
   language: z.string().default(""),
+  structure: z.string().default(""),
+  production: z.string().default(""),
+  instructions: z.string().default(""),
 });
 
 export type GenerationContext = z.infer<typeof inputShape>;

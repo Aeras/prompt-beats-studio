@@ -701,6 +701,9 @@ Core Idea: ${d.theme}
 Requested Genre(s): ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
+Requested Song Structure: ${d.structure}
+Requested Production Style: ${d.production}
+Additional Instructions: ${d.instructions}
 
 The original brief never changes because the user edited the output. Always judge the current output against this brief.
 
@@ -934,14 +937,19 @@ export async function runSongGeneration(
  * Records one consumed creation against the rolling hourly limit and returns
  * its id. Admins keep the existing bypass; the limit logic itself is unchanged.
  */
-async function consumeCreation(supabase: Supa, userId: string) {
-  const { data: inserted, error } = await supabase
-    .from("ai_generations")
-    .insert({ user_id: userId })
-    .select("id")
-    .maybeSingle();
+async function consumeCreation(
+  supabase: Supa,
+  idempotencyKey: string,
+  quality: QualityReport,
+) {
+  const { data: inserted, error } = await (supabase as any).rpc("consume_quality_check", {
+    _idempotency_key: idempotencyKey,
+    _quality_report: quality,
+  });
   if (error) throw new Error(`The action could not be recorded (${error.message}). Please try again.`);
-  return (inserted as { id?: string } | null)?.id ?? null;
+  const parsed = z.string().uuid().safeParse(inserted);
+  if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
+  return parsed.data;
 }
 
 const qualityCheckInput = z.object({
@@ -949,9 +957,18 @@ const qualityCheckInput = z.object({
   genre: generateInput.shape.genre,
   mood: generateInput.shape.mood,
   language: generateInput.shape.language,
+  structure: generateInput.shape.structure,
+  production: generateInput.shape.production,
+  instructions: generateInput.shape.instructions,
   result: generationOutput,
+  idempotencyKey: z.string().uuid(),
   /** Optional: links the check to the originating generation for analytics. */
   generationId: z.string().uuid().nullish(),
+});
+
+const qualityCheckClaim = z.object({
+  status: z.enum(["claimed", "processing", "completed"]),
+  qualityReport: qualityOutput.nullish(),
 });
 
 /**
@@ -976,20 +993,56 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       genre: data.genre,
       mood: data.mood,
       language: data.language,
-      structure: "",
-      production: "",
-      instructions: "",
+      structure: data.structure,
+      production: data.production,
+      instructions: data.instructions,
     };
 
-
-    const quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
-      operation: "quality_check",
-      records,
-      provider,
-      model,
+    const { data: rawClaim, error: claimError } = await (supabase as any).rpc("claim_quality_check", {
+      _idempotency_key: data.idempotencyKey,
     });
+    if (claimError) throw new Error(`The quality check could not be started (${claimError.message}).`);
+    const claim = qualityCheckClaim.safeParse(rawClaim);
+    if (!claim.success) throw new Error("The quality check could not be started. Please try again.");
 
-    const consumedId = await consumeCreation(supabase, context.userId);
+    if (claim.data.status === "processing") {
+      const after = await usageFor(supabase, context.userId);
+      return { error: "in_progress" as const, quality: null, usage: after };
+    }
+    if (claim.data.status === "completed") {
+      if (!claim.data.qualityReport) throw new Error("The completed quality check was invalid. Please try again.");
+      const after = await usageFor(supabase, context.userId);
+      return { error: null, quality: claim.data.qualityReport, usage: after };
+    }
+
+    let quality: QualityReport | null;
+    try {
+      quality = await runQualityCheck(call, schemas.quality, constraints, data.result, {
+        operation: "quality_check",
+        records,
+        provider,
+        model,
+      });
+    } catch (err) {
+      await (supabase as any).rpc("release_quality_check", {
+        _idempotency_key: data.idempotencyKey,
+      });
+      throw err;
+    }
+
+    // A creation is charged only after the provider response has completed and
+    // parsed successfully through the existing QualityReport schema. Failed,
+    // incomplete, malformed, or schema-invalid responses remain uncharged.
+    if (!quality) {
+      await (supabase as any).rpc("release_quality_check", {
+        _idempotency_key: data.idempotencyKey,
+      });
+      await flushUsage(context.userId, data.generationId ?? null, records);
+      const after = await usageFor(supabase, context.userId);
+      return { error: "unavailable" as const, quality: null, usage: after };
+    }
+
+    const consumedId = await consumeCreation(supabase, data.idempotencyKey, quality);
     await flushUsage(context.userId, data.generationId ?? consumedId, records);
     const after = await usageFor(supabase, context.userId);
     return { error: null, quality, usage: after };

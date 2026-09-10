@@ -621,6 +621,7 @@ function GeneratePage() {
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"check" | "recheck" | null>(null);
+  const qualityCheckKey = useRef<string | null>(null);
 
   // The original generation brief that produced the current result. It comes
   // from the persisted job, so a check after a refresh still uses the real
@@ -916,8 +917,11 @@ function GeneratePage() {
   // manual edit made right before the click is included (never a stale copy).
   // The brief comes from the persisted job when it is known.
   const runCheck = async () => {
+    if (checking) return;
     const target = resultRef.current;
     if (!target) return;
+    const idempotencyKey = qualityCheckKey.current ?? crypto.randomUUID();
+    qualityCheckKey.current = idempotencyKey;
     setConfirm(null);
     setChecking(true);
     setCheckError(null);
@@ -928,7 +932,11 @@ function GeneratePage() {
           genre: songContext?.genre || effectiveGenre,
           mood: songContext?.mood || effectiveMood,
           language: songContext?.language || effectiveLanguage,
+          structure: songContext?.structure ?? structure.join(" → ").slice(0, 600),
+          production: songContext?.production ?? production.trim().slice(0, 2000),
+          instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000),
           result: { ...target },
+          idempotencyKey,
           generationId,
         },
       });
@@ -949,6 +957,7 @@ function GeneratePage() {
     } catch (err) {
       setCheckError(err instanceof Error ? err.message : "Check failed");
     } finally {
+      if (qualityCheckKey.current === idempotencyKey) qualityCheckKey.current = null;
       setChecking(false);
     }
   };
