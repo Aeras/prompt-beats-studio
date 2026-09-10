@@ -75,19 +75,63 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          quality_check_key: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          quality_check_key?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          quality_check_key?: string | null
           user_id?: string
         }
         Relationships: []
+      }
+      ai_quality_check_actions: {
+        Row: {
+          consumed_generation_id: string | null
+          created_at: string
+          id: string
+          idempotency_key: string
+          quality_report: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consumed_generation_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          quality_report?: Json | null
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consumed_generation_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          quality_report?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_quality_check_actions_consumed_generation_id_fkey"
+            columns: ["consumed_generation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_usage_logs: {
         Row: {
@@ -497,6 +541,11 @@ export type Database = {
       }
     }
     Functions: {
+      claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
+      consume_quality_check: {
+        Args: { _idempotency_key: string; _quality_report: Json }
+        Returns: string
+      }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: undefined }
       has_role: {
         Args: {
@@ -508,6 +557,10 @@ export type Database = {
       is_banned: { Args: { _user_id: string }; Returns: boolean }
       kick_generation_runner: { Args: { _job_id: string }; Returns: undefined }
       like_count: { Args: { _track_id: string }; Returns: number }
+      release_quality_check: {
+        Args: { _idempotency_key: string }
+        Returns: undefined
+      }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
         Returns: undefined
