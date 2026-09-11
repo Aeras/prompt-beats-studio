@@ -10,7 +10,7 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
-import { getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
+import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 
 type Profile = {
@@ -117,43 +117,50 @@ function ShareProfileButton({ handle }: { handle: string }) {
   );
 }
 
-function BanUserToggle({ userId }: { userId: string }) {
-  const { isAdmin } = useModeration();
+export function BanUserToggle({ userId }: { userId: string }) {
+  const { isAdmin, canBlockUsers, canUnblockUsers } = useModeration();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const { data } = useQuery({
+  const [confirming, setConfirming] = useState(false);
+  const [reasonCode, setReasonCode] = useState<(typeof ACCOUNT_BLOCK_REASONS)[number]["code"] | "">("");
+  const [reasonText, setReasonText] = useState("");
+  const canModerate = canBlockUsers || canUnblockUsers;
+  const { data, error, isLoading } = useQuery({
     queryKey: ["ban-status", userId],
     queryFn: () => getUserBanStatus({ data: { userId } }),
-    enabled: isAdmin,
+    enabled: canModerate,
   });
   const banned = Boolean(data?.banned);
-  if (!isAdmin) return null;
+  if (!canModerate || error || isLoading || !data) return null;
+  const validReason = Boolean(reasonCode) && (reasonCode !== "other" || Boolean(reasonText.trim()));
 
   return (
-    <button
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          await setUserBanned({ data: { userId, banned: !banned } });
-          await queryClient.invalidateQueries();
-          toast.success(banned ? "User unbanned" : "User banned");
-        } catch {
-          toast.error("Could not update this user");
-        } finally {
-          setBusy(false);
-        }
-      }}
-      className={
-        "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-60 " +
-        (banned
-          ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
-          : "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20")
-      }
-    >
-      <ShieldBan className="h-3.5 w-3.5" />
-      {banned ? "Unban user" : "Ban user"}
-    </button>
+    <>
+      <div className="flex flex-wrap gap-2">
+        <button
+          disabled={busy}
+          onClick={() => { setReasonCode(""); setReasonText(""); setConfirming(true); }}
+          className={
+            "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-60 " +
+            (banned
+              ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
+              : "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20")
+          }
+        >
+          <ShieldBan className="h-3.5 w-3.5" />
+          {banned ? "Unblock account" : "Block account"}
+        </button>
+        {isAdmin && <a href={`/management?userId=${encodeURIComponent(userId)}`} className="inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-xs text-muted-foreground hover:text-foreground">Manage account</a>}
+      </div>
+      {confirming && <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" className="glass-strong w-full max-w-md rounded-3xl p-6">
+          <h2 className="font-display text-lg font-bold">{banned ? "Unblock this account?" : "Block this account?"}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{banned ? "Restore normal PromptBeats access for this account?" : "This account will lose access to protected PromptBeats functionality."}</p>
+          {!banned && <div className="mt-4 space-y-2"><label className="text-xs text-muted-foreground">Reason<select value={reasonCode} onChange={(event) => setReasonCode(event.target.value as typeof reasonCode)} className="mt-1 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"><option value="">Select a reason</option>{ACCOUNT_BLOCK_REASONS.map((reason) => <option key={reason.code} value={reason.code}>{reason.label}</option>)}</select></label>{reasonCode === "other" && <textarea value={reasonText} onChange={(event) => setReasonText(event.target.value)} maxLength={500} placeholder="Enter the reason" className="min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm" />}</div>}
+          <div className="mt-5 flex justify-end gap-3"><button disabled={busy} onClick={() => setConfirming(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-muted-foreground">Cancel</button><button disabled={busy || (!banned && !validReason)} onClick={async () => { setBusy(true); try { await setUserBanned({ data: { userId, banned: !banned, reasonCode: banned ? undefined : reasonCode, reasonText: banned ? undefined : reasonText } }); await queryClient.invalidateQueries(); toast.success(banned ? "Account unblocked" : "Account blocked"); setConfirming(false); } catch (err) { toast.error(err instanceof Error ? err.message : "Could not update this account"); } finally { setBusy(false); } }} className={banned ? "rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50" : "rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground disabled:opacity-50"}>{busy ? "Working…" : banned ? "Confirm unblock" : "Confirm block"}</button></div>
+        </div>
+      </div>}
+    </>
   );
 }
 

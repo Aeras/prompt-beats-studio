@@ -76,8 +76,9 @@ export const listAdminUsers = createServerFn({ method: "POST" })
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
     await requireCapability(context.supabase, "can_view_users");
+    const search = data.search.replace(/^@+/, "");
     const { data: result, error } = await context.supabase.rpc("admin_list_users" as never, {
-      _search: data.search, _status: data.status, _limit: data.pageSize, _offset: data.page * data.pageSize,
+      _search: search, _status: data.status, _limit: data.pageSize, _offset: data.page * data.pageSize,
     } as never);
     if (error) throw new Error(error.message);
     return result as unknown as { total: number; users: AdminUser[] };

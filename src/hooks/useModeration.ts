@@ -27,5 +27,7 @@ export function useModeration() {
     canManageRegistrationBlocks: data?.can_manage_registration_blocks === true,
     canManageModelAccess: data?.can_manage_model_access === true,
     canAccessAdminSettings: data?.can_access_admin_settings === true,
+    canLockTracks: data?.can_lock_tracks === true,
+    canDeleteTracks: data?.can_delete_tracks === true,
   };
 }

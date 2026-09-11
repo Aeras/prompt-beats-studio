@@ -496,6 +496,11 @@ export type Database = {
           id: string
           is_published: boolean
           lyrics: string
+          moderation_locked_at: string | null
+          moderation_locked_by: string | null
+          moderation_reason_code: string | null
+          moderation_reason_text: string | null
+          moderation_status: string
           plays: number
           prompt: string
           title: string
@@ -514,6 +519,11 @@ export type Database = {
           id?: string
           is_published?: boolean
           lyrics?: string
+          moderation_locked_at?: string | null
+          moderation_locked_by?: string | null
+          moderation_reason_code?: string | null
+          moderation_reason_text?: string | null
+          moderation_status?: string
           plays?: number
           prompt?: string
           title: string
@@ -532,6 +542,11 @@ export type Database = {
           id?: string
           is_published?: boolean
           lyrics?: string
+          moderation_locked_at?: string | null
+          moderation_locked_by?: string | null
+          moderation_reason_code?: string | null
+          moderation_reason_text?: string | null
+          moderation_status?: string
           plays?: number
           prompt?: string
           title?: string
@@ -668,6 +683,13 @@ export type Database = {
       get_my_moderation_context: { Args: never; Returns: Json }
       has_moderation_capability: { Args: { _capability: string }; Returns: boolean }
       can_moderate_target: { Args: { _target_user_id: string }; Returns: boolean }
+      staff_delete_track: { Args: { _track_id: string }; Returns: Json }
+      staff_get_track: { Args: { _track_id: string }; Returns: Json }
+      staff_get_track_storage_cleanup: { Args: { _cleanup_id: string }; Returns: Json }
+      staff_complete_track_storage_cleanup: { Args: { _cleanup_id: string }; Returns: undefined }
+      staff_fail_track_storage_cleanup: { Args: { _cleanup_id: string; _error: string }; Returns: undefined }
+      staff_lock_track: { Args: { _reason_code: string; _reason_text?: string; _track_id: string }; Returns: Json }
+      staff_unlock_track: { Args: { _track_id: string }; Returns: Json }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
       consume_quality_check: {
         Args: { _idempotency_key: string; _quality_report: Json }

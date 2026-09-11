@@ -43,5 +43,8 @@ export async function uploadToR2(
 /** Deletes an object from R2. */
 export async function deleteFromR2(key: string): Promise<void> {
   const { endpoint, bucket } = getR2Config();
-  await getR2Client().fetch(`${endpoint}/${bucket}/${key}`, { method: "DELETE" });
+  const response = await getR2Client().fetch(`${endpoint}/${bucket}/${key}`, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`R2 delete failed (${response.status}): ${await response.text()}`);
+  }
 }

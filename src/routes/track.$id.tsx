@@ -8,6 +8,7 @@ import { getPublicTrackById } from "@/lib/tracks.functions";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -58,6 +59,8 @@ function TrackPage() {
         <Link to="/" className="text-xs text-muted-foreground hover:text-accent">
           ← Back to the feed
         </Link>
+
+        <TrackModerationControls trackId={id} />
 
         {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading…</p>}
 

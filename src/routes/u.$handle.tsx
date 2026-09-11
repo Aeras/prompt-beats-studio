@@ -6,6 +6,7 @@ import { getPublicProfile } from "@/lib/profile.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { BanUserToggle } from "@/components/promptbeats/ArtistProfileView";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -68,6 +69,7 @@ function CreatorPage() {
                 {profile.bio && <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p>}
               </div>
               <EditProfileModal profile={profile} />
+              <BanUserToggle userId={profile.id} />
             </header>
 
             <DonateButton
