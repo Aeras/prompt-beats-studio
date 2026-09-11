@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
@@ -1495,43 +1496,45 @@ function GeneratePage() {
             </span>
           </div>
 
-          {confirmClear && (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="clear-title"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-              onClick={() => setConfirmClear(false)}
-            >
+          {confirmClear &&
+            createPortal(
               <div
-                className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="clear-title"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                onClick={() => setConfirmClear(false)}
               >
-                <div>
-                  <h3 id="clear-title" className="text-base font-semibold text-foreground">
-                    Clear Generator?
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    This will clear your current inputs and generated results. This action cannot be undone.
-                  </p>
+                <div
+                  className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div>
+                    <h3 id="clear-title" className="text-base font-semibold text-foreground">
+                      Clear Generator?
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      This will clear your current inputs and generated results. This action cannot be undone.
+                    </p>
+                  </div>
+                  <div className="flex flex-row items-center justify-end gap-3">
+                    <button
+                      onClick={() => setConfirmClear(false)}
+                      className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={clearAll}
+                      className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
+                    >
+                      Confirm Clear
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-row items-center justify-end gap-3">
-                  <button
-                    onClick={() => setConfirmClear(false)}
-                    className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={clearAll}
-                    className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
-                  >
-                    Confirm Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+              </div>,
+              document.body,
+            )}
 
           {status && <p className="text-xs text-accent">{status}</p>}
         </div>
