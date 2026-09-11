@@ -205,6 +205,33 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_blocks: {
+        Row: {
+          id: string
+          email_normalized: string
+          reason_code: string
+          reason_text: string | null
+          blocked_at: string
+          blocked_by: string | null
+        }
+        Insert: {
+          id?: string
+          email_normalized: string
+          reason_code: string
+          reason_text?: string | null
+          blocked_at?: string
+          blocked_by?: string | null
+        }
+        Update: {
+          id?: string
+          email_normalized?: string
+          reason_code?: string
+          reason_text?: string | null
+          blocked_at?: string
+          blocked_by?: string | null
+        }
+        Relationships: []
+      }
       user_model_access: {
         Row: {
           access_mode: string
@@ -281,6 +308,10 @@ export type Database = {
       }
       profile_private: {
         Row: {
+          block_reason_code: string | null
+          block_reason_text: string | null
+          blocked_at: string | null
+          blocked_by: string | null
           created_at: string
           is_banned: boolean
           updated_at: string
@@ -288,6 +319,10 @@ export type Database = {
           welcome_email_sent_at: string | null
         }
         Insert: {
+          block_reason_code?: string | null
+          block_reason_text?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
           created_at?: string
           is_banned?: boolean
           updated_at?: string
@@ -295,6 +330,10 @@ export type Database = {
           welcome_email_sent_at?: string | null
         }
         Update: {
+          block_reason_code?: string | null
+          block_reason_text?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
           created_at?: string
           is_banned?: boolean
           updated_at?: string
@@ -602,7 +641,19 @@ export type Database = {
         Returns: undefined
       }
       admin_set_user_banned: {
-        Args: { _banned: boolean; _target_user_id: string }
+        Args: { _banned: boolean; _reason_code?: string; _reason_text?: string; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_create_registration_block: {
+        Args: { _email: string; _reason_code: string; _reason_text?: string }
+        Returns: string
+      }
+      admin_list_registration_blocks: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: Json
+      }
+      admin_remove_registration_block: {
+        Args: { _block_id: string }
         Returns: undefined
       }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
@@ -620,6 +671,7 @@ export type Database = {
         Returns: boolean
       }
       is_banned: { Args: { _user_id: string }; Returns: boolean }
+      get_my_account_status: { Args: never; Returns: Json }
       kick_generation_runner: { Args: { _job_id: string }; Returns: undefined }
       like_count: { Args: { _track_id: string }; Returns: number }
       release_quality_check: {

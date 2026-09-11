@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { cn } from "@/lib/utils";
+import { useAccountLock } from "@/hooks/useAccountLock";
+import { supabase } from "@/integrations/supabase/client";
 
 export const NAV_PATHS: Record<NavId, string> = {
   discover: "/",
@@ -34,6 +36,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
   const active = useActiveNav();
+  const { isLocked, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
+
+  if (lockLoading) return <AccountStatusLoading />;
+  if (authenticated && lockError) return <AccountStatusUnavailable />;
+  if (authenticated && isLocked) return <AccountLockedScreen reason={reason} />;
 
   const openStudio = () => {
     setStudio(true);
@@ -120,4 +127,20 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       <StudioModal open={studio} onClose={() => setStudio(false)} />
     </div>
   );
+}
+
+function AccountLockedScreen({ reason }: { reason: string | null }) {
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    window.location.assign("/auth");
+  };
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10"><div className="glass-strong w-full max-w-lg rounded-3xl p-7 text-center sm:p-10"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-amber-200"><ShieldAlert className="h-7 w-7" /></div><h1 className="mt-5 font-display text-3xl font-bold">Account locked</h1><p className="mt-3 text-sm text-muted-foreground">Your PromptBeats account has been locked.</p>{reason && <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground"><span className="text-muted-foreground">Reason: </span>{reason}</p>}<p className="mt-5 text-sm leading-relaxed text-muted-foreground">If you believe this was a mistake or need assistance, contact:<br /><a href="mailto:support@promptbeats.app" className="text-primary hover:underline">support@promptbeats.app</a></p><button onClick={signOut} className="mt-7 inline-flex items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon">Log out</button></div></main>;
+}
+
+function AccountStatusLoading() {
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><p className="text-sm text-muted-foreground">Checking account status…</p></main>;
+}
+
+function AccountStatusUnavailable() {
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">Account status unavailable</h1><p className="mt-3 text-sm text-muted-foreground">We could not verify your account status. Please try again.</p><button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground">Try again</button></div></main>;
 }
