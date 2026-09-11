@@ -34,15 +34,17 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   const ids = [...new Set((data ?? []).map((t) => t.user_id))];
   const handles = new Map<string, string>();
   const names = new Map<string, string>();
+  const badges = new Map<string, string | null>();
   if (ids.length) {
     const { data: profiles } = await supabase
       .from("public_profiles")
-      .select("id, handle, display_name, artist_alias")
+      .select("id, handle, display_name, artist_alias, staff_badge")
       .in("id", ids);
     for (const p of profiles ?? []) {
       if (!p.id) continue;
       handles.set(p.id, p.handle ?? "unknown");
       names.set(p.id, p.artist_alias || p.display_name || p.handle || "");
+      badges.set(p.id, p.staff_badge);
     }
   }
   return {
@@ -50,8 +52,9 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
       ...t,
       handle: `@${handles.get(t.user_id) ?? "unknown"}`,
       creator_name: names.get(t.user_id) ?? "",
+      staff_badge: badges.get(t.user_id) ?? null,
     })),
-    error: null as string | null,
+      error: null as string | null,
   };
 });
 
@@ -70,7 +73,7 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
     if (!track) return { track: null, artist: null };
     const { data: artist } = await supabase
       .from("public_profiles")
-      .select("id, handle, display_name, artist_alias, avatar_url")
+      .select("id, handle, display_name, artist_alias, avatar_url, staff_badge")
       .eq("id", track.user_id)
       .maybeSingle();
     return { track, artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null };
@@ -279,15 +282,17 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
   const ids = [...new Set(rows.map((t) => t.user_id))];
   const handles = new Map<string, string>();
   const names = new Map<string, string>();
+  const badges = new Map<string, string | null>();
   if (ids.length) {
     const { data: profiles } = await supabase
       .from("public_profiles")
-      .select("id, handle, display_name, artist_alias")
+      .select("id, handle, display_name, artist_alias, staff_badge")
       .in("id", ids);
     for (const p of profiles ?? []) {
       if (!p.id) continue;
       handles.set(p.id, p.handle ?? "unknown");
       names.set(p.id, p.artist_alias || p.display_name || p.handle || "");
+      badges.set(p.id, p.staff_badge);
     }
   }
 
@@ -304,6 +309,7 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
       ...t,
       handle: `@${handles.get(t.user_id) ?? "unknown"}`,
       creator_name: names.get(t.user_id) ?? "",
+      staff_badge: badges.get(t.user_id) ?? null,
       likes: likeCounts.get(t.id) ?? 0,
     }))
     .sort((a, b) => b.likes * 3 + b.plays - (a.likes * 3 + a.plays));

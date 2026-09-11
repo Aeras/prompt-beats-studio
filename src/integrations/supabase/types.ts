@@ -544,18 +544,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          moderation_status: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          moderation_status?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          moderation_status?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -574,6 +577,7 @@ export type Database = {
           donation_url: string | null
           handle: string | null
           id: string | null
+          staff_badge: string | null
           instagram_url: string | null
           tiktok_url: string | null
           website_url: string | null
@@ -590,6 +594,7 @@ export type Database = {
           donation_url?: string | null
           handle?: string | null
           id?: string | null
+          staff_badge?: string | null
           instagram_url?: string | null
           tiktok_url?: string | null
           website_url?: string | null
@@ -606,6 +611,7 @@ export type Database = {
           donation_url?: string | null
           handle?: string | null
           id?: string | null
+          staff_badge?: string | null
           instagram_url?: string | null
           tiktok_url?: string | null
           website_url?: string | null
@@ -657,6 +663,11 @@ export type Database = {
         Returns: undefined
       }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
+      admin_set_user_role: { Args: { _role: Database["public"]["Enums"]["app_role"]; _target_user_id: string }; Returns: undefined }
+      admin_set_moderation_status: { Args: { _reason_text?: string; _status: string; _target_user_id: string }; Returns: undefined }
+      get_my_moderation_context: { Args: never; Returns: Json }
+      has_moderation_capability: { Args: { _capability: string }; Returns: boolean }
+      can_moderate_target: { Args: { _target_user_id: string }; Returns: boolean }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
       consume_quality_check: {
         Args: { _idempotency_key: string; _quality_report: Json }
@@ -689,7 +700,7 @@ export type Database = {
       sweep_generation_jobs: { Args: never; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "senior_moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -817,7 +828,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "senior_moderator", "user"],
     },
   },
 } as const

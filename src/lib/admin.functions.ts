@@ -21,6 +21,11 @@ async function requireAdmin(supabase: any, userId: string) {
   if (error || data !== true) throw new Error("Not allowed");
 }
 
+async function requireCapability(supabase: any, capability: string) {
+  const { data, error } = await supabase.rpc("has_moderation_capability" as never, { _capability: capability } as never);
+  if (error || data !== true) throw new Error("Not allowed");
+}
+
 export type AdminOverview = {
   totalUsers: number;
   blockedUsers: number;
@@ -39,6 +44,8 @@ export type AdminUser = {
   display_name: string | null;
   blocked: boolean;
   is_admin: boolean;
+  role: "admin" | "senior_moderator" | "moderator" | "user";
+  moderation_status: "active" | "suspended";
   generations: number;
 };
 
@@ -68,7 +75,7 @@ export const listAdminUsers = createServerFn({ method: "POST" })
     pageSize: z.number().int().min(1).max(50).default(25),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireCapability(context.supabase, "can_view_users");
     const { data: result, error } = await context.supabase.rpc("admin_list_users" as never, {
       _search: data.search, _status: data.status, _limit: data.pageSize, _offset: data.page * data.pageSize,
     } as never);
@@ -80,7 +87,7 @@ export const getAdminUserDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: adminUserId }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireCapability(context.supabase, "can_view_users");
     const { data: result, error } = await context.supabase.rpc("admin_user_detail" as never, {
       _target_user_id: data.userId,
     } as never);
@@ -98,7 +105,7 @@ export const setAdminUserBanned = createServerFn({ method: "POST" })
     reasonText: z.string().trim().max(500).nullish(),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireCapability(context.supabase, data.banned ? "can_block_users" : "can_unblock_users");
     const { error } = await context.supabase.rpc("admin_set_user_banned" as never, {
       _target_user_id: data.userId, _banned: data.banned,
       _reason_code: data.banned ? data.reasonCode : null,
@@ -131,6 +138,28 @@ const deleteInput = z.object({
   registrationReasonCode: blockReasonCode.nullish(),
   registrationReasonText: z.string().trim().max(500).nullish(),
 });
+
+export const setAdminUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ userId: adminUserId, role: z.enum(["user", "moderator", "senior_moderator"]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.rpc("admin_set_user_role" as never, { _target_user_id: data.userId, _role: data.role } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setModerationStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ userId: adminUserId, status: z.enum(["active", "suspended"]), reasonText: z.string().trim().max(500).nullish() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability" as never, { _capability: "can_suspend_moderator" } as never);
+    if (capabilityError || allowed !== true) throw new Error("Not allowed");
+    if (data.status === "suspended" && !data.reasonText?.trim()) throw new Error("A suspension reason is required.");
+    const { error } = await context.supabase.rpc("admin_set_moderation_status" as never, { _target_user_id: data.userId, _status: data.status, _reason_text: data.reasonText ?? null } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 async function removeStorageFolder(bucket: string, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

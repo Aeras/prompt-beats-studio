@@ -8,7 +8,7 @@ const PROFILE_COLUMNS =
 
 /** Safe public projection: no moderation/internal fields (anon role is column-restricted). */
 const PUBLIC_PROFILE_COLUMNS =
-  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name";
+  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name, staff_badge";
 
 const optionalUrl = z
   .string()

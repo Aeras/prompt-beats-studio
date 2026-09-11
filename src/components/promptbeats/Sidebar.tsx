@@ -39,7 +39,7 @@ export function SidebarNav({
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
-  const { isBanned, isAdmin } = useModeration();
+  const { isBanned, canViewUsers } = useModeration();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -67,7 +67,7 @@ export function SidebarNav({
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.filter((item) => !ADMIN_ONLY.includes(item.id) || isAdmin).map((item) => {
+        {NAV.filter((item) => !ADMIN_ONLY.includes(item.id) || canViewUsers).map((item) => {
           const isActive = active === item.id;
 
           return (

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 
 export function TrackCard({
   track,
@@ -90,7 +91,7 @@ export function TrackCard({
               ) : (
                 <span>{track.handle}</span>
               )}
-              {" · "}{track.plays} plays
+              {track.staffBadge && <><span className="mx-1.5">·</span><StaffBadge badge={track.staffBadge} /></>}{" · "}{track.plays} plays
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

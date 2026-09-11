@@ -11,6 +11,7 @@ import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
 import { getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
+import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 
 type Profile = {
   id: string;
@@ -28,6 +29,7 @@ type Profile = {
   donation_provider: string | null;
   donation_url: string | null;
   donation_custom_name: string | null;
+  staff_badge?: string | null;
 };
 
 type Track = {
@@ -199,6 +201,7 @@ export function ArtistProfileView({
                   <ShareProfileButton handle={profile.handle} />
                 </div>
                 <p className="text-xs text-muted-foreground">@{profile.handle}</p>
+                <StaffBadge badge={profile.staff_badge} />
                 {profile.bio && <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p>}
                 <SocialLinks profile={profile} />
               </div>

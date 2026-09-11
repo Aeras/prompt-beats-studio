@@ -7,6 +7,7 @@ import { usePlayer } from "@/lib/player";
 import { getPublicTrackById } from "@/lib/tracks.functions";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -81,6 +82,7 @@ function TrackPage() {
                   artistName
                 )}
               </p>
+              <StaffBadge badge={artist?.staff_badge} />
 
               <div className="pt-2">
                 <button

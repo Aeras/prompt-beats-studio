@@ -12,6 +12,7 @@ export type Track = {
   audioType?: "link" | "upload";
   /** Present only for real database tracks (enables likes + owner controls). */
   userId?: string;
+  staffBadge?: string | null;
 };
 
 export const GENRES = [

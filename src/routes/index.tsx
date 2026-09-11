@@ -62,6 +62,7 @@ function Index() {
     lyrics: t.lyrics,
     audioUrl: t.audio_url,
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    staffBadge: t.staff_badge,
   }));
 
   const list = uploaded.filter(
