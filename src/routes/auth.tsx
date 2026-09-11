@@ -8,6 +8,9 @@ import { lovable } from "@/integrations/lovable/index";
 import { sendWelcomeEmail } from "@/lib/email.functions";
 import { checkSignupAvailability, checkSignupRegistration } from "@/lib/profile.functions";
 
+const BLOCKED_REGISTRATION_MESSAGE =
+  "Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.";
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
@@ -98,7 +101,7 @@ function AuthPage() {
         const cleanHandle = handle.replace(/^@/, "").trim().toLowerCase();
         const registration = await checkSignupRegistration({ data: { email } });
         if (registration.blocked) {
-          throw new Error("Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.");
+          throw new Error(BLOCKED_REGISTRATION_MESSAGE);
         }
         if (!alias.trim()) throw new Error("Please enter a display name.");
         if (!/^[a-z0-9]{3,30}$/.test(cleanHandle)) {
@@ -306,7 +309,21 @@ function AuthPage() {
           </button>
         </form>
 
-        {message && <p className="mt-4 text-center text-xs text-accent">{message}</p>}
+        {message && (
+          <p className="mt-4 text-center text-xs text-accent">
+            {message === BLOCKED_REGISTRATION_MESSAGE ? (
+              <>
+                Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact{" "}
+                <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">
+                  support@promptbeats.app
+                </a>
+                .
+              </>
+            ) : (
+              message
+            )}
+          </p>
+        )}
 
         <p className="mt-5 text-center text-xs text-muted-foreground">
           {mode === "signup" ? "Already have an account?" : "New here?"}{" "}
