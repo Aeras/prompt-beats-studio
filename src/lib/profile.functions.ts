@@ -10,6 +10,15 @@ const PROFILE_COLUMNS =
 const PUBLIC_PROFILE_COLUMNS =
   "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name, staff_badge";
 
+export type PublicCreatorSearchResult = {
+  id: string;
+  handle: string | null;
+  display_name: string | null;
+  artist_alias: string | null;
+  avatar_url: string | null;
+  staff_badge: string | null;
+};
+
 const optionalUrl = z
   .string()
   .trim()
@@ -134,6 +143,32 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(50);
     return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
+  });
+
+/** Public creator search: returns only the safe identity projection. */
+export const searchPublicCreators = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ query: z.string().trim().max(80) }).parse(input))
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const supabase = createPublicServerClient();
+    const term = data.query.replace(/^@+/, "").trim();
+    if (!term) return { creators: [] as PublicCreatorSearchResult[] };
+
+    const columns = "id, handle, display_name, artist_alias, avatar_url, staff_badge";
+    const escapedTerm = term.replace(/[\\%_]/g, "\\$&");
+    const pattern = `%${escapedTerm}%`;
+    const [nameResult, handleResult] = await Promise.all([
+      supabase.from("public_profiles").select(columns).ilike("display_name", pattern).limit(25),
+      supabase.from("public_profiles").select(columns).ilike("handle", pattern).limit(25),
+    ]);
+    if (nameResult.error) throw new Error(nameResult.error.message);
+    if (handleResult.error) throw new Error(handleResult.error.message);
+
+    const creators = new Map<string, PublicCreatorSearchResult>();
+    for (const profile of [...(nameResult.data ?? []), ...(handleResult.data ?? [])]) {
+      if (profile.id && profile.handle) creators.set(profile.id, profile);
+    }
+    return { creators: [...creators.values()].slice(0, 25) };
   });
 
 /** Public: real-time signup availability check for handle and display name. */
