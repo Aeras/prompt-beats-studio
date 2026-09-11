@@ -100,6 +100,21 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: No user ID found in token');
     }
 
+    // Keep account blocking server-authoritative. Every protected server
+    // function passes through this middleware, so an active session cannot
+    // bypass a persisted block by calling an endpoint directly.
+    const { data: privateProfile, error: privateProfileError } = await supabase
+      .from('profile_private')
+      .select('is_banned')
+      .eq('user_id', data.claims.sub)
+      .maybeSingle();
+    if (privateProfileError) {
+      throw new Error('Unable to verify account status. Please try again.');
+    }
+    if (privateProfile?.is_banned === true) {
+      throw new Error('ACCOUNT_DISABLED: This account is disabled.');
+    }
+
     return next({
       context: {
         supabase,

@@ -155,6 +155,36 @@ export async function getActiveModel(): Promise<AiModelId> {
   return DEFAULT_AI_MODEL;
 }
 
+/** Resolve a provider model without trusting a browser-supplied model id. */
+export async function getModelForUser(userId: string, requestedModel?: string): Promise<AiModelId> {
+  const active = await getActiveModel();
+  const requested = AI_MODELS.find((model) => model.id === requestedModel)?.id;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: isAdmin } = await supabaseAdmin.rpc("has_role" as never, {
+    _user_id: userId,
+    _role: "admin",
+  } as never);
+  if (isAdmin === true && requested) return requested;
+
+  const { data: override, error: overrideError } = await supabaseAdmin
+    .from("user_model_access" as never)
+    .select("access_mode, allowed_models")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (overrideError) {
+    // Backward compatibility while the additive migration is being rolled
+    // out; all other database failures fail closed rather than broadening
+    // model access.
+    if (overrideError.code === "42P01") return active;
+    throw new Error("Could not verify AI model access.");
+  }
+  const access = override as { access_mode?: string; allowed_models?: string[] } | null;
+  if (access?.access_mode !== "custom") return active;
+  const allowed = (access.allowed_models ?? []).filter((id): id is AiModelId => AI_MODEL_IDS.includes(id as AiModelId));
+  if (!allowed.length) throw new Error("No AI model is available for this account.");
+  return allowed.includes(active) ? active : allowed[0];
+}
+
 /** Admin-only write path; the caller must already have verified admin rights. */
 export async function setActiveModel(model: AiModelId, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

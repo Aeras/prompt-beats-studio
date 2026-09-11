@@ -178,6 +178,57 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_model_access: {
+        Row: {
+          access_mode: string
+          allowed_models: string[]
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_mode?: string
+          allowed_models?: string[]
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_mode?: string
+          allowed_models?: string[]
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -541,6 +592,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_list_users: {
+        Args: { _limit?: number; _offset?: number; _search?: string; _status?: string }
+        Returns: Json
+      }
+      admin_overview: { Args: never; Returns: Json }
+      admin_set_model_access: {
+        Args: { _access_mode: string; _allowed_models: string[]; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_set_user_banned: {
+        Args: { _banned: boolean; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
       consume_quality_check: {
         Args: { _idempotency_key: string; _quality_report: Json }

@@ -351,12 +351,14 @@ async function flushUsage(userId: string, generationId: string | null, records: 
 }
 
 /** Loads the provider layer (server-only) and binds it to the active model. */
-async function activeCaller(modelOverride?: string): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
+async function activeCaller(modelOverride?: string, userId?: string): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
   song: Record<string, unknown>;
   quality: Record<string, unknown>;
 } }> {
   const provider = await import("@/lib/ai-provider.server");
-  const model = modelOverride ?? (await provider.getActiveModel());
+  const model = userId
+    ? await provider.getModelForUser(userId, modelOverride)
+    : modelOverride ?? (await provider.getActiveModel());
   if (modelOverride && !AI_MODEL_IDS.some((id) => id === modelOverride)) {
     throw new Error("Unsupported AI model.");
   }
@@ -796,7 +798,7 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     }
 
     // Provider/model is resolved server-side only; clients cannot influence it.
-    const { call, model, provider, schemas } = await activeCaller();
+    const { call, model, provider, schemas } = await activeCaller(undefined, context.userId);
 
     // Analytics only observes real provider responses; it never adds a call.
     const records: PendingUsage[] = [];
@@ -889,7 +891,7 @@ export async function runSongGeneration(
   userId: string,
   generationId: string | null,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
-  const { call, model, provider, schemas } = await activeCaller();
+  const { call, model, provider, schemas } = await activeCaller(undefined, userId);
   const records: PendingUsage[] = [];
 
   let generated: ModelResult;
@@ -992,6 +994,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
 
     const { call, model, provider, schemas } = await activeCaller(
       isAdmin ? data.qualityCheckModel ?? undefined : undefined,
+      context.userId,
     );
     const records: PendingUsage[] = [];
     const constraints = {

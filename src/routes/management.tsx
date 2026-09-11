@@ -1,209 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { BarChart3, Coins, Cpu, Sparkles } from "lucide-react";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { BarChart3, Coins, Cpu, LayoutDashboard, Shield, Sparkles, Users, X } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useModeration } from "@/hooks/useModeration";
 import { useAuth } from "@/hooks/useAuth";
 import { getAiAnalytics, type Breakdown } from "@/lib/ai-analytics.functions";
+import { deleteAdminUser, getAdminOverview, getAdminUserDetail, listAdminUsers, setAdminModelAccess, setAdminUserBanned, type AdminUser } from "@/lib/admin.functions";
+import { AI_MODELS, AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/management")({
-  head: () => ({
-    meta: [
-      { title: "Management · AI Usage & Cost Analytics | PromptBeats" },
-      {
-        name: "description",
-        content:
-          "Super Admin dashboard for PromptBeats AI usage: token consumption, operations, models and estimated API cost.",
-      },
-      { property: "og:title", content: "Management · AI Usage & Cost Analytics | PromptBeats" },
-      {
-        property: "og:description",
-        content: "Server-side visibility into PromptBeats AI token usage and estimated cost.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: ManagementPage,
-});
-
-const RANGES = [
-  { days: 1, label: "24h" },
-  { days: 7, label: "7d" },
-  { days: 30, label: "30d" },
-  { days: 90, label: "90d" },
-] as const;
-
+export const Route = createFileRoute("/management")({ head: () => ({ meta: [{ title: "Admin Dashboard | PromptBeats" }, { name: "robots", content: "noindex" }] }), component: ManagementPage });
+type Section = "overview" | "analytics" | "users";
+const RANGES = [{ days: 1, label: "24h" }, { days: 7, label: "7d" }, { days: 30, label: "30d" }, { days: 90, label: "90d" }] as const;
 const usd = (n: number) => `$${n.toFixed(n < 1 ? 4 : 2)}`;
 const num = (n: number) => n.toLocaleString("en-US");
 
-function Stat({ icon: Icon, label, value, sub }: { icon: typeof Coins; label: string; value: string; sub?: string }) {
-  return (
-    <div className="glass rounded-2xl p-4">
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-4 w-4 text-primary" />
-        {label}
-      </div>
-      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
-      {sub && <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
+function Stat({ icon: Icon, label, value, sub }: { icon: typeof Coins; label: string; value: string; sub?: string }) { return <div className="glass rounded-2xl p-4"><div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground"><Icon className="h-4 w-4 text-primary" />{label}</div><p className="mt-2 font-display text-2xl font-bold">{value}</p>{sub && <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>}</div>; }
+function DataTable({ title, rows }: { title: string; rows: Breakdown[] }) { return <div className="glass overflow-hidden rounded-2xl"><h2 className="border-b border-white/10 px-4 py-3 font-display text-sm font-semibold">{title}</h2><div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="text-[11px] uppercase text-muted-foreground"><tr>{["Key", "Requests", "Input", "Output", "Cost", "Failed"].map((h) => <th key={h} className="px-4 py-2 font-medium">{h}</th>)}</tr></thead><tbody>{rows.length === 0 && <tr><td className="px-4 py-4 text-muted-foreground" colSpan={6}>No data in this period yet.</td></tr>}{rows.map((r) => <tr key={r.key} className="border-t border-white/5"><td className="px-4 py-2">{r.key}</td><td className="px-4 py-2">{num(r.requests)}</td><td className="px-4 py-2">{num(r.inputTokens)}</td><td className="px-4 py-2">{num(r.outputTokens)}</td><td className="px-4 py-2">{usd(r.costUsd)}</td><td className="px-4 py-2">{num(r.failures)}</td></tr>)}</tbody></table></div></div>; }
+function AdminNav({ section, setSection }: { section: Section; setSection: (s: Section) => void }) { const items = [["overview", "Overview", LayoutDashboard], ["analytics", "AI Usage", BarChart3], ["users", "Users", Users]] as const; const future = ["Subscriptions", "Payments", "Models & Access", "Content / Files", "Settings"]; return <div className="flex gap-2 overflow-x-auto pb-1">{items.map(([id, label, Icon]) => <button key={id} onClick={() => setSection(id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm", section === id ? "border-primary/50 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{label}</button>)}{future.map((label) => <span key={label} className="hidden shrink-0 items-center rounded-xl border border-white/5 px-3 py-2 text-xs text-muted-foreground/50 sm:inline-flex">{label}</span>)}</div>; }
+function OverviewPanel() { const { data, isLoading, error } = useQuery({ queryKey: ["admin-overview"], queryFn: () => getAdminOverview(), staleTime: 30_000 }); if (isLoading) return <p className="text-sm text-muted-foreground">Loading overview…</p>; if (error || !data) return <div className="glass rounded-2xl p-4 text-sm text-red-300">Could not load the admin overview.</div>; return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"><Stat icon={Users} label="Total users" value={num(data.totalUsers)} /><Stat icon={Shield} label="Blocked" value={num(data.blockedUsers)} /><Stat icon={Sparkles} label="Songs generated" value={num(data.songsGenerated)} /><Stat icon={Cpu} label="AI requests" value={num(data.aiRequests)} /><Stat icon={BarChart3} label="Failed requests" value={num(data.failedRequests)} /><Stat icon={Coins} label="Estimated cost" value={usd(Number(data.estimatedCostUsd))} /></div><div className="glass rounded-2xl p-4"><h2 className="font-display text-sm font-semibold">Recent users</h2><div className="mt-3 divide-y divide-white/5">{data.recentUsers.map((u) => <div key={u.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="truncate">{u.displayName || `@${u.handle}`}</span><span className="text-xs text-muted-foreground">{u.blocked ? "Blocked" : "Active"} · {new Date(u.createdAt).toLocaleDateString()}</span></div>)}</div></div></div>; }
+function AnalyticsPanel() { const [days, setDays] = useState(30); const { data, isLoading, error } = useQuery({ queryKey: ["ai-analytics", days], queryFn: () => getAiAnalytics({ data: { days } }), staleTime: 30_000 }); return <div className="space-y-5"><div className="flex flex-wrap gap-2">{RANGES.map((r) => <button key={r.days} onClick={() => setDays(r.days)} className={cn("rounded-full border px-4 py-1.5 text-xs", days === r.days ? "border-primary/60 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground")}>Last {r.label}</button>)}</div>{error && <div className="glass rounded-2xl p-4 text-sm text-red-300">Could not load analytics. Please try again.</div>}{isLoading && <p className="text-sm text-muted-foreground">Loading analytics…</p>}{data && <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Stat icon={Coins} label="Estimated cost" value={usd(data.totals.costUsd)} sub={data.totals.unknownCostRequests > 0 ? `${usd(data.forecast.monthly)} / month at this pace · ${num(data.totals.unknownCostRequests)} requests with unknown pricing (N/A)` : `${usd(data.forecast.monthly)} / month at this pace`} /><Stat icon={Cpu} label="Tokens" value={num(data.totals.totalTokens)} sub={`${num(data.totals.inputTokens)} in · ${num(data.totals.outputTokens)} out`} /><Stat icon={BarChart3} label="AI requests" value={num(data.totals.requests)} sub={`${num(data.totals.failures)} failed`} /><Stat icon={Sparkles} label="Songs generated" value={num(data.songs)} sub={`${usd(data.avgCostPerSong)} avg per song`} /></div><DataTable title="By provider & model" rows={data.byProviderModel} /><DataTable title="By operation" rows={data.byOperation} /><DataTable title="By day" rows={data.byDay} /></>}</div>; }
+function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-[11px] uppercase text-muted-foreground">{label}</p><p className="mt-1 truncate text-sm">{value}</p></div>; }
+function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) { return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"><div className="glass-strong max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-5">{children}<button onClick={onClose} className="mt-5 text-sm text-muted-foreground hover:text-foreground">Close</button></div></div>; }
+function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: () => void; onChanged: () => void }) { const qc = useQueryClient(); const { data, isLoading, error } = useQuery({ queryKey: ["admin-user", userId], queryFn: () => getAdminUserDetail({ data: { userId } }) }); const [mode, setMode] = useState<"inherit" | "custom">("inherit"); const [models, setModels] = useState<AiModelId[]>([]); const [deleteEmail, setDeleteEmail] = useState(""); useEffect(() => { if (data) { setMode(data.model_access.mode); setModels(data.model_access.models.filter((id): id is AiModelId => AI_MODEL_IDS.includes(id as AiModelId))); } }, [data]); const ban = useMutation({ mutationFn: (banned: boolean) => setAdminUserBanned({ data: { userId, banned } }), onSuccess: (_, banned) => { toast.success(banned ? "User blocked" : "User unblocked"); qc.invalidateQueries({ queryKey: ["admin-users"] }); qc.invalidateQueries({ queryKey: ["admin-user", userId] }); onChanged(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Could not update account") }); const access = useMutation({ mutationFn: () => setAdminModelAccess({ data: { userId, mode, models } }), onSuccess: () => { toast.success("Model access saved"); qc.invalidateQueries({ queryKey: ["admin-user", userId] }); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Could not save model access") }); const deletion = useMutation({ mutationFn: () => deleteAdminUser({ data: { userId, confirmationEmail: deleteEmail } }), onSuccess: () => { toast.success("User permanently deleted"); qc.invalidateQueries({ queryKey: ["admin-users"] }); onClose(); onChanged(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Deletion failed") }); if (isLoading) return <Modal onClose={onClose}>Loading user…</Modal>; if (error || !data) return <Modal onClose={onClose}>Could not load this user.</Modal>; const toggle = (id: AiModelId) => setModels((current) => current.includes(id) ? current.filter((m) => m !== id) : [...current, id]); return <Modal onClose={onClose}><div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-xl font-bold">User details</h2><p className="mt-1 text-sm text-muted-foreground">{data.email}</p></div><button onClick={onClose} aria-label="Close"><X className="h-5 w-5" /></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Display name" value={data.display_name || "—"} /><Info label="Handle" value={data.handle ? `@${data.handle}` : "—"} /><Info label="Joined" value={new Date(data.created_at).toLocaleString()} /><Info label="Status" value={data.blocked ? "Blocked" : "Active"} /><Info label="Generations" value={num(data.generations)} /><Info label="AI requests" value={num(data.ai_requests)} /></div><section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">AI model access</h3><div className="mt-3 flex gap-2"><button onClick={() => setMode("inherit")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "inherit" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>Inherit default</button><button onClick={() => setMode("custom")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "custom" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>Custom</button></div>{mode === "custom" && <div className="mt-3 grid gap-2 sm:grid-cols-2">{AI_MODELS.map((m) => <label key={m.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={models.includes(m.id)} onChange={() => toggle(m.id)} />{m.label}</label>)}</div>}<button disabled={access.isPending || (mode === "custom" && models.length === 0)} onClick={() => access.mutate()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{access.isPending ? "Saving…" : "Save access"}</button></section><section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">Account actions</h3><button disabled={ban.isPending || data.is_admin} onClick={() => ban.mutate(!data.blocked)} className="mt-3 rounded-xl border border-amber-400/30 px-4 py-2 text-sm text-amber-200 disabled:opacity-50">{data.blocked ? "Unblock account" : "Block account"}</button><div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 p-4"><p className="text-sm font-semibold text-red-200">Danger zone</p><p className="mt-1 text-xs text-muted-foreground">Permanent deletion removes the auth account, application data, and owned files. This cannot be undone.</p><input value={deleteEmail} onChange={(e) => setDeleteEmail(e.target.value)} placeholder="Type the user's email" className="mt-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm" /><button disabled={deletion.isPending || deleteEmail.toLowerCase() !== (data.email ?? "").toLowerCase() || data.is_admin} onClick={() => deletion.mutate()} className="mt-3 rounded-xl bg-red-500/80 px-4 py-2 text-sm font-medium disabled:opacity-50">{deletion.isPending ? "Deleting…" : "Permanently delete"}</button></div></section></Modal>; }
 
-function Table({ title, rows }: { title: string; rows: Breakdown[] }) {
-  return (
-    <div className="glass overflow-hidden rounded-2xl">
-      <h2 className="border-b border-white/10 px-4 py-3 font-display text-sm font-semibold">{title}</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="text-[11px] uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2 font-medium">Key</th>
-              <th className="px-4 py-2 font-medium">Requests</th>
-              <th className="px-4 py-2 font-medium">Input</th>
-              <th className="px-4 py-2 font-medium">Output</th>
-              <th className="px-4 py-2 font-medium">Cost</th>
-              <th className="px-4 py-2 font-medium">Failed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td className="px-4 py-4 text-muted-foreground" colSpan={6}>
-                  No data in this period yet.
-                </td>
-              </tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.key} className="border-t border-white/5">
-                <td className="px-4 py-2">{r.key}</td>
-                <td className="px-4 py-2">{num(r.requests)}</td>
-                <td className="px-4 py-2">{num(r.inputTokens)}</td>
-                <td className="px-4 py-2">{num(r.outputTokens)}</td>
-                <td className="px-4 py-2">
-                  {usd(r.costUsd)}
-                  {r.unknownCostRequests > 0 && (
-                    <span className="ml-1 text-[11px] text-muted-foreground">
-                      (+{num(r.unknownCostRequests)} N/A)
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2">{num(r.failures)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+function UsersPanel() { const [draft, setDraft] = useState(""); const [search, setSearch] = useState(""); const [status, setStatus] = useState<"all" | "active" | "blocked">("all"); const [page, setPage] = useState(0); const [selected, setSelected] = useState<string | null>(null); useEffect(() => { const timer = window.setTimeout(() => { setSearch(draft); setPage(0); }, 300); return () => window.clearTimeout(timer); }, [draft]); const { data, isLoading, error, refetch } = useQuery({ queryKey: ["admin-users", search, status, page], queryFn: () => listAdminUsers({ data: { search, status, page, pageSize: 25 } }) }); return <div className="space-y-4"><div className="flex flex-col gap-2 sm:flex-row"><input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search email, handle, or name" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm" /><select value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setPage(0); }} className="rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"><option value="all">All users</option><option value="active">Active</option><option value="blocked">Blocked</option></select></div>{error && <div className="glass rounded-2xl p-4 text-sm text-red-300">Could not load users.</div>}{isLoading && <p className="text-sm text-muted-foreground">Loading users…</p>}<div className="glass overflow-hidden rounded-2xl"><MobileUserList users={data?.users ?? []} onManage={setSelected} /><div className="hidden overflow-x-auto sm:block"><table className="w-full min-w-[680px] text-left text-sm"><thead className="text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">User</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Generations</th><th className="px-4 py-3" /></tr></thead><tbody>{(data?.users ?? []).map((u: AdminUser) => <tr key={u.id} className="border-t border-white/5"><td className="px-4 py-3"><p>{u.email || "No email"}</p><p className="text-xs text-muted-foreground">{u.display_name || (u.handle ? `@${u.handle}` : "")}</p></td><td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</td><td className="px-4 py-3">{u.blocked ? <span className="text-amber-200">Blocked</span> : "Active"}{u.is_admin && <span className="ml-2 text-xs text-primary">Admin</span>}</td><td className="px-4 py-3">{num(u.generations)}</td><td className="px-4 py-3 text-right"><button onClick={() => setSelected(u.id)} className="text-primary hover:underline">Manage</button></td></tr>)}</tbody></table></div>{data && <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-muted-foreground"><span>{num(data.total)} users</span><div className="flex gap-2"><button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="rounded-lg border border-white/10 px-3 py-1 disabled:opacity-40">Previous</button><button disabled={(page + 1) * 25 >= data.total} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-white/10 px-3 py-1 disabled:opacity-40">Next</button></div></div>}</div>{selected && <UserDetails userId={selected} onClose={() => setSelected(null)} onChanged={() => { void refetch(); setSelected(null); }} />}</div>; }
 
-function ManagementPage() {
-  const { user, loading } = useAuth();
-  const { isAdmin } = useModeration();
-  const [days, setDays] = useState<number>(30);
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["ai-analytics", days],
-    queryFn: () => getAiAnalytics({ data: { days } }),
-    enabled: isAdmin,
-    staleTime: 30_000,
-  });
-
-  const header = (
-    <div className="min-w-0">
-      <h1 className="truncate font-display text-lg font-bold md:text-2xl">AI Usage &amp; Cost Analytics</h1>
-      <p className="truncate text-[11px] text-muted-foreground md:text-xs">
-        Estimated API cost based on provider-reported tokens
-      </p>
-    </div>
-  );
-
-  if (!loading && (!user || !isAdmin)) {
-    return (
-      <AppShell header={header}>
-        <main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8">
-          <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-            This area is restricted to administrators.{" "}
-            <Link to="/" className="text-accent hover:underline">
-              Back to feed
-            </Link>
-          </div>
-        </main>
-      </AppShell>
-    );
-  }
-
-  return (
-    <AppShell header={header}>
-      <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8">
-        <div className="flex flex-wrap gap-2">
-          {RANGES.map((r) => (
-            <button
-              key={r.days}
-              onClick={() => setDays(r.days)}
-              className={cn(
-                "rounded-full border px-4 py-1.5 text-xs transition-colors",
-                days === r.days
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-white/10 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Last {r.label}
-            </button>
-          ))}
-        </div>
-
-        {error && (
-          <div className="glass rounded-2xl p-4 text-sm text-red-300">
-            Could not load analytics. Please try again.
-          </div>
-        )}
-        {(isLoading || loading) && <p className="text-sm text-muted-foreground">Loading analytics…</p>}
-
-        {data && (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Stat
-                icon={Coins}
-                label="Estimated cost"
-                value={usd(data.totals.costUsd)}
-                sub={
-                  data.totals.unknownCostRequests > 0
-                    ? `${usd(data.forecast.monthly)} / month at this pace · ${num(data.totals.unknownCostRequests)} requests with unknown pricing (N/A)`
-                    : `${usd(data.forecast.monthly)} / month at this pace`
-                }
-              />
-              <Stat
-                icon={Cpu}
-                label="Tokens"
-                value={num(data.totals.totalTokens)}
-                sub={`${num(data.totals.inputTokens)} in · ${num(data.totals.outputTokens)} out`}
-              />
-              <Stat
-                icon={BarChart3}
-                label="AI requests"
-                value={num(data.totals.requests)}
-                sub={`${num(data.totals.failures)} failed`}
-              />
-              <Stat
-                icon={Sparkles}
-                label="Songs generated"
-                value={num(data.songs)}
-                sub={`${usd(data.avgCostPerSong)} avg per song`}
-              />
-            </div>
-
-            <Table title="By provider & model" rows={data.byProviderModel} />
-            <Table title="By operation" rows={data.byOperation} />
-            <Table title="By day" rows={data.byDay} />
-          </>
-        )}
-      </main>
-    </AppShell>
-  );
-}
+function ManagementPage() { const { user, loading } = useAuth(); const { isAdmin } = useModeration(); const [section, setSection] = useState<Section>("overview"); const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">PromptBeats Admin</h1><p className="text-[11px] text-muted-foreground md:text-xs">Secure operations and platform analytics</p></div>; if (!loading && (!user || !isAdmin)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">This area is restricted to administrators. <Link to="/" className="text-accent hover:underline">Back to feed</Link></div></main></AppShell>; return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">Control panel</p><h2 className="mt-1 font-display text-2xl font-bold">{section === "overview" ? "Overview" : section === "analytics" ? "AI Usage & Cost Analytics" : "Users"}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Back to App</Link></div><AdminNav section={section} setSection={setSection} />{!loading && section === "overview" && <OverviewPanel />}{!loading && section === "analytics" && <AnalyticsPanel />}{!loading && section === "users" && <UsersPanel />}</main></AppShell>; }
+function MobileUserList({ users, onManage }: { users: AdminUser[]; onManage: (id: string) => void }) { return <div className="space-y-2 p-3 sm:hidden">{users.map((u) => <div key={u.id} className="rounded-xl border border-white/10 bg-black/10 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm">{u.email || "No email"}</p><p className="truncate text-xs text-muted-foreground">{u.display_name || u.handle || ""}</p></div><button onClick={() => onManage(u.id)} className="shrink-0 text-sm text-primary hover:underline">Manage</button></div><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{new Date(u.created_at).toLocaleDateString()}</span><span className={u.blocked ? "text-amber-200" : ""}>{u.blocked ? "Blocked" : "Active"}</span><span>{num(u.generations)} generations</span>{u.is_admin && <span className="text-primary">Admin</span>}</div></div>)}</div>; }
