@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createContext, createPortal, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, BarChart3, Coins, Cpu, LayoutDashboard, Shield, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
