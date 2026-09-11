@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
@@ -36,10 +36,15 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
   const active = useActiveNav();
-  const { isLocked, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
+  const { isLocked, isInvalid, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
+  useEffect(() => {
+    if (!isInvalid) return;
+    void supabase.auth.signOut().then(() => window.location.assign("/auth"));
+  }, [isInvalid]);
 
   if (lockLoading) return <AccountStatusLoading />;
   if (authenticated && lockError) return <AccountStatusUnavailable />;
+  if (authenticated && isInvalid) return <AccountSessionExpired />;
   if (authenticated && isLocked) return <AccountLockedScreen reason={reason} />;
 
   const openStudio = () => {
@@ -143,4 +148,8 @@ function AccountStatusLoading() {
 
 function AccountStatusUnavailable() {
   return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">Account status unavailable</h1><p className="mt-3 text-sm text-muted-foreground">We could not verify your account status. Please try again.</p><button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground">Try again</button></div></main>;
+}
+
+function AccountSessionExpired() {
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">Session ended</h1><p className="mt-3 text-sm text-muted-foreground">This account is no longer available. You are being signed out.</p></div></main>;
 }

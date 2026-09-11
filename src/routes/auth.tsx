@@ -6,7 +6,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { sendWelcomeEmail } from "@/lib/email.functions";
-import { checkSignupAvailability } from "@/lib/profile.functions";
+import { checkSignupAvailability, checkSignupRegistration } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -96,6 +96,10 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const cleanHandle = handle.replace(/^@/, "").trim().toLowerCase();
+        const registration = await checkSignupRegistration({ data: { email } });
+        if (registration.blocked) {
+          throw new Error("Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.");
+        }
         if (!alias.trim()) throw new Error("Please enter a display name.");
         if (!/^[a-z0-9]{3,30}$/.test(cleanHandle)) {
           throw new Error("Username must be 3-30 letters or numbers, with no spaces or symbols.");
@@ -131,7 +135,13 @@ function AuthPage() {
 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          const normalizedMessage = error.message.toLowerCase();
+          if (error.status === 400 || normalizedMessage.includes("invalid login credentials")) {
+            throw new Error("Email or password is incorrect. Check your details and try again. If you don’t have an account, you can create one.");
+          }
+          throw new Error("Unable to sign in right now. Please try again.");
+        }
         navigate({ to: "/" });
       }
     } catch (err) {

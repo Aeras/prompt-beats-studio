@@ -100,6 +100,14 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: No user ID found in token');
     }
 
+    // getClaims() validates the JWT but can still accept a token whose Auth
+    // user was deleted. Re-check the live Auth identity before authorizing any
+    // protected application operation.
+    const { data: authUser, error: authUserError } = await supabase.auth.getUser(token);
+    if (authUserError || !authUser.user || authUser.user.id !== data.claims.sub) {
+      throw new Error('ACCOUNT_INVALID: This account is no longer available.');
+    }
+
     // Keep account blocking server-authoritative. Every protected server
     // function passes through this middleware, so an active session cannot
     // bypass a persisted block by calling an endpoint directly.
@@ -108,7 +116,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       .select('is_banned')
       .eq('user_id', data.claims.sub)
       .maybeSingle();
-    if (privateProfileError) {
+    if (privateProfileError || !privateProfile) {
       throw new Error('Unable to verify account status. Please try again.');
     }
     if (privateProfile?.is_banned === true) {

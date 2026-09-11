@@ -169,3 +169,18 @@ export const checkSignupAvailability = createServerFn({ method: "GET" })
     }
     return { handleTaken, displayNameTaken };
   });
+
+/** Server-side preflight for the restricted registration list. */
+export const checkSignupRegistration = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ email: z.string().trim().email() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const { data: block, error } = await supabaseAdmin
+      .from("registration_blocks")
+      .select("id")
+      .eq("email_normalized", normalizedEmail)
+      .maybeSingle();
+    if (error) throw new Error("Unable to verify registration availability. Please try again.");
+    return { blocked: Boolean(block) };
+  });
