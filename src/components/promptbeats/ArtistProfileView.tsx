@@ -12,6 +12,7 @@ import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
 import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { getSafeExternalUrl } from "@/lib/safe-external-url";
 
 type Profile = {
   id: string;
@@ -68,12 +69,12 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
 
 function SocialLinks({ profile }: { profile: Profile }) {
   const links = [
-    { url: profile.website_url, Icon: Globe, label: "Website" },
-    { url: profile.instagram_url, Icon: Instagram, label: "Instagram" },
-    { url: profile.tiktok_url, Icon: Music, label: "TikTok" },
-    { url: profile.x_url, Icon: Twitter, label: "X (Twitter)" },
-    { url: profile.youtube_url, Icon: Youtube, label: "YouTube" },
-  ].filter((l) => Boolean(l.url && l.url.trim()));
+    { url: getSafeExternalUrl(profile.website_url), Icon: Globe, label: "Website" },
+    { url: getSafeExternalUrl(profile.instagram_url, "instagram"), Icon: Instagram, label: "Instagram" },
+    { url: getSafeExternalUrl(profile.tiktok_url, "tiktok"), Icon: Music, label: "TikTok" },
+    { url: getSafeExternalUrl(profile.x_url, "x"), Icon: Twitter, label: "X (Twitter)" },
+    { url: getSafeExternalUrl(profile.youtube_url, "youtube"), Icon: Youtube, label: "YouTube" },
+  ].filter((l) => Boolean(l.url));
 
   if (links.length === 0) return null;
 

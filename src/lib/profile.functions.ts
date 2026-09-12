@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getSafeExternalUrl, type SupportedSocialPlatform } from "@/lib/safe-external-url";
 
 const PROFILE_COLUMNS =
   "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed, donation_provider, donation_url, donation_custom_name";
@@ -19,24 +20,30 @@ export type PublicCreatorSearchResult = {
   staff_badge: string | null;
 };
 
-const optionalUrl = z
-  .string()
-  .trim()
-  .max(300)
-  .optional()
-  .transform((v) => (v && v.length ? v : null));
-
+const optionalUrl = (platform?: SupportedSocialPlatform) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() || null : value),
+    z
+      .string()
+      .max(300)
+      .nullable()
+      .optional()
+      .refine((value) => !value || Boolean(getSafeExternalUrl(value, platform)), {
+        message: "Enter a valid HTTP(S) URL.",
+      })
+      .transform((value) => (value ? getSafeExternalUrl(value, platform) : null)),
+  );
 const profileInput = z.object({
   artist_alias: z.string().trim().max(60).optional(),
   bio: z.string().trim().max(500).optional(),
   avatar_url: z.string().trim().max(1000).optional(),
-  website_url: optionalUrl,
-  instagram_url: optionalUrl,
-  tiktok_url: optionalUrl,
-  youtube_url: optionalUrl,
-  x_url: optionalUrl,
+  website_url: optionalUrl(),
+  instagram_url: optionalUrl("instagram"),
+  tiktok_url: optionalUrl("tiktok"),
+  youtube_url: optionalUrl("youtube"),
+  x_url: optionalUrl("x"),
   donation_provider: z.enum(["paypal", "revolut", "custom"]).nullish(),
-  donation_url: z.string().trim().max(300).nullish(),
+  donation_url: optionalUrl(),
   donation_custom_name: z.string().trim().max(60).nullish(),
   profile_completed: z.boolean().default(false),
 });
@@ -71,9 +78,14 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       patch[key] = data[key] ?? null;
     }
 
-    const { error } = await context.supabase.from("profiles").update(patch as never).eq("id", context.userId);
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .update(patch as never)
+      .eq("id", context.userId)
+      .select(PROFILE_COLUMNS)
+      .single();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, profile };
   });
 
 /** Public artist page data by profile id, including track prompts. */

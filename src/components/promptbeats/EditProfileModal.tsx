@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayer } from "@/lib/player";
+import { updateMyProfile } from "@/lib/profile.functions";
 
 type EditableProfile = {
   id: string;
@@ -143,13 +144,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         donation_url: paypal || revolut || null,
         donation_custom_name: null,
       };
-      const { data: savedProfile, error: profileError } = await supabase
-        .from("profiles")
-        .update(profilePatch)
-        .eq("id", user.id)
-        .select("artist_alias, display_name, avatar_url, bio, website_url, instagram_url, tiktok_url, x_url, youtube_url, donation_provider, donation_url, donation_custom_name, profile_completed")
-        .single();
-      if (profileError) throw profileError;
+      const { profile: savedProfile } = await updateMyProfile({ data: profilePatch });
       if (!savedProfile) throw new Error("Profile update returned no saved profile");
 
       queryClient.setQueriesData(

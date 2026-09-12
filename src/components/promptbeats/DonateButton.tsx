@@ -1,4 +1,5 @@
 import { Heart } from "lucide-react";
+import { getSafeExternalUrl } from "@/lib/safe-external-url";
 
 function PayPalLogo() {
   return (
@@ -28,7 +29,8 @@ export function DonateButton({
 }) {
   if (!provider || !url) return null;
 
-  const isLink = /^https?:\/\//i.test(url);
+  const safeUrl = getSafeExternalUrl(url);
+  const isLink = Boolean(safeUrl);
 
   if (provider === "custom") {
     return (
@@ -36,7 +38,7 @@ export function DonateButton({
         <Heart className="h-4 w-4 shrink-0 text-primary" />
         <span className="font-semibold">{customName || "Support"}</span>
         {isLink ? (
-          <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-accent hover:underline">
+          <a href={safeUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-accent hover:underline">
             {url}
           </a>
         ) : (
@@ -50,7 +52,7 @@ export function DonateButton({
 
   return isLink ? (
     <a
-      href={url}
+      href={safeUrl!}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
