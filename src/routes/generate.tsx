@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
   checkSongQuality,
-
+  getCurrentUserAiModelAccess,
   getGenerationUsage,
   savePromptToLibrary,
   getAiModelSetting,
@@ -455,6 +455,7 @@ function QualityPanel({
   setConfirm,
   state,
   qualityCheckModel,
+  availableModels,
   onQualityCheckModelChange,
   qualityCheckResultModel,
   showQualityCheckModelSelector,
@@ -467,6 +468,7 @@ function QualityPanel({
   setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
   qualityCheckModel: string;
+  availableModels: typeof AI_MODELS;
   onQualityCheckModelChange: (model: string) => void;
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
@@ -505,13 +507,16 @@ function QualityPanel({
                 onChange={(e) => onQualityCheckModelChange(e.target.value)}
                 className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
               >
-                {AI_MODELS.map((m) => (
+                {availableModels.map((m) => (
                   <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
                     {m.label}
                   </option>
                 ))}
               </select>
             </label>
+          )}
+          {!showQualityCheckModelSelector && (
+            <p className="text-xs text-muted-foreground">Check with: {aiModelLabel(qualityCheckModel)}</p>
           )}
           {confirm === mode ? (
             <ConfirmBox
@@ -594,7 +599,10 @@ function AdminModelSelector() {
 
   return (
     <div className="glass mt-4 flex flex-wrap items-center gap-3 rounded-2xl p-4">
-      <span className="text-xs uppercase tracking-widest text-muted-foreground">AI model (admin)</span>
+      <div className="min-w-0">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Default AI model (admin setting)</p>
+        <p className="mt-1 text-xs text-muted-foreground">Used by inherit-mode users and as the default selection when available.</p>
+      </div>
       <select
         aria-label="AI model"
         value={data?.model ?? DEFAULT_AI_MODEL}
@@ -651,6 +659,9 @@ function GeneratePage() {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
+  const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
+  const [generationModelChosen, setGenerationModelChosen] = useState(false);
+  const [generationResultModel, setGenerationResultModel] = useState<string | null>(null);
   const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
   const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
   const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
@@ -714,6 +725,7 @@ function GeneratePage() {
     if (job.status === "completed" && job.result) {
       setResult(job.result);
       setGenerationId(job.generationId);
+      setGenerationResultModel(job.model);
       setSongContext(job.input);
       setQuality(null);
       setQualityCheckResultModel(null);
@@ -727,6 +739,7 @@ function GeneratePage() {
     }
     if (job.status === "cancelled") {
       setBusy(false);
+      setGenerationResultModel(null);
       setStatus(null);
       setJobId(null);
       rememberJob(null);
@@ -735,6 +748,7 @@ function GeneratePage() {
     if (job.status === "failed") {
       setStatus(job.error ?? "The generation failed. Please try again.");
       setBusy(false);
+      setGenerationResultModel(null);
       setJobId(null);
       rememberJob(null);
       void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -819,6 +833,12 @@ function GeneratePage() {
     enabled: !!user,
   });
 
+  const { data: aiModelAccess } = useQuery({
+    queryKey: ["my-ai-model-access"],
+    queryFn: () => getCurrentUserAiModelAccess(),
+    enabled: !!user,
+  });
+
   // Server-derived admin status (has_role RPC) — gates the temporary debug panel.
   const { data: moderation } = useQuery({
     queryKey: ["my-moderation"],
@@ -826,17 +846,25 @@ function GeneratePage() {
     enabled: !!user,
   });
 
-  const { data: generationModelSetting } = useQuery({
-    queryKey: ["ai-model"],
-    queryFn: () => getAiModelSetting(),
-    enabled: moderation?.isAdmin === true,
-  });
-
   useEffect(() => {
-    if (!qualityCheckModelChosen && generationModelSetting?.model) {
-      setQualityCheckModel(generationModelSetting.model);
+    if (!aiModelAccess) return;
+    if (!generationModelChosen || !aiModelAccess.availableModels.includes(generationModel as typeof aiModelAccess.availableModels[number])) {
+      setGenerationModel(aiModelAccess.defaultModel);
     }
-  }, [generationModelSetting?.model, qualityCheckModelChosen]);
+    if (!qualityCheckModelChosen || !aiModelAccess.availableModels.includes(qualityCheckModel as typeof aiModelAccess.availableModels[number])) {
+      setQualityCheckModel(aiModelAccess.defaultModel);
+    }
+  }, [
+    aiModelAccess,
+    generationModel,
+    generationModelChosen,
+    qualityCheckModel,
+    qualityCheckModelChosen,
+  ]);
+
+  const availableModels = AI_MODELS.filter((model) => aiModelAccess?.availableModels.includes(model.id) ?? model.id === DEFAULT_AI_MODEL);
+  const showGenerationModelSelector = availableModels.length > 1;
+  const showQualityCheckModelSelector = availableModels.length > 1;
 
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
   const minutesLeft = useMemo(() => {
@@ -911,6 +939,7 @@ function GeneratePage() {
     setSaved(false);
     setResult(null);
     setQuality(null);
+    setGenerationResultModel(null);
     setQualityCheckResultModel(null);
     setSongContext(null);
     setApplied({});
@@ -929,6 +958,7 @@ function GeneratePage() {
           genre: effectiveGenre,
           mood: effectiveMood,
           language: effectiveLanguage,
+          generationModel,
           structure: structure.join(" → ").slice(0, 600),
           production: production.trim().slice(0, 2000),
           instructions: instructions.trim().slice(0, 2000),
@@ -1001,7 +1031,7 @@ function GeneratePage() {
       // because the new items are new suggestions against the current song.
       if (res.quality) {
         setQuality(res.quality);
-        setQualityCheckResultModel(res.model ?? qualityCheckModel);
+        setQualityCheckResultModel(res.model ?? null);
         setApplied({});
         setApplyErrors({});
       } else {
@@ -1171,6 +1201,7 @@ function GeneratePage() {
     setCustomBpm("");
     setResult(null);
     setGenerationId(null);
+    setGenerationResultModel(null);
     setQuality(null);
     setSongContext(null);
     setJobId(null);
@@ -1503,7 +1534,30 @@ function GeneratePage() {
           {validationError && <p className="text-xs text-red-400">{validationError}</p>}
 
 
-          <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
+          <div className="space-y-2 pt-1">
+            {showGenerationModelSelector ? (
+              <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>Generate with:</span>
+                <select
+                  aria-label="Generation model"
+                  value={generationModel}
+                  onChange={(e) => {
+                    setGenerationModel(e.target.value);
+                    setGenerationModelChosen(true);
+                  }}
+                  className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
+                >
+                  {availableModels.map((m) => (
+                    <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="text-xs text-muted-foreground">Generation model: {aiModelLabel(generationModel)}</p>
+            )}
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
             <button
               onClick={generate}
               disabled={busy || blocked || !ready}
@@ -1515,6 +1569,7 @@ function GeneratePage() {
             <span className="text-xs text-muted-foreground">
               {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
             </span>
+            </div>
           </div>
 
           {confirmClear &&
@@ -1573,6 +1628,7 @@ function GeneratePage() {
 
         {!busy && result && (
           <div className="mt-6 space-y-4 pb-16">
+            {generationResultModel && <p className="text-xs text-muted-foreground">Generated with: {aiModelLabel(generationResultModel)}</p>}
             <div className="flex justify-end">
               <button
                 onClick={toggleAll}
@@ -1630,12 +1686,13 @@ function GeneratePage() {
               setConfirm={setConfirm}
               state={applyState}
               qualityCheckModel={qualityCheckModel}
+              availableModels={availableModels}
               onQualityCheckModelChange={(model) => {
                 setQualityCheckModel(model);
                 setQualityCheckModelChosen(true);
               }}
               qualityCheckResultModel={qualityCheckResultModel}
-              showQualityCheckModelSelector={moderation?.isAdmin === true}
+              showQualityCheckModelSelector={showQualityCheckModelSelector}
             />
           </div>
         )}

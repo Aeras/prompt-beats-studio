@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
@@ -17,6 +18,7 @@ const jobInput = z.object({
   genre: z.string().trim().min(1).max(400),
   mood: z.string().trim().min(1).max(60),
   language: z.string().trim().min(1).max(40),
+  generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
@@ -54,6 +56,8 @@ type JobRow = {
   input_payload: unknown;
   error: string | null;
   generation_id: string | null;
+  provider: string | null;
+  model: string | null;
   created_at: string;
 };
 
@@ -64,10 +68,12 @@ export type GenerationJob = {
   input: GenerationContext | null;
   error: string | null;
   generationId: string | null;
+  provider: string | null;
+  model: string | null;
   createdAt: string;
 };
 
-const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,created_at";
+const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,provider,model,created_at";
 
 function toJob(row: JobRow): GenerationJob {
   const parsed = resultShape.safeParse(row.result);
@@ -79,6 +85,8 @@ function toJob(row: JobRow): GenerationJob {
     input: input.success ? input.data : null,
     error: row.error,
     generationId: row.generation_id,
+    provider: row.provider,
+    model: row.model,
     createdAt: row.created_at,
   };
 }
@@ -97,6 +105,8 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
+    const { getModelForUser } = await import("@/lib/ai-provider.server");
+    await getModelForUser(context.userId, data.generationModel ?? undefined);
     const { idempotencyKey, ...payload } = data;
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,
