@@ -787,92 +787,11 @@ async function runQualityCheck(
 export const generateSongPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => generateInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
-    // Admin bypass (administrative/testing): checked server-side before the
-    // normal 10/hour rejection; all other users keep the existing limit.
-    const isAdmin = await isAdminUser(supabase, context.userId);
-    const usage = await readUsage(supabase, context.userId);
-    if (!isAdmin && usage.remaining <= 0) {
-      return { error: "rate_limited" as const, status: 429, usage, result: null, quality: null };
-    }
-
-    // Provider/model is resolved server-side only; clients cannot influence it.
-    const { call, model, provider, schemas } = await activeCaller(undefined, context.userId);
-
-    // Analytics only observes real provider responses; it never adds a call.
-    const records: PendingUsage[] = [];
-
-    let generated: ModelResult;
-    try {
-      generated = await call({
-        system: SYSTEM_PROMPT,
-        prompt: buildPrompt(data),
-        maxTokens: 8192,
-        schema: schemas.song,
-      });
-    } catch (err) {
-      // Provider failed before returning usage — record the failure, no token guesses.
-      await flushUsage(context.userId, null, [
-        { operation: "generate", provider, model, usage: null, success: false },
-      ]);
-      throw err;
-    }
-
-    const { text: raw, stopReason } = generated;
-    const generateOk = stopReason === "end_turn";
-    records.push({
-      operation: "generate",
-      provider: generated.provider,
-      model: generated.model,
-      usage: generated.usage,
-      success: generateOk,
-    });
-
-    if (!generateOk) {
-      await flushUsage(context.userId, null, records);
-      if (stopReason === "max_tokens") {
-        throw new Error("The AI response was incomplete. Please try again.");
-      }
-      throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
-    }
-
-    const parsed = parseSections(raw);
-    const result = generationOutput.safeParse(parsed);
-    if (!result.success) {
-      await flushUsage(context.userId, null, records);
-      throw new Error("The AI returned an incomplete or invalid response. Please try again.");
-    }
-
-    // Quality Layer 2.0 — stage 1 is now user-triggered (see checkSongQuality).
-    // Generate never runs the evaluator automatically.
-    const quality: QualityReport | null = null;
-
-
-    const { data: inserted, error: insertError } = await supabase
-      .from("ai_generations")
-      .insert({ user_id: context.userId })
-      .select("id")
-      .maybeSingle();
-    if (insertError) {
-      await flushUsage(context.userId, null, records);
-      throw new Error(`The generation could not be recorded (${insertError.message}). Please try again.`);
-    }
-    const generationId = (inserted as { id?: string } | null)?.id ?? null;
-
-    await flushUsage(context.userId, generationId, records);
-    // Server-side usage visibility of which model served the request.
-    console.log(`[ai] generation served by model=${model}`);
-    const after = await usageFor(supabase, context.userId);
-    return {
-      error: null,
-      status: 200,
-      usage: after,
-      result: result.data,
-      quality,
-      remainingGenerations: after.remaining,
-      generationId,
-    };
+  .handler(async () => {
+    // All provider execution now belongs to the durable generation-job flow.
+    // Keep this export as a compatibility guard so an old client cannot create
+    // a second, admission-free generation architecture.
+    throw new Error("Direct generation is no longer available. Please use the generation job flow.");
   });
 
 /** Validated shape of a durable generation job's stored input payload. */
@@ -938,10 +857,7 @@ export async function runSongGeneration(
   return { result: result.data, provider: generated.provider, model: generated.model };
 }
 
-/**
- * Records one consumed creation against the rolling hourly limit and returns
- * its id. Admins keep the existing bypass; the limit logic itself is unchanged.
- */
+/** Completes a QC claim after a validated provider response and returns its id. */
 async function consumeCreation(
   supabase: Supa,
   idempotencyKey: string,
@@ -951,7 +867,7 @@ async function consumeCreation(
     _idempotency_key: idempotencyKey,
     _quality_report: quality,
   });
-  if (error) throw new Error(`The action could not be recorded (${error.message}). Please try again.`);
+  if (error) throw new Error("The action could not be recorded. Please try again.");
   const parsed = z.string().uuid().safeParse(inserted);
   if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
   return parsed.data;
@@ -973,7 +889,7 @@ const qualityCheckInput = z.object({
 });
 
 const qualityCheckClaim = z.object({
-  status: z.enum(["claimed", "processing", "completed"]),
+  status: z.enum(["claimed", "processing", "completed", "failed", "rate_limited"]),
   qualityReport: qualityOutput.nullish(),
 });
 
@@ -987,10 +903,6 @@ export const checkSongQuality = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as Supa;
     const isAdmin = await isAdminUser(supabase, context.userId);
-    const usage = await readUsage(supabase, context.userId);
-    if (!isAdmin && usage.remaining <= 0) {
-      return { error: "rate_limited" as const, quality: null, model: null, usage };
-    }
 
     const { call, model, provider, schemas } = await activeCaller(
       isAdmin ? data.qualityCheckModel ?? undefined : undefined,
@@ -1010,18 +922,35 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     const { data: rawClaim, error: claimError } = await (supabase as any).rpc("claim_quality_check", {
       _idempotency_key: data.idempotencyKey,
     });
-    if (claimError) throw new Error(`The quality check could not be started (${claimError.message}).`);
+    if (claimError) throw new Error("The quality check could not be started. Please try again.");
     const claim = qualityCheckClaim.safeParse(rawClaim);
     if (!claim.success) throw new Error("The quality check could not be started. Please try again.");
 
+    if (claim.data.status === "rate_limited") {
+      const after = await usageFor(supabase, context.userId);
+      return { error: "rate_limited" as const, quality: null, model: null, usage: after };
+    }
     if (claim.data.status === "processing") {
       const after = await usageFor(supabase, context.userId);
       return { error: "in_progress" as const, quality: null, model: null, usage: after };
+    }
+    if (claim.data.status === "failed") {
+      const after = await usageFor(supabase, context.userId);
+      return { error: "unavailable" as const, quality: null, model: null, usage: after };
     }
     if (claim.data.status === "completed") {
       if (!claim.data.qualityReport) throw new Error("The completed quality check was invalid. Please try again.");
       const after = await usageFor(supabase, context.userId);
       return { error: null, quality: claim.data.qualityReport, model: data.qualityCheckModel, usage: after };
+    }
+
+    const { error: startedError } = await (supabase as any).rpc("mark_quality_check_provider_started", {
+      _idempotency_key: data.idempotencyKey,
+    });
+    if (startedError) {
+      // Do not release by idempotency key here: a stale caller could race a
+      // later claimant and release that claimant's in-progress action.
+      throw new Error("The quality check could not be started. Please try again.");
     }
 
     let quality: QualityReport | null;
@@ -1051,7 +980,15 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       return { error: "unavailable" as const, quality: null, model: null, usage: after };
     }
 
-    const consumedId = await consumeCreation(supabase, data.idempotencyKey, quality);
+    let consumedId: string;
+    try {
+      consumedId = await consumeCreation(supabase, data.idempotencyKey, quality);
+    } catch {
+      // Do not release a post-provider claim: releasing it would allow a retry
+      // to invoke the paid provider a second time. The idempotency row remains
+      // processing so an internal retry can finish the commit safely.
+      throw new Error("The quality check could not be recorded. Please try again.");
+    }
     await flushUsage(context.userId, data.generationId ?? consumedId, records);
     const after = await usageFor(supabase, context.userId);
     return { error: null, quality, model, usage: after };

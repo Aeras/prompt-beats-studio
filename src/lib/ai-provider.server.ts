@@ -61,7 +61,11 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     }),
   });
 
-  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[ai-provider] Anthropic request failed (${res.status})`, body.slice(0, 1000));
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
 
   const payload = (await res.json()) as {
     stop_reason?: string | null;
@@ -158,8 +162,19 @@ export async function getActiveModel(): Promise<AiModelId> {
 /** Resolve a provider model without trusting a browser-supplied model id. */
 export async function getModelForUser(userId: string, requestedModel?: string): Promise<AiModelId> {
   const active = await getActiveModel();
-  const requested = AI_MODELS.find((model) => model.id === requestedModel)?.id;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (authError || !authUser.user) throw new Error("The account is no longer available.");
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profile_private" as never)
+    .select("is_banned")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (profileError || !profile || (profile as { is_banned?: boolean }).is_banned === true) {
+    throw new Error("This account is not allowed to use AI services.");
+  }
+
+  const requested = AI_MODELS.find((model) => model.id === requestedModel)?.id;
   const { data: isAdmin } = await supabaseAdmin.rpc("has_role" as never, {
     _user_id: userId,
     _role: "admin",

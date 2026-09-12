@@ -8,14 +8,15 @@
  * Safety rules implemented here:
  * - The provider is called at most once per job: a job is claimed with a
  *   conditional `pending -> processing` update, which is atomic in Postgres.
- * - A claimed job is never re-claimed, so a retry can never duplicate a paid
- *   provider call. Jobs stuck in `processing` are reaped as `failed`.
+ * - A claimed job is never re-claimed after the provider-start marker is set,
+ *   so a retry can never duplicate a paid provider call. Only claims that
+ *   never reached the provider are safely reaped.
  * - Only the service-role client (server-only) writes job state.
  */
 import { runSongGeneration, generateJobInput } from "@/lib/ai.functions";
 
-/** A processing job older than this is considered lost infrastructure-wise. */
-const STALE_PROCESSING_MS = 5 * 60 * 1000;
+/** Pre-provider claims are safe to reclaim after this shorter timeout. */
+const STALE_UNSTARTED_MS = 15 * 60 * 1000;
 
 type AdminClient = { from: (t: string) => any };
 
@@ -26,8 +27,11 @@ async function admin(): Promise<AdminClient> {
 
 function safeErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "The generation failed.";
-  // Never leak provider credentials or internal endpoints to the client.
-  return raw.replace(/[A-Za-z0-9_-]{24,}/g, "***").slice(0, 400);
+  if (raw === "The AI response was incomplete. Please try again.") return raw;
+  if (raw === "The AI returned an incomplete or invalid response. Please try again.") return raw;
+  if (raw === "The account is no longer available.") return raw;
+  if (raw === "This account is not allowed to use AI services.") return raw;
+  return "The AI provider is temporarily unavailable. Please try again later.";
 }
 
 /**
@@ -56,6 +60,16 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
 
   try {
     const input = generateJobInput.parse(job.input_payload);
+    const { data: marked, error: markerError } = await db
+      .from("ai_generation_jobs")
+      .update({ provider_started_at: new Date().toISOString() })
+      .eq("id", job.id)
+      .eq("status", "processing")
+      .is("provider_started_at", null)
+      .select("id")
+      .maybeSingle();
+    if (markerError || !marked) throw new Error("The generation could not be started. Please try again.");
+
     const out = await runSongGeneration(input, job.user_id, job.generation_id);
     await db
       .from("ai_generation_jobs")
@@ -88,26 +102,27 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
 }
 
 /**
- * Marks jobs that were claimed but never finished (worker eviction, timeout) as
- * failed. It never re-issues a provider call for them: that could duplicate a
- * paid generation. The user retries explicitly instead.
+ * Automatically reclaims only jobs that never reached the provider-execution
+ * commit marker. Provider-committed work is intentionally excluded: its
+ * operational reconciliation requires worker/process termination to be
+ * established before the service-only reconciliation function is used.
  */
 export async function reapStaleJobs(): Promise<number> {
   const db = await admin();
-  const cutoff = new Date(Date.now() - STALE_PROCESSING_MS).toISOString();
+  const cutoff = new Date(Date.now() - STALE_UNSTARTED_MS).toISOString();
   const { data } = await db
     .from("ai_generation_jobs")
     .update({
       status: "failed",
-      error: "The generation did not finish in time. Please try again.",
+      error: "The generation could not be started. Please try again.",
       completed_at: new Date().toISOString(),
     })
     .eq("status", "processing")
+    .is("provider_started_at", null)
     .lt("started_at", cutoff)
     .select("id");
   return (data as { id: string }[] | null)?.length ?? 0;
 }
-
 /** Job ids still waiting for a worker (safe to (re)start — nothing was called yet). */
 export async function pendingJobIds(limit = 5): Promise<string[]> {
   const db = await admin();
