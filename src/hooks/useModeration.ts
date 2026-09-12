@@ -6,14 +6,19 @@ import { getMyModeration, type ModerationContext } from "@/lib/moderation.functi
 /** Admin / banned status for the signed-in user (false for signed-out visitors). */
 export function useModeration() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const moderationQuery = useQuery({
     queryKey: ["moderation", user?.id ?? "anon"],
     queryFn: () => getMyModeration() as Promise<ModerationContext>,
     enabled: Boolean(user),
     staleTime: 60_000,
+    refetchOnWindowFocus: "always",
   });
+  const { data } = moderationQuery;
 
   return {
+    isLoading: moderationQuery.isLoading,
+    isError: moderationQuery.isError,
+    error: moderationQuery.error,
     isAdmin: data?.role === "admin",
     isBanned: false,
     role: data?.role ?? "user",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,11 +21,26 @@ export function TrackModerationControls({ trackId }: { trackId: string }) {
   const [reasonCode, setReasonCode] = useState<(typeof TRACK_MODERATION_REASONS)[number]["code"] | "">("");
   const [reasonText, setReasonText] = useState("");
   const enabled = moderation.canLockTracks;
-  const { data: track, isLoading } = useQuery({
+  const {
+    data: track,
+    isLoading: isTrackLoading,
+    isError: isTrackError,
+    error: trackError,
+  } = useQuery({
     queryKey: ["staff-track", trackId],
     queryFn: () => getStaffTrack({ data: { trackId } }),
     enabled,
   });
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (moderation.isError && moderation.canLockTracks) {
+      console.error("[TrackModerationControls] moderation context failed", moderation.error);
+    }
+    if (isTrackError) {
+      console.error("[TrackModerationControls] staff track fetch failed", trackError);
+    }
+  }, [isTrackError, moderation.canLockTracks, moderation.error, moderation.isError, trackError]);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["tracks"] });
@@ -51,7 +66,16 @@ export function TrackModerationControls({ trackId }: { trackId: string }) {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Could not delete track"),
   });
 
-  if (!enabled || isLoading || !track) return null;
+  if (!enabled) return null;
+  if (moderation.isLoading) return null;
+  if (moderation.isError) {
+    return <p className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-200">Track moderation could not be loaded.</p>;
+  }
+  if (isTrackLoading) return null;
+  if (isTrackError) {
+    return <p className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-200">Track moderation could not be loaded.</p>;
+  }
+  if (!track) return null;
   const busy = lock.isPending || unlock.isPending || remove.isPending;
   const locked = track.moderation_status === "locked";
   const validReason = Boolean(reasonCode) && (reasonCode !== "other" || Boolean(reasonText.trim()));
