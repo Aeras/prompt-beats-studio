@@ -5,14 +5,14 @@ import { useLikes } from "@/lib/likes";
 
 /** Heart toggle with a live like counter. */
 export function LikeButton({ trackId, enabled = true }: { trackId: string; enabled?: boolean }) {
-  const { count, liked, canLike, toggle } = useLikes(trackId, enabled);
+  const { count, liked, canLike, isPending, toggle } = useLikes(trackId, enabled);
 
   return (
     <button
       aria-label={liked ? "Remove like" : "Like track"}
       aria-pressed={liked}
       title={canLike ? (liked ? "Remove like" : "Like track") : "Sign in to like"}
-      disabled={!enabled}
+      disabled={!enabled || isPending}
       onClick={() => {
         if (canLike) toggle();
       }}

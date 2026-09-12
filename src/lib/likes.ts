@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +11,7 @@ export function useLikes(trackId: string, enabled = true) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
+  const mutationInFlightRef = useRef(false);
   const key = ["likes", trackId, userId];
 
   const query = useQuery<LikeState>({
@@ -18,21 +20,23 @@ export function useLikes(trackId: string, enabled = true) {
     queryFn: async () => {
       // Public like totals come from a count-only view; who liked what is never
       // exposed (the likes table only reveals the signed-in user's own rows).
-      const { data: countData } = await supabase
+      const { data: countData, error: countError } = await supabase
         .from("track_like_counts")
         .select("like_count")
         .eq("track_id", trackId)
         .maybeSingle();
+      if (countError) throw countError;
       const raw = (countData as { like_count: number | string | null } | null)?.like_count;
       const count = raw == null ? 0 : Number(raw);
       let liked = false;
       if (userId) {
-        const { data } = await supabase
+        const { data, error: ownLikeError } = await supabase
           .from("likes")
           .select("id")
           .eq("track_id", trackId)
           .eq("user_id", userId)
           .maybeSingle();
+        if (ownLikeError) throw ownLikeError;
         liked = Boolean(data);
       }
       return { count: count ?? 0, liked };
@@ -40,10 +44,9 @@ export function useLikes(trackId: string, enabled = true) {
   });
 
   const toggle = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wasLiked: boolean) => {
       if (!userId) throw new Error("Sign in to like tracks");
-      const liked = queryClient.getQueryData<LikeState>(key)?.liked ?? false;
-      if (liked) {
+      if (wasLiked) {
         const { error } = await supabase
           .from("likes")
           .delete()
@@ -55,13 +58,13 @@ export function useLikes(trackId: string, enabled = true) {
         if (error) throw error;
       }
     },
-    onMutate: async () => {
+    onMutate: async (wasLiked) => {
       await queryClient.cancelQueries({ queryKey: key });
       const prev = queryClient.getQueryData<LikeState>(key);
       if (prev) {
         queryClient.setQueryData<LikeState>(key, {
-          liked: !prev.liked,
-          count: Math.max(0, prev.count + (prev.liked ? -1 : 1)),
+          liked: !wasLiked,
+          count: Math.max(0, prev.count + (wasLiked ? -1 : 1)),
         });
       }
       return { prev };
@@ -70,6 +73,7 @@ export function useLikes(trackId: string, enabled = true) {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
     },
     onSettled: () => {
+      mutationInFlightRef.current = false;
       void queryClient.invalidateQueries({ queryKey: key });
     },
   });
@@ -78,6 +82,17 @@ export function useLikes(trackId: string, enabled = true) {
     count: query.data?.count ?? 0,
     liked: query.data?.liked ?? false,
     canLike: Boolean(userId),
-    toggle: () => toggle.mutate(),
+    isPending: toggle.isPending,
+    toggle: () => {
+      if (mutationInFlightRef.current) return;
+      const wasLiked = queryClient.getQueryData<LikeState>(key)?.liked ?? false;
+      mutationInFlightRef.current = true;
+      try {
+        toggle.mutate(wasLiked);
+      } catch (error) {
+        mutationInFlightRef.current = false;
+        throw error;
+      }
+    },
   };
 }
