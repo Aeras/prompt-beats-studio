@@ -2,7 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Copy, FlaskConical, Loader2, Save, Sparkles, Trash2, Wand2, ArrowLeft } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  FlaskConical,
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+  Wand2,
+  ArrowLeft,
+} from "lucide-react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -55,7 +66,8 @@ export const Route = createFileRoute("/generate")({
       { property: "og:title", content: "AI Prompt & Lyrics Generator — PromptBeats" },
       {
         property: "og:description",
-        content: "Generate optimized metatags, structured lyrics and producer notes for AI music platforms.",
+        content:
+          "Generate optimized metatags, structured lyrics and producer notes for AI music platforms.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -66,51 +78,224 @@ export const Route = createFileRoute("/generate")({
 
 const CUSTOM = "Custom…";
 const GENRE_OPTIONS = [
-  "Reggaeton", "Cumbia", "Latin Pop", "Italo Disco", "Synthwave", "Acoustic", "Hip-Hop",
-  "Pop", "Rock", "R&B", "House", "Techno", "Electronic / EDM", "Drum & Bass", "Trap", "Jazz",
-  "Lo-fi", "Country", "Metal", "Afrobeats", CUSTOM,
+  "Reggaeton",
+  "Cumbia",
+  "Latin Pop",
+  "Italo Disco",
+  "Synthwave",
+  "Acoustic",
+  "Hip-Hop",
+  "Pop",
+  "Rock",
+  "R&B",
+  "House",
+  "Techno",
+  "Electronic / EDM",
+  "Drum & Bass",
+  "Trap",
+  "Jazz",
+  "Lo-fi",
+  "Country",
+  "Metal",
+  "Afrobeats",
+  CUSTOM,
 ];
 
-const MOOD_OPTIONS = ["Energetic", "Melancholic", "Dark", "Uplifting", "Romantic", "Dreamy", "Aggressive", "Nostalgic", CUSTOM];
-const LANGUAGE_OPTIONS = ["Greek", "English", "Spanish", "Russian", "Italian", "French", "German", "Portuguese", CUSTOM];
+const MOOD_OPTIONS = [
+  "Energetic",
+  "Melancholic",
+  "Dark",
+  "Uplifting",
+  "Romantic",
+  "Dreamy",
+  "Aggressive",
+  "Nostalgic",
+  CUSTOM,
+];
+const LANGUAGE_OPTIONS = [
+  "Greek",
+  "English",
+  "Spanish",
+  "Russian",
+  "Italian",
+  "French",
+  "German",
+  "Portuguese",
+  CUSTOM,
+];
 
 // ── Advanced mode catalogues (data-driven, easy to extend) ──
 const ADVANCED_STYLES = [
-  "Reggaeton", "Pop", "Rock", "R&B", "Hip-Hop", "Trap", "Soul", "Funk", "Jazz", "Blues",
-  "Disco", "House", "Techno", "EDM", "Latin", "Cumbia", "Salsa", "Bachata", "Reggae",
-  "Dancehall", "Afrobeat", "Country", "Folk", "Acoustic", "Ballad", "Metal", "Punk", "Indie",
-  "Alternative", "Lo-fi", "K-Pop", "J-Pop", "Classical", "Orchestral", "Cinematic", CUSTOM,
+  "Reggaeton",
+  "Pop",
+  "Rock",
+  "R&B",
+  "Hip-Hop",
+  "Trap",
+  "Soul",
+  "Funk",
+  "Jazz",
+  "Blues",
+  "Disco",
+  "House",
+  "Techno",
+  "EDM",
+  "Latin",
+  "Cumbia",
+  "Salsa",
+  "Bachata",
+  "Reggae",
+  "Dancehall",
+  "Afrobeat",
+  "Country",
+  "Folk",
+  "Acoustic",
+  "Ballad",
+  "Metal",
+  "Punk",
+  "Indie",
+  "Alternative",
+  "Lo-fi",
+  "K-Pop",
+  "J-Pop",
+  "Classical",
+  "Orchestral",
+  "Cinematic",
+  CUSTOM,
 ];
 
 const ADVANCED_MOODS = [
-  "Romantic", "Happy", "Sad", "Melancholic", "Emotional", "Nostalgic", "Passionate", "Energetic",
-  "Uplifting", "Euphoric", "Dreamy", "Chill", "Relaxed", "Intimate", "Sensual", "Hopeful",
-  "Bittersweet", "Dark", "Mysterious", "Dramatic", "Powerful", "Aggressive", "Angry", "Playful",
-  "Joyful", "Peaceful", "Tender", "Warm", "Lonely", "Heartbroken", "Reflective", "Inspirational",
-  "Epic", "Triumphant", "Confident", "Rebellious", "Soulful", "Atmospheric", "Hypnotic", "Party",
+  "Romantic",
+  "Happy",
+  "Sad",
+  "Melancholic",
+  "Emotional",
+  "Nostalgic",
+  "Passionate",
+  "Energetic",
+  "Uplifting",
+  "Euphoric",
+  "Dreamy",
+  "Chill",
+  "Relaxed",
+  "Intimate",
+  "Sensual",
+  "Hopeful",
+  "Bittersweet",
+  "Dark",
+  "Mysterious",
+  "Dramatic",
+  "Powerful",
+  "Aggressive",
+  "Angry",
+  "Playful",
+  "Joyful",
+  "Peaceful",
+  "Tender",
+  "Warm",
+  "Lonely",
+  "Heartbroken",
+  "Reflective",
+  "Inspirational",
+  "Epic",
+  "Triumphant",
+  "Confident",
+  "Rebellious",
+  "Soulful",
+  "Atmospheric",
+  "Hypnotic",
+  "Party",
   "Festive",
 ];
 
 const INSTRUMENTS = [
-  "Piano", "Acoustic Piano", "Electric Piano", "Grand Piano", "Organ", "Synth", "Synth Bass",
-  "Acoustic Guitar", "Electric Guitar", "Classical Guitar", "Bass", "Electric Bass", "Upright Bass",
-  "Drums", "Electronic Drums", "Percussion", "Congas", "Bongos", "Timbales", "Hand Claps",
-  "Violin", "Viola", "Cello", "Double Bass", "Strings", "Trumpet", "Trombone", "Saxophone",
-  "Flute", "Clarinet", "Oboe", "Harmonica", "Accordion", "Banjo", "Mandolin", "Ukulele", "Harp",
-  "Marimba", "Xylophone", "Brass", "Choir",
+  "Piano",
+  "Acoustic Piano",
+  "Electric Piano",
+  "Grand Piano",
+  "Organ",
+  "Synth",
+  "Synth Bass",
+  "Acoustic Guitar",
+  "Electric Guitar",
+  "Classical Guitar",
+  "Bass",
+  "Electric Bass",
+  "Upright Bass",
+  "Drums",
+  "Electronic Drums",
+  "Percussion",
+  "Congas",
+  "Bongos",
+  "Timbales",
+  "Hand Claps",
+  "Violin",
+  "Viola",
+  "Cello",
+  "Double Bass",
+  "Strings",
+  "Trumpet",
+  "Trombone",
+  "Saxophone",
+  "Flute",
+  "Clarinet",
+  "Oboe",
+  "Harmonica",
+  "Accordion",
+  "Banjo",
+  "Mandolin",
+  "Ukulele",
+  "Harp",
+  "Marimba",
+  "Xylophone",
+  "Brass",
+  "Choir",
 ];
 
 const STRUCTURE_TAGS = [
-  "Intro", "Verse", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge",
-  "Breakdown", "Build", "Drop", "Interlude", "Instrumental", "Instrumental Break", "Solo",
-  "Final Chorus", "Outro", "Coda",
+  "Intro",
+  "Verse",
+  "Pre-Chorus",
+  "Chorus",
+  "Post-Chorus",
+  "Hook",
+  "Refrain",
+  "Bridge",
+  "Breakdown",
+  "Build",
+  "Drop",
+  "Interlude",
+  "Instrumental",
+  "Instrumental Break",
+  "Solo",
+  "Final Chorus",
+  "Outro",
+  "Coda",
 ];
 
 const BPM_OPTIONS = [
-  "Auto", "60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145",
-  "150", "160", "170", "180", "190", "200", "Custom",
+  "Auto",
+  "60",
+  "70",
+  "80",
+  "90",
+  "100",
+  "110",
+  "120",
+  "125",
+  "128",
+  "130",
+  "135",
+  "140",
+  "145",
+  "150",
+  "160",
+  "170",
+  "180",
+  "190",
+  "200",
+  "Custom",
 ];
-
 
 /** Merges free-text custom values with selected chips, trimmed and de-duplicated. */
 function mergeValues(selected: string[], custom: string) {
@@ -160,18 +345,26 @@ function ChipGroup({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
+  return (
+    <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>
+  );
 }
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
-      {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">
+        {title}
+      </span>
+      {hint && (
+        <span className="text-[10px] text-muted-foreground">
+          {"\u00b7 "}
+          {hint}
+        </span>
+      )}
     </div>
   );
 }
-
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
@@ -193,13 +386,14 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-
 // TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
 // evaluator response from the current generation. Remove after testing.
 function QualityIssueList({ label, items }: { label: string; items: string[] }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       {items.length === 0 ? (
         <p className="mt-1 text-xs text-muted-foreground/70">None</p>
       ) : (
@@ -226,7 +420,6 @@ function ActualIssues({ quality }: { quality: QualityReport }) {
     </div>
   );
 }
-
 
 function CostButton({
   label,
@@ -292,7 +485,12 @@ type ApplyState = {
   onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
 };
 
-function ApplyRow({ id, state, onApply, onUndo }: {
+function ApplyRow({
+  id,
+  state,
+  onApply,
+  onUndo,
+}: {
   id: string;
   state: ApplyState;
   onApply: () => void;
@@ -332,7 +530,9 @@ function CorrectionCard({ id, c, state }: { id: string; c: CorrectionItem; state
         {c.field === "lyrics" && c.sectionLabel ? ` · [${c.sectionLabel}]` : ""}
       </p>
       <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
-      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">{c.originalText}</p>
+      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">
+        {c.originalText}
+      </p>
       <p className="whitespace-pre-wrap text-xs text-green-300">{c.replacementText}</p>
       <ApplyRow
         id={id}
@@ -397,10 +597,22 @@ function SuggestionGroup({
   );
 }
 
-function QualityResults({ quality, prefix, state, model }: { quality: QualityReport; prefix: string; state: ApplyState; model: string | null }) {
+function QualityResults({
+  quality,
+  prefix,
+  state,
+  model,
+}: {
+  quality: QualityReport;
+  prefix: string;
+  state: ApplyState;
+  model: string | null;
+}) {
   return (
     <div className="mt-4 space-y-4">
-      {model && <p className="text-xs text-muted-foreground">Checked with: {aiModelLabel(model)}</p>}
+      {model && (
+        <p className="text-xs text-muted-foreground">Checked with: {aiModelLabel(model)}</p>
+      )}
       <div className="flex items-center gap-4 text-sm">
         <span>
           Passed:{" "}
@@ -414,7 +626,9 @@ function QualityResults({ quality, prefix, state, model }: { quality: QualityRep
       </div>
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">1 · Actual issues</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">
+          1 · Actual issues
+        </p>
         <p className="text-[11px] text-muted-foreground">Problems that may need correction.</p>
         <div className="mt-2">
           <ActualIssues quality={quality} />
@@ -422,7 +636,12 @@ function QualityResults({ quality, prefix, state, model }: { quality: QualityRep
         {quality.corrections.length > 0 && (
           <div className="mt-3 space-y-2">
             {quality.corrections.map((c, i) => (
-              <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />
+              <CorrectionCard
+                key={`${prefix}-fix-${i}`}
+                id={`${prefix}-fix-${i}`}
+                c={c}
+                state={state}
+              />
             ))}
           </div>
         )}
@@ -478,7 +697,9 @@ function QualityPanel({
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
         <FlaskConical className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">Quality check</h2>
+        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">
+          Quality check
+        </h2>
       </div>
 
       {quality && (
@@ -516,7 +737,9 @@ function QualityPanel({
             </label>
           )}
           {!showQualityCheckModelSelector && (
-            <p className="text-xs text-muted-foreground">Check with: {aiModelLabel(qualityCheckModel)}</p>
+            <p className="text-xs text-muted-foreground">
+              Check with: {aiModelLabel(qualityCheckModel)}
+            </p>
           )}
           {confirm === mode ? (
             <ConfirmBox
@@ -590,7 +813,6 @@ function ResultSection({
   );
 }
 
-
 /** Super Admin only: picks the AI model that serves every user's generations. */
 function AdminModelSelector() {
   const queryClient = useQueryClient();
@@ -600,8 +822,12 @@ function AdminModelSelector() {
   return (
     <div className="glass mt-4 flex flex-wrap items-center gap-3 rounded-2xl p-4">
       <div className="min-w-0">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Default AI model (admin setting)</p>
-        <p className="mt-1 text-xs text-muted-foreground">Used by inherit-mode users and as the default selection when available.</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          Default AI model (admin setting)
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Used by inherit-mode users and as the default selection when available.
+        </p>
       </div>
       <select
         aria-label="AI model"
@@ -627,8 +853,6 @@ function AdminModelSelector() {
     </div>
   );
 }
-
-
 
 function GeneratePage() {
   const { user, loading } = useAuth();
@@ -657,7 +881,12 @@ function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
+  const [result, setResult] = useState<{
+    title: string;
+    tags: string;
+    lyrics: string;
+    note: string;
+  } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
@@ -680,7 +909,6 @@ function GeneratePage() {
   // analyzes the current editable state (Apply / Undo + manual edits included).
   const resultRef = useRef(result);
   resultRef.current = result;
-
 
   // Part 3 — collapsible result sections (UI state only, collapsed by default).
   const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
@@ -780,7 +1008,8 @@ function GeneratePage() {
   // Recovery after a refresh, a crash, or a Generate whose response was lost.
   useEffect(() => {
     if (!user || jobId || result) return;
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    const stored =
+      typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
     if (stored) {
       setJobId(stored);
       setBusy(true);
@@ -815,9 +1044,6 @@ function GeneratePage() {
     };
   }, [jobId, refetchJob]);
 
-
-
-
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
   }, [loading, user, navigate]);
@@ -848,10 +1074,20 @@ function GeneratePage() {
 
   useEffect(() => {
     if (!aiModelAccess) return;
-    if (!generationModelChosen || !aiModelAccess.availableModels.includes(generationModel as typeof aiModelAccess.availableModels[number])) {
+    if (
+      !generationModelChosen ||
+      !aiModelAccess.availableModels.includes(
+        generationModel as (typeof aiModelAccess.availableModels)[number],
+      )
+    ) {
       setGenerationModel(aiModelAccess.defaultModel);
     }
-    if (!qualityCheckModelChosen || !aiModelAccess.availableModels.includes(qualityCheckModel as typeof aiModelAccess.availableModels[number])) {
+    if (
+      !qualityCheckModelChosen ||
+      !aiModelAccess.availableModels.includes(
+        qualityCheckModel as (typeof aiModelAccess.availableModels)[number],
+      )
+    ) {
       setQualityCheckModel(aiModelAccess.defaultModel);
     }
   }, [
@@ -862,7 +1098,9 @@ function GeneratePage() {
     qualityCheckModelChosen,
   ]);
 
-  const availableModels = AI_MODELS.filter((model) => aiModelAccess?.availableModels.includes(model.id) ?? model.id === DEFAULT_AI_MODEL);
+  const availableModels = AI_MODELS.filter(
+    (model) => aiModelAccess?.availableModels.includes(model.id) ?? model.id === DEFAULT_AI_MODEL,
+  );
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
 
@@ -883,8 +1121,7 @@ function GeneratePage() {
   const baseGenre = styleList.join(", ");
 
   const instrumentList = mergeValues(instruments, customInstruments);
-  const effectiveBpm =
-    bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
+  const effectiveBpm = bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
   const bpmNumber = Number(effectiveBpm);
   const bpmInvalid =
     !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
@@ -962,7 +1199,6 @@ function GeneratePage() {
           structure: structure.join(" → ").slice(0, 600),
           production: production.trim().slice(0, 2000),
           instructions: instructions.trim().slice(0, 2000),
-
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
@@ -1066,10 +1302,7 @@ function GeneratePage() {
   // ── Deterministic Apply / Undo. No AI provider request is made here. ──
   // Corrections and suggestions are applied to the single editable result.
   type Song = { title: string; tags: string; lyrics: string; note: string };
-  const makeApplyState = (
-    target: Song | null,
-    setTarget: (next: Song) => void,
-  ): ApplyState => ({
+  const makeApplyState = (target: Song | null, setTarget: (next: Song) => void): ApplyState => ({
     applied,
     errors: applyErrors,
     onApplyCorrection: (id, c) => {
@@ -1158,7 +1391,6 @@ function GeneratePage() {
     structure.length > 0 ||
     !!production.trim() ||
     !!instructions.trim() ||
-
     !!result ||
     !!quality;
 
@@ -1218,10 +1450,11 @@ function GeneratePage() {
     setConfirmClear(false);
     setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) {
-      setStatus("Generator cleared. The generation already started and may still finish in the background.");
+      setStatus(
+        "Generator cleared. The generation already started and may still finish in the background.",
+      );
     }
   };
-
 
   return (
     <AppShell
@@ -1232,472 +1465,516 @@ function GeneratePage() {
         </div>
       }
     >
-    <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
-      <div className="mx-auto max-w-3xl">
-        <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to the feed
-        </Link>
+      <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to the feed
+          </Link>
 
-        <div className="mt-4 flex items-center gap-3">
-          <img
-            src={logoAsset.url}
-            alt="PromptBeats logo"
-            width={40}
-            height={40}
-            className="h-10 w-10 shrink-0 rounded-xl glow-neon"
-          />
-          <div className="min-w-0">
-            <h1 className="font-display text-2xl font-bold tracking-tight">AI Prompt &amp; Lyrics Generator</h1>
-            <p className="truncate text-xs text-muted-foreground">Optimized for Suno &amp; Udio</p>
-          </div>
-        </div>
-
-        {moderation?.isAdmin && <AdminModelSelector />}
-
-        <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
-              {[
-                { key: false, label: "Basic" },
-                { key: true, label: "Advanced" },
-              ].map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  aria-pressed={advanced === m.key}
-                  onClick={() => setAdvanced(m.key)}
-                  className={
-                    advanced === m.key
-                      ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
-                      : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                  }
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-            {canClear && (
-              <button
-                onClick={() => setConfirmClear(true)}
-                disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Clear
-              </button>
-            )}
-          </div>
-
-          <div>
-            <textarea
-              value={theme}
-              onChange={(e) => setTheme(e.target.value.slice(0, 300))}
-              maxLength={300}
-              rows={3}
-              placeholder="Your theme or topic — e.g. a late-night drive through a neon city after a breakup"
-              aria-label="Theme or topic"
-              className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+          <div className="mt-4 flex items-center gap-3">
+            <img
+              src={logoAsset.url}
+              alt="PromptBeats logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 rounded-xl glow-neon"
             />
-            <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl font-bold tracking-tight">
+                AI Prompt &amp; Lyrics Generator
+              </h1>
+              <p className="truncate text-xs text-muted-foreground">
+                Optimized for Suno &amp; Udio
+              </p>
+            </div>
           </div>
 
-          <div>
-            {!advanced && <FieldLabel>Music Style</FieldLabel>}
+          {moderation?.isAdmin && <AdminModelSelector />}
+
+          <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
+                {[
+                  { key: false, label: "Basic" },
+                  { key: true, label: "Advanced" },
+                ].map((m) => (
+                  <button
+                    key={m.label}
+                    type="button"
+                    aria-pressed={advanced === m.key}
+                    onClick={() => setAdvanced(m.key)}
+                    className={
+                      advanced === m.key
+                        ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
+                        : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                    }
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {canClear && (
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Clear
+                </button>
+              )}
+            </div>
+
+            <div>
+              <textarea
+                value={theme}
+                onChange={(e) => setTheme(e.target.value.slice(0, 300))}
+                maxLength={300}
+                rows={3}
+                placeholder="Your theme or topic — e.g. a late-night drive through a neon city after a breakup"
+                aria-label="Theme or topic"
+                className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+              <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                {theme.length}/300
+              </p>
+            </div>
+
+            <div>
+              {!advanced && <FieldLabel>Music Style</FieldLabel>}
+              {advanced ? (
+                <>
+                  <SectionHeader title="Music Style" hint="Pick as many as you like" />
+                  <ChipGroup
+                    label="Music style"
+                    options={ADVANCED_STYLES}
+                    selected={genres}
+                    onToggle={toggleValue(setGenres)}
+                  />
+                </>
+              ) : (
+                <select
+                  value={genres[0] ?? ""}
+                  onChange={(e) => pickPrimary(setGenres)(e.target.value)}
+                  aria-label="Music Style"
+                  className={fieldClass}
+                >
+                  <option value="" disabled className="bg-[#0a0a0c]">
+                    Select Music Style
+                  </option>
+                  {GENRE_OPTIONS.map((g) => (
+                    <option key={g} value={g} className="bg-[#0a0a0c]">
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {customGenreSelected && (
+              <input
+                value={customGenre}
+                onChange={(e) => setCustomGenre(e.target.value)}
+                placeholder="Type your own style tags (merged with the selected genres)"
+                aria-label="Custom music style"
+                className={fieldClass}
+              />
+            )}
+
             {advanced ? (
               <>
-                <SectionHeader title="Music Style" hint="Pick as many as you like" />
-                <ChipGroup
-                  label="Music style"
-                  options={ADVANCED_STYLES}
-                  selected={genres}
-                  onToggle={toggleValue(setGenres)}
-                />
-              </>
-            ) : (
-              <select
-                value={genres[0] ?? ""}
-                onChange={(e) => pickPrimary(setGenres)(e.target.value)}
-                aria-label="Music Style"
-                className={fieldClass}
-              >
-                <option value="" disabled className="bg-[#0a0a0c]">
-                  Select Music Style
-                </option>
-                {GENRE_OPTIONS.map((g) => (
-                  <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {customGenreSelected && (
-            <input
-              value={customGenre}
-              onChange={(e) => setCustomGenre(e.target.value)}
-              placeholder="Type your own style tags (merged with the selected genres)"
-              aria-label="Custom music style"
-              className={fieldClass}
-            />
-          )}
-
-          {advanced ? (
-            <>
-              <div>
-                <SectionHeader title="Mood" hint="Pick as many as you like" />
-                <ChipGroup
-                  label="Mood"
-                  options={ADVANCED_MOODS}
-                  selected={moods}
-                  onToggle={toggleValue(setMoods)}
-                />
-                <input
-                  value={customMood}
-                  onChange={(e) => setCustomMood(e.target.value)}
-                  placeholder="Custom mood (added to the moods above)"
-                  aria-label="Custom mood"
-                  className={fieldClass + " mt-2"}
-                />
-              </div>
-
-              <div>
-                <SectionHeader title="Instruments" hint="Pick as many as you like" />
-                <ChipGroup
-                  label="Instruments"
-                  options={INSTRUMENTS}
-                  selected={instruments}
-                  onToggle={toggleValue(setInstruments)}
-                />
-                <input
-                  value={customInstruments}
-                  onChange={(e) => setCustomInstruments(e.target.value)}
-                  placeholder="Custom instruments, comma separated (added to the ones above)"
-                  aria-label="Custom instruments"
-                  className={fieldClass + " mt-2"}
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <SectionHeader title="BPM" hint="Choose one" />
+                  <SectionHeader title="Mood" hint="Pick as many as you like" />
+                  <ChipGroup
+                    label="Mood"
+                    options={ADVANCED_MOODS}
+                    selected={moods}
+                    onToggle={toggleValue(setMoods)}
+                  />
+                  <input
+                    value={customMood}
+                    onChange={(e) => setCustomMood(e.target.value)}
+                    placeholder="Custom mood (added to the moods above)"
+                    aria-label="Custom mood"
+                    className={fieldClass + " mt-2"}
+                  />
+                </div>
+
+                <div>
+                  <SectionHeader title="Instruments" hint="Pick as many as you like" />
+                  <ChipGroup
+                    label="Instruments"
+                    options={INSTRUMENTS}
+                    selected={instruments}
+                    onToggle={toggleValue(setInstruments)}
+                  />
+                  <input
+                    value={customInstruments}
+                    onChange={(e) => setCustomInstruments(e.target.value)}
+                    placeholder="Custom instruments, comma separated (added to the ones above)"
+                    aria-label="Custom instruments"
+                    className={fieldClass + " mt-2"}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <SectionHeader title="BPM" hint="Choose one" />
+                    <select
+                      value={bpm}
+                      onChange={(e) => setBpm(e.target.value)}
+                      aria-label="BPM"
+                      className={fieldClass}
+                    >
+                      {BPM_OPTIONS.map((b) => (
+                        <option key={b} value={b} className="bg-[#0a0a0c]">
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {bpm === "Custom" && (
+                    <div>
+                      <FieldLabel>Custom BPM (40–260)</FieldLabel>
+                      <input
+                        type="number"
+                        min={40}
+                        max={260}
+                        value={customBpm}
+                        onChange={(e) => setCustomBpm(e.target.value)}
+                        placeholder="e.g. 128"
+                        aria-label="Custom BPM"
+                        className={fieldClass}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <SectionHeader title="Song Structure" hint="Tap to build the order" />
+                  {structure.length > 0 && (
+                    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
+                      {structure.map((s, i) => (
+                        <span
+                          key={`${s}-${i}`}
+                          className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent"
+                        >
+                          {s}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${s} at position ${i + 1}`}
+                            onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))}
+                            className="text-accent/70 transition-colors hover:text-accent"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setStructure([])}
+                        className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
+                      >
+                        Clear structure
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {STRUCTURE_TAGS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStructure((p) => [...p, s])}
+                        className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <SectionHeader title="Production Style" hint="Optional" />
+                  <textarea
+                    value={production}
+                    onChange={(e) => setProduction(e.target.value)}
+                    rows={3}
+                    placeholder="Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…"
+                    aria-label="Production style"
+                    className={fieldClass + " h-auto resize-y py-3"}
+                  />
+                </div>
+
+                <div>
+                  <SectionHeader title="Additional Instructions" hint="Optional" />
+                  <textarea
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    rows={3}
+                    placeholder="Any other creative requirements for this song…"
+                    aria-label="Additional instructions"
+                    className={fieldClass + " h-auto resize-y py-3"}
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Language</FieldLabel>
                   <select
-                    value={bpm}
-                    onChange={(e) => setBpm(e.target.value)}
-                    aria-label="BPM"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    aria-label="Language"
                     className={fieldClass}
                   >
-                    {BPM_OPTIONS.map((b) => (
-                      <option key={b} value={b} className="bg-[#0a0a0c]">{b}</option>
+                    <option value="" disabled className="bg-[#0a0a0c]">
+                      Select Language (e.g., English, Greek...)
+                    </option>
+                    {LANGUAGE_OPTIONS.map((l) => (
+                      <option key={l} value={l} className="bg-[#0a0a0c]">
+                        {l}
+                      </option>
                     ))}
                   </select>
                 </div>
-                {bpm === "Custom" && (
-                  <div>
-                    <FieldLabel>Custom BPM (40–260)</FieldLabel>
-                    <input
-                      type="number"
-                      min={40}
-                      max={260}
-                      value={customBpm}
-                      onChange={(e) => setCustomBpm(e.target.value)}
-                      placeholder="e.g. 128"
-                      aria-label="Custom BPM"
-                      className={fieldClass}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <SectionHeader title="Song Structure" hint="Tap to build the order" />
-                {structure.length > 0 && (
-                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
-                    {structure.map((s, i) => (
-                      <span
-                        key={`${s}-${i}`}
-                        className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent"
-                      >
-                        {s}
-                        <button
-                          type="button"
-                          aria-label={`Remove ${s} at position ${i + 1}`}
-                          onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))}
-                          className="text-accent/70 transition-colors hover:text-accent"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setStructure([])}
-                      className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
-                    >
-                      Clear structure
-                    </button>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {STRUCTURE_TAGS.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStructure((p) => [...p, s])}
-                      className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                    >
-                      {s}
-                    </button>
+              </>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select
+                  value={moods[0] ?? ""}
+                  onChange={(e) => pickPrimary(setMoods)(e.target.value)}
+                  aria-label="Mood"
+                  className={fieldClass}
+                >
+                  <option value="" disabled className="bg-[#0a0a0c]">
+                    Select Mood / Vibe (e.g., Energetic, Chill...)
+                  </option>
+                  {MOOD_OPTIONS.map((m) => (
+                    <option key={m} value={m} className="bg-[#0a0a0c]">
+                      {m}
+                    </option>
                   ))}
-                </div>
-              </div>
-
-              <div>
-                <SectionHeader title="Production Style" hint="Optional" />
-                <textarea
-                  value={production}
-                  onChange={(e) => setProduction(e.target.value)}
-                  rows={3}
-                  placeholder="Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…"
-                  aria-label="Production style"
-                  className={fieldClass + " h-auto resize-y py-3"}
-                />
-              </div>
-
-              <div>
-                <SectionHeader title="Additional Instructions" hint="Optional" />
-                <textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  rows={3}
-                  placeholder="Any other creative requirements for this song…"
-                  aria-label="Additional instructions"
-                  className={fieldClass + " h-auto resize-y py-3"}
-                />
-              </div>
-
-              <div>
-
-                <FieldLabel>Language</FieldLabel>
-                <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
+                </select>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  aria-label="Language"
+                  className={fieldClass}
+                >
                   <option value="" disabled className="bg-[#0a0a0c]">
                     Select Language (e.g., English, Greek...)
                   </option>
                   {LANGUAGE_OPTIONS.map((l) => (
-                    <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <select
-                value={moods[0] ?? ""}
-                onChange={(e) => pickPrimary(setMoods)(e.target.value)}
-                aria-label="Mood"
-                className={fieldClass}
-              >
-                <option value="" disabled className="bg-[#0a0a0c]">
-                  Select Mood / Vibe (e.g., Energetic, Chill...)
-                </option>
-                {MOOD_OPTIONS.map((m) => (
-                  <option key={m} value={m} className="bg-[#0a0a0c]">{m}</option>
-                ))}
-              </select>
-              <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className={fieldClass}>
-                <option value="" disabled className="bg-[#0a0a0c]">
-                  Select Language (e.g., English, Greek...)
-                </option>
-                {LANGUAGE_OPTIONS.map((l) => (
-                  <option key={l} value={l} className="bg-[#0a0a0c]">{l}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {!advanced && moods[0] === CUSTOM && (
-            <input
-              value={customMood}
-              onChange={(e) => setCustomMood(e.target.value)}
-              placeholder="Type your own mood / vibe"
-              aria-label="Custom mood"
-              className={fieldClass}
-            />
-          )}
-          {language === CUSTOM && (
-            <input
-              value={customLanguage}
-              onChange={(e) => setCustomLanguage(e.target.value)}
-              placeholder="Type your own language"
-              aria-label="Custom language"
-              className={fieldClass}
-            />
-          )}
-
-          {validationError && <p className="text-xs text-red-400">{validationError}</p>}
-
-
-          <div className="space-y-2 pt-1">
-            {showGenerationModelSelector ? (
-              <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>Generate with:</span>
-                <select
-                  aria-label="Generation model"
-                  value={generationModel}
-                  onChange={(e) => {
-                    setGenerationModel(e.target.value);
-                    setGenerationModelChosen(true);
-                  }}
-                  className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
-                >
-                  {availableModels.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
-                      {m.label}
+                    <option key={l} value={l} className="bg-[#0a0a0c]">
+                      {l}
                     </option>
                   ))}
                 </select>
-              </label>
-            ) : (
-              <p className="text-xs text-muted-foreground">Generation model: {aiModelLabel(generationModel)}</p>
+              </div>
             )}
-            <div className="flex flex-col items-center gap-3 sm:flex-row">
-            <button
-              onClick={generate}
-              disabled={busy || blocked || !ready}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              Generate with AI
-            </button>
-            <span className="text-xs text-muted-foreground">
-              {blocked ? `Try again in ${minutesLeft}m` : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
-            </span>
-            </div>
-          </div>
 
-          {confirmClear &&
-            createPortal(
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="clear-title"
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-                onClick={() => setConfirmClear(false)}
-              >
-                <div
-                  className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
+            {!advanced && moods[0] === CUSTOM && (
+              <input
+                value={customMood}
+                onChange={(e) => setCustomMood(e.target.value)}
+                placeholder="Type your own mood / vibe"
+                aria-label="Custom mood"
+                className={fieldClass}
+              />
+            )}
+            {language === CUSTOM && (
+              <input
+                value={customLanguage}
+                onChange={(e) => setCustomLanguage(e.target.value)}
+                placeholder="Type your own language"
+                aria-label="Custom language"
+                className={fieldClass}
+              />
+            )}
+
+            {validationError && <p className="text-xs text-red-400">{validationError}</p>}
+
+            <div className="space-y-2 pt-1">
+              {showGenerationModelSelector ? (
+                <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>Generate with:</span>
+                  <select
+                    aria-label="Generation model"
+                    value={generationModel}
+                    onChange={(e) => {
+                      setGenerationModel(e.target.value);
+                      setGenerationModelChosen(true);
+                    }}
+                    className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
+                  >
+                    {availableModels.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Generation model: {aiModelLabel(generationModel)}
+                </p>
+              )}
+              <div className="flex flex-col items-center gap-3 sm:flex-row">
+                <button
+                  onClick={generate}
+                  disabled={busy || blocked || !ready}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
                 >
-                  <div>
-                    <h3 id="clear-title" className="text-base font-semibold text-foreground">
-                      Clear Generator?
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      This will clear your current inputs and generated results. This action cannot be undone.
-                    </p>
-                  </div>
-                  {clearError && <p role="alert" className="text-xs text-red-400">{clearError}</p>}
-                  <div className="flex flex-row items-center justify-end gap-3">
-                    <button
-                      onClick={() => setConfirmClear(false)}
-                      disabled={clearing}
-                      className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={clearAll}
-                      disabled={clearing}
-                      className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
-                    >
-                      {clearing ? "Clearing…" : "Confirm Clear"}
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body,
-            )}
-
-          {status && <p className="text-xs text-accent">{status}</p>}
-        </div>
-
-        {busy && (
-          <div className="mt-6 space-y-4">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="glass h-32 animate-pulse rounded-2xl" />
-            ))}
-          </div>
-        )}
-
-        {!busy && result && (
-          <div className="mt-6 space-y-4 pb-16">
-            {generationResultModel && <p className="text-xs text-muted-foreground">Generated with: {aiModelLabel(generationResultModel)}</p>}
-            <div className="flex justify-end">
-              <button
-                onClick={toggleAll}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-              >
-                {allOpen ? "Collapse All" : "Expand All"}
-              </button>
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  Generate with AI
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  {blocked
+                    ? `Try again in ${minutesLeft}m`
+                    : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
+                </span>
+              </div>
             </div>
-            <ResultSection
-              title="SONG TITLE"
-              value={result.title}
-              open={open.title}
-              onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))}
-              onChange={(v) => setResult({ ...result, title: v })}
-              rows={2}
-            />
-            <ResultSection
-              title="STYLE PROMPT (METATAGS)"
-              value={result.tags}
-              open={open.tags}
-              onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))}
-              onChange={(v) => setResult({ ...result, tags: v })}
-              rows={4}
-            />
-            <ResultSection
-              title="LYRICS & STRUCTURE"
-              value={result.lyrics}
-              open={open.lyrics}
-              onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
-              onChange={(v) => setResult({ ...result, lyrics: v })}
-              rows={18}
-            />
-            <ResultSection
-              title="PRODUCER'S NOTE"
-              value={result.note}
-              open={open.note}
-              onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))}
-              onChange={(v) => setResult({ ...result, note: v })}
-              rows={5}
-            />
-            <button
-              onClick={save}
-              disabled={saved}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
-            >
-              {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
-              {saved ? "Saved to your library" : "Save to My Library"}
-            </button>
-            <QualityPanel
-              quality={quality}
-              checking={checking}
-              onCheck={runCheck}
-              checkError={checkError}
-              confirm={confirm}
-              setConfirm={setConfirm}
-              state={applyState}
-              qualityCheckModel={qualityCheckModel}
-              availableModels={availableModels}
-              onQualityCheckModelChange={(model) => {
-                setQualityCheckModel(model);
-                setQualityCheckModelChosen(true);
-              }}
-              qualityCheckResultModel={qualityCheckResultModel}
-              showQualityCheckModelSelector={showQualityCheckModelSelector}
-            />
+
+            {confirmClear &&
+              createPortal(
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="clear-title"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                  onClick={() => setConfirmClear(false)}
+                >
+                  <div
+                    className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div>
+                      <h3 id="clear-title" className="text-base font-semibold text-foreground">
+                        Clear Generator?
+                      </h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        This will clear your current inputs and generated results. This action
+                        cannot be undone.
+                      </p>
+                    </div>
+                    {clearError && (
+                      <p role="alert" className="text-xs text-red-400">
+                        {clearError}
+                      </p>
+                    )}
+                    <div className="flex flex-row items-center justify-end gap-3">
+                      <button
+                        onClick={() => setConfirmClear(false)}
+                        disabled={clearing}
+                        className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={clearAll}
+                        disabled={clearing}
+                        className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
+                      >
+                        {clearing ? "Clearing…" : "Confirm Clear"}
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
+
+            {status && <p className="text-xs text-accent">{status}</p>}
           </div>
-        )}
+
+          {busy && (
+            <div className="mt-6 space-y-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="glass h-32 animate-pulse rounded-2xl" />
+              ))}
+            </div>
+          )}
+
+          {!busy && result && (
+            <div className="mt-6 space-y-4 pb-16">
+              {generationResultModel && (
+                <p className="text-xs text-muted-foreground">
+                  Generated with: {aiModelLabel(generationResultModel)}
+                </p>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={toggleAll}
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                >
+                  {allOpen ? "Collapse All" : "Expand All"}
+                </button>
+              </div>
+              <ResultSection
+                title="SONG TITLE"
+                value={result.title}
+                open={open.title}
+                onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))}
+                onChange={(v) => setResult({ ...result, title: v })}
+                rows={2}
+              />
+              <ResultSection
+                title="STYLE PROMPT (METATAGS)"
+                value={result.tags}
+                open={open.tags}
+                onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))}
+                onChange={(v) => setResult({ ...result, tags: v })}
+                rows={4}
+              />
+              <ResultSection
+                title="LYRICS & STRUCTURE"
+                value={result.lyrics}
+                open={open.lyrics}
+                onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
+                onChange={(v) => setResult({ ...result, lyrics: v })}
+                rows={18}
+              />
+              <ResultSection
+                title="PRODUCER'S NOTE"
+                value={result.note}
+                open={open.note}
+                onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))}
+                onChange={(v) => setResult({ ...result, note: v })}
+                rows={5}
+              />
+              <button
+                onClick={save}
+                disabled={saved}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
+              >
+                {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
+                {saved ? "Saved to your library" : "Save to My Library"}
+              </button>
+              <QualityPanel
+                quality={quality}
+                checking={checking}
+                onCheck={runCheck}
+                checkError={checkError}
+                confirm={confirm}
+                setConfirm={setConfirm}
+                state={applyState}
+                qualityCheckModel={qualityCheckModel}
+                availableModels={availableModels}
+                onQualityCheckModelChange={(model) => {
+                  setQualityCheckModel(model);
+                  setQualityCheckModelChosen(true);
+                }}
+                qualityCheckResultModel={qualityCheckResultModel}
+                showQualityCheckModelSelector={showQualityCheckModelSelector}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </AppShell>
   );
 }

@@ -18,7 +18,6 @@ const generateInput = z.object({
   instructions: z.string().trim().max(2000).default(""),
 });
 
-
 const generationOutput = z.object({
   title: z.string().trim().min(1).max(200),
   tags: z.string().trim().min(1).max(4000),
@@ -37,7 +36,17 @@ const savedInput = z.object({
   note: z.string().trim().max(6000).default(""),
 });
 
-type Supa = { from: (t: string) => any };
+type QueryResult = Promise<{ data: unknown; error: { message: string } | null }>;
+type QueryChain = PromiseLike<{ data: unknown; error: { message: string } | null }> & {
+  select: (...args: unknown[]) => QueryChain;
+  eq: (...args: unknown[]) => QueryChain;
+  gte: (...args: unknown[]) => QueryChain;
+  order: (...args: unknown[]) => QueryChain;
+};
+type Supa = {
+  from: (t: string) => QueryChain;
+  rpc: (fn: string, args?: Record<string, unknown>) => QueryResult;
+};
 
 async function readUsage(supabase: Supa, userId: string) {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -52,7 +61,9 @@ async function readUsage(supabase: Supa, userId: string) {
   const used = rows.length;
   const remaining = Math.max(0, HOURLY_LIMIT - used);
   const oldest = rows[0]?.created_at ?? null;
-  const resetAt = oldest ? new Date(new Date(oldest).getTime() + 60 * 60 * 1000).toISOString() : null;
+  const resetAt = oldest
+    ? new Date(new Date(oldest).getTime() + 60 * 60 * 1000).toISOString()
+    : null;
   return { used, remaining, limit: HOURLY_LIMIT, resetAt: remaining === 0 ? resetAt : null };
 }
 
@@ -61,7 +72,7 @@ async function readUsage(supabase: Supa, userId: string) {
 // it is never derived from client-supplied data and cannot apply to anonymous users
 // because requireSupabaseAuth guarantees an authenticated userId.
 async function isAdminUser(supabase: Supa, userId: string): Promise<boolean> {
-  const { data } = await (supabase as any).rpc("current_user_has_role", { _role: "admin" });
+  const { data } = await supabase.rpc("current_user_has_role", { _role: "admin" });
   return data === true;
 }
 
@@ -352,14 +363,22 @@ async function flushUsage(userId: string, generationId: string | null, records: 
 }
 
 /** Loads the provider layer (server-only) and binds it to the active model. */
-async function activeCaller(modelOverride?: string, userId?: string): Promise<{ call: ModelCaller; model: string; provider: string; schemas: {
-  song: Record<string, unknown>;
-  quality: Record<string, unknown>;
-} }> {
+async function activeCaller(
+  modelOverride?: string,
+  userId?: string,
+): Promise<{
+  call: ModelCaller;
+  model: string;
+  provider: string;
+  schemas: {
+    song: Record<string, unknown>;
+    quality: Record<string, unknown>;
+  };
+}> {
   const provider = await import("@/lib/ai-provider.server");
   const model = userId
     ? await provider.getModelForUser(userId, modelOverride)
-    : modelOverride ?? (await provider.getActiveModel());
+    : (modelOverride ?? (await provider.getActiveModel()));
   return {
     call: provider.modelCaller(model),
     model,
@@ -368,15 +387,20 @@ async function activeCaller(modelOverride?: string, userId?: string): Promise<{ 
   };
 }
 
-
-
-
 function parseSections(raw: string) {
-  const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const cleaned = raw
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
   let title = "";
   let sections: { tags: string; lyrics: string; note: string } | null = null;
   try {
-    const parsed = JSON.parse(cleaned) as { title?: string; tags?: string; lyrics?: string; note?: string };
+    const parsed = JSON.parse(cleaned) as {
+      title?: string;
+      tags?: string;
+      lyrics?: string;
+      note?: string;
+    };
     if (parsed.tags || parsed.lyrics || parsed.note || parsed.title) {
       title = (parsed.title ?? "").trim();
       sections = { tags: parsed.tags ?? "", lyrics: parsed.lyrics ?? "", note: parsed.note ?? "" };
@@ -411,9 +435,20 @@ const issueList = z.array(z.string().trim().min(1).max(600)).max(30);
  */
 const correctionSchema = z.object({
   field: z.enum(["title", "tags", "lyrics", "note"]),
-  sectionLabel: z.string().trim().max(80).nullish().transform((v) => v ?? ""),
+  sectionLabel: z
+    .string()
+    .trim()
+    .max(80)
+    .nullish()
+    .transform((v) => v ?? ""),
   originalText: z.string().min(1).max(4000),
-  occurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? 1),
+  occurrenceIndex: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .nullish()
+    .transform((v) => v ?? 1),
   reason: z.string().trim().min(1).max(600),
   replacementText: z.string().min(1).max(4000),
 });
@@ -422,7 +457,13 @@ const vocalInsertionSchema = z.object({
   sectionLabel: z.string().trim().min(1).max(80),
   // 1-based occurrence among sections sharing the same label. Legacy results
   // may omit it; Apply then only proceeds when the label is unambiguous.
-  sectionOccurrenceIndex: z.number().int().min(1).max(50).nullish().transform((v) => v ?? null),
+  sectionOccurrenceIndex: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .nullish()
+    .transform((v) => v ?? null),
   tag: z.string().trim().min(2).max(60),
 });
 
@@ -431,11 +472,24 @@ const suggestionSchema = z.object({
   title: z.string().trim().min(1).max(120),
   explanation: z.string().trim().min(1).max(800),
   actionType: z.enum(["add_to_music_style", "vocal_arrangement", "informational"]),
-  value: z.string().trim().max(600).nullish().transform((v) => v ?? ""),
-  arrangement: z.array(vocalInsertionSchema).max(40).nullish().transform((v) => v ?? []),
+  value: z
+    .string()
+    .trim()
+    .max(600)
+    .nullish()
+    .transform((v) => v ?? ""),
+  arrangement: z
+    .array(vocalInsertionSchema)
+    .max(40)
+    .nullish()
+    .transform((v) => v ?? []),
 });
 
-const suggestionList = z.array(suggestionSchema).max(12).nullish().transform((v) => v ?? []);
+const suggestionList = z
+  .array(suggestionSchema)
+  .max(12)
+  .nullish()
+  .transform((v) => v ?? []);
 
 const qualityOutput = z.object({
   passed: z.boolean(),
@@ -447,7 +501,11 @@ const qualityOutput = z.object({
   genreIssues: issueList,
   consistencyIssues: issueList,
   /** One unified list of precise, user-approved-only corrections. */
-  corrections: z.array(correctionSchema).max(20).nullish().transform((v) => v ?? []),
+  corrections: z
+    .array(correctionSchema)
+    .max(20)
+    .nullish()
+    .transform((v) => v ?? []),
   creativeSuggestions: suggestionList,
   vocalSuggestions: suggestionList,
   productionSuggestions: suggestionList,
@@ -456,7 +514,6 @@ const qualityOutput = z.object({
 export type QualityReport = z.infer<typeof qualityOutput>;
 export type CorrectionItem = z.infer<typeof correctionSchema>;
 export type QualitySuggestion = z.infer<typeof suggestionSchema>;
-
 
 const QUALITY_SYSTEM_PROMPT = `You are a professional native songwriter and lyric editor first, and a top-tier record producer second. You perform a strict LYRICS-FIRST final quality assessment of an AI-generated song.
 
@@ -691,10 +748,7 @@ If the song has no genuine material defects, return "passed": true, "score": 10,
 
 Do NOT report subjective preferences, stylistic alternatives, optional enhancements, or wording that is merely different or potentially better.`;
 
-function buildQualityPrompt(
-  d: z.infer<typeof generateInput>,
-  r: z.infer<typeof generationOutput>,
-) {
+function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
 Begin by reading the LYRICS line by line as a professional native songwriter and lyric editor. Identify every material lyric defect first. Judge each line by its exact wording as a native songwriter would, not by whether the listener can infer the intended meaning from context; a lyric defect remains a defect even when its meaning is guessable. Only after the lyrics review is complete should you consider Title, Music Style, Producer's Note and optional creative/vocal/production suggestions. A song MUST NOT receive "passed": true AND "score": 10 while any clear material lyric defect remains.
@@ -755,7 +809,10 @@ async function runQualityCheck(
       });
     }
     if (!ok) return null;
-    const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    const cleaned = text
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/, "")
+      .trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start === -1 || end <= start) return null;
@@ -789,7 +846,9 @@ export const generateSongPrompt = createServerFn({ method: "POST" })
     // All provider execution now belongs to the durable generation-job flow.
     // Keep this export as a compatibility guard so an old client cannot create
     // a second, admission-free generation architecture.
-    throw new Error("Direct generation is no longer available. Please use the generation job flow.");
+    throw new Error(
+      "Direct generation is no longer available. Please use the generation job flow.",
+    );
   });
 
 /** Validated shape of a durable generation job's stored input payload. */
@@ -808,7 +867,10 @@ export async function runSongGeneration(
   userId: string,
   generationId: string | null,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
-  const { call, model, provider, schemas } = await activeCaller(data.generationModel ?? undefined, userId);
+  const { call, model, provider, schemas } = await activeCaller(
+    data.generationModel ?? undefined,
+    userId,
+  );
   const records: PendingUsage[] = [];
 
   let generated: ModelResult;
@@ -841,7 +903,9 @@ export async function runSongGeneration(
     if (stopReason === "max_tokens") {
       throw new Error("The AI response was incomplete. Please try again.");
     }
-    throw new Error(`The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`);
+    throw new Error(
+      `The AI generation did not complete (${stopReason ?? "unknown"}). Please try again.`,
+    );
   }
 
   const result = generationOutput.safeParse(parseSections(raw));
@@ -863,7 +927,7 @@ async function consumeCreation(
   provider: string,
   model: string,
 ) {
-  const { data: inserted, error } = await (supabase as any).rpc("consume_quality_check", {
+  const { data: inserted, error } = await supabase.rpc("consume_quality_check", {
     _idempotency_key: idempotencyKey,
     _quality_report: quality,
     _provider: provider,
@@ -928,12 +992,13 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       instructions: data.instructions,
     };
 
-    const { data: rawClaim, error: claimError } = await (supabase as any).rpc("claim_quality_check", {
+    const { data: rawClaim, error: claimError } = await supabase.rpc("claim_quality_check", {
       _idempotency_key: data.idempotencyKey,
     });
     if (claimError) throw new Error("The quality check could not be started. Please try again.");
     const claim = qualityCheckClaim.safeParse(rawClaim);
-    if (!claim.success) throw new Error("The quality check could not be started. Please try again.");
+    if (!claim.success)
+      throw new Error("The quality check could not be started. Please try again.");
 
     if (claim.data.status === "rate_limited") {
       const after = await usageFor(supabase, context.userId);
@@ -948,12 +1013,19 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       return { error: "unavailable" as const, quality: null, model: null, usage: after };
     }
     if (claim.data.status === "completed") {
-      if (!claim.data.qualityReport) throw new Error("The completed quality check was invalid. Please try again.");
+      if (!claim.data.qualityReport)
+        throw new Error("The completed quality check was invalid. Please try again.");
       const after = await usageFor(supabase, context.userId);
-      return { error: null, quality: claim.data.qualityReport, model: claim.data.model ?? null, provider: claim.data.provider ?? null, usage: after };
+      return {
+        error: null,
+        quality: claim.data.qualityReport,
+        model: claim.data.model ?? null,
+        provider: claim.data.provider ?? null,
+        usage: after,
+      };
     }
 
-    const { error: startedError } = await (supabase as any).rpc("mark_quality_check_provider_started", {
+    const { error: startedError } = await supabase.rpc("mark_quality_check_provider_started", {
       _idempotency_key: data.idempotencyKey,
     });
     if (startedError) {
@@ -971,7 +1043,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
         model,
       });
     } catch (err) {
-      await (supabase as any).rpc("release_quality_check", {
+      await supabase.rpc("release_quality_check", {
         _idempotency_key: data.idempotencyKey,
       });
       throw err;
@@ -981,7 +1053,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     // parsed successfully through the existing QualityReport schema. Failed,
     // incomplete, malformed, or schema-invalid responses remain uncharged.
     if (!quality) {
-      await (supabase as any).rpc("release_quality_check", {
+      await supabase.rpc("release_quality_check", {
         _idempotency_key: data.idempotencyKey,
       });
       await flushUsage(context.userId, data.generationId ?? null, records);
@@ -1002,7 +1074,6 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     const after = await usageFor(supabase, context.userId);
     return { error: null, quality, model, provider, usage: after };
   });
-
 
 export const savePromptToLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1040,9 +1111,6 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Super Admin: server-authoritative provider/model selection.
 // The selected model is stored in a table the browser cannot read or write;
@@ -1059,7 +1127,9 @@ export const getAiModelSetting = createServerFn({ method: "GET" })
   });
 
 export const setAiModelSetting = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ model: z.enum(AI_MODEL_IDS as [string, ...string[]]) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ model: z.enum(AI_MODEL_IDS as [string, ...string[]]) }).parse(input),
+  )
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as Supa;

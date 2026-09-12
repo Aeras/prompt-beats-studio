@@ -24,7 +24,6 @@ const jobInput = z.object({
   instructions: z.string().trim().max(2000).default(""),
 });
 
-
 const resultShape = z.object({
   title: z.string(),
   tags: z.string(),
@@ -48,6 +47,22 @@ const inputShape = z.object({
 });
 
 export type GenerationContext = z.infer<typeof inputShape>;
+
+type QueryResult = Promise<{ data: unknown; error: { message: string } | null }>;
+type QueryChain = PromiseLike<{ data: unknown; error: { message: string } | null }> & {
+  select: (...args: unknown[]) => QueryChain;
+  eq: (...args: unknown[]) => QueryChain;
+  is: (...args: unknown[]) => QueryChain;
+  in: (...args: unknown[]) => QueryChain;
+  gt: (...args: unknown[]) => QueryChain;
+  order: (...args: unknown[]) => QueryChain;
+  limit: (...args: unknown[]) => QueryChain;
+  maybeSingle: () => QueryResult;
+};
+type Supa = {
+  from: (table: string) => QueryChain;
+  rpc: (fn: string, args?: Record<string, unknown>) => QueryResult;
+};
 
 type JobRow = {
   id: string;
@@ -104,7 +119,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as any;
+    const supabase = context.supabase as unknown as Supa;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     await getModelForUser(context.userId, data.generationModel ?? undefined);
     const { idempotencyKey, ...payload } = data;
@@ -125,7 +140,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as any;
+    const supabase = context.supabase as unknown as Supa;
     const { data: row } = await supabase
       .from("ai_generation_jobs")
       .select(JOB_COLUMNS)
@@ -144,7 +159,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
 export const getLatestGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const supabase = context.supabase as any;
+    const supabase = context.supabase as unknown as Supa;
     const { data: row } = await supabase
       .from("ai_generation_jobs")
       .select(JOB_COLUMNS)
@@ -167,8 +182,10 @@ export const dismissGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as any;
-    const { data: result, error } = await supabase.rpc("dismiss_generation_job", { _job_id: data.jobId });
+    const supabase = context.supabase as unknown as Supa;
+    const { data: result, error } = await supabase.rpc("dismiss_generation_job", {
+      _job_id: data.jobId,
+    });
     const parsed = z.enum(["CANCELLED", "DISMISSED", "ALREADY_FINAL"]).safeParse(result);
     if (error || !parsed.success) {
       throw new Error("The generation could not be dismissed. Please try again.");

@@ -28,7 +28,11 @@ export type ModelResult = {
   /** Normalized: "end_turn" (complete), "max_tokens" (truncated), or other. */
   stopReason: string | null;
   /** Provider-reported token usage; null when the provider did not report it. */
-  usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null } | null;
+  usage: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+  } | null;
   /** The provider that actually served this request. */
   provider: string;
   /** The model that actually served this request. */
@@ -73,13 +77,15 @@ async function assertAiEligibleUser(userId: string) {
 
 async function hasAdminBypass(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: isAdmin } = await supabaseAdmin.rpc("_has_role_internal" as never, {
-    _user_id: userId,
-    _role: "admin",
-  } as never);
+  const { data: isAdmin } = await supabaseAdmin.rpc(
+    "_has_role_internal" as never,
+    {
+      _user_id: userId,
+      _role: "admin",
+    } as never,
+  );
   return isAdmin === true;
 }
-
 
 async function callAnthropic(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
@@ -127,7 +133,6 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   return { text, stopReason, usage, provider: "anthropic", model };
 }
 
-
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -167,13 +172,13 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
       ? null
       : { inputTokens, outputTokens, totalTokens };
   return { text, stopReason, usage, provider: "gemini", model };
-
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
 export function modelCaller(model: string): ModelCaller {
   const provider = providerOf(model);
-  return (call) => (provider === "anthropic" ? callAnthropic(model, call) : callGemini(model, call));
+  return (call) =>
+    provider === "anthropic" ? callAnthropic(model, call) : callGemini(model, call);
 }
 
 /**
@@ -269,12 +274,15 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
 /** Admin-only write path; the caller must already have verified admin rights. */
 export async function setActiveModel(model: AiModelId, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin
-    .from("app_settings" as never)
-    .upsert(
-      { key: "ai_model", value: { model }, updated_at: new Date().toISOString(), updated_by: userId } as never,
-      { onConflict: "key" },
-    );
+  const { error } = await supabaseAdmin.from("app_settings" as never).upsert(
+    {
+      key: "ai_model",
+      value: { model },
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+    } as never,
+    { onConflict: "key" },
+  );
   if (error) throw new Error(error.message);
   return { model };
 }
@@ -296,7 +304,10 @@ const SUGGESTION_SCHEMA: Record<string, unknown> = {
   properties: {
     title: { type: "STRING" },
     explanation: { type: "STRING" },
-    actionType: { type: "STRING", enum: ["add_to_music_style", "vocal_arrangement", "informational"] },
+    actionType: {
+      type: "STRING",
+      enum: ["add_to_music_style", "vocal_arrangement", "informational"],
+    },
     value: { type: "STRING" },
     arrangement: {
       type: "ARRAY",
@@ -337,7 +348,14 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
           reason: { type: "STRING" },
           replacementText: { type: "STRING" },
         },
-        required: ["field", "sectionLabel", "originalText", "occurrenceIndex", "reason", "replacementText"],
+        required: [
+          "field",
+          "sectionLabel",
+          "originalText",
+          "occurrenceIndex",
+          "reason",
+          "replacementText",
+        ],
       },
     },
     creativeSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
