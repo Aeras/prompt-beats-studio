@@ -10,7 +10,7 @@
  */
 import { GoogleGenAI } from "@google/genai";
 
-import { AI_MODELS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
+import { AI_MODELS, AI_MODEL_IDS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 
 export type ModelCall = {
   /** System instruction shared by all providers. */
@@ -28,7 +28,11 @@ export type ModelResult = {
   /** Normalized: "end_turn" (complete), "max_tokens" (truncated), or other. */
   stopReason: string | null;
   /** Provider-reported token usage; null when the provider did not report it. */
-  usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null } | null;
+  usage: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+  } | null;
   /** The provider that actually served this request. */
   provider: string;
   /** The model that actually served this request. */
@@ -41,6 +45,47 @@ export function providerOf(model: string) {
   return AI_MODELS.find((m) => m.id === model)?.provider ?? "gemini";
 }
 
+function isAiModelId(model: string): model is AiModelId {
+  return AI_MODEL_IDS.includes(model as AiModelId);
+}
+
+function sanitizeAllowedModels(models: string[] | null | undefined): AiModelId[] {
+  const seen = new Set<string>();
+  const allowed: AiModelId[] = [];
+  for (const model of models ?? []) {
+    if (!isAiModelId(model) || seen.has(model)) continue;
+    seen.add(model);
+    allowed.push(model);
+  }
+  return allowed;
+}
+
+async function assertAiEligibleUser(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (authError || !authUser.user) throw new Error("The account is no longer available.");
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profile_private" as never)
+    .select("is_banned")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (profileError || !profile || (profile as { is_banned?: boolean }).is_banned === true) {
+    throw new Error("This account is not allowed to use AI services.");
+  }
+  return supabaseAdmin;
+}
+
+async function hasAdminBypass(userId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: isAdmin } = await supabaseAdmin.rpc(
+    "_has_role_internal" as never,
+    {
+      _user_id: userId,
+      _role: "admin",
+    } as never,
+  );
+  return isAdmin === true;
+}
 
 async function callAnthropic(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
@@ -88,7 +133,6 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   return { text, stopReason, usage, provider: "anthropic", model };
 }
 
-
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -128,13 +172,13 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
       ? null
       : { inputTokens, outputTokens, totalTokens };
   return { text, stopReason, usage, provider: "gemini", model };
-
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
 export function modelCaller(model: string): ModelCaller {
   const provider = providerOf(model);
-  return (call) => (provider === "anthropic" ? callAnthropic(model, call) : callGemini(model, call));
+  return (call) =>
+    provider === "anthropic" ? callAnthropic(model, call) : callGemini(model, call);
 }
 
 /**
@@ -153,30 +197,38 @@ export async function getActiveModel(): Promise<AiModelId> {
     const value = (data as { value?: { model?: string } } | null)?.value;
     const model = value?.model;
     if (model && AI_MODELS.some((m) => m.id === model)) return model as AiModelId;
+    await supabaseAdmin.from("app_settings" as never).upsert(
+      {
+        key: "ai_model",
+        value: { model: DEFAULT_AI_MODEL },
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "key" },
+    );
   } catch {
     /* fall back to the default below */
   }
   return DEFAULT_AI_MODEL;
 }
 
-/** Resolve a provider model without trusting a browser-supplied model id. */
-export async function getModelForUser(userId: string, requestedModel?: string): Promise<AiModelId> {
-  const active = await getActiveModel();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-  if (authError || !authUser.user) throw new Error("The account is no longer available.");
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profile_private" as never)
-    .select("is_banned")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (profileError || !profile || (profile as { is_banned?: boolean }).is_banned === true) {
-    throw new Error("This account is not allowed to use AI services.");
-  }
+export type EffectiveAiModelAccess = {
+  activeModel: AiModelId;
+  defaultModel: AiModelId;
+  availableModels: AiModelId[];
+  accessMode: "admin" | "inherit" | "custom";
+};
 
-  const requested = AI_MODELS.find((model) => model.id === requestedModel)?.id;
-  const { data: isAdmin } = await supabaseAdmin.rpc("_has_role_internal" as never, { _user_id: userId, _role: "admin" } as never);
-  if (isAdmin === true && requested) return requested;
+export async function getEffectiveModelAccess(userId: string): Promise<EffectiveAiModelAccess> {
+  const active = await getActiveModel();
+  const supabaseAdmin = await assertAiEligibleUser(userId);
+  if (await hasAdminBypass(userId)) {
+    return {
+      activeModel: active,
+      defaultModel: active,
+      availableModels: [...AI_MODEL_IDS],
+      accessMode: "admin",
+    };
+  }
 
   const { data: override, error: overrideError } = await supabaseAdmin
     .from("user_model_access" as never)
@@ -187,25 +239,58 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
     // Backward compatibility while the additive migration is being rolled
     // out; all other database failures fail closed rather than broadening
     // model access.
-    if (overrideError.code === "42P01") return active;
+    if (overrideError.code === "42P01") {
+      return {
+        activeModel: active,
+        defaultModel: active,
+        availableModels: [active],
+        accessMode: "inherit",
+      };
+    }
     throw new Error("Could not verify AI model access.");
   }
   const access = override as { access_mode?: string; allowed_models?: string[] } | null;
-  if (access?.access_mode !== "custom") return active;
-  const allowed = (access.allowed_models ?? []).filter((id): id is AiModelId => AI_MODEL_IDS.includes(id as AiModelId));
+  if (access?.access_mode !== "custom") {
+    return {
+      activeModel: active,
+      defaultModel: active,
+      availableModels: [active],
+      accessMode: "inherit",
+    };
+  }
+  const allowed = sanitizeAllowedModels(access.allowed_models);
   if (!allowed.length) throw new Error("No AI model is available for this account.");
-  return allowed.includes(active) ? active : allowed[0];
+  return {
+    activeModel: active,
+    defaultModel: allowed.includes(active) ? active : allowed[0],
+    availableModels: allowed,
+    accessMode: "custom",
+  };
+}
+
+/** Resolve a provider model without trusting a browser-supplied model id. */
+export async function getModelForUser(userId: string, requestedModel?: string): Promise<AiModelId> {
+  if (requestedModel && !isAiModelId(requestedModel)) throw new Error("Unsupported AI model.");
+  const access = await getEffectiveModelAccess(userId);
+  if (!requestedModel) return access.defaultModel;
+  if (!access.availableModels.includes(requestedModel)) {
+    throw new Error("That AI model is not available for this account.");
+  }
+  return requestedModel;
 }
 
 /** Admin-only write path; the caller must already have verified admin rights. */
 export async function setActiveModel(model: AiModelId, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin
-    .from("app_settings" as never)
-    .upsert(
-      { key: "ai_model", value: { model }, updated_at: new Date().toISOString(), updated_by: userId } as never,
-      { onConflict: "key" },
-    );
+  const { error } = await supabaseAdmin.from("app_settings" as never).upsert(
+    {
+      key: "ai_model",
+      value: { model },
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+    } as never,
+    { onConflict: "key" },
+  );
   if (error) throw new Error(error.message);
   return { model };
 }
@@ -227,7 +312,10 @@ const SUGGESTION_SCHEMA: Record<string, unknown> = {
   properties: {
     title: { type: "STRING" },
     explanation: { type: "STRING" },
-    actionType: { type: "STRING", enum: ["add_to_music_style", "vocal_arrangement", "informational"] },
+    actionType: {
+      type: "STRING",
+      enum: ["add_to_music_style", "vocal_arrangement", "informational"],
+    },
     value: { type: "STRING" },
     arrangement: {
       type: "ARRAY",
@@ -268,7 +356,14 @@ export const QUALITY_SCHEMA: Record<string, unknown> = {
           reason: { type: "STRING" },
           replacementText: { type: "STRING" },
         },
-        required: ["field", "sectionLabel", "originalText", "occurrenceIndex", "reason", "replacementText"],
+        required: [
+          "field",
+          "sectionLabel",
+          "originalText",
+          "occurrenceIndex",
+          "reason",
+          "replacementText",
+        ],
       },
     },
     creativeSuggestions: { type: "ARRAY", items: SUGGESTION_SCHEMA },
