@@ -13,7 +13,6 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   getAiModelSetting,
-  setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
   type CorrectionItem,
@@ -584,42 +583,6 @@ function ResultSection({
     </div>
   );
 }
-
-
-/** Super Admin only: picks the AI model that serves every user's generations. */
-function AdminModelSelector() {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ["ai-model"], queryFn: () => getAiModelSetting() });
-  const [saving, setSaving] = useState(false);
-
-  return (
-    <div className="glass mt-4 flex flex-wrap items-center gap-3 rounded-2xl p-4">
-      <span className="text-xs uppercase tracking-widest text-muted-foreground">AI model (admin)</span>
-      <select
-        aria-label="AI model"
-        value={data?.model ?? DEFAULT_AI_MODEL}
-        disabled={saving}
-        onChange={async (e) => {
-          setSaving(true);
-          try {
-            await setAiModelSetting({ data: { model: e.target.value } });
-            await queryClient.invalidateQueries({ queryKey: ["ai-model"] });
-          } finally {
-            setSaving(false);
-          }
-        }}
-        className={fieldClass + " max-w-xs"}
-      >
-        {AI_MODELS.map((m) => (
-          <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
-            {m.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 
 
 function GeneratePage() {
@@ -1220,8 +1183,6 @@ function GeneratePage() {
             <p className="truncate text-xs text-muted-foreground">Optimized for Suno &amp; Udio</p>
           </div>
         </div>
-
-        {moderation?.isAdmin && <AdminModelSelector />}
 
         <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
