@@ -723,10 +723,15 @@ function QualityPanel({
 
       {!checking && (
         <div className="mt-4 space-y-3">
-          {!modelAccessReady && (
+          {modelAccessLoading && (
             <p className="text-xs text-muted-foreground">Loading available models…</p>
           )}
-          {modelAccessReady && showQualityCheckModelSelector && (
+          {modelAccessUnavailable && (
+            <p className="text-xs text-red-400">
+              No AI model is currently available for Quality Check.
+            </p>
+          )}
+          {modelAccessReady && !modelAccessUnavailable && showQualityCheckModelSelector && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Check with:</span>
               <select
@@ -743,7 +748,7 @@ function QualityPanel({
               </select>
             </label>
           )}
-          {modelAccessReady && !showQualityCheckModelSelector && (
+          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && (
             <p className="text-xs text-muted-foreground">
               Check with: {aiModelLabel(qualityCheckModel)}
             </p>
@@ -764,7 +769,7 @@ function QualityPanel({
               label={quality ? "Check Again · −1 creation" : "Check -1 creation"}
               busy={false}
               busyLabel=""
-              disabled={!modelAccessReady}
+              disabled={modelAccessLoading || modelAccessUnavailable}
               onClick={() => setConfirm(mode)}
             />
           )}
@@ -1067,7 +1072,11 @@ function GeneratePage() {
     enabled: !!user,
   });
 
-  const { data: aiModelAccess, isLoading: aiModelAccessLoading } = useQuery({
+  const {
+    data: aiModelAccess,
+    isLoading: aiModelAccessLoading,
+    error: aiModelAccessError,
+  } = useQuery({
     queryKey: ["my-ai-model-access"],
     queryFn: () => getCurrentUserAiModelAccess(),
     enabled: !!user,
@@ -1106,10 +1115,13 @@ function GeneratePage() {
     qualityCheckModelChosen,
   ]);
 
-  const modelAccessReady = !aiModelAccessLoading && !!aiModelAccess;
+  const modelAccessLoading = aiModelAccessLoading || (!aiModelAccess && !aiModelAccessError);
+  const modelAccessReady = !!aiModelAccess;
   const availableModels = modelAccessReady
     ? AI_MODELS.filter((model) => aiModelAccess.availableModels.includes(model.id))
     : [];
+  const modelAccessUnavailable =
+    (!!aiModelAccessError || modelAccessReady) && availableModels.length === 0;
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
 
@@ -1823,8 +1835,12 @@ function GeneratePage() {
                     ))}
                   </select>
                 </label>
-              ) : !modelAccessReady ? (
+              ) : modelAccessLoading ? (
                 <p className="text-xs text-muted-foreground">Loading available models…</p>
+              ) : modelAccessUnavailable ? (
+                <p className="text-xs text-red-400">
+                  No AI model is currently available for generation.
+                </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Generation model: {aiModelLabel(generationModel)}
@@ -1833,7 +1849,9 @@ function GeneratePage() {
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button
                   onClick={generate}
-                  disabled={busy || blocked || !ready || !modelAccessReady}
+                  disabled={
+                    busy || blocked || !ready || modelAccessLoading || modelAccessUnavailable
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
                 >
                   {busy ? (
