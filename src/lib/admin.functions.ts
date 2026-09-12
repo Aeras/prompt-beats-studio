@@ -163,28 +163,162 @@ export const setModerationStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-async function removeStorageFolder(bucket: string, userId: string) {
+const OWNER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type AccountCleanupRow = {
+  id: string;
+  owner_id: string;
+  storage_kind: "r2" | "supabase";
+  bucket: string | null;
+  object_path: string;
+  status: "pending" | "complete";
+  attempt_count: number;
+};
+
+async function listOwnedStoragePaths(bucket: string, ownerId: string): Promise<string[]> {
+  if (!OWNER_ID_RE.test(ownerId)) {
+    console.error(`[admin] refusing unsafe ${bucket} storage folder path`);
+    throw new Error(`${bucket} cleanup has an invalid owner path`);
+  }
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const names: string[] = [];
-  for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await supabaseAdmin.storage.from(bucket).list(userId, { limit: 1000, offset });
-    if (error) throw new Error(`${bucket} cleanup failed: ${error.message}`);
-    for (const item of data ?? []) {
-      const objectPath = `${userId}/${item.name}`;
-      if (!isSafeOwnedCoverPath(objectPath, userId)) {
-        console.error(`[admin] refusing unsafe ${bucket} cleanup path`);
-        continue;
-      }
-      names.push(objectPath);
+  const paths: string[] = [];
+  const prefixes = [ownerId];
+  const queuedPrefixes = new Set(prefixes);
+  const visitedPrefixes = new Set<string>();
+  for (let index = 0; index < prefixes.length; index += 1) {
+    const prefix = prefixes[index];
+    if (visitedPrefixes.has(prefix)) continue;
+    visitedPrefixes.add(prefix);
+    if (prefix !== ownerId && !isSafeOwnedCoverPath(prefix, ownerId)) {
+      console.error(`[admin] refusing unsafe ${bucket} storage folder path`);
+      throw new Error(`${bucket} cleanup encountered an invalid nested path`);
     }
-    if (!data || data.length < 1000) break;
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit: 1000, offset });
+      if (error) throw new Error(`${bucket} cleanup listing failed: ${error.message}`);
+      for (const item of data ?? []) {
+        const objectPath = `${prefix}/${item.name}`;
+        if (!isSafeOwnedCoverPath(objectPath, ownerId)) {
+          console.error(`[admin] refusing unsafe ${bucket} cleanup path`);
+          continue;
+        }
+        if (item.id) paths.push(objectPath);
+        else if (!queuedPrefixes.has(objectPath)) {
+          queuedPrefixes.add(objectPath);
+          prefixes.push(objectPath);
+        }
+      }
+      if (!data || data.length < 1000) break;
+    }
   }
-  if (names.length) {
-    const { error } = await supabaseAdmin.storage.from(bucket).remove(names);
-    if (error) throw new Error(`${bucket} cleanup failed: ${error.message}`);
+  return paths;
+}
+async function coverIsReferencedByAnotherTrack(supabaseAdmin: any, coverPath: string, ownerId: string): Promise<boolean> {
+  const escapedPath = coverPath.replace(/([\\%_])/g, "\\$1");
+  const { data: rawRefs, error: rawError } = await supabaseAdmin
+    .from("tracks" as never)
+    .select("id")
+    .neq("user_id", ownerId)
+    .eq("cover_url", coverPath);
+  if (rawError) throw new Error(`Cover reference check failed: ${rawError.message}`);
+  if (rawRefs?.length) return true;
+
+  const { data: urlRefs, error: urlError } = await supabaseAdmin
+    .from("tracks" as never)
+    .select("id")
+    .neq("user_id", ownerId)
+    .like("cover_url", `%/track-covers/${escapedPath}`);
+  if (urlError) throw new Error(`Cover reference check failed: ${urlError.message}`);
+  return Boolean(urlRefs?.length);
+}
+async function queueAccountStorageCleanup(
+  supabaseAdmin: any,
+  ownerId: string,
+  tracks: Array<{ audio_key: string | null; cover_url: string | null }>,
+): Promise<number> {
+  const rows: Array<Record<string, string>> = [];
+  for (const track of tracks) {
+    if (!track.audio_key) continue;
+    if (!isSafeOwnedAudioKey(track.audio_key, ownerId)) {
+      console.error("[admin] refusing unsafe account audio cleanup reference");
+      continue;
+    }
+    rows.push({ owner_id: ownerId, storage_kind: "r2", bucket: "", object_path: track.audio_key });
   }
+
+  for (const bucket of ["avatars", "track-covers"]) {
+    for (const objectPath of await listOwnedStoragePaths(bucket, ownerId)) {
+      rows.push({ owner_id: ownerId, storage_kind: "supabase", bucket, object_path: objectPath });
+    }
+  }
+
+  if (!rows.length) return 0;
+  const { error } = await supabaseAdmin
+    .from("account_storage_cleanup" as never)
+    .upsert(rows as never, { onConflict: "storage_kind,bucket,object_path" });
+  if (error) throw new Error(`Account storage cleanup could not be queued: ${error.message}`);
+  return rows.length;
 }
 
+async function processAccountStorageCleanup(supabaseAdmin: any, ownerId: string): Promise<number> {
+  const { data: rows, error } = await supabaseAdmin
+    .from("account_storage_cleanup" as never)
+    .select("id, owner_id, storage_kind, bucket, object_path, status, attempt_count")
+    .eq("owner_id", ownerId)
+    .eq("status", "pending");
+  if (error) throw new Error(`Account storage cleanup could not be inspected: ${error.message}`);
+
+  let pending = 0;
+  for (const row of (rows ?? []) as AccountCleanupRow[]) {
+    try {
+      if (row.storage_kind === "r2") {
+        if (!isSafeOwnedAudioKey(row.object_path, ownerId)) {
+          console.error("[admin] refusing unsafe queued account audio cleanup");
+          await supabaseAdmin.from("account_storage_cleanup" as never).update({ status: "complete", last_error: "unsafe path skipped" } as never).eq("id", row.id);
+          continue;
+        }
+        const { deleteOwnedR2Object } = await import("@/lib/r2.server");
+        await deleteOwnedR2Object(row.object_path, ownerId);
+      } else if (row.bucket === "track-covers") {
+        if (!isSafeOwnedCoverPath(row.object_path, ownerId)) {
+          console.error("[admin] refusing unsafe queued account cover cleanup");
+          await supabaseAdmin.from("account_storage_cleanup" as never).update({ status: "complete", last_error: "unsafe path skipped" } as never).eq("id", row.id);
+          continue;
+        }
+        if (await coverIsReferencedByAnotherTrack(supabaseAdmin, row.object_path, ownerId)) {
+          await supabaseAdmin.from("account_storage_cleanup" as never).update({ status: "complete", last_error: "shared cover preserved" } as never).eq("id", row.id);
+          continue;
+        }
+        const { error: removeError } = await supabaseAdmin.storage.from(row.bucket).remove([row.object_path]);
+        if (removeError) throw new Error(removeError.message);
+      } else if (row.bucket === "avatars") {
+        if (!isSafeOwnedCoverPath(row.object_path, ownerId)) {
+          console.error("[admin] refusing unsafe queued account avatar cleanup");
+          await supabaseAdmin.from("account_storage_cleanup" as never).update({ status: "complete", last_error: "unsafe path skipped" } as never).eq("id", row.id);
+          continue;
+        }
+        const { error: removeError } = await supabaseAdmin.storage.from(row.bucket).remove([row.object_path]);
+        if (removeError) throw new Error(removeError.message);
+      }
+
+      const { error: completeError } = await supabaseAdmin
+        .from("account_storage_cleanup" as never)
+        .update({ status: "complete", completed_at: new Date().toISOString(), last_error: null } as never)
+        .eq("id", row.id)
+        .eq("status", "pending");
+      if (completeError) throw new Error(completeError.message);
+    } catch (error) {
+      pending += 1;
+      console.error("[admin] account storage cleanup remains pending", error);
+      await supabaseAdmin
+        .from("account_storage_cleanup" as never)
+        .update({ last_error: error instanceof Error ? error.message : "storage cleanup failed", attempt_count: row.attempt_count + 1 } as never)
+        .eq("id", row.id)
+        .eq("status", "pending");
+    }
+  }
+  return pending;
+}
 export const deleteAdminUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => deleteInput.parse(input))
@@ -232,7 +366,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     }
 
     const { data: tracks, error: tracksError } = await supabaseAdmin
-      .from("tracks" as never).select("audio_key").eq("user_id", data.userId);
+      .from("tracks" as never).select("audio_key, cover_url").eq("user_id", data.userId);
     if (tracksError) {
       try { await releaseRegistrationBlock(); } catch (releaseError) {
         throw new Error(`Could not inspect user files: ${tracksError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`);
@@ -240,24 +374,15 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       throw new Error(`Could not inspect user files: ${tracksError.message}`);
     }
 
+    let storageCleanupPending = 0;
     try {
-      const { deleteOwnedR2Object } = await import("@/lib/r2.server");
-      for (const track of (tracks ?? []) as { audio_key: string | null }[]) {
-        if (track.audio_key) {
-          if (!isSafeOwnedAudioKey(track.audio_key, data.userId)) {
-            console.error("[admin] refusing unsafe account audio cleanup");
-          } else {
-            await deleteOwnedR2Object(track.audio_key, data.userId);
-          }
-        }
-      }
-      await removeStorageFolder("avatars", data.userId);
-      await removeStorageFolder("track-covers", data.userId);
+      await queueAccountStorageCleanup(supabaseAdmin, data.userId, (tracks ?? []) as Array<{ audio_key: string | null; cover_url: string | null }>);
+      storageCleanupPending = await processAccountStorageCleanup(supabaseAdmin, data.userId);
     } catch (error) {
       try { await releaseRegistrationBlock(); } catch (releaseError) {
-        throw new Error(`${error instanceof Error ? error.message : "User file cleanup failed; account was not deleted."} ${releaseError instanceof Error ? releaseError.message : "Registration block release failed."}`);
+        throw new Error(`${error instanceof Error ? error.message : "User file cleanup could not be prepared."} ${releaseError instanceof Error ? releaseError.message : "Registration block release failed."}`);
       }
-      throw new Error(error instanceof Error ? error.message : "User file cleanup failed; account was not deleted.");
+      throw new Error(error instanceof Error ? error.message : "User file cleanup could not be prepared.");
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
@@ -286,15 +411,31 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       admin_user_id: context.userId,
       target_user_id: null,
       action: "DELETE_USER",
-      details: { file_count: (tracks ?? []).length, registration_blocked: registrationBlocked },
+      details: { file_count: (tracks ?? []).length, storage_cleanup_pending: storageCleanupPending, registration_blocked: registrationBlocked },
     } as never);
     if (auditError) {
       console.error("[admin] deletion succeeded but audit logging failed", auditError.message);
-      return { ok: true, auditLogged: false, registrationBlocked };
+      return { ok: true, auditLogged: false, registrationBlocked, storageCleanupPending };
     }
-    return { ok: true, auditLogged: true, registrationBlocked };
+    return { ok: true, auditLogged: true, registrationBlocked, storageCleanupPending };
   });
 
+export const retryAccountStorageCleanup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ cleanupId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("account_storage_cleanup" as never)
+      .select("id, owner_id, storage_kind, bucket, object_path, status, attempt_count")
+      .eq("id", data.cleanupId)
+      .maybeSingle();
+    if (error || !row) throw new Error("Cleanup record not found");
+    if ((row as AccountCleanupRow).status !== "pending") return { ok: true, alreadyComplete: true };
+    const pending = await processAccountStorageCleanup(supabaseAdmin, (row as AccountCleanupRow).owner_id);
+    return { ok: pending === 0, pending };
+  });
 export type RegistrationBlock = {
   id: string;
   email_normalized: string;

@@ -12,7 +12,7 @@ const trackInput = z.object({
   lyrics: z.string().trim().max(8000).default(""),
   audio_url: z.string().url(),
   audio_type: z.enum(["link", "upload"]).default("upload"),
-  audio_key: z.string().max(500).optional(),
+  audio_key: z.string().max(500).nullable().optional(),
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   cover_url: z.string().url().max(1000).optional(),
   is_published: z.boolean().default(true),
@@ -110,6 +110,9 @@ export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
   .handler(async ({ data, context }) => {
+    if (data.audio_key && (!isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
+      throw new Error("Invalid uploaded audio reference");
+    }
     const { data: row, error } = await context.supabase
       .from("tracks")
       .insert({
@@ -126,13 +129,8 @@ export const createTrack = createServerFn({ method: "POST" })
   });
 
 /**
- * Updates one of the user's own tracks (RLS restricts this to the owner).
- *
- * Audio replacement is roll-forward safe: the caller uploads the new object
- * first and passes its key here. The previous object is only deleted AFTER the
- * database row successfully points at the new one, so the track never
- * references a deleted file. If the update fails we touch nothing — the caller
- * rolls back the freshly uploaded object via `discardUploads`.
+ * Updates one of the user's own tracks. Audio replacement is committed in a
+ * single database transaction with durable cleanup capture.
  */
 export const updateTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -146,7 +144,7 @@ export const updateTrack = createServerFn({ method: "POST" })
         lyrics: z.string().trim().max(8000).default(""),
         audio_url: z.string().url(),
         audio_type: z.enum(["link", "upload"]),
-        audio_key: z.string().max(500).optional(),
+        audio_key: z.string().max(500).nullable().optional(),
         is_published: z.boolean().default(true),
       })
       .parse(input),
@@ -154,51 +152,49 @@ export const updateTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { id, audio_key, ...fields } = data;
 
-    // Remember the current object key before the write so we can retire it
-    // only once the new one is safely referenced.
-    let previousKey: string | null = null;
-    if (audio_key) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: current } = await supabaseAdmin
-        .from("tracks")
-        .select("audio_key, user_id")
-        .eq("id", id)
-        .maybeSingle();
-      if (current?.user_id === context.userId) previousKey = current.audio_key ?? null;
+    if (audio_key !== undefined) {
+      if ((audio_key && !isSafeOwnedAudioKey(audio_key, context.userId)) || (audio_key && data.audio_type !== "upload") || (!audio_key && data.audio_type !== "link")) {
+        throw new Error("Invalid uploaded audio reference");
+      }
+
+      const { data: result, error } = await context.supabase.rpc(
+        "replace_track_with_audio_cleanup" as never,
+        {
+          _track_id: id,
+          _title: fields.title,
+          _genre: fields.genre,
+          _prompt: fields.prompt,
+          _lyrics: fields.lyrics,
+          _audio_url: fields.audio_url,
+          _audio_type: fields.audio_type,
+          _audio_key: audio_key,
+          _is_published: fields.is_published,
+        } as never,
+      );
+      if (error) throw new Error(error.message);
+
+      const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
+      if (payload?.cleanup_id) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await cleanTrackStorage(supabaseAdmin, payload.cleanup_id);
+      }
+      return { track: payload?.track ?? null };
     }
 
     const { data: row, error } = await context.supabase
       .from("tracks")
-      .update(audio_key ? { ...fields, audio_key } : fields)
+      .update(fields)
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(TRACK_COLUMNS)
       .single();
     if (error) throw new Error(error.message);
-
-    if (audio_key && previousKey && previousKey !== audio_key) {
-      // Best-effort: a failed cleanup must not fail an already-successful save.
-      try {
-        const { deleteOwnedR2Object } = await import("@/lib/r2.server");
-        if (isSafeOwnedAudioKey(previousKey, context.userId)) {
-          await deleteOwnedR2Object(previousKey, context.userId);
-        } else {
-          console.error("[tracks] refusing to delete unsafe replaced audio object");
-        }
-      } catch (err) {
-        console.error("[tracks] failed to delete replaced audio object", err);
-      }
-    }
     return { track: row };
   });
-
 /**
- * Rollback helper: deletes storage objects that were uploaded for a track that
- * ultimately failed to be created/updated. Ownership is enforced by key prefix
- * (R2 keys are `tracks/<userId>/…`, cover paths are `<userId>/…`) and the
- * object must NOT be referenced by any existing track row, so this can never
- * remove a live file. Safe to call twice — deletes are idempotent and errors
- * are swallowed so the original failure stays the reported error.
+ * Rollback helper: records storage objects that were uploaded for a track that
+ * ultimately failed to be created/updated, then processes them through the
+ * durable cleanup ledger. Ownership and live-reference checks are server-side.
  */
 export const discardUploads = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -212,42 +208,62 @@ export const discardUploads = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let audioKey: string | null = null;
+    let coverPath: string | null = null;
 
     if (data.audioKey && isSafeOwnedAudioKey(data.audioKey, context.userId)) {
-      const { data: inUse } = await supabaseAdmin
+      const { data: inUse, error } = await supabaseAdmin
         .from("tracks")
         .select("id")
         .eq("audio_key", data.audioKey)
         .limit(1);
-      if (!inUse || inUse.length === 0) {
-        try {
-          const { deleteOwnedR2Object } = await import("@/lib/r2.server");
-          await deleteOwnedR2Object(data.audioKey, context.userId);
-        } catch (err) {
-          console.error("[tracks] orphan audio cleanup failed", err);
-        }
-      }
+      if (error) throw new Error(`Could not inspect orphan audio reference: ${error.message}`);
+      if (!inUse?.length) audioKey = data.audioKey;
     }
 
     if (data.coverPath && isSafeOwnedCoverPath(data.coverPath, context.userId)) {
-      // Same safety rule as audio: only remove a cover that no track row
-      // references. Tracks store the public URL, which always ends with
-      // `/track-covers/<coverPath>` — match on that object identity.
-      const { data: coverInUse } = await supabaseAdmin
+      const { data: coverInUse, error } = await supabaseAdmin
         .from("tracks")
         .select("id")
         .like("cover_url", `%/track-covers/${data.coverPath}`)
         .limit(1);
-      if (!coverInUse || coverInUse.length === 0) {
-        const { error } = await supabaseAdmin.storage.from("track-covers").remove([data.coverPath]);
-        if (error) console.error("[tracks] orphan cover cleanup failed", error.message);
+      if (error) throw new Error(`Could not inspect orphan cover reference: ${error.message}`);
+      if (!coverInUse?.length) coverPath = data.coverPath;
+    }
+
+    if (!audioKey && !coverPath) return { ok: true };
+
+    const { data: cleanup, error: cleanupError } = await supabaseAdmin
+      .from("track_storage_cleanup" as never)
+      .insert({
+        track_id: null,
+        owner_id: context.userId,
+        audio_key: audioKey,
+        cover_path: coverPath,
+        created_by: context.userId,
+        cleanup_type: "abandoned_upload",
+      } as never)
+      .select("id")
+      .single();
+    if (cleanupError || !cleanup) {
+      throw new Error(`Orphaned upload cleanup could not be queued: ${cleanupError?.message ?? "no cleanup id returned"}`);
+    }
+
+    if (coverPath) {
+      const { error: lockError } = await supabaseAdmin
+        .from("track_cover_cleanup_locks" as never)
+        .insert({ cover_path: coverPath, cleanup_id: (cleanup as { id: string }).id } as never);
+      if (lockError) {
+        await supabaseAdmin
+          .from("track_storage_cleanup" as never)
+          .update({ cover_path: null, last_error: "cover reservation unavailable; cover skipped" } as never)
+          .eq("id", (cleanup as { id: string }).id);
       }
     }
 
+    await cleanTrackStorage(supabaseAdmin, (cleanup as { id: string }).id);
     return { ok: true };
   });
-
-
 /** Deletes one of the user's own tracks (and its audio file). */
 export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

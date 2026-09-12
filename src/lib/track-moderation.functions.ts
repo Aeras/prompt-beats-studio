@@ -144,8 +144,24 @@ export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ cleanupId: trackId }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireTrackCapability(context.supabase, "can_delete_tracks");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cleanup, error: cleanupError } = await supabaseAdmin
+      .from("track_storage_cleanup" as never)
+      .select("created_by, cleanup_type")
+      .eq("id", data.cleanupId)
+      .maybeSingle();
+    if (cleanupError || !cleanup) throw new Error("Cleanup record not found");
+
+    let authorized = false;
+    try {
+      await requireTrackCapability(context.supabase, "can_delete_tracks");
+      authorized = true;
+    } catch {
+      authorized = (cleanup as { created_by?: string | null; cleanup_type?: string }).created_by === context.userId
+        && (cleanup as { cleanup_type?: string }).cleanup_type === "audio_replace";
+    }
+    if (!authorized) throw new Error("Not allowed");
+
     await cleanTrackStorage(supabaseAdmin, data.cleanupId);
     return { ok: true };
   });
