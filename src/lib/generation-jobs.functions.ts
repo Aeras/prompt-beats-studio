@@ -158,6 +158,10 @@ export const dismissGenerationJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
-    await supabase.rpc("dismiss_generation_job", { _job_id: data.jobId });
-    return { ok: true };
+    const { data: result, error } = await supabase.rpc("dismiss_generation_job", { _job_id: data.jobId });
+    const parsed = z.enum(["CANCELLED", "DISMISSED", "ALREADY_FINAL"]).safeParse(result);
+    if (error || !parsed.success) {
+      throw new Error("The generation could not be dismissed. Please try again.");
+    }
+    return { outcome: parsed.data };
   });

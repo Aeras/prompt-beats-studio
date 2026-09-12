@@ -1132,10 +1132,28 @@ function GeneratePage() {
     !!result ||
     !!quality;
 
-  const clearAll = () => {
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
+
+  const clearAll = async () => {
+    if (clearing) return;
+    setClearError(null);
+    let dismissedWhileRunning = false;
     // Forget any running generation server-side too, so it is never restored
     // on the next visit. No creation is consumed or refunded by this.
-    if (jobId) void dismissGenerationJob({ data: { jobId } }).catch(() => undefined);
+    if (jobId) {
+      setClearing(true);
+      try {
+        const { outcome } = await dismissGenerationJob({ data: { jobId } });
+        dismissedWhileRunning = outcome === "DISMISSED";
+      } catch {
+        // Keep inputs and recovery state so a failed dismissal can be retried.
+        setClearError("The generation could not be dismissed. Please try again.");
+        return;
+      } finally {
+        setClearing(false);
+      }
+    }
     setTheme("");
     setGenres([]);
     setCustomGenre("");
@@ -1168,6 +1186,9 @@ function GeneratePage() {
     setConfirm(null);
     setConfirmClear(false);
     setOpen({ title: false, tags: false, lyrics: false, note: false });
+    if (dismissedWhileRunning) {
+      setStatus("Generator cleared. The generation already started and may still finish in the background.");
+    }
   };
 
 
@@ -1517,18 +1538,21 @@ function GeneratePage() {
                       This will clear your current inputs and generated results. This action cannot be undone.
                     </p>
                   </div>
+                  {clearError && <p role="alert" className="text-xs text-red-400">{clearError}</p>}
                   <div className="flex flex-row items-center justify-end gap-3">
                     <button
                       onClick={() => setConfirmClear(false)}
+                      disabled={clearing}
                       className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={clearAll}
+                      disabled={clearing}
                       className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
                     >
-                      Confirm Clear
+                      {clearing ? "Clearing…" : "Confirm Clear"}
                     </button>
                   </div>
                 </div>
