@@ -197,6 +197,14 @@ export async function getActiveModel(): Promise<AiModelId> {
     const value = (data as { value?: { model?: string } } | null)?.value;
     const model = value?.model;
     if (model && AI_MODELS.some((m) => m.id === model)) return model as AiModelId;
+    await supabaseAdmin.from("app_settings" as never).upsert(
+      {
+        key: "ai_model",
+        value: { model: DEFAULT_AI_MODEL },
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "key" },
+    );
   } catch {
     /* fall back to the default below */
   }
