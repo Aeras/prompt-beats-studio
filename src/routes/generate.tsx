@@ -425,17 +425,19 @@ function CostButton({
   label,
   busy,
   busyLabel,
+  disabled = false,
   onClick,
 }: {
   label: string;
   busy: boolean;
   busyLabel: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={busy}
+      disabled={busy || disabled}
       className="flex items-center justify-center gap-2 rounded-xl border border-accent/50 px-4 py-2.5 text-sm text-accent transition-colors hover:bg-accent/10 disabled:opacity-60"
     >
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -675,6 +677,7 @@ function QualityPanel({
   state,
   qualityCheckModel,
   availableModels,
+  modelAccessReady,
   onQualityCheckModelChange,
   qualityCheckResultModel,
   showQualityCheckModelSelector,
@@ -688,6 +691,7 @@ function QualityPanel({
   state: ApplyState;
   qualityCheckModel: string;
   availableModels: typeof AI_MODELS;
+  modelAccessReady: boolean;
   onQualityCheckModelChange: (model: string) => void;
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
@@ -719,7 +723,10 @@ function QualityPanel({
 
       {!checking && (
         <div className="mt-4 space-y-3">
-          {showQualityCheckModelSelector && (
+          {!modelAccessReady && (
+            <p className="text-xs text-muted-foreground">Loading available models…</p>
+          )}
+          {modelAccessReady && showQualityCheckModelSelector && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Check with:</span>
               <select
@@ -736,7 +743,7 @@ function QualityPanel({
               </select>
             </label>
           )}
-          {!showQualityCheckModelSelector && (
+          {modelAccessReady && !showQualityCheckModelSelector && (
             <p className="text-xs text-muted-foreground">
               Check with: {aiModelLabel(qualityCheckModel)}
             </p>
@@ -757,6 +764,7 @@ function QualityPanel({
               label={quality ? "Check Again · −1 creation" : "Check -1 creation"}
               busy={false}
               busyLabel=""
+              disabled={!modelAccessReady}
               onClick={() => setConfirm(mode)}
             />
           )}
@@ -1059,7 +1067,7 @@ function GeneratePage() {
     enabled: !!user,
   });
 
-  const { data: aiModelAccess } = useQuery({
+  const { data: aiModelAccess, isLoading: aiModelAccessLoading } = useQuery({
     queryKey: ["my-ai-model-access"],
     queryFn: () => getCurrentUserAiModelAccess(),
     enabled: !!user,
@@ -1098,9 +1106,10 @@ function GeneratePage() {
     qualityCheckModelChosen,
   ]);
 
-  const availableModels = AI_MODELS.filter(
-    (model) => aiModelAccess?.availableModels.includes(model.id) ?? model.id === DEFAULT_AI_MODEL,
-  );
+  const modelAccessReady = !aiModelAccessLoading && !!aiModelAccess;
+  const availableModels = modelAccessReady
+    ? AI_MODELS.filter((model) => aiModelAccess.availableModels.includes(model.id))
+    : [];
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
 
@@ -1814,6 +1823,8 @@ function GeneratePage() {
                     ))}
                   </select>
                 </label>
+              ) : !modelAccessReady ? (
+                <p className="text-xs text-muted-foreground">Loading available models…</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Generation model: {aiModelLabel(generationModel)}
@@ -1822,7 +1833,7 @@ function GeneratePage() {
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button
                   onClick={generate}
-                  disabled={busy || blocked || !ready}
+                  disabled={busy || blocked || !ready || !modelAccessReady}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
                 >
                   {busy ? (
@@ -1964,6 +1975,7 @@ function GeneratePage() {
                 state={applyState}
                 qualityCheckModel={qualityCheckModel}
                 availableModels={availableModels}
+                modelAccessReady={modelAccessReady}
                 onQualityCheckModelChange={(model) => {
                   setQualityCheckModel(model);
                   setQualityCheckModelChosen(true);
