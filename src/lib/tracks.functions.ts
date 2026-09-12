@@ -281,19 +281,38 @@ export const deleteTrack = createServerFn({ method: "POST" })
   });
 
 
+// Validate the dedicated RPC contract until generated types are refreshed.
+// Zod strips unexpected fields so only the existing public projection leaves here.
+const trendingRows = z.array(z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  title: z.string(),
+  genre: z.string(),
+  prompt: z.string(),
+  lyrics: z.string(),
+  audio_url: z.string(),
+  audio_type: z.string(),
+  art_url: z.string().nullable(),
+  cover_url: z.string().nullable(),
+  duration_seconds: z.number().nullable(),
+  plays: z.number(),
+  is_published: z.literal(true),
+  created_at: z.string(),
+  likes: z.number().int().nonnegative(),
+})).max(100);
+
 /** Public trending feed: published tracks ranked by likes + plays. */
 export const listTrendingTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
   const supabase = createPublicServerClient();
-  const { data, error } = await supabase
-    .from("tracks")
-    .select(TRACK_COLUMNS)
-    .eq("is_published", true)
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (error) return { tracks: [], error: error.message };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.rpc("list_trending_tracks" as never);
+  const parsed = trendingRows.safeParse(data);
+  if (error || !parsed.success) {
+    return { tracks: [], error: "Trending is temporarily unavailable. Please try again later." };
+  }
 
-  const rows = data ?? [];
+  const rows = parsed.data;
   const ids = [...new Set(rows.map((t) => t.user_id))];
   const handles = new Map<string, string>();
   const names = new Map<string, string>();
@@ -311,23 +330,13 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
     }
   }
 
-  // Aggregate like counts (counts only — no user identities leave the server).
-  const likeCounts = new Map<string, number>();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: likes } = await supabaseAdmin.from("likes").select("track_id");
-  for (const l of likes ?? []) {
-    likeCounts.set(l.track_id, (likeCounts.get(l.track_id) ?? 0) + 1);
-  }
-
   const tracks = rows
     .map((t) => ({
       ...t,
       handle: `@${handles.get(t.user_id) ?? "unknown"}`,
       creator_name: names.get(t.user_id) ?? "",
       staff_badge: badges.get(t.user_id) ?? null,
-      likes: likeCounts.get(t.id) ?? 0,
-    }))
-    .sort((a, b) => b.likes * 3 + b.plays - (a.likes * 3 + a.plays));
+    }));
 
   return { tracks, error: null as string | null };
 });
