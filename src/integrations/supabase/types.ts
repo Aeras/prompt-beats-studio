@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_generation_jobs: {
         Row: {
           attempts: number
@@ -27,6 +54,7 @@ export type Database = {
           input_payload: Json
           model: string | null
           provider: string | null
+          provider_started_at: string | null
           result: Json | null
           started_at: string | null
           status: string
@@ -45,6 +73,7 @@ export type Database = {
           input_payload: Json
           model?: string | null
           provider?: string | null
+          provider_started_at?: string | null
           result?: Json | null
           started_at?: string | null
           status?: string
@@ -63,6 +92,7 @@ export type Database = {
           input_payload?: Json
           model?: string | null
           provider?: string | null
+          provider_started_at?: string | null
           result?: Json | null
           started_at?: string | null
           status?: string
@@ -98,6 +128,7 @@ export type Database = {
           created_at: string
           id: string
           idempotency_key: string
+          provider_started_at: string | null
           quality_report: Json | null
           status: string
           updated_at: string
@@ -108,6 +139,7 @@ export type Database = {
           created_at?: string
           id?: string
           idempotency_key: string
+          provider_started_at?: string | null
           quality_report?: Json | null
           status: string
           updated_at?: string
@@ -118,6 +150,7 @@ export type Database = {
           created_at?: string
           id?: string
           idempotency_key?: string
+          provider_started_at?: string | null
           quality_report?: Json | null
           status?: string
           updated_at?: string
@@ -175,84 +208,6 @@ export type Database = {
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      admin_audit_log: {
-        Row: {
-          action: string
-          admin_user_id: string | null
-          created_at: string
-          details: Json
-          id: string
-          target_user_id: string | null
-        }
-        Insert: {
-          action: string
-          admin_user_id?: string | null
-          created_at?: string
-          details?: Json
-          id?: string
-          target_user_id?: string | null
-        }
-        Update: {
-          action?: string
-          admin_user_id?: string | null
-          created_at?: string
-          details?: Json
-          id?: string
-          target_user_id?: string | null
-        }
-        Relationships: []
-      }
-      registration_blocks: {
-        Row: {
-          id: string
-          email_normalized: string
-          reason_code: string
-          reason_text: string | null
-          blocked_at: string
-          blocked_by: string | null
-        }
-        Insert: {
-          id?: string
-          email_normalized: string
-          reason_code: string
-          reason_text?: string | null
-          blocked_at?: string
-          blocked_by?: string | null
-        }
-        Update: {
-          id?: string
-          email_normalized?: string
-          reason_code?: string
-          reason_text?: string | null
-          blocked_at?: string
-          blocked_by?: string | null
-        }
-        Relationships: []
-      }
-      user_model_access: {
-        Row: {
-          access_mode: string
-          allowed_models: string[]
-          created_at: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_mode?: string
-          allowed_models?: string[]
-          created_at?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_mode?: string
-          allowed_models?: string[]
-          created_at?: string
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -402,6 +357,33 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_blocks: {
+        Row: {
+          blocked_at: string
+          blocked_by: string | null
+          email_normalized: string
+          id: string
+          reason_code: string
+          reason_text: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          blocked_by?: string | null
+          email_normalized: string
+          id?: string
+          reason_code: string
+          reason_text?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          blocked_by?: string | null
+          email_normalized?: string
+          id?: string
+          reason_code?: string
+          reason_text?: string | null
+        }
+        Relationships: []
+      }
       saved_prompts: {
         Row: {
           created_at: string
@@ -483,6 +465,100 @@ export type Database = {
         }
         Relationships: []
       }
+      track_cover_cleanup_locks: {
+        Row: {
+          cleanup_id: string
+          cover_path: string
+          created_at: string
+        }
+        Insert: {
+          cleanup_id: string
+          cover_path: string
+          created_at?: string
+        }
+        Update: {
+          cleanup_id?: string
+          cover_path?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_cover_cleanup_locks_cleanup_id_fkey"
+            columns: ["cleanup_id"]
+            isOneToOne: false
+            referencedRelation: "track_storage_cleanup"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_play_throttles: {
+        Row: {
+          last_counted_at: string
+          listener_user_id: string
+          track_id: string
+        }
+        Insert: {
+          last_counted_at?: string
+          listener_user_id: string
+          track_id: string
+        }
+        Update: {
+          last_counted_at?: string
+          listener_user_id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_play_throttles_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_storage_cleanup: {
+        Row: {
+          attempt_count: number
+          audio_key: string | null
+          completed_at: string | null
+          cover_path: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          owner_id: string | null
+          status: string
+          track_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          audio_key?: string | null
+          completed_at?: string | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          owner_id?: string | null
+          status?: string
+          track_id: string
+        }
+        Update: {
+          attempt_count?: number
+          audio_key?: string | null
+          completed_at?: string | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          owner_id?: string | null
+          status?: string
+          track_id?: string
+        }
+        Relationships: []
+      }
       tracks: {
         Row: {
           art_url: string | null
@@ -555,6 +631,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_model_access: {
+        Row: {
+          access_mode: string
+          allowed_models: string[]
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_mode?: string
+          allowed_models?: string[]
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_mode?: string
+          allowed_models?: string[]
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -592,8 +692,8 @@ export type Database = {
           donation_url: string | null
           handle: string | null
           id: string | null
-          staff_badge: string | null
           instagram_url: string | null
+          staff_badge: string | null
           tiktok_url: string | null
           website_url: string | null
           x_url: string | null
@@ -609,8 +709,8 @@ export type Database = {
           donation_url?: string | null
           handle?: string | null
           id?: string | null
-          staff_badge?: string | null
           instagram_url?: string | null
+          staff_badge?: never
           tiktok_url?: string | null
           website_url?: string | null
           x_url?: string | null
@@ -626,8 +726,8 @@ export type Database = {
           donation_url?: string | null
           handle?: string | null
           id?: string | null
-          staff_badge?: string | null
           instagram_url?: string | null
+          staff_badge?: never
           tiktok_url?: string | null
           website_url?: string | null
           x_url?: string | null
@@ -652,19 +752,6 @@ export type Database = {
       }
     }
     Functions: {
-      admin_list_users: {
-        Args: { _limit?: number; _offset?: number; _search?: string; _status?: string }
-        Returns: Json
-      }
-      admin_overview: { Args: never; Returns: Json }
-      admin_set_model_access: {
-        Args: { _access_mode: string; _allowed_models: string[]; _target_user_id: string }
-        Returns: undefined
-      }
-      admin_set_user_banned: {
-        Args: { _banned: boolean; _reason_code?: string; _reason_text?: string; _target_user_id: string }
-        Returns: undefined
-      }
       admin_create_registration_block: {
         Args: { _email: string; _reason_code: string; _reason_text?: string }
         Returns: string
@@ -673,29 +760,84 @@ export type Database = {
         Args: { _limit?: number; _offset?: number; _search?: string }
         Returns: Json
       }
+      admin_list_users: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _search?: string
+          _status?: string
+        }
+        Returns: Json
+      }
+      admin_overview: { Args: never; Returns: Json }
       admin_remove_registration_block: {
         Args: { _block_id: string }
         Returns: undefined
       }
+      admin_set_model_access: {
+        Args: {
+          _access_mode: string
+          _allowed_models: string[]
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_moderation_status: {
+        Args: {
+          _reason_text?: string
+          _status: string
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_banned: {
+        Args: {
+          _banned: boolean
+          _reason_code?: string
+          _reason_text?: string
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
-      admin_set_user_role: { Args: { _role: Database["public"]["Enums"]["app_role"]; _target_user_id: string }; Returns: undefined }
-      admin_set_moderation_status: { Args: { _reason_text?: string; _status: string; _target_user_id: string }; Returns: undefined }
-      get_my_moderation_context: { Args: never; Returns: Json }
-      has_moderation_capability: { Args: { _capability: string }; Returns: boolean }
-      can_moderate_target: { Args: { _target_user_id: string }; Returns: boolean }
-      staff_delete_track: { Args: { _track_id: string }; Returns: Json }
-      staff_get_track: { Args: { _track_id: string }; Returns: Json }
-      staff_get_track_storage_cleanup: { Args: { _cleanup_id: string }; Returns: Json }
-      staff_complete_track_storage_cleanup: { Args: { _cleanup_id: string }; Returns: undefined }
-      staff_fail_track_storage_cleanup: { Args: { _cleanup_id: string; _error: string }; Returns: undefined }
-      staff_lock_track: { Args: { _reason_code: string; _reason_text?: string; _track_id: string }; Returns: Json }
-      staff_unlock_track: { Args: { _track_id: string }; Returns: Json }
+      can_manage_track_storage_cleanup: {
+        Args: { _cleanup_id: string }
+        Returns: boolean
+      }
+      can_moderate_target: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
+      capture_track_storage_cleanup: {
+        Args: {
+          _audio_key: string
+          _cover_url: string
+          _created_by: string
+          _owner_id: string
+          _track_id: string
+        }
+        Returns: Json
+      }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
       consume_quality_check: {
         Args: { _idempotency_key: string; _quality_report: Json }
         Returns: string
       }
+      delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: undefined }
+      get_my_account_status: { Args: never; Returns: Json }
+      get_my_moderation_context: { Args: never; Returns: Json }
+      has_moderation_capability: {
+        Args: { _capability: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -703,10 +845,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_valid_account_state: { Args: { _user_id: string }; Returns: boolean }
+      increment_track_play: { Args: { _track_id: string }; Returns: number }
       is_banned: { Args: { _user_id: string }; Returns: boolean }
-      get_my_account_status: { Args: never; Returns: Json }
+      is_safe_track_storage_path: {
+        Args: { _path: string; _prefix: string }
+        Returns: boolean
+      }
       kick_generation_runner: { Args: { _job_id: string }; Returns: undefined }
       like_count: { Args: { _track_id: string }; Returns: number }
+      mark_quality_check_provider_started: {
+        Args: { _idempotency_key: string }
+        Returns: undefined
+      }
+      normalize_registration_email: {
+        Args: { _email: string }
+        Returns: string
+      }
+      reconcile_provider_committed_generation: {
+        Args: { _job_id: string }
+        Returns: boolean
+      }
+      reconcile_provider_committed_quality: {
+        Args: { _action_id: string }
+        Returns: boolean
+      }
       release_quality_check: {
         Args: { _idempotency_key: string }
         Returns: undefined
@@ -715,14 +878,34 @@ export type Database = {
         Args: { _banned: boolean; _user_id: string }
         Returns: undefined
       }
+      staff_complete_track_storage_cleanup: {
+        Args: { _cleanup_id: string }
+        Returns: undefined
+      }
+      staff_delete_track: { Args: { _track_id: string }; Returns: Json }
+      staff_fail_track_storage_cleanup: {
+        Args: { _cleanup_id: string; _error: string }
+        Returns: undefined
+      }
+      staff_get_track: { Args: { _track_id: string }; Returns: Json }
+      staff_get_track_storage_cleanup: {
+        Args: { _cleanup_id: string }
+        Returns: Json
+      }
+      staff_lock_track: {
+        Args: { _reason_code: string; _reason_text?: string; _track_id: string }
+        Returns: Json
+      }
+      staff_unlock_track: { Args: { _track_id: string }; Returns: Json }
       start_generation_job: {
         Args: { _idempotency_key: string; _input: Json }
         Returns: Json
       }
       sweep_generation_jobs: { Args: never; Returns: number }
+      track_cover_path: { Args: { _cover_url: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "senior_moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "senior_moderator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -850,7 +1033,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "senior_moderator", "user"],
+      app_role: ["admin", "moderator", "user", "senior_moderator"],
     },
   },
 } as const
