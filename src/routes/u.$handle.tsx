@@ -1,5 +1,6 @@
+import { useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Music } from "lucide-react";
 
 import { getPublicProfile } from "@/lib/profile.functions";
@@ -7,6 +8,7 @@ import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { BanUserToggle } from "@/components/promptbeats/ArtistProfileView";
+import { incrementTrackPlay } from "@/lib/tracks.functions";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -27,6 +29,8 @@ export const Route = createFileRoute("/u/$handle")({
 
 function CreatorPage() {
   const { handle } = Route.useParams();
+  const queryClient = useQueryClient();
+  const nativeCycles = useRef(new Map<string, { listenedSeconds: number; lastTime: number; endedHandled: boolean }>());
   const { data, isLoading } = useQuery({
     queryKey: ["public-profile", handle],
     queryFn: () => getPublicProfile({ data: { handle } }),
@@ -34,6 +38,37 @@ function CreatorPage() {
 
   const profile = data?.profile ?? null;
   const tracks = data?.tracks ?? [];
+
+  const handleNativePlay = (trackId: string, audio: HTMLAudioElement) => {
+    const cycle = nativeCycles.current.get(trackId);
+    if (!cycle || cycle.endedHandled) {
+      nativeCycles.current.set(trackId, { listenedSeconds: 0, lastTime: audio.currentTime, endedHandled: false });
+      return;
+    }
+    cycle.lastTime = audio.currentTime;
+  };
+
+  const handleNativeProgress = (trackId: string, audio: HTMLAudioElement) => {
+    const cycle = nativeCycles.current.get(trackId);
+    if (!cycle || audio.paused) return;
+    const delta = audio.currentTime - cycle.lastTime;
+    if (delta >= 0 && delta <= 2.5) cycle.listenedSeconds += delta;
+    cycle.lastTime = audio.currentTime;
+  };
+
+  const countCompletedPlay = (trackId: string, audio: HTMLAudioElement) => {
+    const cycle = nativeCycles.current.get(trackId);
+    if (!cycle || cycle.endedHandled) return;
+    cycle.endedHandled = true;
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const minimumSeconds = Math.min(30, duration * 0.7);
+    if (!(duration > 0 && cycle.listenedSeconds >= duration * 0.7 && cycle.listenedSeconds >= minimumSeconds)) return;
+    void incrementTrackPlay({ data: { trackId } }).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["public-profile", handle] });
+    }).catch(() => {
+      // Playback remains successful even if telemetry cannot be recorded.
+    });
+  };
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-10">
@@ -104,7 +139,15 @@ function CreatorPage() {
                       <ExternalLink className="h-3.5 w-3.5" /> Listen on Platform
                     </a>
                   ) : (
-                    <audio controls preload="none" src={t.audio_url} className="w-full" />
+                    <audio
+                      controls
+                      preload="none"
+                      src={t.audio_url}
+                      onPlay={(event) => handleNativePlay(t.id, event.currentTarget)}
+                      onTimeUpdate={(event) => handleNativeProgress(t.id, event.currentTarget)}
+                      onEnded={(event) => countCompletedPlay(t.id, event.currentTarget)}
+                      className="w-full"
+                    />
                   )}
                 </article>
               ))}

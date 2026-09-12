@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Play, Pause, Copy, Check, ChevronDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,16 @@ export function TrackCard({
   const [open, setOpen] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [playCount, setPlayCount] = useState(() => Number.parseInt(track.plays, 10) || 0);
+
+  useEffect(() => {
+    const onPlayCounted = (event: Event) => {
+      const detail = (event as CustomEvent<{ trackId?: string; plays?: number }>).detail;
+      if (detail?.trackId === track.id && typeof detail.plays === "number") setPlayCount(detail.plays);
+    };
+    window.addEventListener("promptbeats:track-play-counted", onPlayCounted);
+    return () => window.removeEventListener("promptbeats:track-play-counted", onPlayCounted);
+  }, [track.id]);
 
   const togglePrompt = () => {
     setPromptOpen((v) => {

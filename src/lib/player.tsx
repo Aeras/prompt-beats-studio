@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { Track } from "@/lib/tracks";
+import { incrementTrackPlay } from "@/lib/tracks.functions";
 
 export type RepeatMode = "off" | "all" | "one";
 export type PlayerMode = "fixed" | "inline" | "hidden";
@@ -35,6 +36,13 @@ type PlayerState = {
   setPlayerMode: (mode: PlayerMode) => void;
 };
 
+type PlaybackCycle = {
+  trackId: string;
+  listenedSeconds: number;
+  lastTime: number;
+  endedHandled: boolean;
+};
+
 const PlayerContext = createContext<PlayerState | null>(null);
 
 export function usePlayer() {
@@ -57,6 +65,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playerMode, setPlayerMode] = useState<PlayerMode>("fixed");
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
+  const playbackCycleRef = useRef<PlaybackCycle | null>(null);
+
+  const beginPlaybackCycle = useCallback((trackId: string) => {
+    playbackCycleRef.current = { trackId, listenedSeconds: 0, lastTime: 0, endedHandled: false };
+  }, []);
+
+  const countCompletedPlay = useCallback(() => {
+    const cycle = playbackCycleRef.current;
+    const el = audioRef.current;
+    if (!cycle || cycle.endedHandled || !el) return;
+    cycle.endedHandled = true;
+
+    const trackDuration = Number.isFinite(el.duration) ? el.duration : 0;
+    const minimumSeconds = Math.min(30, trackDuration * 0.7);
+    const listenedEnough = trackDuration > 0
+      && cycle.listenedSeconds >= trackDuration * 0.7
+      && cycle.listenedSeconds >= minimumSeconds;
+    if (!listenedEnough) return;
+
+    void incrementTrackPlay({ data: { trackId: cycle.trackId } }).then(({ plays }) => {
+      if (typeof window !== "undefined" && typeof plays === "number") {
+        window.dispatchEvent(new CustomEvent("promptbeats:track-play-counted", { detail: { trackId: cycle.trackId, plays } }));
+      }
+    }).catch(() => {
+      // Playback remains successful even if telemetry cannot be recorded.
+    });
+  }, []);
 
   // Restore lightweight UI preferences (no backend storage needed).
   useEffect(() => {
@@ -105,11 +140,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     const onTime = () => setPosition(el.currentTime);
     const onMeta = () => setDuration(Number.isFinite(el.duration) ? el.duration : 0);
+    const onProgress = () => {
+      const cycle = playbackCycleRef.current;
+      if (!cycle || el.paused) return;
+      const delta = el.currentTime - cycle.lastTime;
+      if (delta >= 0 && delta <= 2.5) cycle.listenedSeconds += delta;
+      cycle.lastTime = el.currentTime;
+    };
     const onEnd = () => setPlaying(false);
-    const onPlay = () => setPlaying(true);
+    const onPlay = () => {
+      const cycle = playbackCycleRef.current;
+      if (cycle) cycle.lastTime = el.currentTime;
+      setPlaying(true);
+    };
     const onPause = () => setPlaying(false);
 
     el.addEventListener("timeupdate", onTime);
+    el.addEventListener("timeupdate", onProgress);
     el.addEventListener("loadedmetadata", onMeta);
     el.addEventListener("ended", onEnd);
     el.addEventListener("play", onPlay);
@@ -117,6 +164,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => {
       el.pause();
       el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("timeupdate", onProgress);
       el.removeEventListener("loadedmetadata", onMeta);
       el.removeEventListener("ended", onEnd);
       el.removeEventListener("play", onPlay);
@@ -130,24 +178,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const start = useCallback((track: Track) => {
     const el = audioRef.current;
     if (!el || !track.audioUrl) return;
+    beginPlaybackCycle(track.id);
     setCurrent(track);
     setPosition(0);
     el.src = track.audioUrl;
     void el.play().catch(() => setPlaying(false));
-  }, []);
+  }, [beginPlaybackCycle]);
 
   const play = useCallback(
     (track: Track, nextQueue?: Track[]) => {
       if (nextQueue) setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
       const el = audioRef.current;
       if (current && current.id === track.id && el) {
-        if (el.paused) void el.play().catch(() => setPlaying(false));
+        if (el.paused) {
+          if (el.ended || playbackCycleRef.current?.endedHandled) {
+            el.currentTime = 0;
+            beginPlaybackCycle(track.id);
+          }
+          void el.play().catch(() => setPlaying(false));
+        }
         else el.pause();
         return;
       }
       start(track);
     },
-    [current, start],
+    [current, start, beginPlaybackCycle],
   );
 
   const toggle = useCallback(() => {
@@ -213,8 +268,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!el) return;
     const onEnded = () => {
       if (!current) return;
+      countCompletedPlay();
       if (repeat === "one") {
         el.currentTime = 0;
+        beginPlaybackCycle(current.id);
         void el.play().catch(() => setPlaying(false));
         return;
       }
@@ -233,7 +290,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
     el.addEventListener("ended", onEnded);
     return () => el.removeEventListener("ended", onEnded);
-  }, [current, queue, shuffle, repeat, goTo, pickShuffled]);
+  }, [current, queue, shuffle, repeat, goTo, pickShuffled, countCompletedPlay, beginPlaybackCycle]);
 
 
   const seek = useCallback((seconds: number) => {

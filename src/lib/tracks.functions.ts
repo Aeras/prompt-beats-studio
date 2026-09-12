@@ -19,6 +19,17 @@ const trackInput = z.object({
 const TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
+/** Counts one completed public playback without requiring a signed-in user. */
+export const incrementTrackPlay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const { data: plays, error } = await supabase.rpc("increment_track_play" as never, { _track_id: data.trackId } as never);
+    if (error) throw new Error("Could not record track play");
+    return { plays: typeof plays === "number" ? plays : null };
+  });
+
 /** Public feed: published tracks with their creator handle. */
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");

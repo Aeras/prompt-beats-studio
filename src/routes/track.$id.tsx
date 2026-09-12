@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Play, Pause, Share2 } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
@@ -57,17 +57,36 @@ function TrackPage() {
     queryKey: ["public-track", id],
     queryFn: () => getPublicTrackById({ data: { id } }),
   });
+  const queryClient = useQueryClient();
 
   const { play, current, playing } = usePlayer();
   const prompt = useCopy();
   const share = useCopy();
 
   const track = data?.track ?? null;
+  const [playCount, setPlayCount] = useState(() => track?.plays ?? 0);
   const artist = data?.artist ?? null;
   const artistName = artist?.artist_alias || artist?.display_name || artist?.handle || "Unknown artist";
   const duration = track ? formatDuration(track.duration_seconds) : null;
   const createdDate = track ? formatDate(track.created_at) : null;
   const artwork = track?.cover_url ?? artist?.avatar_url ?? (track ? `https://i.pravatar.cc/640?u=${track.id}` : null);
+
+  useEffect(() => {
+    if (track) setPlayCount(track.plays ?? 0);
+  }, [track?.id, track?.plays]);
+
+  useEffect(() => {
+    const onPlayCounted = (event: Event) => {
+      const detail = (event as CustomEvent<{ trackId?: string; plays?: number }>).detail;
+      if (detail?.trackId !== id || typeof detail.plays !== "number") return;
+      setPlayCount(detail.plays);
+      void queryClient.invalidateQueries({ queryKey: ["public-track", id] });
+      void queryClient.invalidateQueries({ queryKey: ["tracks"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-profile"] });
+    };
+    window.addEventListener("promptbeats:track-play-counted", onPlayCounted);
+    return () => window.removeEventListener("promptbeats:track-play-counted", onPlayCounted);
+  }, [id, queryClient]);
 
   const playTrack = () => {
     if (!track || !artwork) return;
@@ -131,7 +150,7 @@ function TrackPage() {
 
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
                     {duration && <span>{duration}</span>}
-                    <span>{track.plays ?? 0} plays</span>
+                    <span>{playCount} plays</span>
                     {createdDate && <span>Published {createdDate}</span>}
                   </div>
 

@@ -34,6 +34,7 @@ export type StaffTrack = {
   moderation_reason_code: string | null;
   moderation_reason_text: string | null;
   moderation_locked_at: string | null;
+  can_delete_track?: boolean;
 };
 
 type TrackStorageCleanup = {
