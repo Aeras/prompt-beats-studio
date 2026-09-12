@@ -49,15 +49,22 @@ export function TrackCard({
   return (
     <article className="glass group overflow-hidden rounded-2xl transition-all hover:border-white/20 hover:shadow-[0_10px_40px_-12px_color-mix(in_oklab,var(--neon)_45%,transparent)]">
       <div className="relative aspect-square overflow-hidden">
-        <img
-          src={track.art}
-          alt={`${track.title} cover art`}
-          width={640}
-          height={640}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+        <Link
+          to="/track/$id"
+          params={{ id: track.id }}
+          aria-label={`Open ${track.title}`}
+          className="block h-full cursor-pointer"
+        >
+          <img
+            src={track.art}
+            alt={`${track.title} cover art`}
+            width={640}
+            height={640}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        </Link>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
         <span className="glass absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest text-accent">
           {track.genre}
         </span>
@@ -77,7 +84,11 @@ export function TrackCard({
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold">{track.title}</h3>
+            <h3 className="truncate text-base font-semibold">
+              <Link to="/track/$id" params={{ id: track.id }} className="cursor-pointer transition-colors hover:text-accent">
+                {track.title}
+              </Link>
+            </h3>
             <p className="truncate text-xs text-muted-foreground">
               {track.userId ? (
                 <Link
