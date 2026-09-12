@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { cleanTrackStorage } from "@/lib/track-moderation.functions";
 
 const trackInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -247,33 +248,12 @@ export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    // RLS restricts this delete to the track owner (or an admin). We chain
-    // .select() so the returned rows tell us whether a row was actually
-    // deleted — only then is it safe to remove the audio file from R2.
-    // audio_key is internal-only (not selectable by anon/authenticated), so we
-    // read it server-side with the admin client before performing the delete.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: keyRow } = await supabaseAdmin
-      .from("tracks")
-      .select("audio_key")
-      .eq("id", data.id)
-      .maybeSingle();
-
-    const { data: deleted, error } = await context.supabase
-      .from("tracks")
-      .delete()
-      .eq("id", data.id)
-      .select("id");
+    const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup" as never, { _track_id: data.id } as never);
     if (error) throw new Error(error.message);
-    if (!deleted || deleted.length === 0) {
-      throw new Error("Track not found or you don't have permission to delete it.");
-    }
-    const audioKey = keyRow?.audio_key ?? null;
-    if (audioKey) {
-      const { deleteFromR2 } = await import("@/lib/r2.server");
-      await deleteFromR2(audioKey);
-    }
-    return { ok: true };
+
+    const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
+    if (cleanupId) await cleanTrackStorage(context.supabase, cleanupId);
+    return { ok: true, storageCleanupPending: false };
   });
 
 

@@ -97,7 +97,7 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
     return { ok: true, storageCleanupPending: false };
   });
 
-async function cleanTrackStorage(supabase: any, cleanupId: string) {
+export async function cleanTrackStorage(supabase: any, cleanupId: string) {
   const { data, error } = await supabase.rpc("staff_get_track_storage_cleanup" as never, { _cleanup_id: cleanupId } as never);
   if (error) throw new Error(error.message);
   const cleanup = data as unknown as TrackStorageCleanup;
@@ -133,7 +133,6 @@ export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ cleanupId: trackId }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireTrackCapability(context.supabase, "can_delete_tracks");
     await cleanTrackStorage(context.supabase, data.cleanupId);
     return { ok: true };
   });
