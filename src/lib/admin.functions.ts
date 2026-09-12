@@ -17,8 +17,8 @@ export const BLOCK_REASONS = [
 ] as const;
 const blockReasonCode = z.enum(BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]]);
 
-async function requireAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+async function requireAdmin(supabase: any) {
+  const { data, error } = await supabase.rpc("current_user_has_role", { _role: "admin" });
   if (error || data !== true) throw new Error("Not allowed");
 }
 
@@ -61,7 +61,7 @@ export type AdminUserDetail = AdminUser & {
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { data, error } = await context.supabase.rpc("admin_overview" as never);
     if (error) throw new Error(error.message);
     return data as unknown as AdminOverview;
@@ -125,7 +125,7 @@ export const setAdminModelAccess = createServerFn({ method: "POST" })
     models: z.array(z.enum(AI_MODEL_IDS as [AiModelId, ...AiModelId[]])).max(AI_MODEL_IDS.length).default([]),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_set_model_access" as never, {
       _target_user_id: data.userId, _access_mode: data.mode, _allowed_models: data.models,
     } as never);
@@ -145,7 +145,7 @@ export const setAdminUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: adminUserId, role: z.enum(["user", "moderator", "senior_moderator"]) }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_set_user_role" as never, { _target_user_id: data.userId, _role: data.role } as never);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -323,13 +323,19 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => deleteInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     if (data.userId === context.userId) throw new Error("You cannot delete your own admin account.");
 
+    const { data: operationId, error: authorizationError } = await context.supabase.rpc("admin_begin_account_deletion" as never, { _target_user_id: data.userId } as never);
+    if (authorizationError || typeof operationId !== "string") throw new Error(authorizationError?.message ?? "Could not authorize account deletion");
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    const { data: authorizedTargetId, error: consumeError } = await context.supabase.rpc("consume_admin_account_deletion" as never, { _operation_id: operationId } as never);
+    if (consumeError || typeof authorizedTargetId !== "string") throw new Error(consumeError?.message ?? "Account deletion authorization expired");
+    const targetUserId = authorizedTargetId;
+    const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
     if (userError || !authUser.user) throw new Error("User not found");
-    const { data: targetAdmin } = await supabaseAdmin.from("user_roles" as never).select("user_id").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
+    const { data: targetAdmin } = await supabaseAdmin.from("user_roles" as never).select("user_id").eq("user_id", targetUserId).eq("role", "admin").maybeSingle();
     if (targetAdmin) throw new Error("Admin accounts cannot be deleted from this dashboard.");
     if ((authUser.user.email ?? "").toLowerCase() !== data.confirmationEmail.toLowerCase()) {
       throw new Error("The confirmation email does not match this account.");
@@ -366,7 +372,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     }
 
     const { data: tracks, error: tracksError } = await supabaseAdmin
-      .from("tracks" as never).select("audio_key, cover_url").eq("user_id", data.userId);
+      .from("tracks" as never).select("audio_key, cover_url").eq("user_id", targetUserId);
     if (tracksError) {
       try { await releaseRegistrationBlock(); } catch (releaseError) {
         throw new Error(`Could not inspect user files: ${tracksError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`);
@@ -376,8 +382,8 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 
     let storageCleanupPending = 0;
     try {
-      await queueAccountStorageCleanup(supabaseAdmin, data.userId, (tracks ?? []) as Array<{ audio_key: string | null; cover_url: string | null }>);
-      storageCleanupPending = await processAccountStorageCleanup(supabaseAdmin, data.userId);
+      await queueAccountStorageCleanup(supabaseAdmin, targetUserId, (tracks ?? []) as Array<{ audio_key: string | null; cover_url: string | null }>);
+      storageCleanupPending = await processAccountStorageCleanup(supabaseAdmin, targetUserId);
     } catch (error) {
       try { await releaseRegistrationBlock(); } catch (releaseError) {
         throw new Error(`${error instanceof Error ? error.message : "User file cleanup could not be prepared."} ${releaseError instanceof Error ? releaseError.message : "Registration block release failed."}`);
@@ -385,7 +391,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       throw new Error(error instanceof Error ? error.message : "User file cleanup could not be prepared.");
     }
 
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
     if (deleteError) {
       try { await releaseRegistrationBlock(); } catch (releaseError) {
         throw new Error(`Account files were cleaned, but authentication deletion failed: ${deleteError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`);
@@ -424,7 +430,7 @@ export const retryAccountStorageCleanup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ cleanupId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("account_storage_cleanup" as never)
@@ -452,7 +458,7 @@ export const listAdminRegistrationBlocks = createServerFn({ method: "POST" })
     pageSize: z.number().int().min(1).max(50).default(25),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { data: result, error } = await context.supabase.rpc("admin_list_registration_blocks" as never, {
       _search: data.search, _limit: data.pageSize, _offset: data.page * data.pageSize,
     } as never);
@@ -464,7 +470,7 @@ export const removeAdminRegistrationBlock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ blockId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_remove_registration_block" as never, {
       _block_id: data.blockId,
     } as never);

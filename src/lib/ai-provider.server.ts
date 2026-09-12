@@ -175,10 +175,7 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
   }
 
   const requested = AI_MODELS.find((model) => model.id === requestedModel)?.id;
-  const { data: isAdmin } = await supabaseAdmin.rpc("has_role" as never, {
-    _user_id: userId,
-    _role: "admin",
-  } as never);
+  const { data: isAdmin } = await supabaseAdmin.rpc("_has_role_internal" as never, { _user_id: userId, _role: "admin" } as never);
   if (isAdmin === true && requested) return requested;
 
   const { data: override, error: overrideError } = await supabaseAdmin

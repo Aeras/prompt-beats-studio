@@ -55,12 +55,12 @@ async function readUsage(supabase: Supa, userId: string) {
   return { used, remaining, limit: HOURLY_LIMIT, resetAt: remaining === 0 ? resetAt : null };
 }
 
-// Server-side admin check via the existing has_role security-definer function.
+// Server-side admin check via the caller-bound role helper.
 // The 10/hour limit is bypassed only for admins (administrative/testing purposes);
 // it is never derived from client-supplied data and cannot apply to anonymous users
 // because requireSupabaseAuth guarantees an authenticated userId.
 async function isAdminUser(supabase: Supa, userId: string): Promise<boolean> {
-  const { data } = await (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" });
+  const { data } = await (supabase as any).rpc("current_user_has_role", { _role: "admin" });
   return data === true;
 }
 

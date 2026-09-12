@@ -62,10 +62,7 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rangeInput.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
+    const { data: isAdmin } = await context.supabase.rpc("current_user_has_role" as never, { _role: "admin" } as never);
     if (!isAdmin) throw new Error("Forbidden");
 
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
