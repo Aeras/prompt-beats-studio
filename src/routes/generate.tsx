@@ -829,7 +829,7 @@ function GeneratePage() {
   const { data: generationModelSetting } = useQuery({
     queryKey: ["ai-model"],
     queryFn: () => getAiModelSetting(),
-    enabled: moderation?.isAdmin === true,
+    enabled: moderation?.role === "admin",
   });
 
   useEffect(() => {
@@ -1221,7 +1221,7 @@ function GeneratePage() {
           </div>
         </div>
 
-        {moderation?.isAdmin && <AdminModelSelector />}
+        {moderation?.role === "admin" && <AdminModelSelector />}
 
         <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
@@ -1635,7 +1635,7 @@ function GeneratePage() {
                 setQualityCheckModelChosen(true);
               }}
               qualityCheckResultModel={qualityCheckResultModel}
-              showQualityCheckModelSelector={moderation?.isAdmin === true}
+              showQualityCheckModelSelector={moderation?.role === "admin"}
             />
           </div>
         )}
