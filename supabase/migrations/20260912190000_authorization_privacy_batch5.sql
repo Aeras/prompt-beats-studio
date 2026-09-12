@@ -344,7 +344,6 @@ DECLARE v_admin uuid:=auth.uid(); v_email text:=public.normalize_registration_em
 CREATE OR REPLACE FUNCTION public.admin_remove_registration_block(_block_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth AS $$
 DECLARE v_admin uuid:=auth.uid(); v_email text; BEGIN
  PERFORM public._lock_user_security_state(v_admin); PERFORM 1 FROM public.registration_blocks WHERE id=_block_id FOR UPDATE; IF NOT public._has_role_internal(v_admin,'admin') THEN RAISE EXCEPTION 'not allowed'; END IF; DELETE FROM public.registration_blocks WHERE id=_block_id RETURNING email_normalized INTO v_email; IF v_email IS NULL THEN RAISE EXCEPTION 'registration block not found'; END IF; INSERT INTO public.admin_audit_log(admin_user_id,target_user_id,action,details) VALUES(v_admin,NULL,'UNBLOCK_REGISTRATION',jsonb_build_object('registration_block_id',_block_id)); END; $$;
-REVOKE ALL ON FUNCTION public.consume_admin_account_deletion(uuid) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.consume_admin_account_deletion(uuid) TO authenticated,service_role;
 
 CREATE OR REPLACE FUNCTION public.start_generation_job(_idempotency_key uuid, _input jsonb)
 RETURNS jsonb
@@ -654,3 +653,4 @@ DECLARE v_actor uuid:=auth.uid(); v_target uuid; v_operation_actor uuid; v_used 
  IF NOT FOUND THEN RAISE EXCEPTION 'account deletion authorization is invalid or expired'; END IF;
  RETURN v_target;
 END; $$;
+REVOKE ALL ON FUNCTION public.consume_admin_account_deletion(uuid) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.consume_admin_account_deletion(uuid) TO authenticated,service_role;
