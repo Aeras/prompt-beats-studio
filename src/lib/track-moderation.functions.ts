@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 export const TRACK_MODERATION_REASONS = [
   { code: "reported_third_party_rights", label: "Reported third-party rights issue" },
@@ -39,6 +40,7 @@ export type StaffTrack = {
 
 type TrackStorageCleanup = {
   id: string;
+  owner_id: string | null;
   audio_key: string | null;
   cover_path: string | null;
   status: "pending" | "complete";
@@ -93,7 +95,10 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
-    if (cleanupId) await cleanTrackStorage(context.supabase, cleanupId);
+    if (cleanupId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await cleanTrackStorage(supabaseAdmin, cleanupId);
+    }
     return { ok: true, storageCleanupPending: false };
   });
 
@@ -105,14 +110,20 @@ export async function cleanTrackStorage(supabase: any, cleanupId: string) {
 
   if (cleanup.audio_key) {
     try {
-      const { deleteFromR2 } = await import("@/lib/r2.server");
-      await deleteFromR2(cleanup.audio_key);
+      if (!cleanup.owner_id || !isSafeOwnedAudioKey(cleanup.audio_key, cleanup.owner_id)) {
+        throw new Error("Unsafe owned audio storage path");
+      }
+      const { deleteOwnedR2Object } = await import("@/lib/r2.server");
+      await deleteOwnedR2Object(cleanup.audio_key, cleanup.owner_id);
     } catch (error) {
       failures.push(`audio cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`);
     }
   }
   if (cleanup.cover_path) {
     try {
+      if (!cleanup.owner_id || !isSafeOwnedCoverPath(cleanup.cover_path, cleanup.owner_id)) {
+        throw new Error("Unsafe owned cover storage path");
+      }
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin.storage.from("track-covers").remove([cleanup.cover_path]);
       if (error) failures.push(`cover cleanup failed: ${error.message}`);
@@ -133,6 +144,8 @@ export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ cleanupId: trackId }).parse(input))
   .handler(async ({ data, context }) => {
-    await cleanTrackStorage(context.supabase, data.cleanupId);
+    await requireTrackCapability(context.supabase, "can_delete_tracks");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await cleanTrackStorage(supabaseAdmin, data.cleanupId);
     return { ok: true };
   });

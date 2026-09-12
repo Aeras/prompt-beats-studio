@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
+import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const adminUserId = z.string().uuid();
 const accessMode = z.enum(["inherit", "custom"]);
@@ -168,7 +169,14 @@ async function removeStorageFolder(bucket: string, userId: string) {
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabaseAdmin.storage.from(bucket).list(userId, { limit: 1000, offset });
     if (error) throw new Error(`${bucket} cleanup failed: ${error.message}`);
-    names.push(...(data ?? []).map((item) => `${userId}/${item.name}`));
+    for (const item of data ?? []) {
+      const objectPath = `${userId}/${item.name}`;
+      if (!isSafeOwnedCoverPath(objectPath, userId)) {
+        console.error(`[admin] refusing unsafe ${bucket} cleanup path`);
+        continue;
+      }
+      names.push(objectPath);
+    }
     if (!data || data.length < 1000) break;
   }
   if (names.length) {
@@ -233,9 +241,15 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     }
 
     try {
-      const { deleteFromR2 } = await import("@/lib/r2.server");
+      const { deleteOwnedR2Object } = await import("@/lib/r2.server");
       for (const track of (tracks ?? []) as { audio_key: string | null }[]) {
-        if (track.audio_key) await deleteFromR2(track.audio_key);
+        if (track.audio_key) {
+          if (!isSafeOwnedAudioKey(track.audio_key, data.userId)) {
+            console.error("[admin] refusing unsafe account audio cleanup");
+          } else {
+            await deleteOwnedR2Object(track.audio_key, data.userId);
+          }
+        }
       }
       await removeStorageFolder("avatars", data.userId);
       await removeStorageFolder("track-covers", data.userId);

@@ -1,5 +1,7 @@
 import { AwsClient } from "aws4fetch";
 
+import { assertSafeOwnedAudioKey } from "@/lib/storage-paths";
+
 export function getR2Config() {
   const endpoint = process.env["R2_ENDPOINT"]!.replace(/\/+$/, "");
   const bucket = process.env["R2_BUCKET"]!;
@@ -47,4 +49,10 @@ export async function deleteFromR2(key: string): Promise<void> {
   if (!response.ok && response.status !== 404) {
     throw new Error(`R2 delete failed (${response.status}): ${await response.text()}`);
   }
+}
+
+/** Deletes only an audio object in the exact owning user's R2 namespace. */
+export async function deleteOwnedR2Object(key: string, ownerId: string): Promise<void> {
+  assertSafeOwnedAudioKey(key, ownerId);
+  await deleteFromR2(key);
 }

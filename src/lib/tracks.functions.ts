@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cleanTrackStorage } from "@/lib/track-moderation.functions";
+import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const trackInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -178,8 +179,12 @@ export const updateTrack = createServerFn({ method: "POST" })
     if (audio_key && previousKey && previousKey !== audio_key) {
       // Best-effort: a failed cleanup must not fail an already-successful save.
       try {
-        const { deleteFromR2 } = await import("@/lib/r2.server");
-        await deleteFromR2(previousKey);
+        const { deleteOwnedR2Object } = await import("@/lib/r2.server");
+        if (isSafeOwnedAudioKey(previousKey, context.userId)) {
+          await deleteOwnedR2Object(previousKey, context.userId);
+        } else {
+          console.error("[tracks] refusing to delete unsafe replaced audio object");
+        }
       } catch (err) {
         console.error("[tracks] failed to delete replaced audio object", err);
       }
@@ -208,7 +213,7 @@ export const discardUploads = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (data.audioKey && data.audioKey.startsWith(`tracks/${context.userId}/`)) {
+    if (data.audioKey && isSafeOwnedAudioKey(data.audioKey, context.userId)) {
       const { data: inUse } = await supabaseAdmin
         .from("tracks")
         .select("id")
@@ -216,15 +221,15 @@ export const discardUploads = createServerFn({ method: "POST" })
         .limit(1);
       if (!inUse || inUse.length === 0) {
         try {
-          const { deleteFromR2 } = await import("@/lib/r2.server");
-          await deleteFromR2(data.audioKey);
+          const { deleteOwnedR2Object } = await import("@/lib/r2.server");
+          await deleteOwnedR2Object(data.audioKey, context.userId);
         } catch (err) {
           console.error("[tracks] orphan audio cleanup failed", err);
         }
       }
     }
 
-    if (data.coverPath && data.coverPath.startsWith(`${context.userId}/`)) {
+    if (data.coverPath && isSafeOwnedCoverPath(data.coverPath, context.userId)) {
       // Same safety rule as audio: only remove a cover that no track row
       // references. Tracks store the public URL, which always ends with
       // `/track-covers/<coverPath>` — match on that object identity.
@@ -252,7 +257,10 @@ export const deleteTrack = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
-    if (cleanupId) await cleanTrackStorage(context.supabase, cleanupId);
+    if (cleanupId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await cleanTrackStorage(supabaseAdmin, cleanupId);
+    }
     return { ok: true, storageCleanupPending: false };
   });
 
