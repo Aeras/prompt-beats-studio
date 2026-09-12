@@ -29,7 +29,7 @@
 
 ## Existing important workflows
 - Song generation is durable and job-based: browser code starts jobs through `src/lib/generation-jobs.functions.ts`, execution runs in `src/lib/generation-jobs.server.ts`, and recovery/execution is triggered by `src/routes/api/public/jobs/run.ts`.
-- Uploads are intentionally code-driven: `src/routes/api/upload.ts` admits, validates, and uploads audio to Cloudflare R2, while `src/lib/tracks.functions.ts` records tracks and performs rollback/cleanup through database-backed cleanup ledgers.
+- Upload handling is implemented through `src/routes/api/upload.ts`, which admits, validates, and uploads audio to Cloudflare R2, while `src/lib/tracks.functions.ts` records tracks and performs rollback/cleanup through database-backed cleanup ledgers.
 - Moderation/admin flows rely on Supabase RPCs plus management UI in `src/routes/management.tsx` and `src/lib/admin.functions.ts` / `src/lib/track-moderation.functions.ts`.
 - Billing/email integrations already exist in code-first form (`src/lib/stripe.functions.ts`, `src/routes/api/public/webhooks/stripe.ts`, `src/lib/email.functions.ts`, `src/lib/welcome-email.server.ts`) even where UI exposure is limited.
 
