@@ -23,8 +23,6 @@ import {
   getCurrentUserAiModelAccess,
   getGenerationUsage,
   savePromptToLibrary,
-  getAiModelSetting,
-  setAiModelSetting,
   HOURLY_LIMIT,
   type QualityReport,
   type CorrectionItem,
@@ -48,7 +46,6 @@ import {
   undoLyricCorrection,
   undoVocalArrangement,
 } from "@/lib/quality-apply";
-import { getMyModeration } from "@/lib/moderation.functions";
 import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
 
 /** Survives refreshes so an in-flight generation is recovered on return. */
@@ -826,47 +823,6 @@ function ResultSection({
   );
 }
 
-/** Super Admin only: picks the AI model that serves every user's generations. */
-function AdminModelSelector() {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ["ai-model"], queryFn: () => getAiModelSetting() });
-  const [saving, setSaving] = useState(false);
-
-  return (
-    <div className="glass mt-4 flex flex-wrap items-center gap-3 rounded-2xl p-4">
-      <div className="min-w-0">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          Default AI model (admin setting)
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Used by inherit-mode users and as the default selection when available.
-        </p>
-      </div>
-      <select
-        aria-label="AI model"
-        value={data?.model ?? DEFAULT_AI_MODEL}
-        disabled={saving}
-        onChange={async (e) => {
-          setSaving(true);
-          try {
-            await setAiModelSetting({ data: { model: e.target.value } });
-            await queryClient.invalidateQueries({ queryKey: ["ai-model"] });
-          } finally {
-            setSaving(false);
-          }
-        }}
-        className={fieldClass + " max-w-xs"}
-      >
-        {AI_MODELS.map((m) => (
-          <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
-            {m.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 function GeneratePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -1079,13 +1035,6 @@ function GeneratePage() {
   } = useQuery({
     queryKey: ["my-ai-model-access"],
     queryFn: () => getCurrentUserAiModelAccess(),
-    enabled: !!user,
-  });
-
-  // Server-derived admin status (has_role RPC) — gates the temporary debug panel.
-  const { data: moderation } = useQuery({
-    queryKey: ["my-moderation"],
-    queryFn: () => getMyModeration(),
     enabled: !!user,
   });
 
@@ -1512,8 +1461,6 @@ function GeneratePage() {
               </p>
             </div>
           </div>
-
-          {moderation?.isAdmin && <AdminModelSelector />}
 
           <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
