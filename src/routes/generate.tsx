@@ -587,7 +587,7 @@ function ResultSection({
 
 
 /** Super Admin only: picks the AI model that serves every user's generations. */
-function AdminModelSelector() {
+function GlobalModelSelector() {
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["ai-model"], queryFn: () => getAiModelSetting() });
   const [saving, setSaving] = useState(false);
@@ -1221,7 +1221,7 @@ function GeneratePage() {
           </div>
         </div>
 
-        {moderation?.role === "admin" && <AdminModelSelector />}
+        {moderation?.role === "admin" && <GlobalModelSelector />}
 
         <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
