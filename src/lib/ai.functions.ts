@@ -1133,6 +1133,7 @@ async function runQualityCheck(
       });
       return null;
     }
+    parsedJson = normalizeQualityScore(parsedJson);
     const parsed = qualityOutput.safeParse(parsedJson);
     if (!parsed.success) {
       console.warn("[ai] quality_check schema_validation_error", {
