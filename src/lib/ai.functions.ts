@@ -1051,6 +1051,9 @@ async function runQualityCheck(
       schema,
     });
     const { text, stopReason } = res;
+    const operation = sink?.operation ?? "quality_check";
+    const model = res.model || sink?.model || "unknown";
+    const provider = res.provider || sink?.provider || "unknown";
     const ok = stopReason === "end_turn";
     if (sink) {
       sink.records.push({
@@ -1061,16 +1064,69 @@ async function runQualityCheck(
         success: ok,
       });
     }
-    if (!ok) return null;
+    if (!ok) {
+      console.warn("[ai] quality_check non_success_stop_reason", {
+        operation,
+        model,
+        provider,
+        stopReason: stopReason ?? "unknown",
+      });
+      return null;
+    }
     const cleaned = text
       .replace(/^```(?:json)?/i, "")
       .replace(/```$/, "")
       .trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
-    if (start === -1 || end <= start) return null;
-    const parsed = qualityOutput.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
-    return parsed.success ? canonicalizeQualityReport(parsed.data) : null;
+    if (start === -1 || end <= start) {
+      console.warn("[ai] quality_check missing_json", {
+        operation,
+        model,
+        provider,
+        failureReason: "missing_json",
+        responseTextLength: text.length,
+      });
+      return null;
+    }
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(cleaned.slice(start, end + 1));
+    } catch (err) {
+      console.warn("[ai] quality_check json_parse_error", {
+        operation,
+        model,
+        provider,
+        failureReason: "json_parse_error",
+        responseTextLength: text.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+    const parsed = qualityOutput.safeParse(parsedJson);
+    if (!parsed.success) {
+      console.warn("[ai] quality_check schema_validation_error", {
+        operation,
+        model,
+        provider,
+        failureReason: "schema_validation_error",
+        validationIssues: parsed.error.issues.slice(0, 8).map((issue) => ({
+          path: issue.path.join(".") || "<root>",
+          code: issue.code,
+          message: issue.message,
+          ...(issue.code === "invalid_type"
+            ? {
+                expected:
+                  "expected" in issue && typeof issue.expected === "string" ? issue.expected : undefined,
+                received:
+                  "received" in issue && typeof issue.received === "string" ? issue.received : undefined,
+              }
+            : {}),
+        })),
+      });
+      return null;
+    }
+    return canonicalizeQualityReport(parsed.data);
   } catch (err) {
     // Observability only: the provider error was previously discarded, which made
     // "Quality check unavailable" impossible to diagnose from the server logs.
