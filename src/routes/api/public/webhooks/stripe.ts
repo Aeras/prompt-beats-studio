@@ -75,8 +75,8 @@ export const Route = createFileRoute("/api/public/webhooks/stripe")({
           _customer_id: customerId,
           _subscription_id: subscriptionId,
           _subscription_status: status,
-          ...(currentPeriodEnd ? { _current_period_end: currentPeriodEnd } : {}),
-          ...(typeof priceId === "string" ? { _price_id: priceId } : {}),
+          _current_period_end: currentPeriodEnd,
+          _price_id: typeof priceId === "string" ? priceId : null,
           _approved_pro_price_id: getStripeProPriceId(),
         });
         if (error) {

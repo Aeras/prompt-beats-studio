@@ -167,7 +167,7 @@ export const updateTrack = createServerFn({ method: "POST" })
           _lyrics: fields.lyrics,
           _audio_url: fields.audio_url,
           _audio_type: fields.audio_type,
-          _audio_key: audio_key ?? "",
+          _audio_key: audio_key,
           _is_published: fields.is_published,
         },
       );
