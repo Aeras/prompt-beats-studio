@@ -367,10 +367,13 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     // Reserve the email before external cleanup/Auth deletion so no new
     // account can be created in the gap. Release it on every known failure.
     if (data.blockRegistration) {
+      const reasonParams = {
+        ...(data.registrationReasonCode ? { _reason_code: data.registrationReasonCode } : {}),
+        ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
+      };
       const { data: reservedId, error: registrationError } = await context.supabase.rpc("admin_create_registration_block", {
         _email: authUser.user.email ?? "",
-        _reason_code: data.registrationReasonCode,
-        _reason_text: data.registrationReasonText ?? null,
+        ...reasonParams,
       });
       if (registrationError || !reservedId) {
         throw new Error(`Could not reserve registration block: ${registrationError?.message ?? "no block id returned"}`);
