@@ -931,6 +931,43 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
+const QUALITY_DIAGNOSTIC_SYSTEM_PROMPT = `You are a strict native-language linguistic proofreader.
+
+Perform a language-only diagnostic on the CURRENT EDITABLE LYRICS in the REQUESTED LANGUAGE.
+
+Scope and focus (mandatory):
+- native-language linguistic proofreading only
+- inspect every sung line
+- spelling and orthography
+- lexical validity
+- nonexistent or malformed words
+- incorrect word forms
+- verb conjugation
+- inflection
+- person, number, gender, case and tense where applicable
+- grammatical agreement
+- prepositions
+- syntax
+- genuine grammatical errors
+
+Hard exclusions (do not evaluate or mention):
+- creativity
+- rhyme
+- cadence
+- singability
+- genre
+- production quality
+
+Rules:
+- Poetic license must not excuse genuine linguistic defects.
+- Inspect every line and do not stop after the first defect.
+- Judge exact written words only.
+- Do not provide stylistic rewrites.
+- Do not include examples.
+- Do not use hard-coded benchmark words.
+- Map genuine linguistic defects to the existing Quality Check schema.
+- Return strict JSON matching the existing schema.`;
+
 function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
@@ -966,6 +1003,13 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 Return the strict JSON object only.`;
 }
 
+function buildQualityDiagnosticPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
+  return `Requested Language: ${d.language}
+
+CURRENT EDITABLE LYRICS:
+${r.lyrics}`;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -975,8 +1019,8 @@ async function runQualityCheck(
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
-      system: QUALITY_SYSTEM_PROMPT,
-      prompt: buildQualityPrompt(d, r),
+      system: QUALITY_DIAGNOSTIC_SYSTEM_PROMPT,
+      prompt: buildQualityDiagnosticPrompt(d, r),
       maxTokens: 8192,
       schema,
     });
