@@ -931,6 +931,24 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
+const QUALITY_DIAGNOSTIC_SYSTEM_PROMPT = `You are a strict native-language proofreader.
+
+Perform LANGUAGE-ONLY proofreading on lyrics.
+
+Scope constraints:
+- Evaluate only spelling, orthography, grammar, morphology, conjugation, syntax, and accidental foreign-language/script contamination.
+- Ignore title, genre fit, style, creativity, structure, production, vocal advice, and all non-language dimensions.
+- Do not rewrite the song; report only clear language defects.
+
+Output contract:
+- Return the exact required JSON shape.
+- Put all identified language defects into "languageIssues" and/or "grammarIssues".
+- Keep non-language issue arrays empty unless a defect is strictly language-derived.
+- Include precise corrections for each fixable language defect, quoting originalText exactly from the provided lyrics.
+- If no language defects exist, return passed=true, score=10, and empty issue/correction arrays.
+
+Return JSON only.`;
+
 function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
@@ -966,6 +984,17 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 Return the strict JSON object only.`;
 }
 
+function buildQualityDiagnosticPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
+  return `Language-only proofreading diagnostic.
+
+Requested Language: ${d.language}
+
+Lyrics:
+${r.lyrics}
+
+Evaluate only language correctness for the requested language. Return strict JSON only.`;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -975,8 +1004,8 @@ async function runQualityCheck(
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
-      system: QUALITY_SYSTEM_PROMPT,
-      prompt: buildQualityPrompt(d, r),
+      system: QUALITY_DIAGNOSTIC_SYSTEM_PROMPT,
+      prompt: buildQualityDiagnosticPrompt(d, r),
       maxTokens: 8192,
       schema,
     });
