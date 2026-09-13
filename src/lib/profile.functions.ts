@@ -178,7 +178,9 @@ export const searchPublicCreators = createServerFn({ method: "GET" })
 
     const creators = new Map<string, PublicCreatorSearchResult>();
     for (const profile of [...(nameResult.data ?? []), ...(handleResult.data ?? [])]) {
-      if (profile.id && profile.handle) creators.set(profile.id, profile);
+      if (profile.id && profile.handle) {
+        creators.set(profile.id, profile as unknown as PublicCreatorSearchResult);
+      }
     }
     return { creators: [...creators.values()].slice(0, 25) };
   });
