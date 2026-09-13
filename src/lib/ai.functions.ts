@@ -1049,8 +1049,8 @@ ${r.lyrics}`;
 function normalizeQualityScore(raw: unknown): unknown {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    if (typeof obj.score === "number") {
-      const original = obj.score;
+    if (typeof obj["score"] === "number") {
+      const original = obj["score"] as number;
       let normalized = original;
       if (original > 10) normalized = 10;
       if (original < 0) normalized = 0;
