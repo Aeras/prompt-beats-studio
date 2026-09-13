@@ -11,6 +11,7 @@ import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { getTrackEmbedUrl } from "@/lib/track-sources";
+import artFallback from "@/assets/art-3.jpg";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -71,8 +72,10 @@ function TrackPage() {
   const artistName = artist?.artist_alias || artist?.display_name || artist?.handle || "Unknown artist";
   const duration = track ? formatDuration(track.duration_seconds) : null;
   const createdDate = track ? formatDate(track.created_at) : null;
-  const artwork = track?.cover_url ?? artist?.avatar_url ?? (track ? `https://i.pravatar.cc/640?u=${track.id}` : null);
   const embedUrl = getTrackEmbedUrl(track?.source_type, track?.source_id);
+  const artwork = embedUrl
+    ? artFallback
+    : track?.cover_url ?? artist?.avatar_url ?? (track ? `https://i.pravatar.cc/640?u=${track.id}` : artFallback);
 
   useEffect(() => {
     if (track) setPlayCount(track.plays ?? 0);
@@ -126,13 +129,14 @@ function TrackPage() {
 
         <TrackModerationControls trackId={id} />
 
-        {track && artwork && (
+        {track && (
           <>
             <section className="glass-strong overflow-hidden rounded-3xl">
               <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-8">
                 <div className="mx-auto w-full max-w-md lg:max-w-none">
                   <div className="aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-2xl shadow-black/30">
-                    {embedUrl ? <ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={`${track.title} player`} /> : <img src={artwork} alt={`${track.title} cover art`} className="h-full w-full object-cover" />}
+                    <img src={artwork} alt={`${track.title} cover art`} className="h-full w-full object-cover" />
+                    {embedUrl && <ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={`${track.title} player`} />}
                   </div>
                 </div>
 

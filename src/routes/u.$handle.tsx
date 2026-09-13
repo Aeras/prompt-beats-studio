@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Music } from "lucide-react";
@@ -11,6 +11,8 @@ import { BanUserToggle } from "@/components/promptbeats/ArtistProfileView";
 import { incrementTrackPlay } from "@/lib/tracks.functions";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { getTrackEmbedUrl } from "@/lib/track-sources";
+import artFallback from "@/assets/art-3.jpg";
+import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -33,6 +35,12 @@ function CreatorPage() {
   const { handle } = Route.useParams();
   const queryClient = useQueryClient();
   const nativeCycles = useRef(new Map<string, { listenedSeconds: number; lastTime: number; endedHandled: boolean }>());
+  const audioRefs = useRef(new Map<string, HTMLAudioElement>());
+  useEffect(() => subscribeToMediaActivation(({ id }) => {
+    for (const [trackId, audio] of audioRefs.current) {
+      if (id !== `creator-native-${trackId}`) audio.pause();
+    }
+  }), []);
   const { data, isLoading } = useQuery({
     queryKey: ["public-profile", handle],
     queryFn: () => getPublicProfile({ data: { handle } }),
@@ -133,7 +141,8 @@ function CreatorPage() {
                     </span>
                   </div>
                   {embedUrl ? (
-                    <div className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                    <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <img src={artFallback} alt="" className="h-full w-full object-cover" />
                       <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
                     </div>
                   ) : t.audio_type === "link" ? (
@@ -147,10 +156,11 @@ function CreatorPage() {
                     </a>
                   ) : (
                     <audio
+                      ref={(audio) => { if (audio) audioRefs.current.set(t.id, audio); else audioRefs.current.delete(t.id); }}
                       controls
                       preload="none"
                       src={t.audio_url}
-                      onPlay={(event) => handleNativePlay(t.id, event.currentTarget)}
+                      onPlay={(event) => { activateMedia({ id: `creator-native-${t.id}`, kind: "native" }); handleNativePlay(t.id, event.currentTarget); }}
                       onTimeUpdate={(event) => handleNativeProgress(t.id, event.currentTarget)}
                       onEnded={(event) => countCompletedPlay(t.id, event.currentTarget)}
                       className="w-full"

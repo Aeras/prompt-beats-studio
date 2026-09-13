@@ -15,6 +15,7 @@ import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { getTrackEmbedUrl } from "@/lib/track-sources";
+import artFallback from "@/assets/art-3.jpg";
 
 type Profile = {
   id: string;
@@ -268,7 +269,8 @@ export function ArtistProfileView({
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t.genre}</p>
                     {embedUrl ? (
-                      <div className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                        <img src={artFallback} alt="" className="h-full w-full object-cover" />
                         <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
                       </div>
                     ) : <button

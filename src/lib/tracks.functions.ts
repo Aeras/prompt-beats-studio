@@ -23,6 +23,47 @@ const trackInput = z.object({
 const TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
+const SUNO_HOSTS = new Set(["suno.com", "www.suno.com"]);
+const SUNO_ID = /^[A-Za-z0-9_-]{6,128}$/;
+
+// URL normalizes an explicit default HTTPS port (:443) to an empty `port`.
+// Preserve that distinction so every explicitly supplied port is rejected.
+function hasExplicitUrlPort(value: string): boolean {
+  const authority = value.match(/^(?:https?:)?\/\/([^/?#]*)/i)?.[1];
+  if (!authority) return false;
+  return /:\d+$/.test(authority.split("@").at(-1) ?? "");
+}
+
+async function resolveSunoShareLink(rawUrl: string): Promise<ReturnType<typeof normalizeExternalTrackSource>> {
+  let current: URL;
+  try { current = new URL(rawUrl.trim()); } catch { return null; }
+  if (current.protocol !== "https:" || current.port !== "" || hasExplicitUrlPort(rawUrl) || current.username || current.password || !SUNO_HOSTS.has(current.hostname.toLowerCase())) return null;
+  const parts = current.pathname.split("/").filter(Boolean);
+  if (parts.length !== 2 || parts[0] !== "s" || !SUNO_ID.test(parts[1] ?? "")) return null;
+
+  try {
+    for (let redirects = 0; redirects <= 3; redirects += 1) {
+      const response = await fetch(current, { redirect: "manual", signal: AbortSignal.timeout(5_000) });
+      if (response.status < 300 || response.status >= 400) return normalizeExternalTrackSource("suno", current.toString());
+      const location = response.headers.get("location");
+      if (!location) return null;
+      let next: URL;
+      try { next = new URL(location, current); } catch { return null; }
+      if (next.protocol !== "https:" || next.port !== "" || hasExplicitUrlPort(location) || next.username || next.password || !SUNO_HOSTS.has(next.hostname.toLowerCase())) return null;
+      current = next;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function resolveExternalTrackSource(sourceType: ExternalTrackSourceType, rawUrl: string) {
+  const direct = normalizeExternalTrackSource(sourceType, rawUrl);
+  if (direct || sourceType !== "suno") return direct;
+  return resolveSunoShareLink(rawUrl);
+}
+
 /** Counts one completed public playback without requiring a signed-in user. */
 export const incrementTrackPlay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -118,7 +159,7 @@ export const createTrack = createServerFn({ method: "POST" })
 
     const externalSource = data.source_type === "upload"
       ? null
-      : normalizeExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
+      : await resolveExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
     if (data.source_type !== "upload" && !externalSource) {
       throw new Error("Invalid external track link");
     }

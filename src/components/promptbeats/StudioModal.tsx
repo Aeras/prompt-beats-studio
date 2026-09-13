@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { UPLOAD_GENRES } from "@/lib/tracks";
-import { normalizeExternalTrackSource, type TrackSourceType } from "@/lib/track-sources";
+import { isSupportedExternalTrackUrl, type TrackSourceType } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack, discardUploads } from "@/lib/tracks.functions";
@@ -105,17 +105,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     let coverUrl: string | undefined;
     try {
       if (r.sourceType !== "upload") {
-        const external = normalizeExternalTrackSource(r.sourceType, r.sourceUrl);
-        if (!external) throw new Error(`Enter a valid ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track link.`);
+        if (!isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) throw new Error(`Enter a valid ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track link.`);
         await createTrack({
           data: {
             title: r.title.trim(),
             genre: resolvedGenre(r),
             prompt: r.prompt,
             lyrics: r.lyrics,
-            audio_url: external.sourceUrl,
+            audio_url: r.sourceUrl,
             audio_type: "link",
-            source_type: external.sourceType,
+            source_type: r.sourceType,
             is_published: true,
           },
         });
@@ -169,7 +168,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     setStatus(null);
     for (const r of rows) {
       if (r.sourceType === "upload" && !r.file) return setStatus("Every Upload File track needs an MP3 or WAV file.");
-      if (r.sourceType !== "upload" && !normalizeExternalTrackSource(r.sourceType, r.sourceUrl)) {
+      if (r.sourceType !== "upload" && !isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) {
         return setStatus(`Every ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track needs a valid provider link.`);
       }
       if (!r.title.trim()) return setStatus("Every track needs a title.");

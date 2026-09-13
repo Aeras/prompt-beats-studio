@@ -11,6 +11,7 @@ import {
 
 import type { Track } from "@/lib/tracks";
 import { incrementTrackPlay } from "@/lib/tracks.functions";
+import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
 
 export type RepeatMode = "off" | "all" | "one";
 export type PlayerMode = "fixed" | "inline" | "hidden";
@@ -66,6 +67,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
   const playbackCycleRef = useRef<PlaybackCycle | null>(null);
+  const nativeInstanceId = "promptbeats-native-player";
 
   const beginPlaybackCycle = useCallback((trackId: string) => {
     playbackCycleRef.current = { trackId, listenedSeconds: 0, lastTime: 0, endedHandled: false };
@@ -175,10 +177,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => subscribeToMediaActivation(({ id }) => {
+    if (id !== nativeInstanceId) audioRef.current?.pause();
+  }), []);
+
   const start = useCallback((track: Track) => {
     const el = audioRef.current;
     if (!el || !track.audioUrl) return;
     beginPlaybackCycle(track.id);
+    activateMedia({ id: nativeInstanceId, kind: "native" });
     setCurrent(track);
     setPosition(0);
     el.src = track.audioUrl;
@@ -195,6 +202,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             el.currentTime = 0;
             beginPlaybackCycle(track.id);
           }
+          activateMedia({ id: nativeInstanceId, kind: "native" });
           void el.play().catch(() => setPlaying(false));
         }
         else el.pause();
@@ -208,7 +216,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     const el = audioRef.current;
     if (!el || !current) return;
-    if (el.paused) void el.play().catch(() => setPlaying(false));
+    if (el.paused) {
+      activateMedia({ id: nativeInstanceId, kind: "native" });
+      void el.play().catch(() => setPlaying(false));
+    }
     else el.pause();
   }, [current]);
 
@@ -272,6 +283,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (repeat === "one") {
         el.currentTime = 0;
         beginPlaybackCycle(current.id);
+        activateMedia({ id: nativeInstanceId, kind: "native" });
         void el.play().catch(() => setPlaying(false));
         return;
       }

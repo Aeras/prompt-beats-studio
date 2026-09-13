@@ -33,6 +33,18 @@ function pathId(url: URL, allowedPrefixes: readonly string[]): string | null {
   return PROVIDER_ID.test(sourceId) ? sourceId : null;
 }
 
+/** Client-side format validation only; server-side resolution remains authoritative. */
+export function isSupportedExternalTrackUrl(sourceType: ExternalTrackSourceType, rawUrl: string): boolean {
+  const url = parseHttpsUrl(rawUrl);
+  if (!url || url.username || url.password) return false;
+
+  if (sourceType === "suno") {
+    if (!SUNO_HOSTS.has(url.hostname.toLowerCase())) return false;
+    return pathId(url, ["song", "embed", "s"]) !== null;
+  }
+  return normalizeExternalTrackSource(sourceType, rawUrl) !== null;
+}
+
 /**
  * Accepts normal provider song/share URLs and reduces them to a provider-owned
  * canonical URL plus opaque provider ID. Never return a user-controlled URL.
@@ -46,7 +58,7 @@ export function normalizeExternalTrackSource(
 
   if (sourceType === "suno") {
     if (!SUNO_HOSTS.has(url.hostname.toLowerCase())) return null;
-    const sourceId = pathId(url, ["song", "s"]);
+    const sourceId = pathId(url, ["song", "embed"]);
     return sourceId
       ? { sourceType, sourceId, sourceUrl: `https://suno.com/song/${sourceId}` }
       : null;
@@ -86,7 +98,7 @@ export function getTrackEmbedUrl(
     return `https://www.udio.com/embed/${sourceId}?embedVariant=default&utm_source=generator`;
   }
   if (sourceType === "youtube" && YOUTUBE_ID.test(sourceId)) {
-    return `https://www.youtube.com/embed/${sourceId}`;
+    return `https://www.youtube.com/embed/${sourceId}?autoplay=0&playsinline=1&enablejsapi=1`;
   }
   return null;
 }
