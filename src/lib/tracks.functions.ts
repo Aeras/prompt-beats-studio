@@ -27,7 +27,7 @@ export const incrementTrackPlay = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
-    const { data: plays, error } = await supabase.rpc("increment_track_play" as never, { _track_id: data.trackId } as never);
+    const { data: plays, error } = await supabase.rpc("increment_track_play", { _track_id: data.trackId });
     if (error) throw new Error("Could not record track play");
     return { plays: typeof plays === "number" ? plays : null };
   });
@@ -158,7 +158,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       }
 
       const { data: result, error } = await context.supabase.rpc(
-        "replace_track_with_audio_cleanup" as never,
+        "replace_track_with_audio_cleanup",
         {
           _track_id: id,
           _title: fields.title,
@@ -169,7 +169,7 @@ export const updateTrack = createServerFn({ method: "POST" })
           _audio_type: fields.audio_type,
           _audio_key: audio_key,
           _is_published: fields.is_published,
-        } as never,
+        },
       );
       if (error) throw new Error(error.message);
 
@@ -234,7 +234,7 @@ export const discardUploads = createServerFn({ method: "POST" })
     if (!audioKey && !coverPath) return { ok: true };
 
     const { data: cleanup, error: cleanupError } = await supabaseAdmin
-      .from("track_storage_cleanup" as never)
+      .from("track_storage_cleanup")
       .insert({
         track_id: null,
         owner_id: context.userId,
@@ -242,7 +242,7 @@ export const discardUploads = createServerFn({ method: "POST" })
         cover_path: coverPath,
         created_by: context.userId,
         cleanup_type: "abandoned_upload",
-      } as never)
+      })
       .select("id")
       .single();
     if (cleanupError || !cleanup) {
@@ -251,17 +251,17 @@ export const discardUploads = createServerFn({ method: "POST" })
 
     if (coverPath) {
       const { error: lockError } = await supabaseAdmin
-        .from("track_cover_cleanup_locks" as never)
-        .insert({ cover_path: coverPath, cleanup_id: (cleanup as { id: string }).id } as never);
+        .from("track_cover_cleanup_locks")
+        .insert({ cover_path: coverPath, cleanup_id: cleanup.id });
       if (lockError) {
         await supabaseAdmin
-          .from("track_storage_cleanup" as never)
-          .update({ cover_path: null, last_error: "cover reservation unavailable; cover skipped" } as never)
-          .eq("id", (cleanup as { id: string }).id);
+          .from("track_storage_cleanup")
+          .update({ cover_path: null, last_error: "cover reservation unavailable; cover skipped" })
+          .eq("id", cleanup.id);
       }
     }
 
-    await cleanTrackStorage(supabaseAdmin, (cleanup as { id: string }).id);
+    await cleanTrackStorage(supabaseAdmin, cleanup.id);
     return { ok: true };
   });
 /** Deletes one of the user's own tracks (and its audio file). */
@@ -269,7 +269,7 @@ export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup" as never, { _track_id: data.id } as never);
+    const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup", { _track_id: data.id });
     if (error) throw new Error(error.message);
 
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
@@ -306,7 +306,7 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
   const supabase = createPublicServerClient();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("list_trending_tracks" as never);
+  const { data, error } = await supabaseAdmin.rpc("list_trending_tracks");
   const parsed = trendingRows.safeParse(data);
   if (error || !parsed.success) {
     return { tracks: [], error: "Trending is temporarily unavailable. Please try again later." };

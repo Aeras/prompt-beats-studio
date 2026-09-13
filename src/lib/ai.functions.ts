@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database, Json } from "@/integrations/supabase/types";
 import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 export const HOURLY_LIMIT = 10;
@@ -36,17 +38,7 @@ const savedInput = z.object({
   note: z.string().trim().max(6000).default(""),
 });
 
-type QueryResult = Promise<{ data: unknown; error: { message: string } | null }>;
-type QueryChain = PromiseLike<{ data: unknown; error: { message: string } | null }> & {
-  select: (...args: unknown[]) => QueryChain;
-  eq: (...args: unknown[]) => QueryChain;
-  gte: (...args: unknown[]) => QueryChain;
-  order: (...args: unknown[]) => QueryChain;
-};
-type Supa = {
-  from: (t: string) => QueryChain;
-  rpc: (fn: string, args?: Record<string, unknown>) => QueryResult;
-};
+type Supa = Pick<SupabaseClient<Database>, "from" | "rpc">;
 
 async function readUsage(supabase: Supa, userId: string) {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -88,7 +80,7 @@ async function usageFor(supabase: Supa, userId: string) {
 
 export const getGenerationUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => usageFor(context.supabase as unknown as Supa, context.userId));
+  .handler(async ({ context }) => usageFor(context.supabase, context.userId));
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
@@ -929,7 +921,7 @@ async function consumeCreation(
 ) {
   const { data: inserted, error } = await supabase.rpc("consume_quality_check", {
     _idempotency_key: idempotencyKey,
-    _quality_report: quality,
+    _quality_report: quality as unknown as Json,
     _provider: provider,
     _model: model,
   });
@@ -976,7 +968,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => qualityCheckInput.parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
+    const supabase = context.supabase;
     const { call, model, provider, schemas } = await activeCaller(
       data.qualityCheckModel ?? undefined,
       context.userId,
@@ -1120,7 +1112,7 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
 export const getAiModelSetting = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const supabase = context.supabase as unknown as Supa;
+    const supabase = context.supabase;
     if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
     const { getActiveModel } = await import("@/lib/ai-provider.server");
     return { model: await getActiveModel() };
@@ -1132,7 +1124,7 @@ export const setAiModelSetting = createServerFn({ method: "POST" })
   )
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as Supa;
+    const supabase = context.supabase;
     if (!(await isAdminUser(supabase, context.userId))) throw new Error("Not allowed");
     const { setActiveModel } = await import("@/lib/ai-provider.server");
     return setActiveModel(data.model as never, context.userId);

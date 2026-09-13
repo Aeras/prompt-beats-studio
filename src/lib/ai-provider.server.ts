@@ -65,7 +65,7 @@ async function assertAiEligibleUser(userId: string) {
   const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
   if (authError || !authUser.user) throw new Error("The account is no longer available.");
   const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profile_private" as never)
+    .from("profile_private")
     .select("is_banned")
     .eq("user_id", userId)
     .maybeSingle();
@@ -78,11 +78,11 @@ async function assertAiEligibleUser(userId: string) {
 async function hasAdminBypass(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: isAdmin } = await supabaseAdmin.rpc(
-    "_has_role_internal" as never,
+    "_has_role_internal",
     {
       _user_id: userId,
       _role: "admin",
-    } as never,
+    },
   );
   return isAdmin === true;
 }
@@ -190,14 +190,14 @@ export async function getActiveModel(): Promise<AiModelId> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin
-      .from("app_settings" as never)
+      .from("app_settings")
       .select("value")
       .eq("key", "ai_model")
       .maybeSingle();
     const value = (data as { value?: { model?: string } } | null)?.value;
     const model = value?.model;
     if (model && AI_MODELS.some((m) => m.id === model)) return model as AiModelId;
-    await supabaseAdmin.from("app_settings" as never).upsert(
+    await supabaseAdmin.from("app_settings").upsert(
       {
         key: "ai_model",
         value: { model: DEFAULT_AI_MODEL },
@@ -231,7 +231,7 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   }
 
   const { data: override, error: overrideError } = await supabaseAdmin
-    .from("user_model_access" as never)
+    .from("user_model_access")
     .select("access_mode, allowed_models")
     .eq("user_id", userId)
     .maybeSingle();
@@ -282,7 +282,7 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
 /** Admin-only write path; the caller must already have verified admin rights. */
 export async function setActiveModel(model: AiModelId, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("app_settings" as never).upsert(
+  const { error } = await supabaseAdmin.from("app_settings").upsert(
     {
       key: "ai_model",
       value: { model },

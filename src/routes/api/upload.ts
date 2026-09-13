@@ -105,7 +105,7 @@ export const Route = createFileRoute("/api/upload")({
         if (!userId || !token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
         const { data: admitted, error: admissionError } = await createPublicServerClient(token)
-          .rpc("admit_track_upload" as never);
+          .rpc("admit_track_upload");
         if (admissionError || admitted !== true) {
           return new Response(JSON.stringify({ error: "Upload limit reached. Please try again later." }), { status: 429 });
         }

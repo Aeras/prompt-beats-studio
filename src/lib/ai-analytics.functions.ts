@@ -62,7 +62,7 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rangeInput.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("current_user_has_role" as never, { _role: "admin" } as never);
+    const { data: isAdmin } = await context.supabase.rpc("current_user_has_role", { _role: "admin" });
     if (!isAdmin) throw new Error("Forbidden");
 
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
@@ -72,7 +72,7 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
     const rows: UsageRow[] = [];
     for (let from = 0; from < MAX_ROWS; from += PAGE) {
       const { data: pageRaw, error } = await context.supabase
-        .from("ai_usage_logs" as never)
+        .from("ai_usage_logs")
         .select("*")
         .gte("created_at", since)
         .order("created_at", { ascending: false })

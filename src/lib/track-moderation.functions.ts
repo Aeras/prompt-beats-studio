@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 export const TRACK_MODERATION_REASONS = [
@@ -47,8 +49,8 @@ type TrackStorageCleanup = {
   attempt_count: number;
 };
 
-async function requireTrackCapability(supabase: any, capability: "can_lock_tracks" | "can_delete_tracks") {
-  const { data, error } = await supabase.rpc("has_moderation_capability" as never, { _capability: capability } as never);
+async function requireTrackCapability(supabase: SupabaseClient<Database>, capability: "can_lock_tracks" | "can_delete_tracks") {
+  const { data, error } = await supabase.rpc("has_moderation_capability", { _capability: capability });
   if (error || data !== true) throw new Error("Not allowed");
 }
 
@@ -57,7 +59,7 @@ export const getStaffTrack = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ trackId }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
-    const { data: result, error } = await context.supabase.rpc("staff_get_track" as never, { _track_id: data.trackId } as never);
+    const { data: result, error } = await context.supabase.rpc("staff_get_track", { _track_id: data.trackId });
     if (error) throw new Error(error.message);
     return result as unknown as StaffTrack | null;
   });
@@ -67,11 +69,11 @@ export const lockStaffTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId, reasonCode, reasonText: z.string().trim().max(500).nullish() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
-    const { error } = await context.supabase.rpc("staff_lock_track" as never, {
+    const { error } = await context.supabase.rpc("staff_lock_track", {
       _track_id: data.trackId,
       _reason_code: data.reasonCode,
       _reason_text: data.reasonText ?? null,
-    } as never);
+    });
     if (error) throw new Error(error.message);
     return { ok: true, status: "locked" as const };
   });
@@ -81,7 +83,7 @@ export const unlockStaffTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
-    const { error } = await context.supabase.rpc("staff_unlock_track" as never, { _track_id: data.trackId } as never);
+    const { error } = await context.supabase.rpc("staff_unlock_track", { _track_id: data.trackId });
     if (error) throw new Error(error.message);
     return { ok: true, status: "active" as const };
   });
@@ -91,7 +93,7 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_delete_tracks");
-    const { data: result, error } = await context.supabase.rpc("staff_delete_track" as never, { _track_id: data.trackId } as never);
+    const { data: result, error } = await context.supabase.rpc("staff_delete_track", { _track_id: data.trackId });
     if (error) throw new Error(error.message);
 
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
@@ -102,8 +104,8 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
     return { ok: true, storageCleanupPending: false };
   });
 
-export async function cleanTrackStorage(supabase: any, cleanupId: string) {
-  const { data, error } = await supabase.rpc("staff_get_track_storage_cleanup" as never, { _cleanup_id: cleanupId } as never);
+export async function cleanTrackStorage(supabase: SupabaseClient<Database>, cleanupId: string) {
+  const { data, error } = await supabase.rpc("staff_get_track_storage_cleanup", { _cleanup_id: cleanupId });
   if (error) throw new Error(error.message);
   const cleanup = data as unknown as TrackStorageCleanup;
   const failures: string[] = [];
@@ -133,10 +135,10 @@ export async function cleanTrackStorage(supabase: any, cleanupId: string) {
   }
 
   if (failures.length) {
-    await supabase.rpc("staff_fail_track_storage_cleanup" as never, { _cleanup_id: cleanupId, _error: failures.join("; ") } as never);
+    await supabase.rpc("staff_fail_track_storage_cleanup", { _cleanup_id: cleanupId, _error: failures.join("; ") });
     throw new Error(`Track deleted, but storage cleanup is pending (cleanup ${cleanupId}): ${failures.join("; ")}`);
   }
-  const { error: completeError } = await supabase.rpc("staff_complete_track_storage_cleanup" as never, { _cleanup_id: cleanupId } as never);
+  const { error: completeError } = await supabase.rpc("staff_complete_track_storage_cleanup", { _cleanup_id: cleanupId });
   if (completeError) throw new Error(`Track deleted, but storage cleanup could not be recorded: ${completeError.message}`);
 }
 
@@ -146,7 +148,7 @@ export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: cleanup, error: cleanupError } = await supabaseAdmin
-      .from("track_storage_cleanup" as never)
+      .from("track_storage_cleanup")
       .select("created_by, cleanup_type")
       .eq("id", data.cleanupId)
       .maybeSingle();
