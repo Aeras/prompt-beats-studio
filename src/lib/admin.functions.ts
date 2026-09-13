@@ -368,7 +368,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     // account can be created in the gap. Release it on every known failure.
     if (data.blockRegistration) {
       const reasonParams = {
-        ...(data.registrationReasonCode ? { _reason_code: data.registrationReasonCode } : {}),
+        _reason_code: data.registrationReasonCode ?? "other",
         ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
       };
       const { data: reservedId, error: registrationError } = await context.supabase.rpc("admin_create_registration_block", {
