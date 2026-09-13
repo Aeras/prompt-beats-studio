@@ -992,6 +992,64 @@ function normalizeQualityScore(raw: unknown): unknown {
   return raw;
 }
 
+type QualityResponseValueType = "string" | "number" | "boolean" | "array" | "object" | "null" | "undefined";
+
+function qualityResponseValueType(value: unknown): QualityResponseValueType {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return typeof value;
+  }
+  return "object";
+}
+
+function qualityResponseShape(value: unknown) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const topLevelKeys = Object.keys(record);
+  const topLevelTypes = Object.fromEntries(
+    topLevelKeys.map((key) => [key, qualityResponseValueType(record[key])]),
+  );
+  const nestedObjects = topLevelKeys.flatMap((objectKey) => {
+    const nestedValue = record[objectKey];
+    if (
+      nestedValue === null ||
+      typeof nestedValue !== "object" ||
+      Array.isArray(nestedValue) ||
+      Object.getPrototypeOf(nestedValue) !== Object.prototype
+    ) {
+      return [];
+    }
+
+    const nestedRecord = nestedValue as Record<string, unknown>;
+    const nestedKeys = Object.keys(nestedRecord);
+    return [
+      {
+        objectKey,
+        nestedKeys,
+        nestedTypes: Object.fromEntries(
+          nestedKeys.map((key) => [key, qualityResponseValueType(nestedRecord[key])]),
+        ),
+      },
+    ];
+  });
+
+  return {
+    topLevelKeys,
+    topLevelTypes,
+    ...(nestedObjects.length > 0 ? { nestedObjects } : {}),
+  };
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -1062,11 +1120,13 @@ async function runQualityCheck(
     parsedJson = normalizeQualityScore(parsedJson);
     const parsed = qualityOutput.safeParse(parsedJson);
     if (!parsed.success) {
+      const responseShape = qualityResponseShape(parsedJson);
       console.warn("[ai] quality_check schema_validation_error", {
         operation,
         model,
         provider,
         failureReason: "schema_validation_error",
+        ...(responseShape ?? {}),
         validationIssues: parsed.error.issues.slice(0, 8).map((issue) => ({
           path: issue.path.join(".") || "<root>",
           code: issue.code,
