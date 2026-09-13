@@ -11,8 +11,10 @@ let activeExternalId: string | null = null;
 let ignoredFocusedIframe: HTMLIFrameElement | null = null;
 let fallbackTimer: number | null = null;
 
-function resetExternalIframes(exceptId?: string) {
-  for (const [id, entry] of externalIframes) if (id !== exceptId) entry.reset();
+function resetActiveExternal() {
+  const activeId = activeExternalId;
+  activeExternalId = null;
+  if (activeId) externalIframes.get(activeId)?.reset();
 }
 
 function checkFocusedIframe() {
@@ -77,12 +79,13 @@ export function registerExternalIframe(id: string, entry: ExternalIframe) {
 export function activateMedia(instance: MediaActivation) {
   if (typeof window === "undefined") return;
   if (instance.kind === "external") {
-    activeExternalId = instance.id;
-    resetExternalIframes(instance.id);
+    if (activeExternalId !== instance.id) {
+      resetActiveExternal();
+      activeExternalId = instance.id;
+    }
   } else {
-    activeExternalId = null;
+    resetActiveExternal();
     ignoredFocusedIframe = document.activeElement instanceof HTMLIFrameElement ? document.activeElement : null;
-    resetExternalIframes();
   }
   window.dispatchEvent(new CustomEvent<MediaActivation>(ACTIVATE_EVENT, { detail: instance }));
 }
