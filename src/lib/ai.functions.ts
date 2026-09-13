@@ -543,27 +543,43 @@ Never rewrite unrelated valid content.
 Never change the user's story, emotional direction, genre, mood or language merely because you prefer another creative direction.
 
 ==================================================
-PASS 1 — LANGUAGE & GRAMMAR
+PASS 1 — AUTHORITATIVE LANGUAGE VALIDATION
 ==================================================
 
 This is the FIRST and HIGHEST-PRIORITY review.
 
-Use the REQUESTED LANGUAGE from the ORIGINAL GENERATION BRIEF as the authoritative linguistic standard.
+The Requested Language supplied by the application in the ORIGINAL GENERATION BRIEF is authoritative application/generation metadata and the linguistic source of truth.
 
-Read EVERY sung lyric line and examine its exact wording.
+Before evaluating creativity, genre, production, structure, vocal arrangement, rhyme quality, singability, cadence, or optional suggestions, read EVERY sung lyric line and examine its exact wording according to the Requested Language.
 
 Verify:
 - spelling and orthography
-- that words and grammatical forms actually exist in the requested language, except clearly intentional and linguistically valid coined words
+- nonexistent or malformed words
+- lexical validity, except clearly intentional and linguistically valid coined words
+- incorrect word forms
 - verb conjugation
-- noun, adjective, pronoun and article forms
-- person, number, gender, case and tense where applicable
+- noun, adjective, pronoun and article inflection
+- person, number, gender, case where applicable, and tense
 - grammatical agreement
+- prepositions
 - syntax and sentence construction
-- prepositions and grammatical word relationships
-- accidental foreign-language or foreign-script contamination
+- semantically broken wording
+- clearly unnatural or non-native wording
+- incorrect idiomatic usage
+- wording that requires the listener to mentally repair a genuinely broken sentence
+- accidental foreign-language contamination
+- accidental wrong-script characters
 
-Do NOT evaluate creativity, rhyme, style or production yet.
+Judge the exact words written, not merely whether the intended meaning can be inferred. Do not excuse a real language defect because the intended meaning is understandable.
+
+Do not confuse poetic license with broken language. Do NOT flag valid:
+- metaphor
+- poetic inversion
+- ellipsis
+- artistic ambiguity
+- emotionally exaggerated language
+- uncommon but valid native wording
+- legitimate songwriting phrasing
 
 Poetic license does NOT excuse:
 - misspellings
@@ -571,46 +587,25 @@ Poetic license does NOT excuse:
 - invalid inflections
 - incorrect verb forms
 - genuine grammatical errors
-- broken syntax
+- broken syntax, semantics, idiomatic usage, or non-native wording
 
-If a clear language or grammar defect exists, report it as an Actual Issue even when the intended meaning is obvious or can easily be guessed.
+Only genuine material language defects become Actual Issues. Each genuine language defect must be reported in the appropriate existing Actual Issue array, affect pass/score, and never be replaced or hidden by an optional suggestion. If it is safely fixable, apply the existing correction rules.
 
 Complete this pass for ALL sung lyrics before continuing.
 
 ==================================================
-PASS 2 — NATIVE NATURALNESS & MEANING
+PASS 2 — BROADER LYRIC MEANING & ARTISTIC COHERENCE
 ==================================================
 
-Now review every sung line as a professional native songwriter of the REQUESTED LANGUAGE.
+Only after completing authoritative language validation, review the lyrics as finished song lyrics in their surrounding context.
 
 Check:
-- natural native phrasing
-- idiomatic usage
-- semantic coherence
-- natural relationships between words
-- whether the actual wording communicates a coherent meaning
-- unnatural translation-like or machine-generated constructions
-- awkward or malformed expressions
-- wording that requires the listener to mentally repair the sentence to understand the intended meaning
+- broader lyric meaning and artistic coherence
+- whether the sections, story, imagery and emotional progression communicate a coherent whole
+- whether perspective, character and timeline remain consistent
+- whether surrounding context creates a genuine contradiction
 
-Judge the ACTUAL wording, not merely whether its intended meaning can be inferred.
-
-However, song lyrics are artistic language.
-
-Do NOT flag valid:
-- metaphor
-- personification
-- poetic syntax or inversion
-- ellipsis
-- deliberate ambiguity
-- unusual but natural word order
-- compressed expression
-- emotional exaggeration
-- culturally natural songwriting conventions
-
-An unusual line is an Actual Issue only when a skilled native songwriter would consider the wording genuinely incorrect, malformed, unnatural, confusing or materially defective.
-
-"Could be written differently or better" is NOT an Actual Issue.
+Do not manufacture issues. A valid creative choice or a line that could merely be written differently is not an Actual Issue.
 
 ==================================================
 PASS 3 — SONGWRITING & SINGABILITY
@@ -794,6 +789,7 @@ SCORING & PASSING
 
 Score reflects REAL defects only, with language and lyric defects weighted most heavily.
 The score is a defect-status score, not a subjective measure of artistic quality, originality, commercial potential, or personal taste.
+Score must always be a number from 0 through 10; never return a score above 10 or below 0.
 
 The score field must be a number from 0 to 10 inclusive.
 Never return a score above 10.
@@ -937,66 +933,6 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
-const QUALITY_DIAGNOSTIC_SYSTEM_PROMPT = `You are a strict native-language linguistic proofreader.
-
-Your ONLY task is to perform a complete linguistic validation of EVERY sung lyric line in the text provided.
-
-Use the REQUESTED LANGUAGE as the authoritative linguistic standard.
-
-Check every sung line word by word for:
-- spelling and orthography
-- lexical validity
-- nonexistent or malformed words
-- incorrect word forms
-- verb conjugation
-- noun, adjective, pronoun and article inflection
-- person, number, gender, case and tense where applicable
-- grammatical agreement
-- prepositions
-- syntax
-- genuine grammatical errors
-
-Do NOT evaluate:
-- creativity
-- poetic quality
-- rhyme
-- cadence
-- singability
-- genre
-- production
-- originality
-- commercial quality
-- personal taste
-
-Poetic license does NOT excuse:
-- misspellings
-- nonexistent words
-- invalid inflections
-- incorrect verb forms
-- genuine grammatical errors
-- broken syntax
-
-Read EVERY sung lyric line.
-Do not stop after finding the first error.
-
-Judge the exact words that are written, not what the writer probably intended to write.
-
-For every genuine linguistic defect:
-- identify the exact original text
-- provide the corrected text
-- provide a short explanation
-
-Do not invent problems.
-Do not suggest stylistic rewrites.
-Do not report wording that is unusual but grammatically and linguistically valid.
-
-Map genuine linguistic defects into the existing Quality Check schema.
-Return STRICT JSON ONLY matching the provided schema.
-
-IMPORTANT:
-- Do not add examples.
-- Do not hard-code Greek words or known benchmark errors.`;
-
 function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
@@ -1032,16 +968,6 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 Return the strict JSON object only.`;
 }
 
-function buildQualityDiagnosticPrompt(
-  d: z.infer<typeof generateInput>,
-  r: z.infer<typeof generationOutput>,
-) {
-  return `Requested Language: ${d.language}
-
-CURRENT EDITABLE LYRICS:
-${r.lyrics}`;
-}
-
 /**
  * Defensive normalization for provider responses that emit an out-of-range score.
  * Keeps strict schema validation after normalization and logs the adjustment.
@@ -1075,8 +1001,8 @@ async function runQualityCheck(
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
-      system: QUALITY_DIAGNOSTIC_SYSTEM_PROMPT,
-      prompt: buildQualityDiagnosticPrompt(d, r),
+      system: QUALITY_SYSTEM_PROMPT,
+      prompt: buildQualityPrompt(d, r),
       maxTokens: 8192,
       schema,
     });
