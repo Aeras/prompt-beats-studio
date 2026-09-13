@@ -674,7 +674,9 @@ function QualityPanel({
   state,
   qualityCheckModel,
   availableModels,
+  modelAccessLoading,
   modelAccessReady,
+  modelAccessUnavailable,
   onQualityCheckModelChange,
   qualityCheckResultModel,
   showQualityCheckModelSelector,
@@ -688,7 +690,9 @@ function QualityPanel({
   state: ApplyState;
   qualityCheckModel: string;
   availableModels: typeof AI_MODELS;
+  modelAccessLoading: boolean;
   modelAccessReady: boolean;
+  modelAccessUnavailable: boolean;
   onQualityCheckModelChange: (model: string) => void;
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
@@ -1940,7 +1944,9 @@ function GeneratePage() {
                 state={applyState}
                 qualityCheckModel={qualityCheckModel}
                 availableModels={availableModels}
+                modelAccessLoading={modelAccessLoading}
                 modelAccessReady={modelAccessReady}
+                modelAccessUnavailable={modelAccessUnavailable}
                 onQualityCheckModelChange={(model) => {
                   setQualityCheckModel(model);
                   setQualityCheckModelChosen(true);
