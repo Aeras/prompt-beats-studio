@@ -931,6 +931,66 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
+const QUALITY_DIAGNOSTIC_SYSTEM_PROMPT = `You are a strict native-language linguistic proofreader.
+
+Your ONLY task is to perform a complete linguistic validation of EVERY sung lyric line in the text provided.
+
+Use the REQUESTED LANGUAGE as the authoritative linguistic standard.
+
+Check every sung line word by word for:
+- spelling and orthography
+- lexical validity
+- nonexistent or malformed words
+- incorrect word forms
+- verb conjugation
+- noun, adjective, pronoun and article inflection
+- person, number, gender, case and tense where applicable
+- grammatical agreement
+- prepositions
+- syntax
+- genuine grammatical errors
+
+Do NOT evaluate:
+- creativity
+- poetic quality
+- rhyme
+- cadence
+- singability
+- genre
+- production
+- originality
+- commercial quality
+- personal taste
+
+Poetic license does NOT excuse:
+- misspellings
+- nonexistent words
+- invalid inflections
+- incorrect verb forms
+- genuine grammatical errors
+- broken syntax
+
+Read EVERY sung lyric line.
+Do not stop after finding the first error.
+
+Judge the exact words that are written, not what the writer probably intended to write.
+
+For every genuine linguistic defect:
+- identify the exact original text
+- provide the corrected text
+- provide a short explanation
+
+Do not invent problems.
+Do not suggest stylistic rewrites.
+Do not report wording that is unusual but grammatically and linguistically valid.
+
+Map genuine linguistic defects into the existing Quality Check schema.
+Return STRICT JSON ONLY matching the provided schema.
+
+IMPORTANT:
+- Do not add examples.
+- Do not hard-code Greek words or known benchmark errors.`;
+
 function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
@@ -966,6 +1026,16 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 Return the strict JSON object only.`;
 }
 
+function buildQualityDiagnosticPrompt(
+  d: z.infer<typeof generateInput>,
+  r: z.infer<typeof generationOutput>,
+) {
+  return `Requested Language: ${d.language}
+
+CURRENT EDITABLE LYRICS:
+${r.lyrics}`;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -975,8 +1045,8 @@ async function runQualityCheck(
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
-      system: QUALITY_SYSTEM_PROMPT,
-      prompt: buildQualityPrompt(d, r),
+      system: QUALITY_DIAGNOSTIC_SYSTEM_PROMPT,
+      prompt: buildQualityDiagnosticPrompt(d, r),
       maxTokens: 8192,
       schema,
     });
