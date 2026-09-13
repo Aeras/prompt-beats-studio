@@ -929,6 +929,7 @@ Before returning the JSON, silently verify:
 8. If ANY Actual Issue array is non-empty, "passed" is false and "score" is below 9.
 9. Optional suggestions never appear in Actual Issue arrays and never lower the score.
 10. The response is valid JSON with no markdown, prose outside the JSON, or trailing commas.
+11. The "score" field must be a number from 0 to 10 inclusive. If your computed score is above 10, clamp it to 10. If it is below 0, clamp it to 0. Never return a value above 10 or use a 0–100 scale.
 
 FINAL PRIORITY:
 
