@@ -1042,6 +1042,30 @@ CURRENT EDITABLE LYRICS:
 ${r.lyrics}`;
 }
 
+/**
+ * Defensive normalization for provider responses that emit an out-of-range score.
+ * Keeps strict schema validation after normalization and logs the adjustment.
+ */
+function normalizeQualityScore(raw: unknown): unknown {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.score === "number") {
+      const original = obj.score;
+      let normalized = original;
+      if (original > 10) normalized = 10;
+      if (original < 0) normalized = 0;
+      if (normalized !== original) {
+        console.warn("[ai] quality_check score_normalized", {
+          originalScore: original,
+          normalizedScore: normalized,
+        });
+        return { ...obj, score: normalized };
+      }
+    }
+  }
+  return raw;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
