@@ -501,33 +501,6 @@ export type Database = {
         }
         Relationships: []
       }
-      stripe_webhook_events: {
-        Row: {
-          event_type: string
-          outcome: string
-          processed_at: string | null
-          received_at: string
-          stripe_created_at: number
-          stripe_event_id: string
-        }
-        Insert: {
-          event_type: string
-          outcome?: string
-          processed_at?: string | null
-          received_at?: string
-          stripe_created_at: number
-          stripe_event_id: string
-        }
-        Update: {
-          event_type?: string
-          outcome?: string
-          processed_at?: string | null
-          received_at?: string
-          stripe_created_at?: number
-          stripe_event_id?: string
-        }
-        Relationships: []
-      }
       subscriptions: {
         Row: {
           created_at: string
@@ -573,31 +546,32 @@ export type Database = {
         }
         Relationships: []
       }
-      track_audio_cleanup_locks: {
+      stripe_webhook_events: {
         Row: {
-          audio_key: string
-          cleanup_id: string
-          created_at: string
+          event_type: string
+          outcome: string
+          processed_at: string | null
+          received_at: string
+          stripe_created_at: number
+          stripe_event_id: string
         }
         Insert: {
-          audio_key: string
-          cleanup_id: string
-          created_at?: string
+          event_type: string
+          outcome?: string
+          processed_at?: string | null
+          received_at?: string
+          stripe_created_at: number
+          stripe_event_id: string
         }
         Update: {
-          audio_key?: string
-          cleanup_id?: string
-          created_at?: string
+          event_type?: string
+          outcome?: string
+          processed_at?: string | null
+          received_at?: string
+          stripe_created_at?: number
+          stripe_event_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "track_audio_cleanup_locks_cleanup_id_fkey"
-            columns: ["cleanup_id"]
-            isOneToOne: false
-            referencedRelation: "track_storage_cleanup"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       track_cover_cleanup_locks: {
         Row: {
@@ -618,6 +592,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "track_cover_cleanup_locks_cleanup_id_fkey"
+            columns: ["cleanup_id"]
+            isOneToOne: false
+            referencedRelation: "track_storage_cleanup"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_audio_cleanup_locks: {
+        Row: {
+          audio_key: string
+          cleanup_id: string
+          created_at: string
+        }
+        Insert: {
+          audio_key: string
+          cleanup_id: string
+          created_at?: string
+        }
+        Update: {
+          audio_key?: string
+          cleanup_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_audio_cleanup_locks_cleanup_id_fkey"
             columns: ["cleanup_id"]
             isOneToOne: false
             referencedRelation: "track_storage_cleanup"
@@ -923,12 +923,13 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      admit_track_upload: { Args: never; Returns: boolean }
       admin_begin_account_deletion: {
         Args: { _target_user_id: string }
         Returns: string
       }
       admin_create_registration_block: {
-        Args: { _email: string; _reason_code: string; _reason_text?: string }
+        Args: { _email: string; _reason_code: string; _reason_text?: string | null }
         Returns: string
       }
       admin_list_registration_blocks: {
@@ -959,7 +960,7 @@ export type Database = {
       }
       admin_set_moderation_status: {
         Args: {
-          _reason_text?: string
+          _reason_text?: string | null
           _status: string
           _target_user_id: string
         }
@@ -968,8 +969,8 @@ export type Database = {
       admin_set_user_banned: {
         Args: {
           _banned: boolean
-          _reason_code?: string
-          _reason_text?: string
+          _reason_code?: string | null
+          _reason_text?: string | null
           _target_user_id: string
         }
         Returns: undefined
@@ -982,7 +983,6 @@ export type Database = {
         Returns: undefined
       }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
-      admit_track_upload: { Args: never; Returns: boolean }
       can_manage_track_storage_cleanup: {
         Args: { _cleanup_id: string }
         Returns: boolean
@@ -1002,10 +1002,6 @@ export type Database = {
         Returns: Json
       }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
-      consume_admin_account_deletion: {
-        Args: { _operation_id: string }
-        Returns: string
-      }
       consume_quality_check: {
         Args: {
           _idempotency_key: string
@@ -1013,6 +1009,10 @@ export type Database = {
           _provider: string
           _quality_report: Json
         }
+        Returns: string
+      }
+      consume_admin_account_deletion: {
+        Args: { _operation_id: string }
         Returns: string
       }
       current_user_has_role: {
@@ -1047,12 +1047,12 @@ export type Database = {
       list_trending_tracks: {
         Args: never
         Returns: {
-          art_url: string
+          art_url: string | null
           audio_type: string
           audio_url: string
-          cover_url: string
+          cover_url: string | null
           created_at: string
-          duration_seconds: number
+          duration_seconds: number | null
           genre: string
           id: string
           is_published: boolean
@@ -1072,20 +1072,6 @@ export type Database = {
         Args: { _email: string }
         Returns: string
       }
-      process_stripe_subscription_event: {
-        Args: {
-          _approved_pro_price_id: string
-          _current_period_end: string
-          _customer_id: string
-          _event_created: number
-          _event_id: string
-          _event_type: string
-          _price_id: string
-          _subscription_id: string
-          _subscription_status: string
-        }
-        Returns: string
-      }
       reconcile_provider_committed_generation: {
         Args: { _job_id: string }
         Returns: boolean
@@ -1094,13 +1080,23 @@ export type Database = {
         Args: { _action_id: string }
         Returns: boolean
       }
-      release_quality_check: {
-        Args: { _idempotency_key: string }
-        Returns: undefined
+      process_stripe_subscription_event: {
+        Args: {
+          _approved_pro_price_id: string
+          _current_period_end: string | null
+          _customer_id: string
+          _event_created: number
+          _event_id: string
+          _event_type: string
+          _price_id: string | null
+          _subscription_id: string
+          _subscription_status: string
+        }
+        Returns: string
       }
       replace_track_with_audio_cleanup: {
         Args: {
-          _audio_key: string
+          _audio_key: string | null
           _audio_type: string
           _audio_url: string
           _genre: string
@@ -1111,6 +1107,10 @@ export type Database = {
           _track_id: string
         }
         Returns: Json
+      }
+      release_quality_check: {
+        Args: { _idempotency_key: string }
+        Returns: undefined
       }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
@@ -1131,7 +1131,7 @@ export type Database = {
         Returns: Json
       }
       staff_lock_track: {
-        Args: { _reason_code: string; _reason_text?: string; _track_id: string }
+        Args: { _reason_code: string; _reason_text?: string | null; _track_id: string }
         Returns: Json
       }
       staff_unlock_track: { Args: { _track_id: string }; Returns: Json }
