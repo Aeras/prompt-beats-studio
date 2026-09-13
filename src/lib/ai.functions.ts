@@ -879,6 +879,21 @@ Classify suggestions by what they actually request:
 - non-applicable information → "informational"
 
 ==================================================
+OUTPUT DISCIPLINE
+==================================================
+
+Be concise.
+
+- Put each defect in the single most appropriate Actual Issue array. Do not restate the same defect in multiple issue arrays.
+- Do not repeat explanations already represented by a correction.
+- In corrections, quote only the SMALLEST exact text span necessary to make the correction. Never quote an entire verse, chorus or song section when a word, phrase or single line is sufficient.
+- Keep correction reasons short and specific.
+- Do not repeat identical corrections for repeated chorus occurrences unless those occurrences actually require different edits.
+- Creative, vocal and production suggestions are OPTIONAL. Return them only when materially useful.
+- Do not produce filler, essays, commentary, analysis prose or duplicate rationale.
+- Return the required JSON only.
+
+==================================================
 OUTPUT
 ==================================================
 
