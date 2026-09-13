@@ -506,9 +506,12 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           id: string
+          last_stripe_event_created_at: number | null
+          last_stripe_event_id: string | null
           plan: string
           status: string
           stripe_customer_id: string | null
+          stripe_price_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
           user_id: string
@@ -517,9 +520,12 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           id?: string
+          last_stripe_event_created_at?: number | null
+          last_stripe_event_id?: string | null
           plan?: string
           status?: string
           stripe_customer_id?: string | null
+          stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
@@ -528,12 +534,42 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           id?: string
+          last_stripe_event_created_at?: number | null
+          last_stripe_event_id?: string | null
           plan?: string
           status?: string
           stripe_customer_id?: string | null
+          stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      stripe_webhook_events: {
+        Row: {
+          event_type: string
+          outcome: string
+          processed_at: string | null
+          received_at: string
+          stripe_created_at: number
+          stripe_event_id: string
+        }
+        Insert: {
+          event_type: string
+          outcome?: string
+          processed_at?: string | null
+          received_at?: string
+          stripe_created_at: number
+          stripe_event_id: string
+        }
+        Update: {
+          event_type?: string
+          outcome?: string
+          processed_at?: string | null
+          received_at?: string
+          stripe_created_at?: number
+          stripe_event_id?: string
         }
         Relationships: []
       }
@@ -1043,6 +1079,20 @@ export type Database = {
       reconcile_provider_committed_quality: {
         Args: { _action_id: string }
         Returns: boolean
+      }
+      process_stripe_subscription_event: {
+        Args: {
+          _approved_pro_price_id: string
+          _current_period_end: string | null
+          _customer_id: string
+          _event_created: number
+          _event_id: string
+          _event_type: string
+          _price_id: string | null
+          _subscription_id: string
+          _subscription_status: string
+        }
+        Returns: string
       }
       replace_track_with_audio_cleanup: {
         Args: {
