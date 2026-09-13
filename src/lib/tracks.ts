@@ -1,3 +1,5 @@
+import type { PersistedTrackSourceType } from "@/lib/track-sources";
+
 export type Track = {
   id: string;
   title: string;
@@ -10,25 +12,40 @@ export type Track = {
   lyrics: string;
   audioUrl?: string;
   audioType?: "link" | "upload";
+  sourceType?: PersistedTrackSourceType | undefined;
+  sourceId?: string | null | undefined;
   /** Present only for real database tracks (enables likes + owner controls). */
   userId?: string;
   staffBadge?: string | null;
 };
 
-export const GENRES = [
-  "All",
+export const UPLOAD_GENRES = [
   "Pop",
   "Hip-Hop / Rap",
-  "Rock / Metal",
+  "Rock",
+  "Metal",
   "Electronic / EDM",
+  "House",
+  "Techno",
+  "Trance",
+  "Drum & Bass",
   "Lo-Fi / Chill",
-  "Cinematic / Soundtrack",
-  "Latin",
   "R&B / Soul",
-  "Jazz / Blues",
+  "Funk / Disco",
+  "Jazz",
+  "Blues",
   "Acoustic / Folk",
+  "Country",
+  "Reggae",
+  "Latin",
+  "Classical",
+  "Cinematic / Soundtrack",
   "World / Traditional",
-  "Other / Experimental",
+  "Experimental",
+  "Custom",
 ];
+
+/** Feed filters intentionally omit Custom because custom values are stored verbatim. */
+export const GENRES = ["All", ...UPLOAD_GENRES.filter((genre) => genre !== "Custom")];
 
 export const STUDIO_TAGS = ["[Intro]", "[Verse]", "[Pre]", "[Chorus]", "[Drop]", "[Bridge]", "[Outro]"];

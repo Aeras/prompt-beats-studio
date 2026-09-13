@@ -9,6 +9,8 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
+import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { getTrackEmbedUrl } from "@/lib/track-sources";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -70,6 +72,7 @@ function TrackPage() {
   const duration = track ? formatDuration(track.duration_seconds) : null;
   const createdDate = track ? formatDate(track.created_at) : null;
   const artwork = track?.cover_url ?? artist?.avatar_url ?? (track ? `https://i.pravatar.cc/640?u=${track.id}` : null);
+  const embedUrl = getTrackEmbedUrl(track?.source_type, track?.source_id);
 
   useEffect(() => {
     if (track) setPlayCount(track.plays ?? 0);
@@ -89,7 +92,7 @@ function TrackPage() {
   }, [id, queryClient]);
 
   const playTrack = () => {
-    if (!track || !artwork) return;
+    if (!track || !artwork || embedUrl) return;
     play({
       id: track.id,
       userId: track.user_id,
@@ -102,7 +105,7 @@ function TrackPage() {
       prompt: track.prompt ?? "",
       lyrics: track.lyrics ?? "",
       audioUrl: track.audio_url,
-      audioType: "upload",
+      audioType: track.audio_type === "link" ? "link" : "upload",
     }, []);
   };
 
@@ -129,7 +132,7 @@ function TrackPage() {
               <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-8">
                 <div className="mx-auto w-full max-w-md lg:max-w-none">
                   <div className="aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-2xl shadow-black/30">
-                    <img src={artwork} alt={`${track.title} cover art`} className="h-full w-full object-cover" />
+                    {embedUrl ? <ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={`${track.title} player`} /> : <img src={artwork} alt={`${track.title} cover art`} className="h-full w-full object-cover" />}
                   </div>
                 </div>
 
@@ -155,10 +158,10 @@ function TrackPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <button onClick={playTrack} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95">
+                    {!embedUrl && <button onClick={playTrack} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95">
                       {current?.id === track.id && playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       {current?.id === track.id && playing ? "Pause" : "Play track"}
-                    </button>
+                    </button>}
                     <button onClick={() => share.copy(typeof window !== "undefined" ? window.location.href : "")} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
                       {share.copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
                       {share.copied ? "Link copied" : "Share track"}

@@ -26,6 +26,8 @@ type Row = {
   lyrics: string;
   audio_url: string;
   audio_type: string;
+  source_type: "upload" | "suno" | "udio" | "youtube" | "legacy_link";
+  source_id: string | null;
   art_url: string | null;
   cover_url: string | null;
   duration_seconds: number | null;
@@ -47,6 +49,8 @@ function toTrack(t: Row, handle: string): Track {
     lyrics: t.lyrics,
     audioUrl: t.audio_url,
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    sourceType: t.source_type,
+    sourceId: t.source_id,
   };
 }
 

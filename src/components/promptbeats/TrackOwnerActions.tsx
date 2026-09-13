@@ -61,7 +61,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           prompt,
           lyrics,
           audio_url: track.audio_url,
-          audio_type: "upload",
+          audio_type: track.audio_type,
           is_published: true,
         },
       });

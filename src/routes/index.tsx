@@ -71,6 +71,8 @@ function Index() {
     lyrics: t.lyrics,
     audioUrl: t.audio_url,
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    sourceType: t.source_type as Track["sourceType"],
+    sourceId: t.source_id,
     staffBadge: t.staff_badge,
   }));
 

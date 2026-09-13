@@ -9,6 +9,8 @@ import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { BanUserToggle } from "@/components/promptbeats/ArtistProfileView";
 import { incrementTrackPlay } from "@/lib/tracks.functions";
+import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { getTrackEmbedUrl } from "@/lib/track-sources";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -120,8 +122,9 @@ function CreatorPage() {
                   No published tracks yet.
                 </p>
               )}
-              {tracks.map((t) => (
-                <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
+              {tracks.map((t) => {
+                const embedUrl = getTrackEmbedUrl(t.source_type, t.source_id);
+                return <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
                   <div className="flex items-center gap-2">
                     <Music className="h-4 w-4 shrink-0 text-accent" />
                     <p className="truncate text-sm font-semibold">{t.title}</p>
@@ -129,7 +132,11 @@ function CreatorPage() {
                       {t.genre}
                     </span>
                   </div>
-                  {t.audio_type === "link" ? (
+                  {embedUrl ? (
+                    <div className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
+                    </div>
+                  ) : t.audio_type === "link" ? (
                     <a
                       href={t.audio_url}
                       target="_blank"
@@ -149,8 +156,8 @@ function CreatorPage() {
                       className="w-full"
                     />
                   )}
-                </article>
-              ))}
+                </article>;
+              })}
             </section>
           </>
         )}

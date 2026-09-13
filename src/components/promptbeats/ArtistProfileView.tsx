@@ -13,6 +13,8 @@ import { useModeration } from "@/hooks/useModeration";
 import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
+import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { getTrackEmbedUrl } from "@/lib/track-sources";
 
 type Profile = {
   id: string;
@@ -42,6 +44,9 @@ type Track = {
   lyrics: string | null;
   audio_url: string;
   audio_type: string;
+  source_type: string;
+  source_url: string | null;
+  source_id: string | null;
   created_at?: string;
 };
 
@@ -233,8 +238,9 @@ export function ArtistProfileView({
                 </p>
               )}
               <div className="grid gap-3 sm:grid-cols-2">
-                {tracks.map((t) => (
-                  <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
+                {tracks.map((t) => {
+                  const embedUrl = getTrackEmbedUrl(t.source_type, t.source_id);
+                  return <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
                     <div className="flex items-center gap-2">
                       <Music className="h-4 w-4 shrink-0 text-accent" />
                       <Link
@@ -261,7 +267,11 @@ export function ArtistProfileView({
                       />
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t.genre}</p>
-                    <button
+                    {embedUrl ? (
+                      <div className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                        <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
+                      </div>
+                    ) : <button
                       onClick={() =>
                         play(
                           {
@@ -276,7 +286,7 @@ export function ArtistProfileView({
                             prompt: t.prompt ?? "",
                             lyrics: t.lyrics ?? "",
                             audioUrl: t.audio_url,
-                            audioType: "upload",
+                            audioType: t.audio_type === "link" ? "link" : "upload",
                           },
                           [],
                         )
@@ -289,9 +299,9 @@ export function ArtistProfileView({
                         <Play className="h-3.5 w-3.5" />
                       )}
                       {current?.id === t.id && playing ? "Pause" : "Play"}
-                    </button>
-                  </article>
-                ))}
+                    </button>}
+                  </article>;
+                })}
               </div>
             </section>
           </>

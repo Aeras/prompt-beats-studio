@@ -3,7 +3,8 @@ import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "luc
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { GENRES } from "@/lib/tracks";
+import { UPLOAD_GENRES } from "@/lib/tracks";
+import { normalizeExternalTrackSource, type TrackSourceType } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack, discardUploads } from "@/lib/tracks.functions";
@@ -13,8 +14,11 @@ type Row = {
   key: string;
   file: File | null;
   cover: File | null;
+  sourceType: TrackSourceType;
+  sourceUrl: string;
   title: string;
   genre: string;
+  customGenre: string;
   prompt: string;
   lyrics: string;
 };
@@ -23,8 +27,11 @@ const emptyRow = (): Row => ({
   key: Math.random().toString(36).slice(2),
   file: null,
   cover: null,
+  sourceType: "upload",
+  sourceUrl: "",
   title: "",
   genre: "",
+  customGenre: "",
   prompt: "",
   lyrics: "",
 });
@@ -84,6 +91,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     return { url: data.publicUrl, path };
   };
 
+  const resolvedGenre = (row: Row) => (row.genre === "Custom" ? row.customGenre.trim() : row.genre);
+
   /**
    * One track = one transaction from the user's point of view: audio → cover →
    * database row. If any step after an upload fails, every object created by
@@ -95,6 +104,24 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     let coverPath: string | undefined;
     let coverUrl: string | undefined;
     try {
+      if (r.sourceType !== "upload") {
+        const external = normalizeExternalTrackSource(r.sourceType, r.sourceUrl);
+        if (!external) throw new Error(`Enter a valid ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track link.`);
+        await createTrack({
+          data: {
+            title: r.title.trim(),
+            genre: resolvedGenre(r),
+            prompt: r.prompt,
+            lyrics: r.lyrics,
+            audio_url: external.sourceUrl,
+            audio_type: "link",
+            source_type: external.sourceType,
+            is_published: true,
+          },
+        });
+        return;
+      }
+
       const payload = await uploadOne(r.file!, token);
       audioKey = payload.key;
       if (r.cover) {
@@ -105,11 +132,12 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       await createTrack({
         data: {
           title: r.title.trim(),
-          genre: r.genre,
+          genre: resolvedGenre(r),
           prompt: r.prompt,
           lyrics: r.lyrics,
           audio_url: payload.url!,
           audio_type: "upload",
+          source_type: "upload",
           ...(audioKey ? { audio_key: audioKey } : {}),
           ...(coverUrl ? { cover_url: coverUrl } : {}),
           is_published: true,
@@ -140,9 +168,15 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     }
     setStatus(null);
     for (const r of rows) {
-      if (!r.file) return setStatus("Every track block needs an MP3 or WAV file.");
+      if (r.sourceType === "upload" && !r.file) return setStatus("Every Upload File track needs an MP3 or WAV file.");
+      if (r.sourceType !== "upload" && !normalizeExternalTrackSource(r.sourceType, r.sourceUrl)) {
+        return setStatus(`Every ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track needs a valid provider link.`);
+      }
       if (!r.title.trim()) return setStatus("Every track needs a title.");
       if (!r.genre) return setStatus("Pick a genre for every track.");
+      if (r.genre === "Custom" && (!r.customGenre.trim() || r.customGenre.trim().length > 60)) {
+        return setStatus("Every Custom genre needs a name of 60 characters or fewer.");
+      }
     }
 
     setBusy(true);
@@ -210,45 +244,45 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                 )}
               </div>
 
-              <label
-                htmlFor={`pb-audio-${r.key}`}
-                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-              >
-                <Music className="h-4 w-4 shrink-0" />
-                <span className="truncate">{r.file ? r.file.name : "Choose or drop an .mp3 / .wav file"}</span>
+              <label className="block text-xs text-muted-foreground">
+                Audio Source
+                <select
+                  value={r.sourceType}
+                  onChange={(e) => update(r.key, { sourceType: e.target.value as TrackSourceType, file: null, cover: null, sourceUrl: "" })}
+                  aria-label={`Track ${i + 1} audio source`}
+                  className="mt-1.5 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none focus:border-accent/60"
+                >
+                  <option value="upload" className="bg-[#0a0a0c]">Upload File</option>
+                  <option value="suno" className="bg-[#0a0a0c]">Suno</option>
+                  <option value="udio" className="bg-[#0a0a0c]">Udio</option>
+                  <option value="youtube" className="bg-[#0a0a0c]">YouTube</option>
+                </select>
               </label>
-              <input
-                id={`pb-audio-${r.key}`}
-                type="file"
-                accept=".mp3,.wav,audio/mpeg,audio/wav"
-                onChange={(e) => pickFile(r.key, e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
 
-              <label
-                htmlFor={`pb-cover-${r.key}`}
-                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-              >
-                {r.cover ? (
-                  <img
-                    src={URL.createObjectURL(r.cover)}
-                    alt={`Cover preview for track ${i + 1}`}
-                    className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/15"
-                  />
-                ) : (
-                  <ImagePlus className="h-4 w-4 shrink-0" />
-                )}
-                <span className="truncate">
-                  {r.cover ? r.cover.name : "Upload cover art (optional) — JPG / PNG / WebP"}
-                </span>
-              </label>
-              <input
-                id={`pb-cover-${r.key}`}
-                type="file"
-                accept="image/*"
-                onChange={(e) => update(r.key, { cover: e.target.files?.[0] ?? null })}
-                className="hidden"
-              />
+              {r.sourceType === "upload" ? (
+                <>
+                  <label htmlFor={`pb-audio-${r.key}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
+                    <Music className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{r.file ? r.file.name : "Choose or drop an .mp3 / .wav file"}</span>
+                  </label>
+                  <input id={`pb-audio-${r.key}`} type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(e) => pickFile(r.key, e.target.files?.[0] ?? null)} className="hidden" />
+
+                  <label htmlFor={`pb-cover-${r.key}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
+                    {r.cover ? <img src={URL.createObjectURL(r.cover)} alt={`Cover preview for track ${i + 1}`} className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/15" /> : <ImagePlus className="h-4 w-4 shrink-0" />}
+                    <span className="truncate">{r.cover ? r.cover.name : "Upload cover art (optional) — JPG / PNG / WebP"}</span>
+                  </label>
+                  <input id={`pb-cover-${r.key}`} type="file" accept="image/*" onChange={(e) => update(r.key, { cover: e.target.files?.[0] ?? null })} className="hidden" />
+                </>
+              ) : (
+                <input
+                  value={r.sourceUrl}
+                  onChange={(e) => update(r.key, { sourceUrl: e.target.value })}
+                  placeholder={`${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} Link`}
+                  aria-label={`Track ${i + 1} ${r.sourceType} link`}
+                  type="url"
+                  className={inputCls}
+                />
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <input
@@ -270,13 +304,17 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                   <option value="" disabled className="bg-[#0a0a0c]">
                     Select Music Genre
                   </option>
-                  {GENRES.filter((g) => g !== "All").map((g) => (
+                  {UPLOAD_GENRES.map((g) => (
                     <option key={g} value={g} className="bg-[#0a0a0c]">
                       {g}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {r.genre === "Custom" && (
+                <input value={r.customGenre} onChange={(e) => update(r.key, { customGenre: e.target.value })} maxLength={60} placeholder="Custom genre" aria-label={`Track ${i + 1} custom genre`} className={inputCls} />
+              )}
 
               <textarea
                 value={r.prompt}

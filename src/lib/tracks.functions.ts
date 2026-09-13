@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cleanTrackStorage } from "@/lib/track-moderation.functions";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
+import { normalizeExternalTrackSource, type ExternalTrackSourceType } from "@/lib/track-sources";
 
 const trackInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -12,6 +13,7 @@ const trackInput = z.object({
   lyrics: z.string().trim().max(8000).default(""),
   audio_url: z.string().url(),
   audio_type: z.enum(["link", "upload"]).default("upload"),
+  source_type: z.enum(["upload", "suno", "udio", "youtube"]).default("upload"),
   audio_key: z.string().max(500).nullable().optional(),
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   cover_url: z.string().url().max(1000).optional(),
@@ -19,7 +21,7 @@ const trackInput = z.object({
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 /** Counts one completed public playback without requiring a signed-in user. */
 export const incrementTrackPlay = createServerFn({ method: "POST" })
@@ -110,15 +112,28 @@ export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
   .handler(async ({ data, context }) => {
-    if (data.audio_key && (!isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
+    if (data.source_type === "upload" && (!data.audio_key || !isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
       throw new Error("Invalid uploaded audio reference");
     }
+
+    const externalSource = data.source_type === "upload"
+      ? null
+      : normalizeExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
+    if (data.source_type !== "upload" && !externalSource) {
+      throw new Error("Invalid external track link");
+    }
+
     const { data: row, error } = await context.supabase
       .from("tracks")
       .insert({
         ...data,
-        audio_key: data.audio_key ?? null,
-        cover_url: data.cover_url ?? null,
+        audio_url: externalSource?.sourceUrl ?? data.audio_url,
+        audio_type: externalSource ? "link" : data.audio_type,
+        audio_key: externalSource ? null : data.audio_key ?? null,
+        cover_url: externalSource ? null : data.cover_url ?? null,
+        source_type: externalSource?.sourceType ?? "upload",
+        source_url: externalSource?.sourceUrl ?? null,
+        source_id: externalSource?.sourceId ?? null,
         duration_seconds: data.duration_seconds ?? null,
         user_id: context.userId,
       })
@@ -292,6 +307,9 @@ const trendingRows = z.array(z.object({
   lyrics: z.string(),
   audio_url: z.string(),
   audio_type: z.string(),
+  source_type: z.enum(["upload", "suno", "udio", "youtube", "legacy_link"]),
+  source_url: z.string().nullable(),
+  source_id: z.string().nullable(),
   art_url: z.string().nullable(),
   cover_url: z.string().nullable(),
   duration_seconds: z.number().nullable(),

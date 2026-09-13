@@ -6,6 +6,8 @@ import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { getTrackEmbedUrl } from "@/lib/track-sources";
 
 export function TrackCard({
   track,
@@ -20,6 +22,7 @@ export function TrackCard({
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [playCount, setPlayCount] = useState(() => Number.parseInt(track.plays, 10) || 0);
+  const embedUrl = getTrackEmbedUrl(track.sourceType, track.sourceId);
 
   useEffect(() => {
     const onPlayCounted = (event: Event) => {
@@ -59,36 +62,22 @@ export function TrackCard({
   return (
     <article className="glass group overflow-hidden rounded-2xl transition-all hover:border-white/20 hover:shadow-[0_10px_40px_-12px_color-mix(in_oklab,var(--neon)_45%,transparent)]">
       <div className="relative aspect-square overflow-hidden">
-        <Link
-          to="/track/$id"
-          params={{ id: track.id }}
-          aria-label={`Open ${track.title}`}
-          className="block h-full cursor-pointer"
-        >
-          <img
-            src={track.art}
-            alt={`${track.title} cover art`}
-            width={640}
-            height={640}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        </Link>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+        {embedUrl ? (
+          <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={`${track.title} player`} />
+        ) : (
+          <>
+            <Link to="/track/$id" params={{ id: track.id }} aria-label={`Open ${track.title}`} className="block h-full cursor-pointer">
+              <img src={track.art} alt={`${track.title} cover art`} width={640} height={640} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            </Link>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+          </>
+        )}
         <span className="glass absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest text-accent">
           {track.genre}
         </span>
-        <button
-          onClick={() => onPlay(track)}
-          aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
-          className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95"
-        >
-          {isPlaying ? (
-            <Pause className="h-5 w-5 text-primary-foreground" />
-          ) : (
-            <Play className="ml-0.5 h-5 w-5 text-primary-foreground" />
-          )}
-        </button>
+        {!embedUrl && <button onClick={() => onPlay(track)} aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`} className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95">
+          {isPlaying ? <Pause className="h-5 w-5 text-primary-foreground" /> : <Play className="ml-0.5 h-5 w-5 text-primary-foreground" />}
+        </button>}
       </div>
 
       <div className="space-y-3 p-4">
