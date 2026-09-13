@@ -795,6 +795,11 @@ SCORING & PASSING
 Score reflects REAL defects only, with language and lyric defects weighted most heavily.
 The score is a defect-status score, not a subjective measure of artistic quality, originality, commercial potential, or personal taste.
 
+The score field must be a number from 0 to 10 inclusive.
+Never return a score above 10.
+Never use a 0–100 scale.
+If the song would rate above 10, still cap the score at 10.
+
 10
 No genuine material defects.
 All Actual Issue arrays are empty.
@@ -924,6 +929,7 @@ Before returning the JSON, silently verify:
 8. If ANY Actual Issue array is non-empty, "passed" is false and "score" is below 9.
 9. Optional suggestions never appear in Actual Issue arrays and never lower the score.
 10. The response is valid JSON with no markdown, prose outside the JSON, or trailing commas.
+11. The "score" field must be a number from 0 to 10 inclusive. If your computed score is above 10, clamp it to 10. If it is below 0, clamp it to 0. Never return a value above 10 or use a 0–100 scale.
 
 FINAL PRIORITY:
 
@@ -1036,6 +1042,30 @@ CURRENT EDITABLE LYRICS:
 ${r.lyrics}`;
 }
 
+/**
+ * Defensive normalization for provider responses that emit an out-of-range score.
+ * Keeps strict schema validation after normalization and logs the adjustment.
+ */
+function normalizeQualityScore(raw: unknown): unknown {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj["score"] === "number") {
+      const original = obj["score"] as number;
+      let normalized = original;
+      if (original > 10) normalized = 10;
+      if (original < 0) normalized = 0;
+      if (normalized !== original) {
+        console.warn("[ai] quality_check score_normalized", {
+          originalScore: original,
+          normalizedScore: normalized,
+        });
+        return { ...obj, score: normalized };
+      }
+    }
+  }
+  return raw;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -1103,6 +1133,7 @@ async function runQualityCheck(
       });
       return null;
     }
+    parsedJson = normalizeQualityScore(parsedJson);
     const parsed = qualityOutput.safeParse(parsedJson);
     if (!parsed.success) {
       console.warn("[ai] quality_check schema_validation_error", {

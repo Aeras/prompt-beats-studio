@@ -69,10 +69,11 @@ export const lockStaffTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId, reasonCode, reasonText: z.string().trim().max(500).nullish() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
+    const reasonParams = data.reasonText ? { _reason_text: data.reasonText } : {};
     const { error } = await context.supabase.rpc("staff_lock_track", {
       _track_id: data.trackId,
       _reason_code: data.reasonCode,
-      _reason_text: data.reasonText ?? null,
+      ...reasonParams,
     });
     if (error) throw new Error(error.message);
     return { ok: true, status: "locked" as const };

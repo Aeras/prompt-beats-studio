@@ -108,10 +108,16 @@ export const setAdminUserBanned = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireCapability(context.supabase, data.banned ? "can_block_users" : "can_unblock_users");
+    const reasonParams = data.banned
+      ? {
+          ...(data.reasonCode ? { _reason_code: data.reasonCode } : {}),
+          ...(data.reasonText ? { _reason_text: data.reasonText } : {}),
+        }
+      : {};
     const { error } = await context.supabase.rpc("admin_set_user_banned", {
-      _target_user_id: data.userId, _banned: data.banned,
-      _reason_code: data.banned ? data.reasonCode : null,
-      _reason_text: data.banned ? data.reasonText : null,
+      _target_user_id: data.userId,
+      _banned: data.banned,
+      ...reasonParams,
     });
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.banned };
@@ -158,7 +164,8 @@ export const setModerationStatus = createServerFn({ method: "POST" })
     const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability", { _capability: "can_suspend_moderator" });
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
     if (data.status === "suspended" && !data.reasonText?.trim()) throw new Error("A suspension reason is required.");
-    const { error } = await context.supabase.rpc("admin_set_moderation_status", { _target_user_id: data.userId, _status: data.status, _reason_text: data.reasonText ?? null });
+    const reasonParams = data.reasonText ? { _reason_text: data.reasonText } : {};
+    const { error } = await context.supabase.rpc("admin_set_moderation_status", { _target_user_id: data.userId, _status: data.status, ...reasonParams });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -186,7 +193,7 @@ async function listOwnedStoragePaths(bucket: string, ownerId: string): Promise<s
   const queuedPrefixes = new Set(prefixes);
   const visitedPrefixes = new Set<string>();
   for (let index = 0; index < prefixes.length; index += 1) {
-    const prefix = prefixes[index];
+    const prefix = prefixes[index]!;
     if (visitedPrefixes.has(prefix)) continue;
     visitedPrefixes.add(prefix);
     if (prefix !== ownerId && !isSafeOwnedCoverPath(prefix, ownerId)) {
@@ -360,10 +367,13 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     // Reserve the email before external cleanup/Auth deletion so no new
     // account can be created in the gap. Release it on every known failure.
     if (data.blockRegistration) {
+      const reasonParams = {
+        _reason_code: data.registrationReasonCode ?? "other",
+        ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
+      };
       const { data: reservedId, error: registrationError } = await context.supabase.rpc("admin_create_registration_block", {
         _email: authUser.user.email ?? "",
-        _reason_code: data.registrationReasonCode,
-        _reason_text: data.registrationReasonText ?? null,
+        ...reasonParams,
       });
       if (registrationError || !reservedId) {
         throw new Error(`Could not reserve registration block: ${registrationError?.message ?? "no block id returned"}`);
