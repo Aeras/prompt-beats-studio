@@ -795,6 +795,11 @@ SCORING & PASSING
 Score reflects REAL defects only, with language and lyric defects weighted most heavily.
 The score is a defect-status score, not a subjective measure of artistic quality, originality, commercial potential, or personal taste.
 
+The score field must be a number from 0 to 10 inclusive.
+Never return a score above 10.
+Never use a 0–100 scale.
+If the song would rate above 10, still cap the score at 10.
+
 10
 No genuine material defects.
 All Actual Issue arrays are empty.
