@@ -164,7 +164,8 @@ export const setModerationStatus = createServerFn({ method: "POST" })
     const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability", { _capability: "can_suspend_moderator" });
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
     if (data.status === "suspended" && !data.reasonText?.trim()) throw new Error("A suspension reason is required.");
-    const { error } = await context.supabase.rpc("admin_set_moderation_status", { _target_user_id: data.userId, _status: data.status, _reason_text: data.reasonText ?? null });
+    const reasonParams = data.reasonText ? { _reason_text: data.reasonText } : {};
+    const { error } = await context.supabase.rpc("admin_set_moderation_status", { _target_user_id: data.userId, _status: data.status, ...reasonParams });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
