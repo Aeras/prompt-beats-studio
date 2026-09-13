@@ -193,7 +193,7 @@ async function listOwnedStoragePaths(bucket: string, ownerId: string): Promise<s
   const queuedPrefixes = new Set(prefixes);
   const visitedPrefixes = new Set<string>();
   for (let index = 0; index < prefixes.length; index += 1) {
-    const prefix = prefixes[index];
+    const prefix = prefixes[index]!;
     if (visitedPrefixes.has(prefix)) continue;
     visitedPrefixes.add(prefix);
     if (prefix !== ownerId && !isSafeOwnedCoverPath(prefix, ownerId)) {
