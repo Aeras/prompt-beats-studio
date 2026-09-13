@@ -108,10 +108,16 @@ export const setAdminUserBanned = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireCapability(context.supabase, data.banned ? "can_block_users" : "can_unblock_users");
+    const reasonParams = data.banned
+      ? {
+          ...(data.reasonCode ? { _reason_code: data.reasonCode } : {}),
+          ...(data.reasonText ? { _reason_text: data.reasonText } : {}),
+        }
+      : {};
     const { error } = await context.supabase.rpc("admin_set_user_banned", {
-      _target_user_id: data.userId, _banned: data.banned,
-      _reason_code: data.banned ? data.reasonCode : null,
-      _reason_text: data.banned ? data.reasonText : null,
+      _target_user_id: data.userId,
+      _banned: data.banned,
+      ...reasonParams,
     });
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.banned };
