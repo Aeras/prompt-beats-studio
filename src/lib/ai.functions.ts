@@ -966,6 +966,18 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 Return the strict JSON object only.`;
 }
 
+const QUALITY_DIAGNOSTIC_SYSTEM_PROMPT = `Temporary diagnostic mode for Quality Check.
+Return STRICT JSON ONLY that matches the provided schema.`;
+
+function buildQualityDiagnosticPrompt(
+  d: z.infer<typeof generateInput>,
+  r: z.infer<typeof generationOutput>,
+) {
+  return `Requested Language: ${d.language}
+CURRENT editable Lyrics:
+${r.lyrics}`;
+}
+
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
@@ -975,8 +987,8 @@ async function runQualityCheck(
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
-      system: QUALITY_SYSTEM_PROMPT,
-      prompt: buildQualityPrompt(d, r),
+      system: QUALITY_DIAGNOSTIC_SYSTEM_PROMPT,
+      prompt: buildQualityDiagnosticPrompt(d, r),
       maxTokens: 8192,
       schema,
     });
