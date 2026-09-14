@@ -71,7 +71,7 @@ export function TrackCard({
           <img src={track.art} alt={`${track.title} cover art`} width={640} height={640} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-        {embedUrl && !compact && <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={`${track.title} player`} />}
+        {embedUrl && <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={`${track.title} player`} />}
         <span className={cn("glass absolute rounded-full uppercase tracking-widest text-accent", compact ? "left-2 top-2 px-1.5 py-0.5 text-[8px]" : "left-3 top-3 px-2.5 py-1 text-[10px]")}>
           {track.genre}
         </span>
