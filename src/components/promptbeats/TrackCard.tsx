@@ -67,9 +67,9 @@ export function TrackCard({
     setActiveContent(kind);
   };
 
-  const copy = async () => {
+  const copy = async (content: string) => {
     try {
-      await navigator.clipboard.writeText(track.prompt);
+      await navigator.clipboard.writeText(content);
     } catch {
       /* clipboard unavailable */
     }
@@ -168,7 +168,9 @@ export function TrackCard({
           content={activeContent === "prompt" ? track.prompt?.trim() || "No prompt provided for this track." : track.lyrics}
           anchorRect={contentAnchor}
           onClose={() => setActiveContent(null)}
-          onCopy={activeContent === "prompt" && track.prompt?.trim() ? copy : undefined}
+          onCopy={activeContent === "prompt"
+            ? track.prompt?.trim() ? () => copy(track.prompt) : undefined
+            : () => copy(track.lyrics)}
           copied={copied}
           returnFocusElement={contentTrigger}
         />

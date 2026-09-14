@@ -85,7 +85,7 @@ export function TrackContentOverlay({
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <h2 id={headingId} className="font-display text-sm font-semibold">{heading}</h2>
         <div className="flex items-center gap-2">
-          {kind === "prompt" && onCopy && (
+          {onCopy && (
             <button
               type="button"
               onClick={onCopy}
