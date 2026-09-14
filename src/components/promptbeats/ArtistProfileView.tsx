@@ -264,6 +264,8 @@ export function ArtistProfileView({
                           lyrics: t.lyrics ?? "",
                           audio_url: t.audio_url,
                           audio_type: t.audio_type,
+                          source_type: t.source_type,
+                          source_url: t.source_url,
                         }}
                       />
                     </div>

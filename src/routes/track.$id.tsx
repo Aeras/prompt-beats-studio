@@ -174,7 +174,7 @@ function TrackPage() {
 
                   <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
                     <LikeButton trackId={track.id} />
-                    <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type }} />
+                    <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url }} />
                   </div>
                 </div>
               </div>

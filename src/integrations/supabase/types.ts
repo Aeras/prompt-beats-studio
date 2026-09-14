@@ -1031,6 +1031,22 @@ export type Database = {
       current_user_is_banned: { Args: never; Returns: boolean }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      edit_track_with_cleanup: {
+        Args: {
+          _lyrics: string
+          _genre: string
+          _new_audio_key?: string | null
+          _new_audio_url?: string | null
+          _new_cover_url?: string | null
+          _prompt: string
+          _source_id?: string | null
+          _source_type: string
+          _source_url?: string | null
+          _title: string
+          _track_id: string
+        }
+        Returns: Json
+      }
       get_my_account_status: { Args: never; Returns: Json }
       get_my_moderation_context: { Args: never; Returns: Json }
       has_moderation_capability: {

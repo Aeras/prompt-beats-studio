@@ -198,54 +198,50 @@ export const updateTrack = createServerFn({ method: "POST" })
         genre: z.string().trim().min(1).max(60),
         prompt: z.string().trim().max(4000).default(""),
         lyrics: z.string().trim().max(8000).default(""),
-        audio_url: z.string().url(),
-        audio_type: z.enum(["link", "upload"]),
-        audio_key: z.string().max(500).nullable().optional(),
-        is_published: z.boolean().default(true),
+        source_type: z.enum(["upload", "suno", "udio", "youtube", "legacy_link"]),
+        source_url: z.string().url().max(1000).optional(),
+        new_audio_url: z.string().url().max(1000).optional(),
+        new_audio_key: z.string().max(500).optional(),
+        new_cover_url: z.string().url().max(1000).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { id, audio_key, ...fields } = data;
-
-    if (audio_key !== undefined) {
-      if ((audio_key && !isSafeOwnedAudioKey(audio_key, context.userId)) || (audio_key && data.audio_type !== "upload") || (!audio_key && data.audio_type !== "link")) {
-        throw new Error("Invalid uploaded audio reference");
-      }
-
-      const { data: result, error } = await context.supabase.rpc(
-        "replace_track_with_audio_cleanup",
-        {
-          _track_id: id,
-          _title: fields.title,
-          _genre: fields.genre,
-          _prompt: fields.prompt,
-          _lyrics: fields.lyrics,
-          _audio_url: fields.audio_url,
-          _audio_type: fields.audio_type,
-          _audio_key: audio_key,
-          _is_published: fields.is_published,
-        },
-      );
-      if (error) throw new Error(error.message);
-
-      const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
-      if (payload?.cleanup_id) {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await cleanTrackStorage(supabaseAdmin, payload.cleanup_id);
-      }
-      return { track: payload?.track ?? null };
+    if (data.source_type === "upload" && data.new_audio_key && !isSafeOwnedAudioKey(data.new_audio_key, context.userId)) {
+      throw new Error("Invalid uploaded audio reference");
     }
-
-    const { data: row, error } = await context.supabase
-      .from("tracks")
-      .update(fields)
-      .eq("id", id)
-      .eq("user_id", context.userId)
-      .select(TRACK_COLUMNS)
-      .single();
+    const externalSource = data.source_type === "upload" || data.source_type === "legacy_link"
+      ? null
+      : await resolveExternalTrackSource(data.source_type, data.source_url ?? "");
+    if (data.source_type !== "upload" && data.source_type !== "legacy_link" && !externalSource) {
+      throw new Error("Invalid external track link");
+    }
+    const { data: result, error } = await context.supabase.rpc("edit_track_with_cleanup", {
+      _track_id: data.id,
+      _title: data.title,
+      _genre: data.genre,
+      _prompt: data.prompt,
+      _lyrics: data.lyrics,
+      _source_type: data.source_type,
+      _source_url: externalSource?.sourceUrl ?? null,
+      _source_id: externalSource?.sourceId ?? null,
+      _new_audio_url: data.new_audio_url ?? null,
+      _new_audio_key: data.new_audio_key ?? null,
+      _new_cover_url: data.new_cover_url ?? null,
+    });
     if (error) throw new Error(error.message);
-    return { track: row };
+    const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
+    if (payload?.cleanup_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      try {
+        await cleanTrackStorage(supabaseAdmin, payload.cleanup_id);
+      } catch {
+        // The track already points to the replacement. Its cleanup ledger is
+        // durable and retryable; never roll back or discard the live media.
+        return { track: payload?.track ?? null, storageCleanupPending: true };
+      }
+    }
+    return { track: payload?.track ?? null, storageCleanupPending: false };
   });
 /**
  * Rollback helper: records storage objects that were uploaded for a track that

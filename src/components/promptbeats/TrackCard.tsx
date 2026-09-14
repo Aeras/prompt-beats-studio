@@ -113,6 +113,8 @@ export function TrackCard({
                   lyrics: track.lyrics,
                   audio_url: track.audioUrl ?? "",
                   audio_type: track.audioType ?? "upload",
+                  source_type: track.sourceType,
+                  source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
                 }}
               />
             )}
