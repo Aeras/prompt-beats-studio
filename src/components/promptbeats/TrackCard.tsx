@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Play, Pause, Copy, Check, ChevronDown } from "lucide-react";
+import { Play, Pause, ChevronDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
@@ -7,6 +7,7 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { TrackContentOverlay, type TrackContentKind } from "@/components/promptbeats/TrackContentOverlay";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import type { TrackGridMode } from "@/components/promptbeats/TrackGridView";
 
@@ -21,8 +22,9 @@ export function TrackCard({
   onPlay: (t: Track) => void;
   viewMode?: TrackGridMode;
 }) {
-  const [open, setOpen] = useState(false);
-  const [promptOpen, setPromptOpen] = useState(false);
+  const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
+  const [contentAnchor, setContentAnchor] = useState<Pick<DOMRect, "left" | "top" | "bottom"> | null>(null);
+  const [contentTrigger, setContentTrigger] = useState<HTMLElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [playCount, setPlayCount] = useState(() => Number.parseInt(track.plays, 10) || 0);
   const embedUrl = getTrackEmbedUrl(track.sourceType, track.sourceId);
@@ -38,20 +40,25 @@ export function TrackCard({
     return () => window.removeEventListener("promptbeats:track-play-counted", onPlayCounted);
   }, [track.id]);
 
-  const togglePrompt = () => {
-    setPromptOpen((v) => {
-      const next = !v;
-      if (next) setOpen(false);
-      return next;
-    });
-  };
+  useEffect(() => {
+    const onOtherTrackContentOpened = (event: Event) => {
+      const detail = (event as CustomEvent<{ trackId?: string }>).detail;
+      if (detail?.trackId !== track.id) setActiveContent(null);
+    };
+    window.addEventListener("promptbeats:track-content-opened", onOtherTrackContentOpened);
+    return () => window.removeEventListener("promptbeats:track-content-opened", onOtherTrackContentOpened);
+  }, [track.id]);
 
-  const toggleLyrics = () => {
-    setOpen((v) => {
-      const next = !v;
-      if (next) setPromptOpen(false);
-      return next;
-    });
+  const toggleContent = (kind: TrackContentKind, element: HTMLElement) => {
+    if (activeContent === kind) {
+      setActiveContent(null);
+      return;
+    }
+    const { left, top, bottom } = element.getBoundingClientRect();
+    setContentAnchor({ left, top, bottom });
+    setContentTrigger(element);
+    window.dispatchEvent(new CustomEvent("promptbeats:track-content-opened", { detail: { trackId: track.id } }));
+    setActiveContent(kind);
   };
 
   const copy = async () => {
@@ -131,61 +138,35 @@ export function TrackCard({
 
         <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")}>
           <button
-            onClick={togglePrompt}
+            onClick={(event) => toggleContent("prompt", event.currentTarget)}
             className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
           >
-            {promptOpen ? "Hide prompt" : "Show prompt"}
-            <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", promptOpen && "rotate-180")} />
+            {activeContent === "prompt" ? "Hide prompt" : "Show prompt"}
+            <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
           </button>
           {track.lyrics?.trim() && (
             <button
-              onClick={toggleLyrics}
+              onClick={(event) => toggleContent("lyrics", event.currentTarget)}
               className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
             >
-              {open ? "Hide lyrics" : "Show lyrics"}
-              <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+              {activeContent === "lyrics" ? "Hide lyrics" : "Show lyrics"}
+              <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "lyrics" && "rotate-180")} />
             </button>
           )}
         </div>
 
-        <div
-          className={cn(
-            "grid transition-all duration-300",
-            promptOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-          )}
-        >
-          <div className="overflow-hidden">
-            <div className="rounded-xl bg-black/40 p-3">
-              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">
-                {track.prompt?.trim() || "No prompt provided for this track."}
-              </pre>
-              {track.prompt?.trim() && (
-                <button
-                  onClick={copy}
-                  className="mt-2 flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            "grid transition-all duration-300",
-            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-          )}
-        >
-          <div className="overflow-hidden">
-            <pre className="whitespace-pre-wrap rounded-xl bg-black/40 p-3 font-sans text-xs leading-relaxed text-muted-foreground">
-              {track.lyrics}
-            </pre>
-          </div>
-        </div>
-
       </div>
+      {activeContent && (
+        <TrackContentOverlay
+          kind={activeContent}
+          content={activeContent === "prompt" ? track.prompt?.trim() || "No prompt provided for this track." : track.lyrics}
+          anchorRect={contentAnchor}
+          onClose={() => setActiveContent(null)}
+          onCopy={activeContent === "prompt" && track.prompt?.trim() ? copy : undefined}
+          copied={copied}
+          returnFocusElement={contentTrigger}
+        />
+      )}
     </article>
   );
 }
