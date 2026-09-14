@@ -63,10 +63,12 @@ export function ExternalTrackEmbed({
   sourceType,
   sourceId,
   title,
+  compact = false,
 }: {
   sourceType: string | null | undefined;
   sourceId: string | null | undefined;
   title: string;
+  compact?: boolean;
 }) {
   const embedUrl = getTrackEmbedUrl(sourceType, sourceId);
   const instanceId = `external-track-${useId()}`;
@@ -77,6 +79,7 @@ export function ExternalTrackEmbed({
   const [shouldMount, setShouldMount] = useState(false);
   const { enabled: externalMediaAllowed, allow: allowExternalMedia } = useExternalMediaConsent();
   const isUdio = sourceType === "udio";
+  const isCompactSuno = sourceType === "suno" && compact;
   const providerUrl = getTrackProviderUrl(sourceType, sourceId);
   const providerName = sourceType === "suno" ? "Suno" : sourceType === "udio" ? "Udio" : null;
 
@@ -106,14 +109,14 @@ export function ExternalTrackEmbed({
 
   if (!embedUrl) return null;
 
-  const aspectRatio = "760 / 240";
+  const aspectRatio = isCompactSuno ? "1 / 1" : "760 / 240";
   const udioScale = containerWidth > 0 ? containerWidth / UDIO_WIDTH : 1;
   const showIframe = externalMediaAllowed && shouldMount;
 
   return (
     <div
       ref={containerRef}
-      className="absolute inset-x-0 bottom-0 w-full overflow-hidden"
+      className="absolute inset-x-0 bottom-0 w-full max-w-full overflow-hidden"
       style={isUdio ? { aspectRatio: `${UDIO_WIDTH} / ${UDIO_HEIGHT}` } : { aspectRatio }}
     >
       {showIframe ? (
