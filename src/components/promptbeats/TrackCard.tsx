@@ -80,7 +80,7 @@ export function TrackCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">
-              <Link to="/track/$id" params={{ id: track.id }} className="cursor-pointer transition-colors hover:text-accent">
+              <Link to="/track/$id" params={{ id: track.id }} className="relative z-10 inline-block cursor-pointer transition-colors hover:text-accent">
                 {track.title}
               </Link>
             </h3>
