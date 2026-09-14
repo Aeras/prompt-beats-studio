@@ -7,7 +7,7 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
-import { getTrackEmbedUrl } from "@/lib/track-sources";
+import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 
 export function TrackCard({
   track,
@@ -23,6 +23,7 @@ export function TrackCard({
   const [copied, setCopied] = useState(false);
   const [playCount, setPlayCount] = useState(() => Number.parseInt(track.plays, 10) || 0);
   const embedUrl = getTrackEmbedUrl(track.sourceType, track.sourceId);
+  const canUseNativePlayer = canUseNativeTrackPlayer(track.sourceType);
 
   useEffect(() => {
     const onPlayCounted = (event: Event) => {
@@ -70,7 +71,7 @@ export function TrackCard({
         <span className="glass absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest text-accent">
           {track.genre}
         </span>
-        {!embedUrl && <button onClick={() => onPlay(track)} aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`} className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95">
+        {!embedUrl && canUseNativePlayer && <button onClick={() => onPlay(track)} aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`} className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95">
           {isPlaying ? <Pause className="h-5 w-5 text-primary-foreground" /> : <Play className="ml-0.5 h-5 w-5 text-primary-foreground" />}
         </button>}
       </div>

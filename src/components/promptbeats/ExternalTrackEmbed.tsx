@@ -43,7 +43,7 @@ export function ExternalTrackEmbed({
 
   if (!embedUrl) return null;
 
-  const aspectRatio = sourceType === "youtube" ? "16 / 9" : "760 / 240";
+  const aspectRatio = "760 / 240";
   const udioScale = containerWidth > 0 ? containerWidth / UDIO_WIDTH : 1;
 
   return (

@@ -105,7 +105,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     let coverUrl: string | undefined;
     try {
       if (r.sourceType !== "upload") {
-        if (!isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) throw new Error(`Enter a valid ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track link.`);
+        if (!isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) throw new Error(`Enter a valid ${r.sourceType === "suno" ? "Suno" : "Udio"} track link.`);
         await createTrack({
           data: {
             title: r.title.trim(),
@@ -169,7 +169,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     for (const r of rows) {
       if (r.sourceType === "upload" && !r.file) return setStatus("Every Upload File track needs an MP3 or WAV file.");
       if (r.sourceType !== "upload" && !isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) {
-        return setStatus(`Every ${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} track needs a valid provider link.`);
+        return setStatus(`Every ${r.sourceType === "suno" ? "Suno" : "Udio"} track needs a valid provider link.`);
       }
       if (!r.title.trim()) return setStatus("Every track needs a title.");
       if (!r.genre) return setStatus("Pick a genre for every track.");
@@ -254,7 +254,6 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                   <option value="upload" className="bg-[#0a0a0c]">Upload File</option>
                   <option value="suno" className="bg-[#0a0a0c]">Suno</option>
                   <option value="udio" className="bg-[#0a0a0c]">Udio</option>
-                  <option value="youtube" className="bg-[#0a0a0c]">YouTube</option>
                 </select>
               </label>
 
@@ -276,7 +275,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                 <input
                   value={r.sourceUrl}
                   onChange={(e) => update(r.key, { sourceUrl: e.target.value })}
-                  placeholder={`${r.sourceType === "youtube" ? "YouTube" : r.sourceType === "suno" ? "Suno" : "Udio"} Link`}
+                  placeholder={`${r.sourceType === "suno" ? "Suno" : "Udio"} Link`}
                   aria-label={`Track ${i + 1} ${r.sourceType} link`}
                   type="url"
                   className={inputCls}

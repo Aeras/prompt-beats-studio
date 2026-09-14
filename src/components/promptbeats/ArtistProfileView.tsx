@@ -14,7 +14,7 @@ import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/mo
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
-import { getTrackEmbedUrl } from "@/lib/track-sources";
+import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 
 type Profile = {
@@ -241,6 +241,7 @@ export function ArtistProfileView({
               <div className="grid gap-3 sm:grid-cols-2">
                 {tracks.map((t) => {
                   const embedUrl = getTrackEmbedUrl(t.source_type, t.source_id);
+                  const canUseNativePlayer = canUseNativeTrackPlayer(t.source_type);
                   return <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
                     <div className="flex items-center gap-2">
                       <Music className="h-4 w-4 shrink-0 text-accent" />
@@ -275,7 +276,7 @@ export function ArtistProfileView({
                         <img src={artFallback} alt="" className="h-full w-full object-cover" />
                         <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
                       </div>
-                    ) : <button
+                    ) : canUseNativePlayer ? <button
                       onClick={() =>
                         play(
                           {
@@ -303,7 +304,7 @@ export function ArtistProfileView({
                         <Play className="h-3.5 w-3.5" />
                       )}
                       {current?.id === t.id && playing ? "Pause" : "Play"}
-                    </button>}
+                    </button> : null}
                   </article>;
                 })}
               </div>

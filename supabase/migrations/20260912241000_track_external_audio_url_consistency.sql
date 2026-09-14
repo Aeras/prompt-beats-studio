@@ -52,11 +52,6 @@ BEGIN
     AND NEW.source_url = 'https://www.udio.com/songs/' || NEW.source_id
   THEN RETURN NEW; END IF;
 
-  IF NEW.source_type = 'youtube'
-    AND NEW.source_id ~ '^[A-Za-z0-9_-]{11}$'
-    AND NEW.source_url = 'https://www.youtube.com/watch?v=' || NEW.source_id
-  THEN RETURN NEW; END IF;
-
   RAISE EXCEPTION 'invalid external track source';
 END;
 $$;

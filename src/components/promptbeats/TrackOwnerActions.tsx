@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ImagePlus, Loader2, Music, Pencil, Trash2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+
 import { UPLOAD_GENRES } from "@/lib/tracks";
 import { deleteTrack, discardUploads, updateTrack } from "@/lib/tracks.functions";
 import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/lib/track-sources";
@@ -8,26 +10,129 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useModeration } from "@/hooks/useModeration";
 
-export type EditableTrack = { id: string; user_id?: string | null; title: string; genre: string; prompt: string; lyrics: string; audio_url: string; audio_type: string; source_type?: PersistedTrackSourceType | string | null | undefined; source_url?: string | null | undefined };
+export type EditableTrack = {
+  id: string;
+  user_id?: string | null;
+  title: string;
+  genre: string;
+  prompt: string;
+  lyrics: string;
+  audio_url: string;
+  audio_type: string;
+  source_type?: PersistedTrackSourceType | string | null | undefined;
+  source_url?: string | null | undefined;
+};
+
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
-const providerName = (s: string) => s === "youtube" ? "YouTube" : s === "suno" ? "Suno" : s === "udio" ? "Udio" : "Upload File";
+const providerName = (sourceType: string) => sourceType === "suno" ? "Suno" : sourceType === "udio" ? "Udio" : "Upload File";
 
 export function TrackOwnerActions({ track, compact = false }: { track: EditableTrack; compact?: boolean }) {
-  const { user } = useAuth(); const { isAdmin } = useModeration(); const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { isAdmin } = useModeration();
+  const queryClient = useQueryClient();
   const sourceType = (track.source_type ?? (track.audio_type === "upload" ? "upload" : "legacy_link")) as PersistedTrackSourceType;
   const isUpload = sourceType === "upload";
   const initialGenre = UPLOAD_GENRES.includes(track.genre as typeof UPLOAD_GENRES[number]) ? track.genre : "Custom";
-  const [editing, setEditing] = useState(false), [confirming, setConfirming] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState(track.title), [genreOption, setGenreOption] = useState(initialGenre), [customGenre, setCustomGenre] = useState(initialGenre === "Custom" ? track.genre : ""), [prompt, setPrompt] = useState(track.prompt), [lyrics, setLyrics] = useState(track.lyrics), [sourceUrl, setSourceUrl] = useState(track.source_url ?? track.audio_url), [audioFile, setAudioFile] = useState<File | null>(null), [coverFile, setCoverFile] = useState<File | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState(track.title);
+  const [genreOption, setGenreOption] = useState(initialGenre);
+  const [customGenre, setCustomGenre] = useState(initialGenre === "Custom" ? track.genre : "");
+  const [prompt, setPrompt] = useState(track.prompt);
+  const [lyrics, setLyrics] = useState(track.lyrics);
+  const [sourceUrl, setSourceUrl] = useState(track.source_url ?? track.audio_url);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
   if (!isOwner && !isAdmin) return null;
+
   const refresh = () => queryClient.invalidateQueries();
-  const uploadAudio = async (file: File) => { const { data } = await supabase.auth.getSession(); const body = new FormData(); body.append("file", file); const res = await fetch("/api/upload", { method: "POST", headers: data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {}, body }); const value = await res.json() as { key?: string; url?: string; error?: string }; if (!res.ok || !value.key || !value.url) throw new Error(value.error ?? "Audio upload failed"); return value as { key: string; url: string }; };
-  const uploadCover = async (file: File) => { if (!user) throw new Error("You must be signed in to upload a cover."); const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg"; const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`; const { error: uploadError } = await supabase.storage.from("track-covers").upload(path, file, { cacheControl: "3600", upsert: false }); if (uploadError) throw new Error("Cover upload failed"); return { path, url: supabase.storage.from("track-covers").getPublicUrl(path).data.publicUrl }; };
-  const save = async () => { const genre = genreOption === "Custom" ? customGenre.trim() : genreOption; if (!title.trim()) return setError("Give your track a title."); if (!genre || genre.length > 60) return setError("Pick a genre or enter a Custom genre of 60 characters or fewer."); if (!isUpload && sourceType !== "legacy_link" && !isSupportedExternalTrackUrl(sourceType, sourceUrl)) return setError(`Enter a valid ${providerName(sourceType)} link.`); setBusy(true); setError(null); let audio: { key: string; url: string } | null = null; let cover: { path: string; url: string } | null = null; try { if (isUpload && audioFile) audio = await uploadAudio(audioFile); if (isUpload && coverFile) cover = await uploadCover(coverFile); await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, source_type: sourceType, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } }); await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null); } catch (err) { if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* server cleanup is durable */ } setError(err instanceof Error ? err.message : "Could not save changes."); } finally { setBusy(false); } };
-  const remove = async () => { setBusy(true); try { await deleteTrack({ data: { id: track.id } }); await refresh(); setConfirming(false); } catch (err) { setError(err instanceof Error ? err.message : "Could not delete this track."); } finally { setBusy(false); } };
-  const btn = "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " + (compact ? "h-7 w-7" : "h-8 w-8");
-  return <><div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label="Edit track" onClick={() => setEditing(true)} className={btn}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label="Delete track" onClick={() => setConfirming(true)} className={btn + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
-    {editing && <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6"><div className="glass-strong max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-7"><header className="flex items-center justify-between"><h2 className="font-display text-lg font-bold">Edit track</h2><button aria-label="Close" onClick={() => setEditing(false)} className="text-muted-foreground"><X className="h-5 w-5" /></button></header><div className="mt-5 space-y-4"><p className="text-xs uppercase tracking-widest text-accent">Source: {providerName(sourceType)} <span className="text-muted-foreground">(immutable)</span></p>{!isUpload && sourceType !== "legacy_link" && <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} type="url" aria-label={`${providerName(sourceType)} link`} className={inputCls} />}<input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Track title" className={inputCls} /><select value={genreOption} onChange={(e) => setGenreOption(e.target.value)} aria-label="Music Genre" className={inputCls}>{UPLOAD_GENRES.map((g) => <option key={g} value={g} className="bg-[#0a0a0c]">{g}</option>)}</select>{genreOption === "Custom" && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} maxLength={60} placeholder="Custom genre" aria-label="Custom genre" className={inputCls} />}<textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={4000} rows={3} aria-label="Style prompt" className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" /><textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} maxLength={8000} rows={5} aria-label="Lyrics" className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />{isUpload && <><label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? `${audioFile.name} — replaces current audio on Save` : "Replace Audio File (optional)"}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)} className="hidden" /></label><label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? `${coverFile.name} — replaces current cover on Save` : "Replace Cover Art (optional)"}</span><input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} className="hidden" /></label></>}{error && <p className="text-center text-xs text-destructive">{error}</p>}<div className="flex gap-3"><button onClick={save} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} Save changes</button><button onClick={() => setEditing(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">Cancel</button></div></div></div></div>}
-    {confirming && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"><div className="glass-strong w-full max-w-sm space-y-4 rounded-3xl p-6"><h2 className="font-display text-lg font-bold">Delete “{track.title}”?</h2><p className="text-sm text-muted-foreground">This permanently removes the track and its audio file.</p>{error && <p className="text-xs text-destructive">{error}</p>}<div className="flex gap-3"><button onClick={remove} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} Delete</button><button onClick={() => setConfirming(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">Cancel</button></div></div></div>}</>;
+  const uploadAudio = async (file: File) => {
+    const { data } = await supabase.auth.getSession();
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {},
+      body,
+    });
+    const value = await response.json() as { key?: string; url?: string; error?: string };
+    if (!response.ok || !value.key || !value.url) throw new Error(value.error ?? "Audio upload failed");
+    return value as { key: string; url: string };
+  };
+  const uploadCover = async (file: File) => {
+    if (!user) throw new Error("You must be signed in to upload a cover.");
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("track-covers").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) throw new Error("Cover upload failed");
+    return { path, url: supabase.storage.from("track-covers").getPublicUrl(path).data.publicUrl };
+  };
+  const save = async () => {
+    const genre = genreOption === "Custom" ? customGenre.trim() : genreOption;
+    if (!title.trim()) return setError("Give your track a title.");
+    if (!genre || genre.length > 60) return setError("Pick a genre or enter a Custom genre of 60 characters or fewer.");
+    if (!isUpload && sourceType !== "legacy_link" && !isSupportedExternalTrackUrl(sourceType, sourceUrl)) return setError(`Enter a valid ${providerName(sourceType)} link.`);
+    setBusy(true);
+    setError(null);
+    let audio: { key: string; url: string } | null = null;
+    let cover: { path: string; url: string } | null = null;
+    try {
+      if (isUpload && audioFile) audio = await uploadAudio(audioFile);
+      if (isUpload && coverFile) cover = await uploadCover(coverFile);
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, source_type: sourceType, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      await refresh();
+      setEditing(false);
+      setAudioFile(null);
+      setCoverFile(null);
+    } catch (err) {
+      if (audio || cover) try {
+        await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } });
+      } catch {
+        // Server cleanup is durable.
+      }
+      setError(err instanceof Error ? err.message : "Could not save changes.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await deleteTrack({ data: { id: track.id } });
+      await refresh();
+      setConfirming(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete this track.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const buttonClass = "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " + (compact ? "h-7 w-7" : "h-8 w-8");
+
+  const editModal = editing && typeof document !== "undefined" && createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-track-title">
+      <div className="glass-strong max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-7">
+        <header className="flex items-center justify-between"><h2 id="edit-track-title" className="font-display text-lg font-bold">Edit track</h2><button aria-label="Close" onClick={() => setEditing(false)} className="text-muted-foreground"><X className="h-5 w-5" /></button></header>
+        <div className="mt-5 space-y-4">
+          <p className="text-xs uppercase tracking-widest text-accent">Source: {providerName(sourceType)} <span className="text-muted-foreground">(immutable)</span></p>
+          {!isUpload && sourceType !== "legacy_link" && <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" aria-label={`${providerName(sourceType)} link`} className={inputCls} />}
+          <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} aria-label="Track title" className={inputCls} />
+          <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label="Music Genre" className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre}</option>)}</select>
+          {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder="Custom genre" aria-label="Custom genre" className={inputCls} />}
+          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label="Style prompt" className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
+          <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label="Lyrics" className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
+          {isUpload && <><label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? `${audioFile.name} — replaces current audio on Save` : "Replace Audio File (optional)"}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)} className="hidden" /></label><label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? `${coverFile.name} — replaces current cover on Save` : "Replace Cover Art (optional)"}</span><input type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="hidden" /></label></>}
+          {error && <p className="text-center text-xs text-destructive">{error}</p>}
+          <div className="flex gap-3"><button onClick={save} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} Save changes</button><button onClick={() => setEditing(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">Cancel</button></div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+
+  return <><div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label="Edit track" onClick={() => setEditing(true)} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label="Delete track" onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>{editModal}{confirming && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"><div className="glass-strong w-full max-w-sm space-y-4 rounded-3xl p-6"><h2 className="font-display text-lg font-bold">Delete “{track.title}”?</h2><p className="text-sm text-muted-foreground">This permanently removes the track and its audio file.</p>{error && <p className="text-xs text-destructive">{error}</p>}<div className="flex gap-3"><button onClick={remove} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} Delete</button><button onClick={() => setConfirming(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">Cancel</button></div></div></div>}</>;
 }

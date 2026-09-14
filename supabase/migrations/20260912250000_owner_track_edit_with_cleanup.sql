@@ -67,7 +67,7 @@ BEGIN
       lyrics = trim(COALESCE(_lyrics, '')), audio_url = COALESCE(_new_audio_url, v_track.audio_url),
       audio_key = COALESCE(_new_audio_key, v_track.audio_key), cover_url = COALESCE(_new_cover_url, v_track.cover_url)
     WHERE id = _track_id;
-  ELSIF v_track.source_type IN ('suno', 'udio', 'youtube') THEN
+  ELSIF v_track.source_type IN ('suno', 'udio') THEN
     IF _source_type <> v_track.source_type OR _source_url IS NULL OR _source_id IS NULL
       OR _new_audio_url IS NOT NULL OR _new_audio_key IS NOT NULL OR _new_cover_url IS NOT NULL THEN
       RAISE EXCEPTION 'track source cannot be changed';

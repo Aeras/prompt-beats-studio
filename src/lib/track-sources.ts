@@ -1,4 +1,4 @@
-export const TRACK_SOURCE_TYPES = ["upload", "suno", "udio", "youtube"] as const;
+export const TRACK_SOURCE_TYPES = ["upload", "suno", "udio"] as const;
 
 export type TrackSourceType = (typeof TRACK_SOURCE_TYPES)[number];
 export type ExternalTrackSourceType = Exclude<TrackSourceType, "upload">;
@@ -11,12 +11,14 @@ export type NormalizedExternalTrackSource = {
   sourceUrl: string;
 };
 
+/** Only native uploads and pre-Phase-1 generic links may enter native playback. */
+export function canUseNativeTrackPlayer(sourceType: string | null | undefined): boolean {
+  return sourceType == null || sourceType === "upload" || sourceType === "legacy_link";
+}
+
 const SUNO_HOSTS = new Set(["suno.com", "www.suno.com"]);
 const UDIO_HOSTS = new Set(["udio.com", "www.udio.com"]);
-const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com"]);
-const YOUTUBE_SHORT_HOSTS = new Set(["youtu.be", "www.youtu.be"]);
 const PROVIDER_ID = /^[A-Za-z0-9_-]{6,128}$/;
-const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 
 function parseHttpsUrl(value: string): URL | null {
   try {
@@ -72,17 +74,7 @@ export function normalizeExternalTrackSource(
       : null;
   }
 
-  let sourceId: string | null = null;
-  if (YOUTUBE_HOSTS.has(url.hostname.toLowerCase()) && url.pathname === "/watch") {
-    const candidate = url.searchParams.get("v");
-    sourceId = candidate && YOUTUBE_ID.test(candidate) ? candidate : null;
-  } else if (YOUTUBE_SHORT_HOSTS.has(url.hostname.toLowerCase())) {
-    const [candidate, ...rest] = url.pathname.split("/").filter(Boolean);
-    sourceId = candidate && rest.length === 0 && YOUTUBE_ID.test(candidate) ? candidate : null;
-  }
-  return sourceId
-    ? { sourceType, sourceId, sourceUrl: `https://www.youtube.com/watch?v=${sourceId}` }
-    : null;
+  return null;
 }
 
 /** Only validated source IDs are ever turned into iframe URLs. */
@@ -96,9 +88,6 @@ export function getTrackEmbedUrl(
   }
   if (sourceType === "udio" && PROVIDER_ID.test(sourceId)) {
     return `https://www.udio.com/embed/${sourceId}?embedVariant=default&utm_source=generator`;
-  }
-  if (sourceType === "youtube" && YOUTUBE_ID.test(sourceId)) {
-    return `https://www.youtube.com/embed/${sourceId}?autoplay=0&playsinline=1&enablejsapi=1`;
   }
   return null;
 }

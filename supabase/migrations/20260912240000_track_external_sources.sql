@@ -22,7 +22,7 @@ ALTER TABLE public.tracks
 
 ALTER TABLE public.tracks
   ADD CONSTRAINT tracks_source_type_check
-  CHECK (source_type IN ('upload', 'suno', 'udio', 'youtube', 'legacy_link'));
+  CHECK (source_type IN ('upload', 'suno', 'udio', 'legacy_link'));
 
 CREATE OR REPLACE FUNCTION public.validate_track_source()
 RETURNS trigger
@@ -72,11 +72,6 @@ BEGIN
   IF NEW.source_type = 'udio'
     AND NEW.source_id ~ '^[A-Za-z0-9_-]{6,128}$'
     AND NEW.source_url = 'https://www.udio.com/songs/' || NEW.source_id
-  THEN RETURN NEW; END IF;
-
-  IF NEW.source_type = 'youtube'
-    AND NEW.source_id ~ '^[A-Za-z0-9_-]{11}$'
-    AND NEW.source_url = 'https://www.youtube.com/watch?v=' || NEW.source_id
   THEN RETURN NEW; END IF;
 
   RAISE EXCEPTION 'invalid external track source';
