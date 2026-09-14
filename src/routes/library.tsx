@@ -32,6 +32,7 @@ type Row = {
   cover_url: string | null;
   duration_seconds: number | null;
   plays: number;
+  is_published: boolean;
   handle?: string;
 };
 
@@ -49,6 +50,7 @@ function toTrack(t: Row, handle: string): Track {
     lyrics: t.lyrics,
     audioUrl: t.audio_url,
     audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    isPublished: t.is_published,
     sourceType: t.source_type,
     sourceId: t.source_id,
   };

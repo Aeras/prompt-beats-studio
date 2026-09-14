@@ -1035,6 +1035,7 @@ export type Database = {
         Args: {
           _lyrics: string
           _genre: string
+          _is_published: boolean
           _new_audio_key?: string | null
           _new_audio_url?: string | null
           _new_cover_url?: string | null

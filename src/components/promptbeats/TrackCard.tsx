@@ -116,6 +116,7 @@ export function TrackCard({
                   audio_type: track.audioType ?? "upload",
                   source_type: track.sourceType,
                   source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
+                  is_published: track.isPublished ?? true,
                 }}
               />
             )}

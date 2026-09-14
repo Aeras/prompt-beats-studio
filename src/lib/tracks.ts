@@ -12,6 +12,7 @@ export type Track = {
   lyrics: string;
   audioUrl?: string;
   audioType?: "link" | "upload";
+  isPublished?: boolean;
   sourceType?: PersistedTrackSourceType | undefined;
   sourceId?: string | null | undefined;
   /** Present only for real database tracks (enables likes + owner controls). */

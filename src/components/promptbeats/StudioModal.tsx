@@ -19,6 +19,7 @@ type Row = {
   title: string;
   genre: string;
   customGenre: string;
+  isPublished: boolean;
   prompt: string;
   lyrics: string;
 };
@@ -32,6 +33,7 @@ const emptyRow = (): Row => ({
   title: "",
   genre: "",
   customGenre: "",
+  isPublished: true,
   prompt: "",
   lyrics: "",
 });
@@ -115,7 +117,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
             audio_url: r.sourceUrl,
             audio_type: "link",
             source_type: r.sourceType,
-            is_published: true,
+            is_published: r.isPublished,
           },
         });
         return;
@@ -139,7 +141,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
           source_type: "upload",
           ...(audioKey ? { audio_key: audioKey } : {}),
           ...(coverUrl ? { cover_url: coverUrl } : {}),
-          is_published: true,
+          is_published: r.isPublished,
         },
       });
     } catch (err) {
@@ -256,6 +258,21 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                   <option value="udio" className="bg-[#0a0a0c]">Udio</option>
                 </select>
               </label>
+
+              <fieldset className="flex items-center gap-2" aria-label={`Track ${i + 1} visibility`}>
+                <legend className="mr-1 text-xs text-muted-foreground">Visibility</legend>
+                {([true, false] as const).map((isPublished) => (
+                  <button
+                    key={String(isPublished)}
+                    type="button"
+                    onClick={() => update(r.key, { isPublished })}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${r.isPublished === isPublished ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`}
+                    aria-pressed={r.isPublished === isPublished}
+                  >
+                    {isPublished ? "Public" : "Private"}
+                  </button>
+                ))}
+              </fieldset>
 
               {r.sourceType === "upload" ? (
                 <>

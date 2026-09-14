@@ -21,6 +21,7 @@ export type EditableTrack = {
   audio_type: string;
   source_type?: PersistedTrackSourceType | string | null | undefined;
   source_url?: string | null | undefined;
+  is_published?: boolean | undefined;
 };
 
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
@@ -45,6 +46,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [sourceUrl, setSourceUrl] = useState(track.source_url ?? track.audio_url);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [isPublished, setIsPublished] = useState(track.is_published ?? true);
 
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
   if (!isOwner && !isAdmin) return null;
@@ -83,7 +85,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     try {
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
-      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, source_type: sourceType, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, source_type: sourceType, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
       await refresh();
       setEditing(false);
       setAudioFile(null);
@@ -121,6 +123,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           <p className="text-xs uppercase tracking-widest text-accent">Source: {providerName(sourceType)} <span className="text-muted-foreground">(immutable)</span></p>
           {!isUpload && sourceType !== "legacy_link" && <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" aria-label={`${providerName(sourceType)} link`} className={inputCls} />}
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} aria-label="Track title" className={inputCls} />
+          <fieldset className="flex items-center gap-2" aria-label="Track visibility"><legend className="mr-1 text-xs text-muted-foreground">Visibility</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setIsPublished(value)} aria-pressed={isPublished === value} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${isPublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{value ? "Public" : "Private"}</button>)}</fieldset>
           <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label="Music Genre" className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre}</option>)}</select>
           {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder="Custom genre" aria-label="Custom genre" className={inputCls} />}
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label="Style prompt" className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
