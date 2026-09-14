@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
+import { TrackGridModeToggle, trackGridClassName, useTrackGridMode } from "@/components/promptbeats/TrackGridView";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
 import { GENRES, type Track } from "@/lib/tracks";
@@ -44,6 +45,7 @@ function Index() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
   const { current, playing, play } = usePlayer();
+  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
 
   const { data } = useQuery({
     queryKey: ["tracks", "published"],
@@ -142,14 +144,19 @@ function Index() {
       </div>
 
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <h1 className="font-display text-2xl font-bold md:text-3xl">
-          <span className="text-gradient-neon">Discover</span> what the machines are humming
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {uploaded.length} tracks · every prompt is copyable
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-bold md:text-3xl">
+              <span className="text-gradient-neon">Discover</span> what the machines are humming
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {uploaded.length} tracks · every prompt is copyable
+            </p>
+          </div>
+          {category !== "creators" && <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />}
+        </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={`mt-5 ${category === "creators" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : trackGridClassName(gridMode)}`}>
           {category === "creators" ? (creatorData?.creators ?? []).map((creator) => (
             <CreatorCard key={creator.id} creator={creator} />
           )) : list.map((t) => (
@@ -158,6 +165,7 @@ function Index() {
               track={t}
               isPlaying={playing && current?.id === t.id}
               onPlay={onPlay}
+              viewMode={gridMode}
             />
           ))}
         </div>

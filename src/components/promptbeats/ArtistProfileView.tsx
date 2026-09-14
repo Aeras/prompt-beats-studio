@@ -14,7 +14,9 @@ import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/mo
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { TrackGridModeToggle, trackGridClassName, useTrackGridMode } from "@/components/promptbeats/TrackGridView";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
+import { cn } from "@/lib/utils";
 import artFallback from "@/assets/art-3.jpg";
 
 type Profile = {
@@ -183,6 +185,8 @@ export function ArtistProfileView({
   notFoundLabel?: string;
 }) {
   const { play, current, playing } = usePlayer();
+  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const compact = gridMode === "compact";
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-10">
@@ -232,23 +236,40 @@ export function ArtistProfileView({
             />
 
             <section className="space-y-3">
-              <h2 className="font-display text-lg font-semibold">Discography</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-lg font-semibold">Discography</h2>
+                <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+              </div>
               {tracks.length === 0 && (
                 <p className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
                   No published tracks yet.
                 </p>
               )}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className={trackGridClassName(gridMode)}>
                 {tracks.map((t) => {
                   const embedUrl = getTrackEmbedUrl(t.source_type, t.source_id);
                   const canUseNativePlayer = canUseNativeTrackPlayer(t.source_type);
-                  return <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
+                  const nativeTrack = {
+                    id: t.id,
+                    userId: t.user_id,
+                    title: t.title,
+                    handle: `@${profile.handle}`,
+                    genre: t.genre,
+                    art: profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`,
+                    duration: "--:--",
+                    plays: "0",
+                    prompt: t.prompt ?? "",
+                    lyrics: t.lyrics ?? "",
+                    audioUrl: t.audio_url,
+                    audioType: t.audio_type === "link" ? "link" as const : "upload" as const,
+                  };
+                  return <article key={t.id} className={cn("glass space-y-3 rounded-2xl p-4", compact && "space-y-2 rounded-xl p-2.5")}>
                     <div className="flex items-center gap-2">
-                      <Music className="h-4 w-4 shrink-0 text-accent" />
+                      <Music className={cn("shrink-0 text-accent", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                       <Link
                         to="/track/$id"
                         params={{ id: t.id }}
-                        className="truncate text-sm font-semibold hover:text-accent"
+                        className={cn("truncate font-semibold hover:text-accent", compact ? "text-xs" : "text-sm")}
                       >
                         {t.title}
                       </Link>
@@ -270,32 +291,38 @@ export function ArtistProfileView({
                         }}
                       />
                     </div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t.genre}</p>
-                    {embedUrl ? (
+                    <p className={cn("uppercase tracking-widest text-muted-foreground", compact ? "text-[8px]" : "text-[10px]")}>{t.genre}</p>
+                    {compact ? (
+                      <div className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                        <Link
+                          to="/track/$id"
+                          params={{ id: t.id }}
+                          aria-label={`Open ${t.title}`}
+                          className="block h-full"
+                        >
+                          <img src={profile.avatar_url ?? artFallback} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        </Link>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                        {embedUrl ? (
+                          <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">{t.source_type}</span>
+                        ) : canUseNativePlayer ? (
+                          <button
+                            type="button"
+                            onClick={(event) => { event.preventDefault(); play(nativeTrack, []); }}
+                            aria-label={current?.id === t.id && playing ? `Pause ${t.title}` : `Play ${t.title}`}
+                            className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon"
+                          >
+                            {current?.id === t.id && playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : embedUrl ? (
                       <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
                         <img src={artFallback} alt="" className="h-full w-full object-cover" />
                         <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
                       </div>
                     ) : canUseNativePlayer ? <button
-                      onClick={() =>
-                        play(
-                          {
-                            id: t.id,
-                            userId: t.user_id,
-                            title: t.title,
-                            handle: `@${profile.handle}`,
-                            genre: t.genre,
-                            art: profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`,
-                            duration: "--:--",
-                            plays: "0",
-                            prompt: t.prompt ?? "",
-                            lyrics: t.lyrics ?? "",
-                            audioUrl: t.audio_url,
-                            audioType: t.audio_type === "link" ? "link" : "upload",
-                          },
-                          [],
-                        )
-                      }
+                      onClick={() => play(nativeTrack, [])}
                       className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
                     >
                       {current?.id === t.id && playing ? (

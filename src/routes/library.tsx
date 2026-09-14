@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
+import { TrackGridModeToggle, trackGridClassName, useTrackGridMode, type TrackGridMode } from "@/components/promptbeats/TrackGridView";
 import type { Track } from "@/lib/tracks";
 import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,6 +92,7 @@ const TRACK_VISIBILITY_FILTERS = [
 function LibraryPage() {
   const { user, profile, loading } = useAuth();
   const { current, playing, play } = usePlayer();
+  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("tracks");
   const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]["id"]>("all");
   const handle = profile?.handle ? `@${profile.handle}` : "@you";
@@ -173,29 +175,32 @@ function LibraryPage() {
 
         {tab === "tracks" && (
           <>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-              {TRACK_VISIBILITY_FILTERS.map((filter) => {
-                const count = filter.id === "all"
-                  ? myTracks.length
-                  : filter.id === "public"
-                    ? publicTrackCount
-                    : privateTrackCount;
-                return (
-                  <button
-                    key={filter.id}
-                    onClick={() => setTrackVisibility(filter.id)}
-                    aria-pressed={trackVisibility === filter.id}
-                    className={cn(
-                      "shrink-0 rounded-full border px-3 py-1 text-xs transition-all",
-                      trackVisibility === filter.id
-                        ? "border-accent/50 bg-accent/15 font-semibold text-accent"
-                        : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-                    )}
-                  >
-                    {filter.label} ({count})
-                  </button>
-                );
-              })}
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                {TRACK_VISIBILITY_FILTERS.map((filter) => {
+                  const count = filter.id === "all"
+                    ? myTracks.length
+                    : filter.id === "public"
+                      ? publicTrackCount
+                      : privateTrackCount;
+                  return (
+                    <button
+                      key={filter.id}
+                      onClick={() => setTrackVisibility(filter.id)}
+                      aria-pressed={trackVisibility === filter.id}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1 text-xs transition-all",
+                        trackVisibility === filter.id
+                          ? "border-accent/50 bg-accent/15 font-semibold text-accent"
+                          : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+                      )}
+                    >
+                      {filter.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
             </div>
             <Section
               empty={trackVisibility === "all" ? "You haven't uploaded any tracks yet." : `No ${trackVisibility} tracks yet.`}
@@ -203,18 +208,23 @@ function LibraryPage() {
               playing={playing}
               currentId={current?.id}
               onPlay={(track) => play(track, myTracks)}
+              gridMode={gridMode}
             />
           </>
         )}
 
         {tab === "likes" && (
-          <Section
-            empty="No liked tracks yet — tap the heart on any track."
-            tracks={likedTracks}
-            playing={playing}
-            currentId={current?.id}
-            onPlay={(track) => play(track, likedTracks)}
-          />
+          <>
+            <div className="mt-3 flex justify-end"><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
+            <Section
+              empty="No liked tracks yet — tap the heart on any track."
+              tracks={likedTracks}
+              playing={playing}
+              currentId={current?.id}
+              onPlay={(track) => play(track, likedTracks)}
+              gridMode={gridMode}
+            />
+          </>
         )}
 
         {tab === "prompts" && (
@@ -240,18 +250,20 @@ function Section({
   playing,
   currentId,
   onPlay,
+  gridMode,
 }: {
   tracks: Track[];
   empty: string;
   playing: boolean;
   currentId?: string | undefined;
   onPlay: (t: Track) => void;
+  gridMode: TrackGridMode;
 }) {
   return (
     <>
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className={`mt-6 ${trackGridClassName(gridMode)}`}>
         {tracks.map((t) => (
-          <TrackCard key={t.id} track={t} isPlaying={playing && currentId === t.id} onPlay={onPlay} />
+          <TrackCard key={t.id} track={t} isPlaying={playing && currentId === t.id} onPlay={onPlay} viewMode={gridMode} />
         ))}
       </div>
       {tracks.length === 0 && (

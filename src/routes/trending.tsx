@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Flame } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
+import { TrackGridModeToggle, trackGridClassName, useTrackGridMode } from "@/components/promptbeats/TrackGridView";
 import type { Track } from "@/lib/tracks";
 import { usePlayer } from "@/lib/player";
 import { listTrendingTracks } from "@/lib/tracks.functions";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/trending")({
 
 function TrendingPage() {
   const { current, playing, play } = usePlayer();
+  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const { data, isLoading } = useQuery({
     queryKey: ["tracks", "trending"],
     queryFn: () => listTrendingTracks(),
@@ -68,18 +70,24 @@ function TrendingPage() {
       }
     >
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <h1 className="font-display text-2xl font-bold md:text-3xl">
-          <span className="text-gradient-neon">Trending</span> right now
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ranked by likes and total plays.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-bold md:text-3xl">
+              <span className="text-gradient-neon">Trending</span> right now
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">Ranked by likes and total plays.</p>
+          </div>
+          <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+        </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={`mt-5 ${trackGridClassName(gridMode)}`}>
           {list.map((t) => (
             <TrackCard
               key={t.id}
               track={t}
               isPlaying={playing && current?.id === t.id}
               onPlay={(track) => play(track, list)}
+              viewMode={gridMode}
             />
           ))}
         </div>
