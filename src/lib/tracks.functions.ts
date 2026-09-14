@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -114,19 +115,24 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   };
 });
 
-/** Public: a single published track with its creator handle/name. */
+/** A public track, or the authenticated owner's own active private track. */
 export const getPublicTrackById = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
-    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const supabase = createPublicServerClient();
+    const { createPublicServerClient, getUserIdFromRequest } = await import("@/lib/supabase-public.server");
+    const request = getRequest();
+    const authorization = request?.headers.get("authorization") ?? null;
+    const accessToken = authorization?.replace(/^Bearer\s+/i, "") ?? null;
+    const viewerId = request && accessToken ? await getUserIdFromRequest(request) : null;
+    // RLS permits either published active tracks or the authenticated owner's
+    // own active tracks. Do not use an unverified bearer token for this read.
+    const supabase = viewerId && accessToken ? createPublicServerClient(accessToken) : createPublicServerClient();
     const { data: track } = await supabase
       .from("tracks")
       .select(TRACK_COLUMNS)
       .eq("id", data.id)
-      .eq("is_published", true)
       .maybeSingle();
-    if (!track) return { track: null, artist: null };
+    if (!track || (!track.is_published && track.user_id !== viewerId)) return { track: null, artist: null };
     const { data: artist } = await supabase
       .from("public_profiles")
       .select("id, handle, display_name, artist_alias, avatar_url, staff_badge")
