@@ -91,3 +91,14 @@ export function getTrackEmbedUrl(
   }
   return null;
 }
+
+/** A provider-owned canonical fallback page for a validated external source. */
+export function getTrackProviderUrl(
+  sourceType: string | null | undefined,
+  sourceId: string | null | undefined,
+): string | null {
+  if (!sourceId || !PROVIDER_ID.test(sourceId)) return null;
+  if (sourceType === "suno") return `https://suno.com/song/${sourceId}`;
+  if (sourceType === "udio") return `https://www.udio.com/songs/${sourceId}`;
+  return null;
+}
