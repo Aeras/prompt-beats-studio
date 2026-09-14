@@ -23,7 +23,7 @@ export function TrackCard({
   viewMode?: TrackGridMode;
 }) {
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
-  const [contentAnchor, setContentAnchor] = useState<Pick<DOMRect, "left" | "top" | "bottom"> | null>(null);
+  const [contentAnchor, setContentAnchor] = useState<Pick<DOMRect, "left" | "top" | "bottom" | "width"> | null>(null);
   const [contentTrigger, setContentTrigger] = useState<HTMLElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [playCount, setPlayCount] = useState(() => Number.parseInt(track.plays, 10) || 0);
@@ -54,8 +54,14 @@ export function TrackCard({
       setActiveContent(null);
       return;
     }
-    const { left, top, bottom } = element.getBoundingClientRect();
-    setContentAnchor({ left, top, bottom });
+    const { left, top, bottom, width } = element.getBoundingClientRect();
+    const cardRect = element.closest("article")?.getBoundingClientRect();
+    setContentAnchor({
+      left: cardRect?.left ?? left,
+      top,
+      bottom,
+      width: cardRect?.width ?? width,
+    });
     setContentTrigger(element);
     window.dispatchEvent(new CustomEvent("promptbeats:track-content-opened", { detail: { trackId: track.id } }));
     setActiveContent(kind);

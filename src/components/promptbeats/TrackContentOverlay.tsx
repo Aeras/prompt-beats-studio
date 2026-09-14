@@ -4,7 +4,7 @@ import { Check, Copy, X } from "lucide-react";
 
 export type TrackContentKind = "prompt" | "lyrics";
 
-type AnchorRect = Pick<DOMRect, "left" | "top" | "bottom">;
+type AnchorRect = Pick<DOMRect, "left" | "top" | "bottom" | "width">;
 
 export function TrackContentOverlay({
   kind,
@@ -74,7 +74,7 @@ export function TrackContentOverlay({
 
   if (typeof document === "undefined") return null;
 
-  const panelWidth = Math.min(560, window.innerWidth - 32);
+  const panelWidth = Math.min(anchorRect?.width ?? 360, window.innerWidth - 32);
   const left = Math.min(Math.max(16, anchorRect?.left ?? 16), window.innerWidth - panelWidth - 16);
   const top = Math.max(16, Math.min(Math.max(16, (anchorRect?.bottom ?? 16) + 8), Math.max(16, window.innerHeight - 420)));
   const heading = kind === "prompt" ? "Prompt" : "Lyrics";
