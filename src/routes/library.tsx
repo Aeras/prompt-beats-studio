@@ -82,10 +82,17 @@ const TABS = [
   { id: "likes", label: "Liked Tracks" },
 ] as const;
 
+const TRACK_VISIBILITY_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "public", label: "Public" },
+  { id: "private", label: "Private" },
+] as const;
+
 function LibraryPage() {
   const { user, profile, loading } = useAuth();
   const { current, playing, play } = usePlayer();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("tracks");
+  const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]["id"]>("all");
   const handle = profile?.handle ? `@${profile.handle}` : "@you";
 
   const mine = useQuery({
@@ -106,6 +113,11 @@ function LibraryPage() {
 
   const myTracks = (mine.data?.tracks ?? []).map((t) => toTrack(t as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((t) => toTrack(t as Row, handle));
+  const publicTrackCount = myTracks.filter((track) => track.isPublished).length;
+  const privateTrackCount = myTracks.length - publicTrackCount;
+  const filteredMyTracks = myTracks.filter((track) =>
+    trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished),
+  );
 
   const header = (
     <div className="flex items-center gap-2">
@@ -160,13 +172,39 @@ function LibraryPage() {
         </div>
 
         {tab === "tracks" && (
-          <Section
-            empty="You haven't uploaded any tracks yet."
-            tracks={myTracks}
-            playing={playing}
-            currentId={current?.id}
-            onPlay={(track) => play(track, myTracks)}
-          />
+          <>
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+              {TRACK_VISIBILITY_FILTERS.map((filter) => {
+                const count = filter.id === "all"
+                  ? myTracks.length
+                  : filter.id === "public"
+                    ? publicTrackCount
+                    : privateTrackCount;
+                return (
+                  <button
+                    key={filter.id}
+                    onClick={() => setTrackVisibility(filter.id)}
+                    aria-pressed={trackVisibility === filter.id}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1 text-xs transition-all",
+                      trackVisibility === filter.id
+                        ? "border-accent/50 bg-accent/15 font-semibold text-accent"
+                        : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+                    )}
+                  >
+                    {filter.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            <Section
+              empty={trackVisibility === "all" ? "You haven't uploaded any tracks yet." : `No ${trackVisibility} tracks yet.`}
+              tracks={filteredMyTracks}
+              playing={playing}
+              currentId={current?.id}
+              onPlay={(track) => play(track, myTracks)}
+            />
+          </>
         )}
 
         {tab === "likes" && (
