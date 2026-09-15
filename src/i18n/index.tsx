@@ -3,15 +3,17 @@ import { en, type TranslationKey } from "@/i18n/locales/en";
 import { el } from "@/i18n/locales/el";
 import { enApp, type AppUiTranslationKey } from "@/i18n/locales/en-app";
 import { elApp } from "@/i18n/locales/el-app";
+import { enExtra, type ExtraTranslationKey } from "@/i18n/locales/en-extra";
+import { elExtra } from "@/i18n/locales/el-extra";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp },
-  el: { ...el, ...elApp },
+  en: { ...en, ...enApp, ...enExtra },
+  el: { ...el, ...elApp, ...elExtra },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
@@ -30,9 +32,6 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  // Always render English on the server and during the first client render so
-  // SSR hydration stays deterministic. The saved preference is restored just
-  // after mount and then persisted on future changes.
   const [language, setLanguageState] = useState<AppLanguage>("en");
 
   useEffect(() => {
