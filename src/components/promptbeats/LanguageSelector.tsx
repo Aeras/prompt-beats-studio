@@ -3,19 +3,13 @@ import { useI18n } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-export function LanguageSelector({
-  compact = false,
-  className,
-  showForSignedIn = false,
-}: {
-  compact?: boolean;
-  className?: string;
-  showForSignedIn?: boolean;
-}) {
+export function LanguageSelector({ compact = false, className }: { compact?: boolean; className?: string }) {
   const { language, setLanguage, t } = useI18n();
   const { user } = useAuth();
 
-  if (user && !showForSignedIn) return null;
+  // Signed-in users manage their persistent language preference in Edit Profile.
+  // Compact selectors are kept only for guests on standalone pages.
+  if (user && compact) return null;
 
   return (
     <div className={cn(compact ? "inline-flex items-center gap-2" : "rounded-2xl border border-white/10 bg-black/20 p-3", className)}>
