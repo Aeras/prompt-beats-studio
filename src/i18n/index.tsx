@@ -5,15 +5,17 @@ import { enApp, type AppUiTranslationKey } from "@/i18n/locales/en-app";
 import { elApp } from "@/i18n/locales/el-app";
 import { enExtra, type ExtraTranslationKey } from "@/i18n/locales/en-extra";
 import { elExtra } from "@/i18n/locales/el-extra";
+import { enProfile, type ProfileTranslationKey } from "@/i18n/locales/en-profile";
+import { elProfile } from "@/i18n/locales/el-profile";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra },
-  el: { ...el, ...elApp, ...elExtra },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
