@@ -52,6 +52,12 @@ import {
   undoVocalArrangement,
 } from "@/lib/quality-apply";
 import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
+import {
+  AI_TARGET_PLATFORMS,
+  AI_TARGET_PLATFORM_LABEL,
+  DEFAULT_AI_TARGET_PLATFORM,
+  type AITargetPlatform,
+} from "@/lib/ai-target-platforms";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -436,6 +442,7 @@ function GeneratePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(false);
+  const [targetPlatform, setTargetPlatform] = useState<AITargetPlatform>(DEFAULT_AI_TARGET_PLATFORM);
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
@@ -486,6 +493,10 @@ function GeneratePage() {
   }
 
   function applyJob(job: GenerationJob) {
+    const inputTargetPlatform = (
+      job.input as (GenerationContext & { targetPlatform?: AITargetPlatform }) | null
+    )?.targetPlatform;
+    if (inputTargetPlatform) setTargetPlatform(inputTargetPlatform);
     if (job.status === "completed" && job.result) {
       setResult(job.result); setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return;
     }
@@ -554,6 +565,13 @@ function GeneratePage() {
   const modelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && availableModels.length === 0;
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
+  const songContextTargetPlatform = (
+    songContext as (GenerationContext & { targetPlatform?: AITargetPlatform }) | null
+  )?.targetPlatform;
+  const effectiveTargetPlatform = songContextTargetPlatform ?? targetPlatform;
+  const resultTagsLabel = effectiveTargetPlatform === "udio"
+    ? t("generator.result.udioPrompt")
+    : t("generator.result.stylePrompt");
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
   const hasAdminInputBypass = usage?.unlimited === true;
   const minutesLeft = useMemo(() => { if (!usage?.resetAt) return 0; return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000)); }, [usage?.resetAt, now]);
@@ -613,7 +631,7 @@ function GeneratePage() {
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
     try {
-      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, advanced, baseMusicStyle: baseGenre, instruments: instrumentsText, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
+      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, targetPlatform, generationModel, advanced, baseMusicStyle: baseGenre, instruments: instrumentsText, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       if (res.rateLimited || !res.job) { setStatus(t("generator.rateLimit")); setBusy(false); pendingKey.current = null; return; }
       pendingKey.current = null; applyJob(res.job);
@@ -628,7 +646,7 @@ function GeneratePage() {
     const target = resultRef.current; if (!target) return;
     const idempotencyKey = pendingQualityKey.current ?? crypto.randomUUID(); pendingQualityKey.current = idempotencyKey; setConfirm(null); setChecking(true); setCheckError(null);
     try {
-      const res = await startQualityCheckJob({ data: { theme: songContext?.theme?.trim() || theme.trim(), genre: songContext?.genre || effectiveGenre, mood: songContext?.mood || effectiveMood, language: songContext?.language || effectiveLanguage, structure: songContext?.structure ?? structure.join(" → ").slice(0, 600), production: songContext?.production ?? production.trim().slice(0, 2000), instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000), result: { ...target }, idempotencyKey, qualityCheckModel, generationId } });
+      const res = await startQualityCheckJob({ data: { theme: songContext?.theme?.trim() || theme.trim(), genre: songContext?.genre || effectiveGenre, mood: songContext?.mood || effectiveMood, language: songContext?.language || effectiveLanguage, targetPlatform: effectiveTargetPlatform, structure: songContext?.structure ?? structure.join(" → ").slice(0, 600), production: songContext?.production ?? production.trim().slice(0, 2000), instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000), result: { ...target }, idempotencyKey, qualityCheckModel, generationId } });
       if (res.rateLimited || !res.job) { pendingQualityKey.current = null; setChecking(false); setCheckError(t("generator.rateLimit")); return; }
       pendingQualityKey.current = null; applyQualityJob(res.job);
     } catch (err) {
@@ -676,7 +694,7 @@ function GeneratePage() {
   });
   const applyState = makeApplyState(result, setResult);
 
-  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || !!result || !!quality;
+  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || targetPlatform !== DEFAULT_AI_TARGET_PLATFORM || !!result || !!quality;
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
@@ -690,7 +708,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -711,6 +729,24 @@ function GeneratePage() {
           </div>
 
           <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
+            <div>
+              <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>
+              <p className="mb-2 text-xs text-muted-foreground">{t("generator.targetPlatformHint")}</p>
+              <div className="flex items-center gap-2" role="group" aria-label={t("generator.targetPlatform")}>
+                {AI_TARGET_PLATFORMS.map((platform) => (
+                  <button
+                    key={platform}
+                    type="button"
+                    aria-pressed={targetPlatform === platform}
+                    onClick={() => setTargetPlatform(platform)}
+                    className={targetPlatform === platform ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}
+                  >
+                    {AI_TARGET_PLATFORM_LABEL[platform]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2" role="group" aria-label={t("generator.mode")}>
                 {[{ key: false, label: t("generator.basic") }, { key: true, label: t("generator.advanced") }].map((mode) => <button key={String(mode.key)} type="button" aria-pressed={advanced === mode.key} onClick={() => setAdvanced(mode.key)} className={advanced === mode.key ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>)}
@@ -790,7 +826,7 @@ function GeneratePage() {
               {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: aiModelLabel(generationResultModel) })}</p>}
               <div className="flex justify-end"><button onClick={toggleAll} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{allOpen ? t("generator.collapseAll") : t("generator.expandAll")}</button></div>
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
-              <ResultSection title={t("generator.result.stylePrompt")} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
+              <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
               <ResultSection title={t("generator.result.lyricsStructure")} value={result.lyrics} open={open.lyrics} onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))} onChange={(v) => setResult({ ...result, lyrics: v })} rows={18} />
               <ResultSection title={t("generator.result.producerNote")} value={result.note} open={open.note} onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))} onChange={(v) => setResult({ ...result, note: v })} rows={5} />
               <button onClick={save} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
