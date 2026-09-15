@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { en, type TranslationKey } from "@/i18n/locales/en";
 import { el } from "@/i18n/locales/el";
@@ -56,6 +56,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>("en");
   const [signedIn, setSignedIn] = useState(false);
+  const seededAccountRef = useRef<string | null>(null);
 
   const applyLanguage = useCallback((next: AppLanguage) => {
     setLanguageState(next);
@@ -67,9 +68,34 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     const applySession = (session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]) => {
       if (!active) return;
-      const accountLanguage = session?.user?.user_metadata?.[ACCOUNT_LANGUAGE_KEY];
-      setSignedIn(Boolean(session?.user));
-      applyLanguage(isAppLanguage(accountLanguage) ? accountLanguage : storedLanguage());
+      const user = session?.user ?? null;
+      if (!user) {
+        setSignedIn(false);
+        seededAccountRef.current = null;
+        applyLanguage(storedLanguage());
+        return;
+      }
+
+      setSignedIn(true);
+      const accountLanguage = user.user_metadata?.[ACCOUNT_LANGUAGE_KEY];
+      if (isAppLanguage(accountLanguage)) {
+        seededAccountRef.current = user.id;
+        applyLanguage(accountLanguage);
+        return;
+      }
+
+      const fallback = storedLanguage();
+      applyLanguage(fallback);
+      if (seededAccountRef.current === user.id) return;
+      seededAccountRef.current = user.id;
+      void supabase.auth.updateUser({
+        data: { [ACCOUNT_LANGUAGE_KEY]: fallback },
+      }).then(({ error }) => {
+        if (error) {
+          seededAccountRef.current = null;
+          console.error("[i18n] Failed to initialize account language preference:", error.message);
+        }
+      });
     };
 
     void supabase.auth.getSession().then(({ data }) => applySession(data.session));
