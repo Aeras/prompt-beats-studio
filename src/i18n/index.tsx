@@ -16,16 +16,18 @@ import { enDiscover, type DiscoverTranslationKey } from "@/i18n/locales/en-disco
 import { elDiscover } from "@/i18n/locales/el-discover";
 import { enPreferences, type PreferencesTranslationKey } from "@/i18n/locales/en-preferences";
 import { elPreferences } from "@/i18n/locales/el-preferences";
+import { enCreatorPage, type CreatorPageTranslationKey } from "@/i18n/locales/en-creator-page";
+import { elCreatorPage } from "@/i18n/locales/el-creator-page";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey | PreferencesTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey | PreferencesTranslationKey | CreatorPageTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 const ACCOUNT_LANGUAGE_KEY = "interface_language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover, ...enPreferences },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover, ...elPreferences },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover, ...enPreferences, ...enCreatorPage },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover, ...elPreferences, ...elCreatorPage },
 };
 
 function isAppLanguage(value: unknown): value is AppLanguage {
