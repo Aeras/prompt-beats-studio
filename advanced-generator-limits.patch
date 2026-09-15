@@ -1,0 +1,126 @@
+diff --git a/src/routes/generate.tsx b/src/routes/generate.tsx
+--- a/src/routes/generate.tsx
++++ b/src/routes/generate.tsx
+@@
+-const BPM_OPTIONS = [...CATALOG_BPM_OPTIONS.map((option) => option.value), "Custom"];
++const BPM_OPTIONS = CATALOG_BPM_OPTIONS.map((option) => option.value);
+@@
+ function GeneratePage() {
+   const { t } = useI18n();
+   const { user, loading } = useAuth();
++  const { isAdmin } = useModeration();
+@@
+   const customGenreSelected = genres.includes(CUSTOM);
+   const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), customGenreSelected ? customGenre : "");
+   const baseGenre = styleList.join(", ");
+   const instrumentList = mergeValues(instruments, customInstruments);
++  const instrumentsText = instrumentList.join(", ");
+   const effectiveBpm = bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
+@@
+-  const genreTooLong = effectiveGenre.length > 400;
+   const useCustomMood = advanced || moods[0] === CUSTOM;
+   const moodList = mergeValues(moods.filter((m) => m !== CUSTOM), useCustomMood ? customMood : "");
+   const effectiveMood = moodList.join(", ");
+-  const moodTooLong = effectiveMood.length > 60;
++  const themeLimit = advanced ? 500 : 300;
++  const moodLimit = advanced ? 120 : 60;
++  const themeTooLong = !isAdmin && theme.length > themeLimit;
++  const styleTooLong = !isAdmin && advanced && baseGenre.length > 150;
++  const instrumentsTooLong = !isAdmin && advanced && instrumentsText.length > 200;
++  const moodTooLong = !isAdmin && effectiveMood.length > moodLimit;
++  const genreTooLong = !isAdmin && !advanced && effectiveGenre.length > 400;
+   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
+-  const validationError = bpmInvalid ? t("generator.bpmError") : moodTooLong ? t("generator.moodTooLong", { count: effectiveMood.length }) : genreTooLong ? t("generator.selectionTooLong") : null;
++  const validationError = bpmInvalid
++    ? t("generator.bpmError")
++    : themeTooLong
++      ? `${t("generator.theme")}: ${theme.length}/${themeLimit}`
++      : styleTooLong
++        ? `${t("generator.musicStyle")}: ${baseGenre.length}/150`
++        : moodTooLong
++          ? t("generator.moodTooLong", { count: effectiveMood.length, limit: moodLimit })
++          : instrumentsTooLong
++            ? `${t("generator.instruments")}: ${instrumentsText.length}/200`
++            : genreTooLong
++              ? t("generator.selectionTooLong")
++              : null;
+@@
+-              <textarea value={theme} onChange={(e) => setTheme(e.target.value.slice(0, 300))} maxLength={300} rows={3}
++              <textarea value={theme} onChange={(e) => setTheme(isAdmin ? e.target.value : e.target.value.slice(0, themeLimit))} maxLength={isAdmin ? undefined : themeLimit} rows={3}
+@@
+-              <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
++              <p className="mt-1 text-right text-[11px] text-muted-foreground">{isAdmin ? theme.length : `${theme.length}/${themeLimit}`}</p>
+
+diff --git a/src/routes/generate.tsx b/src/routes/generate.tsx
+--- a/src/routes/generate.tsx
++++ b/src/routes/generate.tsx
+@@
+ import { useAuth } from "@/hooks/useAuth";
++import { useModeration } from "@/hooks/useModeration";
+
+diff --git a/src/lib/generation-jobs.functions.ts b/src/lib/generation-jobs.functions.ts
+--- a/src/lib/generation-jobs.functions.ts
++++ b/src/lib/generation-jobs.functions.ts
+@@
+ const jobInput = z.object({
+   idempotencyKey: z.string().uuid(),
+-  theme: z.string().trim().min(3).max(300),
+-  genre: z.string().trim().min(1).max(400),
+-  mood: z.string().trim().min(1).max(60),
++  theme: z.string().trim().min(3).max(5000),
++  genre: z.string().trim().min(1).max(8000),
++  mood: z.string().trim().min(1).max(5000),
+   language: z.string().trim().min(1).max(40),
+   generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+   structure: z.string().trim().max(600).default(""),
+   production: z.string().trim().max(2000).default(""),
+   instructions: z.string().trim().max(2000).default(""),
++  advanced: z.boolean().default(false),
++  baseGenre: z.string().trim().max(5000).default(""),
++  instrumentsText: z.string().trim().max(5000).default(""),
+ });
+@@
+   .handler(async ({ data, context }) => {
+     const supabase = context.supabase;
++    const { data: moderationContext, error: moderationError } = await supabase.rpc("get_my_moderation_context" as never);
++    if (moderationError) throw new Error(`The generation could not be started (${moderationError.message}).`);
++    const isAdmin = (moderationContext as { role?: string } | null)?.role === "admin";
++
++    if (!isAdmin) {
++      const themeLimit = data.advanced ? 500 : 300;
++      const moodLimit = data.advanced ? 120 : 60;
++      if (data.theme.length > themeLimit) throw new Error(`Theme exceeds the ${themeLimit}-character limit.`);
++      if (data.mood.length > moodLimit) throw new Error(`Mood exceeds the ${moodLimit}-character limit.`);
++      if (data.advanced) {
++        if (data.baseGenre.length > 150) throw new Error("Music Style exceeds the 150-character limit.");
++        if (data.instrumentsText.length > 200) throw new Error("Instruments exceed the 200-character limit.");
++      } else if (data.genre.length > 400) {
++        throw new Error("Music Style exceeds the allowed limit.");
++      }
++    }
++
+     const { getModelForUser } = await import("@/lib/ai-provider.server");
+     await getModelForUser(context.userId, data.generationModel ?? undefined);
+-    const { idempotencyKey, ...payload } = data;
++    const { idempotencyKey, advanced: _advanced, baseGenre: _baseGenre, instrumentsText: _instrumentsText, ...payload } = data;
+
+diff --git a/src/routes/generate.tsx b/src/routes/generate.tsx
+--- a/src/routes/generate.tsx
++++ b/src/routes/generate.tsx
+@@
+-      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
++      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000), advanced, baseGenre, instrumentsText } });
+
+diff --git a/src/i18n/locales/en-app.ts b/src/i18n/locales/en-app.ts
+--- a/src/i18n/locales/en-app.ts
++++ b/src/i18n/locales/en-app.ts
+@@
+-  "generator.moodTooLong": "Your mood selection is {count} characters — the limit is 60. Please remove a mood or shorten the custom mood.",
++  "generator.moodTooLong": "Your mood selection is {count} characters — the limit is {limit}. Please remove a mood or shorten the custom mood.",
+
+diff --git a/src/i18n/locales/el-app.ts b/src/i18n/locales/el-app.ts
+--- a/src/i18n/locales/el-app.ts
++++ b/src/i18n/locales/el-app.ts
+@@
+-  "generator.moodTooLong": "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι 60. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
++  "generator.moodTooLong": "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι {limit}. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
