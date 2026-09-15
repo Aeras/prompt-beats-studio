@@ -105,8 +105,12 @@ export const enApp = {
   "generator.failed": "The generation failed. Please try again.",
   "generator.rateLimit": "You've hit the hourly limit. Try again soon.",
   "generator.bpmError": "BPM must be a whole number between 40 and 260.",
-  "generator.moodTooLong": "Your mood selection is {count} characters — the limit is 60. Please remove a mood or shorten the custom mood.",
+  "generator.themeTooLong": "Your theme is {count} characters — the limit is {limit}.",
+  "generator.musicStyleTooLong": "Your Music Style is {count} characters — the limit is {limit}.",
+  "generator.moodTooLong": "Your mood selection is {count} characters — the limit is {limit}. Please remove a mood or shorten the custom mood.",
+  "generator.instrumentsTooLong": "Your instruments selection is {count} characters — the limit is {limit}.",
   "generator.selectionTooLong": "Too many styles / instruments selected. Please remove a few.",
+
   "generator.customMoodBasic": "Type your own mood / vibe",
   "generator.customBpmPlaceholder": "e.g. 128",
   "generator.selectMood": "Select Mood / Vibe (e.g., Energetic, Chill...)",

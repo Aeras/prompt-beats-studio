@@ -3,9 +3,9 @@ import { z } from "zod";
 import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 export const durableQualityCheckInput = z.object({
-  theme: z.string().trim().min(3).max(300),
-  genre: z.string().trim().min(1).max(400),
-  mood: z.string().trim().min(1).max(60),
+  theme: z.string().trim().min(3).max(500),
+  genre: z.string().trim().min(1).max(500),
+  mood: z.string().trim().min(1).max(120),
   language: z.string().trim().min(1).max(40),
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),

@@ -107,8 +107,12 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.failed": "Η δημιουργία απέτυχε. Δοκίμασε ξανά.",
   "generator.rateLimit": "Έφτασες το ωριαίο όριο. Δοκίμασε ξανά σύντομα.",
   "generator.bpmError": "Το BPM πρέπει να είναι ακέραιος αριθμός από 40 έως 260.",
-  "generator.moodTooLong": "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι 60. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
+  "generator.themeTooLong": "Το θέμα έχει {count} χαρακτήρες — το όριο είναι {limit}.",
+  "generator.musicStyleTooLong": "Το Μουσικό Στυλ έχει {count} χαρακτήρες — το όριο είναι {limit}.",
+  "generator.moodTooLong": "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι {limit}. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
+  "generator.instrumentsTooLong": "Η επιλογή μουσικών οργάνων έχει {count} χαρακτήρες — το όριο είναι {limit}.",
   "generator.selectionTooLong": "Έχουν επιλεγεί πάρα πολλά μουσικά στυλ / όργανα. Αφαίρεσε μερικά.",
+
   "generator.customMoodBasic": "Γράψε τη δική σου διάθεση / vibe",
   "generator.customBpmPlaceholder": "π.χ. 128",
   "generator.selectMood": "Επίλεξε διάθεση / vibe (π.χ. Ενεργητικό, Chill...)",

@@ -14,15 +14,36 @@ import { AI_MODEL_IDS } from "@/lib/ai-models";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
-  theme: z.string().trim().min(3).max(300),
-  genre: z.string().trim().min(1).max(400),
-  mood: z.string().trim().min(1).max(60),
+  theme: z.string().trim().min(3),
+  genre: z.string().trim().min(1),
+  mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(40),
   generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+  advanced: z.boolean().default(false),
+  baseMusicStyle: z.string().trim().default(""),
+  instruments: z.string().trim().default(""),
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
 });
+
+function assertGenerationInputLimits(
+  input: z.infer<typeof jobInput>,
+  isAdmin: boolean,
+) {
+  if (isAdmin) return;
+  if (input.advanced) {
+    if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
+    if (!input.baseMusicStyle || input.baseMusicStyle.length > 150) throw new Error("Music Style must be 150 characters or fewer.");
+    if (input.genre.length > 500) throw new Error("The composed music direction must be 500 characters or fewer.");
+    if (input.mood.length > 120) throw new Error("Mood must be 120 characters or fewer.");
+    if (input.instruments.length > 200) throw new Error("Instruments must be 200 characters or fewer.");
+    return;
+  }
+  if (input.theme.length > 300) throw new Error("Theme must be 300 characters or fewer.");
+  if (input.genre.length > 400) throw new Error("Music Style must be 400 characters or fewer.");
+  if (input.mood.length > 60) throw new Error("Mood must be 60 characters or fewer.");
+}
 
 const resultShape = z.object({
   title: z.string(),
@@ -105,8 +126,10 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
+    const { data: isAdmin } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+    assertGenerationInputLimits(data, isAdmin === true);
     await getModelForUser(context.userId, data.generationModel ?? undefined);
-    const { idempotencyKey, ...payload } = data;
+    const { idempotencyKey, advanced: _advanced, baseMusicStyle: _baseMusicStyle, instruments: _instruments, ...payload } = data;
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,
       _input: payload,

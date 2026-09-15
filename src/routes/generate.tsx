@@ -96,7 +96,7 @@ const ADVANCED_STYLES = ADVANCED_MUSIC_STYLES.map((option) => option.value);
 const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
 const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
 const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
-const BPM_OPTIONS = [...CATALOG_BPM_OPTIONS.map((option) => option.value), "Custom"];
+const BPM_OPTIONS = CATALOG_BPM_OPTIONS.map((option) => option.value);
 
 function translatedOption(
   options: readonly LocalizedGeneratorOption[],
@@ -555,6 +555,7 @@ function GeneratePage() {
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
+  const hasAdminInputBypass = usage?.unlimited === true;
   const minutesLeft = useMemo(() => { if (!usage?.resetAt) return 0; return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000)); }, [usage?.resetAt, now]);
   const blocked = remaining <= 0;
 
@@ -567,13 +568,41 @@ function GeneratePage() {
   const bpmInvalid = !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
   const direction = [instrumentList.length ? `Preferred instruments: ${instrumentList.join(", ")}.` : "", !bpmInvalid && effectiveBpm ? `Target tempo: ${effectiveBpm} BPM.` : ""].filter(Boolean).join(" ");
   const effectiveGenre = direction ? `${baseGenre} — Additional musical direction: ${direction}` : baseGenre;
-  const genreTooLong = effectiveGenre.length > 400;
+
   const useCustomMood = advanced || moods[0] === CUSTOM;
   const moodList = mergeValues(moods.filter((m) => m !== CUSTOM), useCustomMood ? customMood : "");
   const effectiveMood = moodList.join(", ");
-  const moodTooLong = effectiveMood.length > 60;
+
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
-  const validationError = bpmInvalid ? t("generator.bpmError") : moodTooLong ? t("generator.moodTooLong", { count: effectiveMood.length }) : genreTooLong ? t("generator.selectionTooLong") : null;
+  const musicStyleLimit = advanced ? 150 : 400;
+  const themeLimit = advanced ? 500 : 300;
+  const moodLimit = advanced ? 120 : 60;
+  const instrumentsText = instrumentList.join(", ");
+  const themeTooLong = theme.trim().length > themeLimit;
+  const musicStyleTooLong = advanced ? baseGenre.length > musicStyleLimit : effectiveGenre.length > musicStyleLimit;
+  const moodTooLong = effectiveMood.length > moodLimit;
+  const instrumentsTooLong = advanced && instrumentsText.length > 200;
+  const validationError = bpmInvalid
+    ? t("generator.bpmError")
+    : hasAdminInputBypass
+      ? null
+      : advanced
+        ? themeTooLong
+          ? t("generator.themeTooLong", { count: theme.trim().length, limit: themeLimit })
+          : musicStyleTooLong
+            ? t("generator.musicStyleTooLong", { count: baseGenre.length, limit: musicStyleLimit })
+            : moodTooLong
+              ? t("generator.moodTooLong", { count: effectiveMood.length, limit: moodLimit })
+              : instrumentsTooLong
+                ? t("generator.instrumentsTooLong", { count: instrumentsText.length, limit: 200 })
+                : null
+        : themeTooLong
+          ? t("generator.themeTooLong", { count: theme.trim().length, limit: themeLimit })
+          : moodTooLong
+            ? t("generator.moodTooLong", { count: effectiveMood.length, limit: moodLimit })
+            : musicStyleTooLong
+              ? t("generator.selectionTooLong")
+              : null;
   const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError;
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
@@ -584,7 +613,7 @@ function GeneratePage() {
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
     try {
-      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
+      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, advanced, baseMusicStyle: baseGenre, instruments: instrumentsText, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       if (res.rateLimited || !res.job) { setStatus(t("generator.rateLimit")); setBusy(false); pendingKey.current = null; return; }
       pendingKey.current = null; applyJob(res.job);
@@ -690,13 +719,13 @@ function GeneratePage() {
             </div>
 
             <div>
-              <textarea value={theme} onChange={(e) => setTheme(e.target.value.slice(0, 300))} maxLength={300} rows={3} placeholder={t("generator.themePlaceholder")} aria-label={t("generator.theme")} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
-              <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
+              <textarea value={theme} onChange={(e) => setTheme(e.target.value)} maxLength={hasAdminInputBypass ? undefined : themeLimit} rows={3} placeholder={t("generator.themePlaceholder")} aria-label={t("generator.theme")} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
+              <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/{themeLimit}</p>
             </div>
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES} selected={genres} onToggle={toggleValue(setGenres)} labelFor={(value) => value === CUSTOM ? t("generator.option.custom") : styleLabel(value)} /></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES} selected={genres} onToggle={toggleValue(setGenres)} labelFor={(value) => value === CUSTOM ? t("generator.option.custom") : styleLabel(value)} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -704,11 +733,11 @@ function GeneratePage() {
               )}
             </div>
 
-            {customGenreSelected && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} className={fieldClass} />}
+            {customGenreSelected && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={fieldClass} />}
 
             {advanced ? <>
-              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass + " mt-2"} /></div>
-              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} className={fieldClass + " mt-2"} /></div>
+              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
+              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}

@@ -9,9 +9,9 @@ import { AI_MODEL_IDS } from "@/lib/ai-models";
 export const HOURLY_LIMIT = 10;
 
 const generateInput = z.object({
-  theme: z.string().trim().min(3).max(300),
-  genre: z.string().trim().min(1).max(400),
-  mood: z.string().trim().min(1).max(60),
+  theme: z.string().trim().min(3),
+  genre: z.string().trim().min(1),
+  mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(40),
   generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
@@ -29,9 +29,9 @@ const generationOutput = z.object({
 
 const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
-  theme: z.string().trim().max(300).default(""),
-  genre: z.string().trim().max(400).default(""),
-  mood: z.string().trim().max(60).default(""),
+  theme: z.string().trim().max(500).default(""),
+  genre: z.string().trim().max(500).default(""),
+  mood: z.string().trim().max(120).default(""),
   language: z.string().trim().max(40).default(""),
   tags: z.string().trim().max(4000).default(""),
   lyrics: z.string().trim().max(12000).default(""),
