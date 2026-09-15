@@ -11,15 +11,17 @@ import { enFinal, type FinalTranslationKey } from "@/i18n/locales/en-final";
 import { elFinal } from "@/i18n/locales/el-final";
 import { enCatalog, type CatalogTranslationKey } from "@/i18n/locales/en-catalog";
 import { elCatalog } from "@/i18n/locales/el-catalog";
+import { enDiscover, type DiscoverTranslationKey } from "@/i18n/locales/en-discover";
+import { elDiscover } from "@/i18n/locales/el-discover";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
