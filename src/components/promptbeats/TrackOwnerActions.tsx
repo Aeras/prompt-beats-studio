@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useModeration } from "@/hooks/useModeration";
 import { useI18n } from "@/i18n";
+import { localizedGenreLabel } from "@/i18n/ui-catalog";
 
 export type EditableTrack = {
   id: string;
@@ -106,7 +107,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           {!isUpload && sourceType !== "legacy_link" && <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" aria-label={`${providerName(sourceType)} link`} className={inputCls} />}
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} aria-label={t("owner.trackTitle")} className={inputCls} />
           <fieldset className="flex items-center gap-2" aria-label={t("owner.visibility")}><legend className="mr-1 text-xs text-muted-foreground">{t("owner.visibility")}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setIsPublished(value)} aria-pressed={isPublished === value} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${isPublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
-          <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label={t("owner.musicGenre")} className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === "Custom" ? t("common.custom") : genre}</option>)}</select>
+          <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label={t("owner.musicGenre")} className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{localizedGenreLabel(genre, t)}</option>)}</select>
           {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder={t("owner.customGenre")} aria-label={t("owner.customGenre")} className={inputCls} />}
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label={t("owner.stylePrompt")} className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
           <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label={t("owner.lyrics")} className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
