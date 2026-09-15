@@ -1,9 +1,22 @@
 import { Languages } from "lucide-react";
 import { useI18n } from "@/i18n";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-export function LanguageSelector({ compact = false, className }: { compact?: boolean; className?: string }) {
+export function LanguageSelector({
+  compact = false,
+  className,
+  showForSignedIn = false,
+}: {
+  compact?: boolean;
+  className?: string;
+  showForSignedIn?: boolean;
+}) {
   const { language, setLanguage, t } = useI18n();
+  const { user } = useAuth();
+
+  if (user && !showForSignedIn) return null;
+
   return (
     <div className={cn(compact ? "inline-flex items-center gap-2" : "rounded-2xl border border-white/10 bg-black/20 p-3", className)}>
       {compact && <Languages className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
