@@ -4,8 +4,10 @@ export type LocalizedGeneratorOption = {
   id: string;
   /** Canonical value consumed by the existing generator/backend. Never translate this. */
   value: string;
-  /** User-facing label resolved from the active locale. */
-  labelKey: TranslationKey;
+  /** User-facing label resolved from the active locale when present. */
+  labelKey?: TranslationKey;
+  /** Fixed display label for values that do not need translation, such as numeric BPM values. */
+  label?: string;
 };
 
 const option = (id: string, value: string, labelKey: TranslationKey): LocalizedGeneratorOption => ({
@@ -13,6 +15,8 @@ const option = (id: string, value: string, labelKey: TranslationKey): LocalizedG
   value,
   labelKey,
 });
+
+const fixedOption = (value: string): LocalizedGeneratorOption => ({ id: value, value, label: value });
 
 export const BASIC_MUSIC_STYLES = [
   option("reggaeton", "Reggaeton", "generator.genre.reggaeton"),
@@ -212,13 +216,21 @@ export const SONG_STRUCTURE_TAGS = [
 
 export const BPM_OPTIONS = [
   option("auto", "Auto", "generator.option.auto"),
-  ...["60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145", "150", "160", "170", "180", "190", "200"].map((value) => ({ id: value, value, labelKey: "generator.option.auto" as TranslationKey })),
+  ...["60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145", "150", "160", "170", "180", "190", "200"].map(fixedOption),
+  option("custom", "Custom", "common.custom"),
 ] as const;
+
+export function optionLabel(
+  optionValue: LocalizedGeneratorOption,
+  t: (key: TranslationKey) => string,
+) {
+  return optionValue.labelKey ? t(optionValue.labelKey) : optionValue.label ?? optionValue.value;
+}
 
 /**
  * Returns the canonical value for backend/AI payloads. Custom free text should
  * bypass these catalogs and be sent exactly as the user typed it.
  */
-export function canonicalValue(option: LocalizedGeneratorOption) {
-  return option.value;
+export function canonicalValue(optionValue: LocalizedGeneratorOption) {
+  return optionValue.value;
 }
