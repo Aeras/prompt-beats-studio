@@ -8,6 +8,7 @@ import { useI18n } from "@/i18n";
 import type { TranslationKey } from "@/i18n/locales/en";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
+import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 
 export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
@@ -18,158 +19,43 @@ export const NAV = [
 ] as const satisfies ReadonlyArray<{ id: string; labelKey: TranslationKey; icon: typeof Compass }>;
 
 export type NavId = (typeof NAV)[number]["id"];
-
-/** Nav entries only visible to Super Admins. */
 const ADMIN_ONLY: NavId[] = ["management"];
+const NAV_TO: Record<NavId, string> = { discover: "/", trending: "/trending", studio: "/generate", library: "/library", management: "/management" };
 
-const NAV_TO: Record<NavId, string> = {
-  discover: "/",
-  trending: "/trending",
-  studio: "/generate",
-  library: "/library",
-  management: "/management",
-};
-
-export function SidebarNav({
-  active,
-  onNavigate,
-  onSubmit,
-}: {
-  active: NavId;
-  onNavigate: () => void;
-  onSubmit: () => void;
-}) {
+export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; onNavigate: () => void; onSubmit: () => void }) {
   const { user, profile } = useAuth();
   const { isBanned, canViewUsers } = useModeration();
-  const { language, setLanguage, t } = useI18n();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  const signOut = async () => {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  };
+  const signOut = async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); navigate({ to: "/auth", replace: true }); };
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-5 pb-28">
       <div className="flex items-center gap-3">
-        <img
-          src={logoAsset.url}
-          alt="PromptBeats logo"
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-xl glow-neon"
-        />
-        <div className="min-w-0">
-          <p className="truncate font-display text-lg font-bold tracking-tight">PromptBeats</p>
-          <p className="truncate text-[11px] text-muted-foreground">promptbeats.app</p>
-        </div>
+        <img src={logoAsset.url} alt="PromptBeats logo" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl glow-neon" />
+        <div className="min-w-0"><p className="truncate font-display text-lg font-bold tracking-tight">PromptBeats</p><p className="truncate text-[11px] text-muted-foreground">promptbeats.app</p></div>
       </div>
 
       <nav className="flex flex-col gap-1">
         {NAV.filter((item) => !ADMIN_ONLY.includes(item.id) || canViewUsers).map((item) => {
           const isActive = active === item.id;
-
-          return (
-            <Link
-              key={item.id}
-              to={NAV_TO[item.id]}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
-                isActive
-                  ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-              )}
-            >
-              <item.icon
-                className={cn(
-                  "h-[18px] w-[18px] shrink-0 transition-all",
-                  isActive
-                    ? "text-primary drop-shadow-[0_0_8px_var(--neon)]"
-                    : "group-hover:text-accent",
-                )}
-              />
-              <span className="truncate">{t(item.labelKey)}</span>
-              {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
-            </Link>
-          );
+          return <Link key={item.id} to={NAV_TO[item.id]} onClick={onNavigate} className={cn("group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all", isActive ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>
+            <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-all", isActive ? "text-primary drop-shadow-[0_0_8px_var(--neon)]" : "group-hover:text-accent")} />
+            <span className="truncate">{t(item.labelKey)}</span>{isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
+          </Link>;
         })}
       </nav>
 
-      {!isBanned && (
-        <button
-          onClick={onSubmit}
-          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
-        >
-          <Plus className="h-4 w-4" />
-          {t("nav.submitTrack")}
-        </button>
-      )}
-
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-        <label className="text-[11px] uppercase tracking-widest text-muted-foreground" htmlFor="pb-interface-language">
-          {t("language.label")}
-        </label>
-        <select
-          id="pb-interface-language"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value === "el" ? "el" : "en")}
-          className="mt-2 h-9 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-accent/60"
-        >
-          <option value="en" className="bg-[#0a0a0c]">{t("language.english")}</option>
-          <option value="el" className="bg-[#0a0a0c]">{t("language.greek")}</option>
-        </select>
-      </div>
+      {!isBanned && <button onClick={onSubmit} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"><Plus className="h-4 w-4" />{t("nav.submitTrack")}</button>}
+      <LanguageSelector />
 
       <div className="mt-auto">
-        {user ? (
-          <div className="glass flex items-center gap-3 rounded-2xl p-3">
-            <img
-              src={profile?.avatar_url ?? `https://i.pravatar.cc/80?u=${user.id}`}
-              alt="Your profile avatar"
-              width={40}
-              height={40}
-              loading="lazy"
-              className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60"
-            />
-            <div className="min-w-0 flex-1">
-              {profile?.handle ? (
-                <Link
-                  to="/u/$handle"
-                  params={{ handle: profile.handle }}
-                  className="truncate text-sm font-medium hover:text-accent"
-                >
-                  @{profile.handle}
-                </Link>
-              ) : (
-                <p className="truncate text-sm font-medium">{t("nav.you")}</p>
-              )}
-              <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("nav.signedIn")}
-              </p>
-            </div>
-            <button
-              aria-label={t("nav.signOut")}
-              onClick={signOut}
-              className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10">
-              <LogIn className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{t("nav.signIn")}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p>
-            </div>
-          </Link>
-        )}
+        {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
+          <img src={profile?.avatar_url ?? `https://i.pravatar.cc/80?u=${user.id}`} alt={t("onboarding.avatarPreview")} width={40} height={40} loading="lazy" className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60" />
+          <div className="min-w-0 flex-1">{profile?.handle ? <Link to="/u/$handle" params={{ handle: profile.handle }} className="truncate text-sm font-medium hover:text-accent">@{profile.handle}</Link> : <p className="truncate text-sm font-medium">{t("nav.you")}</p>}<p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("nav.signedIn")}</p></div>
+          <button aria-label={t("nav.signOut")} onClick={signOut} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><LogOut className="h-4 w-4" /></button>
+        </div> : <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10"><LogIn className="h-4 w-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t("nav.signIn")}</p><p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p></div></Link>}
       </div>
     </div>
   );
