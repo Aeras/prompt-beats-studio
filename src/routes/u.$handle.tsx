@@ -13,6 +13,7 @@ import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed"
 import { getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/u/$handle")({
 
 function CreatorPage() {
   const { handle } = Route.useParams();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const nativeCycles = useRef(new Map<string, { listenedSeconds: number; lastTime: number; endedHandled: boolean }>());
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
@@ -84,14 +86,14 @@ function CreatorPage() {
     <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-10">
       <div className="mx-auto w-full max-w-3xl space-y-6">
         <Link to="/" className="text-xs text-muted-foreground hover:text-accent">
-          ← Back to the feed
+          ← {t("creator.backToFeed")}
         </Link>
 
-        {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading…</p>}
+        {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("creator.loading")}</p>}
 
         {!isLoading && !profile && (
           <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
-            No creator found for @{handle}.
+            {t("creator.notFound", { handle })}
           </p>
         )}
 
@@ -124,45 +126,45 @@ function CreatorPage() {
             />
 
             <section className="space-y-3">
-              <h2 className="font-display text-lg font-semibold">Tracks</h2>
+              <h2 className="font-display text-lg font-semibold">{t("creator.tracks")}</h2>
               {tracks.length === 0 && (
                 <p className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
-                  No published tracks yet.
+                  {t("creator.noPublished")}
                 </p>
               )}
-              {tracks.map((t) => {
-                const embedUrl = getTrackEmbedUrl(t.source_type, t.source_id);
-                return <article key={t.id} className="glass space-y-3 rounded-2xl p-4">
+              {tracks.map((track) => {
+                const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
+                return <article key={track.id} className="glass space-y-3 rounded-2xl p-4">
                   <div className="flex items-center gap-2">
                     <Music className="h-4 w-4 shrink-0 text-accent" />
-                    <p className="truncate text-sm font-semibold">{t.title}</p>
+                    <p className="truncate text-sm font-semibold">{track.title}</p>
                     <span className="ml-auto shrink-0 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {t.genre}
+                      {track.genre}
                     </span>
                   </div>
                   {embedUrl ? (
                     <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
                       <img src={artFallback} alt="" className="h-full w-full object-cover" />
-                      <ExternalTrackEmbed sourceType={t.source_type} sourceId={t.source_id} title={`${t.title} player`} />
+                      <ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={`${track.title} player`} />
                     </div>
-                  ) : t.audio_type === "link" ? (
+                  ) : track.audio_type === "link" ? (
                     <a
-                      href={t.audio_url}
+                      href={track.audio_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" /> Listen on Platform
+                      <ExternalLink className="h-3.5 w-3.5" /> {t("creator.listenOnPlatform")}
                     </a>
                   ) : (
                     <audio
-                      ref={(audio) => { if (audio) audioRefs.current.set(t.id, audio); else audioRefs.current.delete(t.id); }}
+                      ref={(audio) => { if (audio) audioRefs.current.set(track.id, audio); else audioRefs.current.delete(track.id); }}
                       controls
                       preload="none"
-                      src={t.audio_url}
-                      onPlay={(event) => { activateMedia({ id: `creator-native-${t.id}`, kind: "native" }); handleNativePlay(t.id, event.currentTarget); }}
-                      onTimeUpdate={(event) => handleNativeProgress(t.id, event.currentTarget)}
-                      onEnded={(event) => countCompletedPlay(t.id, event.currentTarget)}
+                      src={track.audio_url}
+                      onPlay={(event) => { activateMedia({ id: `creator-native-${track.id}`, kind: "native" }); handleNativePlay(track.id, event.currentTarget); }}
+                      onTimeUpdate={(event) => handleNativeProgress(track.id, event.currentTarget)}
+                      onEnded={(event) => countCompletedPlay(track.id, event.currentTarget)}
                       className="w-full"
                     />
                   )}
