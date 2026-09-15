@@ -795,6 +795,12 @@ For every lyric correction, preserve both:
 1. linguistic correctness; and
 2. the songwriting function of the local lyric context.
 
+Semantic fidelity is mandatory, not optional.
+
+A correction must not replace the original intended statement with a materially different idea merely to preserve rhyme, cadence or a smaller replacement span.
+
+If no word-, phrase- or single-line correction can preserve BOTH the intended meaning and the necessary songwriting function, do not accept a semantically weaker one-line substitute. Escalate to the smallest coordinated local rewrite permitted below, including a two-line couplet when necessary.
+
 LOCAL CONTEXT REVIEW
 
 Before choosing a lyric correction, examine:
@@ -842,6 +848,8 @@ Never expand a correction:
 FINAL CORRECTION SELECTION
 
 After drafting possible replacements, silently compare them and return only ONE final correction: the smallest correction that both fixes the genuine defect and best preserves the songwriting function of the surrounding lyrics.
+
+Never prefer a smaller correction if it materially changes the intended meaning. Semantic fidelity takes priority over minimizing the replacement span.
 
 Before returning that correction, verify:
 - the original defect is actually fixed;
