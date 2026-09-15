@@ -12,6 +12,7 @@ import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt } from "@/lib/ai.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -37,23 +38,23 @@ type Row = {
   handle?: string;
 };
 
-function toTrack(t: Row, handle: string): Track {
+function toTrack(track: Row, handle: string): Track {
   return {
-    id: t.id,
-    userId: t.user_id,
-    title: t.title,
-    handle: t.handle ?? handle,
-    genre: t.genre,
-    art: t.cover_url ?? t.art_url ?? artFallback,
-    duration: formatDuration(t.duration_seconds),
-    plays: String(t.plays),
-    prompt: t.prompt,
-    lyrics: t.lyrics,
-    audioUrl: t.audio_url,
-    audioType: (t.audio_type === "link" ? "link" : "upload") as "link" | "upload",
-    isPublished: t.is_published,
-    sourceType: t.source_type,
-    sourceId: t.source_id,
+    id: track.id,
+    userId: track.user_id,
+    title: track.title,
+    handle: track.handle ?? handle,
+    genre: track.genre,
+    art: track.cover_url ?? track.art_url ?? artFallback,
+    duration: formatDuration(track.duration_seconds),
+    plays: String(track.plays),
+    prompt: track.prompt,
+    lyrics: track.lyrics,
+    audioUrl: track.audio_url,
+    audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    isPublished: track.is_published,
+    sourceType: track.source_type,
+    sourceId: track.source_id,
   };
 }
 
@@ -77,25 +78,17 @@ export const Route = createFileRoute("/library")({
   component: LibraryPage,
 });
 
-const TABS = [
-  { id: "tracks", label: "My Tracks" },
-  { id: "prompts", label: "Saved Prompts" },
-  { id: "likes", label: "Liked Tracks" },
-] as const;
-
-const TRACK_VISIBILITY_FILTERS = [
-  { id: "all", label: "All" },
-  { id: "public", label: "Public" },
-  { id: "private", label: "Private" },
-] as const;
+const TABS = ["tracks", "prompts", "likes"] as const;
+const TRACK_VISIBILITY_FILTERS = ["all", "public", "private"] as const;
 
 function LibraryPage() {
+  const { t } = useI18n();
   const { user, profile, loading } = useAuth();
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("tracks");
-  const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]["id"]>("all");
-  const handle = profile?.handle ? `@${profile.handle}` : "@you";
+  const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
+  const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]>("all");
+  const handle = profile?.handle ? `@${profile.handle}` : t("nav.you");
 
   const mine = useQuery({
     queryKey: ["library", "mine", user?.id],
@@ -113,18 +106,28 @@ function LibraryPage() {
     enabled: Boolean(user),
   });
 
-  const myTracks = (mine.data?.tracks ?? []).map((t) => toTrack(t as Row, handle));
-  const likedTracks = (liked.data?.tracks ?? []).map((t) => toTrack(t as Row, handle));
+  const myTracks = (mine.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
+  const likedTracks = (liked.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
   const publicTrackCount = myTracks.filter((track) => track.isPublished).length;
   const privateTrackCount = myTracks.length - publicTrackCount;
-  const filteredMyTracks = myTracks.filter((track) =>
-    trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished),
+  const filteredMyTracks = myTracks.filter(
+    (track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished),
   );
+
+  const tabLabel = (value: (typeof TABS)[number]) =>
+    value === "tracks"
+      ? t("library.myTracks")
+      : value === "prompts"
+        ? t("library.savedPrompts")
+        : t("library.likedTracks");
+
+  const visibilityLabel = (value: (typeof TRACK_VISIBILITY_FILTERS)[number]) =>
+    value === "all" ? t("library.all") : value === "public" ? t("library.public") : t("library.private");
 
   const header = (
     <div className="flex items-center gap-2">
       <LibraryIcon className="h-5 w-5 text-accent" />
-      <span className="font-display text-lg font-bold">My Library</span>
+      <span className="font-display text-lg font-bold">{t("library.title")}</span>
     </div>
   );
 
@@ -133,15 +136,13 @@ function LibraryPage() {
       <AppShell header={header}>
         <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-10 md:px-8 md:pb-[150px]">
           <div className="glass mx-auto max-w-md rounded-2xl p-8 text-center">
-            <h1 className="font-display text-xl font-bold">Your library lives here</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to see your uploads, saved prompts and liked tracks.
-            </p>
+            <h1 className="font-display text-xl font-bold">{t("library.guestTitle")}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t("library.guestBody")}</p>
             <Link
               to="/auth"
               className="mt-5 inline-flex rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground glow-neon"
             >
-              Sign in
+              {t("nav.signIn")}
             </Link>
           </div>
         </main>
@@ -149,26 +150,29 @@ function LibraryPage() {
     );
   }
 
+  const emptyMyTracks =
+    trackVisibility === "all"
+      ? t("library.noTracks")
+      : t("library.noVisibilityTracks", { visibility: visibilityLabel(trackVisibility).toLowerCase() });
+
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <h1 className="font-display text-2xl font-bold md:text-3xl">
-          <span className="text-gradient-neon">My</span> Library
-        </h1>
+        <h1 className="font-display text-2xl font-bold md:text-3xl">{t("library.title")}</h1>
 
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {TABS.map((t) => (
+          {TABS.map((item) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={item}
+              onClick={() => setTab(item)}
               className={cn(
                 "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-                tab === t.id
+                tab === item
                   ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
                   : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
               )}
             >
-              {t.label}
+              {tabLabel(item)}
             </button>
           ))}
         </div>
@@ -178,24 +182,25 @@ function LibraryPage() {
             <div className="mt-3 flex items-center gap-2">
               <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
                 {TRACK_VISIBILITY_FILTERS.map((filter) => {
-                  const count = filter.id === "all"
-                    ? myTracks.length
-                    : filter.id === "public"
-                      ? publicTrackCount
-                      : privateTrackCount;
+                  const count =
+                    filter === "all"
+                      ? myTracks.length
+                      : filter === "public"
+                        ? publicTrackCount
+                        : privateTrackCount;
                   return (
                     <button
-                      key={filter.id}
-                      onClick={() => setTrackVisibility(filter.id)}
-                      aria-pressed={trackVisibility === filter.id}
+                      key={filter}
+                      onClick={() => setTrackVisibility(filter)}
+                      aria-pressed={trackVisibility === filter}
                       className={cn(
                         "shrink-0 rounded-full border px-3 py-1 text-xs transition-all",
-                        trackVisibility === filter.id
+                        trackVisibility === filter
                           ? "border-accent/50 bg-accent/15 font-semibold text-accent"
                           : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
                       )}
                     >
-                      {filter.label} ({count})
+                      {visibilityLabel(filter)} ({count})
                     </button>
                   );
                 })}
@@ -203,7 +208,7 @@ function LibraryPage() {
               <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
             </div>
             <Section
-              empty={trackVisibility === "all" ? "You haven't uploaded any tracks yet." : `No ${trackVisibility} tracks yet.`}
+              empty={emptyMyTracks}
               tracks={filteredMyTracks}
               playing={playing}
               currentId={current?.id}
@@ -215,9 +220,11 @@ function LibraryPage() {
 
         {tab === "likes" && (
           <>
-            <div className="mt-3 flex justify-end"><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
+            <div className="mt-3 flex justify-end">
+              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+            </div>
             <Section
-              empty="No liked tracks yet — tap the heart on any track."
+              empty={t("library.noLikes")}
               tracks={likedTracks}
               playing={playing}
               currentId={current?.id}
@@ -229,12 +236,12 @@ function LibraryPage() {
 
         {tab === "prompts" && (
           <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {(prompts.data?.prompts ?? []).map((p) => (
-              <SavedPromptCard key={p.id} prompt={p} />
+            {(prompts.data?.prompts ?? []).map((prompt) => (
+              <SavedPromptCard key={prompt.id} prompt={prompt} />
             ))}
             {!prompts.isLoading && (prompts.data?.prompts ?? []).length === 0 && (
               <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
-                No saved prompts yet. Generate one in the Studio and hit “Save to my library”.
+                {t("library.noPrompts")}
               </p>
             )}
           </div>
@@ -255,15 +262,21 @@ function Section({
   tracks: Track[];
   empty: string;
   playing: boolean;
-  currentId?: string | undefined;
-  onPlay: (t: Track) => void;
+  currentId?: string;
+  onPlay: (track: Track) => void;
   gridMode: TrackGridMode;
 }) {
   return (
     <>
       <div className={`mt-6 ${trackGridClassName(gridMode)}`}>
-        {tracks.map((t) => (
-          <TrackCard key={t.id} track={t} isPlaying={playing && currentId === t.id} onPlay={onPlay} viewMode={gridMode} />
+        {tracks.map((track) => (
+          <TrackCard
+            key={track.id}
+            track={track}
+            isPlaying={playing && currentId === track.id}
+            onPlay={onPlay}
+            viewMode={gridMode}
+          />
         ))}
       </div>
       {tracks.length === 0 && (
@@ -287,9 +300,11 @@ function SavedPromptCard({
     note: string | null;
   };
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const queryClient = useQueryClient();
+
   const remove = async () => {
     setDeleting(true);
     try {
@@ -299,6 +314,7 @@ function SavedPromptCard({
       setDeleting(false);
     }
   };
+
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -314,7 +330,7 @@ function SavedPromptCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate font-display text-base font-bold">
-            {prompt.title || prompt.theme || "Untitled prompt"}
+            {prompt.title || prompt.theme || t("library.untitledPrompt")}
           </h2>
           <p className="truncate text-[11px] text-muted-foreground">
             {[prompt.genre, prompt.mood].filter(Boolean).join(" · ")}
@@ -323,7 +339,7 @@ function SavedPromptCard({
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
-            aria-label="Copy prompt"
+            aria-label={t("library.copyPrompt")}
             className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:text-accent"
           >
             {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
@@ -331,7 +347,7 @@ function SavedPromptCard({
           <button
             onClick={remove}
             disabled={deleting}
-            aria-label="Delete prompt"
+            aria-label={t("library.deletePrompt")}
             className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
           >
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
