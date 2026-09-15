@@ -10,6 +10,7 @@ import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed"
 import { TrackContentOverlay, type TrackContentKind } from "@/components/promptbeats/TrackContentOverlay";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import type { TrackGridMode } from "@/components/promptbeats/TrackGridView";
+import { useI18n } from "@/i18n";
 
 export function TrackCard({
   track,
@@ -22,6 +23,7 @@ export function TrackCard({
   onPlay: (t: Track) => void;
   viewMode?: TrackGridMode;
 }) {
+  const { t } = useI18n();
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
   const [contentAnchor, setContentAnchor] = useState<Pick<DOMRect, "left" | "top" | "bottom" | "width"> | null>(null);
   const [contentTrigger, setContentTrigger] = useState<HTMLElement | null>(null);
@@ -80,16 +82,16 @@ export function TrackCard({
   return (
     <article className={cn("glass group overflow-hidden rounded-2xl transition-all hover:border-white/20 hover:shadow-[0_10px_40px_-12px_color-mix(in_oklab,var(--neon)_45%,transparent)]", compact && "rounded-xl")}>
       <div className="relative aspect-square overflow-hidden">
-        <Link to="/track/$id" params={{ id: track.id }} aria-label={`Open ${track.title}`} className="block h-full cursor-pointer">
-          <img src={track.art} alt={`${track.title} cover art`} width={640} height={640} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        <Link to="/track/$id" params={{ id: track.id }} aria-label={t("track.open", { title: track.title })} className="block h-full cursor-pointer">
+          <img src={track.art} alt={t("track.coverAlt", { title: track.title })} width={640} height={640} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-        {embedUrl && <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={`${track.title} player`} compact={compact} />}
+        {embedUrl && <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={t("track.player", { title: track.title })} compact={compact} />}
         <span className={cn("glass absolute rounded-full uppercase tracking-widest text-accent", compact ? "left-2 top-2 px-1.5 py-0.5 text-[8px]" : "left-3 top-3 px-2.5 py-1 text-[10px]")}>
           {track.genre}
         </span>
         {compact && embedUrl && <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">{track.sourceType}</span>}
-        {!embedUrl && canUseNativePlayer && <button onClick={() => onPlay(track)} aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`} className={cn("absolute grid place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95", compact ? "bottom-2 right-2 h-9 w-9" : "bottom-3 right-3 h-12 w-12")}>
+        {!embedUrl && canUseNativePlayer && <button onClick={() => onPlay(track)} aria-label={isPlaying ? t("track.pause", { title: track.title }) : t("track.play", { title: track.title })} className={cn("absolute grid place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95", compact ? "bottom-2 right-2 h-9 w-9" : "bottom-3 right-3 h-12 w-12")}>
           {isPlaying ? <Pause className={cn("text-primary-foreground", compact ? "h-4 w-4" : "h-5 w-5")} /> : <Play className={cn("ml-0.5 text-primary-foreground", compact ? "h-4 w-4" : "h-5 w-5")} />}
         </button>}
       </div>
@@ -115,7 +117,7 @@ export function TrackCard({
               ) : (
                 <span>{track.handle}</span>
               )}
-              {track.staffBadge && <><span className="mx-1.5">·</span><StaffBadge badge={track.staffBadge} /></>}{" · "}{track.plays} plays
+              {track.staffBadge && <><span className="mx-1.5">·</span><StaffBadge badge={track.staffBadge} /></>}{" · "}{t("track.plays", { count: playCount })}
             </p>
           </div>
           <div className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-2")}>
@@ -141,13 +143,12 @@ export function TrackCard({
           </div>
         </div>
 
-
         <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")}>
           <button
             onClick={(event) => toggleContent("prompt", event.currentTarget)}
             className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
           >
-            {activeContent === "prompt" ? "Hide prompt" : "Show prompt"}
+            {activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
             <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
           </button>
           {track.lyrics?.trim() && (
@@ -155,17 +156,16 @@ export function TrackCard({
               onClick={(event) => toggleContent("lyrics", event.currentTarget)}
               className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
             >
-              {activeContent === "lyrics" ? "Hide lyrics" : "Show lyrics"}
+              {activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
               <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "lyrics" && "rotate-180")} />
             </button>
           )}
         </div>
-
       </div>
       {activeContent && (
         <TrackContentOverlay
           kind={activeContent}
-          content={activeContent === "prompt" ? track.prompt?.trim() || "No prompt provided for this track." : track.lyrics}
+          content={activeContent === "prompt" ? track.prompt?.trim() || t("track.noPrompt") : track.lyrics}
           anchorRect={contentAnchor}
           onClose={() => setActiveContent(null)}
           onCopy={activeContent === "prompt"
