@@ -4,16 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useModeration } from "@/hooks/useModeration";
+import { useI18n } from "@/i18n";
+import type { TranslationKey } from "@/i18n/locales/en";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 export const NAV = [
-  { id: "discover", label: "Discover Feed", icon: Compass },
-  { id: "trending", label: "Trending", icon: Flame },
-  { id: "studio", label: "AI Prompt Studio", icon: Sparkles },
-  { id: "library", label: "My Library", icon: Library },
-  { id: "management", label: "Management", icon: BarChart3 },
-] as const;
+  { id: "discover", labelKey: "nav.discover", icon: Compass },
+  { id: "trending", labelKey: "nav.trending", icon: Flame },
+  { id: "studio", labelKey: "nav.studio", icon: Sparkles },
+  { id: "library", labelKey: "nav.library", icon: Library },
+  { id: "management", labelKey: "nav.management", icon: BarChart3 },
+] as const satisfies ReadonlyArray<{ id: string; labelKey: TranslationKey; icon: typeof Compass }>;
 
 export type NavId = (typeof NAV)[number]["id"];
 
@@ -28,7 +30,6 @@ const NAV_TO: Record<NavId, string> = {
   management: "/management",
 };
 
-
 export function SidebarNav({
   active,
   onNavigate,
@@ -40,6 +41,7 @@ export function SidebarNav({
 }) {
   const { user, profile } = useAuth();
   const { isBanned, canViewUsers } = useModeration();
+  const { language, setLanguage, t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -90,23 +92,37 @@ export function SidebarNav({
                     : "group-hover:text-accent",
                 )}
               />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
               {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
             </Link>
           );
         })}
       </nav>
 
-
       {!isBanned && (
-      <button
-        onClick={onSubmit}
-        className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
-      >
-        <Plus className="h-4 w-4" />
-        Submit Track
-      </button>
+        <button
+          onClick={onSubmit}
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
+        >
+          <Plus className="h-4 w-4" />
+          {t("nav.submitTrack")}
+        </button>
       )}
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+        <label className="text-[11px] uppercase tracking-widest text-muted-foreground" htmlFor="pb-interface-language">
+          {t("language.label")}
+        </label>
+        <select
+          id="pb-interface-language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value === "el" ? "el" : "en")}
+          className="mt-2 h-9 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-accent/60"
+        >
+          <option value="en" className="bg-[#0a0a0c]">{t("language.english")}</option>
+          <option value="el" className="bg-[#0a0a0c]">{t("language.greek")}</option>
+        </select>
+      </div>
 
       <div className="mt-auto">
         {user ? (
@@ -129,14 +145,14 @@ export function SidebarNav({
                   @{profile.handle}
                 </Link>
               ) : (
-                <p className="truncate text-sm font-medium">@you</p>
+                <p className="truncate text-sm font-medium">{t("nav.you")}</p>
               )}
               <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Signed in
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("nav.signedIn")}
               </p>
             </div>
             <button
-              aria-label="Sign out"
+              aria-label={t("nav.signOut")}
               onClick={signOut}
               className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -149,8 +165,8 @@ export function SidebarNav({
               <LogIn className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">Sign in</p>
-              <p className="truncate text-[11px] text-muted-foreground">Upload tracks &amp; save prompts</p>
+              <p className="truncate text-sm font-medium">{t("nav.signIn")}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p>
             </div>
           </Link>
         )}
