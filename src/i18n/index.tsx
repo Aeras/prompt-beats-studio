@@ -7,15 +7,17 @@ import { enExtra, type ExtraTranslationKey } from "@/i18n/locales/en-extra";
 import { elExtra } from "@/i18n/locales/el-extra";
 import { enProfile, type ProfileTranslationKey } from "@/i18n/locales/en-profile";
 import { elProfile } from "@/i18n/locales/el-profile";
+import { enFinal, type FinalTranslationKey } from "@/i18n/locales/en-final";
+import { elFinal } from "@/i18n/locales/el-final";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
