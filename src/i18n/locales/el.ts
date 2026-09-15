@@ -120,7 +120,7 @@ export const el: Record<TranslationKey, string> = {
   "generator.productionStyle": "Production Style",
   "generator.additionalInstructions": "Πρόσθετες οδηγίες",
   "generator.aiModel": "Μοντέλο AI",
-  "generator.qualityCheck": "Quality Check",
+  "generator.qualityCheck": "Έλεγχος ποιότητας",
   "generator.saveLibrary": "Αποθήκευση στη βιβλιοθήκη μου",
   "generator.savedLibrary": "Αποθηκεύτηκε στη βιβλιοθήκη σου",
   "generator.copy": "Αντιγραφή",
