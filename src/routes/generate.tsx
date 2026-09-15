@@ -596,11 +596,13 @@ function GeneratePage() {
               : instrumentsTooLong
                 ? t("generator.instrumentsTooLong", { count: instrumentsText.length, limit: 200 })
                 : null
-        : moodTooLong
-          ? t("generator.moodTooLong", { count: effectiveMood.length, limit: moodLimit })
-          : musicStyleTooLong
-            ? t("generator.selectionTooLong")
-            : null;
+        : themeTooLong
+          ? t("generator.themeTooLong", { count: theme.trim().length, limit: themeLimit })
+          : moodTooLong
+            ? t("generator.moodTooLong", { count: effectiveMood.length, limit: moodLimit })
+            : musicStyleTooLong
+              ? t("generator.selectionTooLong")
+              : null;
   const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError;
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
