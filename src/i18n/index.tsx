@@ -9,15 +9,17 @@ import { enProfile, type ProfileTranslationKey } from "@/i18n/locales/en-profile
 import { elProfile } from "@/i18n/locales/el-profile";
 import { enFinal, type FinalTranslationKey } from "@/i18n/locales/en-final";
 import { elFinal } from "@/i18n/locales/el-final";
+import { enCatalog, type CatalogTranslationKey } from "@/i18n/locales/en-catalog";
+import { elCatalog } from "@/i18n/locales/el-catalog";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
