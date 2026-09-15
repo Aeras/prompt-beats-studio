@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { en, type TranslationKey } from "@/i18n/locales/en";
 import { el } from "@/i18n/locales/el";
+import { enApp, type AppUiTranslationKey } from "@/i18n/locales/en-app";
+import { elApp } from "@/i18n/locales/el-app";
 
 export type AppLanguage = "en" | "el";
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 
-const dictionaries: Record<AppLanguage, Readonly<Record<TranslationKey, string>>> = {
-  en,
-  el,
+const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
+  en: { ...en, ...enApp },
+  el: { ...el, ...elApp },
 };
 
 function interpolate(template: string, values?: Record<string, string | number>) {
@@ -21,7 +24,7 @@ function interpolate(template: string, values?: Record<string, string | number>)
 type I18nContextValue = {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
-  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+  t: (key: AppTranslationKey, values?: Record<string, string | number>) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -47,7 +50,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const t = useCallback(
-    (key: TranslationKey, values?: Record<string, string | number>) => {
+    (key: AppTranslationKey, values?: Record<string, string | number>) => {
       const value = dictionaries[language][key] ?? dictionaries.en[key] ?? key;
       return interpolate(value, values);
     },
