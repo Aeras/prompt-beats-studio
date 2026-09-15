@@ -52,10 +52,20 @@ import {
   undoVocalArrangement,
 } from "@/lib/quality-apply";
 import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
+import { useI18n, type AppTranslationKey } from "@/i18n";
+import {
+  BASIC_MUSIC_STYLES,
+  BASIC_MOODS,
+  SONG_LANGUAGES,
+  ADVANCED_MUSIC_STYLES,
+  ADVANCED_MOODS,
+  INSTRUMENTS as INSTRUMENT_OPTIONS,
+  SONG_STRUCTURE_TAGS,
+  BPM_OPTIONS as CATALOG_BPM_OPTIONS,
+  type LocalizedGeneratorOption,
+} from "@/catalog/generator-options";
 
-/** Survives refreshes so an in-flight generation is recovered on return. */
 const JOB_STORAGE_KEY = "pb:generation-job";
-/** Survives refresh/background so an in-flight Quality Check is recovered. */
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
 
 export const Route = createFileRoute("/generate")({
@@ -64,14 +74,12 @@ export const Route = createFileRoute("/generate")({
       { title: "AI Prompt & Lyrics Generator for Suno and Udio — PromptBeats" },
       {
         name: "description",
-        content:
-          "Turn one idea into a Suno/Udio-ready style prompt, structured lyrics, and a producer's note in seconds.",
+        content: "Turn one idea into a Suno/Udio-ready style prompt, structured lyrics, and a producer's note in seconds.",
       },
       { property: "og:title", content: "AI Prompt & Lyrics Generator — PromptBeats" },
       {
         property: "og:description",
-        content:
-          "Generate optimized metatags, structured lyrics and producer notes for AI music platforms.",
+        content: "Generate optimized metatags, structured lyrics and producer notes for AI music platforms.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -81,234 +89,31 @@ export const Route = createFileRoute("/generate")({
 });
 
 const CUSTOM = "Custom…";
-const GENRE_OPTIONS = [
-  "Reggaeton",
-  "Cumbia",
-  "Latin Pop",
-  "Italo Disco",
-  "Synthwave",
-  "Acoustic",
-  "Hip-Hop",
-  "Pop",
-  "Rock",
-  "R&B",
-  "House",
-  "Techno",
-  "Electronic / EDM",
-  "Drum & Bass",
-  "Trap",
-  "Jazz",
-  "Lo-fi",
-  "Country",
-  "Metal",
-  "Afrobeats",
-  CUSTOM,
-];
+const GENRE_OPTIONS = BASIC_MUSIC_STYLES.map((option) => option.value);
+const MOOD_OPTIONS = BASIC_MOODS.map((option) => option.value);
+const LANGUAGE_OPTIONS = SONG_LANGUAGES.map((option) => option.value);
+const ADVANCED_STYLES = ADVANCED_MUSIC_STYLES.map((option) => option.value);
+const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
+const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
+const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
+const BPM_OPTIONS = [...CATALOG_BPM_OPTIONS.map((option) => option.value), "Custom"];
 
-const MOOD_OPTIONS = [
-  "Energetic",
-  "Melancholic",
-  "Dark",
-  "Uplifting",
-  "Romantic",
-  "Dreamy",
-  "Aggressive",
-  "Nostalgic",
-  CUSTOM,
-];
-const LANGUAGE_OPTIONS = [
-  "Greek",
-  "English",
-  "Spanish",
-  "Russian",
-  "Italian",
-  "French",
-  "German",
-  "Portuguese",
-  CUSTOM,
-];
+function translatedOption(
+  options: readonly LocalizedGeneratorOption[],
+  value: string,
+  t: (key: AppTranslationKey, values?: Record<string, string | number>) => string,
+) {
+  const item = options.find((option) => option.value === value);
+  return item ? t(item.labelKey) : value;
+}
 
-// ── Advanced mode catalogues (data-driven, easy to extend) ──
-const ADVANCED_STYLES = [
-  "Reggaeton",
-  "Pop",
-  "Rock",
-  "R&B",
-  "Hip-Hop",
-  "Trap",
-  "Soul",
-  "Funk",
-  "Jazz",
-  "Blues",
-  "Disco",
-  "House",
-  "Techno",
-  "EDM",
-  "Latin",
-  "Cumbia",
-  "Salsa",
-  "Bachata",
-  "Reggae",
-  "Dancehall",
-  "Afrobeat",
-  "Country",
-  "Folk",
-  "Acoustic",
-  "Ballad",
-  "Metal",
-  "Punk",
-  "Indie",
-  "Alternative",
-  "Lo-fi",
-  "K-Pop",
-  "J-Pop",
-  "Classical",
-  "Orchestral",
-  "Cinematic",
-  CUSTOM,
-];
-
-const ADVANCED_MOODS = [
-  "Romantic",
-  "Happy",
-  "Sad",
-  "Melancholic",
-  "Emotional",
-  "Nostalgic",
-  "Passionate",
-  "Energetic",
-  "Uplifting",
-  "Euphoric",
-  "Dreamy",
-  "Chill",
-  "Relaxed",
-  "Intimate",
-  "Sensual",
-  "Hopeful",
-  "Bittersweet",
-  "Dark",
-  "Mysterious",
-  "Dramatic",
-  "Powerful",
-  "Aggressive",
-  "Angry",
-  "Playful",
-  "Joyful",
-  "Peaceful",
-  "Tender",
-  "Warm",
-  "Lonely",
-  "Heartbroken",
-  "Reflective",
-  "Inspirational",
-  "Epic",
-  "Triumphant",
-  "Confident",
-  "Rebellious",
-  "Soulful",
-  "Atmospheric",
-  "Hypnotic",
-  "Party",
-  "Festive",
-];
-
-const INSTRUMENTS = [
-  "Piano",
-  "Acoustic Piano",
-  "Electric Piano",
-  "Grand Piano",
-  "Organ",
-  "Synth",
-  "Synth Bass",
-  "Acoustic Guitar",
-  "Electric Guitar",
-  "Classical Guitar",
-  "Bass",
-  "Electric Bass",
-  "Upright Bass",
-  "Drums",
-  "Electronic Drums",
-  "Percussion",
-  "Congas",
-  "Bongos",
-  "Timbales",
-  "Hand Claps",
-  "Violin",
-  "Viola",
-  "Cello",
-  "Double Bass",
-  "Strings",
-  "Trumpet",
-  "Trombone",
-  "Saxophone",
-  "Flute",
-  "Clarinet",
-  "Oboe",
-  "Harmonica",
-  "Accordion",
-  "Banjo",
-  "Mandolin",
-  "Ukulele",
-  "Harp",
-  "Marimba",
-  "Xylophone",
-  "Brass",
-  "Choir",
-];
-
-const STRUCTURE_TAGS = [
-  "Intro",
-  "Verse",
-  "Pre-Chorus",
-  "Chorus",
-  "Post-Chorus",
-  "Hook",
-  "Refrain",
-  "Bridge",
-  "Breakdown",
-  "Build",
-  "Drop",
-  "Interlude",
-  "Instrumental",
-  "Instrumental Break",
-  "Solo",
-  "Final Chorus",
-  "Outro",
-  "Coda",
-];
-
-const BPM_OPTIONS = [
-  "Auto",
-  "60",
-  "70",
-  "80",
-  "90",
-  "100",
-  "110",
-  "120",
-  "125",
-  "128",
-  "130",
-  "135",
-  "140",
-  "145",
-  "150",
-  "160",
-  "170",
-  "180",
-  "190",
-  "200",
-  "Custom",
-];
-
-/** Merges free-text custom values with selected chips, trimmed and de-duplicated. */
 function mergeValues(selected: string[], custom: string) {
   const out: string[] = [];
   for (const v of [...selected, ...custom.split(",")]) {
-    const t = v.trim();
-    if (!t) continue;
-    if (out.some((x) => x.toLowerCase() === t.toLowerCase())) continue;
-    out.push(t);
+    const text = v.trim();
+    if (!text) continue;
+    if (out.some((x) => x.toLowerCase() === text.toLowerCase())) continue;
+    out.push(text);
   }
   return out;
 }
@@ -318,29 +123,31 @@ function ChipGroup({
   selected,
   onToggle,
   label,
+  labelFor,
 }: {
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
   label: string;
+  labelFor?: (value: string) => string;
 }) {
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
-      {options.map((o) => {
-        const active = selected.includes(o);
+      {options.map((option) => {
+        const active = selected.includes(option);
         return (
           <button
-            key={o}
+            key={option}
             type="button"
             aria-pressed={active}
-            onClick={() => onToggle(o)}
+            onClick={() => onToggle(option)}
             className={
               active
                 ? "rounded-full border border-transparent bg-gradient-neon px-3.5 py-1.5 text-xs font-semibold text-primary-foreground glow-neon transition-transform active:scale-95"
                 : "rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
             }
           >
-            {o}
+            {labelFor ? labelFor(option) : option}
           </button>
         );
       })}
@@ -349,23 +156,14 @@ function ChipGroup({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>
-  );
+  return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
 }
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">
-        {title}
-      </span>
-      {hint && (
-        <span className="text-[10px] text-muted-foreground">
-          {"\u00b7 "}
-          {hint}
-        </span>
-      )}
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
+      {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
     </div>
   );
 }
@@ -374,10 +172,11 @@ const fieldClass =
   "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
 
 function CopyButton({ value }: { value: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
     <button
-      aria-label="Copy"
+      aria-label={t("common.copy")}
       onClick={async () => {
         await navigator.clipboard.writeText(value);
         setCopied(true);
@@ -390,37 +189,32 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-// TEMPORARY — Super Admin testing only. Shows the live Quality Layer 2A
-// evaluator response from the current generation. Remove after testing.
 function QualityIssueList({ label, items }: { label: string; items: string[] }) {
+  const { t } = useI18n();
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       {items.length === 0 ? (
-        <p className="mt-1 text-xs text-muted-foreground/70">None</p>
+        <p className="mt-1 text-xs text-muted-foreground/70">{t("quality.none")}</p>
       ) : (
         <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-foreground/90">
-          {items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
+          {items.map((item, i) => <li key={i}>{item}</li>)}
         </ul>
       )}
     </div>
   );
 }
 
-/** Category 1 — Actual Issues (these affect the score). */
 function ActualIssues({ quality }: { quality: QualityReport }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
-      <QualityIssueList label="Issues" items={quality.issues} />
-      <QualityIssueList label="Language Issues" items={quality.languageIssues} />
-      <QualityIssueList label="Grammar Issues" items={quality.grammarIssues} />
-      <QualityIssueList label="Singability Issues" items={quality.singabilityIssues} />
-      <QualityIssueList label="Genre Issues" items={quality.genreIssues} />
-      <QualityIssueList label="Consistency Issues" items={quality.consistencyIssues} />
+      <QualityIssueList label={t("quality.issues")} items={quality.issues} />
+      <QualityIssueList label={t("quality.languageIssues")} items={quality.languageIssues} />
+      <QualityIssueList label={t("quality.grammarIssues")} items={quality.grammarIssues} />
+      <QualityIssueList label={t("quality.singabilityIssues")} items={quality.singabilityIssues} />
+      <QualityIssueList label={t("quality.genreIssues")} items={quality.genreIssues} />
+      <QualityIssueList label={t("quality.consistencyIssues")} items={quality.consistencyIssues} />
     </div>
   );
 }
@@ -461,22 +255,13 @@ function ConfirmBox({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
       <p className="text-xs text-foreground/90">{message}</p>
       <div className="mt-3 flex gap-2">
-        <button
-          onClick={onConfirm}
-          className="rounded-lg bg-gradient-neon px-4 py-2 text-xs font-semibold text-primary-foreground"
-        >
-          {confirmLabel}
-        </button>
-        <button
-          onClick={onCancel}
-          className="rounded-lg border border-white/10 px-4 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Cancel
-        </button>
+        <button onClick={onConfirm} className="rounded-lg bg-gradient-neon px-4 py-2 text-xs font-semibold text-primary-foreground">{confirmLabel}</button>
+        <button onClick={onCancel} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground">{t("common.cancel")}</button>
       </div>
     </div>
   );
@@ -491,182 +276,84 @@ type ApplyState = {
   onUndoSuggestion: (id: string, s: QualitySuggestion) => void;
 };
 
-function ApplyRow({
-  id,
-  state,
-  onApply,
-  onUndo,
-}: {
-  id: string;
-  state: ApplyState;
-  onApply: () => void;
-  onUndo: () => void;
-}) {
+function ApplyRow({ id, state, onApply, onUndo }: { id: string; state: ApplyState; onApply: () => void; onUndo: () => void }) {
+  const { t } = useI18n();
   const done = state.applied[id];
   const error = state.errors[id];
   return (
     <div className="mt-2">
       <button
         onClick={done ? onUndo : onApply}
-        className={
-          done
-            ? "rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            : "rounded-lg border border-accent/50 px-3 py-1.5 text-[11px] text-accent transition-colors hover:bg-accent/10"
-        }
+        className={done ? "rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground" : "rounded-lg border border-accent/50 px-3 py-1.5 text-[11px] text-accent transition-colors hover:bg-accent/10"}
       >
-        {done ? "Undo" : "Apply"}
+        {done ? t("quality.undo") : t("quality.apply")}
       </button>
       {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
     </div>
   );
 }
 
-const FIELD_LABELS: Record<CorrectionItem["field"], string> = {
-  title: "Song title",
-  tags: "Music style",
-  lyrics: "Lyrics",
-  note: "Producer's note",
-};
-
 function CorrectionCard({ id, c, state }: { id: string; c: CorrectionItem; state: ApplyState }) {
+  const { t } = useI18n();
+  const fieldLabel: Record<CorrectionItem["field"], string> = {
+    title: t("quality.songTitle"),
+    tags: t("quality.musicStyle"),
+    lyrics: t("quality.lyrics"),
+    note: t("quality.producerNote"),
+  };
   return (
     <div className="rounded-xl border border-red-400/25 bg-red-400/5 p-3">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {FIELD_LABELS[c.field]}
-        {c.field === "lyrics" && c.sectionLabel ? ` · [${c.sectionLabel}]` : ""}
-      </p>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{fieldLabel[c.field]}{c.field === "lyrics" && c.sectionLabel ? ` · [${c.sectionLabel}]` : ""}</p>
       <p className="mt-1 text-xs text-foreground/90">{c.reason}</p>
-      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">
-        {c.originalText}
-      </p>
+      <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground line-through">{c.originalText}</p>
       <p className="whitespace-pre-wrap text-xs text-green-300">{c.replacementText}</p>
-      <ApplyRow
-        id={id}
-        state={state}
-        onApply={() => state.onApplyCorrection(id, c)}
-        onUndo={() => state.onUndoCorrection(id, c)}
-      />
+      <ApplyRow id={id} state={state} onApply={() => state.onApplyCorrection(id, c)} onUndo={() => state.onUndoCorrection(id, c)} />
     </div>
   );
 }
 
 function SuggestionCard({ id, s, state }: { id: string; s: QualitySuggestion; state: ApplyState }) {
+  const { t } = useI18n();
   const applicable = s.actionType !== "informational";
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
       <p className="text-xs font-semibold text-foreground">{s.title}</p>
       <p className="mt-1 text-xs text-muted-foreground">{s.explanation}</p>
-      {s.actionType === "add_to_music_style" && s.value && (
-        <p className="mt-2 text-[11px] text-accent">Add to Music Style: {s.value}</p>
-      )}
-      {s.actionType === "vocal_arrangement" && s.arrangement.length > 0 && (
-        <p className="mt-2 text-[11px] text-accent">
-          {s.arrangement.map((a) => `${a.tag} → ${a.sectionLabel}`).join(" · ")}
-        </p>
-      )}
-      {applicable && (
-        <ApplyRow
-          id={id}
-          state={state}
-          onApply={() => state.onApplySuggestion(id, s)}
-          onUndo={() => state.onUndoSuggestion(id, s)}
-        />
-      )}
+      {s.actionType === "add_to_music_style" && s.value && <p className="mt-2 text-[11px] text-accent">{t("quality.addMusicStyle", { value: s.value })}</p>}
+      {s.actionType === "vocal_arrangement" && s.arrangement.length > 0 && <p className="mt-2 text-[11px] text-accent">{s.arrangement.map((a) => `${a.tag} → ${a.sectionLabel}`).join(" · ")}</p>}
+      {applicable && <ApplyRow id={id} state={state} onApply={() => state.onApplySuggestion(id, s)} onUndo={() => state.onUndoSuggestion(id, s)} />}
     </div>
   );
 }
 
-function SuggestionGroup({
-  heading,
-  hint,
-  items,
-  prefix,
-  state,
-}: {
-  heading: string;
-  hint: string;
-  items: QualitySuggestion[];
-  prefix: string;
-  state: ApplyState;
-}) {
+function SuggestionGroup({ heading, hint, items, prefix, state }: { heading: string; hint: string; items: QualitySuggestion[]; prefix: string; state: ApplyState }) {
   if (!items.length) return null;
   return (
     <div className="mt-5">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{heading}</p>
       <p className="text-[11px] text-muted-foreground">{hint}</p>
-      <div className="mt-2 space-y-2">
-        {items.map((s, i) => (
-          <SuggestionCard key={`${prefix}-${i}`} id={`${prefix}-${i}`} s={s} state={state} />
-        ))}
-      </div>
+      <div className="mt-2 space-y-2">{items.map((s, i) => <SuggestionCard key={`${prefix}-${i}`} id={`${prefix}-${i}`} s={s} state={state} />)}</div>
     </div>
   );
 }
 
-function QualityResults({
-  quality,
-  prefix,
-  state,
-  model,
-}: {
-  quality: QualityReport;
-  prefix: string;
-  state: ApplyState;
-  model: string | null;
-}) {
+function QualityResults({ quality, prefix, state, model }: { quality: QualityReport; prefix: string; state: ApplyState; model: string | null }) {
+  const { t } = useI18n();
   return (
     <div className="mt-4 space-y-4">
-      {model && (
-        <p className="text-xs text-muted-foreground">Checked with: {aiModelLabel(model)}</p>
-      )}
+      {model && <p className="text-xs text-muted-foreground">{t("quality.checkedWith", { model: aiModelLabel(model) })}</p>}
       <div className="flex items-center gap-4 text-sm">
-        <span>
-          Passed:{" "}
-          <strong className={quality.passed ? "text-green-400" : "text-red-400"}>
-            {quality.passed ? "Yes" : "No"}
-          </strong>
-        </span>
-        <span>
-          Score: <strong className="text-foreground">{quality.score}/10</strong>
-        </span>
+        <span>{t("quality.passed")}: <strong className={quality.passed ? "text-green-400" : "text-red-400"}>{quality.passed ? t("quality.yes") : t("quality.no")}</strong></span>
+        <span>{t("quality.score")}: <strong className="text-foreground">{quality.score}/10</strong></span>
       </div>
-
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">
-          1 · Actual issues
-        </p>
-        <p className="text-[11px] text-muted-foreground">Problems that may need correction.</p>
-        <div className="mt-2">
-          <ActualIssues quality={quality} />
-        </div>
-        {quality.corrections.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {quality.corrections.map((c, i) => (
-              <CorrectionCard
-                key={`${prefix}-fix-${i}`}
-                id={`${prefix}-fix-${i}`}
-                c={c}
-                state={state}
-              />
-            ))}
-          </div>
-        )}
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">{t("quality.actualIssues")}</p>
+        <p className="text-[11px] text-muted-foreground">{t("quality.actualIssuesHint")}</p>
+        <div className="mt-2"><ActualIssues quality={quality} /></div>
+        {quality.corrections.length > 0 && <div className="mt-3 space-y-2">{quality.corrections.map((c, i) => <CorrectionCard key={`${prefix}-fix-${i}`} id={`${prefix}-fix-${i}`} c={c} state={state} />)}</div>}
       </div>
-
-      <SuggestionGroup
-        heading="2 · Creative suggestions"
-        hint="Optional improvements — they do not affect the score."
-        items={quality.creativeSuggestions}
-        prefix={`${prefix}-cre`}
-        state={state}
-      />
-      <SuggestionGroup
-        heading="3 · Vocal / production suggestions"
-        hint="Optional musical and production recommendations."
-        items={[...quality.vocalSuggestions, ...quality.productionSuggestions]}
-        prefix={`${prefix}-vop`}
-        state={state}
-      />
+      <SuggestionGroup heading={t("quality.creative")} hint={t("quality.creativeHint")} items={quality.creativeSuggestions} prefix={`${prefix}-cre`} state={state} />
+      <SuggestionGroup heading={t("quality.production")} hint={t("quality.productionHint")} items={[...quality.vocalSuggestions, ...quality.productionSuggestions]} prefix={`${prefix}-vop`} state={state} />
     </div>
   );
 }
@@ -704,83 +391,25 @@ function QualityPanel({
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
 }) {
+  const { t } = useI18n();
   const mode = quality ? "recheck" : "check";
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
-      <div className="flex items-center gap-2">
-        <FlaskConical className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-sm font-semibold tracking-wide text-accent">
-          Quality check
-        </h2>
-      </div>
-
-      {quality && (
-        <QualityResults
-          quality={quality}
-          prefix="orig"
-          state={state}
-          model={qualityCheckResultModel}
-        />
-      )}
-
-      {checking && (
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking... this keeps running if you leave
-          the app.
-        </p>
-      )}
-
+      <div className="flex items-center gap-2"><FlaskConical className="h-4 w-4 text-accent" /><h2 className="font-display text-sm font-semibold tracking-wide text-accent">{t("quality.title")}</h2></div>
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} model={qualityCheckResultModel} />}
+      {checking && <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("quality.checking")}</p>}
       {!checking && (
         <div className="mt-4 space-y-3">
-          {modelAccessLoading && (
-            <p className="text-xs text-muted-foreground">Loading available models…</p>
-          )}
-          {modelAccessUnavailable && (
-            <p className="text-xs text-red-400">
-              No AI model is currently available for Quality Check.
-            </p>
-          )}
+          {modelAccessLoading && <p className="text-xs text-muted-foreground">{t("quality.loadingModels")}</p>}
+          {modelAccessUnavailable && <p className="text-xs text-red-400">{t("quality.noModel")}</p>}
           {modelAccessReady && !modelAccessUnavailable && showQualityCheckModelSelector && (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Check with:</span>
-              <select
-                aria-label="Quality Check model"
-                value={qualityCheckModel}
-                onChange={(e) => onQualityCheckModelChange(e.target.value)}
-                className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
-              >
-                {availableModels.map((m) => (
-                  <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground"><span>{t("quality.checkWith")}</span><select aria-label={t("quality.model")} value={qualityCheckModel} onChange={(e) => onQualityCheckModelChange(e.target.value)} className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{availableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
           )}
-          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && (
-            <p className="text-xs text-muted-foreground">
-              Check with: {aiModelLabel(qualityCheckModel)}
-            </p>
-          )}
+          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && <p className="text-xs text-muted-foreground">{t("quality.checkWith")} {aiModelLabel(qualityCheckModel)}</p>}
           {confirm === mode ? (
-            <ConfirmBox
-              message={
-                quality
-                  ? "This check will use 1 additional creation from your available balance."
-                  : "Quality Check will use 1 creation from your available balance."
-              }
-              confirmLabel={quality ? "Check Again" : "Check"}
-              onConfirm={onCheck}
-              onCancel={() => setConfirm(null)}
-            />
+            <ConfirmBox message={quality ? t("quality.confirmAgain") : t("quality.confirmFirst")} confirmLabel={quality ? t("quality.checkAgain") : t("quality.check")} onConfirm={onCheck} onCancel={() => setConfirm(null)} />
           ) : (
-            <CostButton
-              label={quality ? "Check Again · −1 creation" : "Check -1 creation"}
-              busy={false}
-              busyLabel=""
-              disabled={modelAccessLoading || modelAccessUnavailable}
-              onClick={() => setConfirm(mode)}
-            />
+            <CostButton label={quality ? t("quality.checkAgainCost") : t("quality.checkCost")} busy={false} busyLabel="" disabled={modelAccessLoading || modelAccessUnavailable} onClick={() => setConfirm(mode)} />
           )}
           {checkError && <p className="text-xs text-red-400">{checkError}</p>}
         </div>
@@ -789,64 +418,27 @@ function QualityPanel({
   );
 }
 
-/** Part 3 — collapsible, editable result section. Collapse is UI state only. */
-function ResultSection({
-  title,
-  value,
-  open,
-  onToggle,
-  onChange,
-  rows,
-}: {
-  title: string;
-  value: string;
-  open: boolean;
-  onToggle: () => void;
-  onChange: (v: string) => void;
-  rows: number;
-}) {
+function ResultSection({ title, value, open, onToggle, onChange, rows }: { title: string; value: string; open: boolean; onToggle: () => void; onChange: (v: string) => void; rows: number }) {
   return (
     <div className="glass rounded-2xl p-5">
       <div className="flex items-center gap-3">
-        <button
-          onClick={onToggle}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 text-accent transition-transform ${open ? "" : "-rotate-90"}`}
-          />
-          <h2 className="min-w-0 flex-1 truncate font-display text-sm font-semibold tracking-wide text-gradient-neon">
-            {title}
-          </h2>
-        </button>
+        <button onClick={onToggle} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 text-left"><ChevronDown className={`h-4 w-4 shrink-0 text-accent transition-transform ${open ? "" : "-rotate-90"}`} /><h2 className="min-w-0 flex-1 truncate font-display text-sm font-semibold tracking-wide text-gradient-neon">{title}</h2></button>
         <CopyButton value={value} />
       </div>
-      {open && (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={rows}
-          aria-label={title}
-          className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 font-sans text-sm text-foreground outline-none transition-shadow focus:border-primary/60"
-        />
-      )}
+      {open && <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} aria-label={title} className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 font-sans text-sm text-foreground outline-none transition-shadow focus:border-primary/60" />}
     </div>
   );
 }
 
 function GeneratePage() {
+  const { t } = useI18n();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  // Mode is UI state only — switching it never resets any generation input.
   const [advanced, setAdvanced] = useState(false);
-
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
   const [customGenre, setCustomGenre] = useState("");
-
   const [moods, setMoods] = useState<string[]>([]);
   const [customMood, setCustomMood] = useState("");
   const [instruments, setInstruments] = useState<string[]>([]);
@@ -855,19 +447,13 @@ function GeneratePage() {
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
-
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [result, setResult] = useState<{
-    title: string;
-    tags: string;
-    lyrics: string;
-    note: string;
-  } | null>(null);
+  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
@@ -875,52 +461,22 @@ function GeneratePage() {
   const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
   const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
   const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
-  // Manual quality check (never triggered automatically); costs 1 creation.
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"check" | "recheck" | null>(null);
-
-  // The original generation brief that produced the current result. It comes
-  // from the persisted job, so a check after a refresh still uses the real
-  // theme / genre / mood / language instead of whatever the form shows now.
   const [songContext, setSongContext] = useState<GenerationContext | null>(null);
-
-  // Authoritative "latest song" pointer used by every check, so a check always
-  // analyzes the current editable state (Apply / Undo + manual edits included).
   const resultRef = useRef(result);
   resultRef.current = result;
-
-  // Part 3 — collapsible result sections (UI state only, collapsed by default).
   const [open, setOpen] = useState({ title: false, tags: false, lyrics: false, note: false });
   const allOpen = open.title && open.tags && open.lyrics && open.note;
-  const toggleAll = () =>
-    setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
-
-  // Clear / reset confirmation (never consumes a creation).
+  const toggleAll = () => setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
   const [confirmClear, setConfirmClear] = useState(false);
-
-  // Deterministic Apply / Undo bookkeeping — no AI call is ever made here.
   const [applied, setApplied] = useState<Record<string, boolean>>({});
   const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
-  const setApplyError = (id: string, msg: string | null) =>
-    setApplyErrors((prev) => {
-      const next = { ...prev };
-      if (msg) next[id] = msg;
-      else delete next[id];
-      return next;
-    });
-
-  // Links quality-check usage to the originating generation in analytics.
+  const setApplyError = (id: string, msg: string | null) => setApplyErrors((prev) => { const next = { ...prev }; if (msg) next[id] = msg; else delete next[id]; return next; });
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
-
-  // ---------------------------------------------------------------------------
-  // Durable generation job. The browser never waits for the AI provider: it
-  // creates a job, gets an id back immediately, and polls. Backgrounding the
-  // tab, losing signal or refreshing can no longer break a generation.
-  // ---------------------------------------------------------------------------
   const [jobId, setJobId] = useState<string | null>(null);
-  /** Kept across retries so a resent Generate can never consume a 2nd creation. */
   const pendingKey = useRef<string | null>(null);
 
   function rememberJob(id: string | null) {
@@ -931,555 +487,167 @@ function GeneratePage() {
 
   function applyJob(job: GenerationJob) {
     if (job.status === "completed" && job.result) {
-      setResult(job.result);
-      setGenerationId(job.generationId);
-      setGenerationResultModel(job.model);
-      setSongContext(job.input);
-      setQuality(null);
-      setQualityCheckResultModel(null);
-      setOpen({ title: false, tags: false, lyrics: false, note: false });
-      setStatus(null);
-      setBusy(false);
-      setJobId(null);
-      rememberJob(null);
-      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      return;
+      setResult(job.result); setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return;
     }
-    if (job.status === "cancelled") {
-      setBusy(false);
-      setGenerationResultModel(null);
-      setStatus(null);
-      setJobId(null);
-      rememberJob(null);
-      return;
-    }
-    if (job.status === "failed") {
-      setStatus(job.error ?? "The generation failed. Please try again.");
-      setBusy(false);
-      setGenerationResultModel(null);
-      setJobId(null);
-      rememberJob(null);
-      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      return;
-    }
-    // pending / processing
-    rememberJob(job.jobId);
-    setJobId(job.jobId);
-    setBusy(true);
-    setStatus("Generating… this keeps running even if you leave or lose signal.");
+    if (job.status === "cancelled") { setBusy(false); setGenerationResultModel(null); setStatus(null); setJobId(null); rememberJob(null); return; }
+    if (job.status === "failed") { setStatus(job.error ?? t("generator.failed")); setBusy(false); setGenerationResultModel(null); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return; }
+    rememberJob(job.jobId); setJobId(job.jobId); setBusy(true); setStatus(t("generator.generating"));
   }
 
-  const { data: jobData, refetch: refetchJob } = useQuery({
-    queryKey: ["gen-job", jobId],
-    queryFn: () => getGenerationJob({ data: { jobId: jobId as string } }),
-    enabled: !!jobId,
-    refetchInterval: 2500,
-    refetchOnWindowFocus: true,
-    gcTime: 0,
-  });
-
-  useEffect(() => {
-    const job = jobData?.job;
-    if (!job || job.jobId !== jobId) return;
-    applyJob(job);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobData, jobId]);
-
-  // Recovery after a refresh, a crash, or a Generate whose response was lost.
+  const { data: jobData, refetch: refetchJob } = useQuery({ queryKey: ["gen-job", jobId], queryFn: () => getGenerationJob({ data: { jobId: jobId as string } }), enabled: !!jobId, refetchInterval: 2500, refetchOnWindowFocus: true, gcTime: 0 });
+  useEffect(() => { const job = jobData?.job; if (!job || job.jobId !== jobId) return; applyJob(job); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [jobData, jobId]);
   useEffect(() => {
     if (!user || jobId || result) return;
-    const stored =
-      typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
-    if (stored) {
-      setJobId(stored);
-      setBusy(true);
-      return;
-    }
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    if (stored) { setJobId(stored); setBusy(true); return; }
     let cancelled = false;
-    void getLatestGenerationJob()
-      .then((r) => {
-        const job = r.job;
-        if (cancelled || !job) return;
-        if (job.status === "pending" || job.status === "processing" || job.status === "completed") {
-          applyJob(job);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+    void getLatestGenerationJob().then((r) => { const job = r.job; if (cancelled || !job) return; if (job.status === "pending" || job.status === "processing" || job.status === "completed") applyJob(job); }).catch(() => undefined);
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, jobId, result]);
 
-  // ---------------------------------------------------------------------------
-  // Durable Quality Check. As with generation, the browser only starts/polls a
-  // persisted action. Provider execution belongs to the database-owned runner.
-  // ---------------------------------------------------------------------------
   const [qualityActionId, setQualityActionId] = useState<string | null>(null);
-  /** Reused only when the short admission response is lost before we see it. */
   const pendingQualityKey = useRef<string | null>(null);
-
-  function rememberQualityJob(id: string | null) {
-    if (typeof window === "undefined") return;
-    if (id) window.localStorage.setItem(QUALITY_JOB_STORAGE_KEY, id);
-    else window.localStorage.removeItem(QUALITY_JOB_STORAGE_KEY);
-  }
-
+  function rememberQualityJob(id: string | null) { if (typeof window === "undefined") return; if (id) window.localStorage.setItem(QUALITY_JOB_STORAGE_KEY, id); else window.localStorage.removeItem(QUALITY_JOB_STORAGE_KEY); }
   function applyQualityJob(job: QualityCheckJob) {
     if (job.status === "completed") {
-      if (job.qualityReport) {
-        setQuality(job.qualityReport);
-        setQualityCheckResultModel(job.model);
-        setApplied({});
-        setApplyErrors({});
-        setCheckError(null);
-      } else {
-        setCheckError("The completed quality check was invalid. Please try again.");
-      }
-      setChecking(false);
-      setQualityActionId(null);
-      rememberQualityJob(null);
-      pendingQualityKey.current = null;
-      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      return;
+      if (job.qualityReport) { setQuality(job.qualityReport); setQualityCheckResultModel(job.model); setApplied({}); setApplyErrors({}); setCheckError(null); } else setCheckError(t("quality.invalid"));
+      setChecking(false); setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return;
     }
-    if (job.status === "failed") {
-      setCheckError(job.error ?? "Quality check unavailable. Please try again.");
-      setChecking(false);
-      setQualityActionId(null);
-      rememberQualityJob(null);
-      pendingQualityKey.current = null;
-      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      return;
-    }
-    rememberQualityJob(job.actionId);
-    setQualityActionId(job.actionId);
-    setChecking(true);
-    setCheckError(null);
+    if (job.status === "failed") { setCheckError(job.error ?? t("quality.unavailable")); setChecking(false); setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return; }
+    rememberQualityJob(job.actionId); setQualityActionId(job.actionId); setChecking(true); setCheckError(null);
   }
 
-  const { data: qualityJobData, refetch: refetchQualityJob } = useQuery({
-    queryKey: ["quality-job", qualityActionId],
-    queryFn: () => getQualityCheckJob({ data: { actionId: qualityActionId as string } }),
-    enabled: !!qualityActionId,
-    refetchInterval: 2500,
-    refetchOnWindowFocus: true,
-    gcTime: 0,
-  });
-
-  useEffect(() => {
-    if (!qualityActionId || !qualityJobData) return;
-    if (!qualityJobData.job) {
-      setQualityActionId(null);
-      setChecking(false);
-      rememberQualityJob(null);
-      return;
-    }
-    if (qualityJobData.job.actionId !== qualityActionId) return;
-    applyQualityJob(qualityJobData.job);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qualityJobData, qualityActionId]);
-
-  // Recover a QC after refresh or after the browser missed the admission/result
-  // response while the app was backgrounded. Completed reports are restored too.
+  const { data: qualityJobData, refetch: refetchQualityJob } = useQuery({ queryKey: ["quality-job", qualityActionId], queryFn: () => getQualityCheckJob({ data: { actionId: qualityActionId as string } }), enabled: !!qualityActionId, refetchInterval: 2500, refetchOnWindowFocus: true, gcTime: 0 });
+  useEffect(() => { if (!qualityActionId || !qualityJobData) return; if (!qualityJobData.job) { setQualityActionId(null); setChecking(false); rememberQualityJob(null); return; } if (qualityJobData.job.actionId !== qualityActionId) return; applyQualityJob(qualityJobData.job); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [qualityJobData, qualityActionId]);
   useEffect(() => {
     if (!user || !result || qualityActionId || quality) return;
-    const stored =
-      typeof window !== "undefined" ? window.localStorage.getItem(QUALITY_JOB_STORAGE_KEY) : null;
-    if (stored) {
-      setQualityActionId(stored);
-      setChecking(true);
-      return;
-    }
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(QUALITY_JOB_STORAGE_KEY) : null;
+    if (stored) { setQualityActionId(stored); setChecking(true); return; }
     if (!generationId) return;
-
     let cancelled = false;
-    void getLatestQualityCheckJob({ data: { generationId } })
-      .then((r) => {
-        if (cancelled || !r.job) return;
-        applyQualityJob(r.job);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+    void getLatestQualityCheckJob({ data: { generationId } }).then((r) => { if (cancelled || !r.job) return; applyQualityJob(r.job); }).catch(() => undefined);
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, result, generationId, qualityActionId, quality]);
 
-  // Returning to the tab or regaining connectivity re-syncs both durable jobs.
   useEffect(() => {
-    const sync = () => {
-      if (document.visibilityState !== "visible") return;
-      if (jobId) void refetchJob();
-      if (qualityActionId) void refetchQualityJob();
-    };
-    document.addEventListener("visibilitychange", sync);
-    window.addEventListener("online", sync);
-    return () => {
-      document.removeEventListener("visibilitychange", sync);
-      window.removeEventListener("online", sync);
-    };
+    const sync = () => { if (document.visibilityState !== "visible") return; if (jobId) void refetchJob(); if (qualityActionId) void refetchQualityJob(); };
+    document.addEventListener("visibilitychange", sync); window.addEventListener("online", sync);
+    return () => { document.removeEventListener("visibilitychange", sync); window.removeEventListener("online", sync); };
   }, [jobId, qualityActionId, refetchJob, refetchQualityJob]);
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth", replace: true });
-  }, [loading, user, navigate]);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const { data: usage } = useQuery({
-    queryKey: ["ai-usage"],
-    queryFn: () => getGenerationUsage(),
-    enabled: !!user,
-  });
-
-  const {
-    data: aiModelAccess,
-    isLoading: aiModelAccessLoading,
-    error: aiModelAccessError,
-  } = useQuery({
-    queryKey: ["my-ai-model-access"],
-    queryFn: () => getCurrentUserAiModelAccess(),
-    enabled: !!user,
-  });
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth", replace: true }); }, [loading, user, navigate]);
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id); }, []);
+  const { data: usage } = useQuery({ queryKey: ["ai-usage"], queryFn: () => getGenerationUsage(), enabled: !!user });
+  const { data: aiModelAccess, isLoading: aiModelAccessLoading, error: aiModelAccessError } = useQuery({ queryKey: ["my-ai-model-access"], queryFn: () => getCurrentUserAiModelAccess(), enabled: !!user });
 
   useEffect(() => {
     if (!aiModelAccess) return;
-    if (
-      !generationModelChosen ||
-      !aiModelAccess.availableModels.includes(
-        generationModel as (typeof aiModelAccess.availableModels)[number],
-      )
-    ) {
-      setGenerationModel(aiModelAccess.defaultModel);
-    }
-    if (
-      !qualityCheckModelChosen ||
-      !aiModelAccess.availableModels.includes(
-        qualityCheckModel as (typeof aiModelAccess.availableModels)[number],
-      )
-    ) {
-      setQualityCheckModel(aiModelAccess.defaultModel);
-    }
-  }, [
-    aiModelAccess,
-    generationModel,
-    generationModelChosen,
-    qualityCheckModel,
-    qualityCheckModelChosen,
-  ]);
+    if (!generationModelChosen || !aiModelAccess.availableModels.includes(generationModel as (typeof aiModelAccess.availableModels)[number])) setGenerationModel(aiModelAccess.defaultModel);
+    if (!qualityCheckModelChosen || !aiModelAccess.availableModels.includes(qualityCheckModel as (typeof aiModelAccess.availableModels)[number])) setQualityCheckModel(aiModelAccess.defaultModel);
+  }, [aiModelAccess, generationModel, generationModelChosen, qualityCheckModel, qualityCheckModelChosen]);
 
   const modelAccessLoading = aiModelAccessLoading || (!aiModelAccess && !aiModelAccessError);
   const modelAccessReady = !!aiModelAccess;
-  const availableModels = modelAccessReady
-    ? AI_MODELS.filter((model) => aiModelAccess.availableModels.includes(model.id))
-    : [];
-  const modelAccessUnavailable =
-    (!!aiModelAccessError || modelAccessReady) && availableModels.length === 0;
+  const availableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.availableModels.includes(model.id)) : [];
+  const modelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && availableModels.length === 0;
   const showGenerationModelSelector = availableModels.length > 1;
   const showQualityCheckModelSelector = availableModels.length > 1;
-
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
-  const minutesLeft = useMemo(() => {
-    if (!usage?.resetAt) return 0;
-    return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000));
-  }, [usage?.resetAt, now]);
-
+  const minutesLeft = useMemo(() => { if (!usage?.resetAt) return 0; return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000)); }, [usage?.resetAt, now]);
   const blocked = remaining <= 0;
 
-  // Resolve the effective value: the typed custom text when "Custom…" is chosen.
   const customGenreSelected = genres.includes(CUSTOM);
-  const styleList = mergeValues(
-    genres.filter((g) => g !== CUSTOM),
-    customGenreSelected ? customGenre : "",
-  );
+  const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), customGenreSelected ? customGenre : "");
   const baseGenre = styleList.join(", ");
-
   const instrumentList = mergeValues(instruments, customInstruments);
   const effectiveBpm = bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
   const bpmNumber = Number(effectiveBpm);
-  const bpmInvalid =
-    !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
-
-  // Advanced-only creative constraints ride along inside `genre` (the only field
-  // with room, 400 chars) but stay clearly labelled so they are never read as genres.
-  const direction = [
-    instrumentList.length ? `Preferred instruments: ${instrumentList.join(", ")}.` : "",
-    !bpmInvalid && effectiveBpm ? `Target tempo: ${effectiveBpm} BPM.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const effectiveGenre = direction
-    ? `${baseGenre} — Additional musical direction: ${direction}`
-    : baseGenre;
+  const bpmInvalid = !!effectiveBpm && (!/^\d{1,3}$/.test(effectiveBpm) || bpmNumber < 40 || bpmNumber > 260);
+  const direction = [instrumentList.length ? `Preferred instruments: ${instrumentList.join(", ")}.` : "", !bpmInvalid && effectiveBpm ? `Target tempo: ${effectiveBpm} BPM.` : ""].filter(Boolean).join(" ");
+  const effectiveGenre = direction ? `${baseGenre} — Additional musical direction: ${direction}` : baseGenre;
   const genreTooLong = effectiveGenre.length > 400;
-
-  // Mood must never be silently truncated: keep whole values or ask the user to trim.
   const useCustomMood = advanced || moods[0] === CUSTOM;
-  const moodList = mergeValues(
-    moods.filter((m) => m !== CUSTOM),
-    useCustomMood ? customMood : "",
-  );
+  const moodList = mergeValues(moods.filter((m) => m !== CUSTOM), useCustomMood ? customMood : "");
   const effectiveMood = moodList.join(", ");
   const moodTooLong = effectiveMood.length > 60;
-
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
-  const validationError = bpmInvalid
-    ? "BPM must be a whole number between 40 and 260."
-    : moodTooLong
-      ? `Your mood selection is ${effectiveMood.length} characters — the limit is 60. Please remove a mood or shorten the custom mood.`
-      : genreTooLong
-        ? "Too many styles / instruments selected. Please remove a few."
-        : null;
-  const ready =
-    theme.trim().length >= 3 &&
-    !!baseGenre &&
-    !!effectiveMood &&
-    !!effectiveLanguage &&
-    !validationError;
+  const validationError = bpmInvalid ? t("generator.bpmError") : moodTooLong ? t("generator.moodTooLong", { count: effectiveMood.length }) : genreTooLong ? t("generator.selectionTooLong") : null;
+  const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError;
 
-  // Basic mode edits the primary selection only; Advanced extras stay stored.
-  const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
-    setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
-  const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
-    setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+  const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
+  const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
     if (busy || jobId || checking || qualityActionId) return;
-    setBusy(true);
-    setStatus("Starting generation…");
-    setSaved(false);
-    setResult(null);
-    setQuality(null);
-    setGenerationResultModel(null);
-    setQualityCheckResultModel(null);
-    setSongContext(null);
-    setApplied({});
-    setApplyErrors({});
-
-    // Stable idempotency key: a retry after a dropped response reuses it, so the
-    // server returns the same job instead of consuming another creation.
-    const key = pendingKey.current ?? crypto.randomUUID();
-    pendingKey.current = key;
-
+    setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
+    const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
     try {
-      const res = await startGenerationJob({
-        data: {
-          idempotencyKey: key,
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
-          generationModel,
-          structure: structure.join(" → ").slice(0, 600),
-          production: production.trim().slice(0, 2000),
-          instructions: instructions.trim().slice(0, 2000),
-        },
-      });
+      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, generationModel, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.rateLimited || !res.job) {
-        setStatus("You've hit the hourly limit. Try again soon.");
-        setBusy(false);
-        pendingKey.current = null;
-        return;
-      }
-      pendingKey.current = null;
-      // Execution was already signalled by the database when the job row was
-      // created; the browser only polls from here on.
-      applyJob(res.job);
+      if (res.rateLimited || !res.job) { setStatus(t("generator.rateLimit")); setBusy(false); pendingKey.current = null; return; }
+      pendingKey.current = null; applyJob(res.job);
     } catch (err) {
-      // The job may already exist even though we never saw the response.
-      try {
-        const latest = await getLatestGenerationJob();
-        if (latest.job && latest.job.status !== "failed") {
-          pendingKey.current = null;
-          applyJob(latest.job);
-          return;
-        }
-      } catch {
-        /* still offline — keep the key so a retry reuses the same job */
-      }
-      setStatus(err instanceof Error ? err.message : "Generation failed");
-      setBusy(false);
+      try { const latest = await getLatestGenerationJob(); if (latest.job && latest.job.status !== "failed") { pendingKey.current = null; applyJob(latest.job); return; } } catch { /* still offline */ }
+      setStatus(err instanceof Error ? err.message : t("generator.failed")); setBusy(false);
     }
   };
 
-  // Manual: exactly one durable quality check per confirmed click.
-  // The current editable song is snapshotted at admission, then the provider
-  // call runs independently of the browser through the database-owned runner.
   const runCheck = async () => {
     if (checking || qualityActionId) return;
-    const target = resultRef.current;
-    if (!target) return;
-
-    const idempotencyKey = pendingQualityKey.current ?? crypto.randomUUID();
-    pendingQualityKey.current = idempotencyKey;
-    setConfirm(null);
-    setChecking(true);
-    setCheckError(null);
-
+    const target = resultRef.current; if (!target) return;
+    const idempotencyKey = pendingQualityKey.current ?? crypto.randomUUID(); pendingQualityKey.current = idempotencyKey; setConfirm(null); setChecking(true); setCheckError(null);
     try {
-      const res = await startQualityCheckJob({
-        data: {
-          theme: songContext?.theme?.trim() || theme.trim(),
-          genre: songContext?.genre || effectiveGenre,
-          mood: songContext?.mood || effectiveMood,
-          language: songContext?.language || effectiveLanguage,
-          structure: songContext?.structure ?? structure.join(" → ").slice(0, 600),
-          production: songContext?.production ?? production.trim().slice(0, 2000),
-          instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000),
-          result: { ...target },
-          idempotencyKey,
-          qualityCheckModel,
-          generationId,
-        },
-      });
-
-      if (res.rateLimited || !res.job) {
-        pendingQualityKey.current = null;
-        setChecking(false);
-        setCheckError("You've hit the hourly limit. Try again soon.");
-        return;
-      }
-
-      pendingQualityKey.current = null;
-      applyQualityJob(res.job);
+      const res = await startQualityCheckJob({ data: { theme: songContext?.theme?.trim() || theme.trim(), genre: songContext?.genre || effectiveGenre, mood: songContext?.mood || effectiveMood, language: songContext?.language || effectiveLanguage, structure: songContext?.structure ?? structure.join(" → ").slice(0, 600), production: songContext?.production ?? production.trim().slice(0, 2000), instructions: songContext?.instructions ?? instructions.trim().slice(0, 2000), result: { ...target }, idempotencyKey, qualityCheckModel, generationId } });
+      if (res.rateLimited || !res.job) { pendingQualityKey.current = null; setChecking(false); setCheckError(t("generator.rateLimit")); return; }
+      pendingQualityKey.current = null; applyQualityJob(res.job);
     } catch (err) {
-      // The action may have been admitted even though the short start response
-      // was lost. Recover it by originating generation before showing an error.
-      if (generationId) {
-        try {
-          const latest = await getLatestQualityCheckJob({ data: { generationId } });
-          if (latest.job) {
-            pendingQualityKey.current = null;
-            applyQualityJob(latest.job);
-            return;
-          }
-        } catch {
-          /* offline: keep the idempotency key so a manual retry is safe */
-        }
-      }
-      setChecking(false);
-      setCheckError(err instanceof Error ? err.message : "Check failed");
+      if (generationId) { try { const latest = await getLatestQualityCheckJob({ data: { generationId } }); if (latest.job) { pendingQualityKey.current = null; applyQualityJob(latest.job); return; } } catch { /* offline */ } }
+      setChecking(false); setCheckError(err instanceof Error ? err.message : t("quality.unavailable"));
     }
   };
 
   const save = async () => {
     if (!result) return;
-    try {
-      await savePromptToLibrary({
-        data: {
-          theme: theme.trim(),
-          genre: effectiveGenre,
-          mood: effectiveMood,
-          language: effectiveLanguage,
-          ...result,
-        },
-      });
-      setSaved(true);
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Could not save");
-    }
+    try { await savePromptToLibrary({ data: { theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result } }); setSaved(true); }
+    catch (err) { setStatus(err instanceof Error ? err.message : t("auth.somethingWrong")); }
   };
 
-  // ── Deterministic Apply / Undo. No AI provider request is made here. ──
-  // Corrections and suggestions are applied to the single editable result.
   type Song = { title: string; tags: string; lyrics: string; note: string };
   const makeApplyState = (target: Song | null, setTarget: (next: Song) => void): ApplyState => ({
     applied,
     errors: applyErrors,
     onApplyCorrection: (id, c) => {
       if (!target) return;
-      const res =
-        c.field === "lyrics"
-          ? applyLyricCorrection(target.lyrics, c)
-          : applyFieldCorrection(target[c.field], c);
+      const res = c.field === "lyrics" ? applyLyricCorrection(target.lyrics, c) : applyFieldCorrection(target[c.field], c);
       if (!res.ok) return setApplyError(id, res.error);
-      setTarget({ ...target, [c.field]: res.text });
-      setApplyError(id, null);
-      setApplied((p) => ({ ...p, [id]: true }));
+      setTarget({ ...target, [c.field]: res.text }); setApplyError(id, null); setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoCorrection: (id, c) => {
       if (!target) return;
-      const res =
-        c.field === "lyrics"
-          ? undoLyricCorrection(target.lyrics, c)
-          : undoFieldCorrection(target[c.field], c);
+      const res = c.field === "lyrics" ? undoLyricCorrection(target.lyrics, c) : undoFieldCorrection(target[c.field], c);
       if (!res.ok) return setApplyError(id, res.error);
-      setTarget({ ...target, [c.field]: res.text });
-      setApplyError(id, null);
-      setApplied((p) => ({ ...p, [id]: false }));
+      setTarget({ ...target, [c.field]: res.text }); setApplyError(id, null); setApplied((p) => ({ ...p, [id]: false }));
     },
     onApplySuggestion: (id, s) => {
       if (!target) return;
-      if (s.actionType === "add_to_music_style") {
-        const res = addToMusicStyle(target.tags, s.value);
-        if (!res.ok) return setApplyError(id, res.error);
-        setTarget({ ...target, tags: res.text });
-      } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = applyVocalArrangement(target.lyrics, s.arrangement);
-        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
-        // Music Style is appended to, never replaced; failure to append must not
-        // leave the lyrics half-modified, so it is applied together.
-        const styleRes = s.value ? addToMusicStyle(target.tags, s.value) : null;
-        setTarget({
-          ...target,
-          lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : target.tags,
-        });
-      } else {
-        return;
-      }
-      setApplyError(id, null);
-      setApplied((p) => ({ ...p, [id]: true }));
+      if (s.actionType === "add_to_music_style") { const res = addToMusicStyle(target.tags, s.value); if (!res.ok) return setApplyError(id, res.error); setTarget({ ...target, tags: res.text }); }
+      else if (s.actionType === "vocal_arrangement") { const lyricsRes = applyVocalArrangement(target.lyrics, s.arrangement); if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error); const styleRes = s.value ? addToMusicStyle(target.tags, s.value) : null; setTarget({ ...target, lyrics: lyricsRes.text, tags: styleRes?.ok ? styleRes.text : target.tags }); }
+      else return;
+      setApplyError(id, null); setApplied((p) => ({ ...p, [id]: true }));
     },
     onUndoSuggestion: (id, s) => {
       if (!target) return;
-      if (s.actionType === "add_to_music_style") {
-        const res = removeFromMusicStyle(target.tags, s.value);
-        if (!res.ok) return setApplyError(id, res.error);
-        setTarget({ ...target, tags: res.text });
-      } else if (s.actionType === "vocal_arrangement") {
-        const lyricsRes = undoVocalArrangement(target.lyrics, s.arrangement);
-        if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error);
-        const styleRes = s.value ? removeFromMusicStyle(target.tags, s.value) : null;
-        setTarget({
-          ...target,
-          lyrics: lyricsRes.text,
-          tags: styleRes?.ok ? styleRes.text : target.tags,
-        });
-      } else {
-        return;
-      }
-      setApplyError(id, null);
-      setApplied((p) => ({ ...p, [id]: false }));
+      if (s.actionType === "add_to_music_style") { const res = removeFromMusicStyle(target.tags, s.value); if (!res.ok) return setApplyError(id, res.error); setTarget({ ...target, tags: res.text }); }
+      else if (s.actionType === "vocal_arrangement") { const lyricsRes = undoVocalArrangement(target.lyrics, s.arrangement); if (!lyricsRes.ok) return setApplyError(id, lyricsRes.error); const styleRes = s.value ? removeFromMusicStyle(target.tags, s.value) : null; setTarget({ ...target, lyrics: lyricsRes.text, tags: styleRes?.ok ? styleRes.text : target.tags }); }
+      else return;
+      setApplyError(id, null); setApplied((p) => ({ ...p, [id]: false }));
     },
   });
-
   const applyState = makeApplyState(result, setResult);
 
-  // ── Clear / reset. Purely local state; never calls the AI or costs a creation. ──
-  const canClear =
-    !!theme.trim() ||
-    genres.length > 0 ||
-    !!customGenre.trim() ||
-    moods.length > 0 ||
-    !!customMood.trim() ||
-    !!language ||
-    !!customLanguage.trim() ||
-    instruments.length > 0 ||
-    !!customInstruments.trim() ||
-    bpm !== "Auto" ||
-    !!customBpm.trim() ||
-    structure.length > 0 ||
-    !!production.trim() ||
-    !!instructions.trim() ||
-    !!result ||
-    !!quality;
-
+  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || !!result || !!quality;
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
@@ -1487,594 +655,117 @@ function GeneratePage() {
     if (clearing || checking) return;
     setClearError(null);
     let dismissedWhileRunning = false;
-    // Forget any running generation server-side too, so it is never restored
-    // on the next visit. No creation is consumed or refunded by this.
     if (jobId) {
       setClearing(true);
-      try {
-        const { outcome } = await dismissGenerationJob({ data: { jobId } });
-        dismissedWhileRunning = outcome === "DISMISSED";
-      } catch {
-        // Keep inputs and recovery state so a failed dismissal can be retried.
-        setClearError("The generation could not be dismissed. Please try again.");
-        return;
-      } finally {
-        setClearing(false);
-      }
+      try { const { outcome } = await dismissGenerationJob({ data: { jobId } }); dismissedWhileRunning = outcome === "DISMISSED"; }
+      catch { setClearError(t("generator.dismissFailed")); return; }
+      finally { setClearing(false); }
     }
-    setTheme("");
-    setGenres([]);
-    setCustomGenre("");
-    setMoods([]);
-    setCustomMood("");
-    setLanguage("");
-    setCustomLanguage("");
-    setInstruments([]);
-    setCustomInstruments("");
-    setStructure([]);
-    setProduction("");
-    setInstructions("");
-
-    setBpm("Auto");
-    setCustomBpm("");
-    setResult(null);
-    setGenerationId(null);
-    setGenerationResultModel(null);
-    setQuality(null);
-    setQualityCheckResultModel(null);
-    setSongContext(null);
-    setJobId(null);
-    rememberJob(null);
-    pendingKey.current = null;
-    setQualityActionId(null);
-    rememberQualityJob(null);
-    pendingQualityKey.current = null;
-    setBusy(false);
-    setChecking(false);
-    setCheckError(null);
-    setStatus(null);
-    setSaved(false);
-    setApplied({});
-    setApplyErrors({});
-    setConfirm(null);
-    setConfirmClear(false);
-    setOpen({ title: false, tags: false, lyrics: false, note: false });
-    if (dismissedWhileRunning) {
-      setStatus(
-        "Generator cleared. The generation already started and may still finish in the background.",
-      );
-    }
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
+  const styleLabel = (value: string) => translatedOption(advanced ? ADVANCED_MUSIC_STYLES : BASIC_MUSIC_STYLES, value, t);
+  const moodLabel = (value: string) => translatedOption(advanced ? ADVANCED_MOODS : BASIC_MOODS, value, t);
+  const instrumentLabel = (value: string) => translatedOption(INSTRUMENT_OPTIONS, value, t);
+  const languageLabel = (value: string) => translatedOption(SONG_LANGUAGES, value, t);
+  const structureLabel = (value: string) => translatedOption(SONG_STRUCTURE_TAGS, value, t);
+
   return (
-    <AppShell
-      header={
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-accent" />
-          <span className="font-display text-lg font-bold">AI Prompt Studio</span>
-        </div>
-      }
-    >
+    <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
         <div className="mx-auto max-w-3xl">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to the feed
-          </Link>
-
+          <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {t("generator.backToFeed")}</Link>
           <div className="mt-4 flex items-center gap-3">
-            <img
-              src={logoAsset.url}
-              alt="PromptBeats logo"
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-xl glow-neon"
-            />
-            <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold tracking-tight">
-                AI Prompt &amp; Lyrics Generator
-              </h1>
-              <p className="truncate text-xs text-muted-foreground">
-                Optimized for Suno &amp; Udio
-              </p>
-            </div>
+            <img src={logoAsset.url} alt="PromptBeats logo" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl glow-neon" />
+            <div className="min-w-0"><h1 className="font-display text-2xl font-bold tracking-tight">{t("generator.title")}</h1><p className="truncate text-xs text-muted-foreground">{t("generator.optimizedFor")}</p></div>
           </div>
 
           <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2" role="group" aria-label="Generator mode">
-                {[
-                  { key: false, label: "Basic" },
-                  { key: true, label: "Advanced" },
-                ].map((m) => (
-                  <button
-                    key={m.label}
-                    type="button"
-                    aria-pressed={advanced === m.key}
-                    onClick={() => setAdvanced(m.key)}
-                    className={
-                      advanced === m.key
-                        ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
-                        : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                    }
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2" role="group" aria-label={t("generator.mode")}>
+                {[{ key: false, label: t("generator.basic") }, { key: true, label: t("generator.advanced") }].map((mode) => <button key={String(mode.key)} type="button" aria-pressed={advanced === mode.key} onClick={() => setAdvanced(mode.key)} className={advanced === mode.key ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>)}
               </div>
-              {canClear && (
-                <button
-                  onClick={() => setConfirmClear(true)}
-                  disabled={busy || checking}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Clear
-                </button>
-              )}
+              {canClear && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
             </div>
 
             <div>
-              <textarea
-                value={theme}
-                onChange={(e) => setTheme(e.target.value.slice(0, 300))}
-                maxLength={300}
-                rows={3}
-                placeholder="Your theme or topic — e.g. a late-night drive through a neon city after a breakup"
-                aria-label="Theme or topic"
-                className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
-              />
-              <p className="mt-1 text-right text-[11px] text-muted-foreground">
-                {theme.length}/300
-              </p>
+              <textarea value={theme} onChange={(e) => setTheme(e.target.value.slice(0, 300))} maxLength={300} rows={3} placeholder={t("generator.themePlaceholder")} aria-label={t("generator.theme")} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
+              <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/300</p>
             </div>
 
             <div>
-              {!advanced && <FieldLabel>Music Style</FieldLabel>}
-              {advanced ? (
-                <>
-                  <SectionHeader title="Music Style" hint="Pick as many as you like" />
-                  <ChipGroup
-                    label="Music style"
-                    options={ADVANCED_STYLES}
-                    selected={genres}
-                    onToggle={toggleValue(setGenres)}
-                  />
-                </>
-              ) : (
-                <select
-                  value={genres[0] ?? ""}
-                  onChange={(e) => pickPrimary(setGenres)(e.target.value)}
-                  aria-label="Music Style"
-                  className={fieldClass}
-                >
-                  <option value="" disabled className="bg-[#0a0a0c]">
-                    Select Music Style
-                  </option>
-                  {GENRE_OPTIONS.map((g) => (
-                    <option key={g} value={g} className="bg-[#0a0a0c]">
-                      {g}
-                    </option>
-                  ))}
+              {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES} selected={genres} onToggle={toggleValue(setGenres)} labelFor={(value) => value === CUSTOM ? t("generator.option.custom") : styleLabel(value)} /></> : (
+                <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
+                  <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
+                  {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
                 </select>
               )}
             </div>
 
-            {customGenreSelected && (
-              <input
-                value={customGenre}
-                onChange={(e) => setCustomGenre(e.target.value)}
-                placeholder="Type your own style tags (merged with the selected genres)"
-                aria-label="Custom music style"
-                className={fieldClass}
-              />
-            )}
+            {customGenreSelected && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} className={fieldClass} />}
 
-            {advanced ? (
-              <>
-                <div>
-                  <SectionHeader title="Mood" hint="Pick as many as you like" />
-                  <ChipGroup
-                    label="Mood"
-                    options={ADVANCED_MOODS}
-                    selected={moods}
-                    onToggle={toggleValue(setMoods)}
-                  />
-                  <input
-                    value={customMood}
-                    onChange={(e) => setCustomMood(e.target.value)}
-                    placeholder="Custom mood (added to the moods above)"
-                    aria-label="Custom mood"
-                    className={fieldClass + " mt-2"}
-                  />
-                </div>
-
-                <div>
-                  <SectionHeader title="Instruments" hint="Pick as many as you like" />
-                  <ChipGroup
-                    label="Instruments"
-                    options={INSTRUMENTS}
-                    selected={instruments}
-                    onToggle={toggleValue(setInstruments)}
-                  />
-                  <input
-                    value={customInstruments}
-                    onChange={(e) => setCustomInstruments(e.target.value)}
-                    placeholder="Custom instruments, comma separated (added to the ones above)"
-                    aria-label="Custom instruments"
-                    className={fieldClass + " mt-2"}
-                  />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <SectionHeader title="BPM" hint="Choose one" />
-                    <select
-                      value={bpm}
-                      onChange={(e) => setBpm(e.target.value)}
-                      aria-label="BPM"
-                      className={fieldClass}
-                    >
-                      {BPM_OPTIONS.map((b) => (
-                        <option key={b} value={b} className="bg-[#0a0a0c]">
-                          {b}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {bpm === "Custom" && (
-                    <div>
-                      <FieldLabel>Custom BPM (40–260)</FieldLabel>
-                      <input
-                        type="number"
-                        min={40}
-                        max={260}
-                        value={customBpm}
-                        onChange={(e) => setCustomBpm(e.target.value)}
-                        placeholder="e.g. 128"
-                        aria-label="Custom BPM"
-                        className={fieldClass}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <SectionHeader title="Song Structure" hint="Tap to build the order" />
-                  {structure.length > 0 && (
-                    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
-                      {structure.map((s, i) => (
-                        <span
-                          key={`${s}-${i}`}
-                          className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent"
-                        >
-                          {s}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${s} at position ${i + 1}`}
-                            onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))}
-                            className="text-accent/70 transition-colors hover:text-accent"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setStructure([])}
-                        className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
-                      >
-                        Clear structure
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {STRUCTURE_TAGS.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setStructure((p) => [...p, s])}
-                        className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <SectionHeader title="Production Style" hint="Optional" />
-                  <textarea
-                    value={production}
-                    onChange={(e) => setProduction(e.target.value)}
-                    rows={3}
-                    placeholder="Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…"
-                    aria-label="Production style"
-                    className={fieldClass + " h-auto resize-y py-3"}
-                  />
-                </div>
-
-                <div>
-                  <SectionHeader title="Additional Instructions" hint="Optional" />
-                  <textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    rows={3}
-                    placeholder="Any other creative requirements for this song…"
-                    aria-label="Additional instructions"
-                    className={fieldClass + " h-auto resize-y py-3"}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Language</FieldLabel>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    aria-label="Language"
-                    className={fieldClass}
-                  >
-                    <option value="" disabled className="bg-[#0a0a0c]">
-                      Select Language (e.g., English, Greek...)
-                    </option>
-                    {LANGUAGE_OPTIONS.map((l) => (
-                      <option key={l} value={l} className="bg-[#0a0a0c]">
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
+            {advanced ? <>
+              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass + " mt-2"} /></div>
+              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} className={fieldClass + " mt-2"} /></div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <select
-                  value={moods[0] ?? ""}
-                  onChange={(e) => pickPrimary(setMoods)(e.target.value)}
-                  aria-label="Mood"
-                  className={fieldClass}
-                >
-                  <option value="" disabled className="bg-[#0a0a0c]">
-                    Select Mood / Vibe (e.g., Energetic, Chill...)
-                  </option>
-                  {MOOD_OPTIONS.map((m) => (
-                    <option key={m} value={m} className="bg-[#0a0a0c]">
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  aria-label="Language"
-                  className={fieldClass}
-                >
-                  <option value="" disabled className="bg-[#0a0a0c]">
-                    Select Language (e.g., English, Greek...)
-                  </option>
-                  {LANGUAGE_OPTIONS.map((l) => (
-                    <option key={l} value={l} className="bg-[#0a0a0c]">
-                      {l}
-                    </option>
-                  ))}
-                </select>
+                <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
+                {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
+              </div>
+              <div>
+                <SectionHeader title={t("generator.songStructure")} hint={t("generator.structureHint")} />
+                {structure.length > 0 && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">{structure.map((item, i) => <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">{structureLabel(item)}<button type="button" aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })} onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))} className="text-accent/70 transition-colors hover:text-accent">×</button></span>)}<button type="button" onClick={() => setStructure([])} className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive">{t("generator.clearStructure")}</button></div>}
+                <div className="flex flex-wrap gap-2">{STRUCTURE_TAGS.map((item) => <button key={item} type="button" onClick={() => setStructure((p) => [...p, item])} className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{structureLabel(item)}</button>)}</div>
+              </div>
+              <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
+              <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
+              <div><FieldLabel>{t("generator.language")}</FieldLabel><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select></div>
+            </> : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select value={moods[0] ?? ""} onChange={(e) => pickPrimary(setMoods)(e.target.value)} aria-label={t("generator.mood")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMood")}</option>{MOOD_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MOODS, item, t)}</option>)}</select>
+                <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select>
               </div>
             )}
 
-            {!advanced && moods[0] === CUSTOM && (
-              <input
-                value={customMood}
-                onChange={(e) => setCustomMood(e.target.value)}
-                placeholder="Type your own mood / vibe"
-                aria-label="Custom mood"
-                className={fieldClass}
-              />
-            )}
-            {language === CUSTOM && (
-              <input
-                value={customLanguage}
-                onChange={(e) => setCustomLanguage(e.target.value)}
-                placeholder="Type your own language"
-                aria-label="Custom language"
-                className={fieldClass}
-              />
-            )}
-
+            {!advanced && moods[0] === CUSTOM && <input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodBasic")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass} />}
+            {language === CUSTOM && <input value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)} placeholder={t("generator.customLanguagePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.language")}`} className={fieldClass} />}
             {validationError && <p className="text-xs text-red-400">{validationError}</p>}
 
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
-                <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>Generate with:</span>
-                  <select
-                    aria-label="Generation model"
-                    value={generationModel}
-                    onChange={(e) => {
-                      setGenerationModel(e.target.value);
-                      setGenerationModelChosen(true);
-                    }}
-                    className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
-                  >
-                    {availableModels.map((m) => (
-                      <option key={m.id} value={m.id} className="bg-[#0a0a0c]">
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : modelAccessLoading ? (
-                <p className="text-xs text-muted-foreground">Loading available models…</p>
-              ) : modelAccessUnavailable ? (
-                <p className="text-xs text-red-400">
-                  No AI model is currently available for generation.
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Generation model: {aiModelLabel(generationModel)}
-                </p>
-              )}
+                <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("generator.generateWith")}</span><select aria-label={t("generator.aiModel")} value={generationModel} onChange={(e) => { setGenerationModel(e.target.value); setGenerationModelChosen(true); }} className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{availableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
+              ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : modelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: aiModelLabel(generationModel) })}</p>}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <button
-                  onClick={generate}
-                  disabled={
-                    busy ||
-                    checking ||
-                    blocked ||
-                    !ready ||
-                    modelAccessLoading ||
-                    modelAccessUnavailable
-                  }
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
-                >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="h-4 w-4" />
-                  )}
-                  Generate with AI
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {blocked
-                    ? `Try again in ${minutesLeft}m`
-                    : `Generations remaining: ${remaining}/${HOURLY_LIMIT}`}
-                </span>
+                <button onClick={generate} disabled={busy || checking || blocked || !ready || modelAccessLoading || modelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
+                <span className="text-xs text-muted-foreground">{blocked ? t("generator.tryAgainMinutes", { minutes: minutesLeft }) : t("generator.generationsRemaining", { remaining, limit: HOURLY_LIMIT })}</span>
               </div>
             </div>
 
-            {confirmClear &&
-              createPortal(
-                <div
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="clear-title"
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-                  onClick={() => setConfirmClear(false)}
-                >
-                  <div
-                    className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div>
-                      <h3 id="clear-title" className="text-base font-semibold text-foreground">
-                        Clear Generator?
-                      </h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        This will clear your current inputs and generated results. This action
-                        cannot be undone.
-                      </p>
-                    </div>
-                    {clearError && (
-                      <p role="alert" className="text-xs text-red-400">
-                        {clearError}
-                      </p>
-                    )}
-                    <div className="flex flex-row items-center justify-end gap-3">
-                      <button
-                        onClick={() => setConfirmClear(false)}
-                        disabled={clearing}
-                        className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={clearAll}
-                        disabled={clearing}
-                        className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500"
-                      >
-                        {clearing ? "Clearing…" : "Confirm Clear"}
-                      </button>
-                    </div>
-                  </div>
-                </div>,
-                document.body,
-              )}
-
+            {confirmClear && createPortal(
+              <div role="dialog" aria-modal="true" aria-labelledby="clear-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setConfirmClear(false)}>
+                <div className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div><h3 id="clear-title" className="text-base font-semibold text-foreground">{t("generator.clearTitle")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("generator.clearBody")}</p></div>
+                  {clearError && <p role="alert" className="text-xs text-red-400">{clearError}</p>}
+                  <div className="flex flex-row items-center justify-end gap-3"><button onClick={() => setConfirmClear(false)} disabled={clearing} className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5">{t("common.cancel")}</button><button onClick={clearAll} disabled={clearing} className="rounded-xl bg-red-500/80 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-500">{clearing ? t("generator.clearing") : t("generator.confirmClear")}</button></div>
+                </div>
+              </div>, document.body,
+            )}
             {status && <p className="text-xs text-accent">{status}</p>}
           </div>
 
-          {busy && (
-            <div className="mt-6 space-y-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="glass h-32 animate-pulse rounded-2xl" />
-              ))}
-            </div>
-          )}
+          {busy && <div className="mt-6 space-y-4">{[0, 1, 2].map((i) => <div key={i} className="glass h-32 animate-pulse rounded-2xl" />)}</div>}
 
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
-              {generationResultModel && (
-                <p className="text-xs text-muted-foreground">
-                  Generated with: {aiModelLabel(generationResultModel)}
-                </p>
-              )}
-              <div className="flex justify-end">
-                <button
-                  onClick={toggleAll}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                >
-                  {allOpen ? "Collapse All" : "Expand All"}
-                </button>
-              </div>
-              <ResultSection
-                title="SONG TITLE"
-                value={result.title}
-                open={open.title}
-                onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))}
-                onChange={(v) => setResult({ ...result, title: v })}
-                rows={2}
-              />
-              <ResultSection
-                title="STYLE PROMPT (METATAGS)"
-                value={result.tags}
-                open={open.tags}
-                onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))}
-                onChange={(v) => setResult({ ...result, tags: v })}
-                rows={4}
-              />
-              <ResultSection
-                title="LYRICS & STRUCTURE"
-                value={result.lyrics}
-                open={open.lyrics}
-                onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))}
-                onChange={(v) => setResult({ ...result, lyrics: v })}
-                rows={18}
-              />
-              <ResultSection
-                title="PRODUCER'S NOTE"
-                value={result.note}
-                open={open.note}
-                onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))}
-                onChange={(v) => setResult({ ...result, note: v })}
-                rows={5}
-              />
-              <button
-                onClick={save}
-                disabled={saved}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
-              >
-                {saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}
-                {saved ? "Saved to your library" : "Save to My Library"}
-              </button>
-              <QualityPanel
-                quality={quality}
-                checking={checking}
-                onCheck={runCheck}
-                checkError={checkError}
-                confirm={confirm}
-                setConfirm={setConfirm}
-                state={applyState}
-                qualityCheckModel={qualityCheckModel}
-                availableModels={availableModels}
-                modelAccessLoading={modelAccessLoading}
-                modelAccessReady={modelAccessReady}
-                modelAccessUnavailable={modelAccessUnavailable}
-                onQualityCheckModelChange={(model) => {
-                  setQualityCheckModel(model);
-                  setQualityCheckModelChosen(true);
-                }}
-                qualityCheckResultModel={qualityCheckResultModel}
-                showQualityCheckModelSelector={showQualityCheckModelSelector}
-              />
+              {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: aiModelLabel(generationResultModel) })}</p>}
+              <div className="flex justify-end"><button onClick={toggleAll} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{allOpen ? t("generator.collapseAll") : t("generator.expandAll")}</button></div>
+              <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
+              <ResultSection title={t("generator.result.stylePrompt")} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
+              <ResultSection title={t("generator.result.lyricsStructure")} value={result.lyrics} open={open.lyrics} onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))} onChange={(v) => setResult({ ...result, lyrics: v })} rows={18} />
+              <ResultSection title={t("generator.result.producerNote")} value={result.note} open={open.note} onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))} onChange={(v) => setResult({ ...result, note: v })} rows={5} />
+              <button onClick={save} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
+              <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={availableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={modelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}
         </div>

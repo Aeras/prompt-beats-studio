@@ -6,6 +6,8 @@ import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/i18n";
+import type { TranslationKey } from "@/i18n/locales/en";
 
 export const NAV_PATHS: Record<NavId, string> = {
   discover: "/",
@@ -16,11 +18,11 @@ export const NAV_PATHS: Record<NavId, string> = {
 };
 
 const MOBILE_TABS = [
-  { id: "discover", label: "Feed" },
-  { id: "trending", label: "Trending" },
-  { id: "studio", label: "Studio" },
-  { id: "library", label: "Library" },
-] as const;
+  { id: "discover", labelKey: "nav.feedShort" },
+  { id: "trending", labelKey: "nav.trending" },
+  { id: "studio", labelKey: "nav.studioShort" },
+  { id: "library", labelKey: "nav.libraryShort" },
+] as const satisfies ReadonlyArray<{ id: Exclude<NavId, "management">; labelKey: TranslationKey }>;
 
 export function useActiveNav(): NavId {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -31,11 +33,11 @@ export function useActiveNav(): NavId {
   return "discover";
 }
 
-
 export function AppShell({ header, children }: { header?: ReactNode; children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
   const active = useActiveNav();
+  const { t } = useI18n();
   const { isLocked, isInvalid, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
   useEffect(() => {
     if (!isInvalid) return;
@@ -54,15 +56,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c]">
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[270px] border-r border-white/10 bg-black/40 backdrop-blur-xl lg:block">
         <SidebarNav active={active} onNavigate={() => setDrawer(false)} onSubmit={openStudio} />
       </aside>
 
-      {/* Mobile drawer */}
-      <div
-        className={cn("fixed inset-0 z-50 lg:hidden", drawer ? "pointer-events-auto" : "pointer-events-none")}
-      >
+      <div className={cn("fixed inset-0 z-50 lg:hidden", drawer ? "pointer-events-auto" : "pointer-events-none")}>
         <div
           onClick={() => setDrawer(false)}
           className={cn(
@@ -77,7 +75,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           )}
         >
           <button
-            aria-label="Close menu"
+            aria-label={t("shell.closeMenu")}
             onClick={() => setDrawer(false)}
             className="absolute right-3 top-4 text-muted-foreground"
           >
@@ -92,7 +90,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           <div className="mx-auto max-w-[1600px] px-4 py-3 md:px-8 md:py-4">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
               <button
-                aria-label="Open menu"
+                aria-label={t("shell.openMenu")}
                 onClick={() => setDrawer(true)}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 lg:hidden"
               >
@@ -106,23 +104,22 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         {children}
       </div>
 
-      {/* Mobile bottom tabs */}
       <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
         <div className="grid h-full w-full grid-cols-4 items-center">
-          {MOBILE_TABS.map((t) => {
-            const item = NAV.find((n) => n.id === t.id)!;
-            const isActive = active === t.id;
+          {MOBILE_TABS.map((tab) => {
+            const item = NAV.find((n) => n.id === tab.id)!;
+            const isActive = active === tab.id;
             return (
               <Link
-                key={t.id}
-                to={NAV_PATHS[t.id]}
+                key={tab.id}
+                to={NAV_PATHS[tab.id]}
                 className={cn(
                   "flex flex-col items-center gap-1 py-2.5 text-[10px]",
                   isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 <item.icon className={cn("h-5 w-5", isActive && "drop-shadow-[0_0_8px_var(--neon)]")} />
-                {t.label}
+                {t(tab.labelKey)}
               </Link>
             );
           })}
@@ -135,21 +132,47 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
 }
 
 function AccountLockedScreen({ reason }: { reason: string | null }) {
+  const { t } = useI18n();
   const signOut = async () => {
     await supabase.auth.signOut();
     window.location.assign("/auth");
   };
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10"><div className="glass-strong w-full max-w-lg rounded-3xl p-7 text-center sm:p-10"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-amber-200"><ShieldAlert className="h-7 w-7" /></div><h1 className="mt-5 font-display text-3xl font-bold">Account locked</h1><p className="mt-3 text-sm text-muted-foreground">Your PromptBeats account has been locked.</p>{reason && <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground"><span className="text-muted-foreground">Reason: </span>{reason}</p>}<p className="mt-5 text-sm leading-relaxed text-muted-foreground">If you believe this was a mistake or need assistance, contact:<br /><a href="mailto:support@promptbeats.app" className="text-primary hover:underline">support@promptbeats.app</a></p><button onClick={signOut} className="mt-7 inline-flex items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon">Log out</button></div></main>;
+  return (
+    <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
+      <div className="glass-strong w-full max-w-lg rounded-3xl p-7 text-center sm:p-10">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-amber-200">
+          <ShieldAlert className="h-7 w-7" />
+        </div>
+        <h1 className="mt-5 font-display text-3xl font-bold">{t("shell.accountLocked")}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">{t("shell.accountLockedBody")}</p>
+        {reason && (
+          <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground">
+            <span className="text-muted-foreground">{t("shell.reason")} </span>{reason}
+          </p>
+        )}
+        <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+          {t("shell.accountHelp")}<br />
+          <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">support@promptbeats.app</a>
+        </p>
+        <button onClick={signOut} className="mt-7 inline-flex items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon">
+          {t("shell.logOut")}
+        </button>
+      </div>
+    </main>
+  );
 }
 
 function AccountStatusLoading() {
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><p className="text-sm text-muted-foreground">Checking account status…</p></main>;
+  const { t } = useI18n();
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><p className="text-sm text-muted-foreground">{t("shell.checkingAccount")}</p></main>;
 }
 
 function AccountStatusUnavailable() {
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">Account status unavailable</h1><p className="mt-3 text-sm text-muted-foreground">We could not verify your account status. Please try again.</p><button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground">Try again</button></div></main>;
+  const { t } = useI18n();
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">{t("shell.accountUnavailable")}</h1><p className="mt-3 text-sm text-muted-foreground">{t("shell.accountUnavailableBody")}</p><button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground">{t("common.retry")}</button></div></main>;
 }
 
 function AccountSessionExpired() {
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">Session ended</h1><p className="mt-3 text-sm text-muted-foreground">This account is no longer available. You are being signed out.</p></div></main>;
+  const { t } = useI18n();
+  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">{t("shell.sessionEnded")}</h1><p className="mt-3 text-sm text-muted-foreground">{t("shell.sessionEndedBody")}</p></div></main>;
 }

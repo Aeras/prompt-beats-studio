@@ -1,0 +1,45 @@
+import type { CatalogTranslationKey } from "@/i18n/locales/en-catalog";
+
+export const elCatalog: Record<CatalogTranslationKey, string> = {
+  "genre.all": "Όλα",
+  "genre.pop": "Pop",
+  "genre.hipHopRap": "Hip-Hop / Rap",
+  "genre.rock": "Rock",
+  "genre.metal": "Metal",
+  "genre.electronicEdm": "Electronic / EDM",
+  "genre.house": "House",
+  "genre.techno": "Techno",
+  "genre.trance": "Trance",
+  "genre.drumBass": "Drum & Bass",
+  "genre.lofiChill": "Lo-Fi / Chill",
+  "genre.rnbSoul": "R&B / Soul",
+  "genre.funkDisco": "Funk / Disco",
+  "genre.jazz": "Jazz",
+  "genre.blues": "Blues",
+  "genre.acousticFolk": "Acoustic / Folk",
+  "genre.country": "Country",
+  "genre.reggae": "Reggae",
+  "genre.latin": "Latin",
+  "genre.classical": "Κλασική",
+  "genre.cinematicSoundtrack": "Κινηματογραφικό / Soundtrack",
+  "genre.worldTraditional": "World / Παραδοσιακή",
+  "genre.experimental": "Πειραματική",
+  "genre.custom": "Προσαρμοσμένο",
+
+  "reason.account.platformRules": "Παραβίαση κανόνων της πλατφόρμας",
+  "reason.account.copyright": "Ζήτημα πνευματικών ή δικαιωμάτων τρίτων",
+  "reason.account.abuseSpam": "Κατάχρηση, spam ή επιβλαβής δραστηριότητα",
+  "reason.account.aiMisuse": "Κατάχρηση AI ή λειτουργιών της πλατφόρμας",
+  "reason.account.security": "Ζήτημα ασφάλειας",
+  "reason.account.other": "Άλλο",
+
+  "reason.track.thirdPartyRights": "Αναφορά για δικαιώματα τρίτων",
+  "reason.track.copyright": "Πιθανό ζήτημα πνευματικών / άλλων δικαιωμάτων",
+  "reason.track.policy": "Παραβίαση πολιτικής",
+  "reason.track.harassment": "Παρενόχληση / υβριστικό περιεχόμενο",
+  "reason.track.spam": "Spam / παραπλανητικό περιεχόμενο",
+  "reason.track.other": "Άλλο",
+
+  "management.users": "Χρήστες",
+  "management.active": "Ενεργοί"
+};

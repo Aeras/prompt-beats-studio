@@ -1,5 +1,6 @@
 import { Heart } from "lucide-react";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
+import { useI18n } from "@/i18n";
 
 function PayPalLogo() {
   return (
@@ -18,17 +19,9 @@ function RevolutLogo() {
   );
 }
 
-export function DonateButton({
-  provider,
-  url,
-  customName,
-}: {
-  provider: string | null;
-  url: string | null;
-  customName: string | null;
-}) {
+export function DonateButton({ provider, url, customName }: { provider: string | null; url: string | null; customName: string | null }) {
+  const { t } = useI18n();
   if (!provider || !url) return null;
-
   const safeUrl = getSafeExternalUrl(url);
   const isLink = Boolean(safeUrl);
 
@@ -36,27 +29,15 @@ export function DonateButton({
     return (
       <div className="glass flex flex-wrap items-center gap-2 rounded-xl px-4 py-3 text-sm">
         <Heart className="h-4 w-4 shrink-0 text-primary" />
-        <span className="font-semibold">{customName || "Support"}</span>
-        {isLink ? (
-          <a href={safeUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-accent hover:underline">
-            {url}
-          </a>
-        ) : (
-          <span className="break-all text-muted-foreground">{url}</span>
-        )}
+        <span className="font-semibold">{customName || t("donate.support")}</span>
+        {isLink ? <a href={safeUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-accent hover:underline">{url}</a> : <span className="break-all text-muted-foreground">{url}</span>}
       </div>
     );
   }
 
-  const label = provider === "paypal" ? "Support via PayPal" : "Support via Revolut";
-
+  const label = provider === "paypal" ? t("donate.paypal") : t("donate.revolut");
   return isLink ? (
-    <a
-      href={safeUrl!}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
-    >
+    <a href={safeUrl!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95">
       {provider === "paypal" ? <PayPalLogo /> : <RevolutLogo />}
       {label}
     </a>

@@ -1,0 +1,39 @@
+name: Localization check
+
+on:
+  push:
+    branches:
+      - feat/localization-foundation
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: bun run lint 2>&1 | tee lint.log
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build 2>&1 | tee build.log
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-validation-logs
+          path: |
+            lint.log
+            build.log
+      - name: Fail if validation failed
+        if: steps.lint.outcome == 'failure' || steps.build.outcome == 'failure'
+        run: exit 1
