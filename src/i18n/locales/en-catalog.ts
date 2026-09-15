@@ -1,0 +1,42 @@
+export const enCatalog = {
+  "genre.all": "All",
+  "genre.pop": "Pop",
+  "genre.hipHopRap": "Hip-Hop / Rap",
+  "genre.rock": "Rock",
+  "genre.metal": "Metal",
+  "genre.electronicEdm": "Electronic / EDM",
+  "genre.house": "House",
+  "genre.techno": "Techno",
+  "genre.trance": "Trance",
+  "genre.drumBass": "Drum & Bass",
+  "genre.lofiChill": "Lo-Fi / Chill",
+  "genre.rnbSoul": "R&B / Soul",
+  "genre.funkDisco": "Funk / Disco",
+  "genre.jazz": "Jazz",
+  "genre.blues": "Blues",
+  "genre.acousticFolk": "Acoustic / Folk",
+  "genre.country": "Country",
+  "genre.reggae": "Reggae",
+  "genre.latin": "Latin",
+  "genre.classical": "Classical",
+  "genre.cinematicSoundtrack": "Cinematic / Soundtrack",
+  "genre.worldTraditional": "World / Traditional",
+  "genre.experimental": "Experimental",
+  "genre.custom": "Custom",
+
+  "reason.account.platformRules": "Violation of platform rules",
+  "reason.account.copyright": "Copyright or third-party rights concern",
+  "reason.account.abuseSpam": "Abuse, spam or harmful activity",
+  "reason.account.aiMisuse": "Misuse of AI or platform features",
+  "reason.account.security": "Security concern",
+  "reason.account.other": "Other",
+
+  "reason.track.thirdPartyRights": "Reported third-party rights issue",
+  "reason.track.copyright": "Suspected copyright / rights issue",
+  "reason.track.policy": "Policy violation",
+  "reason.track.harassment": "Harassment / abusive content",
+  "reason.track.spam": "Spam / deceptive content",
+  "reason.track.other": "Other"
+} as const;
+
+export type CatalogTranslationKey = keyof typeof enCatalog;
