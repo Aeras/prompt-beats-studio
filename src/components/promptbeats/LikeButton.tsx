@@ -2,16 +2,19 @@ import { Heart } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useLikes } from "@/lib/likes";
+import { useI18n } from "@/i18n";
 
 /** Heart toggle with a live like counter. */
 export function LikeButton({ trackId, enabled = true }: { trackId: string; enabled?: boolean }) {
+  const { t } = useI18n();
   const { count, liked, canLike, isPending, toggle } = useLikes(trackId, enabled);
+  const label = liked ? t("like.remove") : t("like.add");
 
   return (
     <button
-      aria-label={liked ? "Remove like" : "Like track"}
+      aria-label={label}
       aria-pressed={liked}
-      title={canLike ? (liked ? "Remove like" : "Like track") : "Sign in to like"}
+      title={canLike ? label : t("nav.signIn")}
       disabled={!enabled || isPending}
       onClick={() => {
         if (canLike) toggle();
