@@ -36,7 +36,10 @@ export const enCatalog = {
   "reason.track.policy": "Policy violation",
   "reason.track.harassment": "Harassment / abusive content",
   "reason.track.spam": "Spam / deceptive content",
-  "reason.track.other": "Other"
+  "reason.track.other": "Other",
+
+  "management.users": "Users",
+  "management.active": "Active"
 } as const;
 
 export type CatalogTranslationKey = keyof typeof enCatalog;
