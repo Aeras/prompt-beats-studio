@@ -122,9 +122,23 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     </div>, document.body,
   );
 
+  const deleteModal = confirming && typeof document !== "undefined" && createPortal(
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-track-title">
+      <div className="glass-strong w-full max-w-sm space-y-4 rounded-3xl p-6">
+        <h2 id="delete-track-title" className="font-display text-lg font-bold">{t("owner.deleteNamed", { title: track.title })}</h2>
+        <p className="text-sm text-muted-foreground">{t("owner.deletePermanent")}</p>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <div className="flex gap-3">
+          <button onClick={remove} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("owner.confirmDelete")}</button>
+          <button onClick={() => setConfirming(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">{t("owner.cancel")}</button>
+        </div>
+      </div>
+    </div>, document.body,
+  );
+
   return <>
     <div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label={t("owner.editTrack")} onClick={() => setEditing(true)} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label={t("owner.deleteTrack")} onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
     {editModal}
-    {confirming && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"><div className="glass-strong w-full max-w-sm space-y-4 rounded-3xl p-6"><h2 className="font-display text-lg font-bold">{t("owner.deleteNamed", { title: track.title })}</h2><p className="text-sm text-muted-foreground">{t("owner.deletePermanent")}</p>{error && <p className="text-xs text-destructive">{error}</p>}<div className="flex gap-3"><button onClick={remove} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("owner.confirmDelete")}</button><button onClick={() => setConfirming(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">{t("owner.cancel")}</button></div></div></div>}
+    {deleteModal}
   </>;
 }
