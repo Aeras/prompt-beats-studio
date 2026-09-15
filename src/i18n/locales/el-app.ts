@@ -89,8 +89,11 @@ export const elApp: Record<AppUiTranslationKey, string> = {
 
   "generator.result.songTitle": "ΤΙΤΛΟΣ ΤΡΑΓΟΥΔΙΟΥ",
   "generator.result.stylePrompt": "STYLE PROMPT (METATAGS)",
+  "generator.result.udioPrompt": "UDIO PROMPT",
   "generator.result.lyricsStructure": "ΣΤΙΧΟΙ & ΔΟΜΗ",
   "generator.result.producerNote": "ΣΗΜΕΙΩΣΗ ΠΑΡΑΓΩΓΟΥ",
+  "generator.targetPlatform": "Πλατφόρμα στόχος",
+  "generator.targetPlatformHint": "Επίλεξε σε ποια πλατφόρμα θα χρησιμοποιηθεί το αποτέλεσμα.",
   "generator.expandAll": "Άνοιγμα όλων",
   "generator.collapseAll": "Κλείσιμο όλων",
   "generator.generatedWith": "Δημιουργήθηκε με: {model}",

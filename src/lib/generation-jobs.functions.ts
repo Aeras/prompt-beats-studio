@@ -11,9 +11,14 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_MODEL_IDS } from "@/lib/ai-models";
+import {
+  AI_TARGET_PLATFORMS,
+  DEFAULT_AI_TARGET_PLATFORM,
+} from "@/lib/ai-target-platforms";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
+  targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().trim().min(3),
   genre: z.string().trim().min(1),
   mood: z.string().trim().min(1),
@@ -58,6 +63,7 @@ const resultShape = z.object({
  * completely closed browser — never localStorage, never the result text.
  */
 const inputShape = z.object({
+  targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().default(""),
   genre: z.string().default(""),
   mood: z.string().default(""),

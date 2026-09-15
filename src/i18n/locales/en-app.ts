@@ -87,8 +87,11 @@ export const enApp = {
 
   "generator.result.songTitle": "SONG TITLE",
   "generator.result.stylePrompt": "STYLE PROMPT (METATAGS)",
+  "generator.result.udioPrompt": "UDIO PROMPT",
   "generator.result.lyricsStructure": "LYRICS & STRUCTURE",
   "generator.result.producerNote": "PRODUCER'S NOTE",
+  "generator.targetPlatform": "Target Platform",
+  "generator.targetPlatformHint": "Choose where this result will be used.",
   "generator.expandAll": "Expand All",
   "generator.collapseAll": "Collapse All",
   "generator.generatedWith": "Generated with: {model}",

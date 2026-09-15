@@ -5,6 +5,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { AI_MODEL_IDS } from "@/lib/ai-models";
+import {
+  AI_TARGET_PLATFORMS,
+  DEFAULT_AI_TARGET_PLATFORM,
+  type AITargetPlatform,
+} from "@/lib/ai-target-platforms";
+import { generationPlatformGuidance } from "@/lib/ai-platform-guidance";
 
 export const HOURLY_LIMIT = 10;
 
@@ -13,6 +19,9 @@ const generateInput = z.object({
   genre: z.string().trim().min(1),
   mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(40),
+  targetPlatform: z
+    .enum(AI_TARGET_PLATFORMS as [AITargetPlatform, ...AITargetPlatform[]])
+    .default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
@@ -85,9 +94,11 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
 function buildPrompt(d: z.infer<typeof generateInput>) {
+  const platformLabel = d.targetPlatform === "udio" ? "Udio" : "Suno";
+  const promptLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Style Prompt";
   return `Act as a top-tier music producer, professional songwriter, composer, arranger and AI-music prompt specialist.
 
-Transform the user's idea into one complete, original, coherent and professionally developed song concept optimized for AI music platforms such as Suno and Udio.
+Transform the user's idea into one complete, original, coherent and professionally developed song concept optimized specifically for ${platformLabel}.
 
 USER INPUTS — AUTHORITATIVE:
 
@@ -95,6 +106,7 @@ Core Idea: ${d.theme}
 Requested Genre(s): ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
+Target Platform: ${platformLabel}
 ${d.structure ? `Requested Song Structure (in this order): ${d.structure}` : ""}
 ${d.production ? `Requested Production Style: ${d.production}` : ""}
 ${d.instructions ? `Additional Instructions: ${d.instructions}` : ""}
@@ -153,8 +165,6 @@ LYRICS
 
 Write complete, fully developed lyrics for a genuine full-length song.
 
-Aim for a natural song length, typically around 2.5–4 minutes. Longer songs are allowed only when the story, genre, structure and emotional progression clearly justify them.
-
 Do not pad the song with meaningless repetition, unnecessary verses, extra bridges or extended outros merely to make it longer.
 
 Lyrics must sound naturally written by a skilled native songwriter in the requested language.
@@ -209,10 +219,10 @@ When multiple voices genuinely improve the song, clearly distinguish their parts
 Do not add vocal tags unnecessarily.
 
 ==================================================
-STYLE PROMPT
+${promptLabel.toUpperCase()}
 ==================================================
 
-Create a concise, information-dense Style Prompt in English for Suno/Udio.
+Create a concise, information-dense ${promptLabel} in English for ${platformLabel}.
 
 Describe the actual musical identity of the finished song using the most relevant elements:
 
@@ -220,7 +230,7 @@ genre/subgenre, BPM or tempo feel, groove, rhythm, instrumentation, bass, drums,
 
 Use concrete musical information rather than empty adjectives or disconnected keyword lists.
 
-The Style Prompt must accurately represent the song that was written.
+The ${promptLabel} must accurately represent the song that was written.
 
 ==================================================
 TITLE
@@ -263,6 +273,12 @@ All sung lyrical content must remain entirely in the requested language.
 Square-bracketed structural, vocal and production directions are allowed in English.
 
 ==================================================
+TARGET PLATFORM RULES
+==================================================
+
+${generationPlatformGuidance(d.targetPlatform)}
+
+==================================================
 FINAL QUALITY CHECK
 ==================================================
 
@@ -303,7 +319,7 @@ No additional keys.
 
 "title": Only the song title.
 
-"tags": The English Style Prompt optimized for Suno/Udio.
+"tags": The English ${promptLabel} optimized for ${platformLabel}.
 
 "lyrics": Complete lyrics in the requested language, including appropriate square-bracketed structural and vocal tags.
 

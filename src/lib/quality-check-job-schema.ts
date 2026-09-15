@@ -1,8 +1,13 @@
 import { z } from "zod";
 
 import { AI_MODEL_IDS } from "@/lib/ai-models";
+import {
+  AI_TARGET_PLATFORMS,
+  DEFAULT_AI_TARGET_PLATFORM,
+} from "@/lib/ai-target-platforms";
 
 export const durableQualityCheckInput = z.object({
+  targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().trim().min(3).max(500),
   genre: z.string().trim().min(1).max(500),
   mood: z.string().trim().min(1).max(120),

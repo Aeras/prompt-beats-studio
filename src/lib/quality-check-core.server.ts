@@ -1,4 +1,10 @@
 import type { Json } from "@/integrations/supabase/types";
+import { qualityPlatformGuidance } from "@/lib/ai-platform-guidance";
+import {
+  AI_TARGET_PLATFORM_LABEL,
+  DEFAULT_AI_TARGET_PLATFORM,
+  type AITargetPlatform,
+} from "@/lib/ai-target-platforms";
 import {
   qualityReportSchema,
   type DurableQualityCheckInput,
@@ -548,6 +554,11 @@ A genuine language or lyric defect must never be hidden by an otherwise strong s
 function buildQualityPrompt(data: DurableQualityCheckInput) {
   const d = data;
   const r = data.result;
+  const targetPlatform =
+    ((d as DurableQualityCheckInput & { targetPlatform?: AITargetPlatform }).targetPlatform ??
+      DEFAULT_AI_TARGET_PLATFORM);
+  const platformLabel = AI_TARGET_PLATFORM_LABEL[targetPlatform];
+  const tagsLabel = targetPlatform === "udio" ? "Udio Prompt" : "Suno Style Prompt";
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
 Begin by reading the LYRICS line by line as a professional native songwriter and lyric editor. Identify every material lyric defect first. Judge each line by its exact wording as a native songwriter would, not by whether the listener can infer the intended meaning from context; a lyric defect remains a defect even when its meaning is guessable. Only after the lyrics review is complete should you consider Title, Music Style, Producer's Note and optional creative/vocal/production suggestions. A song MUST NOT receive "passed": true AND "score": 10 while any clear material lyric defect remains.
@@ -557,6 +568,7 @@ Core Idea: ${d.theme}
 Requested Genre(s): ${d.genre}
 Requested Mood: ${d.mood}
 Requested Language: ${d.language}
+Target Platform: ${platformLabel}
 Requested Song Structure: ${d.structure}
 Requested Production Style: ${d.production}
 Additional Instructions: ${d.instructions}
@@ -568,7 +580,7 @@ CURRENT EDITABLE OUTPUT — AUTHORITATIVE
 Title:
 ${r.title}
 
-Music Style:
+${tagsLabel}:
 ${r.tags}
 
 Lyrics:
@@ -578,6 +590,8 @@ Producer's Note:
 ${r.note}
 
 Report ONLY clear, material and defensible lyric defects and other genuine defects. For every fixable issue return a precise correction quoting the CURRENT text above exactly. Ignore subjective preferences and stylistic alternatives. If there are no genuine material defects, return "passed": true, "score": 10 and an empty "corrections" array. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
+
+${qualityPlatformGuidance(targetPlatform)}
 
 Return the strict JSON object only.`;
 }
