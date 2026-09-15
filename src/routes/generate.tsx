@@ -19,7 +19,6 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import {
-  checkSongQuality,
   getCurrentUserAiModelAccess,
   getGenerationUsage,
   savePromptToLibrary,
@@ -37,6 +36,12 @@ import {
   type GenerationJob,
 } from "@/lib/generation-jobs.functions";
 import {
+  getLatestQualityCheckJob,
+  getQualityCheckJob,
+  startQualityCheckJob,
+  type QualityCheckJob,
+} from "@/lib/quality-check-jobs.functions";
+import {
   addToMusicStyle,
   applyFieldCorrection,
   applyLyricCorrection,
@@ -50,6 +55,8 @@ import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
 
 /** Survives refreshes so an in-flight generation is recovered on return. */
 const JOB_STORAGE_KEY = "pb:generation-job";
+/** Survives refresh/background so an in-flight Quality Check is recovered. */
+const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -718,7 +725,8 @@ function QualityPanel({
 
       {checking && (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking...
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking... this keeps running if you leave
+          the app.
         </p>
       )}
 
@@ -871,7 +879,6 @@ function GeneratePage() {
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"check" | "recheck" | null>(null);
-  const qualityCheckKey = useRef<string | null>(null);
 
   // The original generation brief that produced the current result. It comes
   // from the persisted job, so a check after a refresh still uses the real
@@ -1004,10 +1011,107 @@ function GeneratePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, jobId, result]);
 
-  // Returning to the tab or regaining connectivity re-syncs immediately.
+  // ---------------------------------------------------------------------------
+  // Durable Quality Check. As with generation, the browser only starts/polls a
+  // persisted action. Provider execution belongs to the database-owned runner.
+  // ---------------------------------------------------------------------------
+  const [qualityActionId, setQualityActionId] = useState<string | null>(null);
+  /** Reused only when the short admission response is lost before we see it. */
+  const pendingQualityKey = useRef<string | null>(null);
+
+  function rememberQualityJob(id: string | null) {
+    if (typeof window === "undefined") return;
+    if (id) window.localStorage.setItem(QUALITY_JOB_STORAGE_KEY, id);
+    else window.localStorage.removeItem(QUALITY_JOB_STORAGE_KEY);
+  }
+
+  function applyQualityJob(job: QualityCheckJob) {
+    if (job.status === "completed") {
+      if (job.qualityReport) {
+        setQuality(job.qualityReport);
+        setQualityCheckResultModel(job.model);
+        setApplied({});
+        setApplyErrors({});
+        setCheckError(null);
+      } else {
+        setCheckError("The completed quality check was invalid. Please try again.");
+      }
+      setChecking(false);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    if (job.status === "failed") {
+      setCheckError(job.error ?? "Quality check unavailable. Please try again.");
+      setChecking(false);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      return;
+    }
+    rememberQualityJob(job.actionId);
+    setQualityActionId(job.actionId);
+    setChecking(true);
+    setCheckError(null);
+  }
+
+  const { data: qualityJobData, refetch: refetchQualityJob } = useQuery({
+    queryKey: ["quality-job", qualityActionId],
+    queryFn: () => getQualityCheckJob({ data: { actionId: qualityActionId as string } }),
+    enabled: !!qualityActionId,
+    refetchInterval: 2500,
+    refetchOnWindowFocus: true,
+    gcTime: 0,
+  });
+
+  useEffect(() => {
+    if (!qualityActionId || !qualityJobData) return;
+    if (!qualityJobData.job) {
+      setQualityActionId(null);
+      setChecking(false);
+      rememberQualityJob(null);
+      return;
+    }
+    if (qualityJobData.job.actionId !== qualityActionId) return;
+    applyQualityJob(qualityJobData.job);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qualityJobData, qualityActionId]);
+
+  // Recover a QC after refresh or after the browser missed the admission/result
+  // response while the app was backgrounded. Completed reports are restored too.
+  useEffect(() => {
+    if (!user || !result || qualityActionId || quality) return;
+    const stored =
+      typeof window !== "undefined" ? window.localStorage.getItem(QUALITY_JOB_STORAGE_KEY) : null;
+    if (stored) {
+      setQualityActionId(stored);
+      setChecking(true);
+      return;
+    }
+    if (!generationId) return;
+
+    let cancelled = false;
+    void getLatestQualityCheckJob({ data: { generationId } })
+      .then((r) => {
+        if (cancelled || !r.job) return;
+        applyQualityJob(r.job);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, result, generationId, qualityActionId, quality]);
+
+  // Returning to the tab or regaining connectivity re-syncs both durable jobs.
   useEffect(() => {
     const sync = () => {
-      if (jobId && document.visibilityState === "visible") void refetchJob();
+      if (document.visibilityState !== "visible") return;
+      if (jobId) void refetchJob();
+      if (qualityActionId) void refetchQualityJob();
     };
     document.addEventListener("visibilitychange", sync);
     window.addEventListener("online", sync);
@@ -1015,7 +1119,7 @@ function GeneratePage() {
       document.removeEventListener("visibilitychange", sync);
       window.removeEventListener("online", sync);
     };
-  }, [jobId, refetchJob]);
+  }, [jobId, qualityActionId, refetchJob, refetchQualityJob]);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -1144,7 +1248,7 @@ function GeneratePage() {
     setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
   const generate = async () => {
-    if (busy || jobId) return;
+    if (busy || jobId || checking || qualityActionId) return;
     setBusy(true);
     setStatus("Starting generation…");
     setSaved(false);
@@ -1203,21 +1307,22 @@ function GeneratePage() {
     }
   };
 
-  // Manual: exactly one quality check per confirmed click.
-  // The analyzed song is always read from the ref, so any Apply / Undo or
-  // manual edit made right before the click is included (never a stale copy).
-  // The brief comes from the persisted job when it is known.
+  // Manual: exactly one durable quality check per confirmed click.
+  // The current editable song is snapshotted at admission, then the provider
+  // call runs independently of the browser through the database-owned runner.
   const runCheck = async () => {
-    if (checking) return;
+    if (checking || qualityActionId) return;
     const target = resultRef.current;
     if (!target) return;
-    const idempotencyKey = qualityCheckKey.current ?? crypto.randomUUID();
-    qualityCheckKey.current = idempotencyKey;
+
+    const idempotencyKey = pendingQualityKey.current ?? crypto.randomUUID();
+    pendingQualityKey.current = idempotencyKey;
     setConfirm(null);
     setChecking(true);
     setCheckError(null);
+
     try {
-      const res = await checkSongQuality({
+      const res = await startQualityCheckJob({
         data: {
           theme: songContext?.theme?.trim() || theme.trim(),
           genre: songContext?.genre || effectiveGenre,
@@ -1232,26 +1337,33 @@ function GeneratePage() {
           generationId,
         },
       });
-      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
-      if (res.error === "rate_limited") {
+
+      if (res.rateLimited || !res.job) {
+        pendingQualityKey.current = null;
+        setChecking(false);
         setCheckError("You've hit the hourly limit. Try again soon.");
         return;
       }
-      // A new report always replaces the previous one; applied-state is reset
-      // because the new items are new suggestions against the current song.
-      if (res.quality) {
-        setQuality(res.quality);
-        setQualityCheckResultModel(res.model ?? null);
-        setApplied({});
-        setApplyErrors({});
-      } else {
-        setCheckError("Quality check unavailable. Please try again.");
-      }
+
+      pendingQualityKey.current = null;
+      applyQualityJob(res.job);
     } catch (err) {
-      setCheckError(err instanceof Error ? err.message : "Check failed");
-    } finally {
-      if (qualityCheckKey.current === idempotencyKey) qualityCheckKey.current = null;
+      // The action may have been admitted even though the short start response
+      // was lost. Recover it by originating generation before showing an error.
+      if (generationId) {
+        try {
+          const latest = await getLatestQualityCheckJob({ data: { generationId } });
+          if (latest.job) {
+            pendingQualityKey.current = null;
+            applyQualityJob(latest.job);
+            return;
+          }
+        } catch {
+          /* offline: keep the idempotency key so a manual retry is safe */
+        }
+      }
       setChecking(false);
+      setCheckError(err instanceof Error ? err.message : "Check failed");
     }
   };
 
@@ -1372,7 +1484,7 @@ function GeneratePage() {
   const [clearError, setClearError] = useState<string | null>(null);
 
   const clearAll = async () => {
-    if (clearing) return;
+    if (clearing || checking) return;
     setClearError(null);
     let dismissedWhileRunning = false;
     // Forget any running generation server-side too, so it is never restored
@@ -1409,10 +1521,14 @@ function GeneratePage() {
     setGenerationId(null);
     setGenerationResultModel(null);
     setQuality(null);
+    setQualityCheckResultModel(null);
     setSongContext(null);
     setJobId(null);
     rememberJob(null);
     pendingKey.current = null;
+    setQualityActionId(null);
+    rememberQualityJob(null);
+    pendingQualityKey.current = null;
     setBusy(false);
     setChecking(false);
     setCheckError(null);
@@ -1491,7 +1607,7 @@ function GeneratePage() {
               {canClear && (
                 <button
                   onClick={() => setConfirmClear(true)}
-                  disabled={busy}
+                  disabled={busy || checking}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Clear
@@ -1801,7 +1917,12 @@ function GeneratePage() {
                 <button
                   onClick={generate}
                   disabled={
-                    busy || blocked || !ready || modelAccessLoading || modelAccessUnavailable
+                    busy ||
+                    checking ||
+                    blocked ||
+                    !ready ||
+                    modelAccessLoading ||
+                    modelAccessUnavailable
                   }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
                 >
