@@ -19,6 +19,21 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Lint
-        run: bun run lint
+        id: lint
+        continue-on-error: true
+        run: bun run lint 2>&1 | tee lint.log
       - name: Build
-        run: bun run build
+        id: build
+        continue-on-error: true
+        run: bun run build 2>&1 | tee build.log
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-validation-logs
+          path: |
+            lint.log
+            build.log
+      - name: Fail if validation failed
+        if: steps.lint.outcome == 'failure' || steps.build.outcome == 'failure'
+        run: exit 1
