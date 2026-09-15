@@ -48,7 +48,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
       </nav>
 
       {!isBanned && <button onClick={onSubmit} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"><Plus className="h-4 w-4" />{t("nav.submitTrack")}</button>}
-      <LanguageSelector />
+      {!user && <LanguageSelector />}
 
       <div className="mt-auto">
         {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
