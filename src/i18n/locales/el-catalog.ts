@@ -38,5 +38,8 @@ export const elCatalog: Record<CatalogTranslationKey, string> = {
   "reason.track.policy": "Παραβίαση πολιτικής",
   "reason.track.harassment": "Παρενόχληση / υβριστικό περιεχόμενο",
   "reason.track.spam": "Spam / παραπλανητικό περιεχόμενο",
-  "reason.track.other": "Άλλο"
+  "reason.track.other": "Άλλο",
+
+  "management.users": "Χρήστες",
+  "management.active": "Ενεργοί"
 };
