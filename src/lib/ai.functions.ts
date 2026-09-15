@@ -754,10 +754,10 @@ Rules:
 
 - "originalText" must match the CURRENT EDITABLE SONG OUTPUT exactly, character for character.
 - Never quote or modify an older version.
-- Change only the defective wording.
+- Change only the defective wording unless a larger local lyric span is strictly necessary under the SONGWRITER-AWARE CORRECTION DECISION rules below.
 - Preserve the intended meaning, emotion, requested language and creative direction.
 - Preserve rhyme, cadence and singability when reasonably possible.
-- Do not rewrite surrounding valid lyrics.
+- Do not rewrite surrounding valid lyrics except as permitted by the SONGWRITER-AWARE CORRECTION DECISION rules below.
 - Do not turn a correction into an optional stylistic rewrite.
 - Every correction must correspond to a genuinely reported Actual Issue.
 
@@ -782,6 +782,98 @@ Before returning a correction, verify that the replacement itself is:
 - appropriate as song lyrics
 - compatible with the surrounding lyrics
 - free of new obvious defects
+
+==================================================
+SONGWRITER-AWARE CORRECTION DECISION
+==================================================
+
+Detect the Actual Issue first.
+
+Only after independently confirming that a genuine material defect exists may you decide how to correct it. Never expand valid surrounding lyrics merely because a different wording might be more elegant, poetic, commercial or personally preferable.
+
+For every lyric correction, preserve both:
+1. linguistic correctness; and
+2. the songwriting function of the local lyric context.
+
+LOCAL CONTEXT REVIEW
+
+Before choosing a lyric correction, examine:
+- the defective word, phrase or line;
+- the immediately preceding and immediately following sung lyric lines, when present;
+- the local rhyme pair, couplet or short lyrical unit when relevant;
+- end rhyme, internal rhyme or near-rhyme when relevant;
+- syllable count, cadence, word stress and singability;
+- intended meaning, emotional direction, imagery, perspective and narrative continuity;
+- the requested language, genre and Music Style.
+
+DEFAULT APPROACH — MINIMAL LYRIC CORRECTION
+
+First attempt the smallest exact replacement that fixes the genuine defect.
+
+Prefer correcting only the defective word, phrase or line when the replacement:
+- is grammatically and lexically valid;
+- is natural in the requested language;
+- preserves the intended meaning;
+- preserves local rhyme or near-rhyme where reasonably possible;
+- preserves cadence, syllable flow, natural stress and singability;
+- does not introduce a new defect.
+
+Simple, self-contained spelling, grammar, agreement, inflection or punctuation errors must remain minimal. They must not trigger a rewrite of otherwise valid surrounding lyrics.
+
+Do not use a literal dictionary substitution if it materially damages rhyme, cadence, stress, singability, imagery or the local lyrical flow when a better natural and faithful lyric correction is available.
+
+LIMITED RHYME-PRESERVING EXPANSION
+
+If a minimal correction fixes the language defect but materially damages an existing rhyme, near-rhyme, cadence, syllable pattern, natural stress, singability or local meaning, or creates a clear new problem in local lyrical flow, you may expand the replacement only to the smallest directly related lyrical unit necessary.
+
+An expanded correction may include:
+- the complete affected line; or
+- the immediately preceding or following line; or
+- a short two-line couplet;
+
+only when those lines function together musically or lyrically and a coordinated multi-line replacement is strictly necessary.
+
+Never expand a correction:
+- merely to make the lyric more impressive, elegant, catchy or commercially stronger;
+- to rewrite a complete verse, chorus, bridge or unrelated lines;
+- to alter the user's story, emotion, perspective, imagery or songwriting voice;
+- when a smaller correction can safely solve the real defect.
+
+FINAL CORRECTION SELECTION
+
+After drafting possible replacements, silently compare them and return only ONE final correction: the smallest correction that both fixes the genuine defect and best preserves the songwriting function of the surrounding lyrics.
+
+Before returning that correction, verify:
+- the original defect is actually fixed;
+- the replacement is grammatically, semantically and idiomatically correct;
+- the replacement is natural for a native songwriter in the requested language;
+- rhyme or near-rhyme remains natural rather than forced, where relevant;
+- cadence, syllable flow, word stress and singability remain intact;
+- the replacement preserves the intended meaning, emotional direction, imagery, perspective and continuity;
+- the replacement sounds like it belongs to the same song;
+- no new obvious language, meaning, rhythm or formatting defect has been introduced.
+
+CORRECTION TARGETING
+
+Quote in "originalText" only the smallest exact current text span that must be replaced.
+
+Use a whole line only when changing a smaller word or phrase cannot produce a safe and satisfactory lyric correction.
+
+Use a multi-line span only when a coordinated multi-line correction is strictly necessary to preserve the songwriting function of the affected lyrics.
+
+For a multi-line correction:
+- "originalText" must contain the complete exact contiguous current text span to be replaced;
+- that span must exist within the identified section occurrence;
+- "replacementText" must contain the complete coordinated replacement for that same span;
+- treat the multi-line replacement as ONE correction, not as separate dependent corrections;
+- "sectionLabel" and "occurrenceIndex" must identify the single existing section occurrence that contains the entire "originalText" span;
+- never create a multi-line correction that crosses two different section occurrences.
+
+If the exact target cannot be identified safely, report the Actual Issue but omit the correction.
+
+If no word-, phrase-, line- or necessary multi-line correction can safely fix the genuine defect without materially harming meaning, rhyme, cadence or singability, report the Actual Issue but return no correction.
+
+Never force a weak rhyme, unnatural wording or a merely literal replacement.
 
 ==================================================
 SCORING & PASSING
@@ -886,7 +978,7 @@ Be concise.
 
 - Put each defect in the single most appropriate Actual Issue array. Do not restate the same defect in multiple issue arrays.
 - Do not repeat explanations already represented by a correction.
-- In corrections, quote only the SMALLEST exact text span necessary to make the correction. Never quote an entire verse, chorus or song section when a word, phrase or single line is sufficient.
+- In corrections, quote only the SMALLEST exact text span necessary to make the correction. A directly related adjacent line or short two-line couplet may be included only when required by the SONGWRITER-AWARE CORRECTION DECISION rules. Never quote an entire verse, chorus or song section when a smaller local span is sufficient.
 - Keep correction reasons short and specific.
 - Do not repeat identical corrections for repeated chorus occurrences unless those occurrences actually require different edits.
 - Creative, vocal and production suggestions are OPTIONAL. Return them only when materially useful.
