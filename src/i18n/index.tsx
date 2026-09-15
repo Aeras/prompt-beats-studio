@@ -6,7 +6,7 @@ export type AppLanguage = "en" | "el";
 
 const STORAGE_KEY = "pb:interface-language";
 
-const dictionaries: Record<AppLanguage, Record<TranslationKey, string>> = {
+const dictionaries: Record<AppLanguage, Readonly<Record<TranslationKey, string>>> = {
   en,
   el,
 };
@@ -26,14 +26,16 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function initialLanguage(): AppLanguage {
-  if (typeof window === "undefined") return "en";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "el" ? "el" : "en";
-}
-
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AppLanguage>(initialLanguage);
+  // Always render English on the server and during the first client render so
+  // SSR hydration stays deterministic. The saved preference is restored just
+  // after mount and then persisted on future changes.
+  const [language, setLanguageState] = useState<AppLanguage>("en");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "el") setLanguageState("el");
+  }, []);
 
   const setLanguage = useCallback((next: AppLanguage) => {
     setLanguageState(next);
