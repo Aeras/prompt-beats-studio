@@ -3,7 +3,7 @@ export const enPasswordReset = {
   "auth.resetTitle": "Reset your password",
   "auth.resetSubtitle": "Enter your email and we’ll send you a secure reset link.",
   "auth.sendResetLink": "Send reset link",
-  "auth.resetEmailSent": "If an account exists for this email, a password reset link has been sent.",
+  "auth.resetEmailSent": "If an account exists for this email, you will receive a password reset link.",
   "auth.resetSendFailed": "We couldn’t send the reset email right now. Please try again.",
   "auth.choosePasswordTitle": "Choose a new password",
   "auth.choosePasswordSubtitle": "Enter a new password for your PromptBeats account.",
