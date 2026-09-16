@@ -260,12 +260,117 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   return { text, stopReason, usage, provider: "mistral", model };
 }
 
+/**
+ * OpenAI-compatible chat completions call shared by Groq and OpenRouter.
+ * The PromptBeats system prompt, user prompt and downstream Zod validation are
+ * identical to every other provider; only transport differs.
+ */
+async function callOpenAiCompatible(
+  providerName: "groq" | "openrouter",
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  call: ModelCall,
+  useJsonMode: boolean,
+): Promise<ModelResult> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: call.system },
+        { role: "user", content: call.prompt },
+      ],
+      max_tokens: call.maxTokens ?? 8192,
+      ...(useJsonMode ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error(
+      `[ai-provider] ${providerName} request failed (${res.status})`,
+      errorBody.slice(0, 1000),
+    );
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
+
+  const payload = (await res.json()) as {
+    choices?: Array<{
+      finish_reason?: string | null;
+      message?: { content?: string | Array<{ type?: string; text?: string }> };
+    }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  };
+
+  const choice = payload.choices?.[0];
+  const content = choice?.message?.content;
+  const text =
+    typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.map((part) => part.text ?? "").join("")
+        : "";
+  const reason = choice?.finish_reason ?? null;
+  const stopReason =
+    reason === "stop"
+      ? "end_turn"
+      : reason === "length" || reason === "model_length"
+        ? "max_tokens"
+        : reason;
+  const inputTokens = payload.usage?.prompt_tokens ?? null;
+  const outputTokens = payload.usage?.completion_tokens ?? null;
+  const totalTokens =
+    payload.usage?.total_tokens ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  const usage =
+    inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : { inputTokens, outputTokens, totalTokens };
+  return { text, stopReason, usage, provider: providerName, model };
+}
+
+async function callGroq(model: string, call: ModelCall): Promise<ModelResult> {
+  const apiKey = process.env["GROQ_API_KEY"];
+  if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+  // Provider-enforced JSON object mode; strict Zod validation stays authoritative.
+  return callOpenAiCompatible(
+    "groq",
+    "https://api.groq.com/openai/v1/chat/completions",
+    apiKey,
+    model,
+    call,
+    true,
+  );
+}
+
+async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResult> {
+  const apiKey = process.env["OPENROUTER_API_KEY"];
+  if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+  // The free Nemotron endpoint rejects response_format; rely on the shared
+  // STRICT JSON instructions plus existing JSON parsing and Zod validation.
+  return callOpenAiCompatible(
+    "openrouter",
+    "https://openrouter.ai/api/v1/chat/completions",
+    apiKey,
+    model,
+    call,
+    false,
+  );
+}
+
 /** Returns a provider-agnostic caller bound to the given model. */
 export function modelCaller(model: string): ModelCaller {
-  const provider = providerOf(model);
+  const provider = providerOf(model) as string;
   return (call) => {
     if (provider === "anthropic") return callAnthropic(model, call);
     if (provider === "mistral") return callMistral(model, call);
+    if (provider === "groq") return callGroq(model, call);
+    if (provider === "openrouter") return callOpenRouter(model, call);
     return callGemini(model, call);
   };
 }
