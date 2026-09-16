@@ -12,10 +12,6 @@ export const AI_MODELS = [
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic" },
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic" },
   { id: "claude-fable-5", label: "Claude Fable 5", provider: "anthropic" },
-  { id: "ministral-3b-2512", label: "Ministral 3 3B", provider: "mistral" },
-  { id: "ministral-8b-2512", label: "Ministral 3 8B", provider: "mistral" },
-  { id: "ministral-14b-2512", label: "Ministral 3 14B", provider: "mistral" },
-  { id: "mistral-medium-latest", label: "Mistral Medium 3.5", provider: "mistral" },
 ] as const;
 
 export type AiModelId = (typeof AI_MODELS)[number]["id"];
