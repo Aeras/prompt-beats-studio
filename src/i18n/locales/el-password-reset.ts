@@ -5,7 +5,7 @@ export const elPasswordReset: Record<PasswordResetTranslationKey, string> = {
   "auth.resetTitle": "Επαναφορά κωδικού πρόσβασης",
   "auth.resetSubtitle": "Γράψε το email σου και θα σου στείλουμε έναν ασφαλή σύνδεσμο επαναφοράς.",
   "auth.sendResetLink": "Αποστολή συνδέσμου επαναφοράς",
-  "auth.resetEmailSent": "Αν υπάρχει λογαριασμός με αυτό το email, έχει σταλεί σύνδεσμος επαναφοράς κωδικού.",
+  "auth.resetEmailSent": "Αν υπάρχει λογαριασμός με αυτό το email, θα λάβετε σύνδεσμο επαναφοράς κωδικού.",
   "auth.resetSendFailed": "Δεν ήταν δυνατή η αποστολή του email επαναφοράς αυτή τη στιγμή. Δοκίμασε ξανά.",
   "auth.choosePasswordTitle": "Όρισε νέο κωδικό πρόσβασης",
   "auth.choosePasswordSubtitle": "Γράψε έναν νέο κωδικό για τον λογαριασμό σου στο PromptBeats.",
