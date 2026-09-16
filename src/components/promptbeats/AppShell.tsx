@@ -139,6 +139,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       </div>
 
       <div
+        data-studio-layout={active === "studio" ? "true" : undefined}
         className={cn(
           "relative z-10 pb-[calc(64px+env(safe-area-inset-bottom))] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
           desktopSidebarOpen ? "lg:pl-[270px]" : "lg:pl-5",
@@ -161,6 +162,39 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
 
         {children}
       </div>
+
+      <style>{`
+        @media (min-width: 1280px) {
+          [data-studio-layout="true"] > div > div {
+            display: grid;
+            width: 100%;
+            max-width: none;
+            grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr);
+            column-gap: 1.5rem;
+            align-items: start;
+          }
+
+          [data-studio-layout="true"] > div > div > a,
+          [data-studio-layout="true"] > div > div > a + div {
+            grid-column: 1 / -1;
+          }
+
+          [data-studio-layout="true"] > div > div > :nth-child(3) {
+            grid-column: 1;
+          }
+
+          [data-studio-layout="true"] > div > div > :nth-child(n + 4) {
+            grid-column: 2;
+            grid-row: 3;
+            position: sticky;
+            top: 6rem;
+            max-height: calc(100vh - 7rem);
+            overflow-y: auto;
+            padding-right: 0.25rem;
+            scrollbar-gutter: stable;
+          }
+        }
+      `}</style>
 
       <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
         <div className="grid h-full w-full grid-cols-4 items-center">
