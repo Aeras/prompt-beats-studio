@@ -26,6 +26,10 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   // prices are added here, estimateCostUsd returns null and the dashboard
   // renders cost as "N/A" for this model (tokens are still tracked).
   "claude-sonnet-5": { inputPerMillion: 3, outputPerMillion: 15 },
+  // grok-4.6 — official xAI short-context list pricing (<200k prompt tokens):
+  // $2.00/1M input and $6.00/1M output. PromptBeats requests are far below the
+  // 200k long-context threshold, so these rates match normal app usage.
+  "grok-4.6": { inputPerMillion: 2, outputPerMillion: 6 },
 };
 
 /**
