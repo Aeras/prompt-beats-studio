@@ -26,6 +26,9 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   // prices are added here, estimateCostUsd returns null and the dashboard
   // renders cost as "N/A" for this model (tokens are still tracked).
   "claude-sonnet-5": { inputPerMillion: 3, outputPerMillion: 15 },
+  // Mistral Small 4 (mistral-small-2603) — official Mistral standard pricing:
+  // $0.15/1M input tokens and $0.60/1M output tokens.
+  "mistral-small-2603": { inputPerMillion: 0.15, outputPerMillion: 0.6 },
 };
 
 /**
