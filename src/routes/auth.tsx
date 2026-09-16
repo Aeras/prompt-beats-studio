@@ -30,6 +30,8 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+type ResetStage = "none" | "request" | "sent" | "update" | "done";
+
 function AuthPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -44,6 +46,9 @@ function AuthPage() {
   const [handleTaken, setHandleTaken] = useState(false);
   const [aliasTaken, setAliasTaken] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [resetStage, setResetStage] = useState<ResetStage>("none");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const blockedRegistrationMessage = t("auth.registrationBlocked");
   const cleanHandleValue = handle.replace(/^@/, "").trim().toLowerCase();
@@ -87,9 +92,30 @@ function AuthPage() {
     (handleTaken || aliasTaken || checking || Boolean(handleFormatError) || !alias.trim() || !cleanHandleValue);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+    let active = true;
+    const recoveryInUrl =
+      typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("reset") === "1" || window.location.hash.includes("type=recovery"));
+
+    if (recoveryInUrl) setResetStage("update");
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session && !recoveryInUrl) navigate({ to: "/" });
     });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (!active) return;
+      if (event === "PASSWORD_RECOVERY") {
+        setMessage(null);
+        setResetStage("update");
+      }
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -148,6 +174,62 @@ function AuthPage() {
     }
   };
 
+  const requestPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth?reset=1`,
+      });
+      if (error) throw error;
+      setResetStage("sent");
+    } catch {
+      setMessage(t("auth.resetSendFailed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    if (newPassword.length < 6) {
+      setMessage(t("auth.passwordTooShort"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage(t("auth.passwordsDoNotMatch"));
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      await supabase.auth.signOut();
+      if (typeof window !== "undefined") window.history.replaceState({}, "", "/auth");
+      setNewPassword("");
+      setConfirmPassword("");
+      setResetStage("done");
+    } catch (err) {
+      const text = err instanceof Error ? err.message.toLowerCase() : "";
+      setMessage(text.includes("session") || text.includes("expired") ? t("auth.resetLinkInvalid") : t("auth.passwordUpdateFailed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const returnToSignIn = () => {
+    setResetStage("none");
+    setMode("signin");
+    setMessage(null);
+    setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    if (typeof window !== "undefined") window.history.replaceState({}, "", "/auth");
+  };
+
   const google = async () => {
     setBusy(true);
     setMessage(null);
@@ -167,6 +249,61 @@ function AuthPage() {
     }
     navigate({ to: "/" });
   };
+
+  if (resetStage !== "none") {
+    return (
+      <div className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
+        <div className="glass-strong w-full max-w-md rounded-3xl p-6 sm:p-8">
+          <div className="flex items-center gap-3">
+            <img src={logoAsset.url} alt="PromptBeats logo" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl glow-neon" />
+            <div className="min-w-0">
+              <h1 className="font-display text-xl font-bold tracking-tight">
+                {resetStage === "update" ? t("auth.choosePasswordTitle") : t("auth.resetTitle")}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {resetStage === "update" ? t("auth.choosePasswordSubtitle") : resetStage === "done" ? t("auth.passwordUpdated") : t("auth.resetSubtitle")}
+              </p>
+            </div>
+          </div>
+
+          {resetStage === "request" && (
+            <form onSubmit={requestPasswordReset} className="mt-6 space-y-3">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                aria-label={t("auth.email")}
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+              />
+              <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}{t("auth.sendResetLink")}
+              </button>
+            </form>
+          )}
+
+          {resetStage === "sent" && <p className="mt-6 text-center text-sm leading-relaxed text-muted-foreground">{t("auth.resetEmailSent")}</p>}
+
+          {resetStage === "update" && (
+            <form onSubmit={updatePassword} className="mt-6 space-y-3">
+              <input type="password" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("auth.newPassword")} aria-label={t("auth.newPassword")} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60" />
+              <input type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t("auth.confirmPassword")} aria-label={t("auth.confirmPassword")} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60" />
+              <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}{t("auth.updatePassword")}
+              </button>
+            </form>
+          )}
+
+          {message && <p className="mt-4 text-center text-xs text-accent">{message}</p>}
+
+          {(resetStage === "request" || resetStage === "sent" || resetStage === "done") && (
+            <button type="button" onClick={returnToSignIn} className="mt-5 w-full text-center text-xs text-primary hover:underline">{t("auth.backToSignIn")}</button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (signupSuccess) {
     return (
@@ -288,6 +425,13 @@ function AuthPage() {
             aria-label={t("auth.password")}
             className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
           />
+          {mode === "signin" && (
+            <div className="flex justify-end px-1">
+              <button type="button" onClick={() => { setMessage(null); setResetStage("request"); }} className="text-xs text-primary hover:underline">
+                {t("auth.forgotPassword")}
+              </button>
+            </div>
+          )}
           <button
             type="submit"
             disabled={busy || signupBlocked}
