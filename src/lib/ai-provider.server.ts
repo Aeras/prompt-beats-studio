@@ -203,8 +203,6 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
 
   let res = await send();
   if (res.status === 429) {
-    // Mistral allows 1 request/second on this account; a single spaced retry
-    // absorbs bursts without changing any other provider's behaviour.
     const retryAfter = Number(res.headers.get("retry-after"));
     const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 1500;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -221,7 +219,6 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
     }
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
-
 
   const payload = (await res.json()) as {
     choices?: Array<{
@@ -261,12 +258,12 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
 }
 
 /**
- * OpenAI-compatible chat completions call shared by Groq and OpenRouter.
+ * OpenAI-compatible chat completions call shared by Groq, OpenRouter and xAI.
  * The PromptBeats system prompt, user prompt and downstream Zod validation are
  * identical to every other provider; only transport differs.
  */
 async function callOpenAiCompatible(
-  providerName: "groq" | "openrouter",
+  providerName: "groq" | "openrouter" | "xai",
   endpoint: string,
   apiKey: string,
   model: string,
@@ -337,7 +334,6 @@ async function callOpenAiCompatible(
 async function callGroq(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GROQ_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
-  // Provider-enforced JSON object mode; strict Zod validation stays authoritative.
   return callOpenAiCompatible(
     "groq",
     "https://api.groq.com/openai/v1/chat/completions",
@@ -351,8 +347,6 @@ async function callGroq(model: string, call: ModelCall): Promise<ModelResult> {
 async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["OPENROUTER_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
-  // The free Nemotron endpoint rejects response_format; rely on the shared
-  // STRICT JSON instructions plus existing JSON parsing and Zod validation.
   return callOpenAiCompatible(
     "openrouter",
     "https://openrouter.ai/api/v1/chat/completions",
@@ -360,6 +354,20 @@ async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResu
     model,
     call,
     false,
+  );
+}
+
+async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
+  const apiKey = process.env["XAI_API_KEY"];
+  if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+  // xAI supports OpenAI-compatible Chat Completions and JSON object mode.
+  return callOpenAiCompatible(
+    "xai",
+    "https://api.x.ai/v1/chat/completions",
+    apiKey,
+    model,
+    call,
+    true,
   );
 }
 
@@ -371,6 +379,7 @@ export function modelCaller(model: string): ModelCaller {
     if (provider === "mistral") return callMistral(model, call);
     if (provider === "groq") return callGroq(model, call);
     if (provider === "openrouter") return callOpenRouter(model, call);
+    if (provider === "xai") return callXai(model, call);
     return callGemini(model, call);
   };
 }
@@ -430,9 +439,6 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
     .eq("user_id", userId)
     .maybeSingle();
   if (overrideError) {
-    // Backward compatibility while the additive migration is being rolled
-    // out; all other database failures fail closed rather than broadening
-    // model access.
     if (overrideError.code === "42P01") {
       return {
         activeModel: active,
