@@ -102,7 +102,7 @@ const ADVANCED_STYLES = ADVANCED_MUSIC_STYLES.map((option) => option.value);
 const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
 const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
 const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
-const BPM_OPTIONS = ["Custom", ...CATALOG_BPM_OPTIONS.map((option) => option.value).filter((value) => value !== "Custom")];
+const BPM_OPTIONS = ["Auto", "Custom", ...CATALOG_BPM_OPTIONS.map((option) => option.value).filter((value) => value !== "Auto" && value !== "Custom")];
 
 function translatedOption(
   options: readonly LocalizedGeneratorOption[],
