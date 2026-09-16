@@ -1,10 +1,40 @@
 import type { AiTargetPlatform } from "@/lib/ai-target-platforms";
 
+const HUMAN_SONGWRITING_GUIDANCE = `HUMAN SONGWRITING / ANTI-GENERIC LYRIC RULES
+- Write lyrics that feel naturally human-written, emotionally specific and contemporary.
+- Prefer concrete, believable details, actions, objects, places, physical sensations and conversational observations over abstract poetic filler.
+- Do not try to make every line sound poetic. Simple, direct lines are often more believable and more singable.
+- Specificity is preferred over poetic abstraction: when possible, show the emotion through a believable action, object, place, conversation or physical detail instead of naming the emotion through a generic metaphor.
+- Avoid stereotypical AI-song wording and overused imagery unless it is genuinely appropriate to the user's brief. Do not repeatedly fall back on images such as neon lights, echoes, ghosts, shadows, whispers, city lights, fading memories, broken hearts, stars, rain, fire, scars, silence, empty streets or dancing in the dark merely because they sound lyrical.
+- These words are not forbidden. Use them only when they are specific, meaningful and earned by the song.
+- Avoid vague lines that are grammatically correct but say little, generic emotional statements, stock contrasts and poetic phrases that exist mainly to sound impressive.
+- Never add a word or phrase only to complete a rhyme. Natural meaning, native phrasing, emotional truth and singability are more important than perfect rhyme.
+- Prefer fresh phrasing over predictable constructions such as "ghost of us", "echo of what we were", "lost in the night", "whispers in the dark" or similar formulaic wording unless the brief clearly calls for them and the line feels natural.
+- Keep the emotional perspective grounded and internally consistent. Let the song sound like one believable person speaking, remembering, reacting or deciding.
+- Before finalizing, silently review every sung line and ask: Would a skilled human songwriter plausibly write this? Does it communicate something specific? Is any word present only for rhyme? Does it sound natural when sung aloud? Is it generic, vague, clichéd or unnecessarily poetic? Rewrite any weak line before returning the result.`;
+
+const STRICT_LYRIC_FORMATTING_GUIDANCE = `STRICT SUNG / NON-SUNG FORMATTING — NON-NEGOTIABLE
+- Square brackets [ ] are the ONLY allowed format for structural tags and any text that is NOT intended to be sung.
+- Use square brackets for song sections, instrumental directions, arrangement directions, production directions, vocal-performance directions, transitions, dynamics and sound-design instructions.
+- Examples of valid non-sung directions: [Intro], [Instrumental Break], [Soft piano enters], [Clean electric guitar], [Female lead vocal], [Build], [Drums drop out], [Full stereo spread], [Fade out].
+- NEVER place a non-sung instruction inside round parentheses.
+- INVALID: (Instrumental fade-in), (Soft piano), (Guitar solo), (Drums enter), (Female vocal), (Building intensity).
+- VALID: [Instrumental fade-in], [Soft piano], [Guitar solo], [Drums enter], [Female vocal], [Building intensity].
+- Round parentheses ( ) are reserved ONLY for words that are literally intended to be sung, such as backing vocals, vocal echoes, responses or ad-libs.
+- Example of valid sung parentheses: I still remember you / (remember you).
+- If parenthesized text would not be audibly sung by a vocalist, it MUST be converted to square brackets or removed.
+- Before returning the lyrics, silently scan every pair of round parentheses. For each one ask: "Is this text intended to be audibly sung?" If the answer is no, convert it to square brackets or remove it.
+- No instrumental, structural, production, arrangement, sound-design or performance instruction may remain inside round parentheses in the final lyrics.`;
+
 export function generationPlatformGuidance(platform: AiTargetPlatform): string {
   if (platform === "udio") {
     return `TARGET PLATFORM — UDIO
 
 Optimize the result specifically for Udio's Create flow with a text Prompt plus Custom Lyrics.
+
+${HUMAN_SONGWRITING_GUIDANCE}
+
+${STRICT_LYRIC_FORMATTING_GUIDANCE}
 
 UDIO PROMPT
 - The "tags" field is the Udio Prompt, not a Suno-style keyword dump.
@@ -24,7 +54,6 @@ UDIO LYRICS / GUIDANCE TAGS
 - Example VALID: [Atmospheric synths swell], [Soft electric piano chords], [Deep sub bass pulses].
 - Example VALID sung echo: (Το φως σου μόνο ζητώ)
 - Example INVALID: (Atmospheric synths swelling), (Soft electric piano chords), (Deep sub bass pulses).
-- Before returning the lyrics, perform a formatting audit: if any parenthesized text is not intended to be literally sung, convert it to a square-bracketed direction.
 - Avoid excessive guidance tags. They are guidance, not guaranteed hard commands.
 
 UDIO LENGTH
@@ -37,6 +66,10 @@ UDIO LENGTH
 
 Optimize the result specifically for Suno Custom mode.
 
+${HUMAN_SONGWRITING_GUIDANCE}
+
+${STRICT_LYRIC_FORMATTING_GUIDANCE}
+
 SUNO STYLE PROMPT
 - The "tags" field is the Suno Style Prompt.
 - Write it in concise, information-dense English.
@@ -45,7 +78,8 @@ SUNO STYLE PROMPT
 
 SUNO LYRICS / DIRECTIONS
 - Keep the existing PromptBeats Suno lyric conventions that already work well: clear square-bracketed structural tags and concise vocal/production directions when useful.
-- Do not use round parentheses for non-sung structural or production directions.
+- Use round parentheses only for sung backing vocals, echoes, responses or ad-libs.
+- Never use round parentheses for non-sung structural, instrumental, vocal-performance, arrangement, production or sound-design directions.
 - Avoid unnecessary tags or directions that could be sung accidentally.`;
 }
 
@@ -72,6 +106,7 @@ The song was generated specifically for Suno. Evaluate platform formatting and S
 
 - Treat the "tags" field as the Suno Style Prompt.
 - Square-bracketed structural, vocal and production directions are allowed when coherent and useful.
-- Round parentheses must not be used for non-sung structural or production directions.
+- Round parentheses are allowed only for words literally intended to be sung as backing vocals, echoes, responses or ad-libs.
+- Round parentheses must not be used for non-sung structural, instrumental, vocal-performance, arrangement, production or sound-design directions.
 - Do not penalize valid Suno-oriented formatting merely because Udio would format the same idea differently.`;
 }
