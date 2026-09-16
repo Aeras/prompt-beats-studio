@@ -22,7 +22,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Apply focused generator UX changes
         shell: bash
@@ -82,7 +81,7 @@ jobs:
           PY
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-package-lock
 
       - name: Lint
         run: npm run lint
