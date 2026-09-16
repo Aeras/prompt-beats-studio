@@ -102,7 +102,7 @@ const ADVANCED_STYLES = ADVANCED_MUSIC_STYLES.map((option) => option.value);
 const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
 const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
 const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
-const BPM_OPTIONS = CATALOG_BPM_OPTIONS.map((option) => option.value);
+const BPM_OPTIONS = ["Custom", ...CATALOG_BPM_OPTIONS.map((option) => option.value).filter((value) => value !== "Custom")];
 
 function translatedOption(
   options: readonly LocalizedGeneratorOption[],
@@ -788,12 +788,14 @@ function GeneratePage() {
               <div><FieldLabel>{t("generator.language")}</FieldLabel><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select></div>
             </> : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <select value={moods[0] ?? ""} onChange={(e) => pickPrimary(setMoods)(e.target.value)} aria-label={t("generator.mood")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMood")}</option>{MOOD_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MOODS, item, t)}</option>)}</select>
+                <div className="space-y-3">
+                  <select value={moods[0] ?? ""} onChange={(e) => pickPrimary(setMoods)(e.target.value)} aria-label={t("generator.mood")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMood")}</option>{MOOD_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MOODS, item, t)}</option>)}</select>
+                  {moods[0] === CUSTOM && <input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass} />}
+                </div>
                 <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select>
               </div>
             )}
 
-            {!advanced && moods[0] === CUSTOM && <input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodBasic")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass} />}
             {language === CUSTOM && <input value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)} placeholder={t("generator.customLanguagePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.language")}`} className={fieldClass} />}
             {validationError && <p className="text-xs text-red-400">{validationError}</p>}
 
