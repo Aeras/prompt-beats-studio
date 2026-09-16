@@ -260,9 +260,11 @@ function AuthPage() {
               <h1 className="font-display text-xl font-bold tracking-tight">
                 {resetStage === "update" ? t("auth.choosePasswordTitle") : t("auth.resetTitle")}
               </h1>
-              <p className="text-xs text-muted-foreground">
-                {resetStage === "update" ? t("auth.choosePasswordSubtitle") : resetStage === "done" ? t("auth.passwordUpdated") : t("auth.resetSubtitle")}
-              </p>
+              {resetStage !== "sent" && (
+                <p className="text-xs text-muted-foreground">
+                  {resetStage === "update" ? t("auth.choosePasswordSubtitle") : resetStage === "done" ? t("auth.passwordUpdated") : t("auth.resetSubtitle")}
+                </p>
+              )}
             </div>
           </div>
 
