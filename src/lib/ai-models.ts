@@ -12,12 +12,6 @@ export const AI_MODELS = [
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic" },
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic" },
   { id: "claude-fable-5", label: "Claude Fable 5", provider: "anthropic" },
-  { id: "openai/gpt-oss-120b", label: "Groq GPT-OSS 120B", provider: "groq" },
-  {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    label: "OpenRouter Nemotron 3 Ultra (Free)",
-    provider: "openrouter",
-  },
 ] as const;
 
 export type AiModelId = (typeof AI_MODELS)[number]["id"];
