@@ -178,31 +178,50 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   const apiKey = process.env["MISTRAL_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
 
-  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: call.system },
-        { role: "user", content: call.prompt },
-      ],
-      max_tokens: call.maxTokens ?? 8192,
-      // PromptBeats already asks for a JSON object and performs strict Zod
-      // validation afterwards. JSON mode keeps the provider response parseable
-      // without coupling our Google-style schema objects to Mistral's schema dialect.
-      response_format: { type: "json_object" },
-    }),
+  const body = JSON.stringify({
+    model,
+    messages: [
+      { role: "system", content: call.system },
+      { role: "user", content: call.prompt },
+    ],
+    max_tokens: call.maxTokens ?? 8192,
+    // PromptBeats already asks for a JSON object and performs strict Zod
+    // validation afterwards. JSON mode keeps the provider response parseable
+    // without coupling our Google-style schema objects to Mistral's schema dialect.
+    response_format: { type: "json_object" },
   });
 
+  const send = () =>
+    fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body,
+    });
+
+  let res = await send();
+  if (res.status === 429) {
+    // Mistral allows 1 request/second on this account; a single spaced retry
+    // absorbs bursts without changing any other provider's behaviour.
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 1500;
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    res = await send();
+  }
+
   if (!res.ok) {
-    const body = await res.text();
-    console.error(`[ai-provider] Mistral request failed (${res.status})`, body.slice(0, 1000));
+    const errorBody = await res.text();
+    console.error(`[ai-provider] Mistral request failed (${res.status})`, errorBody.slice(0, 1000));
+    if (res.status === 429) {
+      throw new Error(
+        "This AI model has reached its request limit on the connected Mistral account. Please try another model or try again later.",
+      );
+    }
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
+
 
   const payload = (await res.json()) as {
     choices?: Array<{
@@ -332,7 +351,7 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   if (!allowed.length) throw new Error("No AI model is available for this account.");
   return {
     activeModel: active,
-    defaultModel: allowed.includes(active) ? active : allowed[0],
+    defaultModel: allowed.includes(active) ? active : (allowed[0] as AiModelId),
     availableModels: allowed,
     accessMode: "custom",
   };
@@ -343,10 +362,10 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
   if (requestedModel && !isAiModelId(requestedModel)) throw new Error("Unsupported AI model.");
   const access = await getEffectiveModelAccess(userId);
   if (!requestedModel) return access.defaultModel;
-  if (!access.availableModels.includes(requestedModel)) {
+  if (!(access.availableModels as readonly string[]).includes(requestedModel)) {
     throw new Error("That AI model is not available for this account.");
   }
-  return requestedModel;
+  return requestedModel as AiModelId;
 }
 
 /** Admin-only write path; the caller must already have verified admin rights. */
