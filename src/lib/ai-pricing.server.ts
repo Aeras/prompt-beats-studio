@@ -26,6 +26,11 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   // prices are added here, estimateCostUsd returns null and the dashboard
   // renders cost as "N/A" for this model (tokens are still tracked).
   "claude-sonnet-5": { inputPerMillion: 3, outputPerMillion: 15 },
+  // Groq GPT-OSS 120B — published standard list price: $0.15/1M input,
+  // $0.60/1M output. Estimate only, not an invoice or free-tier charge.
+  "openai/gpt-oss-120b": { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  // OpenRouter Nemotron 3 Ultra on the ":free" endpoint — no token charge.
+  "nvidia/nemotron-3-ultra-550b-a55b:free": { inputPerMillion: 0, outputPerMillion: 0 },
 };
 
 /**
