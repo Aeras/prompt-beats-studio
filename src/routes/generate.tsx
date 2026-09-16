@@ -774,7 +774,7 @@ function GeneratePage() {
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} onClear={() => { setGenres([]); setCustomGenre(""); }} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} onClear={() => { setGenres([]); setCustomGenre(""); }} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /></> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -782,7 +782,12 @@ function GeneratePage() {
               )}
             </div>
 
-            {(advanced || customGenreSelected) && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />}
+            {(advanced || customGenreSelected) && (
+              <div>
+                <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />
+                {advanced && <p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p>}
+              </div>
+            )}
 
             {advanced ? <>
               <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} onClear={() => { setMoods([]); setCustomMood(""); }} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
