@@ -87,16 +87,23 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
             desktopSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
-          <SidebarNav active={active} onNavigate={() => setDrawer(false)} onSubmit={openStudio} />
+          <div className="h-full w-[270px]">
+            <SidebarNav active={active} onNavigate={() => setDrawer(false)} onSubmit={openStudio} />
+          </div>
         </div>
         <button
           type="button"
           aria-label={desktopSidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
           aria-expanded={desktopSidebarOpen}
           onClick={toggleDesktopSidebar}
-          className="absolute right-0 top-5 z-40 grid h-8 w-8 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color,transform] duration-200 ease-out hover:border-accent/40 hover:text-accent motion-reduce:transition-none"
+          className="absolute right-0 top-5 z-40 grid h-8 w-8 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color] duration-200 ease-out hover:border-accent/40 hover:text-accent motion-reduce:transition-none"
         >
-          {desktopSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <ChevronLeft
+            className={cn(
+              "h-4 w-4 transition-transform duration-200 ease-out motion-reduce:transition-none",
+              !desktopSidebarOpen && "rotate-180",
+            )}
+          />
         </button>
       </aside>
 
