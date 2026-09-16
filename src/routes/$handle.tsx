@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getPublicArtistByHandle } from "@/lib/profile.functions";
 import { ArtistProfileView } from "@/components/promptbeats/ArtistProfileView";
+import { AppShell } from "@/components/promptbeats/AppShell";
 
 export const Route = createFileRoute("/$handle")({
   beforeLoad: ({ params }) => {
@@ -25,5 +26,18 @@ function VanityArtistPage() {
   const { handle } = Route.useParams();
   const clean = handle.replace(/^@/, "");
   const { data, isLoading } = useQuery({ queryKey: ["public-artist-handle", clean], queryFn: () => getPublicArtistByHandle({ data: { handle: clean } }) });
-  return <ArtistProfileView profile={data?.profile ?? null} tracks={data?.tracks ?? []} isLoading={isLoading} />;
+
+  return (
+    <AppShell
+      header={
+        <div className="min-w-0">
+          <p className="truncate font-display text-sm font-semibold text-foreground">@{clean}</p>
+        </div>
+      }
+    >
+      <div className="[&>div]:min-h-0 [&>div]:bg-transparent [&>div]:px-4 [&>div]:py-6 md:[&>div]:px-8 md:[&>div]:py-8 [&>div>div]:max-w-[1400px] [&>div>div>a:first-child]:hidden">
+        <ArtistProfileView profile={data?.profile ?? null} tracks={data?.tracks ?? []} isLoading={isLoading} />
+      </div>
+    </AppShell>
+  );
 }
