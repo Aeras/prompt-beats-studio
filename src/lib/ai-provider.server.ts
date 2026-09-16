@@ -351,7 +351,7 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   if (!allowed.length) throw new Error("No AI model is available for this account.");
   return {
     activeModel: active,
-    defaultModel: allowed.includes(active) ? active : allowed[0],
+    defaultModel: allowed.includes(active) ? active : (allowed[0] as AiModelId),
     availableModels: allowed,
     accessMode: "custom",
   };
@@ -362,10 +362,10 @@ export async function getModelForUser(userId: string, requestedModel?: string): 
   if (requestedModel && !isAiModelId(requestedModel)) throw new Error("Unsupported AI model.");
   const access = await getEffectiveModelAccess(userId);
   if (!requestedModel) return access.defaultModel;
-  if (!access.availableModels.includes(requestedModel)) {
+  if (!(access.availableModels as readonly string[]).includes(requestedModel)) {
     throw new Error("That AI model is not available for this account.");
   }
-  return requestedModel;
+  return requestedModel as AiModelId;
 }
 
 /** Admin-only write path; the caller must already have verified admin rights. */
