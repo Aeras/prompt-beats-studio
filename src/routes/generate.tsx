@@ -165,11 +165,23 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
 }
 
-function SectionHeader({ title, hint }: { title: string; hint?: string }) {
+function SectionHeader({ title, hint, onClear }: { title: string; hint?: string; onClear?: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
       {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
+      {onClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={`${t("generator.clear")} ${title}`}
+          title={`${t("generator.clear")} ${title}`}
+          className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -755,13 +767,14 @@ function GeneratePage() {
             </div>
 
             <div>
+              {advanced ? <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} /> : <FieldLabel>{t("generator.theme")}</FieldLabel>}
               <textarea value={theme} onChange={(e) => setTheme(e.target.value)} maxLength={hasAdminInputBypass ? undefined : themeLimit} rows={3} placeholder={t("generator.themePlaceholder")} aria-label={t("generator.theme")} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
               <p className="mt-1 text-right text-[11px] text-muted-foreground">{theme.length}/{themeLimit}</p>
             </div>
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} onClear={() => { setGenres([]); setCustomGenre(""); }} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -772,20 +785,20 @@ function GeneratePage() {
             {(advanced || customGenreSelected) && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />}
 
             {advanced ? <>
-              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
-              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
+              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} onClear={() => { setMoods([]); setCustomMood(""); }} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
+              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} onClear={() => { setInstruments([]); setCustomInstruments(""); }} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
+                <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} onClear={() => { setBpm("Auto"); setCustomBpm(""); }} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
               </div>
               <div>
-                <SectionHeader title={t("generator.songStructure")} hint={t("generator.structureHint")} />
-                {structure.length > 0 && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">{structure.map((item, i) => <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">{structureLabel(item)}<button type="button" aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })} onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))} className="text-accent/70 transition-colors hover:text-accent">×</button></span>)}<button type="button" onClick={() => setStructure([])} className="ml-auto rounded-full border border-white/15 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive">{t("generator.clearStructure")}</button></div>}
+                <SectionHeader title={t("generator.songStructure")} hint={t("generator.structureHint")} onClear={() => setStructure([])} />
+                {structure.length > 0 && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">{structure.map((item, i) => <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">{structureLabel(item)}<button type="button" aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })} onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))} className="text-accent/70 transition-colors hover:text-accent">×</button></span>)}</div>}
                 <div className="flex flex-wrap gap-2">{STRUCTURE_TAGS.map((item) => <button key={item} type="button" onClick={() => setStructure((p) => [...p, item])} className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{structureLabel(item)}</button>)}</div>
               </div>
-              <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
-              <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
-              <div><FieldLabel>{t("generator.language")}</FieldLabel><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select></div>
+              <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
+              <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
+              <div><SectionHeader title={t("generator.language")} onClear={() => { setLanguage(""); setCustomLanguage(""); }} /><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select></div>
             </> : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-3">
