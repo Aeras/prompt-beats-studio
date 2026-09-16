@@ -95,9 +95,9 @@ export const Route = createFileRoute("/generate")({
 });
 
 const CUSTOM = "Custom…";
-const GENRE_OPTIONS = BASIC_MUSIC_STYLES.map((option) => option.value);
-const MOOD_OPTIONS = BASIC_MOODS.map((option) => option.value);
-const LANGUAGE_OPTIONS = SONG_LANGUAGES.map((option) => option.value);
+const GENRE_OPTIONS = [CUSTOM, ...BASIC_MUSIC_STYLES.map((option) => option.value).filter((value) => value !== CUSTOM)];
+const MOOD_OPTIONS = [CUSTOM, ...BASIC_MOODS.map((option) => option.value).filter((value) => value !== CUSTOM)];
+const LANGUAGE_OPTIONS = [CUSTOM, ...SONG_LANGUAGES.map((option) => option.value).filter((value) => value !== CUSTOM)];
 const ADVANCED_STYLES = ADVANCED_MUSIC_STYLES.map((option) => option.value);
 const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
 const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
@@ -578,7 +578,7 @@ function GeneratePage() {
   const blocked = remaining <= 0;
 
   const customGenreSelected = genres.includes(CUSTOM);
-  const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), customGenreSelected ? customGenre : "");
+  const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), advanced || customGenreSelected ? customGenre : "");
   const baseGenre = styleList.join(", ");
   const instrumentList = mergeValues(instruments, customInstruments);
   const effectiveBpm = bpm === "Auto" ? "" : bpm === "Custom" ? customBpm.trim() : bpm;
@@ -761,7 +761,7 @@ function GeneratePage() {
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES} selected={genres} onToggle={toggleValue(setGenres)} labelFor={(value) => value === CUSTOM ? t("generator.option.custom") : styleLabel(value)} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p></> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -769,7 +769,7 @@ function GeneratePage() {
               )}
             </div>
 
-            {customGenreSelected && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={fieldClass} />}
+            {(advanced || customGenreSelected) && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />}
 
             {advanced ? <>
               <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
