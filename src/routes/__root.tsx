@@ -99,7 +99,7 @@ function RootComponent() {
 
 function StandaloneLanguageControl() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const usesAppShell = pathname === "/" || pathname.startsWith("/trending") || pathname.startsWith("/generate") || pathname.startsWith("/library") || pathname.startsWith("/management");
+  const usesAppShell = pathname === "/" || pathname.startsWith("/@") || pathname.startsWith("/trending") || pathname.startsWith("/generate") || pathname.startsWith("/library") || pathname.startsWith("/management");
   if (usesAppShell) return null;
   return <div className="fixed right-3 top-3 z-[120]"><LanguageSelector compact /></div>;
 }
