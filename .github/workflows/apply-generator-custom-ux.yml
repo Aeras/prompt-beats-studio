@@ -1,0 +1,101 @@
+name: Apply generator custom input UX
+
+on:
+  push:
+    branches:
+      - feat/generator-custom-input-ux
+    paths:
+      - .github/workflows/apply-generator-custom-ux.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[apply-generator-ux]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/generator-custom-input-ux
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply focused generator UX changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/routes/generate.tsx')
+          s = p.read_text()
+
+          replacements = [
+              (
+                  'const GENRE_OPTIONS = BASIC_MUSIC_STYLES.map((option) => option.value);\nconst MOOD_OPTIONS = BASIC_MOODS.map((option) => option.value);\nconst LANGUAGE_OPTIONS = SONG_LANGUAGES.map((option) => option.value);',
+                  'const GENRE_OPTIONS = [CUSTOM, ...BASIC_MUSIC_STYLES.map((option) => option.value).filter((value) => value !== CUSTOM)];\nconst MOOD_OPTIONS = [CUSTOM, ...BASIC_MOODS.map((option) => option.value).filter((value) => value !== CUSTOM)];\nconst LANGUAGE_OPTIONS = [CUSTOM, ...SONG_LANGUAGES.map((option) => option.value).filter((value) => value !== CUSTOM)];',
+              ),
+              (
+                  'const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), customGenreSelected ? customGenre : "");',
+                  'const styleList = mergeValues(genres.filter((g) => g !== CUSTOM), advanced || customGenreSelected ? customGenre : "");',
+              ),
+              (
+                  '<ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES} selected={genres} onToggle={toggleValue(setGenres)} labelFor={(value) => value === CUSTOM ? t("generator.option.custom") : styleLabel(value)} />',
+                  '<ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} />',
+              ),
+              (
+                  '{customGenreSelected && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={fieldClass} />}',
+                  '{(advanced || customGenreSelected) && <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />}',
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Missing expected generate.tsx block: {old[:100]}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          locale_changes = {
+              'src/i18n/locales/en.ts': {
+                  '"generator.customStylePlaceholder": "Type your own style tags (merged with the selected genres)"': '"generator.customStylePlaceholder": "Custom, separated by commas"',
+                  '"generator.customMoodPlaceholder": "Custom mood (added to the moods above)"': '"generator.customMoodPlaceholder": "Custom, separated by commas"',
+                  '"generator.customInstrumentsPlaceholder": "Custom instruments, comma separated (added to the ones above)"': '"generator.customInstrumentsPlaceholder": "Custom, separated by commas"',
+              },
+              'src/i18n/locales/el.ts': {
+                  '"generator.customStylePlaceholder": "Γράψε δικά σου style tags (θα προστεθούν στις επιλεγμένες επιλογές)"': '"generator.customStylePlaceholder": "Προσαρμοσμένα, χωρισμένα με κόμμα"',
+                  '"generator.customMoodPlaceholder": "Πρόσθεσε δική σου διάθεση (θα προστεθεί στις παραπάνω επιλογές)"': '"generator.customMoodPlaceholder": "Προσαρμοσμένα, χωρισμένα με κόμμα"',
+                  '"generator.customInstrumentsPlaceholder": "Πρόσθεσε μουσικά όργανα χωρισμένα με κόμμα"': '"generator.customInstrumentsPlaceholder": "Προσαρμοσμένα, χωρισμένα με κόμμα"',
+              },
+          }
+
+          for filename, changes in locale_changes.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in changes.items():
+                  if old not in text:
+                      raise SystemExit(f'Missing expected locale string in {filename}: {old}')
+                  text = text.replace(old, new, 1)
+              path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit validated changes
+        shell: bash
+        run: |
+          rm .github/workflows/apply-generator-custom-ux.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/generate.tsx src/i18n/locales/en.ts src/i18n/locales/el.ts .github/workflows/apply-generator-custom-ux.yml
+          git commit -m "feat: streamline generator custom inputs [apply-generator-ux]"
+          git push origin HEAD:feat/generator-custom-input-ux
