@@ -18,7 +18,7 @@ const inputClass =
 function AiMusicLabPage() {
   const navigate = useNavigate();
   const { language } = useI18n();
-  const copy = language === "el" ? el : en;
+  const copy: LabCopy = language === "el" ? el : en;
   const access = useQuery({ queryKey: ["ai-music-lab-access"], queryFn: () => getAiMusicLabAccess(), retry: false, staleTime: 60_000 });
 
   useEffect(() => {
@@ -111,7 +111,7 @@ function AiMusicLabPage() {
   );
 }
 
-function Header({ copy }: { copy: typeof en }) {
+function Header({ copy }: { copy: LabCopy }) {
   return <div><p className="font-display text-lg font-semibold">AI Music Lab</p><p className="text-xs text-muted-foreground">{copy.headerSub}</p></div>;
 }
 
@@ -141,7 +141,9 @@ const en = {
   adminProtectedBody: "The sidebar item is shown only to admins, and this route also verifies admin access on the server.",
 } as const;
 
-const el: typeof en = {
+type LabCopy = { [K in keyof typeof en]: string };
+
+const el: LabCopy = {
   headerSub: "Πειραματικός χώρος δημιουργίας πραγματικού audio",
   checking: "Έλεγχος πρόσβασης διαχειριστή…",
   adminOnly: "Μόνο για admin",
