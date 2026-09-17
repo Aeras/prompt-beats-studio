@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { UPLOAD_GENRES } from "@/lib/tracks";
 import { CREATED_WITH_OPTIONS, type CreatedWith } from "@/lib/created-with";
 import { deleteTrack, discardUploads, updateTrack } from "@/lib/tracks.functions";
+import { getTrackDownloadPermission, setTrackDownloadPermission } from "@/lib/track-download.functions";
 import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,11 +54,24 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(track.is_published ?? true);
+  const [allowDownload, setAllowDownload] = useState(false);
 
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
   if (!isOwner && !isAdmin) return null;
 
   const refresh = () => queryClient.invalidateQueries();
+  const openEdit = async () => {
+    setError(null);
+    if (isUpload && isOwner) {
+      try {
+        const permission = await getTrackDownloadPermission({ data: { trackId: track.id } });
+        setAllowDownload(permission.allowDownload);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("owner.saveFailed"));
+      }
+    }
+    setEditing(true);
+  };
   const uploadAudio = async (file: File) => {
     const { data } = await supabase.auth.getSession();
     const body = new FormData();
@@ -88,6 +102,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
       await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      if (isUpload) await setTrackDownloadPermission({ data: { trackId: track.id, allowDownload } });
       await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null);
     } catch (err) {
       if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* durable cleanup */ }
@@ -111,6 +126,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           {!isUpload && sourceType !== "legacy_link" && <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" aria-label={`${providerName(sourceType)} link`} className={inputCls} />}
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} aria-label={t("owner.trackTitle")} className={inputCls} />
           <fieldset className="flex items-center gap-2" aria-label={t("owner.visibility")}><legend className="mr-1 text-xs text-muted-foreground">{t("owner.visibility")}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setIsPublished(value)} aria-pressed={isPublished === value} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${isPublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
+          {isUpload && <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground"><input type="checkbox" checked={allowDownload} onChange={(event) => setAllowDownload(event.target.checked)} className="mt-0.5 h-4 w-4 accent-current" /><span><span className="block text-sm font-medium">{language === "el" ? "Επιτρέπεται λήψη" : "Allow download"}</span><span className="mt-0.5 block text-xs text-muted-foreground">{language === "el" ? "Να μπορούν οι άλλοι εγγεγραμμένοι χρήστες να κατεβάζουν το αρχείο." : "Allow other signed-in users to download the audio file."}</span></span></label>}
           <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label={t("owner.musicGenre")} className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{localizedGenreLabel(genre, t)}</option>)}</select>
           {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder={t("owner.customGenre")} aria-label={t("owner.customGenre")} className={inputCls} />}
           {isUpload && <label className="block text-xs text-muted-foreground">{language === "el" ? "Δημιουργήθηκε με" : "Created with"}<select value={createdWith} onChange={(event) => setCreatedWith(event.target.value as CreatedWith)} className={`${inputCls} mt-1.5`}><option value="" disabled className="bg-[#0a0a0c]">{language === "el" ? "Επίλεξε πλατφόρμα" : "Select platform"}</option>{CREATED_WITH_OPTIONS.map((option) => <option key={option} value={option} className="bg-[#0a0a0c]">{option}</option>)}</select></label>}
@@ -142,7 +158,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   );
 
   return <>
-    <div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label={t("owner.editTrack")} onClick={() => setEditing(true)} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label={t("owner.deleteTrack")} onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
+    <div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label={t("owner.editTrack")} onClick={() => void openEdit()} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label={t("owner.deleteTrack")} onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
     {editModal}
     {deleteModal}
   </>;
