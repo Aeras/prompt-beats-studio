@@ -9,7 +9,6 @@ import { isSupportedExternalTrackUrl, type TrackSourceType } from "@/lib/track-s
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack, discardUploads } from "@/lib/tracks.functions";
-import { setTrackDownloadPermission } from "@/lib/track-download.functions";
 import { useModeration } from "@/hooks/useModeration";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
@@ -76,14 +75,12 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       if (r.sourceType !== "upload") {
         const provider = r.sourceType === "suno" ? "Suno" : "Udio";
         if (!isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) throw new Error(t("studio.validProviderLink", { provider }));
-        await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished } });
+        await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished, allow_download: false } });
         return;
       }
       const payload = await uploadOne(r.file!, token); audioKey = payload.key;
       if (r.cover) { const cover = await uploadCover(r.cover); coverPath = cover.path; coverUrl = cover.url; }
-      const created = await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished } });
-      const trackId = (created.track as { id?: string } | null)?.id;
-      if (trackId) await setTrackDownloadPermission({ data: { trackId, allowDownload: r.allowDownload } });
+      await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished, allow_download: r.allowDownload } });
     } catch (err) {
       if (audioKey || coverPath) { try { await discardUploads({ data: { audioKey, coverPath } }); } catch { /* cleanup failure logged server-side */ } }
       throw err;

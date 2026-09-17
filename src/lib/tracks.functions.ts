@@ -170,6 +170,7 @@ export const createTrack = createServerFn({ method: "POST" })
         audio_type: externalSource ? "link" : data.audio_type,
         audio_key: externalSource ? null : data.audio_key ?? null,
         cover_url: externalSource ? null : data.cover_url ?? null,
+        allow_download: externalSource ? false : data.allow_download === true,
         source_type: externalSource?.sourceType ?? "upload",
         source_url: externalSource?.sourceUrl ?? null,
         source_id: externalSource?.sourceId ?? null,
@@ -192,6 +193,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       prompt: z.string().trim().max(4000).default(""),
       lyrics: z.string().trim().max(8000).default(""),
       is_published: z.boolean(),
+      allow_download: z.boolean().default(false),
       source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
       created_with: createdWithSchema.nullable().optional(),
       source_url: z.string().url().max(1000).optional(),
@@ -225,6 +227,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       _new_audio_url: data.new_audio_url ?? null,
       _new_audio_key: data.new_audio_key ?? null,
       _new_cover_url: data.new_cover_url ?? null,
+      _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
     } as never);
     if (error) throw new Error(error.message);
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;

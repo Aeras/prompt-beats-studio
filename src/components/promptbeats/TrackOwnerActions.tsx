@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { UPLOAD_GENRES } from "@/lib/tracks";
 import { CREATED_WITH_OPTIONS, type CreatedWith } from "@/lib/created-with";
 import { deleteTrack, discardUploads, updateTrack } from "@/lib/tracks.functions";
-import { getTrackDownloadPermission, setTrackDownloadPermission } from "@/lib/track-download.functions";
+import { getTrackDownloadPermission } from "@/lib/track-download.functions";
 import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -101,8 +101,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     try {
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
-      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
-      if (isUpload) await setTrackDownloadPermission({ data: { trackId: track.id, allowDownload } });
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, allow_download: isUpload ? allowDownload : false, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
       await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null);
     } catch (err) {
       if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* durable cleanup */ }
