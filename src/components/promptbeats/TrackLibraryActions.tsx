@@ -178,7 +178,7 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
         </header>
 
         <div className="mt-5 space-y-2">
-          {(playlists.data?.playlists ?? []).map((playlist) => (
+          {(playlists.data?.playlists ?? []).map((playlist: any) => (
             <button
               key={playlist.id}
               onClick={() => void addTo(playlist.id)}
