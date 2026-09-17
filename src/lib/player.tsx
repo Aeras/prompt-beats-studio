@@ -114,15 +114,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
-      playedRef.current = new Set();
+      playedRef.current = new Set(current ? [current.id] : []);
       historyRef.current = [];
       return nextVal;
     });
-  }, []);
+  }, [current]);
 
   const cycleRepeat = useCallback(() => {
     setRepeat((r) => {
-      const nextVal: RepeatMode = r === "off" ? "all" : r === "all" ? "one" : "off";
+      const nextVal: RepeatMode = r === "off" ? "one" : r === "one" ? "all" : "off";
       try {
         localStorage.setItem("pb:repeat", nextVal);
       } catch {
@@ -227,12 +227,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (queue.length === 0) return null;
     if (queue.length === 1) return queue[0] ?? null;
     let pool = queue.filter((t) => !playedRef.current.has(t.id) && t.id !== current?.id);
-    if (pool.length === 0) {
-      // Exhausted the queue — start a new shuffle cycle.
-      playedRef.current = new Set(current ? [current.id] : []);
-      pool = queue.filter((t) => t.id !== current?.id);
-    }
-    if (pool.length === 0) return current;
+    if (pool.length === 0) return null;
     return pool[Math.floor(Math.random() * pool.length)] ?? null;
   }, [queue, current]);
 
@@ -264,13 +259,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (shuffle) {
-        goTo(pickShuffled());
+        const shuffled = pickShuffled();
+        if (shuffled) goTo(shuffled);
+        else if (repeat === "all") {
+          playedRef.current = new Set(current ? [current.id] : []);
+          goTo(pickShuffled());
+        }
         return;
       }
       const i = queue.findIndex((t) => t.id === current.id);
       goTo(queue[(Math.max(i, 0) + 1) % queue.length]);
     },
-    [current, queue, shuffle, pickShuffled, goTo, start],
+    [current, queue, shuffle, repeat, pickShuffled, goTo, start],
   );
 
   // Auto-advance when a track ends, honouring repeat + shuffle.
@@ -289,7 +289,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       if (queue.length === 0) return;
       if (shuffle) {
-        goTo(pickShuffled());
+        const shuffled = pickShuffled();
+        if (shuffled) {
+          goTo(shuffled);
+          return;
+        }
+        if (repeat === "all") {
+          playedRef.current = new Set(current ? [current.id] : []);
+          goTo(pickShuffled());
+        }
         return;
       }
       const i = queue.findIndex((t) => t.id === current.id);
