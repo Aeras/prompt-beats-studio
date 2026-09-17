@@ -229,7 +229,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const pickShuffled = useCallback(() => {
     if (queue.length === 0) return null;
-    if (queue.length === 1) return queue[0] ?? null;
+    if (queue.length === 1) {
+      const only = queue[0];
+      if (!only || only.id === current?.id || playedRef.current.has(only.id)) return null;
+      return only;
+    }
     let pool = queue.filter((t) => !playedRef.current.has(t.id) && t.id !== current?.id);
     if (pool.length === 0) return null;
     return pool[Math.floor(Math.random() * pool.length)] ?? null;
@@ -266,8 +270,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const shuffled = pickShuffled();
         if (shuffled) goTo(shuffled);
         else if (repeat === "all") {
-          playedRef.current = new Set(current ? [current.id] : []);
-          goTo(pickShuffled());
+          if (queue.length === 1) {
+            goTo(queue[0]);
+          } else {
+            playedRef.current = new Set(current ? [current.id] : []);
+            goTo(pickShuffled());
+          }
         }
         return;
       }
@@ -299,8 +307,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (repeat === "all") {
-          playedRef.current = new Set(current ? [current.id] : []);
-          goTo(pickShuffled());
+          if (queue.length === 1) {
+            goTo(queue[0]);
+          } else {
+            playedRef.current = new Set(current ? [current.id] : []);
+            goTo(pickShuffled());
+          }
         }
         return;
       }
