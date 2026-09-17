@@ -13,6 +13,7 @@ export const NAV_PATHS: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
   studio: "/generate",
+  musicLab: "/ai-music-lab",
   library: "/library",
   management: "/management",
 };
@@ -22,13 +23,14 @@ const MOBILE_TABS = [
   { id: "trending", labelKey: "nav.trending" },
   { id: "studio", labelKey: "nav.studioShort" },
   { id: "library", labelKey: "nav.libraryShort" },
-] as const satisfies ReadonlyArray<{ id: Exclude<NavId, "management">; labelKey: TranslationKey }>;
+] as const satisfies ReadonlyArray<{ id: Exclude<NavId, "musicLab" | "management">; labelKey: TranslationKey }>;
 
 const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
 
 export function useActiveNav(): NavId {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (pathname.startsWith("/trending")) return "trending";
+  if (pathname.startsWith("/ai-music-lab")) return "musicLab";
   if (pathname.startsWith("/generate")) return "studio";
   if (pathname.startsWith("/library")) return "library";
   if (pathname.startsWith("/management")) return "management";
