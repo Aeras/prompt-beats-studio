@@ -98,7 +98,8 @@ export const listPlaylists = createServerFn({ method: "GET" })
     return {
       playlists: playlists.map((playlist) => {
         const playlistItems = itemMap.get(playlist.id) ?? [];
-        const firstTrack = playlistItems.length ? trackMap.get(playlistItems[0].track_id) : null;
+        const firstTrackId = playlistItems[0]?.track_id;
+        const firstTrack = firstTrackId ? trackMap.get(firstTrackId) : null;
         return {
           ...playlist,
           track_count: playlistItems.length,
