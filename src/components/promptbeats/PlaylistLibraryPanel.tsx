@@ -96,6 +96,7 @@ function moveTrack(tracks: Track[], sourceId: string, targetId: string) {
   if (from < 0 || to < 0 || from === to) return tracks;
   const next = [...tracks];
   const [moved] = next.splice(from, 1);
+  if (!moved) return tracks;
   next.splice(to, 0, moved);
   return next;
 }
@@ -371,7 +372,7 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {ordered.length > 0 && <button onClick={() => play(ordered[0], ordered)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon"><Play className="h-4 w-4" />{copy.play}</button>}
+            {ordered.length > 0 && <button onClick={() => { const first = ordered[0]; if (first) play(first, ordered); }} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon"><Play className="h-4 w-4" />{copy.play}</button>}
             <button onClick={toggleShuffle} aria-pressed={shuffle} title={shuffle ? copy.shuffleOn : copy.shuffleOff} className={`grid h-10 w-10 place-items-center rounded-xl border ${shuffle ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}><Shuffle className="h-4 w-4" /></button>
             <button onClick={cycleRepeat} aria-pressed={repeat !== "off"} title={repeatLabel} className={`grid h-10 w-10 place-items-center rounded-xl border ${repeat !== "off" ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{repeat === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}</button>
             <button onClick={() => setEditingName(true)} title={copy.rename} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button>
