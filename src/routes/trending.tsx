@@ -51,6 +51,8 @@ function TrendingPage() {
     sourceType: track.source_type as Track["sourceType"],
     sourceId: track.source_id,
     createdWith: track.created_with,
+    allowDownload: track.allow_download === true,
+    durationSeconds: track.duration_seconds,
     staffBadge: track.staff_badge,
   }));
 
