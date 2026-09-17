@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { TrackContentOverlay, type TrackContentKind } from "@/components/promptbeats/TrackContentOverlay";
@@ -109,6 +110,7 @@ export function TrackCard({
           </div>
           <div className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-2")}>
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
+            <TrackLibraryActions track={track} compact={compact} />
             {track.userId && (
               <TrackOwnerActions compact track={{
                 id: track.id,
