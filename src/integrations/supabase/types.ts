@@ -761,12 +761,14 @@ export type Database = {
       }
       tracks: {
         Row: {
+          allow_download: boolean
           art_url: string | null
           audio_key: string | null
           audio_type: string
           audio_url: string
           cover_url: string | null
           created_at: string
+          created_with: string | null
           duration_seconds: number | null
           genre: string
           id: string
@@ -787,12 +789,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allow_download?: boolean
           art_url?: string | null
           audio_key?: string | null
           audio_type?: string
           audio_url: string
           cover_url?: string | null
           created_at?: string
+          created_with?: string | null
           duration_seconds?: number | null
           genre?: string
           id?: string
@@ -813,12 +817,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allow_download?: boolean
           art_url?: string | null
           audio_key?: string | null
           audio_type?: string
           audio_url?: string
           cover_url?: string | null
           created_at?: string
+          created_with?: string | null
           duration_seconds?: number | null
           genre?: string
           id?: string
@@ -1044,6 +1050,7 @@ export type Database = {
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
       edit_track_with_cleanup: {
         Args: {
+          _created_with?: string
           _genre: string
           _is_published: boolean
           _lyrics: string
@@ -1097,11 +1104,13 @@ export type Database = {
       list_trending_tracks: {
         Args: never
         Returns: {
+          allow_download: boolean
           art_url: string
           audio_type: string
           audio_url: string
           cover_url: string
           created_at: string
+          created_with: string
           duration_seconds: number
           genre: string
           id: string
