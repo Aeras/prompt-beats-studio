@@ -81,7 +81,6 @@ CREATE POLICY "Owners can add eligible playlist tracks"
       SELECT 1 FROM public.tracks t
       WHERE t.id = track_id
         AND t.source_type = 'upload'
-        AND t.audio_key IS NOT NULL
         AND (t.is_published = true OR t.user_id = auth.uid())
     )
   );
