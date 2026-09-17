@@ -148,7 +148,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (data.trackId) {
-      const { error: itemError } = await context.supabase
+      const { error: itemError } = await (context.supabase as any)
         .from("playlist_tracks")
         .insert({ playlist_id: playlist.id, track_id: data.trackId, position: 0 });
       if (itemError) {
@@ -285,7 +285,7 @@ export const toggleFavorite = createServerFn({ method: "POST" })
     if (existingError) throw new Error(existingError.message);
 
     if (existing) {
-      const { error } = await context.supabase
+      const { error } = await (context.supabase as any)
         .from("favorites")
         .delete()
         .eq("user_id", context.userId)
