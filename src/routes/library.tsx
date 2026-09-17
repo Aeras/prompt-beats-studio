@@ -97,12 +97,12 @@ function LibraryPage() {
   const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
   const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
 
-  const myTracks = (mine.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
-  const likedTracks = (liked.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
-  const favoriteTracks = (favorites.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
-  const publicTrackCount = myTracks.filter((track) => track.isPublished).length;
+  const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
+  const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
+  const favoriteTracks = (favorites.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
+  const publicTrackCount = myTracks.filter((track: Track) => track.isPublished).length;
   const privateTrackCount = myTracks.length - publicTrackCount;
-  const filteredMyTracks = myTracks.filter((track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
+  const filteredMyTracks = myTracks.filter((track: Track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
 
   const tabLabel = (value: (typeof TABS)[number]) => {
     if (value === "tracks") return t("library.myTracks");
@@ -182,7 +182,7 @@ function LibraryPage() {
   );
 }
 
-function Section({ tracks, empty, playing, currentId, onPlay, gridMode }: { tracks: Track[]; empty: string; playing: boolean; currentId?: string; onPlay: (track: Track) => void; gridMode: TrackGridMode }) {
+function Section({ tracks, empty, playing, currentId, onPlay, gridMode }: { tracks: Track[]; empty: string; playing: boolean; currentId?: string | undefined; onPlay: (track: Track) => void; gridMode: TrackGridMode }) {
   return (
     <>
       <div className={`mt-6 ${trackGridClassName(gridMode)}`}>
