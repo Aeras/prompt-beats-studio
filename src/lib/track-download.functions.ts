@@ -5,6 +5,21 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
+const trackIdInput = z.object({ trackId: z.string().uuid() });
+
+export const getTrackDownloadPermission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => trackIdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: track, error } = await (context.supabase.from("tracks") as any)
+      .select("id, user_id, source_type, allow_download")
+      .eq("id", data.trackId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!track || track.user_id !== context.userId) throw new Error("Track not found or you do not have permission to edit it");
+    return { allowDownload: track.source_type === "upload" && track.allow_download === true };
+  });
+
 export const setTrackDownloadPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid(), allowDownload: z.boolean() }).parse(input))
@@ -27,7 +42,7 @@ export const setTrackDownloadPermission = createServerFn({ method: "POST" })
 
 export const downloadTrackAudio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => trackIdInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: track, error } = await (context.supabase.from("tracks") as any)
       .select("id, user_id, title, source_type, audio_key, is_published, allow_download")
