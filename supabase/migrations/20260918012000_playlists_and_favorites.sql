@@ -157,9 +157,16 @@ AS $$
 DECLARE
   v_playlist_id uuid;
 BEGIN
-  v_playlist_id := COALESCE(NEW.playlist_id, OLD.playlist_id);
+  IF TG_OP = 'DELETE' THEN
+    v_playlist_id := OLD.playlist_id;
+  ELSE
+    v_playlist_id := NEW.playlist_id;
+  END IF;
   UPDATE public.playlists SET updated_at = now() WHERE id = v_playlist_id;
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
