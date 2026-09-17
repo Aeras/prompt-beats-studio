@@ -56,6 +56,7 @@ function TrackPage() {
   const queryClient = useQueryClient();
   const { play, current, playing } = usePlayer();
   const prompt = useCopy();
+  const lyrics = useCopy();
   const share = useCopy();
 
   const track = data?.track ?? null;
@@ -171,7 +172,15 @@ function TrackPage() {
               <pre className="max-h-[28rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm leading-relaxed text-muted-foreground">{track.prompt}</pre>
             </section>}
 
-            {track.lyrics && <section className="glass space-y-3 rounded-2xl p-5 sm:p-6"><div><p className="text-[10px] uppercase tracking-[0.2em] text-accent">{t("trackDetail.writtenFor")}</p><h2 className="mt-1 font-display text-xl font-semibold">{t("trackDetail.lyrics")}</h2></div><pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm leading-relaxed text-muted-foreground">{track.lyrics}</pre></section>}
+            {track.lyrics && <section className="glass space-y-3 rounded-2xl p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div><p className="text-[10px] uppercase tracking-[0.2em] text-accent">{t("trackDetail.writtenFor")}</p><h2 className="mt-1 font-display text-xl font-semibold">{t("trackDetail.lyrics")}</h2></div>
+                <button onClick={() => lyrics.copy(track.lyrics)} className="flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20">
+                  {lyrics.copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{lyrics.copied ? t("trackDetail.copied") : t("trackDetail.copy")}
+                </button>
+              </div>
+              <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm leading-relaxed text-muted-foreground">{track.lyrics}</pre>
+            </section>}
           </div>
         </>}
       </div>
