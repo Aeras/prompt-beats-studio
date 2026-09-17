@@ -39,9 +39,15 @@ ALTER TABLE public.playlists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlist_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.playlists TO authenticated;
-GRANT SELECT, INSERT, DELETE ON public.playlist_tracks TO authenticated;
-GRANT SELECT, INSERT, DELETE ON public.favorites TO authenticated;
+GRANT SELECT, DELETE ON public.playlists TO authenticated;
+GRANT INSERT (user_id, name, is_public) ON public.playlists TO authenticated;
+GRANT UPDATE (name) ON public.playlists TO authenticated;
+
+GRANT SELECT, DELETE ON public.playlist_tracks TO authenticated;
+GRANT INSERT (playlist_id, track_id, position) ON public.playlist_tracks TO authenticated;
+
+GRANT SELECT, DELETE ON public.favorites TO authenticated;
+GRANT INSERT (user_id, track_id) ON public.favorites TO authenticated;
 
 CREATE POLICY "Owners can view playlists"
   ON public.playlists FOR SELECT TO authenticated
