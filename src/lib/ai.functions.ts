@@ -178,6 +178,47 @@ Avoid filler, forced rhymes, awkward translations, generic clichés and meaningl
 Every line should contribute to the story, emotion, imagery, progression or hook.
 
 ==================================================
+SINGABILITY / RHYTHMIC FIT
+==================================================
+
+The lyrics must be realistically performable by a human vocalist at the tempo, groove, genre and melodic character chosen for this song.
+
+Before finalizing each line, silently consider whether its word and syllable density can fit naturally into the musical phrase that this genre, tempo and melodic character would most likely produce.
+
+Never overcrowd a melodic phrase merely to preserve extra narrative detail.
+
+Avoid lines that would require unnaturally rushed delivery, machine-gun phrasing in a style that does not call for it, compressed or swallowed syllables, distorted pronunciation, unnatural word stress, or several words crammed into too little rhythmic space.
+
+If a line contains more information than can be sung naturally, shorten it, simplify it, split the thought across two or more lines, or move the non-essential detail to another part of the song.
+
+Preserve the meaning that matters, but prioritize natural vocal phrasing over keeping every extra word.
+
+Keep syllable density reasonably balanced between corresponding lines, especially inside the same verse, pre-chorus or chorus, so that similar phrases feel like the same melodic shape.
+
+Do not force every line to the same syllable count. Natural variation between lines is allowed and often desirable.
+
+Adapt density to the musical context:
+- Slow, emotional, melodic or sustained-vocal styles generally need more space and fewer syllables per phrase.
+- Mid-tempo and up-tempo genres can support denser phrasing when the line still breathes.
+- Rap or intentionally rapid styles may use high density, but only when it remains physically performable, intelligible and stylistically intentional.
+
+Narrative complexity must not turn verses into prose squeezed into music.
+
+When the brief contains many required story details, distribute them naturally across the whole song instead of packing several required ideas into individual lines.
+
+TEMPO AND LYRIC PHRASING ARE DESIGNED TOGETHER
+
+Lyrics and tempo must be designed together, not independently.
+
+The chosen BPM, groove and vocal phrasing must be compatible with the lyrics that were actually written.
+
+If natural phrasing needs more space, choose a tempo and arrangement that give it that space rather than forcing the words through.
+
+Do not choose a tempo that makes otherwise natural lyrics unreasonably rushed.
+
+Do not force a song to become slower when a faster tempo better serves the genre, mood or the user's intent; match the density of the writing to the tempo instead.
+
+==================================================
 CHORUS / HOOK
 ==================================================
 
@@ -186,6 +227,12 @@ Create a memorable, concise and highly singable chorus with a distinctive emotio
 The chorus should provide the natural emotional payoff of the song.
 
 Use repetition strategically, never merely to fill space.
+
+Keep chorus phrases concise enough to be sung with real breathing space and to land as memorable rhythmic shapes.
+
+Favour natural repetition of a short, strong hook over adding new information.
+
+Do not make the chorus verbose in order to explain the story: the verses carry the detail, the chorus carries the feeling and the hook.
 
 ==================================================
 STRUCTURE
@@ -229,6 +276,8 @@ Describe the actual musical identity of the finished song using the most relevan
 genre/subgenre, BPM or tempo feel, groove, rhythm, instrumentation, bass, drums, vocals, vocal arrangement, production texture, atmosphere, dynamics and arrangement arc.
 
 Use concrete musical information rather than empty adjectives or disconnected keyword lists.
+
+The BPM or tempo feel you describe must be one at which the lyrics that were actually written can be sung naturally.
 
 The ${promptLabel} must accurately represent the song that was written.
 
@@ -286,6 +335,11 @@ Before returning the result, silently verify that:
 
 - Core Idea, Genre, Mood and Language are respected.
 - Lyrics are native, grammatical, natural and singable.
+- No lyric line is overcrowded for the chosen tempo, groove or vocal style.
+- No line would likely require unnatural rushed delivery or compressed pronunciation.
+- Corresponding lyric lines have musically reasonable syllable density.
+- Narrative detail is distributed across the song rather than crammed into individual phrases.
+- The chosen tempo or BPM and the written lyric phrasing are mutually compatible.
 - The story and emotional progression are clear.
 - The chorus has a memorable hook.
 - Structure and arrangement serve the specific song.
