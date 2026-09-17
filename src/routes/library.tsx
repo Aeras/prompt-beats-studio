@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
+import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
 import { TrackGridModeToggle, trackGridClassName, useTrackGridMode, type TrackGridMode } from "@/components/promptbeats/TrackGridView";
 import type { Track } from "@/lib/tracks";
 import type { CreatedWith } from "@/lib/created-with";
@@ -11,6 +12,7 @@ import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt } from "@/lib/ai.functions";
+import { listFavoriteTracks } from "@/lib/playlists.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -37,6 +39,7 @@ type Row = {
   duration_seconds: number | null;
   plays: number;
   is_published: boolean;
+  allow_download: boolean;
   handle?: string;
 };
 
@@ -58,6 +61,8 @@ function toTrack(track: Row, handle: string): Track {
     sourceType: track.source_type,
     sourceId: track.source_id,
     createdWith: track.created_with,
+    allowDownload: track.allow_download === true,
+    durationSeconds: track.duration_seconds,
   };
 }
 
@@ -75,11 +80,11 @@ export const Route = createFileRoute("/library")({
   component: LibraryPage,
 });
 
-const TABS = ["tracks", "prompts", "likes"] as const;
+const TABS = ["tracks", "playlists", "prompts", "favorites", "likes"] as const;
 const TRACK_VISIBILITY_FILTERS = ["all", "public", "private"] as const;
 
 function LibraryPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user, profile, loading } = useAuth();
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
@@ -90,14 +95,22 @@ function LibraryPage() {
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
   const prompts = useQuery({ queryKey: ["library", "prompts", user?.id], queryFn: () => listSavedPrompts(), enabled: Boolean(user) });
   const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
+  const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
 
   const myTracks = (mine.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
+  const favoriteTracks = (favorites.data?.tracks ?? []).map((track) => toTrack(track as Row, handle));
   const publicTrackCount = myTracks.filter((track) => track.isPublished).length;
   const privateTrackCount = myTracks.length - publicTrackCount;
   const filteredMyTracks = myTracks.filter((track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
 
-  const tabLabel = (value: (typeof TABS)[number]) => value === "tracks" ? t("library.myTracks") : value === "prompts" ? t("library.savedPrompts") : t("library.likedTracks");
+  const tabLabel = (value: (typeof TABS)[number]) => {
+    if (value === "tracks") return t("library.myTracks");
+    if (value === "playlists") return language === "el" ? "Λίστες αναπαραγωγής" : "Playlists";
+    if (value === "prompts") return t("library.savedPrompts");
+    if (value === "favorites") return language === "el" ? "Τα Αγαπημένα μου" : "My Favorites";
+    return t("library.likedTracks");
+  };
   const visibilityLabel = (value: (typeof TRACK_VISIBILITY_FILTERS)[number]) => value === "all" ? t("library.all") : value === "public" ? t("library.public") : t("library.private");
 
   const header = <div className="flex items-center gap-2"><LibraryIcon className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">{t("library.title")}</span></div>;
@@ -139,6 +152,15 @@ function LibraryPage() {
               <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
             </div>
             <Section empty={emptyMyTracks} tracks={filteredMyTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, myTracks)} gridMode={gridMode} />
+          </>
+        )}
+
+        {tab === "playlists" && user && <PlaylistLibraryPanel userId={user.id} />}
+
+        {tab === "favorites" && (
+          <>
+            <div className="mt-3 flex justify-end"><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
+            <Section empty={language === "el" ? "Δεν έχεις ακόμη αποθηκεύσει τραγούδια στα Αγαπημένα σου." : "You have not saved any favorite tracks yet."} tracks={favoriteTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, favoriteTracks)} gridMode={gridMode} />
           </>
         )}
 
