@@ -23,7 +23,7 @@ export function TrackCard({
   onPlay: (t: Track) => void;
   viewMode?: TrackGridMode;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
   const [contentAnchor, setContentAnchor] = useState<Pick<DOMRect, "left" | "top" | "bottom" | "width"> | null>(null);
   const [contentTrigger, setContentTrigger] = useState<HTMLElement | null>(null);
@@ -58,23 +58,14 @@ export function TrackCard({
     }
     const { left, top, bottom, width } = element.getBoundingClientRect();
     const cardRect = element.closest("article")?.getBoundingClientRect();
-    setContentAnchor({
-      left: cardRect?.left ?? left,
-      top,
-      bottom,
-      width: cardRect?.width ?? width,
-    });
+    setContentAnchor({ left: cardRect?.left ?? left, top, bottom, width: cardRect?.width ?? width });
     setContentTrigger(element);
     window.dispatchEvent(new CustomEvent("promptbeats:track-content-opened", { detail: { trackId: track.id } }));
     setActiveContent(kind);
   };
 
   const copy = async (content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-    } catch {
-      /* clipboard unavailable */
-    }
+    try { await navigator.clipboard.writeText(content); } catch { /* clipboard unavailable */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
@@ -87,9 +78,16 @@ export function TrackCard({
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
         {embedUrl && <ExternalTrackEmbed sourceType={track.sourceType} sourceId={track.sourceId} title={t("track.player", { title: track.title })} compact={compact} />}
-        <span className={cn("glass absolute rounded-full uppercase tracking-widest text-accent", compact ? "left-2 top-2 px-1.5 py-0.5 text-[8px]" : "left-3 top-3 px-2.5 py-1 text-[10px]")}>
-          {track.genre}
-        </span>
+        <div className={cn("absolute flex max-w-[80%] flex-col items-start", compact ? "left-2 top-2 gap-1" : "left-3 top-3 gap-1.5")}>
+          <span className={cn("glass rounded-full uppercase tracking-widest text-accent", compact ? "px-1.5 py-0.5 text-[8px]" : "px-2.5 py-1 text-[10px]")}>
+            {track.genre}
+          </span>
+          {track.createdWith && track.sourceType === "upload" && (
+            <span className={cn("rounded-full bg-black/70 font-medium text-white/85 backdrop-blur-sm", compact ? "px-1.5 py-0.5 text-[8px]" : "px-2.5 py-1 text-[10px]")}>
+              {language === "el" ? "Δημιουργήθηκε με" : "Created with"} {track.createdWith}
+            </span>
+          )}
+        </div>
         {compact && embedUrl && <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">{track.sourceType}</span>}
         {!embedUrl && canUseNativePlayer && <button onClick={() => onPlay(track)} aria-label={isPlaying ? t("track.pause", { title: track.title }) : t("track.play", { title: track.title })} className={cn("absolute grid place-items-center rounded-full bg-gradient-neon glow-neon transition-transform hover:scale-110 active:scale-95", compact ? "bottom-2 right-2 h-9 w-9" : "bottom-3 right-3 h-12 w-12")}>
           {isPlaying ? <Pause className={cn("text-primary-foreground", compact ? "h-4 w-4" : "h-5 w-5")} /> : <Play className={cn("ml-0.5 text-primary-foreground", compact ? "h-4 w-4" : "h-5 w-5")} />}
@@ -100,62 +98,43 @@ export function TrackCard({
         <div className={cn("flex items-start justify-between", compact ? "gap-1.5" : "gap-3")}>
           <div className="min-w-0">
             <h3 className={cn("truncate font-semibold", compact ? "text-sm" : "text-base")}>
-              <Link to="/track/$id" params={{ id: track.id }} className="relative z-10 inline-block cursor-pointer transition-colors hover:text-accent">
-                {track.title}
-              </Link>
+              <Link to="/track/$id" params={{ id: track.id }} className="relative z-10 inline-block cursor-pointer transition-colors hover:text-accent">{track.title}</Link>
             </h3>
             <p className={cn("truncate text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
               {track.userId ? (
-                <Link
-                  to="/$handle"
-                  params={{ handle: track.handle }}
-                  className="transition-colors hover:text-accent"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {track.handle}
-                </Link>
-              ) : (
-                <span>{track.handle}</span>
-              )}
+                <Link to="/$handle" params={{ handle: track.handle }} className="transition-colors hover:text-accent" onClick={(e) => e.stopPropagation()}>{track.handle}</Link>
+              ) : <span>{track.handle}</span>}
               {track.staffBadge && <><span className="mx-1.5">·</span><StaffBadge badge={track.staffBadge} /></>}{" · "}{t("track.plays", { count: playCount })}
             </p>
           </div>
           <div className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-2")}>
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
             {track.userId && (
-              <TrackOwnerActions
-                compact
-                track={{
-                  id: track.id,
-                  user_id: track.userId,
-                  title: track.title,
-                  genre: track.genre,
-                  prompt: track.prompt,
-                  lyrics: track.lyrics,
-                  audio_url: track.audioUrl ?? "",
-                  audio_type: track.audioType ?? "upload",
-                  source_type: track.sourceType,
-                  source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
-                  is_published: track.isPublished ?? true,
-                }}
-              />
+              <TrackOwnerActions compact track={{
+                id: track.id,
+                user_id: track.userId,
+                title: track.title,
+                genre: track.genre,
+                prompt: track.prompt,
+                lyrics: track.lyrics,
+                audio_url: track.audioUrl ?? "",
+                audio_type: track.audioType ?? "upload",
+                source_type: track.sourceType,
+                source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
+                created_with: track.createdWith ?? null,
+                is_published: track.isPublished ?? true,
+              }} />
             )}
           </div>
         </div>
 
         <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")}>
-          <button
-            onClick={(event) => toggleContent("prompt", event.currentTarget)}
-            className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
-          >
+          <button onClick={(event) => toggleContent("prompt", event.currentTarget)} className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
             {activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
             <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
           </button>
           {track.lyrics?.trim() && (
-            <button
-              onClick={(event) => toggleContent("lyrics", event.currentTarget)}
-              className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}
-            >
+            <button onClick={(event) => toggleContent("lyrics", event.currentTarget)} className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
               {activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
               <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "lyrics" && "rotate-180")} />
             </button>
@@ -168,9 +147,7 @@ export function TrackCard({
           content={activeContent === "prompt" ? track.prompt?.trim() || t("track.noPrompt") : track.lyrics}
           anchorRect={contentAnchor}
           onClose={() => setActiveContent(null)}
-          onCopy={activeContent === "prompt"
-            ? track.prompt?.trim() ? () => copy(track.prompt) : undefined
-            : () => copy(track.lyrics)}
+          onCopy={activeContent === "prompt" ? track.prompt?.trim() ? () => copy(track.prompt) : undefined : () => copy(track.lyrics)}
           copied={copied}
           returnFocusElement={contentTrigger}
         />
