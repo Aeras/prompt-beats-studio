@@ -4,6 +4,7 @@ import { ImagePlus, Loader2, Music, Pencil, Trash2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { UPLOAD_GENRES } from "@/lib/tracks";
+import { CREATED_WITH_OPTIONS, type CreatedWith } from "@/lib/created-with";
 import { deleteTrack, discardUploads, updateTrack } from "@/lib/tracks.functions";
 import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ export type EditableTrack = {
   audio_type: string;
   source_type?: PersistedTrackSourceType | string | null | undefined;
   source_url?: string | null | undefined;
+  created_with?: CreatedWith | null | undefined;
   is_published?: boolean | undefined;
 };
 
@@ -30,7 +32,7 @@ const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-
 const providerName = (sourceType: string) => sourceType === "suno" ? "Suno" : sourceType === "udio" ? "Udio" : "Upload File";
 
 export function TrackOwnerActions({ track, compact = false }: { track: EditableTrack; compact?: boolean }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user } = useAuth();
   const { isAdmin } = useModeration();
   const queryClient = useQueryClient();
@@ -47,6 +49,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [prompt, setPrompt] = useState(track.prompt);
   const [lyrics, setLyrics] = useState(track.lyrics);
   const [sourceUrl, setSourceUrl] = useState(track.source_url ?? track.audio_url);
+  const [createdWith, setCreatedWith] = useState<CreatedWith | "">(track.created_with ?? "");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(track.is_published ?? true);
@@ -76,6 +79,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     const genre = genreOption === "Custom" ? customGenre.trim() : genreOption;
     if (!title.trim()) return setError(t("owner.titleRequired"));
     if (!genre || genre.length > 60) return setError(t("owner.genreRequired"));
+    if (isUpload && !createdWith) return setError(language === "el" ? "Επίλεξε με ποια πλατφόρμα δημιουργήθηκε το τραγούδι." : "Select which platform created the track.");
     if (!isUpload && sourceType !== "legacy_link" && !isSupportedExternalTrackUrl(sourceType, sourceUrl)) return setError(t("owner.validLink", { provider: providerName(sourceType) }));
     setBusy(true); setError(null);
     let audio: { key: string; url: string } | null = null;
@@ -83,7 +87,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     try {
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
-      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, source_type: sourceType, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
       await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null);
     } catch (err) {
       if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* durable cleanup */ }
@@ -109,6 +113,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           <fieldset className="flex items-center gap-2" aria-label={t("owner.visibility")}><legend className="mr-1 text-xs text-muted-foreground">{t("owner.visibility")}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setIsPublished(value)} aria-pressed={isPublished === value} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${isPublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
           <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label={t("owner.musicGenre")} className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{localizedGenreLabel(genre, t)}</option>)}</select>
           {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder={t("owner.customGenre")} aria-label={t("owner.customGenre")} className={inputCls} />}
+          {isUpload && <label className="block text-xs text-muted-foreground">{language === "el" ? "Δημιουργήθηκε με" : "Created with"}<select value={createdWith} onChange={(event) => setCreatedWith(event.target.value as CreatedWith)} className={`${inputCls} mt-1.5`}><option value="" disabled className="bg-[#0a0a0c]">{language === "el" ? "Επίλεξε πλατφόρμα" : "Select platform"}</option>{CREATED_WITH_OPTIONS.map((option) => <option key={option} value={option} className="bg-[#0a0a0c]">{option}</option>)}</select></label>}
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label={t("owner.stylePrompt")} className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
           <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label={t("owner.lyrics")} className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
           {isUpload && <>
