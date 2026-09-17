@@ -17,6 +17,14 @@ export const Route = createFileRoute("/ai-music-lab")({
 const inputClass =
   "w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60";
 
+function LabSectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{children}</span>
+    </div>
+  );
+}
+
 function AiMusicLabPage() {
   const navigate = useNavigate();
   const { language } = useI18n();
@@ -116,10 +124,10 @@ function AiMusicLabPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{copy.title}</span><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder={copy.titlePlaceholder} /></label>
-                <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{copy.musicStyle}</span><textarea value={musicStyle} onChange={(e) => setMusicStyle(e.target.value)} rows={3} className={`${inputClass} resize-y`} placeholder={copy.musicStylePlaceholder} /></label>
-                <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{copy.lyrics}</span><textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} rows={14} className={`${inputClass} resize-y font-mono text-[13px]`} placeholder={copy.lyricsPlaceholder} /></label>
-                <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{copy.productionNotes}</span><textarea value={productionNotes} onChange={(e) => setProductionNotes(e.target.value)} rows={4} className={`${inputClass} resize-y`} placeholder={copy.productionPlaceholder} /></label>
+                <label className="sm:col-span-2"><LabSectionHeader>{copy.title}</LabSectionHeader><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder={copy.titlePlaceholder} /></label>
+                <label className="sm:col-span-2"><LabSectionHeader>{copy.musicStyle}</LabSectionHeader><textarea value={musicStyle} onChange={(e) => setMusicStyle(e.target.value)} rows={3} className={`${inputClass} resize-y`} placeholder={copy.musicStylePlaceholder} /></label>
+                <label className="sm:col-span-2"><LabSectionHeader>{copy.lyrics}</LabSectionHeader><textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} rows={14} className={`${inputClass} resize-y font-mono text-[13px]`} placeholder={copy.lyricsPlaceholder} /></label>
+                <label className="sm:col-span-2"><LabSectionHeader>{copy.productionNotes}</LabSectionHeader><textarea value={productionNotes} onChange={(e) => setProductionNotes(e.target.value)} rows={4} className={`${inputClass} resize-y`} placeholder={copy.productionPlaceholder} /></label>
               </div>
             </div>
           </section>
