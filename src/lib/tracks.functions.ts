@@ -6,6 +6,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cleanTrackStorage } from "@/lib/track-moderation.functions";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 import { normalizeExternalTrackSource, type ExternalTrackSourceType } from "@/lib/track-sources";
+import { CREATED_WITH_OPTIONS } from "@/lib/created-with";
+
+const createdWithSchema = z.enum(CREATED_WITH_OPTIONS);
 
 const trackInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -15,6 +18,7 @@ const trackInput = z.object({
   audio_url: z.string().url(),
   audio_type: z.enum(["link", "upload"]).default("upload"),
   source_type: z.enum(["upload", "suno", "udio"]).default("upload"),
+  created_with: createdWithSchema.nullable().optional(),
   audio_key: z.string().max(500).nullable().optional(),
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   cover_url: z.string().url().max(1000).optional(),
@@ -22,13 +26,11 @@ const trackInput = z.object({
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 const SUNO_HOSTS = new Set(["suno.com", "www.suno.com"]);
 const SUNO_ID = /^[A-Za-z0-9_-]{6,128}$/;
 
-// URL normalizes an explicit default HTTPS port (:443) to an empty `port`.
-// Preserve that distinction so every explicitly supplied port is rejected.
 function hasExplicitUrlPort(value: string): boolean {
   const authority = value.match(/^(?:https?:)?\/\/([^/?#]*)/i)?.[1];
   if (!authority) return false;
@@ -65,7 +67,6 @@ async function resolveExternalTrackSource(sourceType: ExternalTrackSourceType, r
   return resolveSunoShareLink(rawUrl);
 }
 
-/** Counts one completed public playback without requiring a signed-in user. */
 export const incrementTrackPlay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
@@ -76,19 +77,17 @@ export const incrementTrackPlay = createServerFn({ method: "POST" })
     return { plays: typeof plays === "number" ? plays : null };
   });
 
-/** Public feed: published tracks with their creator handle. */
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
   const supabase = createPublicServerClient();
-  const { data, error } = await supabase
-    .from("tracks")
+  const { data, error } = await (supabase.from("tracks") as any)
     .select(TRACK_COLUMNS)
     .eq("is_published", true)
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) return { tracks: [], error: error.message };
 
-  const ids = [...new Set((data ?? []).map((t) => t.user_id))];
+  const ids = [...new Set((data ?? []).map((t: any) => t.user_id))] as string[];
   const handles = new Map<string, string>();
   const names = new Map<string, string>();
   const badges = new Map<string, string | null>();
@@ -105,17 +104,16 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
     }
   }
   return {
-    tracks: (data ?? []).map((t) => ({
+    tracks: (data ?? []).map((t: any) => ({
       ...t,
       handle: `@${handles.get(t.user_id) ?? "unknown"}`,
       creator_name: names.get(t.user_id) ?? "",
       staff_badge: badges.get(t.user_id) ?? null,
     })),
-      error: null as string | null,
+    error: null as string | null,
   };
 });
 
-/** A public track, or the authenticated owner's own active private track. */
 export const getPublicTrackById = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
@@ -124,11 +122,8 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
     const authorization = request?.headers.get("authorization") ?? null;
     const accessToken = authorization?.replace(/^Bearer\s+/i, "") ?? null;
     const viewerId = request && accessToken ? await getUserIdFromRequest(request) : null;
-    // RLS permits either published active tracks or the authenticated owner's
-    // own active tracks. Do not use an unverified bearer token for this read.
     const supabase = viewerId && accessToken ? createPublicServerClient(accessToken) : createPublicServerClient();
-    const { data: track } = await supabase
-      .from("tracks")
+    const { data: track } = await (supabase.from("tracks") as any)
       .select(TRACK_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
@@ -141,12 +136,10 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
     return { track, artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null };
   });
 
-/** Signed-in user's own tracks, published or not. */
 export const listMyTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("tracks")
+    const { data, error } = await (context.supabase.from("tracks") as any)
       .select(TRACK_COLUMNS)
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
@@ -154,7 +147,6 @@ export const listMyTracks = createServerFn({ method: "GET" })
     return { tracks: data ?? [] };
   });
 
-/** Saves track metadata pointing at an audio file already stored in R2. */
 export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
@@ -162,18 +154,17 @@ export const createTrack = createServerFn({ method: "POST" })
     if (data.source_type === "upload" && (!data.audio_key || !isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
       throw new Error("Invalid uploaded audio reference");
     }
+    if (data.source_type !== "upload" && data.created_with) throw new Error("Created with is only available for uploaded tracks");
 
     const externalSource = data.source_type === "upload"
       ? null
       : await resolveExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
-    if (data.source_type !== "upload" && !externalSource) {
-      throw new Error("Invalid external track link");
-    }
+    if (data.source_type !== "upload" && !externalSource) throw new Error("Invalid external track link");
 
-    const { data: row, error } = await context.supabase
-      .from("tracks")
+    const { data: row, error } = await (context.supabase.from("tracks") as any)
       .insert({
         ...data,
+        created_with: externalSource ? null : data.created_with ?? null,
         audio_url: externalSource?.sourceUrl ?? data.audio_url,
         audio_type: externalSource ? "link" : data.audio_type,
         audio_key: externalSource ? null : data.audio_key ?? null,
@@ -190,33 +181,29 @@ export const createTrack = createServerFn({ method: "POST" })
     return { track: row };
   });
 
-/**
- * Updates one of the user's own tracks. Audio replacement is committed in a
- * single database transaction with durable cleanup capture.
- */
 export const updateTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        title: z.string().trim().min(1).max(120),
-        genre: z.string().trim().min(1).max(60),
-        prompt: z.string().trim().max(4000).default(""),
-        lyrics: z.string().trim().max(8000).default(""),
-        is_published: z.boolean(),
-        source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
-        source_url: z.string().url().max(1000).optional(),
-        new_audio_url: z.string().url().max(1000).optional(),
-        new_audio_key: z.string().max(500).optional(),
-        new_cover_url: z.string().url().max(1000).optional(),
-      })
-      .parse(input),
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().trim().min(1).max(120),
+      genre: z.string().trim().min(1).max(60),
+      prompt: z.string().trim().max(4000).default(""),
+      lyrics: z.string().trim().max(8000).default(""),
+      is_published: z.boolean(),
+      source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
+      created_with: createdWithSchema.nullable().optional(),
+      source_url: z.string().url().max(1000).optional(),
+      new_audio_url: z.string().url().max(1000).optional(),
+      new_audio_key: z.string().max(500).optional(),
+      new_cover_url: z.string().url().max(1000).optional(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     if (data.source_type === "upload" && data.new_audio_key && !isSafeOwnedAudioKey(data.new_audio_key, context.userId)) {
       throw new Error("Invalid uploaded audio reference");
     }
+    if (data.source_type !== "upload" && data.created_with) throw new Error("Created with is only available for uploaded tracks");
     const externalSource = data.source_type === "upload" || data.source_type === "legacy_link"
       ? null
       : await resolveExternalTrackSource(data.source_type, data.source_url ?? "");
@@ -231,12 +218,13 @@ export const updateTrack = createServerFn({ method: "POST" })
       _lyrics: data.lyrics,
       _is_published: data.is_published,
       _source_type: data.source_type,
+      _created_with: data.source_type === "upload" ? data.created_with ?? null : null,
       _source_url: externalSource?.sourceUrl ?? null,
       _source_id: externalSource?.sourceId ?? null,
       _new_audio_url: data.new_audio_url ?? null,
       _new_audio_key: data.new_audio_key ?? null,
       _new_cover_url: data.new_cover_url ?? null,
-    });
+    } as never);
     if (error) throw new Error(error.message);
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
     if (payload?.cleanup_id) {
@@ -244,27 +232,16 @@ export const updateTrack = createServerFn({ method: "POST" })
       try {
         await cleanTrackStorage(supabaseAdmin, payload.cleanup_id);
       } catch {
-        // The track already points to the replacement. Its cleanup ledger is
-        // durable and retryable; never roll back or discard the live media.
         return { track: payload?.track ?? null, storageCleanupPending: true };
       }
     }
     return { track: payload?.track ?? null, storageCleanupPending: false };
   });
-/**
- * Rollback helper: records storage objects that were uploaded for a track that
- * ultimately failed to be created/updated, then processes them through the
- * durable cleanup ledger. Ownership and live-reference checks are server-side.
- */
+
 export const discardUploads = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        audioKey: z.string().max(500).optional(),
-        coverPath: z.string().max(500).optional(),
-      })
-      .parse(input),
+    z.object({ audioKey: z.string().max(500).optional(), coverPath: z.string().max(500).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -272,21 +249,13 @@ export const discardUploads = createServerFn({ method: "POST" })
     let coverPath: string | null = null;
 
     if (data.audioKey && isSafeOwnedAudioKey(data.audioKey, context.userId)) {
-      const { data: inUse, error } = await supabaseAdmin
-        .from("tracks")
-        .select("id")
-        .eq("audio_key", data.audioKey)
-        .limit(1);
+      const { data: inUse, error } = await supabaseAdmin.from("tracks").select("id").eq("audio_key", data.audioKey).limit(1);
       if (error) throw new Error(`Could not inspect orphan audio reference: ${error.message}`);
       if (!inUse?.length) audioKey = data.audioKey;
     }
 
     if (data.coverPath && isSafeOwnedCoverPath(data.coverPath, context.userId)) {
-      const { data: coverInUse, error } = await supabaseAdmin
-        .from("tracks")
-        .select("id")
-        .like("cover_url", `%/track-covers/${data.coverPath}`)
-        .limit(1);
+      const { data: coverInUse, error } = await supabaseAdmin.from("tracks").select("id").like("cover_url", `%/track-covers/${data.coverPath}`).limit(1);
       if (error) throw new Error(`Could not inspect orphan cover reference: ${error.message}`);
       if (!coverInUse?.length) coverPath = data.coverPath;
     }
@@ -295,43 +264,28 @@ export const discardUploads = createServerFn({ method: "POST" })
 
     const { data: cleanup, error: cleanupError } = await supabaseAdmin
       .from("track_storage_cleanup")
-      .insert({
-        track_id: null,
-        owner_id: context.userId,
-        audio_key: audioKey,
-        cover_path: coverPath,
-        created_by: context.userId,
-        cleanup_type: "abandoned_upload",
-      })
+      .insert({ track_id: null, owner_id: context.userId, audio_key: audioKey, cover_path: coverPath, created_by: context.userId, cleanup_type: "abandoned_upload" })
       .select("id")
       .single();
-    if (cleanupError || !cleanup) {
-      throw new Error(`Orphaned upload cleanup could not be queued: ${cleanupError?.message ?? "no cleanup id returned"}`);
-    }
+    if (cleanupError || !cleanup) throw new Error(`Orphaned upload cleanup could not be queued: ${cleanupError?.message ?? "no cleanup id returned"}`);
 
     if (coverPath) {
-      const { error: lockError } = await supabaseAdmin
-        .from("track_cover_cleanup_locks")
-        .insert({ cover_path: coverPath, cleanup_id: cleanup.id });
+      const { error: lockError } = await supabaseAdmin.from("track_cover_cleanup_locks").insert({ cover_path: coverPath, cleanup_id: cleanup.id });
       if (lockError) {
-        await supabaseAdmin
-          .from("track_storage_cleanup")
-          .update({ cover_path: null, last_error: "cover reservation unavailable; cover skipped" })
-          .eq("id", cleanup.id);
+        await supabaseAdmin.from("track_storage_cleanup").update({ cover_path: null, last_error: "cover reservation unavailable; cover skipped" }).eq("id", cleanup.id);
       }
     }
 
     await cleanTrackStorage(supabaseAdmin, cleanup.id);
     return { ok: true };
   });
-/** Deletes one of the user's own tracks (and its audio file). */
+
 export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup", { _track_id: data.id });
     if (error) throw new Error(error.message);
-
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
     if (cleanupId) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -340,9 +294,6 @@ export const deleteTrack = createServerFn({ method: "POST" })
     return { ok: true, storageCleanupPending: false };
   });
 
-
-// Validate the dedicated RPC contract until generated types are refreshed.
-// Zod strips unexpected fields so only the existing public projection leaves here.
 const trendingRows = z.array(z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
@@ -355,6 +306,7 @@ const trendingRows = z.array(z.object({
   source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
   source_url: z.string().nullable(),
   source_id: z.string().nullable(),
+  created_with: createdWithSchema.nullable(),
   art_url: z.string().nullable(),
   cover_url: z.string().nullable(),
   duration_seconds: z.number().nullable(),
@@ -364,16 +316,13 @@ const trendingRows = z.array(z.object({
   likes: z.number().int().nonnegative(),
 })).max(100);
 
-/** Public trending feed: published tracks ranked by likes + plays. */
 export const listTrendingTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
   const supabase = createPublicServerClient();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.rpc("list_trending_tracks");
   const parsed = trendingRows.safeParse(data);
-  if (error || !parsed.success) {
-    return { tracks: [], error: "Trending is temporarily unavailable. Please try again later." };
-  }
+  if (error || !parsed.success) return { tracks: [], error: "Trending is temporarily unavailable. Please try again later." };
 
   const rows = parsed.data;
   const ids = [...new Set(rows.map((t) => t.user_id))];
@@ -381,10 +330,7 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
   const names = new Map<string, string>();
   const badges = new Map<string, string | null>();
   if (ids.length) {
-    const { data: profiles } = await supabase
-      .from("public_profiles")
-      .select("id, handle, display_name, artist_alias, staff_badge")
-      .in("id", ids);
+    const { data: profiles } = await supabase.from("public_profiles").select("id, handle, display_name, artist_alias, staff_badge").in("id", ids);
     for (const p of profiles ?? []) {
       if (!p.id) continue;
       handles.set(p.id, p.handle ?? "unknown");
@@ -393,41 +339,24 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
     }
   }
 
-  const tracks = rows
-    .map((t) => ({
-      ...t,
-      handle: `@${handles.get(t.user_id) ?? "unknown"}`,
-      creator_name: names.get(t.user_id) ?? "",
-      staff_badge: badges.get(t.user_id) ?? null,
-    }));
-
+  const tracks = rows.map((t) => ({ ...t, handle: `@${handles.get(t.user_id) ?? "unknown"}`, creator_name: names.get(t.user_id) ?? "", staff_badge: badges.get(t.user_id) ?? null }));
   return { tracks, error: null as string | null };
 });
 
-/** Tracks the signed-in user has liked. */
 export const listLikedTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: likes, error } = await context.supabase
-      .from("likes")
-      .select("track_id, created_at")
-      .eq("user_id", context.userId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    const { data: likes, error } = await context.supabase.from("likes").select("track_id, created_at").eq("user_id", context.userId).order("created_at", { ascending: false }).limit(100);
     if (error) throw new Error(error.message);
     const ids = (likes ?? []).map((l) => l.track_id);
     if (!ids.length) return { tracks: [] };
 
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();
-    const { data: tracks } = await supabase
-      .from("tracks")
-      .select(TRACK_COLUMNS)
-      .in("id", ids)
-      .eq("is_published", true);
+    const { data: tracks } = await (supabase.from("tracks") as any).select(TRACK_COLUMNS).in("id", ids).eq("is_published", true);
 
     const rows = tracks ?? [];
-    const userIds = [...new Set(rows.map((t) => t.user_id))];
+    const userIds = [...new Set(rows.map((t: any) => t.user_id))] as string[];
     const handles = new Map<string, string>();
     if (userIds.length) {
       const { data: profiles } = await supabase.from("public_profiles").select("id, handle").in("id", userIds);
@@ -436,7 +365,7 @@ export const listLikedTracks = createServerFn({ method: "GET" })
     const order = new Map(ids.map((id, i) => [id, i]));
     return {
       tracks: rows
-        .map((t) => ({ ...t, handle: `@${handles.get(t.user_id) ?? "unknown"}` }))
-        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)),
+        .map((t: any) => ({ ...t, handle: `@${handles.get(t.user_id) ?? "unknown"}` }))
+        .sort((a: any, b: any) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)),
     };
   });
