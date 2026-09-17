@@ -12,13 +12,6 @@ const songPackageSchema = z.object({
   message: "Song package is empty",
 });
 
-async function requireAdmin(context: Parameters<Parameters<typeof createServerFn>[0]>[0] extends never ? never : any) {
-  const { data: isAdmin, error } = await context.supabase.rpc("current_user_has_role", {
-    _role: "admin",
-  });
-  if (error || isAdmin !== true) throw new Error("Not allowed");
-}
-
 export const getAiMusicLabAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
