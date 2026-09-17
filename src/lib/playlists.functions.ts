@@ -237,7 +237,7 @@ export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
 
 export const reorderPlaylistTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()).max(500) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()) }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("reorder_playlist_tracks", {
       _playlist_id: data.playlistId,
