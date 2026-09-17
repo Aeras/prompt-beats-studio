@@ -194,7 +194,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(
     (track: Track, nextQueue?: Track[]) => {
-      if (nextQueue) setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
+      if (nextQueue) {
+        setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
+        historyRef.current = [];
+        playedRef.current = new Set([track.id]);
+      }
       const el = audioRef.current;
       if (current && current.id === track.id && el) {
         if (el.paused) {
