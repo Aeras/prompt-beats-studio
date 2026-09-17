@@ -20,6 +20,23 @@ export const getTrackDownloadPermission = createServerFn({ method: "POST" })
     return { allowDownload: track.source_type === "upload" && track.allow_download === true };
   });
 
+export const getTrackDownloadAvailability = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ trackIds: z.array(z.string().uuid()).max(100) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const ids = [...new Set(data.trackIds)];
+    if (!ids.length) return { allowed: {} as Record<string, boolean> };
+    const { data: tracks, error } = await (context.supabase.from("tracks") as any)
+      .select("id, user_id, source_type, is_published, allow_download")
+      .in("id", ids);
+    if (error) throw new Error(error.message);
+    const allowed: Record<string, boolean> = {};
+    for (const track of tracks ?? []) {
+      allowed[track.id] = track.source_type === "upload" && (track.user_id === context.userId || (track.is_published === true && track.allow_download === true));
+    }
+    return { allowed };
+  });
+
 export const setTrackDownloadPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid(), allowDownload: z.boolean() }).parse(input))
