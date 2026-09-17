@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -220,6 +220,7 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
   const [name, setName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [ordered, setOrdered] = useState<Track[]>([]);
+  const orderedRef = useRef<Track[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,6 +275,7 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
   const tracks = useMemo(() => (detail.data?.tracks ?? []).map((row) => toTrack(row as PlaylistTrackRow)), [detail.data?.tracks]);
 
   useEffect(() => {
+    orderedRef.current = tracks;
     setOrdered(tracks);
     if (detail.data?.playlist.name) setName(detail.data.playlist.name);
   }, [tracks, detail.data?.playlist.name]);
@@ -299,13 +301,17 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
 
   const reorderToward = (targetId: string) => {
     if (!draggedId || draggedId === targetId) return;
-    setOrdered((currentTracks) => moveTrack(currentTracks, draggedId, targetId));
+    setOrdered((currentTracks) => {
+      const next = moveTrack(currentTracks, draggedId, targetId);
+      orderedRef.current = next;
+      return next;
+    });
   };
 
   const finishPointerDrag = () => {
     if (!draggedId) return;
     setDraggedId(null);
-    void persistOrder(ordered);
+    void persistOrder(orderedRef.current);
   };
 
   const saveName = async () => {
