@@ -40,7 +40,7 @@ ALTER TABLE public.playlist_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.playlists TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.playlist_tracks TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.playlist_tracks TO authenticated;
 GRANT SELECT, INSERT, DELETE ON public.favorites TO authenticated;
 
 CREATE POLICY "Owners can view playlists"
@@ -83,23 +83,6 @@ CREATE POLICY "Owners can add eligible playlist tracks"
         AND t.source_type = 'upload'
         AND t.audio_key IS NOT NULL
         AND (t.is_published = true OR t.user_id = auth.uid())
-    )
-  );
-
-CREATE POLICY "Owners can reorder playlist tracks"
-  ON public.playlist_tracks FOR UPDATE TO authenticated
-  USING (
-    NOT public.current_user_is_banned()
-    AND EXISTS (
-      SELECT 1 FROM public.playlists p
-      WHERE p.id = playlist_id AND p.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    NOT public.current_user_is_banned()
-    AND EXISTS (
-      SELECT 1 FROM public.playlists p
-      WHERE p.id = playlist_id AND p.user_id = auth.uid()
     )
   );
 
