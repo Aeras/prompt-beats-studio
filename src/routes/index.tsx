@@ -50,8 +50,8 @@ function Index() {
     enabled: category === "creators" && query.trim().length > 0,
   });
 
-  const creatorNames = new Map((data?.tracks ?? []).map((track) => [track.id, track.creator_name ?? ""]));
-  const uploaded: Track[] = (data?.tracks ?? []).map((track) => ({
+  const creatorNames = new Map((data?.tracks ?? []).map((track: any) => [track.id, track.creator_name ?? ""]));
+  const uploaded: Track[] = (data?.tracks ?? []).map((track: any) => ({
     id: track.id,
     userId: track.user_id,
     title: track.title,
