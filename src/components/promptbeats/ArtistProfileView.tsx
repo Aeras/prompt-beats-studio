@@ -56,7 +56,7 @@ type Track = {
   source_id: string | null;
   art_url: string | null;
   cover_url: string | null;
-  created_with?: PlayerTrack["createdWith"];
+  created_with?: string | null;
   allow_download?: boolean;
   duration_seconds?: number | null;
   is_published?: boolean;
@@ -193,7 +193,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                   audioType: track.audio_type === "link" ? "link" as const : "upload" as const,
                   sourceType: track.source_type as PlayerTrack["sourceType"],
                   sourceId: track.source_id,
-                  createdWith: track.created_with ?? null,
+                  createdWith: (track.created_with as PlayerTrack["createdWith"]) ?? null,
                   allowDownload: track.allow_download === true,
                   durationSeconds: track.duration_seconds ?? null,
                   isPublished: track.is_published ?? true,
