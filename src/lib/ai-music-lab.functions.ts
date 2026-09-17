@@ -126,6 +126,25 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
     };
   });
 
+export const downloadLyriaSong = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
+
+    const { getR2Client, getR2Config } = await import("@/lib/r2.server");
+    const { endpoint, bucket } = getR2Config();
+    const response = await getR2Client().fetch(`${endpoint}/${bucket}/${data.audioKey}`);
+    if (!response.ok) throw new Error(`Generated audio download failed (${response.status})`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      audioBase64: Buffer.from(arrayBuffer).toString("base64"),
+      mimeType: response.headers.get("content-type") || (data.audioKey.endsWith(".wav") ? "audio/wav" : "audio/mpeg"),
+    };
+  });
+
 export const discardLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
