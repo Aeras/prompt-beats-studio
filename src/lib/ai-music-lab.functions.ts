@@ -1,25 +1,45 @@
+import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
 const songPackageSchema = z.object({
   title: z.string().trim().max(300),
   musicStyle: z.string().trim().max(8_000),
   lyrics: z.string().trim().max(40_000),
   productionNotes: z.string().trim().max(8_000),
+  previousAudioKey: z.string().max(500).nullable().optional(),
 }).refine((value) => Boolean(value.title || value.musicStyle || value.lyrics || value.productionNotes), {
   message: "Song package is empty",
 });
 
+async function requireAdmin(context: { supabase: any }) {
+  const { data: isAdmin, error } = await context.supabase.rpc("current_user_has_role", {
+    _role: "admin",
+  });
+  if (error || isAdmin !== true) throw new Error("Not allowed");
+}
+
+function isOwnedLyriaTempKey(key: string, userId: string) {
+  return isSafeOwnedAudioKey(key, userId) && key.startsWith(`tracks/${userId}/lyria-temp/`);
+}
+
+async function deleteUnusedLyriaTemp(context: { supabase: any; userId: string }, key: string) {
+  if (!isOwnedLyriaTempKey(key, context.userId)) return false;
+  const { data: inUse, error } = await context.supabase.from("tracks").select("id").eq("audio_key", key).limit(1);
+  if (error) throw new Error("Could not verify generated audio state");
+  if (inUse?.length) return false;
+  const { deleteOwnedR2Object } = await import("@/lib/r2.server");
+  await deleteOwnedR2Object(key, context.userId);
+  return true;
+}
+
 export const getAiMusicLabAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin, error } = await context.supabase.rpc("current_user_has_role", {
-      _role: "admin",
-    });
-
-    if (error || isAdmin !== true) throw new Error("Not allowed");
+    await requireAdmin(context);
     return { allowed: true as const };
   });
 
@@ -27,10 +47,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin, error: roleError } = await context.supabase.rpc("current_user_has_role", {
-      _role: "admin",
-    });
-    if (roleError || isAdmin !== true) throw new Error("Not allowed");
+    await requireAdmin(context);
 
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
@@ -80,12 +97,41 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
     const audioPart = parts.find((part) => part.inlineData?.data)?.inlineData;
     if (!audioPart?.data) throw new Error("Lyria returned no audio");
 
+    const mimeType = audioPart.mimeType || "audio/mpeg";
+    const extension = mimeType.includes("wav") ? "wav" : "mp3";
+    const safeTitle = (data.title || "promptbeats-song")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "promptbeats-song";
+    const key = `tracks/${context.userId}/lyria-temp/${Date.now()}-${safeTitle}.${extension}`;
+    const bytes = Buffer.from(audioPart.data, "base64");
+    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const { uploadToR2 } = await import("@/lib/r2.server");
+    const stored = await uploadToR2(key, arrayBuffer, mimeType);
+
+    if (data.previousAudioKey && data.previousAudioKey !== stored.key) {
+      try { await deleteUnusedLyriaTemp(context, data.previousAudioKey); } catch { /* keep the new result even if old temp cleanup fails */ }
+    }
+
     const generatedText = parts.map((part) => part.text).filter((value): value is string => Boolean(value)).join("\n").trim();
 
     return {
-      audioBase64: audioPart.data,
-      mimeType: audioPart.mimeType || "audio/mpeg",
+      audioUrl: stored.url,
+      audioKey: stored.key,
+      mimeType,
       generatedText,
       model: "lyria-3.5" as const,
     };
+  });
+
+export const discardLyriaSong = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
+    const deleted = await deleteUnusedLyriaTemp(context, data.audioKey);
+    return { ok: true as const, deleted };
   });
