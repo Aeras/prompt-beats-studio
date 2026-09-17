@@ -1,3 +1,4 @@
+import type { CreatedWith } from "@/lib/created-with";
 import type { PersistedTrackSourceType } from "@/lib/track-sources";
 
 export type Track = {
@@ -15,6 +16,7 @@ export type Track = {
   isPublished?: boolean;
   sourceType?: PersistedTrackSourceType | undefined;
   sourceId?: string | null | undefined;
+  createdWith?: CreatedWith | null;
   /** Present only for real database tracks (enables likes + owner controls). */
   userId?: string;
   staffBadge?: string | null;
