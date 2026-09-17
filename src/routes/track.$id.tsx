@@ -50,7 +50,7 @@ function formatDate(value: string | null) {
 }
 
 function TrackPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { id } = Route.useParams();
   const { data, isLoading } = useQuery({ queryKey: ["public-track", id], queryFn: () => getPublicTrackById({ data: { id } }) });
   const queryClient = useQueryClient();
@@ -98,6 +98,9 @@ function TrackPage() {
       lyrics: track.lyrics ?? "",
       audioUrl: track.audio_url,
       audioType: track.audio_type === "link" ? "link" : "upload",
+      sourceType: track.source_type,
+      sourceId: track.source_id,
+      createdWith: track.created_with,
     }, []);
   };
 
@@ -120,7 +123,10 @@ function TrackPage() {
 
               <div className="min-w-0 space-y-5">
                 <div className="space-y-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</span>
+                    {track.source_type === "upload" && track.created_with && <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-muted-foreground">{language === "el" ? "Δημιουργήθηκε με" : "Created with"} {track.created_with}</span>}
+                  </div>
                   <h1 className="break-words font-display text-3xl font-bold leading-tight sm:text-4xl">{track.title}</h1>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>{t("trackDetail.by")}</span>
@@ -148,7 +154,7 @@ function TrackPage() {
 
                 <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
                   <LikeButton trackId={track.id} />
-                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url }} />
+                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with }} />
                 </div>
               </div>
             </div>

@@ -66,6 +66,7 @@ function Index() {
     audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
     sourceType: track.source_type as Track["sourceType"],
     sourceId: track.source_id,
+    createdWith: track.created_with,
     staffBadge: track.staff_badge,
   }));
 
