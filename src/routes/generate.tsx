@@ -18,6 +18,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import {
   getCurrentUserAiModelAccess,
   getGenerationUsage,
@@ -58,6 +59,7 @@ import {
   DEFAULT_AI_TARGET_PLATFORM,
   type AITargetPlatform,
 } from "@/lib/ai-target-platforms";
+import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -469,6 +471,7 @@ function GeneratePage() {
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
+  const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -638,6 +641,49 @@ function GeneratePage() {
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
+  const applySongSetup = (draft: SongSetupDraft) => {
+    setAdvanced(true);
+    setTheme(draft.theme.trim());
+    setGenres([]);
+    setCustomGenre(draft.musicStyle.trim());
+    setMoods([]);
+    setCustomMood(draft.mood.trim());
+    setInstruments([]);
+    setCustomInstruments(draft.instruments.trim());
+
+    const draftBpm = draft.bpm.trim();
+    if (draftBpm === "Auto") {
+      setBpm("Auto");
+      setCustomBpm("");
+    } else if (BPM_OPTIONS.includes(draftBpm)) {
+      setBpm(draftBpm);
+      setCustomBpm("");
+    } else {
+      setBpm("Custom");
+      setCustomBpm(draftBpm);
+    }
+
+    const parsedStructure = draft.songStructure
+      .split(/→|->/)
+      .map((item) => item.trim())
+      .filter((item): item is string => STRUCTURE_TAGS.includes(item));
+    setStructure(parsedStructure);
+    setProduction(draft.productionStyle.trim());
+    setInstructions(draft.additionalInstructions.trim());
+
+    const requestedLanguage = draft.language.trim();
+    const knownLanguage = LANGUAGE_OPTIONS.find(
+      (item) => item !== CUSTOM && item.toLowerCase() === requestedLanguage.toLowerCase(),
+    );
+    if (knownLanguage) {
+      setLanguage(knownLanguage);
+      setCustomLanguage("");
+    } else {
+      setLanguage(CUSTOM);
+      setCustomLanguage(requestedLanguage);
+    }
+  };
+
   const generate = async () => {
     if (busy || jobId || checking || qualityActionId) return;
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
@@ -760,8 +806,18 @@ function GeneratePage() {
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2" role="group" aria-label={t("generator.mode")}>
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("generator.mode")}>
                 {[{ key: false, label: t("generator.basic") }, { key: true, label: t("generator.advanced") }].map((mode) => <button key={String(mode.key)} type="button" aria-pressed={advanced === mode.key} onClick={() => setAdvanced(mode.key)} className={advanced === mode.key ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>)}
+                {advanced && hasAdminInputBypass && (
+                  <button
+                    type="button"
+                    onClick={() => setSongSetupAssistantOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Song Setup Assistant
+                  </button>
+                )}
               </div>
               {canClear && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
             </div>
@@ -855,6 +911,15 @@ function GeneratePage() {
           )}
         </div>
       </div>
+
+      {hasAdminInputBypass && (
+        <SongSetupAssistantModal
+          open={songSetupAssistantOpen}
+          onOpenChange={setSongSetupAssistantOpen}
+          targetPlatform={targetPlatform}
+          onApply={applySongSetup}
+        />
+      )}
     </AppShell>
   );
 }
