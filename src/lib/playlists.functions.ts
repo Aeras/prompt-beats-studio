@@ -71,7 +71,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!playlists?.length) return { playlists: [] };
 
-    const ids = playlists.map((playlist) => playlist.id);
+    const ids = playlists.map((playlist: any) => playlist.id);
     const { data: items, error: itemError } = await (context.supabase as any)
       .from("playlist_tracks")
       .select("playlist_id, track_id, position")
@@ -79,7 +79,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
       .order("position", { ascending: true });
     if (itemError) throw new Error(itemError.message);
 
-    const trackIds = [...new Set((items ?? []).map((item) => item.track_id))];
+    const trackIds = [...new Set((items ?? []).map((item: any) => item.track_id))];
     const { data: tracks, error: trackError } = trackIds.length
       ? await (context.supabase.from("tracks") as any)
           .select("id, duration_seconds, cover_url, art_url")
@@ -96,14 +96,14 @@ export const listPlaylists = createServerFn({ method: "GET" })
     }
 
     return {
-      playlists: playlists.map((playlist) => {
+      playlists: playlists.map((playlist: any) => {
         const playlistItems = itemMap.get(playlist.id) ?? [];
         const firstTrackId = playlistItems[0]?.track_id;
         const firstTrack = firstTrackId ? trackMap.get(firstTrackId) : null;
         return {
           ...playlist,
           track_count: playlistItems.length,
-          duration_seconds: playlistItems.reduce((sum, item) => sum + (trackMap.get(item.track_id)?.duration_seconds ?? 0), 0),
+          duration_seconds: playlistItems.reduce((sum: number, item: any) => sum + (trackMap.get(item.track_id)?.duration_seconds ?? 0), 0),
           artwork: firstTrack?.cover_url ?? firstTrack?.art_url ?? null,
         };
       }),
@@ -122,10 +122,10 @@ export const getPlaylist = createServerFn({ method: "POST" })
       .order("position", { ascending: true });
     if (error) throw new Error(error.message);
 
-    const orderedIds = (items ?? []).map((item) => item.track_id);
+    const orderedIds = (items ?? []).map((item: any) => item.track_id);
     const tracks = await loadTracksWithHandles(context.supabase, orderedIds, orderedIds);
     const trackMap = new Map(tracks.map((track: any) => [track.id, track]));
-    const orderedTracks = orderedIds.map((id) => trackMap.get(id)).filter(Boolean);
+    const orderedTracks = orderedIds.map((id: string) => trackMap.get(id)).filter(Boolean);
 
     return {
       playlist,
@@ -256,7 +256,7 @@ export const listFavoriteTrackIds = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { trackIds: (data ?? []).map((row) => row.track_id) };
+    return { trackIds: (data ?? []).map((row: any) => row.track_id) };
   });
 
 export const listFavoriteTracks = createServerFn({ method: "GET" })
@@ -268,7 +268,7 @@ export const listFavoriteTracks = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    const ids = (favorites ?? []).map((favorite) => favorite.track_id);
+    const ids = (favorites ?? []).map((favorite: any) => favorite.track_id);
     return { tracks: await loadTracksWithHandles(context.supabase, ids, ids) };
   });
 
