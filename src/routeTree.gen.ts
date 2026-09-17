@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HandleRouteImport } from './routes/$handle'
+import { Route as AiMusicLabRouteImport } from './routes/ai-music-lab'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as LibraryRouteImport } from './routes/library'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const HandleRoute = HandleRouteImport.update({
   id: '/$handle',
   path: '/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiMusicLabRoute = AiMusicLabRouteImport.update({
+  id: '/ai-music-lab',
+  path: '/ai-music-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -110,6 +116,7 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/library': typeof LibraryRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/library': typeof LibraryRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
   '/library': typeof LibraryRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$handle'
+    | '/ai-music-lab'
     | '/auth'
     | '/generate'
     | '/library'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$handle'
+    | '/ai-music-lab'
     | '/auth'
     | '/generate'
     | '/library'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$handle'
+    | '/ai-music-lab'
     | '/auth'
     | '/generate'
     | '/library'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HandleRoute: typeof HandleRoute
+  AiMusicLabRoute: typeof AiMusicLabRoute
   AuthRoute: typeof AuthRoute
   GenerateRoute: typeof GenerateRoute
   LibraryRoute: typeof LibraryRoute
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/$handle'
       fullPath: '/$handle'
       preLoaderRoute: typeof HandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-music-lab': {
+      id: '/ai-music-lab'
+      path: '/ai-music-lab'
+      fullPath: '/ai-music-lab'
+      preLoaderRoute: typeof AiMusicLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -358,6 +378,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HandleRoute: HandleRoute,
+  AiMusicLabRoute: AiMusicLabRoute,
   AuthRoute: AuthRoute,
   GenerateRoute: GenerateRoute,
   LibraryRoute: LibraryRoute,
