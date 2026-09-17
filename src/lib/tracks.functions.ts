@@ -23,10 +23,11 @@ const trackInput = z.object({
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   cover_url: z.string().url().max(1000).optional(),
   is_published: z.boolean().default(true),
+  allow_download: z.boolean().default(false),
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 const SUNO_HOSTS = new Set(["suno.com", "www.suno.com"]);
 const SUNO_ID = /^[A-Za-z0-9_-]{6,128}$/;
