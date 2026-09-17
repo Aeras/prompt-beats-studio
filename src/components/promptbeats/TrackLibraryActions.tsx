@@ -1,0 +1,251 @@
+import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Bookmark, Download, ListPlus, Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import type { Track } from "@/lib/tracks";
+import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
+import {
+  addTrackToPlaylist,
+  createPlaylist,
+  listFavoriteTrackIds,
+  listPlaylists,
+  toggleFavorite,
+} from "@/lib/playlists.functions";
+import { downloadTrackAudio } from "@/lib/track-download.functions";
+
+function fileName(title: string, mimeType: string) {
+  const ext = mimeType.includes("wav") ? "wav" : "mp3";
+  const safe = title.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").slice(0, 100) || "promptbeats-track";
+  return `${safe}.${ext}`;
+}
+
+function base64ToBlob(value: string, mimeType: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: mimeType });
+}
+
+export function TrackLibraryActions({ track, compact = false }: { track: Track; compact?: boolean }) {
+  const { language } = useI18n();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const copy = language === "el"
+    ? {
+        favorite: "Αγαπημένα",
+        addFavorite: "Προσθήκη στα Αγαπημένα",
+        removeFavorite: "Αφαίρεση από τα Αγαπημένα",
+        playlist: "Προσθήκη σε λίστα αναπαραγωγής",
+        download: "Λήψη",
+        playlists: "Λίστες αναπαραγωγής",
+        newPlaylist: "Νέα λίστα αναπαραγωγής",
+        name: "Όνομα λίστας",
+        create: "Δημιουργία και προσθήκη",
+        cancel: "Ακύρωση",
+        added: "Το τραγούδι προστέθηκε στη λίστα.",
+        exists: "Το τραγούδι υπάρχει ήδη σε αυτή τη λίστα.",
+        created: "Η λίστα δημιουργήθηκε και το τραγούδι προστέθηκε.",
+        error: "Δεν ήταν δυνατή η ολοκλήρωση της ενέργειας.",
+        noPlaylists: "Δεν έχεις ακόμη λίστες αναπαραγωγής.",
+      }
+    : {
+        favorite: "Favorites",
+        addFavorite: "Add to Favorites",
+        removeFavorite: "Remove from Favorites",
+        playlist: "Add to playlist",
+        download: "Download",
+        playlists: "Playlists",
+        newPlaylist: "New playlist",
+        name: "Playlist name",
+        create: "Create and add",
+        cancel: "Cancel",
+        added: "Track added to playlist.",
+        exists: "This track is already in that playlist.",
+        created: "Playlist created and track added.",
+        error: "The action could not be completed.",
+        noPlaylists: "You do not have any playlists yet.",
+      };
+
+  const canPlaylist = Boolean(user && track.sourceType === "upload" && track.audioUrl);
+  const canDownload = Boolean(
+    user
+      && track.sourceType === "upload"
+      && track.audioUrl
+      && (track.userId === user.id || track.allowDownload === true),
+  );
+
+  const favoriteIds = useQuery({
+    queryKey: ["library", "favorite-ids", user?.id],
+    queryFn: () => listFavoriteTrackIds(),
+    enabled: Boolean(user),
+    staleTime: 20_000,
+  });
+  const favoriteSet = useMemo(() => new Set(favoriteIds.data?.trackIds ?? []), [favoriteIds.data?.trackIds]);
+  const isFavorite = favoriteSet.has(track.id);
+
+  const playlists = useQuery({
+    queryKey: ["library", "playlists", user?.id],
+    queryFn: () => listPlaylists(),
+    enabled: Boolean(user && playlistOpen),
+  });
+
+  if (!user) return null;
+
+  const favorite = async () => {
+    setBusy("favorite");
+    setMessage(null);
+    try {
+      await toggleFavorite({ data: { trackId: track.id } });
+      await queryClient.invalidateQueries({ queryKey: ["library", "favorite-ids"] });
+      await queryClient.invalidateQueries({ queryKey: ["library", "favorites"] });
+    } catch {
+      setMessage(copy.error);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const addTo = async (playlistId: string) => {
+    setBusy(playlistId);
+    setMessage(null);
+    try {
+      const result = await addTrackToPlaylist({ data: { playlistId, trackId: track.id } });
+      setMessage(result.status === "exists" ? copy.exists : copy.added);
+      await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
+      await queryClient.invalidateQueries({ queryKey: ["library", "playlist", playlistId] });
+    } catch {
+      setMessage(copy.error);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const createAndAdd = async () => {
+    const name = newPlaylistName.trim();
+    if (!name) return;
+    setBusy("create");
+    setMessage(null);
+    try {
+      await createPlaylist({ data: { name, trackId: track.id } });
+      setNewPlaylistName("");
+      setMessage(copy.created);
+      await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
+    } catch {
+      setMessage(copy.error);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const download = async () => {
+    setBusy("download");
+    setMessage(null);
+    try {
+      const result = await downloadTrackAudio({ data: { trackId: track.id } });
+      const blob = base64ToBlob(result.audioBase64, result.mimeType);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName(result.title, result.mimeType);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setMessage(copy.error);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const playlistModal = playlistOpen && typeof document !== "undefined" && createPortal(
+    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true">
+      <div className="glass-strong max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl">
+        <header className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-accent">{copy.playlists}</p>
+            <h2 className="mt-1 font-display text-lg font-bold">{track.title}</h2>
+          </div>
+          <button onClick={() => setPlaylistOpen(false)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-muted-foreground hover:text-foreground" aria-label={copy.cancel}><X className="h-4 w-4" /></button>
+        </header>
+
+        <div className="mt-5 space-y-2">
+          {(playlists.data?.playlists ?? []).map((playlist) => (
+            <button
+              key={playlist.id}
+              onClick={() => void addTo(playlist.id)}
+              disabled={Boolean(busy)}
+              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-left transition-colors hover:border-accent/50 disabled:opacity-60"
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{playlist.name}</span>
+                <span className="text-[11px] text-muted-foreground">{playlist.track_count} tracks</span>
+              </span>
+              {busy === playlist.id ? <Loader2 className="h-4 w-4 animate-spin text-accent" /> : <Plus className="h-4 w-4 text-accent" />}
+            </button>
+          ))}
+          {!playlists.isLoading && (playlists.data?.playlists ?? []).length === 0 && <p className="rounded-2xl border border-white/10 p-4 text-sm text-muted-foreground">{copy.noPlaylists}</p>}
+        </div>
+
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <p className="text-xs font-semibold text-foreground">{copy.newPlaylist}</p>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={newPlaylistName}
+              onChange={(event) => setNewPlaylistName(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") void createAndAdd(); }}
+              maxLength={80}
+              placeholder={copy.name}
+              className="h-11 min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60"
+            />
+            <button onClick={() => void createAndAdd()} disabled={!newPlaylistName.trim() || Boolean(busy)} className="rounded-2xl bg-gradient-neon px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.create}</button>
+          </div>
+        </div>
+        {message && <p className="mt-4 text-center text-xs text-muted-foreground">{message}</p>}
+      </div>
+    </div>,
+    document.body,
+  );
+
+  if (compact) {
+    return <>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button aria-label="More track actions" className="grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content sideOffset={6} align="end" className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl">
+            <DropdownMenu.Item onSelect={() => void favorite()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10">
+              <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-current text-accent" : ""}`} /> {isFavorite ? copy.removeFavorite : copy.addFavorite}
+            </DropdownMenu.Item>
+            {canPlaylist && <DropdownMenu.Item onSelect={() => setPlaylistOpen(true)} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><ListPlus className="h-4 w-4" /> {copy.playlist}</DropdownMenu.Item>}
+            {canDownload && <DropdownMenu.Item onSelect={() => void download()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><Download className="h-4 w-4" /> {copy.download}</DropdownMenu.Item>}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      {playlistModal}
+    </>;
+  }
+
+  const iconClass = "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50";
+  return <>
+    <div className="flex shrink-0 items-center gap-1.5">
+      <button onClick={() => void favorite()} disabled={busy === "favorite"} aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite} title={isFavorite ? copy.removeFavorite : copy.addFavorite} className={iconClass}>
+        {busy === "favorite" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bookmark className={`h-3.5 w-3.5 ${isFavorite ? "fill-current text-accent" : ""}`} />}
+      </button>
+      {canPlaylist && <button onClick={() => setPlaylistOpen(true)} aria-label={copy.playlist} title={copy.playlist} className={iconClass}><ListPlus className="h-3.5 w-3.5" /></button>}
+      {canDownload && <button onClick={() => void download()} disabled={busy === "download"} aria-label={copy.download} title={copy.download} className={iconClass}>{busy === "download" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}</button>}
+    </div>
+    {playlistModal}
+  </>;
+}
