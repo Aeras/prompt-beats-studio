@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Music } from "lucide-react";
 
 import { getPublicProfile } from "@/lib/profile.functions";
+import { getTrackDownloadAvailability } from "@/lib/track-download.functions";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
@@ -13,6 +14,7 @@ import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed"
 import { getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
+import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/u/$handle")({
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/u/$handle")({
 function CreatorPage() {
   const { handle } = Route.useParams();
   const { t } = useI18n();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const nativeCycles = useRef(new Map<string, { listenedSeconds: number; lastTime: number; endedHandled: boolean }>());
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
@@ -50,6 +53,13 @@ function CreatorPage() {
 
   const profile = data?.profile ?? null;
   const tracks = data?.tracks ?? [];
+  const trackIds = useMemo(() => tracks.map((track) => track.id), [tracks]);
+  const { data: downloadAvailability } = useQuery({
+    queryKey: ["track-download-availability", user?.id, trackIds.join(",")],
+    queryFn: () => getTrackDownloadAvailability({ data: { trackIds } }),
+    enabled: Boolean(user && trackIds.length),
+    staleTime: 30_000,
+  });
 
   const handleNativePlay = (trackId: string, audio: HTMLAudioElement) => {
     const cycle = nativeCycles.current.get(trackId);
@@ -134,6 +144,7 @@ function CreatorPage() {
               )}
               {tracks.map((track) => {
                 const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
+                const canDownload = downloadAvailability?.allowed[track.id] === true;
                 return <article key={track.id} className="glass space-y-3 rounded-2xl p-4">
                   <div className="flex items-center gap-2">
                     <Music className="h-4 w-4 shrink-0 text-accent" />
@@ -160,6 +171,7 @@ function CreatorPage() {
                     <audio
                       ref={(audio) => { if (audio) audioRefs.current.set(track.id, audio); else audioRefs.current.delete(track.id); }}
                       controls
+                      controlsList={canDownload ? undefined : "nodownload"}
                       preload="none"
                       src={track.audio_url}
                       onPlay={(event) => { activateMedia({ id: `creator-native-${track.id}`, kind: "native" }); handleNativePlay(track.id, event.currentTarget); }}
