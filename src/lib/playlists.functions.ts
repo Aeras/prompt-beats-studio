@@ -87,7 +87,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
       : { data: [], error: null };
     if (trackError) throw new Error(trackError.message);
 
-    const trackMap = new Map((tracks ?? []).map((track: any) => [track.id, track]));
+    const trackMap = new Map<string, any>((tracks ?? []).map((track: any): [string, any] => [track.id, track]));
     const itemMap = new Map<string, any[]>();
     for (const item of items ?? []) {
       const list = itemMap.get(item.playlist_id) ?? [];
