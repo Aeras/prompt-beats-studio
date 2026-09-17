@@ -1,4 +1,4 @@
-import { Compass, Flame, Sparkles, Library, Plus, LogIn, LogOut, BarChart3 } from "lucide-react";
+import { AudioLines, BarChart3, Compass, Flame, Library, LogIn, LogOut, Plus, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,17 +14,19 @@ export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
   { id: "trending", labelKey: "nav.trending", icon: Flame },
   { id: "studio", labelKey: "nav.studio", icon: Sparkles },
+  { id: "musicLab", labelKey: null, icon: AudioLines },
   { id: "library", labelKey: "nav.library", icon: Library },
   { id: "management", labelKey: "nav.management", icon: BarChart3 },
-] as const satisfies ReadonlyArray<{ id: string; labelKey: TranslationKey; icon: typeof Compass }>;
+] as const satisfies ReadonlyArray<{ id: string; labelKey: TranslationKey | null; icon: typeof Compass }>;
 
 export type NavId = (typeof NAV)[number]["id"];
-const ADMIN_ONLY: NavId[] = ["management"];
-const NAV_TO: Record<NavId, string> = { discover: "/", trending: "/trending", studio: "/generate", library: "/library", management: "/management" };
+const ADMIN_ONLY: NavId[] = ["musicLab"];
+const STAFF_ONLY: NavId[] = ["management"];
+const NAV_TO: Record<NavId, string> = { discover: "/", trending: "/trending", studio: "/generate", musicLab: "/ai-music-lab", library: "/library", management: "/management" };
 
 export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; onNavigate: () => void; onSubmit: () => void }) {
   const { user, profile } = useAuth();
-  const { isBanned, canViewUsers } = useModeration();
+  const { isAdmin, isBanned, canViewUsers } = useModeration();
   const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -38,11 +40,11 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.filter((item) => !ADMIN_ONLY.includes(item.id) || canViewUsers).map((item) => {
+        {NAV.filter((item) => (!ADMIN_ONLY.includes(item.id) || isAdmin) && (!STAFF_ONLY.includes(item.id) || canViewUsers)).map((item) => {
           const isActive = active === item.id;
           return <Link key={item.id} to={NAV_TO[item.id]} onClick={onNavigate} className={cn("group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all", isActive ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>
             <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-all", isActive ? "text-primary drop-shadow-[0_0_8px_var(--neon)]" : "group-hover:text-accent")} />
-            <span className="truncate">{t(item.labelKey)}</span>{isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
+            <span className="truncate">{item.labelKey ? t(item.labelKey) : "AI Music Lab"}</span>{isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
           </Link>;
         })}
       </nav>
