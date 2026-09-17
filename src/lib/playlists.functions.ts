@@ -63,7 +63,7 @@ async function assertPlaylistEligibleTrack(supabase: any, userId: string, trackI
 export const listPlaylists = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: playlists, error } = await context.supabase
+    const { data: playlists, error } = await (context.supabase as any)
       .from("playlists")
       .select("id, name, is_public, created_at, updated_at")
       .eq("user_id", context.userId)
@@ -72,7 +72,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
     if (!playlists?.length) return { playlists: [] };
 
     const ids = playlists.map((playlist) => playlist.id);
-    const { data: items, error: itemError } = await context.supabase
+    const { data: items, error: itemError } = await (context.supabase as any)
       .from("playlist_tracks")
       .select("playlist_id, track_id, position")
       .in("playlist_id", ids)
@@ -114,7 +114,7 @@ export const getPlaylist = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => playlistIdSchema.parse(input))
   .handler(async ({ data, context }) => {
     const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
-    const { data: items, error } = await context.supabase
+    const { data: items, error } = await (context.supabase as any)
       .from("playlist_tracks")
       .select("track_id, position, added_at")
       .eq("playlist_id", data.playlistId)
@@ -139,7 +139,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.trackId) await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
 
-    const { data: playlist, error } = await context.supabase
+    const { data: playlist, error } = await (context.supabase as any)
       .from("playlists")
       .insert({ user_id: context.userId, name: data.name, is_public: false })
       .select("id, name, is_public, created_at, updated_at")
@@ -151,7 +151,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
         .from("playlist_tracks")
         .insert({ playlist_id: playlist.id, track_id: data.trackId, position: 0 });
       if (itemError) {
-        await context.supabase.from("playlists").delete().eq("id", playlist.id).eq("user_id", context.userId);
+        await (context.supabase as any).from("playlists").delete().eq("id", playlist.id).eq("user_id", context.userId);
         throw new Error(itemError.message);
       }
     }
@@ -163,7 +163,7 @@ export const renamePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), name: nameSchema }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("playlists")
       .update({ name: data.name })
       .eq("id", data.playlistId)
@@ -176,7 +176,7 @@ export const deletePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => playlistIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("playlists")
       .delete()
       .eq("id", data.playlistId)
@@ -192,7 +192,7 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
 
-    const { data: existing, error: existingError } = await context.supabase
+    const { data: existing, error: existingError } = await (context.supabase as any)
       .from("playlist_tracks")
       .select("track_id")
       .eq("playlist_id", data.playlistId)
@@ -201,7 +201,7 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
     if (existingError) throw new Error(existingError.message);
     if (existing) return { status: "exists" as const };
 
-    const { data: last, error: lastError } = await context.supabase
+    const { data: last, error: lastError } = await (context.supabase as any)
       .from("playlist_tracks")
       .select("position")
       .eq("playlist_id", data.playlistId)
@@ -210,7 +210,7 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
       .maybeSingle();
     if (lastError) throw new Error(lastError.message);
 
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("playlist_tracks")
       .insert({ playlist_id: data.playlistId, track_id: data.trackId, position: (last?.position ?? -1) + 1 });
     if (error) {
@@ -225,7 +225,7 @@ export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("playlist_tracks")
       .delete()
       .eq("playlist_id", data.playlistId)
@@ -249,7 +249,7 @@ export const reorderPlaylistTracks = createServerFn({ method: "POST" })
 export const listFavoriteTrackIds = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const { data, error } = await (context.supabase as any)
       .from("favorites")
       .select("track_id")
       .eq("user_id", context.userId)
@@ -261,7 +261,7 @@ export const listFavoriteTrackIds = createServerFn({ method: "GET" })
 export const listFavoriteTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: favorites, error } = await context.supabase
+    const { data: favorites, error } = await (context.supabase as any)
       .from("favorites")
       .select("track_id, created_at")
       .eq("user_id", context.userId)
@@ -275,7 +275,7 @@ export const toggleFavorite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: existing, error: existingError } = await context.supabase
+    const { data: existing, error: existingError } = await (context.supabase as any)
       .from("favorites")
       .select("track_id")
       .eq("user_id", context.userId)
@@ -301,7 +301,7 @@ export const toggleFavorite = createServerFn({ method: "POST" })
     if (trackError) throw new Error(trackError.message);
     if (!track || (track.is_published !== true && track.user_id !== context.userId)) throw new Error("Track is unavailable");
 
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("favorites")
       .insert({ user_id: context.userId, track_id: data.trackId });
     if (error) {
