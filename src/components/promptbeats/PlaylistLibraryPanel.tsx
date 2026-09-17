@@ -17,6 +17,7 @@ import {
 
 import artFallback from "@/assets/art-3.jpg";
 import type { Track } from "@/lib/tracks";
+import type { CreatedWith } from "@/lib/created-with";
 import { usePlayer } from "@/lib/player";
 import {
   createPlaylist,
@@ -40,7 +41,7 @@ type PlaylistTrackRow = {
   audio_type: string;
   source_type: Track["sourceType"];
   source_id: string | null;
-  created_with: Track["createdWith"];
+  created_with: CreatedWith | null;
   allow_download: boolean;
   art_url: string | null;
   cover_url: string | null;
@@ -191,7 +192,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
       )}
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {(playlists.data?.playlists ?? []).map((playlist) => (
+        {(playlists.data?.playlists ?? []).map((playlist: any) => (
           <button key={playlist.id} onClick={() => setSelectedPlaylistId(playlist.id)} className="glass group overflow-hidden rounded-2xl text-left transition-all hover:border-accent/40">
             <div className="aspect-square overflow-hidden bg-black/30">
               <img src={playlist.artwork ?? artFallback} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -272,7 +273,7 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
     queryFn: () => getPlaylist({ data: { playlistId } }),
   });
 
-  const tracks = useMemo(() => (detail.data?.tracks ?? []).map((row) => toTrack(row as PlaylistTrackRow)), [detail.data?.tracks]);
+  const tracks = useMemo(() => (detail.data?.tracks ?? []).map((row: any) => toTrack(row as PlaylistTrackRow)), [detail.data?.tracks]);
 
   useEffect(() => {
     orderedRef.current = tracks;
@@ -410,7 +411,7 @@ function PlaylistDetail({ playlistId, onBack }: { playlistId: string; onBack: ()
               onPointerMove={(event) => {
                 if (!draggedId || event.pointerType === "mouse") return;
                 const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-playlist-track-id]");
-                const targetId = element?.dataset.playlistTrackId;
+                const targetId = element?.dataset["playlistTrackId"];
                 if (targetId) reorderToward(targetId);
               }}
               onPointerUp={(event) => {
