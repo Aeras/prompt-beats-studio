@@ -4,7 +4,12 @@
  */
 import { estimateCostUsd } from "@/lib/ai-pricing.server";
 
-export type AiOperation = "generate" | "quality_check" | "repair" | "post_repair_quality_check";
+export type AiOperation =
+  | "generate"
+  | "quality_check"
+  | "repair"
+  | "post_repair_quality_check"
+  | "song_setup_assistant";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
