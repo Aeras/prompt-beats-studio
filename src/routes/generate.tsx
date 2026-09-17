@@ -75,6 +75,7 @@ import {
 
 const JOB_STORAGE_KEY = "pb:generation-job";
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
+const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -451,7 +452,7 @@ function ResultSection({ title, value, open, onToggle, onChange, rows }: { title
 }
 
 function GeneratePage() {
-  const { t } = useI18n();
+  const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -719,6 +720,17 @@ function GeneratePage() {
     catch (err) { setStatus(err instanceof Error ? err.message : t("auth.somethingWrong")); }
   };
 
+  const openMusicLab = () => {
+    if (!result || typeof window === "undefined") return;
+    window.sessionStorage.setItem(AI_MUSIC_LAB_TRANSFER_KEY, JSON.stringify({
+      title: result.title,
+      musicStyle: result.tags,
+      lyrics: result.lyrics,
+      productionNotes: result.note,
+    }));
+    void navigate({ to: "/ai-music-lab" });
+  };
+
   type Song = { title: string; tags: string; lyrics: string; note: string };
   const makeApplyState = (target: Song | null, setTarget: (next: Song) => void): ApplyState => ({
     applied,
@@ -905,6 +917,9 @@ function GeneratePage() {
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
               <ResultSection title={t("generator.result.lyricsStructure")} value={result.lyrics} open={open.lyrics} onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))} onChange={(v) => setResult({ ...result, lyrics: v })} rows={18} />
               <ResultSection title={t("generator.result.producerNote")} value={result.note} open={open.note} onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))} onChange={(v) => setResult({ ...result, note: v })} rows={5} />
+              {hasAdminInputBypass && (
+                <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
+              )}
               <button onClick={save} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
               <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={availableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={modelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
