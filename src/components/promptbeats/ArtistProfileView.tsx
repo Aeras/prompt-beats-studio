@@ -52,6 +52,8 @@ type Track = {
   source_type: string;
   source_url: string | null;
   source_id: string | null;
+  art_url: string | null;
+  cover_url: string | null;
   created_at?: string;
 };
 
@@ -169,13 +171,14 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
               {tracks.map((track) => {
                 const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
                 const canUseNativePlayer = canUseNativeTrackPlayer(track.source_type);
+                const largeArtwork = track.cover_url ?? track.art_url ?? profile.avatar_url ?? artFallback;
                 const nativeTrack = {
                   id: track.id,
                   userId: track.user_id,
                   title: track.title,
                   handle: `@${profile.handle}`,
                   genre: track.genre,
-                  art: profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`,
+                  art: largeArtwork,
                   duration: "--:--",
                   plays: "0",
                   prompt: track.prompt ?? "",
@@ -201,7 +204,17 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                     </div>
                   ) : embedUrl ? (
                     <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30"><img src={artFallback} alt="" className="h-full w-full object-cover" /><ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={t("track.player", { title: track.title })} /></div>
-                  ) : canUseNativePlayer ? <button onClick={() => play(nativeTrack, [])} className="inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20">{isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}{isPlaying ? t("player.pause") : t("player.play")}</button> : null}
+                  ) : canUseNativePlayer ? (
+                    <div className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <Link to="/track/$id" params={{ id: track.id }} aria-label={t("track.open", { title: track.title })} className="block h-full w-full">
+                        <img src={largeArtwork} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      </Link>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                      <button type="button" onClick={() => play(nativeTrack, [])} aria-label={isPlaying ? t("track.pause", { title: track.title }) : t("track.play", { title: track.title })} className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon transition-transform hover:scale-105 active:scale-95">
+                        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+                      </button>
+                    </div>
+                  ) : null}
                 </article>;
               })}
             </div>
