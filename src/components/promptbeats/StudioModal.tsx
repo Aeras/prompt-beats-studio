@@ -12,6 +12,7 @@ import { createTrack, discardUploads } from "@/lib/tracks.functions";
 import { useModeration } from "@/hooks/useModeration";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { readAudioDurationSeconds } from "@/lib/audio-duration";
 
 type Row = {
   key: string;
@@ -78,9 +79,10 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
         await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished, allow_download: false } });
         return;
       }
+      const durationSeconds = await readAudioDurationSeconds(r.file!);
       const payload = await uploadOne(r.file!, token); audioKey = payload.key;
       if (r.cover) { const cover = await uploadCover(r.cover); coverPath = cover.path; coverUrl = cover.url; }
-      await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished, allow_download: r.allowDownload } });
+      await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, duration_seconds: durationSeconds, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished, allow_download: r.allowDownload } });
     } catch (err) {
       if (audioKey || coverPath) { try { await discardUploads({ data: { audioKey, coverPath } }); } catch { /* cleanup failure logged server-side */ } }
       throw err;
