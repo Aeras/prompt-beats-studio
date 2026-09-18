@@ -28,7 +28,8 @@ function isOwnedLyriaTempKey(key: string, userId: string) {
 
 async function deleteUnusedLyriaTemp(context: { supabase: any; userId: string }, key: string) {
   if (!isOwnedLyriaTempKey(key, context.userId)) return false;
-  const { data: inUse, error } = await context.supabase.from("tracks").select("id").eq("audio_key", key).limit(1);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: inUse, error } = await supabaseAdmin.from("tracks").select("id").eq("audio_key", key).limit(1);
   if (error) throw new Error("Could not verify generated audio state");
   if (inUse?.length) return false;
   const { deleteOwnedR2Object } = await import("@/lib/r2.server");
