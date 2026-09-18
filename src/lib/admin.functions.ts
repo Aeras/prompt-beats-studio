@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { AI_MODEL_IDS, isAdminOnlyAiModel, type AiModelId } from "@/lib/ai-models";
+import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const adminUserId = z.string().uuid();
@@ -126,11 +126,10 @@ export const setAdminModelAccess = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
-    const userAssignableModels = data.models.filter((model) => !isAdminOnlyAiModel(model));
     const { error } = await context.supabase.rpc("admin_set_model_access", {
       _target_user_id: data.userId,
       _access_mode: data.mode,
-      _allowed_models: userAssignableModels,
+      _allowed_models: data.models,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
