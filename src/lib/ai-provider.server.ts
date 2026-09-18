@@ -10,7 +10,13 @@
  */
 import { GoogleGenAI } from "@google/genai";
 
-import { AI_MODELS, AI_MODEL_IDS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
+import {
+  AI_MODELS,
+  AI_MODEL_IDS,
+  DEFAULT_AI_MODEL,
+  isAdminOnlyAiModel,
+  type AiModelId,
+} from "@/lib/ai-models";
 
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -60,7 +66,7 @@ function sanitizeAllowedModels(models: string[] | null | undefined): AiModelId[]
   const seen = new Set<string>();
   const allowed: AiModelId[] = [];
   for (const model of models ?? []) {
-    if (!isAiModelId(model) || seen.has(model)) continue;
+    if (!isAiModelId(model) || isAdminOnlyAiModel(model) || seen.has(model)) continue;
     seen.add(model);
     allowed.push(model);
   }
@@ -584,6 +590,10 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
     };
   }
 
+  // Admin-only models must never leak through the global active model to
+  // normal users. Non-admins inherit the regular default instead.
+  const nonAdminActive = isAdminOnlyAiModel(active) ? DEFAULT_AI_MODEL : active;
+
   const { data: override, error: overrideError } = await supabaseAdmin
     .from("user_model_access")
     .select("access_mode, allowed_models")
@@ -592,9 +602,9 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   if (overrideError) {
     if (overrideError.code === "42P01") {
       return {
-        activeModel: active,
-        defaultModel: active,
-        availableModels: [active],
+        activeModel: nonAdminActive,
+        defaultModel: nonAdminActive,
+        availableModels: [nonAdminActive],
         accessMode: "inherit",
       };
     }
@@ -603,17 +613,17 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   const access = override as { access_mode?: string; allowed_models?: string[] } | null;
   if (access?.access_mode !== "custom") {
     return {
-      activeModel: active,
-      defaultModel: active,
-      availableModels: [active],
+      activeModel: nonAdminActive,
+      defaultModel: nonAdminActive,
+      availableModels: [nonAdminActive],
       accessMode: "inherit",
     };
   }
   const allowed = sanitizeAllowedModels(access.allowed_models);
   if (!allowed.length) throw new Error("No AI model is available for this account.");
   return {
-    activeModel: active,
-    defaultModel: allowed.includes(active) ? active : (allowed[0] as AiModelId),
+    activeModel: nonAdminActive,
+    defaultModel: allowed.includes(nonAdminActive) ? nonAdminActive : (allowed[0] as AiModelId),
     availableModels: allowed,
     accessMode: "custom",
   };
