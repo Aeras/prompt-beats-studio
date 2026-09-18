@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Bookmark, Download, ListPlus, Loader2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import type { Track } from "@/lib/tracks";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +37,6 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const copy = language === "el"
     ? {
@@ -101,13 +101,12 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
 
   const favorite = async () => {
     setBusy("favorite");
-    setMessage(null);
     try {
       await toggleFavorite({ data: { trackId: track.id } });
       await queryClient.invalidateQueries({ queryKey: ["library", "favorite-ids"] });
       await queryClient.invalidateQueries({ queryKey: ["library", "favorites"] });
     } catch {
-      setMessage(copy.error);
+      toast.error(copy.error);
     } finally {
       setBusy(null);
     }
@@ -115,14 +114,19 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
 
   const addTo = async (playlistId: string) => {
     setBusy(playlistId);
-    setMessage(null);
     try {
       const result = await addTrackToPlaylist({ data: { playlistId, trackId: track.id } });
-      setMessage(result.status === "exists" ? copy.exists : copy.added);
+      const playlistName = (playlists.data?.playlists ?? []).find((playlist: any) => playlist.id === playlistId)?.name ?? "";
+      setPlaylistOpen(false);
+      if (result.status === "exists") {
+        toast.info(language === "el" ? `Το τραγούδι υπάρχει ήδη στη λίστα «${playlistName}».` : `This track is already in “${playlistName}”.`);
+      } else {
+        toast.success(language === "el" ? `Το τραγούδι προστέθηκε στη λίστα «${playlistName}».` : `Track added to “${playlistName}”.`);
+      }
       await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
       await queryClient.invalidateQueries({ queryKey: ["library", "playlist", playlistId] });
     } catch {
-      setMessage(copy.error);
+      toast.error(copy.error);
     } finally {
       setBusy(null);
     }
@@ -132,14 +136,14 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
     const name = newPlaylistName.trim();
     if (!name) return;
     setBusy("create");
-    setMessage(null);
     try {
       await createPlaylist({ data: { name, trackId: track.id } });
       setNewPlaylistName("");
-      setMessage(copy.created);
+      setPlaylistOpen(false);
+      toast.success(language === "el" ? `Η λίστα «${name}» δημιουργήθηκε και το τραγούδι προστέθηκε.` : `Playlist “${name}” was created and the track was added.`);
       await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
     } catch {
-      setMessage(copy.error);
+      toast.error(copy.error);
     } finally {
       setBusy(null);
     }
@@ -147,7 +151,6 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
 
   const download = async () => {
     setBusy("download");
-    setMessage(null);
     try {
       const result = await downloadTrackAudio({ data: { trackId: track.id } });
       const blob = base64ToBlob(result.audioBase64, result.mimeType);
@@ -160,7 +163,7 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
       anchor.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
-      setMessage(copy.error);
+      toast.error(copy.error);
     } finally {
       setBusy(null);
     }
@@ -209,7 +212,6 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
             <button onClick={() => void createAndAdd()} disabled={!newPlaylistName.trim() || Boolean(busy)} className="rounded-2xl bg-gradient-neon px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.create}</button>
           </div>
         </div>
-        {message && <p className="mt-4 text-center text-xs text-muted-foreground">{message}</p>}
       </div>
     </div>,
     document.body,
