@@ -16,6 +16,10 @@ export type NormalizedUsage = {
   inputTokens: number | null;
   outputTokens: number | null;
   totalTokens: number | null;
+  /** Provider-specific details used for more accurate cost estimation when available. */
+  cachedInputTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  reasoningTokens?: number | null;
 };
 
 export type UsageRecord = {
@@ -48,7 +52,10 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
       input_tokens: input,
       output_tokens: output,
       total_tokens: total,
-      estimated_cost_usd: estimateCostUsd(rec.model, input, output),
+      estimated_cost_usd: estimateCostUsd(rec.model, input, output, {
+        cachedInputTokens: rec.usage?.cachedInputTokens,
+        cacheWriteTokens: rec.usage?.cacheWriteTokens,
+      }),
       success: rec.success,
     } as never);
   } catch (err) {
