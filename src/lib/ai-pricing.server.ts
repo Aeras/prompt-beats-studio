@@ -6,10 +6,14 @@
  * Update prices here without touching any AI business logic.
  */
 export type ModelPrice = {
-  /** USD per 1M input tokens. */
+  /** USD per 1M uncached input tokens. */
   inputPerMillion: number;
   /** USD per 1M output tokens. */
   outputPerMillion: number;
+  /** Optional USD per 1M cached-input read tokens. */
+  cachedInputPerMillion?: number;
+  /** Optional USD per 1M cache-write input tokens. */
+  cacheWritePerMillion?: number;
 };
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
@@ -30,6 +34,34 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   // $2.00/1M input and $6.00/1M output. PromptBeats requests are far below the
   // 200k long-context threshold, so these rates match normal app usage.
   "grok-4.6": { inputPerMillion: 2, outputPerMillion: 6 },
+
+  // OpenAI standard API list pricing verified 2026-09-19.
+  // GPT-5.6+ cache reads are 90% discounted and cache writes are billed at
+  // 1.25x the uncached input rate.
+  "gpt-5.6-luna": {
+    inputPerMillion: 0.2,
+    cachedInputPerMillion: 0.02,
+    cacheWritePerMillion: 0.25,
+    outputPerMillion: 1.2,
+  },
+  "gpt-5.6-terra": {
+    inputPerMillion: 2,
+    cachedInputPerMillion: 0.2,
+    cacheWritePerMillion: 2.5,
+    outputPerMillion: 12,
+  },
+  "gpt-5.6-sol": {
+    inputPerMillion: 4,
+    cachedInputPerMillion: 0.4,
+    cacheWritePerMillion: 5,
+    outputPerMillion: 20,
+  },
+  "gpt-6-astra": {
+    inputPerMillion: 10,
+    cachedInputPerMillion: 1,
+    cacheWritePerMillion: 12.5,
+    outputPerMillion: 50,
+  },
 };
 
 /**
@@ -41,12 +73,27 @@ export function estimateCostUsd(
   model: string,
   inputTokens: number | null | undefined,
   outputTokens: number | null | undefined,
+  details?: {
+    cachedInputTokens?: number | null;
+    cacheWriteTokens?: number | null;
+  },
 ): number | null {
   const price = MODEL_PRICING[model];
   if (!price) return null;
   if (inputTokens == null && outputTokens == null) return null;
-  const cost =
-    ((inputTokens ?? 0) / 1_000_000) * price.inputPerMillion +
-    ((outputTokens ?? 0) / 1_000_000) * price.outputPerMillion;
-  return Number(cost.toFixed(6));
+
+  const totalInput = inputTokens ?? 0;
+  const cachedInput = Math.max(0, Math.min(totalInput, details?.cachedInputTokens ?? 0));
+  const cacheWrite = Math.max(
+    0,
+    Math.min(totalInput - cachedInput, details?.cacheWriteTokens ?? 0),
+  );
+  const uncachedInput = Math.max(0, totalInput - cachedInput - cacheWrite);
+
+  const inputCost =
+    (uncachedInput / 1_000_000) * price.inputPerMillion +
+    (cachedInput / 1_000_000) * (price.cachedInputPerMillion ?? price.inputPerMillion) +
+    (cacheWrite / 1_000_000) * (price.cacheWritePerMillion ?? price.inputPerMillion);
+  const outputCost = ((outputTokens ?? 0) / 1_000_000) * price.outputPerMillion;
+  return Number((inputCost + outputCost).toFixed(6));
 }
