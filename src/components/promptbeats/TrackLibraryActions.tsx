@@ -118,11 +118,11 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
       const result = await addTrackToPlaylist({ data: { playlistId, trackId: track.id } });
       const playlistName = (playlists.data?.playlists ?? []).find((playlist: any) => playlist.id === playlistId)?.name ?? "";
       setPlaylistOpen(false);
-      toast[result.status === "exists" ? "info" : "success"](
-        result.status === "exists"
-          ? (language === "el" ? `Το τραγούδι υπάρχει ήδη στη λίστα «${playlistName}».` : `This track is already in “${playlistName}”.`)
-          : (language === "el" ? `Το τραγούδι προστέθηκε στη λίστα «${playlistName}».` : `Track added to “${playlistName}”.`),
-      );
+      if (result.status === "exists") {
+        toast.info(language === "el" ? `Το τραγούδι υπάρχει ήδη στη λίστα «${playlistName}».` : `This track is already in “${playlistName}”.`);
+      } else {
+        toast.success(language === "el" ? `Το τραγούδι προστέθηκε στη λίστα «${playlistName}».` : `Track added to “${playlistName}”.`);
+      }
       await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
       await queryClient.invalidateQueries({ queryKey: ["library", "playlist", playlistId] });
     } catch {
