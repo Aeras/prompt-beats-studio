@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { readAudioDurationSeconds } from "@/lib/audio-duration";
 
 export const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 
@@ -183,6 +184,7 @@ function AiMusicLabPage() {
     setSaveBusy(true); setSaveError(null);
     let cover: { path: string; url: string } | null = null;
     try {
+      const durationSeconds = await readAudioDurationSeconds(generated.audioUrl);
       if (coverFile) cover = await uploadCover(coverFile);
       await createTrack({ data: {
         title: saveTitle.trim(),
@@ -194,6 +196,7 @@ function AiMusicLabPage() {
         source_type: "upload",
         created_with: "Google Lyria 3.5",
         audio_key: generated.audioKey,
+        duration_seconds: durationSeconds,
         ...(cover ? { cover_url: cover.url } : {}),
         is_published: savePublished,
       } });
