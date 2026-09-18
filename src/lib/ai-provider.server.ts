@@ -66,7 +66,7 @@ function sanitizeAllowedModels(models: string[] | null | undefined): AiModelId[]
   const seen = new Set<string>();
   const allowed: AiModelId[] = [];
   for (const model of models ?? []) {
-    if (!isAiModelId(model) || isAdminOnlyAiModel(model) || seen.has(model)) continue;
+    if (!isAiModelId(model) || seen.has(model)) continue;
     seen.add(model);
     allowed.push(model);
   }
