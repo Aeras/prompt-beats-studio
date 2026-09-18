@@ -515,7 +515,9 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
     stopReason,
     usage,
     provider: "openai",
-    model: payload.model ?? model,
+    // Keep the catalog/request model id stable for access control, analytics and
+    // pricing even if OpenAI reports an internal snapshot identifier.
+    model,
   };
 }
 
