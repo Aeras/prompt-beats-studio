@@ -100,6 +100,8 @@ function toTrack(row: PlaylistTrackRow): Track {
 }
 
 function totalDuration(seconds: number, language: string) {
+  if (!seconds || seconds <= 0) return "—";
+  if (seconds < 60) return language === "el" ? "<1 λ" : "<1 min";
   const totalMinutes = Math.floor(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -315,7 +317,8 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
           {rows.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} language={language} onOpen={() => setSelectedPlaylistId(playlist.id)} onDelete={() => setConfirmDeleteId(playlist.id)} />)}
         </div>
       ) : (
-        <div className={cn("mt-5 hidden sm:grid", desktopGrid)}>
+        <div className="mt-5 hidden sm:block">
+          <div className={desktopGrid}>
           {rows.map((playlist) => (
             <article key={playlist.id} className="glass group relative overflow-hidden rounded-2xl">
               <button onClick={() => setSelectedPlaylistId(playlist.id)} className="block w-full text-left">
@@ -331,6 +334,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
               <button onClick={() => setConfirmDeleteId(playlist.id)} aria-label={copy.delete} className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/65 text-white/75 backdrop-blur transition-colors hover:border-destructive/60 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
             </article>
           ))}
+          </div>
         </div>
       )}
 
