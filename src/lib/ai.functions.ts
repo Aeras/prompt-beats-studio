@@ -579,11 +579,15 @@ type ModelCall = {
   prompt: string;
   maxTokens?: number;
   schema?: Record<string, unknown>;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
 };
 type NormalizedUsage = {
   inputTokens: number | null;
   outputTokens: number | null;
   totalTokens: number | null;
+  cachedInputTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  reasoningTokens?: number | null;
 };
 type ModelResult = {
   text: string;
@@ -1456,6 +1460,7 @@ async function runQualityCheck(
       prompt: buildQualityPrompt(d, r),
       maxTokens: 8192,
       schema,
+      reasoningEffort: "high",
     });
     const { text, stopReason } = res;
     const operation = sink?.operation ?? "quality_check";
@@ -1599,6 +1604,7 @@ export async function runSongGeneration(
       prompt: buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
+      reasoningEffort: "medium",
     });
   } catch (err) {
     await flushUsage(userId, generationId, [
