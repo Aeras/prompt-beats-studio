@@ -38,7 +38,9 @@ export function isAdminOnlyAiModel(id: string): id is (typeof ADMIN_ONLY_AI_MODE
   return ADMIN_ONLY_AI_MODEL_SET.has(id);
 }
 
-export const USER_ASSIGNABLE_AI_MODELS = AI_MODELS.filter((m) => !isAdminOnlyAiModel(m.id));
+// Models shown in the admin access-assignment UI. Restricted models are still
+// assignable explicitly by an admin to a specific account for testing.
+export const USER_ASSIGNABLE_AI_MODELS = AI_MODELS;
 
 export function aiModelLabel(id: string) {
   return AI_MODELS.find((m) => m.id === id)?.label ?? id;
