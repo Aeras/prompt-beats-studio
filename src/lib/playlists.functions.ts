@@ -2,9 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const playlistIdSchema = z.object({ playlistId: z.string().uuid() });
 const nameSchema = z.string().trim().min(1).max(80);
+const coverUrlSchema = z.string().url().max(1000).nullable();
+
+function extractOwnedPlaylistCoverPath(url: string | null | undefined, userId: string) {
+  if (!url) return null;
+  const marker = "/storage/v1/object/public/track-covers/";
+  const index = url.indexOf(marker);
+  if (index < 0) return null;
+  const path = url.slice(index + marker.length);
+  return isSafeOwnedCoverPath(path, userId) ? path : null;
+}
+
+async function cleanupPlaylistCover(userId: string, url: string | null | undefined) {
+  const path = extractOwnedPlaylistCoverPath(url, userId);
+  if (!path) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.storage.from("track-covers").remove([path]);
+}
 
 const TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
@@ -39,7 +57,7 @@ async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrde
 async function getOwnedPlaylist(supabase: any, userId: string, playlistId: string) {
   const { data, error } = await supabase
     .from("playlists")
-    .select("id, user_id, name, is_public, created_at, updated_at")
+    .select("id, user_id, name, cover_url, is_public, created_at, updated_at")
     .eq("id", playlistId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -65,7 +83,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: playlists, error } = await (context.supabase as any)
       .from("playlists")
-      .select("id, name, is_public, created_at, updated_at")
+      .select("id, name, cover_url, is_public, created_at, updated_at")
       .eq("user_id", context.userId)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -74,7 +92,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
     const ids = playlists.map((playlist: any) => playlist.id);
     const { data: items, error: itemError } = await (context.supabase as any)
       .from("playlist_tracks")
-      .select("playlist_id, track_id, position")
+      .select("playlist_id, track_id, position, added_at")
       .in("playlist_id", ids)
       .order("position", { ascending: true });
     if (itemError) throw new Error(itemError.message);
@@ -98,13 +116,13 @@ export const listPlaylists = createServerFn({ method: "GET" })
     return {
       playlists: playlists.map((playlist: any) => {
         const playlistItems = itemMap.get(playlist.id) ?? [];
-        const firstTrackId = playlistItems[0]?.track_id;
-        const firstTrack = firstTrackId ? trackMap.get(firstTrackId) : null;
+        const latestItem = playlistItems.reduce((latest: any, item: any) => !latest || item.added_at > latest.added_at ? item : latest, null);
+        const latestTrack = latestItem ? trackMap.get(latestItem.track_id) : null;
         return {
           ...playlist,
           track_count: playlistItems.length,
           duration_seconds: playlistItems.reduce((sum: number, item: any) => sum + (trackMap.get(item.track_id)?.duration_seconds ?? 0), 0),
-          artwork: firstTrack?.cover_url ?? firstTrack?.art_url ?? null,
+          artwork: playlist.cover_url ?? latestTrack?.cover_url ?? latestTrack?.art_url ?? null,
         };
       }),
     };
@@ -136,14 +154,15 @@ export const getPlaylist = createServerFn({ method: "POST" })
 
 export const createPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ name: nameSchema, trackId: z.string().uuid().optional() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ name: nameSchema, trackId: z.string().uuid().optional(), coverUrl: coverUrlSchema.optional() }).parse(input))
   .handler(async ({ data, context }) => {
     if (data.trackId) await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
+    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
 
     const { data: playlist, error } = await (context.supabase as any)
       .from("playlists")
-      .insert({ user_id: context.userId, name: data.name, is_public: false })
-      .select("id, name, is_public, created_at, updated_at")
+      .insert({ user_id: context.userId, name: data.name, cover_url: data.coverUrl ?? null, is_public: false })
+      .select("id, name, cover_url, is_public, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
 
@@ -153,6 +172,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
         .insert({ playlist_id: playlist.id, track_id: data.trackId, position: 0 });
       if (itemError) {
         await (context.supabase as any).from("playlists").delete().eq("id", playlist.id).eq("user_id", context.userId);
+        await cleanupPlaylistCover(context.userId, data.coverUrl);
         throw new Error(itemError.message);
       }
     }
@@ -160,16 +180,23 @@ export const createPlaylist = createServerFn({ method: "POST" })
     return { playlist };
   });
 
-export const renamePlaylist = createServerFn({ method: "POST" })
+export const updatePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), name: nameSchema }).parse(input))
+  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), name: nameSchema, coverUrl: coverUrlSchema }).parse(input))
   .handler(async ({ data, context }) => {
+    const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
+    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
+
     const { error } = await (context.supabase as any)
       .from("playlists")
-      .update({ name: data.name })
+      .update({ name: data.name, cover_url: data.coverUrl })
       .eq("id", data.playlistId)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+
+    if (playlist.cover_url && playlist.cover_url !== data.coverUrl) {
+      try { await cleanupPlaylistCover(context.userId, playlist.cover_url); } catch { /* best-effort storage cleanup */ }
+    }
     return { ok: true as const };
   });
 
@@ -177,12 +204,14 @@ export const deletePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => playlistIdSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     const { error } = await (context.supabase as any)
       .from("playlists")
       .delete()
       .eq("id", data.playlistId)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    try { await cleanupPlaylistCover(context.userId, playlist.cover_url); } catch { /* best-effort storage cleanup */ }
     return { ok: true as const };
   });
 
