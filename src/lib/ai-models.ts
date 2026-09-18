@@ -13,6 +13,10 @@ export const AI_MODELS = [
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic" },
   { id: "claude-fable-5", label: "Claude Fable 5", provider: "anthropic" },
   { id: "grok-4.6", label: "Grok 4.6", provider: "xai" },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", provider: "openai" },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", provider: "openai" },
+  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", provider: "openai" },
+  { id: "gpt-6-astra", label: "GPT-6 Astra", provider: "openai" },
 ] as const;
 
 export type AiModelId = (typeof AI_MODELS)[number]["id"];
