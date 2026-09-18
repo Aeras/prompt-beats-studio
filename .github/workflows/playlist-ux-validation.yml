@@ -1,0 +1,17 @@
+name: Playlist UX validation
+
+on:
+  push:
+    branches:
+      - fix/playlist-ux-covers
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build
