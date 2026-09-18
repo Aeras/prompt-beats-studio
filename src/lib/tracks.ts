@@ -17,6 +17,8 @@ export type Track = {
   sourceType?: PersistedTrackSourceType | undefined;
   sourceId?: string | null | undefined;
   createdWith?: CreatedWith | null;
+  allowDownload?: boolean;
+  durationSeconds?: number | null;
   /** Present only for real database tracks (enables likes + owner controls). */
   userId?: string;
   staffBadge?: string | null;

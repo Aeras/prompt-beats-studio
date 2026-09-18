@@ -8,6 +8,8 @@ import { usePlayer } from "@/lib/player";
 import { DonateButton } from "@/components/promptbeats/DonateButton";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
+import type { Track as PlayerTrack } from "@/lib/tracks";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
 import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
@@ -54,6 +56,10 @@ type Track = {
   source_id: string | null;
   art_url: string | null;
   cover_url: string | null;
+  created_with?: string | null;
+  allow_download?: boolean;
+  duration_seconds?: number | null;
+  is_published?: boolean;
   created_at?: string;
 };
 
@@ -172,7 +178,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                 const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
                 const canUseNativePlayer = canUseNativeTrackPlayer(track.source_type);
                 const largeArtwork = track.cover_url ?? track.art_url ?? profile.avatar_url ?? artFallback;
-                const nativeTrack = {
+                const nativeTrack: PlayerTrack = {
                   id: track.id,
                   userId: track.user_id,
                   title: track.title,
@@ -185,6 +191,12 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                   lyrics: track.lyrics ?? "",
                   audioUrl: track.audio_url,
                   audioType: track.audio_type === "link" ? "link" as const : "upload" as const,
+                  sourceType: track.source_type as PlayerTrack["sourceType"],
+                  sourceId: track.source_id,
+                  createdWith: (track.created_with as PlayerTrack["createdWith"]) ?? null,
+                  allowDownload: track.allow_download === true,
+                  durationSeconds: track.duration_seconds ?? null,
+                  isPublished: track.is_published ?? true,
                 };
                 const isPlaying = current?.id === track.id && playing;
                 return <article key={track.id} className={cn("glass space-y-3 rounded-2xl p-4", compact && "space-y-2 rounded-xl p-2.5")}>
@@ -193,6 +205,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                     <Link to="/track/$id" params={{ id: track.id }} className={cn("truncate font-semibold hover:text-accent", compact ? "text-xs" : "text-sm")}>{track.title}</Link>
                     {track.prompt ? <CopyPromptButton prompt={track.prompt} /> : null}
                     <LikeButton trackId={track.id} />
+                    <TrackLibraryActions track={nativeTrack} compact={compact} />
                     <TrackOwnerActions compact track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url }} />
                   </div>
                   <p className={cn("uppercase tracking-widest text-muted-foreground", compact ? "text-[8px]" : "text-[10px]")}>{localizedGenreLabel(track.genre, t)}</p>

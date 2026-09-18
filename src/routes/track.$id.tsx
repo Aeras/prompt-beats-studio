@@ -7,6 +7,7 @@ import { usePlayer } from "@/lib/player";
 import { getPublicTrackById } from "@/lib/tracks.functions";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
@@ -102,6 +103,8 @@ function TrackPage() {
       sourceType: track.source_type,
       sourceId: track.source_id,
       createdWith: track.created_with,
+      allowDownload: track.allow_download === true,
+      durationSeconds: track.duration_seconds,
     }, []);
   };
 
@@ -155,6 +158,26 @@ function TrackPage() {
 
                 <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
                   <LikeButton trackId={track.id} />
+                  <TrackLibraryActions track={{
+                    id: track.id,
+                    userId: track.user_id,
+                    title: track.title,
+                    handle: artist ? `@${artist.handle}` : "",
+                    genre: track.genre,
+                    art: artwork,
+                    duration: duration ?? "--:--",
+                    durationSeconds: track.duration_seconds,
+                    plays: String(playCount),
+                    prompt: track.prompt ?? "",
+                    lyrics: track.lyrics ?? "",
+                    audioUrl: track.audio_url,
+                    audioType: track.audio_type === "link" ? "link" : "upload",
+                    isPublished: track.is_published,
+                    sourceType: track.source_type,
+                    sourceId: track.source_id,
+                    createdWith: track.created_with,
+                    allowDownload: track.allow_download === true,
+                  }} />
                   <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with }} />
                 </div>
               </div>

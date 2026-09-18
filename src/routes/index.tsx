@@ -50,8 +50,8 @@ function Index() {
     enabled: category === "creators" && query.trim().length > 0,
   });
 
-  const creatorNames = new Map((data?.tracks ?? []).map((track) => [track.id, track.creator_name ?? ""]));
-  const uploaded: Track[] = (data?.tracks ?? []).map((track) => ({
+  const creatorNames = new Map((data?.tracks ?? []).map((track: any) => [track.id, track.creator_name ?? ""]));
+  const uploaded: Track[] = (data?.tracks ?? []).map((track: any) => ({
     id: track.id,
     userId: track.user_id,
     title: track.title,
@@ -67,6 +67,8 @@ function Index() {
     sourceType: track.source_type as Track["sourceType"],
     sourceId: track.source_id,
     createdWith: track.created_with,
+    allowDownload: track.allow_download === true,
+    durationSeconds: track.duration_seconds,
     staffBadge: track.staff_badge,
   }));
 
