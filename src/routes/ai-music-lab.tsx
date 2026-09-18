@@ -72,6 +72,7 @@ function AiMusicLabPage() {
   const [savePrompt, setSavePrompt] = useState("");
   const [saveLyrics, setSaveLyrics] = useState("");
   const [savePublished, setSavePublished] = useState(true);
+  const [saveAllowDownload, setSaveAllowDownload] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -164,6 +165,7 @@ function AiMusicLabPage() {
     setSavePrompt([musicStyle.trim(), productionNotes.trim() && `PRODUCER NOTES:\n${productionNotes.trim()}`].filter(Boolean).join("\n\n"));
     setSaveLyrics(lyrics);
     setSavePublished(true);
+    setSaveAllowDownload(false);
     setCoverFile(null);
     setSaveError(null);
     setSaveOpen(true);
@@ -199,6 +201,7 @@ function AiMusicLabPage() {
         duration_seconds: durationSeconds,
         ...(cover ? { cover_url: cover.url } : {}),
         is_published: savePublished,
+        allow_download: saveAllowDownload,
       } });
       setSaveOpen(false);
       setGenerated(null);
@@ -294,6 +297,10 @@ function AiMusicLabPage() {
               <label className="block text-xs text-muted-foreground">{copy.lyrics}<textarea value={saveLyrics} onChange={(e) => setSaveLyrics(e.target.value)} rows={8} maxLength={8000} className={`${inputClass} mt-1.5 resize-y`} /></label>
               <label className="block text-xs text-muted-foreground">{copy.createdWith}<div className="mt-1.5 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2.5 text-sm text-accent">Google Lyria 3.5</div></label>
               <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{copy.visibility}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setSavePublished(value)} aria-pressed={savePublished === value} className={`rounded-full border px-3 py-1.5 text-xs ${savePublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? copy.public : copy.private}</button>)}</fieldset>
+              <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground">
+                <input type="checkbox" checked={saveAllowDownload} onChange={(e) => setSaveAllowDownload(e.target.checked)} className="mt-0.5 h-4 w-4 accent-current" />
+                <span><span className="block text-sm font-medium">{copy.allowDownload}</span><span className="mt-0.5 block text-xs text-muted-foreground">{copy.allowDownloadHint}</span></span>
+              </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><ImagePlus className="h-4 w-4" /><span className="truncate">{coverFile ? coverFile.name : copy.coverOptional}</span><input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} className="hidden" /></label>
               {saveError && <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-3 text-xs text-red-300">{saveError}</p>}
               <div className="sticky bottom-0 z-10 -mx-2 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/95 to-transparent px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4">
@@ -319,7 +326,7 @@ const en = {
   title: "Title", titlePlaceholder: "Song title", musicStyle: "Music style", musicStylePlaceholder: "The complete PromptBeats music style prompt…", productionNotes: "Producer notes", productionPlaceholder: "Arrangement, dynamics, vocal treatment and production direction…", lyrics: "Lyrics", lyricsPlaceholder: "Paste or write the generated lyrics here…",
   preview: "Lyria request preview", previewHint: "This is the PromptBeats package used to build the server-side Lyria request.", emptyPreview: "Add a title, music style, lyrics or producer notes to preview the package.",
   generate: "Generate Audio with Lyria", generating: "Generating with Lyria…", costWarning: "Admin test: pressing Generate makes a paid Lyria 3.5 API request.", generationError: "Lyria generation failed.", result: "Generated audio", audioUnsupported: "Your browser does not support audio playback.", generatedText: "Lyria text output",
-  download: "Download", downloading: "Downloading…", downloadError: "Could not download this audio file.", discard: "Discard", discardError: "Could not discard this generation.", savePromptBeats: "Save to PromptBeats", saveHint: "The generated audio and song details are ready. Add a cover if you want, choose visibility, then save.", genre: "Genre", musicPrompt: "Music prompt", createdWith: "Created with", visibility: "Visibility", public: "Public", private: "Private", coverOptional: "Add cover art (optional)", publishTrack: "Publish Track", saveTrack: "Save Track", saving: "Saving…", saveError: "Could not save this track.", titleRequired: "A title is required.", signInRequired: "Sign in to save a cover.", close: "Close", untitled: "Untitled Lyria song",
+  download: "Download", downloading: "Downloading…", downloadError: "Could not download this audio file.", discard: "Discard", discardError: "Could not discard this generation.", savePromptBeats: "Save to PromptBeats", saveHint: "The generated audio and song details are ready. Add a cover if you want, choose visibility, then save.", genre: "Genre", musicPrompt: "Music prompt", createdWith: "Created with", visibility: "Visibility", public: "Public", private: "Private", allowDownload: "Allow download", allowDownloadHint: "Allow other signed-in users to download the audio file.", coverOptional: "Add cover art (optional)", publishTrack: "Publish Track", saveTrack: "Save Track", saving: "Saving…", saveError: "Could not save this track.", titleRequired: "A title is required.", signInRequired: "Sign in to save a cover.", close: "Close", untitled: "Untitled Lyria song",
   adminProtected: "Admin-protected workspace", adminProtectedBody: "The sidebar item is shown only to admins, and every generation request also verifies the admin role on the server.",
 } as const;
 
@@ -332,6 +339,6 @@ const el: LabCopy = {
   title: "Τίτλος", titlePlaceholder: "Τίτλος τραγουδιού", musicStyle: "Μουσικό στυλ", musicStylePlaceholder: "Το ολοκληρωμένο Music Style prompt του PromptBeats…", productionNotes: "Σημειώσεις παραγωγής", productionPlaceholder: "Ενορχήστρωση, δυναμικές, επεξεργασία φωνής και κατεύθυνση παραγωγής…", lyrics: "Στίχοι", lyricsPlaceholder: "Επικόλλησε ή γράψε εδώ τους στίχους που δημιούργησε ο Generator…",
   preview: "Προεπισκόπηση αιτήματος Lyria", previewHint: "Αυτό είναι το πακέτο PromptBeats από το οποίο δημιουργείται το server-side αίτημα προς το Lyria.", emptyPreview: "Πρόσθεσε τίτλο, μουσικό στυλ, στίχους ή σημειώσεις παραγωγής για να δεις την προεπισκόπηση.",
   generate: "Δημιουργία Audio με Lyria", generating: "Δημιουργία με Lyria…", costWarning: "Admin test: το Generate πραγματοποιεί χρεώσιμη κλήση στο Lyria 3.5 API.", generationError: "Η δημιουργία με Lyria απέτυχε.", result: "Audio που δημιουργήθηκε", audioUnsupported: "Ο browser δεν υποστηρίζει αναπαραγωγή audio.", generatedText: "Κείμενο εξόδου Lyria",
-  download: "Λήψη", downloading: "Λήψη…", downloadError: "Δεν ήταν δυνατή η λήψη του αρχείου audio.", discard: "Απόρριψη", discardError: "Δεν ήταν δυνατή η απόρριψη αυτού του αποτελέσματος.", savePromptBeats: "Αποθήκευση στο PromptBeats", saveHint: "Το audio και τα στοιχεία του τραγουδιού είναι έτοιμα. Πρόσθεσε προαιρετικά cover, επίλεξε ορατότητα και αποθήκευσε.", genre: "Είδος", musicPrompt: "Music prompt", createdWith: "Δημιουργήθηκε με", visibility: "Ορατότητα", public: "Δημόσιο", private: "Ιδιωτικό", coverOptional: "Προσθήκη cover art (προαιρετικό)", publishTrack: "Δημοσίευση τραγουδιού", saveTrack: "Αποθήκευση τραγουδιού", saving: "Αποθήκευση…", saveError: "Δεν ήταν δυνατή η αποθήκευση του τραγουδιού.", titleRequired: "Απαιτείται τίτλος.", signInRequired: "Συνδέσου για να αποθηκεύσεις cover.", close: "Κλείσιμο", untitled: "Τραγούδι Lyria χωρίς τίτλο",
+  download: "Λήψη", downloading: "Λήψη…", downloadError: "Δεν ήταν δυνατή η λήψη του αρχείου audio.", discard: "Απόρριψη", discardError: "Δεν ήταν δυνατή η απόρριψη αυτού του αποτελέσματος.", savePromptBeats: "Αποθήκευση στο PromptBeats", saveHint: "Το audio και τα στοιχεία του τραγουδιού είναι έτοιμα. Πρόσθεσε προαιρετικά cover, επίλεξε ορατότητα και αποθήκευσε.", genre: "Είδος", musicPrompt: "Music prompt", createdWith: "Δημιουργήθηκε με", visibility: "Ορατότητα", public: "Δημόσιο", private: "Ιδιωτικό", allowDownload: "Επιτρέπεται λήψη", allowDownloadHint: "Να μπορούν άλλοι εγγεγραμμένοι χρήστες να κατεβάζουν το αρχείο audio.", coverOptional: "Προσθήκη cover art (προαιρετικό)", publishTrack: "Δημοσίευση τραγουδιού", saveTrack: "Αποθήκευση τραγουδιού", saving: "Αποθήκευση…", saveError: "Δεν ήταν δυνατή η αποθήκευση του τραγουδιού.", titleRequired: "Απαιτείται τίτλος.", signInRequired: "Συνδέσου για να αποθηκεύσεις cover.", close: "Κλείσιμο", untitled: "Τραγούδι Lyria χωρίς τίτλο",
   adminProtected: "Προστατευμένος χώρος admin", adminProtectedBody: "Η επιλογή εμφανίζεται μόνο σε admin και κάθε αίτημα δημιουργίας επαληθεύει ξανά τον ρόλο admin στον server.",
 };
