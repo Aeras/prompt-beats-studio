@@ -12,15 +12,19 @@ import { GoogleGenAI } from "@google/genai";
 
 import { AI_MODELS, AI_MODEL_IDS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export type ModelCall = {
   /** System instruction shared by all providers. */
   system: string;
   /** User prompt shared by all providers. */
   prompt: string;
-  /** Output token budget. */
+  /** Output token budget for non-reasoning providers / visible-output baseline. */
   maxTokens?: number;
   /** Optional structured-output JSON schema (used where the provider supports it). */
   schema?: Record<string, unknown>;
+  /** Provider-specific reasoning budget; ignored by providers that do not expose it. */
+  reasoningEffort?: ReasoningEffort;
 };
 
 export type ModelResult = {
@@ -32,6 +36,9 @@ export type ModelResult = {
     inputTokens: number | null;
     outputTokens: number | null;
     totalTokens: number | null;
+    cachedInputTokens?: number | null;
+    cacheWriteTokens?: number | null;
+    reasoningTokens?: number | null;
   } | null;
   /** The provider that actually served this request. */
   provider: string;
@@ -371,6 +378,147 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   );
 }
 
+
+function toOpenAiJsonSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(toOpenAiJsonSchema);
+  if (!value || typeof value !== "object") return value;
+
+  const source = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(source)) {
+    if (key === "type" && typeof raw === "string") {
+      out[key] = raw.toLowerCase();
+    } else {
+      out[key] = toOpenAiJsonSchema(raw);
+    }
+  }
+
+  if (out["type"] === "object") {
+    // OpenAI strict Structured Outputs requires object schemas to reject
+    // undeclared keys. All PromptBeats schema objects already list their
+    // required properties, so this preserves the canonical contract.
+    out["additionalProperties"] = false;
+  }
+  return out;
+}
+
+function openAiOutputBudget(call: ModelCall): number {
+  const baseline = call.maxTokens ?? 8192;
+  // Responses API counts hidden reasoning and visible JSON together against
+  // max_output_tokens. Give reasoning calls headroom without changing the
+  // canonical PromptBeats visible-output budget or charging unused tokens.
+  if (call.reasoningEffort === "high" || call.reasoningEffort === "xhigh" || call.reasoningEffort === "max") {
+    return Math.max(baseline * 4, 32768);
+  }
+  if (call.reasoningEffort === "medium") return Math.max(baseline * 2, 16384);
+  return baseline;
+}
+
+async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> {
+  const apiKey = process.env["OPENAI_API_KEY"];
+  if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+
+  const jsonSchema = call.schema ? toOpenAiJsonSchema(call.schema) : null;
+  const body = {
+    model,
+    instructions: call.system,
+    input: call.prompt,
+    max_output_tokens: openAiOutputBudget(call),
+    reasoning: { effort: call.reasoningEffort ?? "medium" },
+    ...(jsonSchema
+      ? {
+          text: {
+            format: {
+              type: "json_schema",
+              name: "promptbeats_response",
+              strict: true,
+              schema: jsonSchema,
+            },
+          },
+        }
+      : {}),
+  };
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error(`[ai-provider] OpenAI request failed (${res.status})`, errorBody.slice(0, 1000));
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
+
+  const payload = (await res.json()) as {
+    status?: string | null;
+    model?: string | null;
+    incomplete_details?: { reason?: string | null } | null;
+    output?: Array<{
+      type?: string;
+      content?: Array<{ type?: string; text?: string }>;
+    }>;
+    usage?: {
+      input_tokens?: number;
+      input_tokens_details?: {
+        cached_tokens?: number;
+        cache_write_tokens?: number;
+      };
+      output_tokens?: number;
+      output_tokens_details?: {
+        reasoning_tokens?: number;
+      };
+      total_tokens?: number;
+    };
+  };
+
+  const text =
+    payload.output
+      ?.filter((item) => item.type === "message")
+      .flatMap((item) => item.content ?? [])
+      .filter((item) => item.type === "output_text")
+      .map((item) => item.text ?? "")
+      .join("") ?? "";
+
+  const status = payload.status ?? null;
+  const incompleteReason = payload.incomplete_details?.reason ?? null;
+  const stopReason =
+    status === "completed"
+      ? "end_turn"
+      : status === "incomplete" && incompleteReason === "max_output_tokens"
+        ? "max_tokens"
+        : (incompleteReason ?? status);
+
+  const inputTokens = payload.usage?.input_tokens ?? null;
+  const outputTokens = payload.usage?.output_tokens ?? null;
+  const totalTokens =
+    payload.usage?.total_tokens ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  const usage =
+    inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : {
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          cachedInputTokens: payload.usage?.input_tokens_details?.cached_tokens ?? null,
+          cacheWriteTokens: payload.usage?.input_tokens_details?.cache_write_tokens ?? null,
+          reasoningTokens: payload.usage?.output_tokens_details?.reasoning_tokens ?? null,
+        };
+
+  return {
+    text,
+    stopReason,
+    usage,
+    provider: "openai",
+    model: payload.model ?? model,
+  };
+}
+
 /** Returns a provider-agnostic caller bound to the given model. */
 export function modelCaller(model: string): ModelCaller {
   const provider = providerOf(model) as string;
@@ -380,6 +528,7 @@ export function modelCaller(model: string): ModelCaller {
     if (provider === "groq") return callGroq(model, call);
     if (provider === "openrouter") return callOpenRouter(model, call);
     if (provider === "xai") return callXai(model, call);
+    if (provider === "openai") return callOpenAI(model, call);
     return callGemini(model, call);
   };
 }
