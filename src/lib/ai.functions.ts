@@ -115,7 +115,9 @@ ${
   d.structure || d.production || d.instructions
     ? `ADVANCED USER DIRECTION — AUTHORITATIVE:
 
-${d.structure ? `- The Requested Song Structure defines the order of song sections. Follow it as given, using matching square-bracketed structural tags in the lyrics, unless following it would create a clear musical contradiction; in that case adapt minimally and keep the intent.` : ""}
+${d.structure ? `- The Requested Song Structure defines the order of song sections and is authoritative.
+- Follow the requested section order using matching square-bracketed structural tags in the lyrics.
+- Do not replace, reorder, remove or rename requested sections merely because another structure is more conventional.` : ""}
 ${d.production ? `- The Requested Production Style defines the production, arrangement, sonic character, dynamics, texture, groove and vocal treatment direction. Reflect it in the Music Style tags, the arrangement and the Producer's Note.` : ""}
 ${d.instructions ? `- The Additional Instructions are user requirements and must be respected wherever they do not contradict the Core Idea, Language, Genre or Mood.` : ""}
 - Integrate all of the above with the Core Idea, Genre, Mood and Language into ONE coherent brief.
@@ -140,10 +142,11 @@ When instructions conflict, prioritize:
 2. Language
 3. Genre(s)
 4. Mood
-5. Natural songwriting
-6. Musical coherence
-7. AI-music optimization
-8. Creative embellishment
+5. Explicit Advanced user requirements
+6. Natural songwriting
+7. Musical coherence
+8. AI-music optimization
+9. Creative embellishment
 
 ==================================================
 PROFESSIONAL CREATIVE DIRECTION
@@ -159,11 +162,15 @@ Avoid random combinations of genre characteristics or unnecessary production ele
 
 If multiple genres are requested, integrate them into one coherent musical identity rather than treating them as separate styles.
 
+Tempo, vocal phrasing, lyric density, song length and arrangement space must be developed together rather than independently.
+
 ==================================================
 LYRICS
 ==================================================
 
-Write complete, fully developed lyrics for a genuine full-length song.
+Write complete, coherent lyrics appropriate for the requested platform, requested structure and intended generation length.
+
+When the target platform or user request implies a compact generation, write a complete compact song form rather than forcing conventional full-length lyric volume into a short duration.
 
 Do not pad the song with meaningless repetition, unnecessary verses, extra bridges or extended outros merely to make it longer.
 
@@ -177,6 +184,10 @@ Avoid filler, forced rhymes, awkward translations, generic clichés and meaningl
 
 Every line should contribute to the story, emotion, imagery, progression or hook.
 
+Treat line breaks as meaningful vocal-phrasing cues, not merely visual formatting.
+
+Do not split lines mechanically by word count or syllable count. Preserve natural language, meaning, musical flow and intended vocal delivery.
+
 ==================================================
 SINGABILITY / RHYTHMIC FIT
 ==================================================
@@ -187,7 +198,7 @@ Before finalizing each line, silently consider whether its word and syllable den
 
 Never overcrowd a melodic phrase merely to preserve extra narrative detail.
 
-Avoid lines that would require unnaturally rushed delivery, machine-gun phrasing in a style that does not call for it, compressed or swallowed syllables, distorted pronunciation, unnatural word stress, or several words crammed into too little rhythmic space.
+Avoid lines that would require unnaturally rushed delivery, machine-gun phrasing in a style that does not call for it, compressed, clipped or swallowed syllables, distorted pronunciation, unnatural word stress, or excessive wording in too little rhythmic space.
 
 If a line contains more information than can be sung naturally, shorten it, simplify it, split the thought across two or more lines, or move the non-essential detail to another part of the song.
 
@@ -210,13 +221,68 @@ TEMPO AND LYRIC PHRASING ARE DESIGNED TOGETHER
 
 Lyrics and tempo must be designed together, not independently.
 
-The chosen BPM, groove and vocal phrasing must be compatible with the lyrics that were actually written.
+Refine BPM and lyric phrasing iteratively.
 
-If natural phrasing needs more space, choose a tempo and arrangement that give it that space rather than forcing the words through.
+The chosen BPM, groove and vocal phrasing must remain compatible with the lyrics that were actually written.
 
-Do not choose a tempo that makes otherwise natural lyrics unreasonably rushed.
+If natural phrasing needs more space, adjust both the lyric density and the tempo or arrangement as appropriate rather than forcing the words through.
 
-Do not force a song to become slower when a faster tempo better serves the genre, mood or the user's intent; match the density of the writing to the tempo instead.
+Do not choose a BPM that makes otherwise natural lyrics unreasonably rushed.
+
+Do not automatically slow a song merely because some lines are too dense.
+
+If a faster tempo better serves the genre, mood or user's intent, simplify or divide overcrowded lyric phrases instead.
+
+Likewise, do not select a high BPM merely because it is common for the genre when that BPM would make the actual written lyrics sound rushed.
+
+==================================================
+VOCAL PHRASE BUDGET & LINE BREAKS
+==================================================
+
+Treat each displayed sung lyric line as one primary vocal phrase unless the musical context clearly indicates otherwise.
+
+Do not assume that an overcrowded displayed line will automatically be divided into multiple natural musical phrases by the target platform.
+
+Evaluate each sung line against the available rhythmic and breathing space implied by:
+- the selected or implied BPM;
+- the groove and time-feel;
+- the genre;
+- the vocal style and delivery;
+- the likely phrase duration;
+- the melodic character;
+- natural breathing points;
+- the pronunciation and stress characteristics of the requested language.
+
+Whenever musically appropriate, keep one primary lyrical thought or one natural vocal phrase per displayed line.
+
+Use deliberate line breaks when a thought:
+- contains two distinct rhythmic ideas;
+- requires more than one natural breath;
+- contains excessive syllable density;
+- or would require substantially faster delivery than surrounding lines.
+
+Avoid abrupt density jumps between corresponding lines within the same section.
+
+A single line should not suddenly require substantially faster vocal delivery than surrounding lines unless that contrast is clearly intentional and stylistically appropriate.
+
+Punctuation and short clauses may support believable phrasing and breathing, but punctuation alone does not make an overcrowded phrase singable.
+
+Do not judge line length by a rigid word-count or syllable-count limit.
+
+Do not estimate vocal density from word count alone. Consider actual syllable length, pronunciation time, consonant clusters, articulation difficulty and natural stress patterns in the requested language. A short line containing difficult or multi-syllabic words may be denser than a longer line made of simpler words.
+
+Judge whether the exact wording can be delivered naturally, intelligibly and with appropriate word stress at the chosen BPM and vocal style.
+
+Before finalizing the song, silently verify each sung line:
+- it can be performed naturally at the chosen BPM and vocal style;
+- it has sufficient rhythmic and breathing space;
+- its density is reasonably compatible with surrounding corresponding lines;
+- the words remain intelligible without swallowing or clipping syllables;
+- natural pronunciation and word stress can be preserved.
+
+If a line fails this test, shorten it, simplify it, divide it into natural vocal phrases, or redistribute non-essential detail before returning the result.
+
+Never rely on the target platform to repair overcrowded lyrics through unnatural fast delivery.
 
 ==================================================
 CHORUS / HOOK
@@ -234,17 +300,126 @@ Favour natural repetition of a short, strong hook over adding new information.
 
 Do not make the chorus verbose in order to explain the story: the verses carry the detail, the chorus carries the feeling and the hook.
 
+Choruses should generally avoid unnecessary lyrical density and leave sufficient space for melodic emphasis, unless the requested genre or vocal style intentionally calls for dense rhythmic delivery.
+
 ==================================================
 STRUCTURE
 ==================================================
 
-Choose the structure that best serves the specific song.
+If a Requested Song Structure was provided by the user, it is authoritative.
+
+Follow the requested section order and use matching square-bracketed section tags in the lyrics.
+
+Do not add, remove, rename or reorder requested sections merely because another structure might be more conventional or preferable.
+
+Within the requested structure:
+- make each section serve a distinct musical and emotional function;
+- create progression, contrast, tension and release;
+- adapt lyric density, hook placement and arrangement dynamics to each section;
+- keep sections concise enough to remain natural and singable;
+- avoid filler and unnecessary repetition.
+
+If no Requested Song Structure was provided, choose the structure that best serves the genre, story, emotional progression, intended song length and musical dynamics.
 
 Do not mechanically use a fixed template.
 
-Use sections such as [Intro], [Verse], [Pre-Chorus], [Chorus], [Post-Chorus], [Bridge], [Breakdown], [Instrumental], [Final Chorus] and [Outro] only when they genuinely improve the song.
+When choosing the structure yourself, use only sections that genuinely improve the song.
 
-Prioritize progression, contrast, tension, release and emotional storytelling.
+Avoid unnecessary verses, bridges, breakdowns, instrumental sections or extended outros.
+
+==================================================
+SECTION-SPECIFIC LYRIC DENSITY
+==================================================
+
+Adapt vocal density to the function of each section.
+
+VERSES
+- May contain more narrative detail than choruses.
+- Must still remain naturally performable.
+- Distribute detailed storytelling across multiple concise phrases rather than prose-like lines.
+
+PRE-CHORUSES
+- May gradually increase urgency or rhythmic density.
+- Should remain focused and transitional rather than becoming a second full verse.
+- Must retain enough breathing and melodic space to create a convincing transition into the chorus.
+
+CHORUSES
+- Prioritize clarity, memorability, hook strength and melodic space.
+- Avoid unnecessary narrative detail.
+- Use repetition when it strengthens the hook.
+
+BRIDGES
+- May deliberately change rhythmic or melodic phrasing.
+- Must create contrast without becoming another dense verse or rushed exposition.
+
+OUTROS
+- Keep lyrical content purposeful.
+- Avoid adding unnecessary new narrative information at the end of the song.
+
+If intentionally fast vocal delivery is important to a specific section, it may be indicated with a concise square-bracketed direction when genuinely useful.
+
+Never use a fast-delivery direction merely to excuse overcrowded writing.
+
+==================================================
+SONG LENGTH, SECTION BUDGET & ARRANGEMENT SPACE
+==================================================
+
+Design total lyric volume, section lengths and arrangement space together.
+
+Do not treat every moment of the song as continuous lead vocal.
+
+A convincing finished song needs room for instrumental hooks, held notes, breaths, pickups, response vocals, transitions, builds, breakdowns, post-chorus moments and emotional pauses.
+
+Before writing the final lyrics, silently estimate:
+- the likely target-platform duration;
+- the selected or implied BPM and groove;
+- the number and type of requested sections;
+- how much lead-vocal time each section can realistically support;
+- where instrumental and melodic breathing space is needed;
+- whether the full lyric set can be performed naturally without continuous rushed delivery.
+
+LYRIC VOLUME RULES
+
+- Never fill the entire song duration with continuous dense lead vocals.
+- Do not make every verse, pre-chorus, chorus and bridge equally long or equally word-dense.
+- Use concise sections rather than adding lines merely to make the lyric sheet appear complete.
+- Let the arrangement breathe, especially before a chorus, after a central hook, during transitions and near the ending.
+- When a compact generation length is implied, reduce narrative detail and keep the form focused instead of compressing a conventional full-length lyric sheet into a short creation.
+- When the user requests a longer song, expand through meaningful musical development, section contrast, instrumental space and emotional progression — never through filler or crowded writing.
+
+SECTION BUDGET GUIDANCE
+
+Unless the user explicitly requests otherwise:
+
+- Verses may carry the most narrative information, but should use a limited number of concise lyrical phrases and leave room for groove and melodic development.
+- Pre-choruses should remain focused and transitional rather than becoming another full verse.
+- Choruses should generally prioritize concise, memorable phrasing and sufficient melodic space rather than accumulating narrative detail.
+- Bridges should create contrast without becoming another dense verse.
+- Intros, post-choruses, instrumentals and outros must have a clear musical purpose and must not be filled with unnecessary lyrics.
+
+TARGET-PLATFORM LENGTH RULES
+
+For Udio:
+- Keep the complete lyric set compact enough for one approximately 130-second creation.
+- Prefer a focused form with concise verses, a short memorable chorus and only essential sections.
+- If the requested structure is complex, preserve the requested order but shorten individual sections and reduce non-essential narrative detail.
+- Do not compress a conventional 3–4 minute lyric sheet into one Udio generation.
+
+For Suno:
+- Match lyric volume to the intended generation or expected song duration.
+- Do not assume more lyrics automatically create a better or more complete song.
+- Prefer a coherent number of concise lines, clear section labels and deliberate arrangement space.
+- For a short single generation, use fewer lyrics and more musical space rather than forcing fast delivery.
+
+FINAL DURATION TEST
+
+Before returning the JSON, silently verify:
+- the full lyric set can fit the likely duration without continuous rushed lead vocals;
+- every requested section has a realistic vocal and arrangement role;
+- there is enough space for hooks, instrumental phrasing, breath, transitions and held notes;
+- song length is achieved through musical development rather than extra words.
+
+If not, reduce lyric volume or redistribute the material before returning the result.
 
 ==================================================
 VOCALS
@@ -321,6 +496,17 @@ All sung lyrical content must remain entirely in the requested language.
 
 Square-bracketed structural, vocal and production directions are allowed in English.
 
+TAG RESTRAINT
+
+Use square-bracketed non-sung directions sparingly and only when they provide meaningful structural, vocal or production guidance that cannot be communicated more cleanly through the ${promptLabel} or normal lyric formatting.
+
+- Do not place a direction before every lyric line.
+- Do not repeat equivalent directions across sections.
+- Prefer the ${promptLabel} for global production characteristics.
+- Prefer structural tags for section identity.
+- Add a local production or vocal direction only when it is necessary for a meaningful transition, contrast, instrumental moment or performance change.
+- Keep every bracketed direction concise.
+
 ==================================================
 TARGET PLATFORM RULES
 ==================================================
@@ -335,11 +521,13 @@ Before returning the result, silently verify that:
 
 - Core Idea, Genre, Mood and Language are respected.
 - Lyrics are native, grammatical, natural and singable.
-- No lyric line is overcrowded for the chosen tempo, groove or vocal style.
-- No line would likely require unnatural rushed delivery or compressed pronunciation.
-- Corresponding lyric lines have musically reasonable syllable density.
-- Narrative detail is distributed across the song rather than crammed into individual phrases.
-- The chosen tempo or BPM and the written lyric phrasing are mutually compatible.
+- Displayed lyric lines are plausible vocal phrases for the chosen BPM, groove and vocal style.
+- Lyric density, breathing space and line-to-line rhythmic balance are musically reasonable.
+- No line requires rushed delivery, swallowed syllables, distorted pronunciation or unnatural stress.
+- Total lyric volume is appropriate for the likely song duration and target platform.
+- Sections leave realistic arrangement space for hooks, transitions, held notes, breaths and instrumental development.
+- Narrative detail is distributed naturally rather than crammed into individual phrases or the entire song.
+- The chosen tempo or BPM and actual lyric phrasing are mutually compatible.
 - The story and emotional progression are clear.
 - The chorus has a memorable hook.
 - Structure and arrangement serve the specific song.
@@ -347,6 +535,7 @@ Before returning the result, silently verify that:
 - There is no filler, forced rhyme, awkward translation or unnecessary repetition.
 - The Style Prompt accurately describes the finished song.
 - Title and Producer's Note are appropriate.
+- Bracketed directions are concise, useful and not overused.
 - No unnecessary or contradictory production instructions remain.
 - Formatting and JSON requirements are correct.
 
