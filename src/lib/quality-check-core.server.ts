@@ -690,6 +690,7 @@ export async function runDurableQualityCheck(
       prompt: buildQualityPrompt(data),
       maxTokens: 8192,
       schema: providerLayer.QUALITY_SCHEMA,
+      reasoningEffort: "high",
     });
   } catch (err) {
     records.push({ operation: "quality_check", provider, model, usage: null, success: false });
