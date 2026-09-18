@@ -55,6 +55,7 @@ UDIO LYRICS / GUIDANCE TAGS
 - Example VALID sung echo: (Το φως σου μόνο ζητώ)
 - Example INVALID: (Atmospheric synths swelling), (Soft electric piano chords), (Deep sub bass pulses).
 - Avoid excessive guidance tags. They are guidance, not guaranteed hard commands.
+- Use displayed lyric lines as deliberate phrasing cues and avoid prose-length lyric lines that depend on the platform to discover appropriate internal phrasing automatically.
 
 UDIO LENGTH
 - By default, make the lyric set compact enough to fit a single Udio ~130-second creation reasonably well.
@@ -80,7 +81,9 @@ SUNO LYRICS / DIRECTIONS
 - Keep the existing PromptBeats Suno lyric conventions that already work well: clear square-bracketed structural tags and concise vocal/production directions when useful.
 - Use round parentheses only for sung backing vocals, echoes, responses or ad-libs.
 - Never use round parentheses for non-sung structural, instrumental, vocal-performance, arrangement, production or sound-design directions.
-- Avoid unnecessary tags or directions that could be sung accidentally.`;
+- Avoid unnecessary tags or directions that could be sung accidentally.
+- Use lyric line breaks as meaningful phrasing cues.
+- Do not rely on Suno to repair an overcrowded lyric line through automatically accelerated delivery.`;
 }
 
 export function qualityPlatformGuidance(platform: AiTargetPlatform): string {

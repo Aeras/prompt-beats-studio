@@ -121,6 +121,16 @@ Check:
 - syllable flow
 - natural word stress
 - singability
+- whether each displayed sung lyric line can plausibly function as one primary vocal phrase at the Music Style's stated or implied BPM, groove and vocal style
+- overcrowded vocal phrases, unnaturally rushed delivery, clipped or swallowed syllables, distorted pronunciation or unnatural word stress
+- abrupt lyric-density jumps between corresponding lines in the same section, unless clearly intentional and stylistically appropriate
+- whether actual syllable length, pronunciation time, articulation difficulty, consonant clusters and natural stress patterns in the requested language make a line materially harder to perform than its visual length suggests
+- whether total lyric volume, section lengths and continuous lead-vocal density are realistic for the target platform, stated or implied duration, selected BPM and requested structure
+- whether the song leaves adequate arrangement space for instrumental hooks, held notes, breaths, transitions, builds, breakdowns, post-chorus moments and emotional pauses
+- for Udio, whether a compact lyric set intended for one approximately 130-second creation can fit naturally without compressing a conventional 3–4 minute lyric sheet into continuous rushed vocals
+
+Do not flag lyric density merely because lines have different syllable counts. Report a singability issue only when the difference creates a clear, material performance problem at the stated or implied tempo and vocal style.
+
 - forced rhyme or near-rhyme that damages natural language
 - meaningless filler
 - excessive or ineffective repetition
@@ -372,6 +382,10 @@ Use a whole line only when changing a smaller word or phrase cannot produce a sa
 
 Use a multi-line span only when a coordinated multi-line correction is strictly necessary to preserve the songwriting function of the affected lyrics.
 
+A multi-line correction must contain at most two adjacent sung lyric lines.
+
+Never use a multi-line correction to rewrite three or more lyric lines, an entire verse, a complete chorus, a bridge or any full song section.
+
 For a multi-line correction:
 - "originalText" must contain the complete exact contiguous current text span to be replaced;
 - that span must exist within the identified section occurrence;
@@ -491,7 +505,8 @@ Be concise.
 - Do not repeat explanations already represented by a correction.
 - In corrections, quote only the SMALLEST exact text span necessary to make the correction. A directly related adjacent line or short two-line couplet may be included only when required by the SONGWRITER-AWARE CORRECTION DECISION rules. Never quote an entire verse, chorus or song section when a smaller local span is sufficient.
 - Keep correction reasons short and specific.
-- Do not repeat identical corrections for repeated chorus occurrences unless those occurrences actually require different edits.
+- If the same genuine defect appears in multiple separate section occurrences, return one precise correction for each affected occurrence, each using the correct sectionLabel and occurrenceIndex.
+- Do not duplicate the same correction more than once within the same section occurrence.
 - Creative, vocal and production suggestions are OPTIONAL. Return them only when materially useful.
 - Do not produce filler, essays, commentary, analysis prose or duplicate rationale.
 - Return the required JSON only.
@@ -588,6 +603,10 @@ ${r.lyrics}
 
 Producer's Note:
 ${r.note}
+
+When evaluating singability, use the CURRENT ${tagsLabel} to infer BPM, tempo feel, groove, vocal delivery and likely phrase space.
+
+Do not assume the target platform will automatically repair an overcrowded lyric line through faster, compressed or distorted vocal delivery.
 
 Report ONLY clear, material and defensible lyric defects and other genuine defects. For every fixable issue return a precise correction quoting the CURRENT text above exactly. Ignore subjective preferences and stylistic alternatives. If there are no genuine material defects, return "passed": true, "score": 10 and an empty "corrections" array. Add any genuinely worthwhile creativeSuggestions, vocalSuggestions and productionSuggestions as optional, non-scoring items.
 
