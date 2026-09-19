@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, Cpu, DollarSign, HeartPulse, Pencil, PlugZap, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
@@ -177,6 +177,8 @@ export function AiModelsPanel() {
   const [editing, setEditing] = useState<AdminAiModel | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("");
   const [addedModelIds, setAddedModelIds] = useState<Set<string>>(() => new Set());
+  const [compatibilityProgress, setCompatibilityProgress] = useState({ completed: 0, total: 0 });
+  const compatibilityCancelRef = useRef(false);
 
   const providersQuery = useQuery({
     queryKey: ["admin-ai-providers"],
@@ -203,10 +205,40 @@ export function AiModelsPanel() {
   });
 
   const compatibilityTest = useMutation({
-    mutationFn: (input: { providerId: string; modelIds: string[] }) =>
-      runAiProviderCompatibilityTests({ data: input as any }),
-    onError: (error) =>
-      toast.error(error instanceof Error ? error.message : t("aiModels.compatibilityError")),
+    mutationFn: async (input: { providerId: string; modelIds: string[] }) => {
+      const batchSize = 10;
+      const results: any[] = [];
+      let provider: any = null;
+
+      compatibilityCancelRef.current = false;
+      setCompatibilityProgress({ completed: 0, total: input.modelIds.length });
+
+      for (let index = 0; index < input.modelIds.length; index += batchSize) {
+        if (compatibilityCancelRef.current) break;
+
+        const batch = input.modelIds.slice(index, index + batchSize);
+        const response = await runAiProviderCompatibilityTests({
+          data: { providerId: input.providerId, modelIds: batch } as any,
+        });
+
+        provider = response.provider;
+        results.push(...response.results);
+        setCompatibilityProgress({
+          completed: Math.min(index + batch.length, input.modelIds.length),
+          total: input.modelIds.length,
+        });
+      }
+
+      return {
+        provider,
+        results,
+        cancelled: compatibilityCancelRef.current,
+      };
+    },
+    onError: (error) => {
+      compatibilityCancelRef.current = true;
+      toast.error(error instanceof Error ? error.message : t("aiModels.compatibilityError"));
+    },
   });
 
   const addModel = useMutation({
@@ -318,7 +350,9 @@ export function AiModelsPanel() {
                 onChange={(e) => {
                   setSelectedProvider(e.target.value);
                   providerCheck.reset();
+                  compatibilityCancelRef.current = true;
                   compatibilityTest.reset();
+                  setCompatibilityProgress({ completed: 0, total: 0 });
                   setAddedModelIds(new Set());
                 }}
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
@@ -359,23 +393,38 @@ export function AiModelsPanel() {
                   {providerCheck.data.models.filter((model) => !model.installed && !model.deprecated).length === 0 ? (
                     <p className="mt-4 text-sm text-muted-foreground">{t("aiModels.noTestableCandidates")}</p>
                   ) : (
-                    <button
-                      disabled={compatibilityTest.isPending}
-                      onClick={() => compatibilityTest.mutate({
-                        providerId: selectedProvider,
-                        modelIds: providerCheck.data!.models
-                          .filter((model) => !model.installed && !model.deprecated)
-                          .map((model) => model.id),
-                      })}
-                      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                    >
-                      <RefreshCw className={cn("h-4 w-4", compatibilityTest.isPending && "animate-spin")} />
-                      {compatibilityTest.isPending ? t("aiModels.runningCompatibility") : t("aiModels.runCompatibility")}
-                    </button>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <button
+                        disabled={compatibilityTest.isPending}
+                        onClick={() => compatibilityTest.mutate({
+                          providerId: selectedProvider,
+                          modelIds: providerCheck.data!.models
+                            .filter((model) => !model.installed && !model.deprecated)
+                            .map((model) => model.id),
+                        })}
+                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                      >
+                        <RefreshCw className={cn("h-4 w-4", compatibilityTest.isPending && "animate-spin")} />
+                        {compatibilityTest.isPending
+                          ? t("aiModels.compatibilityProgress", {
+                              completed: compatibilityProgress.completed,
+                              total: compatibilityProgress.total,
+                            })
+                          : t("aiModels.runCompatibility")}
+                      </button>
+                      {compatibilityTest.isPending && (
+                        <button
+                          onClick={() => { compatibilityCancelRef.current = true; }}
+                          className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground hover:border-red-400/30 hover:text-red-200"
+                        >
+                          {t("aiModels.stopCompatibility")}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {compatibilityTest.data && compatibilityTest.data.provider.id === selectedProvider && (() => {
+                {compatibilityTest.data?.provider && compatibilityTest.data.provider.id === selectedProvider && (() => {
                   const addable = compatibilityTest.data.results.filter((result) =>
                     result.status === "compatible" ||
                     result.status === "generator_only" ||
@@ -390,6 +439,14 @@ export function AiModelsPanel() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {t("aiModels.compatibilitySummary", { compatible: addable.length, unsupported, inconclusive })}
                       </p>
+                      {compatibilityTest.data.cancelled && (
+                        <p className="mt-1 text-xs text-amber-200">
+                          {t("aiModels.compatibilityStopped", {
+                            completed: compatibilityTest.data.results.length,
+                            total: compatibilityProgress.total,
+                          })}
+                        </p>
+                      )}
                     </div>
                     {addable.length === 0 ? (
                       <p className="p-4 text-sm text-muted-foreground">{t("aiModels.noCompatibleModels")}</p>
