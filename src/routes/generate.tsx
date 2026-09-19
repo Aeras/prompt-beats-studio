@@ -362,7 +362,7 @@ function QualityResults({ quality, prefix, state, model }: { quality: QualityRep
   const { t } = useI18n();
   return (
     <div className="mt-4 space-y-4">
-      {model && <p className="text-xs text-muted-foreground">{t("quality.checkedWith", { model: aiModelLabel(model) })}</p>}
+      {model && <p className="text-xs text-muted-foreground">{t("quality.checkedWith", { model })}</p>}
       <div className="flex items-center gap-4 text-sm">
         <span>{t("quality.passed")}: <strong className={quality.passed ? "text-green-400" : "text-red-400"}>{quality.passed ? t("quality.yes") : t("quality.no")}</strong></span>
         <span>{t("quality.score")}: <strong className="text-foreground">{quality.score}/10</strong></span>
@@ -404,7 +404,7 @@ function QualityPanel({
   setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
   qualityCheckModel: string;
-  availableModels: typeof AI_MODELS;
+  availableModels: Array<{ id: string; label: string; provider: string }>;
   modelAccessLoading: boolean;
   modelAccessReady: boolean;
   modelAccessUnavailable: boolean;
@@ -417,7 +417,7 @@ function QualityPanel({
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2"><FlaskConical className="h-4 w-4 text-accent" /><h2 className="font-display text-sm font-semibold tracking-wide text-accent">{t("quality.title")}</h2></div>
-      {quality && <QualityResults quality={quality} prefix="orig" state={state} model={qualityCheckResultModel} />}
+      {quality && <QualityResults quality={quality} prefix="orig" state={state} model={qualityCheckResultModel ? (availableModels.find((item) => item.id === qualityCheckResultModel)?.label ?? aiModelLabel(qualityCheckResultModel)) : null} />}
       {checking && <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("quality.checking")}</p>}
       {!checking && (
         <div className="mt-4 space-y-3">
@@ -426,7 +426,7 @@ function QualityPanel({
           {modelAccessReady && !modelAccessUnavailable && showQualityCheckModelSelector && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground"><span>{t("quality.checkWith")}</span><select aria-label={t("quality.model")} value={qualityCheckModel} onChange={(e) => onQualityCheckModelChange(e.target.value)} className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{availableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
           )}
-          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && <p className="text-xs text-muted-foreground">{t("quality.checkWith")} {aiModelLabel(qualityCheckModel)}</p>}
+          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && <p className="text-xs text-muted-foreground">{t("quality.checkWith")} {availableModels.find((item) => item.id === qualityCheckModel)?.label ?? aiModelLabel(qualityCheckModel)}</p>}
           {confirm === mode ? (
             <ConfirmBox message={quality ? t("quality.confirmAgain") : t("quality.confirmFirst")} confirmLabel={quality ? t("quality.checkAgain") : t("quality.check")} onConfirm={onCheck} onCancel={() => setConfirm(null)} />
           ) : (
@@ -579,12 +579,16 @@ function GeneratePage() {
 
   const modelAccessLoading = aiModelAccessLoading || (!aiModelAccess && !aiModelAccessError);
   const modelAccessReady = !!aiModelAccess;
-  const generationAvailableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.generator.availableModels.includes(model.id)) : [];
-  const qualityAvailableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.qualityCheck.availableModels.includes(model.id)) : [];
+  const generationAvailableModels = modelAccessReady ? aiModelAccess.generator.modelOptions : [];
+  const qualityAvailableModels = modelAccessReady ? aiModelAccess.qualityCheck.modelOptions : [];
   const generationModelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && generationAvailableModels.length === 0;
   const qualityModelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && qualityAvailableModels.length === 0;
   const showGenerationModelSelector = generationAvailableModels.length > 1;
   const showQualityCheckModelSelector = qualityAvailableModels.length > 1;
+  const registryModelLabel = (modelId: string) =>
+    generationAvailableModels.find((model) => model.id === modelId)?.label ??
+    qualityAvailableModels.find((model) => model.id === modelId)?.label ??
+    aiModelLabel(modelId);
   const songContextTargetPlatform = (
     songContext as (GenerationContext & { targetPlatform?: AITargetPlatform }) | null
   )?.targetPlatform;
@@ -892,7 +896,7 @@ function GeneratePage() {
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
                 <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("generator.generateWith")}</span><select aria-label={t("generator.aiModel")} value={generationModel} onChange={(e) => { setGenerationModel(e.target.value); setGenerationModelChosen(true); }} className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{generationAvailableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
-              ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : generationModelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: aiModelLabel(generationModel) })}</p>}
+              ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : generationModelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: registryModelLabel(generationModel) })}</p>}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button onClick={generate} disabled={busy || checking || blocked || !ready || modelAccessLoading || generationModelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
                 <span className="text-xs text-muted-foreground">{blocked ? t("generator.tryAgainMinutes", { minutes: minutesLeft }) : t("generator.generationsRemaining", { remaining, limit: HOURLY_LIMIT })}</span>
@@ -915,7 +919,7 @@ function GeneratePage() {
 
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
-              {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: aiModelLabel(generationResultModel) })}</p>}
+              {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: registryModelLabel(generationResultModel) })}</p>}
               <div className="flex justify-end"><button onClick={toggleAll} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{allOpen ? t("generator.collapseAll") : t("generator.expandAll")}</button></div>
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
