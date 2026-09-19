@@ -123,5 +123,8 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.defaultAttentionTitle": "Ένα προεπιλεγμένο μοντέλο χρειάζεται προσοχή",
   "aiModels.generatorDefaultAttention": "Το προεπιλεγμένο μοντέλο του Generator είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
   "aiModels.qualityDefaultAttention": "Το προεπιλεγμένο μοντέλο του Quality Check είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
+  "aiModels.compatibilityProgress": "Έλεγχος {completed}/{total}…",
+  "aiModels.stopCompatibility": "Διακοπή",
+  "aiModels.compatibilityStopped": "Ο έλεγχος σταμάτησε μετά από {completed}/{total} μοντέλα. Εμφανίζονται τα μερικά αποτελέσματα.",
   "aiModels.defaultNotEligible": "Αυτό το μοντέλο δεν μπορεί να χρησιμοποιηθεί ως επιλεγμένη προεπιλογή."
 };
