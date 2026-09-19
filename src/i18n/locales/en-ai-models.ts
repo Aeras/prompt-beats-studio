@@ -60,6 +60,8 @@ export const enAiModels = {
   "aiModels.notCompatible": "Not compatible",
   "aiModels.noModels": "No installed AI models found.",
   "aiModels.priceUnknown": "N/A",
+  "aiModels.inputShort": "input",
+  "aiModels.outputShort": "output",
   "aiModels.defaultProtection": "Choose another default model before disabling this one.",
   "aiModels.manualPricingHint": "Prices are entered manually in USD per 1,000,000 tokens.",
   "aiModels.advancedPricing": "Advanced pricing",
