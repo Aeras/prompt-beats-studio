@@ -25,7 +25,7 @@ const providerLabel = (provider: DonationProvider) => {
   return "Custom";
 };
 
-export function DonationSettingsEditor() {
+export function DonationSettingsEditor({ showSectionHeader = false }: { showSectionHeader?: boolean }) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -108,7 +108,14 @@ export function DonationSettingsEditor() {
   };
 
   return (
-    <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+    <div className="space-y-2">
+      {showSectionHeader && (
+        <div className="px-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("editProfile.supportSection")}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("editProfile.supportSectionHint")}</p>
+        </div>
+      )}
+      <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent">
@@ -200,6 +207,7 @@ export function DonationSettingsEditor() {
           {busy ? t("profile.saving") : t("donations.save")}
         </button>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

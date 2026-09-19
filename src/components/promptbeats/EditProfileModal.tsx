@@ -197,10 +197,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                     </div>
                   </section>
 
-                  <div>
-                    <div className="mb-2 px-1"><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("editProfile.supportSection")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("editProfile.supportSectionHint")}</p></div>
-                    <DonationSettingsEditor />
-                  </div>
+                  <DonationSettingsEditor showSectionHeader />
                 </div>
               </div>
               {error && <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center text-xs text-destructive">{error}</p>}
