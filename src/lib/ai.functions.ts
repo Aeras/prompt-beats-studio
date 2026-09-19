@@ -1707,11 +1707,29 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getEffectiveModelAccess } = await import("@/lib/ai-provider.server");
-    const [generator, qualityCheck] = await Promise.all([
+    const emptyAccess = () => ({
+      activeModel: DEFAULT_AI_MODEL,
+      defaultModel: DEFAULT_AI_MODEL,
+      availableModels: [] as AiModelId[],
+      accessMode: "inherit" as const,
+    });
+
+    const [generatorResult, qualityResult] = await Promise.allSettled([
       getEffectiveModelAccess(context.userId, "generator"),
       getEffectiveModelAccess(context.userId, "quality_check"),
     ]);
-    return { generator, qualityCheck };
+
+    if (generatorResult.status === "rejected") {
+      console.warn("[ai-access] Generator model access unavailable", generatorResult.reason);
+    }
+    if (qualityResult.status === "rejected") {
+      console.warn("[ai-access] Quality Check model access unavailable", qualityResult.reason);
+    }
+
+    return {
+      generator: generatorResult.status === "fulfilled" ? generatorResult.value : emptyAccess(),
+      qualityCheck: qualityResult.status === "fulfilled" ? qualityResult.value : emptyAccess(),
+    };
   });
 
 /**
