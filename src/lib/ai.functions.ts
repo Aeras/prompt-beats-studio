@@ -1711,6 +1711,7 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
       activeModel: DEFAULT_AI_MODEL,
       defaultModel: DEFAULT_AI_MODEL,
       availableModels: [] as AiModelId[],
+      modelOptions: [] as Array<{ id: AiModelId; label: string; provider: string }>,
       accessMode: "inherit" as const,
     });
 
