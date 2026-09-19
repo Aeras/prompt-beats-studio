@@ -70,5 +70,7 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.preview": "Preview",
   "aiModels.retirementDate": "Ημερομηνία απόσυρσης",
   "aiModels.close": "Κλείσιμο",
-  "aiModels.saving": "Αποθήκευση…"
+  "aiModels.saving": "Αποθήκευση…",
+  "aiModels.verifiedPricingRequired": "Για επιβεβαιωμένο pricing απαιτούνται τιμές input και output.",
+  "aiModels.defaultNotEligible": "Αυτό το μοντέλο δεν μπορεί να χρησιμοποιηθεί ως επιλεγμένη προεπιλογή."
 };
