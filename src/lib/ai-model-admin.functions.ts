@@ -237,3 +237,60 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
 
     return { ok: true, model: model.provider_model_id };
   });
+
+
+const providerIdSchema = z.enum([
+  "openai",
+  "gemini",
+  "anthropic",
+  "xai",
+  "deepseek",
+  "mistral",
+  "groq",
+  "openrouter",
+  "together",
+  "fireworks",
+  "cerebras",
+  "cohere",
+  "nvidia",
+]);
+
+const providerCheckTimestamps = new Map<string, number>();
+
+export const getDetectedAiProviders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context.supabase);
+    const { getDetectedAiProviders: detect } = await import("@/lib/ai-provider-registry.server");
+    return { providers: detect() };
+  });
+
+export const checkAiProviderModels = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ providerId: providerIdSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+
+    const rateKey = `${context.userId}:${data.providerId}`;
+    const now = Date.now();
+    const previous = providerCheckTimestamps.get(rateKey) ?? 0;
+    if (now - previous < 5_000) {
+      throw new Error("Please wait a few seconds before checking this provider again.");
+    }
+    providerCheckTimestamps.set(rateKey, now);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select("provider,provider_model_id");
+    if (error) throw new Error("Could not read installed AI models.");
+
+    const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
+    return discoverProviderModels(
+      data.providerId,
+      ((rows ?? []) as any[]).map((row) => ({
+        provider: String(row.provider),
+        providerModelId: String(row.provider_model_id),
+      })),
+    );
+  });
