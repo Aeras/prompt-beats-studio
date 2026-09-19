@@ -105,8 +105,8 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
     ? new Date(model.pricingUpdatedAt).toLocaleString(language === "el" ? "el-GR" : "en-US")
     : "—";
 
-  return <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
-    <div className="glass-strong max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 p-5">
+  return <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-black/70 px-3 pt-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="glass-strong max-h-[calc(100dvh-7.25rem-env(safe-area-inset-bottom))] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 p-5 sm:max-h-[92vh]">
       <div className="flex items-start justify-between gap-4">
         <div><h2 className="font-display text-xl font-bold">{t("aiModels.editTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{model.provider} · {model.providerModelId}</p></div>
         <button onClick={onClose} aria-label={t("aiModels.close")} className="rounded-xl border border-white/10 p-2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -143,7 +143,7 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
 
       <label className="mt-4 block text-xs text-muted-foreground">{t("aiModels.notes")}<textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-foreground" /></label>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-5 flex flex-wrap gap-3 border-t border-white/10 bg-background/95 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:mb-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <button disabled={mutation.isPending || defaultRisk} onClick={() => mutation.mutate()} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{mutation.isPending ? t("aiModels.saving") : t("aiModels.save")}</button>
         <button onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground hover:text-foreground">{t("aiModels.close")}</button>
       </div>
