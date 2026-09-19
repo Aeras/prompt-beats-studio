@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { readAudioDurationSeconds } from "@/lib/audio-duration";
+import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
 
 export const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 
@@ -173,7 +174,7 @@ function AiMusicLabPage() {
 
   const uploadCover = async (file: File) => {
     if (!user) throw new Error(copy.signInRequired);
-    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const ext = validateCoverFile(file);
     const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from("track-covers").upload(path, file, { cacheControl: "3600", upsert: false });
     if (error) throw new Error(error.message);
@@ -301,7 +302,7 @@ function AiMusicLabPage() {
                 <input type="checkbox" checked={saveAllowDownload} onChange={(e) => setSaveAllowDownload(e.target.checked)} className="mt-0.5 h-4 w-4 accent-current" />
                 <span><span className="block text-sm font-medium">{copy.allowDownload}</span><span className="mt-0.5 block text-xs text-muted-foreground">{copy.allowDownloadHint}</span></span>
               </label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><ImagePlus className="h-4 w-4" /><span className="truncate">{coverFile ? coverFile.name : copy.coverOptional}</span><input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} className="hidden" /></label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><ImagePlus className="h-4 w-4" /><span className="truncate">{coverFile ? coverFile.name : copy.coverOptional}</span><input type="file" accept={COVER_ACCEPT} onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} className="hidden" /></label>
               {saveError && <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-3 text-xs text-red-300">{saveError}</p>}
               <div className="sticky bottom-0 z-10 -mx-2 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/95 to-transparent px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4">
                 <button type="button" onClick={() => void saveToPromptBeats()} disabled={saveBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg disabled:opacity-50">{saveBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saveBusy ? copy.saving : savePublished ? copy.publishTrack : copy.saveTrack}</button>
