@@ -1691,7 +1691,7 @@ const qualityCheckInput = z.object({
   instructions: generateInput.shape.instructions,
   result: generationOutput,
   idempotencyKey: z.string().uuid(),
-  qualityCheckModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+  qualityCheckModel: z.string().trim().min(1).max(240).nullish(),
   /** Optional: links the check to the originating generation for analytics. */
   generationId: z.string().uuid().nullish(),
 });
@@ -1895,7 +1895,7 @@ export const getAiModelSetting = createServerFn({ method: "GET" })
 
 export const setAiModelSetting = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    z.object({ model: z.enum(AI_MODEL_IDS as [string, ...string[]]) }).parse(input),
+    z.object({ model: z.string().trim().min(1).max(240) }).parse(input),
   )
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
