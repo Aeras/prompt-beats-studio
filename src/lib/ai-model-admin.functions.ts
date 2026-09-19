@@ -462,7 +462,27 @@ async function runInstalledModelRuntimeProbe(model: any): Promise<{ ok: true } |
       maxTokens: 64,
       reasoningEffort: model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
     });
-    if (!result.text?.trim()) return { ok: false, errorCode: "empty_runtime_response" };
+    if (result.stopReason !== "end_turn") {
+      return { ok: false, errorCode: "incomplete_runtime_response" };
+    }
+    const text = result.text?.trim();
+    if (!text) return { ok: false, errorCode: "empty_runtime_response" };
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      return { ok: false, errorCode: "invalid_runtime_probe_json" };
+    }
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload) ||
+      (payload as { ok?: unknown }).ok !== true
+    ) {
+      return { ok: false, errorCode: "invalid_runtime_probe_payload" };
+    }
+
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "runtime_probe_failed";
