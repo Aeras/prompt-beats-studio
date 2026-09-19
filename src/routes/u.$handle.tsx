@@ -5,7 +5,7 @@ import { ExternalLink, Music } from "lucide-react";
 
 import { getPublicProfile } from "@/lib/profile.functions";
 import { getTrackDownloadAvailability } from "@/lib/track-download.functions";
-import { DonateButton } from "@/components/promptbeats/DonateButton";
+import { DonationMethods } from "@/components/promptbeats/DonationMethods";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { BanUserToggle } from "@/components/promptbeats/ArtistProfileView";
@@ -129,11 +129,7 @@ function CreatorPage() {
               <BanUserToggle userId={profile.id} />
             </header>
 
-            <DonateButton
-              provider={profile.donation_provider}
-              url={profile.donation_url}
-              customName={profile.donation_custom_name}
-            />
+            <DonationMethods userId={profile.id} />
 
             <section className="space-y-3">
               <h2 className="font-display text-lg font-semibold">{t("creator.tracks")}</h2>

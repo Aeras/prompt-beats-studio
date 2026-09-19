@@ -32,7 +32,6 @@ function Onboarding() {
   const [alias, setAlias] = useState("");
   const [bio, setBio] = useState("");
   const [links, setLinks] = useState({ website_url: "", instagram_url: "", tiktok_url: "", youtube_url: "", x_url: "" });
-  const [donation, setDonation] = useState({ provider: "", url: "", customName: "" });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,11 +54,6 @@ function Onboarding() {
         tiktok_url: l.tiktok_url || p.tiktok_url || "",
         youtube_url: l.youtube_url || p.youtube_url || "",
         x_url: l.x_url || p.x_url || "",
-      }));
-      setDonation((d) => ({
-        provider: d.provider || p.donation_provider || "",
-        url: d.url || p.donation_url || "",
-        customName: d.customName || p.donation_custom_name || "",
       }));
     });
     return () => { active = false; };
@@ -102,9 +96,6 @@ function Onboarding() {
                 bio: bio.trim(),
                 ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
                 ...links,
-                donation_provider: (donation.provider || null) as "paypal" | "revolut" | "custom" | null,
-                donation_url: donation.url.trim() || null,
-                donation_custom_name: donation.provider === "custom" ? donation.customName.trim() || null : null,
               }
             : {}),
         },
@@ -164,20 +155,6 @@ function Onboarding() {
           {linkFields.map(([key, label]) => (
             <input key={key} value={links[key]} onChange={(e) => setLinks({ ...links, [key]: e.target.value })} placeholder={label} aria-label={label} className={inputClass} />
           ))}
-
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <p className="text-xs uppercase tracking-widest text-accent">{t("onboarding.donations")}</p>
-            <select value={donation.provider} onChange={(e) => setDonation({ ...donation, provider: e.target.value })} aria-label={t("onboarding.donationProvider")} className={inputClass}>
-              <option value="" className="bg-[#0a0a0c]">{t("onboarding.noDonations")}</option>
-              <option value="paypal" className="bg-[#0a0a0c]">PayPal</option>
-              <option value="revolut" className="bg-[#0a0a0c]">Revolut</option>
-              <option value="custom" className="bg-[#0a0a0c]">{t("common.custom")}</option>
-            </select>
-            <input value={donation.url} onChange={(e) => setDonation({ ...donation, url: e.target.value })} placeholder={t("onboarding.donationUrl")} aria-label={t("onboarding.donationUrl")} className={inputClass} />
-            {donation.provider === "custom" && (
-              <input value={donation.customName} onChange={(e) => setDonation({ ...donation, customName: e.target.value })} placeholder={t("onboarding.customProvider")} aria-label={t("onboarding.customProvider")} className={inputClass} />
-            )}
-          </div>
         </div>
 
         {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}

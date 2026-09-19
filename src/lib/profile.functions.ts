@@ -9,7 +9,7 @@ const PROFILE_COLUMNS =
 
 /** Safe public projection: no moderation/internal fields (anon role is column-restricted). */
 const PUBLIC_PROFILE_COLUMNS =
-  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, donation_provider, donation_url, donation_custom_name, staff_badge";
+  "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, staff_badge";
 
 export type PublicCreatorSearchResult = {
   id: string;
@@ -42,9 +42,6 @@ const profileInput = z.object({
   tiktok_url: optionalUrl("tiktok"),
   youtube_url: optionalUrl("youtube"),
   x_url: optionalUrl("x"),
-  donation_provider: z.enum(["paypal", "revolut", "custom"]).nullish(),
-  donation_url: optionalUrl(),
-  donation_custom_name: z.string().trim().max(60).nullish(),
   profile_completed: z.boolean().default(false),
 });
 
@@ -71,9 +68,6 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     }
     if (data.bio !== undefined) patch['bio'] = data.bio;
     if (data.avatar_url !== undefined) patch['avatar_url'] = data.avatar_url;
-    for (const key of ["donation_provider", "donation_url", "donation_custom_name"] as const) {
-      if (data[key] !== undefined) patch[key] = data[key] || null;
-    }
     for (const key of ["website_url", "instagram_url", "tiktok_url", "youtube_url", "x_url"] as const) {
       patch[key] = data[key] ?? null;
     }

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Globe, Instagram, Music, Play, Pause, Share2, ShieldBan, Twitter, Youtube } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
-import { DonateButton } from "@/components/promptbeats/DonateButton";
+import { DonationMethods } from "@/components/promptbeats/DonationMethods";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
@@ -36,9 +36,6 @@ type Profile = {
   youtube_url: string | null;
   x_url: string | null;
   profile_completed?: boolean;
-  donation_provider: string | null;
-  donation_url: string | null;
-  donation_custom_name: string | null;
   staff_badge?: string | null;
 };
 
@@ -168,7 +165,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
             <div className="flex shrink-0 flex-col gap-2"><EditProfileModal profile={profile} /><BanUserToggle userId={profile.id} /></div>
           </header>
 
-          <DonateButton provider={profile.donation_provider} url={profile.donation_url} customName={profile.donation_custom_name} />
+          <DonationMethods userId={profile.id} />
 
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3"><h2 className="font-display text-lg font-semibold">{t("profile.discography")}</h2><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
