@@ -12,7 +12,7 @@ import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updateSavedPromptOrganization } from "@/lib/ai.functions";
-import { listFavoriteTracks } from "@/lib/playlists.functions";
+import { listFavoriteTracks } from "@/lib/playlists.functions";\nimport { listSongAnalyses } from "@/lib/song-analyzer.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -96,7 +96,7 @@ function LibraryPage() {
 
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
   const prompts = useQuery({ queryKey: ["library", "prompts", user?.id], queryFn: () => listSavedPrompts(), enabled: Boolean(user) });
-  const projects = useQuery({ queryKey: ["library", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user) });
+  const projects = useQuery({ queryKey: ["library", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user) });\n  const analyses = useQuery({ queryKey: ["library", "song-analyses", user?.id], queryFn: () => listSongAnalyses(), enabled: Boolean(user) });
   const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
   const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
 
@@ -178,7 +178,7 @@ function LibraryPage() {
           <PromptProjectLibrary
             prompts={prompts.data?.prompts ?? []}
             projects={projects.data?.projects ?? []}
-            loading={prompts.isLoading || projects.isLoading}
+            analyses={analyses.data?.analyses ?? []}\n            loading={prompts.isLoading || projects.isLoading || analyses.isLoading}
             view={promptView}
             onViewChange={setPromptView}
             search={promptSearch}
