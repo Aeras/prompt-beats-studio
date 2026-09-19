@@ -38,6 +38,10 @@ const generationOutput = z.object({
 
 const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
+  custom_name: z.string().trim().max(200).nullable().optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  version_number: z.number().int().positive().nullable().optional(),
+  version_label: z.string().trim().max(120).nullable().optional(),
   theme: z.string().trim().max(500).default(""),
   genre: z.string().trim().max(500).default(""),
   mood: z.string().trim().max(120).default(""),
@@ -1846,9 +1850,15 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => savedInput.parse(input))
   .handler(async ({ data, context }) => {
+    let versionNumber = data.version_number ?? null;
+    if (data.project_id && versionNumber == null) {
+      const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", { p_project_id: data.project_id });
+      if (versionError) throw new Error(versionError.message);
+      versionNumber = Number(next ?? 1);
+    }
     const { error } = await context.supabase
       .from("saved_prompts")
-      .insert({ ...data, user_id: context.userId });
+      .insert({ ...data, version_number: versionNumber, user_id: context.userId });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -1858,9 +1868,9 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, theme, genre, mood, language, tags, lyrics, note, created_at")
+      .select("id, title, custom_name, project_id, version_number, version_label, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(250);
     if (error) throw new Error(error.message);
     return { prompts: data ?? [] };
   });
@@ -1869,11 +1879,65 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("saved_prompts")
-      .delete()
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
+    const { error } = await context.supabase.from("saved_prompts").delete().eq("id", data.id).eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listPromptProjects = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("prompt_projects")
+      .select("id, name, created_at, updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return { projects: data ?? [] };
+  });
+
+export const createPromptProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ name: z.string().trim().min(1).max(120) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: project, error } = await context.supabase
+      .from("prompt_projects")
+      .insert({ user_id: context.userId, name: data.name })
+      .select("id, name, created_at, updated_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return { project };
+  });
+
+export const renamePromptProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("prompt_projects").update({ name: data.name, updated_at: new Date().toISOString() }).eq("id", data.id).eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deletePromptProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("prompt_projects").delete().eq("id", data.id).eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    id: z.string().uuid(),
+    custom_name: z.string().trim().max(200).nullable().optional(),
+    project_id: z.string().uuid().nullable().optional(),
+    version_number: z.number().int().positive().nullable().optional(),
+    version_label: z.string().trim().max(120).nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("saved_prompts").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

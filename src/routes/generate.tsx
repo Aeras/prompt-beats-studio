@@ -23,6 +23,8 @@ import {
   getCurrentUserAiModelAccess,
   getGenerationUsage,
   savePromptToLibrary,
+  listPromptProjects,
+  createPromptProject,
   HOURLY_LIMIT,
   type QualityReport,
   type CorrectionItem,
@@ -476,6 +478,13 @@ function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveProjectId, setSaveProjectId] = useState("");
+  const [saveVersionLabel, setSaveVersionLabel] = useState("");
+  const [saveNewProject, setSaveNewProject] = useState("");
+  const [savingLibrary, setSavingLibrary] = useState(false);
+  const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && saveDialogOpen) });
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
@@ -722,10 +731,34 @@ function GeneratePage() {
     }
   };
 
+  const openSaveDialog = () => {
+    if (!result) return;
+    setSaveName(result.title || "");
+    setSaveProjectId("");
+    setSaveVersionLabel("");
+    setSaveNewProject("");
+    setSaveDialogOpen(true);
+  };
+
   const save = async () => {
     if (!result) return;
-    try { await savePromptToLibrary({ data: { theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result } }); setSaved(true); }
-    catch (err) { setStatus(err instanceof Error ? err.message : t("auth.somethingWrong")); }
+    setSavingLibrary(true);
+    try {
+      let projectId = saveProjectId || null;
+      if (saveNewProject.trim()) {
+        const created = await createPromptProject({ data: { name: saveNewProject.trim() } });
+        projectId = created.project?.id ?? null;
+      }
+      await savePromptToLibrary({ data: {
+        theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result,
+        custom_name: saveName.trim() || null, project_id: projectId,
+        version_label: projectId ? (saveVersionLabel.trim() || null) : null,
+      } });
+      await queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
+      setSaved(true); setSaveDialogOpen(false);
+    } catch (err) { setStatus(err instanceof Error ? err.message : t("auth.somethingWrong")); }
+    finally { setSavingLibrary(false); }
   };
 
   const openMusicLab = () => {
@@ -928,12 +961,28 @@ function GeneratePage() {
               {hasAdminInputBypass && (
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
-              <button onClick={save} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
+              <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
               <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}
         </div>
       </div>
+
+      {saveDialogOpen && result && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md" onClick={() => !savingLibrary && setSaveDialogOpen(false)}>
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-display text-lg font-bold">{appLanguage === "el" ? "Αποθήκευση Prompt" : "Save Prompt"}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{appLanguage === "el" ? "Το project είναι προαιρετικό. Αν επιλεγεί, ο αριθμός έκδοσης δίνεται αυτόματα." : "Project is optional. When selected, the next version number is assigned automatically."}</p>
+            <div className="mt-5 space-y-4">
+              <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Όνομα Prompt" : "Prompt Name"}</span><input value={saveName} onChange={(e) => setSaveName(e.target.value.slice(0,200))} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>
+              <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Αποθήκευση σε" : "Save to"}</span><select value={saveProjectId} onChange={(e) => { setSaveProjectId(e.target.value); if(e.target.value) setSaveNewProject(""); }} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm"><option value="">{appLanguage === "el" ? "Χωρίς Project" : "No Project"}</option>{(promptProjects.data?.projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+              <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Ή νέο Project" : "Or create project"}</span><input value={saveNewProject} onChange={(e) => { setSaveNewProject(e.target.value.slice(0,120)); if(e.target.value) setSaveProjectId(""); }} placeholder={appLanguage === "el" ? "Νέο όνομα project…" : "New project name…"} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>
+              {(saveProjectId || saveNewProject.trim()) && <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Ετικέτα έκδοσης (προαιρετικό)" : "Version label (optional)"}</span><input value={saveVersionLabel} onChange={(e) => setSaveVersionLabel(e.target.value.slice(0,120))} placeholder={appLanguage === "el" ? "π.χ. More Guitar" : "e.g. More Guitar"} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>}
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button disabled={savingLibrary} onClick={() => setSaveDialogOpen(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-muted-foreground">{appLanguage === "el" ? "Ακύρωση" : "Cancel"}</button><button disabled={savingLibrary} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{savingLibrary && <Loader2 className="h-4 w-4 animate-spin" />}{appLanguage === "el" ? "Αποθήκευση" : "Save"}</button></div>
+          </div>
+        </div>, document.body,
+      )}
 
       {hasAdminInputBypass && (
         <SongSetupAssistantModal
