@@ -5,7 +5,7 @@ import {
   isAdminOnlyAiModel,
   type AiModelId,
 } from "@/lib/ai-models";
-import type { ReasoningEffort } from "@/lib/ai-provider.server";
+export type RegistryReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export type AiModelOperation = "generator" | "quality_check";
 
@@ -18,10 +18,10 @@ export type RegistryModel = {
   accessPolicy: "admin_only" | "selected_users" | "all_users";
   generatorCompatible: boolean;
   generatorEnabled: boolean;
-  generatorReasoningEffort: ReasoningEffort | null;
+  generatorReasoningEffort: RegistryReasoningEffort | null;
   qualityCheckCompatible: boolean;
   qualityCheckEnabled: boolean;
-  qualityCheckReasoningEffort: ReasoningEffort | null;
+  qualityCheckReasoningEffort: RegistryReasoningEffort | null;
 };
 
 type RegistryRow = {
@@ -33,10 +33,10 @@ type RegistryRow = {
   access_policy: RegistryModel["accessPolicy"];
   generator_compatible: boolean;
   generator_enabled: boolean;
-  generator_reasoning_effort: ReasoningEffort | null;
+  generator_reasoning_effort: RegistryReasoningEffort | null;
   quality_check_compatible: boolean;
   quality_check_enabled: boolean;
-  quality_check_reasoning_effort: ReasoningEffort | null;
+  quality_check_reasoning_effort: RegistryReasoningEffort | null;
 };
 
 function isKnownModelId(value: string): value is AiModelId {
@@ -87,7 +87,7 @@ export function isModelEligibleForOperation(model: RegistryModel, operation: AiM
   return model.qualityCheckCompatible && model.qualityCheckEnabled;
 }
 
-export function reasoningForOperation(model: RegistryModel, operation: AiModelOperation): ReasoningEffort | undefined {
+export function reasoningForOperation(model: RegistryModel, operation: AiModelOperation): RegistryReasoningEffort | undefined {
   const value =
     operation === "generator"
       ? model.generatorReasoningEffort
