@@ -52,7 +52,7 @@ import {
   undoLyricCorrection,
   undoVocalArrangement,
 } from "@/lib/quality-apply";
-import { AI_MODELS, DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
+import { DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
 import {
   AI_TARGET_PLATFORMS,
   AI_TARGET_PLATFORM_LABEL,
