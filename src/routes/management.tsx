@@ -10,7 +10,8 @@ import { useModeration } from "@/hooks/useModeration";
 import { useAuth } from "@/hooks/useAuth";
 import { getAiAnalytics, type Breakdown } from "@/lib/ai-analytics.functions";
 import { BLOCK_REASONS, deleteAdminUser, getAdminOverview, getAdminUserDetail, listAdminRegistrationBlocks, listAdminUsers, removeAdminRegistrationBlock, setAdminModelAccess, setModerationStatus, setAdminUserBanned, setAdminUserRole, type AdminUser, type RegistrationBlock } from "@/lib/admin.functions";
-import { AI_MODEL_IDS, USER_ASSIGNABLE_AI_MODELS, type AiModelId } from "@/lib/ai-models";
+import { getAdminAiModels } from "@/lib/ai-model-admin.functions";
+import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
 import { cn } from "@/lib/utils";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
@@ -87,6 +88,7 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   const moderation = useModeration();
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({ queryKey: ["admin-user", userId], queryFn: () => getAdminUserDetail({ data: { userId } }) });
+  const { data: modelRegistry } = useQuery({ queryKey: ["admin-ai-models"], queryFn: () => getAdminAiModels(), enabled: moderation.isAdmin, staleTime: 15_000 });
   const [mode, setMode] = useState<"inherit" | "custom">("inherit");
   const [models, setModels] = useState<AiModelId[]>([]);
   const [deleteEmail, setDeleteEmail] = useState("");
@@ -118,6 +120,9 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   const validRegistrationReason = !blockRegistration || validReason;
   const canModerateTarget = data.role !== "admin" && (moderation.isAdmin || moderation.canBlockUsers);
   const canSuspendTarget = moderation.isAdmin || (moderation.canSuspendModerator && data.role === "moderator" && data.moderation_status === "active");
+  const assignableModels = (modelRegistry?.models ?? [])
+    .filter((model) => (model.status === "enabled" || model.status === "testing") && model.accessPolicy !== "admin_only" && AI_MODEL_IDS.includes(model.providerModelId as AiModelId))
+    .map((model) => ({ id: model.providerModelId as AiModelId, label: model.displayName }));
 
   return <Modal onClose={onClose}>
     <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-xl font-bold">{t("management.userDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{moderation.isAdmin ? (data.email || t("management.noEmail")) : (data.display_name || (data.handle ? `@${data.handle}` : t("management.user")))}</p></div><button onClick={onClose} aria-label={t("common.close")}><X className="h-5 w-5" /></button></div>
@@ -128,7 +133,7 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
       {data.moderation_status === "suspended" && <button disabled={moderationStatus.isPending || !moderation.isAdmin} onClick={() => { if (window.confirm(`${t("management.reactivateModeration")}: ${targetLabel}?`)) moderationStatus.mutate({ status: "active" }); }} className="mt-3 ml-2 rounded-lg border border-primary/30 px-3 py-2 text-xs text-primary disabled:opacity-50">{t("management.reactivateModeration")}</button>}
     </section>}
 
-    {moderation.isAdmin && <section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">{t("management.aiModelAccess")}</h3><div className="mt-3 flex gap-2"><button onClick={() => setMode("inherit")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "inherit" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>{t("management.inheritDefault")}</button><button onClick={() => setMode("custom")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "custom" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>{t("management.custom")}</button></div>{mode === "custom" && <div className="mt-3 grid gap-2 sm:grid-cols-2">{USER_ASSIGNABLE_AI_MODELS.map((m) => <label key={m.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={models.includes(m.id)} onChange={() => toggle(m.id)} />{m.label}</label>)}</div>}<button disabled={access.isPending || (mode === "custom" && models.length === 0)} onClick={() => access.mutate()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{access.isPending ? t("profile.saving") : t("management.saveAccess")}</button></section>}
+    {moderation.isAdmin && <section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">{t("management.aiModelAccess")}</h3><div className="mt-3 flex gap-2"><button onClick={() => setMode("inherit")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "inherit" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>{t("management.inheritDefault")}</button><button onClick={() => setMode("custom")} className={cn("rounded-lg border px-3 py-2 text-xs", mode === "custom" ? "border-primary bg-primary/15 text-primary" : "border-white/10")}>{t("management.custom")}</button></div>{mode === "custom" && <div className="mt-3 grid gap-2 sm:grid-cols-2">{assignableModels.map((m) => <label key={m.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={models.includes(m.id)} onChange={() => toggle(m.id)} />{m.label}</label>)}</div>}<button disabled={access.isPending || (mode === "custom" && models.length === 0)} onClick={() => access.mutate()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{access.isPending ? t("profile.saving") : t("management.saveAccess")}</button></section>}
 
     {canModerateTarget && <section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">{t("management.accountActions")}</h3>{data.blocked ? <><p className="mt-2 text-sm text-amber-200">{t("management.blocked")} · {reasonLabel(data.block_reason_code ?? "", t)}</p><button disabled={ban.isPending} onClick={() => setShowUnblock(true)} className="mt-3 rounded-xl border border-amber-400/30 px-4 py-2 text-sm text-amber-200 disabled:opacity-50">{t("management.unblockAccount")}</button></> : <button disabled={ban.isPending} onClick={() => setShowBlock(true)} className="mt-3 rounded-xl border border-amber-400/30 px-4 py-2 text-sm text-amber-200 disabled:opacity-50">{t("management.blockAccount")}</button>}</section>}
 
