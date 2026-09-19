@@ -28,11 +28,6 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
   "editProfile.tiktokOptional": "TikTok URL (προαιρετικό)",
   "editProfile.twitterOptional": "X (Twitter) URL (προαιρετικό)",
   "editProfile.youtubeOptional": "YouTube URL (προαιρετικό)",
-  "editProfile.paypalOptional": "PayPal URL (προαιρετικό)",
-  "editProfile.revolutOptional": "Revolut / Support URL (προαιρετικό)",
-  "editProfile.donationHint": "Εμφανίζεται ως κουμπί υποστήριξης / tip στη δημόσια σελίδα δημιουργού. Αν συμπληρωθούν και τα δύο, χρησιμοποιείται το PayPal.",
-  "editProfile.legacyDonations": "Παλιά πεδία δωρεών",
-  "editProfile.legacyDonationHint": "Προσωρινά πεδία μόνο για ανάγνωση. Θα αφαιρεθούν αφού επιβεβαιωθεί πλήρως το νέο σύστημα δωρεών.",
 
   "donations.loading": "Φόρτωση ρυθμίσεων δωρεών…",
   "donations.title": "Δωρεές δημιουργού",
@@ -54,8 +49,6 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
   "editProfile.noSavedProfile": "Η ενημέρωση προφίλ δεν επέστρεψε αποθηκευμένο προφίλ",
 
   "donate.support": "Υποστήριξη",
-  "donate.paypal": "Υποστήριξη μέσω PayPal",
-  "donate.revolut": "Υποστήριξη μέσω Revolut",
 
   "owner.source": "Πηγή: {provider}",
   "owner.immutable": "δεν αλλάζει",
