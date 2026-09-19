@@ -26,11 +26,6 @@ export const enProfile = {
   "editProfile.tiktokOptional": "TikTok URL (optional)",
   "editProfile.twitterOptional": "X (Twitter) URL (optional)",
   "editProfile.youtubeOptional": "YouTube URL (optional)",
-  "editProfile.paypalOptional": "PayPal URL (optional)",
-  "editProfile.revolutOptional": "Revolut / Support URL (optional)",
-  "editProfile.donationHint": "Shown as a Support / Tip button on your public creator page. If both are filled, PayPal is used.",
-  "editProfile.legacyDonations": "Legacy donation fields",
-  "editProfile.legacyDonationHint": "Temporary read-only legacy fields. They will be removed after the new donation system is verified.",
 
   "donations.loading": "Loading donation settings…",
   "donations.title": "Creator donations",
@@ -52,8 +47,6 @@ export const enProfile = {
   "editProfile.noSavedProfile": "Profile update returned no saved profile",
 
   "donate.support": "Support",
-  "donate.paypal": "Support via PayPal",
-  "donate.revolut": "Support via Revolut",
 
   "owner.source": "Source: {provider}",
   "owner.immutable": "immutable",
