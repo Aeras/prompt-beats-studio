@@ -12,6 +12,14 @@ ALTER TABLE public.song_analyses
   ALTER COLUMN name SET NOT NULL,
   ALTER COLUMN project_id DROP NOT NULL;
 
+-- Project deletion must not delete a saved analysis. It becomes standalone.
+ALTER TABLE public.song_analyses
+  DROP CONSTRAINT IF EXISTS song_analyses_project_id_fkey;
+
+ALTER TABLE public.song_analyses
+  ADD CONSTRAINT song_analyses_project_id_fkey
+  FOREIGN KEY (project_id) REFERENCES public.prompt_projects(id) ON DELETE SET NULL;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
