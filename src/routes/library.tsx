@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check, Trash2, Loader2 } from "lucide-react";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
@@ -11,7 +11,7 @@ import type { CreatedWith } from "@/lib/created-with";
 import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
-import { listSavedPrompts, deleteSavedPrompt } from "@/lib/ai.functions";
+import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updateSavedPromptOrganization } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
@@ -90,10 +90,13 @@ function LibraryPage() {
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
   const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]>("all");
+  const [promptView, setPromptView] = useState<"all" | "projects">("all");
+  const [promptSearch, setPromptSearch] = useState("");
   const handle = profile?.handle ? `@${profile.handle}` : t("nav.you");
 
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
   const prompts = useQuery({ queryKey: ["library", "prompts", user?.id], queryFn: () => listSavedPrompts(), enabled: Boolean(user) });
+  const projects = useQuery({ queryKey: ["library", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user) });
   const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
   const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
 
@@ -172,10 +175,15 @@ function LibraryPage() {
         )}
 
         {tab === "prompts" && (
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {(prompts.data?.prompts ?? []).map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} />)}
-            {!prompts.isLoading && (prompts.data?.prompts ?? []).length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("library.noPrompts")}</p>}
-          </div>
+          <PromptProjectLibrary
+            prompts={prompts.data?.prompts ?? []}
+            projects={projects.data?.projects ?? []}
+            loading={prompts.isLoading || projects.isLoading}
+            view={promptView}
+            onViewChange={setPromptView}
+            search={promptSearch}
+            onSearchChange={setPromptSearch}
+          />
         )}
       </main>
     </AppShell>
@@ -193,36 +201,125 @@ function Section({ tracks, empty, playing, currentId, onPlay, gridMode }: { trac
   );
 }
 
-function SavedPromptCard({ prompt }: { prompt: { id: string; title: string | null; theme: string | null; genre: string | null; mood: string | null; tags: string | null; lyrics: string | null; note: string | null; } }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+type SavedPrompt = {
+  id: string; title: string | null; custom_name: string | null; project_id: string | null;
+  version_number: number | null; version_label: string | null; theme: string | null; genre: string | null;
+  mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
+  created_at: string; updated_at: string;
+};
+type PromptProject = { id: string; name: string; created_at: string; updated_at: string };
+
+function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, search, onSearchChange }: {
+  prompts: SavedPrompt[]; projects: PromptProject[]; loading: boolean; view: "all" | "projects";
+  onViewChange: (view: "all" | "projects") => void; search: string; onSearchChange: (value: string) => void;
+}) {
+  const { t, language } = useI18n();
   const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const q = search.trim().toLowerCase();
+  const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
+  const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
+  const filtered = prompts.filter(matches);
+  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)));
 
-  const remove = async () => {
-    setDeleting(true);
-    try { await deleteSavedPrompt({ data: { id: prompt.id } }); await queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }); }
-    finally { setDeleting(false); }
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+    ]);
   };
-
-  const copy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* clipboard unavailable */ }
+  const createProject = async () => {
+    const name = window.prompt(language === "el" ? "Όνομα project" : "Project name")?.trim();
+    if (!name) return;
+    setBusy(true); try { await createPromptProject({ data: { name } }); await refresh(); } finally { setBusy(false); }
+  };
+  const renameProject = async (project: PromptProject) => {
+    const name = window.prompt(language === "el" ? "Νέο όνομα project" : "New project name", project.name)?.trim();
+    if (!name || name === project.name) return;
+    setBusy(true); try { await renamePromptProject({ data: { id: project.id, name } }); await refresh(); } finally { setBusy(false); }
+  };
+  const removeProject = async (project: PromptProject) => {
+    if (!window.confirm(language === "el" ? "Να διαγραφεί το project; Τα prompts θα παραμείνουν στη βιβλιοθήκη χωρίς project." : "Delete this project? Its prompts will remain in your library with no project.")) return;
+    setBusy(true); try { await deletePromptProject({ data: { id: project.id } }); await refresh(); } finally { setBusy(false); }
   };
 
   return (
-    <article className="glass rounded-2xl p-4">
+    <div className="mt-6 space-y-4">
+      <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
+        <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
+          {(["all", "projects"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? (language === "el" ? "Όλα τα Prompts" : "All Prompts") : (language === "el" ? "Projects" : "Projects")}</button>)}
+        </div>
+        <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
+        <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
+      </div>
+
+      {view === "all" ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {filtered.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} />)}
+          {!loading && filtered.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{q ? (language === "el" ? "Δεν βρέθηκαν prompts." : "No prompts found.") : t("library.noPrompts")}</p>}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {visibleProjects.map((project) => {
+            const items = prompts.filter((p) => p.project_id === project.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
+            return <section key={project.id} className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-accent" /><h2 className="truncate font-display font-bold">{project.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{items.length} {language === "el" ? "prompts" : "prompts"}</p></div>
+                <div className="flex gap-2"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} compact />)}{items.length === 0 && <p className="text-xs text-muted-foreground">{language === "el" ? "Δεν υπάρχουν prompts σε αυτό το project." : "No prompts in this project."}</p>}</div>
+            </section>;
+          })}
+          {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SavedPromptCard({ prompt, projects, compact = false }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean }) {
+  const { t, language } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
+  const project = projects.find((p) => p.id === prompt.project_id);
+
+  const refresh = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
+    queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+  ]);
+  const remove = async () => {
+    if (!window.confirm(language === "el" ? "Να διαγραφεί αυτό το prompt;" : "Delete this prompt?")) return;
+    setDeleting(true); try { await deleteSavedPrompt({ data: { id: prompt.id } }); await refresh(); } finally { setDeleting(false); }
+  };
+  const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {} };
+  const rename = async () => {
+    const name = window.prompt(language === "el" ? "Όνομα prompt" : "Prompt name", prompt.custom_name ?? prompt.title ?? "")?.trim();
+    if (name == null) return;
+    await updateSavedPromptOrganization({ data: { id: prompt.id, custom_name: name || null } }); await refresh();
+  };
+  const move = async (projectId: string) => {
+    const next = projectId || null;
+    let version = prompt.version_number;
+    if (next && next !== prompt.project_id) {
+      const siblings = (await listSavedPrompts()).prompts.filter((p) => p.project_id === next);
+      version = Math.max(0, ...siblings.map((p) => p.version_number ?? 0)) + 1;
+    }
+    await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: next, version_number: next ? version : null } }); await refresh();
+  };
+
+  return (
+    <article className={cn("rounded-2xl border border-white/10 bg-black/20", compact ? "p-3" : "glass p-4")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate font-display text-base font-bold">{prompt.title || prompt.theme || t("library.untitledPrompt")}</h2>
-          <p className="truncate text-[11px] text-muted-foreground">{[prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
+          <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{prompt.version_label ? ` · ${prompt.version_label}` : ""}</span>}</div>
+          <p className="truncate text-[11px] text-muted-foreground">{[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:text-accent">{copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}</button>
-          <button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive disabled:opacity-50">{deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>
-        </div>
+        <div className="flex shrink-0 gap-1"><button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
       </div>
-      {prompt.tags && <pre className="mt-3 max-h-24 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.tags}</pre>}
-      {prompt.lyrics && <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.lyrics}</pre>}
+      <div className="mt-3 flex items-center gap-2"><select value={prompt.project_id ?? ""} onChange={(e) => move(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"><option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{prompt.project_id && <button title={language === "el" ? "Αφαίρεση από project" : "Remove from project"} onClick={() => move("")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderX className="h-4 w-4" /></button>}</div>
+      {!compact && prompt.tags && <pre className="mt-3 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.tags}</pre>}
+      {!compact && prompt.lyrics && <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.lyrics}</pre>}
     </article>
   );
 }
