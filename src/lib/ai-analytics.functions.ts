@@ -4,7 +4,7 @@
  * Read-only: it never triggers an AI call and never touches the generation,
  * quality, repair or rate-limit logic. All queries run server-side through the
  * caller's authenticated client, so the admin-only RLS policy on
- * `ai_usage_logs` is the security boundary.
+ * ai_usage_logs is the security boundary.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -22,6 +22,7 @@ export type UsageRow = {
   output_tokens: number | null;
   total_tokens: number | null;
   estimated_cost_usd: number | string | null;
+  cost_status: "calculated" | "pending_pricing" | "usage_unavailable" | null;
   success: boolean;
   created_at: string;
 };
@@ -33,15 +34,30 @@ export type Breakdown = {
   outputTokens: number;
   totalTokens: number;
   costUsd: number;
-  /** Requests whose model has no verified pricing — unknown cost, not $0. */
+  /** Any request that still has no calculable cost. */
   unknownCostRequests: number;
+  /** Token usage is known, but verified model pricing is still missing. */
+  pendingPricingRequests: number;
+  /** The provider did not report enough token usage to calculate cost. */
+  usageUnavailableRequests: number;
   failures: number;
 };
 
 const rangeInput = z.object({ days: z.number().int().min(1).max(365).default(30) });
 
 function empty(key: string): Breakdown {
-  return { key, requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, unknownCostRequests: 0, failures: 0 };
+  return {
+    key,
+    requests: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    costUsd: 0,
+    unknownCostRequests: 0,
+    pendingPricingRequests: 0,
+    usageUnavailableRequests: 0,
+    failures: 0,
+  };
 }
 
 function accumulate(map: Map<string, Breakdown>, key: string, r: UsageRow) {
@@ -50,26 +66,36 @@ function accumulate(map: Map<string, Breakdown>, key: string, r: UsageRow) {
   b.inputTokens += r.input_tokens ?? 0;
   b.outputTokens += r.output_tokens ?? 0;
   b.totalTokens += r.total_tokens ?? (r.input_tokens ?? 0) + (r.output_tokens ?? 0);
-  if (r.estimated_cost_usd === null || r.estimated_cost_usd === undefined) b.unknownCostRequests += 1;
-  else b.costUsd += Number(r.estimated_cost_usd);
+
+  if (r.estimated_cost_usd === null || r.estimated_cost_usd === undefined) {
+    b.unknownCostRequests += 1;
+    if (r.cost_status === "pending_pricing") b.pendingPricingRequests += 1;
+    if (r.cost_status === "usage_unavailable") b.usageUnavailableRequests += 1;
+  } else {
+    b.costUsd += Number(r.estimated_cost_usd);
+  }
+
   if (!r.success) b.failures += 1;
   map.set(key, b);
 }
 
-const sorted = (m: Map<string, Breakdown>) => [...m.values()].sort((a, b) => b.costUsd - a.costUsd);
+const sorted = (m: Map<string, Breakdown>) =>
+  [...m.values()].sort((a, b) => b.costUsd - a.costUsd);
 
 export const getAiAnalytics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rangeInput.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("current_user_has_role", { _role: "admin" });
+    const { data: isAdmin } = await context.supabase.rpc("current_user_has_role", {
+      _role: "admin",
+    });
     if (!isAdmin) throw new Error("Forbidden");
 
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
-    // Paginate so totals stay correct beyond a single page of rows.
     const PAGE = 1000;
     const MAX_ROWS = 200000;
     const rows: UsageRow[] = [];
+
     for (let from = 0; from < MAX_ROWS; from += PAGE) {
       const { data: pageRaw, error } = await context.supabase
         .from("ai_usage_logs")
@@ -103,13 +129,37 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
         totalTokens: acc.totalTokens + b.totalTokens,
         costUsd: acc.costUsd + b.costUsd,
         unknownCostRequests: acc.unknownCostRequests + b.unknownCostRequests,
+        pendingPricingRequests: acc.pendingPricingRequests + b.pendingPricingRequests,
+        usageUnavailableRequests:
+          acc.usageUnavailableRequests + b.usageUnavailableRequests,
         failures: acc.failures + b.failures,
       }),
-      { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, unknownCostRequests: 0, failures: 0 },
+      {
+        requests: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        costUsd: 0,
+        unknownCostRequests: 0,
+        pendingPricingRequests: 0,
+        usageUnavailableRequests: 0,
+        failures: 0,
+      },
     );
 
     const songs = byGeneration.size;
-    const avgCostPerSong = songs ? totals.costUsd / songs : 0;
+    const completeCostGenerations = [...byGeneration.values()].filter(
+      (generation) => generation.unknownCostRequests === 0,
+    );
+    const completeCostSongs = completeCostGenerations.length;
+    const unknownCostSongs = songs - completeCostSongs;
+    const completeCostTotal = completeCostGenerations.reduce(
+      (sum, generation) => sum + generation.costUsd,
+      0,
+    );
+    const avgCostPerSong = completeCostSongs
+      ? completeCostTotal / completeCostSongs
+      : 0;
     const avgTokensPerSong = songs ? totals.totalTokens / songs : 0;
     const dailyAvgCost = totals.costUsd / data.days;
 
@@ -117,6 +167,8 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
       days: data.days,
       totals,
       songs,
+      completeCostSongs,
+      unknownCostSongs,
       avgCostPerSong,
       avgTokensPerSong,
       forecast: { daily: dailyAvgCost, monthly: dailyAvgCost * 30 },
