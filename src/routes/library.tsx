@@ -209,8 +209,8 @@ type SavedPrompt = {
 };
 type PromptProject = { id: string; name: string; created_at: string; updated_at: string };
 
-function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, search, onSearchChange }: {
-  prompts: SavedPrompt[]; projects: PromptProject[]; loading: boolean; view: "all" | "projects";
+function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onViewChange, search, onSearchChange }: {
+  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: Array<{ id:string; project_id:string|null; name:string; model:string; summary:string }>; loading: boolean; view: "all" | "projects";
   onViewChange: (view: "all" | "projects") => void; search: string; onSearchChange: (value: string) => void;
 }) {
   const { t, language } = useI18n();
@@ -282,7 +282,7 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
           })() : <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProjects.map((project) => {
-                const count = prompts.filter((p) => p.project_id === project.id).length;
+                const count = prompts.filter((p) => p.project_id === project.id).length + analyses.filter((a) => a.project_id === project.id).length;
                 return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
                   <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} prompts</span></span></button>
                   <div className="flex shrink-0 gap-1"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
