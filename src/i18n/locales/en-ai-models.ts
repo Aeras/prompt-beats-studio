@@ -70,6 +70,19 @@ export const enAiModels = {
   "aiModels.close": "Close",
   "aiModels.saving": "Saving…",
   "aiModels.verifiedPricingRequired": "Verified pricing requires both input and output prices.",
+  "aiModels.providers": "Provider connections",
+  "aiModels.providersHint": "Only providers with configured server-side credentials are shown.",
+  "aiModels.noProviders": "No configured AI providers were detected.",
+  "aiModels.checkApi": "Check API",
+  "aiModels.checkingApi": "Checking…",
+  "aiModels.providerCheckError": "Could not check this provider.",
+  "aiModels.discoveredModels": "Available models",
+  "aiModels.newCandidate": "New candidate",
+  "aiModels.alreadyInstalled": "Already installed",
+  "aiModels.providerDeprecated": "Deprecated",
+  "aiModels.contextWindow": "Context",
+  "aiModels.noDiscoveredModels": "No compatible text-generation models were returned by this provider.",
+  "aiModels.phase4Notice": "Adding new models will be enabled in Phase 4 after Compatibility Test.",
   "aiModels.defaultNotEligible": "This model cannot be used as the selected default."
 } as const;
 
