@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AlertTriangle, BarChart3, Coins, Cpu, LayoutDashboard, Shield, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
 import { useModeration } from "@/hooks/useModeration";
 import { useAuth } from "@/hooks/useAuth";
 import { getAiAnalytics, type Breakdown } from "@/lib/ai-analytics.functions";
@@ -15,7 +16,7 @@ import { useI18n, type AppTranslationKey } from "@/i18n";
 import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
 
 export const Route = createFileRoute("/management")({ head: () => ({ meta: [{ title: "Admin Dashboard | PromptBeats" }, { name: "robots", content: "noindex" }] }), component: ManagementPage });
-type Section = "overview" | "analytics" | "users" | "registrations";
+type Section = "overview" | "analytics" | "models" | "users" | "registrations";
 type ReasonCode = (typeof BLOCK_REASONS)[number]["code"];
 type T = (key: AppTranslationKey, values?: Record<string, string | number>) => string;
 const RANGES = [{ days: 1, label: "24h" }, { days: 7, label: "7d" }, { days: 30, label: "30d" }, { days: 90, label: "90d" }] as const;
@@ -43,9 +44,9 @@ function DataTable({ title, rows }: { title: string; rows: Breakdown[] }) {
 function AdminNav({ section, setSection, isAdmin }: { section: Section; setSection: (s: Section) => void; isAdmin: boolean }) {
   const { t } = useI18n();
   const items: Array<[Section, string, typeof LayoutDashboard]> = isAdmin
-    ? [["overview", t("management.overview"), LayoutDashboard], ["analytics", t("management.aiUsage"), BarChart3], ["users", t("management.users"), Users], ["registrations", t("management.blockedRegistrations"), Shield]]
+    ? [["overview", t("management.overview"), LayoutDashboard], ["analytics", t("management.aiUsage"), BarChart3], ["models", t("management.models"), Cpu], ["users", t("management.users"), Users], ["registrations", t("management.blockedRegistrations"), Shield]]
     : [["users", t("management.users"), Users]];
-  const future = isAdmin ? [t("management.subscriptions"), t("management.payments"), t("management.modelsAccess"), t("management.contentFiles"), t("management.settings")] : [];
+  const future = isAdmin ? [t("management.subscriptions"), t("management.payments"), t("management.contentFiles"), t("management.settings")] : [];
   return <div className="flex gap-2 overflow-x-auto pb-1">{items.map(([id, label, Icon]) => <button key={id} onClick={() => setSection(id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm", section === id ? "border-primary/50 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{label}</button>)}{future.map((label) => <span key={label} className="hidden shrink-0 items-center rounded-xl border border-white/5 px-3 py-2 text-xs text-muted-foreground/50 sm:inline-flex">{label}</span>)}</div>;
 }
 
@@ -180,6 +181,6 @@ function ManagementPage() {
 
   if (!loading && (!user || !canViewUsers)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.restricted")} <Link to="/" className="text-accent hover:underline">{t("management.backFeed")}</Link></div></main></AppShell>;
 
-  const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "users" ? t("management.usersModeration") : t("management.blockedRegistrations");
-  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}</main></AppShell>;
+  const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "models" ? t("management.models") : section === "users" ? t("management.usersModeration") : t("management.blockedRegistrations");
+  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}</main></AppShell>;
 }
