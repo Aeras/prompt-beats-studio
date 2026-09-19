@@ -635,11 +635,14 @@ async function activeCaller(
   const provider = await import("@/lib/ai-provider.server");
   const resolved = userId
     ? await provider.resolveAiModelForUser(userId, operation, modelOverride)
-    : {
-        model: modelOverride ?? (await provider.getActiveModel(operation)),
-        provider: provider.providerOf(modelOverride ?? (await provider.getActiveModel(operation))),
-        reasoningEffort: operation === "generator" ? "medium" as const : "high" as const,
-      };
+    : await (async () => {
+        const model = modelOverride ?? (await provider.getActiveModel(operation));
+        return {
+          model,
+          provider: provider.providerOf(model),
+          reasoningEffort: operation === "generator" ? "medium" as const : "high" as const,
+        };
+      })();
   return {
     call: provider.modelCaller(resolved.model, resolved.provider),
     model: resolved.model,
@@ -1459,7 +1462,13 @@ async function runQualityCheck(
   schema: Record<string, unknown>,
   d: z.infer<typeof generateInput>,
   r: z.infer<typeof generationOutput>,
-  sink?: { operation: AiOperation; records: PendingUsage[]; provider: string; model: string },
+  sink?: {
+    operation: AiOperation;
+    records: PendingUsage[];
+    provider: string;
+    model: string;
+    reasoningEffort?: import("@/lib/ai-provider.server").ReasoningEffort;
+  },
 ): Promise<QualityReport | null> {
   try {
     const res = await call({
@@ -1467,7 +1476,7 @@ async function runQualityCheck(
       prompt: buildQualityPrompt(d, r),
       maxTokens: 8192,
       schema,
-      reasoningEffort: "high",
+      reasoningEffort: sink?.reasoningEffort ?? "high",
     });
     const { text, stopReason } = res;
     const operation = sink?.operation ?? "quality_check";
@@ -1775,6 +1784,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
         records,
         provider,
         model,
+        reasoningEffort,
       });
     } catch (err) {
       await supabase.rpc("release_quality_check", {
