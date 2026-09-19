@@ -121,7 +121,7 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   const canModerateTarget = data.role !== "admin" && (moderation.isAdmin || moderation.canBlockUsers);
   const canSuspendTarget = moderation.isAdmin || (moderation.canSuspendModerator && data.role === "moderator" && data.moderation_status === "active");
   const assignableModels = (modelRegistry?.models ?? [])
-    .filter((model) => (model.status === "enabled" || model.status === "testing") && model.accessPolicy !== "admin_only" && AI_MODEL_IDS.includes(model.providerModelId as AiModelId))
+    .filter((model) => (model.status === "enabled" || model.status === "testing") && model.accessPolicy !== "admin_only")
     .map((model) => ({ id: model.providerModelId as AiModelId, label: model.displayName }));
 
   return <Modal onClose={onClose}>
