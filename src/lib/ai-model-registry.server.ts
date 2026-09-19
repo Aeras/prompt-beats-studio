@@ -43,6 +43,15 @@ function isKnownModelId(value: string): value is AiModelId {
   return (AI_MODEL_IDS as readonly string[]).includes(value);
 }
 
+function isRegistryNotMigrated(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "42P01",
+  );
+}
+
 function fallbackModel(id: AiModelId): RegistryModel {
   const catalog = AI_MODELS.find((model) => model.id === id)!;
   return {
@@ -108,8 +117,12 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
       .map(normalizeRow)
       .filter((model): model is RegistryModel => model !== null);
   } catch (error) {
-    console.warn("[ai-registry] registry unavailable; using compatibility catalog", error);
-    return AI_MODEL_IDS.map(fallbackModel);
+    if (isRegistryNotMigrated(error)) {
+      console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
+      return AI_MODEL_IDS.map(fallbackModel);
+    }
+    console.error("[ai-registry] registry lookup failed", error);
+    throw new Error("AI model registry is temporarily unavailable.");
   }
 }
 
@@ -127,8 +140,12 @@ export async function getRegistryModel(modelId: string): Promise<RegistryModel |
     if (error) throw error;
     return data ? normalizeRow(data as unknown as RegistryRow) : null;
   } catch (error) {
-    console.warn("[ai-registry] model lookup failed; using compatibility catalog", error);
-    return fallbackModel(modelId);
+    if (isRegistryNotMigrated(error)) {
+      console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
+      return fallbackModel(modelId);
+    }
+    console.error("[ai-registry] model lookup failed", error);
+    throw new Error("AI model registry is temporarily unavailable.");
   }
 }
 
