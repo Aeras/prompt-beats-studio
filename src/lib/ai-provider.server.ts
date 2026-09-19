@@ -566,16 +566,31 @@ export async function getActiveModel(operation: AiModelOperation = "generator"):
   return (await getOperationDefaultModel(operation)).providerModelId;
 }
 
+export type EffectiveAiModelOption = {
+  id: AiModelId;
+  label: string;
+  provider: string;
+};
+
 export type EffectiveAiModelAccess = {
   activeModel: AiModelId;
   defaultModel: AiModelId;
   availableModels: AiModelId[];
+  modelOptions: EffectiveAiModelOption[];
   accessMode: "admin" | "inherit" | "custom";
 };
 
 async function eligibleModelsForOperation(operation: AiModelOperation) {
   const models = await getInstalledRegistryModels();
   return models.filter((model) => isModelEligibleForOperation(model, operation));
+}
+
+function toModelOptions(models: RegistryModel[]): EffectiveAiModelOption[] {
+  return models.map((model) => ({
+    id: model.providerModelId,
+    label: model.displayName,
+    provider: model.provider,
+  }));
 }
 
 export async function getEffectiveModelAccess(
@@ -591,6 +606,7 @@ export async function getEffectiveModelAccess(
       activeModel: configuredDefault.providerModelId,
       defaultModel: configuredDefault.providerModelId,
       availableModels: available.map((model) => model.providerModelId),
+      modelOptions: toModelOptions(available),
       accessMode: "admin",
     };
   }
@@ -630,6 +646,7 @@ export async function getEffectiveModelAccess(
       activeModel: configuredDefault.providerModelId,
       defaultModel,
       availableModels: allowedIds,
+      modelOptions: toModelOptions(allowed),
       accessMode: "custom",
     };
   }
@@ -645,6 +662,7 @@ export async function getEffectiveModelAccess(
     activeModel: configuredDefault.providerModelId,
     defaultModel: configuredDefault.providerModelId,
     availableModels: [configuredDefault.providerModelId],
+    modelOptions: toModelOptions([configuredDefault]),
     accessMode: "inherit",
   };
 }
