@@ -68,7 +68,9 @@ export const enAiModels = {
   "aiModels.preview": "Preview",
   "aiModels.retirementDate": "Retirement date",
   "aiModels.close": "Close",
-  "aiModels.saving": "Saving…"
+  "aiModels.saving": "Saving…",
+  "aiModels.verifiedPricingRequired": "Verified pricing requires both input and output prices.",
+  "aiModels.defaultNotEligible": "This model cannot be used as the selected default."
 } as const;
 
 export type AiModelsTranslationKey = keyof typeof enAiModels;
