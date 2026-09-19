@@ -77,7 +77,7 @@ import {
 
 const JOB_STORAGE_KEY = "pb:generation-job";
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
-const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
+const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";\nconst SONG_ANALYZER_TRANSFER_KEY = "promptbeats:song-analyzer-generator-transfer";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -474,6 +474,20 @@ function GeneratePage() {
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(SONG_ANALYZER_TRANSFER_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as { musicStyle?:string; mood?:string; instruments?:Array<{description?:string}>; bpm?:{value?:number|null;rangeMin?:number|null;rangeMax?:number|null}; songStructure?:Array<{section?:string}>; productionStyle?:string; additionalInstructions?:string };
+      setAdvanced(true); setGenres([]); setCustomGenre((draft.musicStyle ?? "").slice(0, 150)); setMoods([]); setCustomMood((draft.mood ?? "").slice(0, 120));
+      setInstruments([]); setCustomInstruments((draft.instruments ?? []).map(x=>x.description??"").filter(Boolean).join(", ").slice(0,200));
+      const tempo=draft.bpm?.value ? String(Math.round(draft.bpm.value)) : ""; setBpm(tempo ? "Custom" : "Auto"); setCustomBpm(tempo);
+      const sections=(draft.songStructure??[]).map(x=>(x.section??"").replace(/\\s+\\d+$/,"").trim()).filter(x=>STRUCTURE_TAGS.includes(x)); setStructure(sections);
+      setProduction((draft.productionStyle??"").slice(0,2000)); setInstructions((draft.additionalInstructions??"").slice(0,2000));
+      window.sessionStorage.removeItem(SONG_ANALYZER_TRANSFER_KEY);
+    } catch { window.sessionStorage.removeItem(SONG_ANALYZER_TRANSFER_KEY); }
+  }, []);
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
