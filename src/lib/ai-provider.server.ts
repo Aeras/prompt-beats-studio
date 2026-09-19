@@ -586,64 +586,67 @@ export async function getEffectiveModelAccess(
     };
   }
 
-  // Restricted defaults must never leak to an inheriting normal account.
-  let inheritedDefault = configuredDefault;
-  if (configuredDefault.accessPolicy !== "all_users") {
-    const fallback = await getRegistryModel(DEFAULT_AI_MODEL);
-    if (!fallback || !isModelEligibleForOperation(fallback, operation) || fallback.accessPolicy !== "all_users") {
-      throw new Error("No AI model is available for this account.");
-    }
-    inheritedDefault = fallback;
-  }
-
   const { data: override, error: overrideError } = await supabaseAdmin
     .from("user_model_access")
     .select("access_mode, allowed_models")
     .eq("user_id", userId)
     .maybeSingle();
-  if (overrideError) {
-    if (overrideError.code === "42P01") {
-      return {
-        activeModel: inheritedDefault.providerModelId,
-        defaultModel: inheritedDefault.providerModelId,
-        availableModels: [inheritedDefault.providerModelId],
-        accessMode: "inherit",
-      };
-    }
+  if (overrideError && overrideError.code !== "42P01") {
     throw new Error("Could not verify AI model access.");
   }
 
   const access = override as { access_mode?: string; allowed_models?: string[] } | null;
-  if (access?.access_mode !== "custom") {
+
+  // Explicit custom grants are authoritative for non-admin test/user accounts.
+  // Resolve them before any inherited/public fallback so a restricted global
+  // default cannot block models that were deliberately granted by an admin.
+  if (access?.access_mode === "custom") {
+    const requestedIds = sanitizeAllowedModels(access.allowed_models);
+    const allowed: RegistryModel[] = [];
+    for (const id of requestedIds) {
+      const model = await getRegistryModel(id);
+      if (!model) continue;
+      if (!isModelEligibleForOperation(model, operation)) continue;
+      if (model.accessPolicy === "admin_only") continue;
+      allowed.push(model);
+    }
+
+    if (!allowed.length) throw new Error("No AI model is available for this account.");
+    const allowedIds = allowed.map((model) => model.providerModelId);
+    const defaultModel = allowedIds.includes(configuredDefault.providerModelId)
+      ? configuredDefault.providerModelId
+      : (allowedIds[0] as AiModelId);
+
     return {
-      activeModel: inheritedDefault.providerModelId,
-      defaultModel: inheritedDefault.providerModelId,
-      availableModels: [inheritedDefault.providerModelId],
-      accessMode: "inherit",
+      activeModel: configuredDefault.providerModelId,
+      defaultModel,
+      availableModels: allowedIds,
+      accessMode: "custom",
     };
   }
 
-  const requestedIds = sanitizeAllowedModels(access.allowed_models);
-  const allowed: RegistryModel[] = [];
-  for (const id of requestedIds) {
-    const model = await getRegistryModel(id);
-    if (!model) continue;
-    if (!isModelEligibleForOperation(model, operation)) continue;
-    if (model.accessPolicy === "admin_only") continue;
-    allowed.push(model);
+  // Inherit mode may only expose an all-users model. Prefer the configured
+  // default when public; otherwise choose a valid public fallback from registry.
+  let inheritedDefault = configuredDefault;
+  if (
+    configuredDefault.accessPolicy !== "all_users" ||
+    !isModelEligibleForOperation(configuredDefault, operation)
+  ) {
+    const available = await eligibleModelsForOperation(operation);
+    const preferred = available.find(
+      (model) => model.providerModelId === DEFAULT_AI_MODEL && model.accessPolicy === "all_users",
+    );
+    const firstPublic = available.find((model) => model.accessPolicy === "all_users");
+    const fallback = preferred ?? firstPublic;
+    if (!fallback) throw new Error("No AI model is available for this account.");
+    inheritedDefault = fallback;
   }
-
-  if (!allowed.length) throw new Error("No AI model is available for this account.");
-  const allowedIds = allowed.map((model) => model.providerModelId);
-  const defaultModel = allowedIds.includes(inheritedDefault.providerModelId)
-    ? inheritedDefault.providerModelId
-    : (allowedIds[0] as AiModelId);
 
   return {
     activeModel: inheritedDefault.providerModelId,
-    defaultModel,
-    availableModels: allowedIds,
-    accessMode: "custom",
+    defaultModel: inheritedDefault.providerModelId,
+    availableModels: [inheritedDefault.providerModelId],
+    accessMode: "inherit",
   };
 }
 
