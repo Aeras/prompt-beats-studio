@@ -263,7 +263,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
     setBusy(true); try { await renamePromptProject({ data: { id: project.id, name } }); await refresh(); } finally { setBusy(false); }
   };
   const removeProject = async (project: PromptProject) => {
-    if (!window.confirm(language === "el" ? "Να διαγραφεί το project; Τα prompts θα παραμείνουν στη βιβλιοθήκη χωρίς project." : "Delete this project? Its prompts will remain in your library with no project.")) return;
+    if (!window.confirm(language === "el" ? "Να διαγραφεί το project; Τα prompts και οι αναλύσεις θα παραμείνουν στη βιβλιοθήκη χωρίς project." : "Delete this project? Its prompts and analyses will remain in your library with no project.")) return;
     setBusy(true); try { await deletePromptProject({ data: { id: project.id } }); await refresh(); } finally { setBusy(false); }
   };
 
@@ -274,10 +274,10 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
           {(["all", "projects", "analyses"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
-        <div className="flex shrink-0 gap-1">
+        {view !== "analyses" && <div className="flex shrink-0 gap-1">
           <button type="button" aria-pressed={promptDisplayMode === "expanded"} onClick={() => setPromptDisplayMode("expanded")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "expanded" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Κάρτες" : "Cards"}</button>
           <button type="button" aria-pressed={promptDisplayMode === "list"} onClick={() => setPromptDisplayMode("list")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "list" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Λίστα" : "List"}</button>
-        </div>
+        </div>}
         <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
       </div>
 
@@ -349,9 +349,14 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
     `Genre & Style:\n${analysis.detailed_analysis.genreAndStyle}`,
     `Mood & Emotional Arc:\n${analysis.detailed_analysis.moodAndEmotionalArc}`,
     `Tempo & Groove:\n${analysis.detailed_analysis.tempoAndGroove}`,
+    `Instrumentation:\n${analysis.detailed_analysis.instrumentation.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
     `Arrangement:\n${analysis.detailed_analysis.arrangement}`,
+    `Song Structure:\n${analysis.detailed_analysis.songStructure}`,
     `Vocals:\n${analysis.detailed_analysis.vocals}`,
+    `Production & Mix:\n${analysis.detailed_analysis.productionAndMix.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
     `Dynamics & Energy:\n${analysis.detailed_analysis.dynamicsAndEnergy}`,
+    `Notable Characteristics:\n${analysis.detailed_analysis.notableCharacteristics.join("\n")}`,
+    `Confidence / Uncertainty Notes:\n${analysis.detailed_analysis.confidenceAndUncertaintyNotes.join("\n")}`,
   ].join("\n\n");
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
