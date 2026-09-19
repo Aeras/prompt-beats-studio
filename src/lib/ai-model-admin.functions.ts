@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
 
 const statusSchema = z.enum(["testing", "enabled", "disabled", "deprecated", "archived"]);
 const accessPolicySchema = z.enum(["admin_only", "selected_users", "all_users"]);
@@ -193,7 +192,7 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
 
 const defaultInput = z.object({
   operation: z.enum(["generator", "quality_check"]),
-  model: z.enum(AI_MODEL_IDS as [AiModelId, ...AiModelId[]]),
+  model: z.string().trim().min(1).max(200),
 });
 
 export const setAdminAiModelDefault = createServerFn({ method: "POST" })
