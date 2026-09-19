@@ -637,7 +637,7 @@ export async function getEffectiveModelAccess(
   const allowedIds = allowed.map((model) => model.providerModelId);
   const defaultModel = allowedIds.includes(inheritedDefault.providerModelId)
     ? inheritedDefault.providerModelId
-    : allowedIds[0];
+    : (allowedIds[0] as AiModelId);
 
   return {
     activeModel: inheritedDefault.providerModelId,
