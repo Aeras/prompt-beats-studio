@@ -42,9 +42,6 @@ const profileInput = z.object({
   tiktok_url: optionalUrl("tiktok"),
   youtube_url: optionalUrl("youtube"),
   x_url: optionalUrl("x"),
-  donation_provider: z.enum(["paypal", "revolut", "custom"]).nullish(),
-  donation_url: optionalUrl(),
-  donation_custom_name: z.string().trim().max(60).nullish(),
   profile_completed: z.boolean().default(false),
 });
 
@@ -71,9 +68,6 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     }
     if (data.bio !== undefined) patch['bio'] = data.bio;
     if (data.avatar_url !== undefined) patch['avatar_url'] = data.avatar_url;
-    for (const key of ["donation_provider", "donation_url", "donation_custom_name"] as const) {
-      if (data[key] !== undefined) patch[key] = data[key] || null;
-    }
     for (const key of ["website_url", "instagram_url", "tiktok_url", "youtube_url", "x_url"] as const) {
       patch[key] = data[key] ?? null;
     }
