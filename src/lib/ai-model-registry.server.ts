@@ -48,8 +48,9 @@ function isRegistryNotMigrated(error: unknown) {
   );
 }
 
-function fallbackModel(id: AiModelId): RegistryModel {
-  const catalog = AI_MODELS.find((model) => model.id === id)!;
+function fallbackModel(id: AiModelId): RegistryModel | null {
+  const catalog = AI_MODELS.find((model) => model.id === id);
+  if (!catalog) return null;
   return {
     id: null,
     provider: catalog.provider,
@@ -113,7 +114,9 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
   } catch (error) {
     if (isRegistryNotMigrated(error)) {
       console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
-      return AI_MODEL_IDS.map(fallbackModel);
+      return AI_MODEL_IDS
+        .map(fallbackModel)
+        .filter((model): model is RegistryModel => model !== null);
     }
     console.error("[ai-registry] registry lookup failed", error);
     throw new Error("AI model registry is temporarily unavailable.");
