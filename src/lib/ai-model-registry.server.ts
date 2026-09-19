@@ -89,7 +89,7 @@ function normalizeRow(row: RegistryRow): RegistryModel | null {
 }
 
 export function isModelEligibleForOperation(model: RegistryModel, operation: AiModelOperation) {
-  if (model.status !== "enabled") return false;
+  if (model.status !== "enabled" && model.status !== "testing") return false;
   if (operation === "generator") {
     return model.generatorCompatible && model.generatorEnabled;
   }
