@@ -113,7 +113,11 @@ export async function discoverProviderModels(
     throw new Error("Provider credentials are not configured.");
   }
 
-  const apiKey = process.env[provider.secretNames[0]]!.trim();
+  const secretName = provider.secretNames[0];
+  if (!secretName) throw new Error("Provider credentials are not configured.");
+  const apiKey = process.env[secretName]?.trim();
+  if (!apiKey) throw new Error("Provider credentials are not configured.");
+
   const headers: Record<string, string> = { accept: "application/json" };
   let url = provider.discoveryUrl;
   if (provider.auth === "bearer") headers.authorization = `Bearer ${apiKey}`;
@@ -121,7 +125,10 @@ export async function discoverProviderModels(
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = "2023-06-01";
   }
-  if (provider.auth === "gemini-query") url += `?key=${encodeURIComponent(apiKey)}&pageSize=1000`;
+  if (provider.auth === "gemini-query") {
+    headers["x-goog-api-key"] = apiKey;
+    url += "?pageSize=1000";
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
