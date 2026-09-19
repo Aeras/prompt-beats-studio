@@ -294,3 +294,135 @@ export const checkAiProviderModels = createServerFn({ method: "POST" })
       })),
     );
   });
+
+
+const compatibilityInput = z.object({
+  providerId: providerIdSchema,
+  modelIds: z.array(z.string().trim().min(1).max(240)).min(1).max(100),
+});
+
+async function readInstalledForDiscovery(supabaseAdmin: any) {
+  const { data: rows, error } = await supabaseAdmin
+    .from("ai_models" as never)
+    .select("provider,provider_model_id");
+  if (error) throw new Error("Could not read installed AI models.");
+  return ((rows ?? []) as any[]).map((row) => ({
+    provider: String(row.provider),
+    providerModelId: String(row.provider_model_id),
+  }));
+}
+
+export const runAiProviderCompatibilityTests = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => compatibilityInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const installed = await readInstalledForDiscovery(supabaseAdmin);
+    const { discoverProviderModels, testProviderModelsCompatibility } = await import("@/lib/ai-provider-registry.server");
+    const discovery = await discoverProviderModels(data.providerId, installed);
+    const requested = new Set(data.modelIds);
+    const candidates = discovery.models.filter((model) => requested.has(model.id) && !model.installed && !model.deprecated);
+    if (!candidates.length) throw new Error("No testable candidate models were found.");
+    return {
+      provider: discovery.provider,
+      results: await testProviderModelsCompatibility(data.providerId, candidates),
+    };
+  });
+
+const addDiscoveredModelInput = z.object({
+  providerId: providerIdSchema,
+  modelId: z.string().trim().min(1).max(240),
+});
+
+export const addDiscoveredAiModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => addDiscoveredModelInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // PromptBeats currently resolves model selections by provider_model_id, so
+    // keep that identifier globally unique until model keys become composite.
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select("id,provider,provider_model_id")
+      .eq("provider_model_id", data.modelId)
+      .maybeSingle();
+    if (existingError) throw new Error("Could not verify whether this model is already installed.");
+    if (existing) throw new Error("A model with this provider model ID is already installed.");
+
+    const installed = await readInstalledForDiscovery(supabaseAdmin);
+    const {
+      discoverProviderModels,
+      testSingleProviderModelCompatibility,
+    } = await import("@/lib/ai-provider-registry.server");
+    const discovery = await discoverProviderModels(data.providerId, installed);
+    const candidate = discovery.models.find((model) => model.id === data.modelId && !model.installed && !model.deprecated);
+    if (!candidate) throw new Error("This model is no longer available as a candidate.");
+
+    // Re-check the selected model server-side before installation so Add never
+    // trusts a browser-carried compatibility result.
+    const compatibility = await testSingleProviderModelCompatibility(data.providerId, candidate);
+    if (
+      compatibility.status !== "compatible" &&
+      compatibility.status !== "generator_only" &&
+      compatibility.status !== "quality_check_only"
+    ) {
+      throw new Error("This model did not pass the PromptBeats compatibility test.");
+    }
+
+    const now = new Date().toISOString();
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from("ai_models" as never)
+      .insert({
+        provider: data.providerId,
+        provider_model_id: candidate.id,
+        display_name: candidate.name || candidate.id,
+        status: "testing",
+        access_policy: "admin_only",
+        generator_compatible: compatibility.generatorCompatible,
+        generator_enabled: compatibility.generatorCompatible,
+        generator_reasoning_effort: null,
+        quality_check_compatible: compatibility.qualityCheckCompatible,
+        quality_check_enabled: compatibility.qualityCheckCompatible,
+        quality_check_reasoning_effort: null,
+        structured_output_supported: null,
+        reasoning_supported: null,
+        usage_reporting_supported: null,
+        context_window: candidate.contextWindow,
+        pricing_status: "unknown",
+        preview: false,
+        deprecated: false,
+        discovered_at: now,
+        last_checked_at: now,
+        last_success_at: now,
+        health_status: "healthy",
+        notes: "Added after PromptBeats compatibility test.",
+        updated_at: now,
+      } as never)
+      .select("id,provider_model_id")
+      .single();
+    if (insertError || !inserted) throw new Error(insertError?.message ?? "Could not add AI model.");
+
+    const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+      admin_user_id: context.userId,
+      target_user_id: null,
+      action: "ADD_AI_MODEL",
+      details: {
+        provider: data.providerId,
+        model: candidate.id,
+        compatibility: compatibility.status,
+        generator_compatible: compatibility.generatorCompatible,
+        quality_check_compatible: compatibility.qualityCheckCompatible,
+      },
+    });
+    if (auditError) console.error("[admin] AI model add audit failed", auditError.message);
+
+    return {
+      ok: true,
+      id: (inserted as any).id as string,
+      model: (inserted as any).provider_model_id as string,
+      compatibility,
+    };
+  });
