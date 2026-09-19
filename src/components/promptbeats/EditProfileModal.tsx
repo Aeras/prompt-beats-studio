@@ -10,6 +10,7 @@ import { usePlayer } from "@/lib/player";
 import { updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
+import { DonationSettingsEditor } from "@/components/promptbeats/DonationSettingsEditor";
 
 type EditableProfile = {
   id: string;
@@ -114,8 +115,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         if (!avatarUrl) throw new Error(t("editProfile.avatarUrlError"));
       }
 
-      const paypal = paypalUrl.trim();
-      const revolut = revolutUrl.trim();
       const profilePatch = {
         profile_completed: Boolean(name.trim()) && Boolean(avatarUrl),
         artist_alias: name.trim(),
@@ -127,9 +126,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         tiktok_url: tiktok.trim() || null,
         x_url: xUrl.trim() || null,
         youtube_url: youtube.trim() || null,
-        donation_provider: paypal ? "paypal" : revolut ? "revolut" : null,
-        donation_url: paypal || revolut || null,
-        donation_custom_name: null,
       };
       const { profile: savedProfile } = await updateMyProfile({ data: profilePatch });
       if (!savedProfile) throw new Error(t("editProfile.noSavedProfile"));
@@ -189,11 +185,13 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               <input value={xUrl} onChange={(e) => setXUrl(e.target.value.slice(0, 300))} placeholder={t("editProfile.twitterOptional")} aria-label={t("editProfile.twitter")} className={inputClass} />
               <input value={youtube} onChange={(e) => setYoutube(e.target.value.slice(0, 300))} placeholder={t("editProfile.youtubeOptional")} aria-label={t("editProfile.youtube")} className={inputClass} />
 
-              <div className="space-y-3 rounded-2xl border border-white/10 p-4">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent"><Heart className="h-3.5 w-3.5" /> {t("editProfile.donations")}</p>
-                <input value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value.slice(0, 300))} placeholder={t("editProfile.paypalOptional")} aria-label="PayPal URL" className={inputClass} />
-                <input value={revolutUrl} onChange={(e) => setRevolutUrl(e.target.value.slice(0, 300))} placeholder={t("editProfile.revolutOptional")} aria-label="Revolut or Support URL" className={inputClass} />
-                <p className="text-[11px] leading-snug text-muted-foreground">{t("editProfile.donationHint")}</p>
+              <DonationSettingsEditor />
+
+              <div className="space-y-3 rounded-2xl border border-white/5 p-4 opacity-60">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><Heart className="h-3.5 w-3.5" /> {t("editProfile.legacyDonations")}</p>
+                <input value={paypalUrl} disabled placeholder={t("editProfile.paypalOptional")} aria-label="Legacy PayPal URL" className={inputClass} />
+                <input value={revolutUrl} disabled placeholder={t("editProfile.revolutOptional")} aria-label="Legacy Revolut URL" className={inputClass} />
+                <p className="text-[11px] leading-snug text-muted-foreground">{t("editProfile.legacyDonationHint")}</p>
               </div>
             </div>
 
