@@ -444,14 +444,67 @@ const healthModelInput = z.object({
   id: z.string().uuid(),
 });
 
-function healthFromCompatibility(status: string) {
-  if (status === "compatible" || status === "generator_only" || status === "quality_check_only") {
-    return { healthStatus: "healthy" as const, success: true, errorCode: null as string | null };
+type HealthState = "healthy" | "degraded" | "failing";
+
+function hadConsecutiveFailure(model: any): boolean {
+  if (!model.last_failure_at) return false;
+  if (!model.last_success_at) return true;
+  return new Date(model.last_failure_at).getTime() > new Date(model.last_success_at).getTime();
+}
+
+async function runInstalledModelRuntimeProbe(model: any): Promise<{ ok: true } | { ok: false; errorCode: string }> {
+  try {
+    const { modelCaller } = await import("@/lib/ai-provider.server");
+    const call = modelCaller(String(model.provider_model_id), String(model.provider));
+    const result = await call({
+      system: "You are a PromptBeats health check. Return only a tiny JSON object.",
+      prompt: 'Return exactly {"ok":true}.',
+      maxTokens: 64,
+      reasoningEffort: model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
+    });
+    if (!result.text?.trim()) return { ok: false, errorCode: "empty_runtime_response" };
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "runtime_probe_failed";
+    return { ok: false, errorCode: message.slice(0, 160) };
   }
-  if (status === "inconclusive") {
-    return { healthStatus: "degraded" as const, success: false, errorCode: "inconclusive" };
+}
+
+async function evaluateInstalledModelHealth(
+  model: any,
+  discovered: { deprecated: boolean } | null,
+  discoveryAvailable: boolean,
+): Promise<{ healthStatus: HealthState; success: boolean; errorCode: string | null }> {
+  const runtime = await runInstalledModelRuntimeProbe(model);
+  if (!runtime.ok) {
+    return {
+      healthStatus: hadConsecutiveFailure(model) ? "failing" : "degraded",
+      success: false,
+      errorCode: runtime.errorCode,
+    };
   }
-  return { healthStatus: "failing" as const, success: false, errorCode: "compatibility_failed" };
+
+  if (!discoveryAvailable) {
+    return {
+      healthStatus: "degraded",
+      success: true,
+      errorCode: "provider_discovery_unavailable",
+    };
+  }
+
+  if (!discovered) {
+    return {
+      healthStatus: "degraded",
+      success: true,
+      errorCode: "not_listed_by_provider",
+    };
+  }
+
+  return {
+    healthStatus: "healthy",
+    success: true,
+    errorCode: null,
+  };
 }
 
 export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
@@ -480,78 +533,56 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
         health_status: "degraded",
         updated_at: now,
       } as never).eq("id", data.id);
-      return { ok: true, healthStatus: "degraded" as const, listed: null, compatibility: null };
+      return { ok: true, healthStatus: "degraded" as const, listed: null };
     }
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
+    let discoveryAvailable = false;
+    let discovered: any = null;
+
     try {
-      const {
-        discoverProviderModels,
-        testSingleProviderModelCompatibility,
-      } = await import("@/lib/ai-provider-registry.server");
-
+      const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
       const discovery = await discoverProviderModels(providerId.data, installed);
-      const discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
-
-      if (!discovered) {
-        await supabaseAdmin.from("ai_models" as never).update({
-          last_checked_at: now,
-          last_failure_at: now,
-          last_error_code: "not_listed_by_provider",
-          health_status: "degraded",
-          updated_at: now,
-        } as never).eq("id", data.id);
-        return { ok: true, healthStatus: "degraded" as const, listed: false, compatibility: null };
-      }
-
-      const compatibility = await testSingleProviderModelCompatibility(providerId.data, {
-        ...discovered,
-        installed: false,
-      });
-      const health = healthFromCompatibility(compatibility.status);
-
-      await supabaseAdmin.from("ai_models" as never).update({
-        deprecated: discovered.deprecated === true,
-        last_checked_at: now,
-        ...(health.success
-          ? { last_success_at: now, last_error_code: null }
-          : { last_failure_at: now, last_error_code: health.errorCode }),
-        health_status: health.healthStatus,
-        updated_at: now,
-      } as never).eq("id", data.id);
-
-      const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
-        admin_user_id: context.userId,
-        target_user_id: null,
-        action: "UPDATE_AI_MODEL",
-        details: {
-          operation: "health_recheck",
-          model: model.provider_model_id,
-          provider: model.provider,
-          listed: true,
-          compatibility: compatibility.status,
-          health_status: health.healthStatus,
-        },
-      });
-      if (auditError) console.error("[admin] AI model health audit failed", auditError.message);
-
-      return {
-        ok: true,
-        healthStatus: health.healthStatus,
-        listed: true,
-        compatibility: compatibility.status,
-      };
+      discoveryAvailable = true;
+      discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "provider_check_failed";
-      await supabaseAdmin.from("ai_models" as never).update({
-        last_checked_at: now,
-        last_failure_at: now,
-        last_error_code: message.slice(0, 160),
-        health_status: "degraded",
-        updated_at: now,
-      } as never).eq("id", data.id);
-      return { ok: true, healthStatus: "degraded" as const, listed: null, compatibility: null };
+      console.warn("[admin] provider discovery unavailable during model health check", error);
     }
+
+    const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
+
+    await supabaseAdmin.from("ai_models" as never).update({
+      ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+      last_checked_at: now,
+      ...(health.success
+        ? { last_success_at: now }
+        : { last_failure_at: now }),
+      last_error_code: health.errorCode,
+      health_status: health.healthStatus,
+      updated_at: now,
+    } as never).eq("id", data.id);
+
+    const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+      admin_user_id: context.userId,
+      target_user_id: null,
+      action: "UPDATE_AI_MODEL",
+      details: {
+        operation: "health_recheck",
+        model: model.provider_model_id,
+        provider: model.provider,
+        listed: discoveryAvailable ? Boolean(discovered) : null,
+        runtime_probe: health.success ? "passed" : "failed",
+        health_status: health.healthStatus,
+        error_code: health.errorCode,
+      },
+    });
+    if (auditError) console.error("[admin] AI model health audit failed", auditError.message);
+
+    return {
+      ok: true,
+      healthStatus: health.healthStatus,
+      listed: discoveryAvailable ? Boolean(discovered) : null,
+    };
   });
 
 const healthProviderInput = z.object({
@@ -576,79 +607,59 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
     const now = new Date().toISOString();
+    let discoveryAvailable = false;
+    let discoveredModels: any[] = [];
 
     try {
-      const {
-        discoverProviderModels,
-        testSingleProviderModelCompatibility,
-      } = await import("@/lib/ai-provider-registry.server");
+      const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
       const discovery = await discoverProviderModels(data.providerId, installed);
-
-      let healthy = 0;
-      let degraded = 0;
-      let failing = 0;
-
-      for (const model of providerModels) {
-        const discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
-        if (!discovered) {
-          degraded += 1;
-          await supabaseAdmin.from("ai_models" as never).update({
-            last_checked_at: now,
-            last_failure_at: now,
-            last_error_code: "not_listed_by_provider",
-            health_status: "degraded",
-            updated_at: now,
-          } as never).eq("id", model.id);
-          continue;
-        }
-
-        const compatibility = await testSingleProviderModelCompatibility(data.providerId, {
-          ...discovered,
-          installed: false,
-        });
-        const health = healthFromCompatibility(compatibility.status);
-        if (health.healthStatus === "healthy") healthy += 1;
-        else if (health.healthStatus === "failing") failing += 1;
-        else degraded += 1;
-
-        await supabaseAdmin.from("ai_models" as never).update({
-          deprecated: discovered.deprecated === true,
-          last_checked_at: now,
-          ...(health.success
-            ? { last_success_at: now, last_error_code: null }
-            : { last_failure_at: now, last_error_code: health.errorCode }),
-          health_status: health.healthStatus,
-          updated_at: now,
-        } as never).eq("id", model.id);
-      }
-
-      const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
-        admin_user_id: context.userId,
-        target_user_id: null,
-        action: "UPDATE_AI_MODEL",
-        details: {
-          operation: "provider_health_recheck",
-          provider: data.providerId,
-          checked: providerModels.length,
-          healthy,
-          degraded,
-          failing,
-        },
-      });
-      if (auditError) console.error("[admin] AI provider health audit failed", auditError.message);
-
-      return { ok: true, checked: providerModels.length, healthy, degraded, failing };
+      discoveryAvailable = true;
+      discoveredModels = discovery.models;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "provider_check_failed";
-      for (const model of providerModels) {
-        await supabaseAdmin.from("ai_models" as never).update({
-          last_checked_at: now,
-          last_failure_at: now,
-          last_error_code: message.slice(0, 160),
-          health_status: "degraded",
-          updated_at: now,
-        } as never).eq("id", model.id);
-      }
-      return { ok: true, checked: providerModels.length, healthy: 0, degraded: providerModels.length, failing: 0 };
+      console.warn("[admin] provider discovery unavailable during provider health check", error);
     }
+
+    let healthy = 0;
+    let degraded = 0;
+    let failing = 0;
+
+    for (const model of providerModels) {
+      const discovered = discoveryAvailable
+        ? discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ?? null
+        : null;
+      const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
+
+      if (health.healthStatus === "healthy") healthy += 1;
+      else if (health.healthStatus === "failing") failing += 1;
+      else degraded += 1;
+
+      await supabaseAdmin.from("ai_models" as never).update({
+        ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+        last_checked_at: now,
+        ...(health.success
+          ? { last_success_at: now }
+          : { last_failure_at: now }),
+        last_error_code: health.errorCode,
+        health_status: health.healthStatus,
+        updated_at: now,
+      } as never).eq("id", model.id);
+    }
+
+    const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+      admin_user_id: context.userId,
+      target_user_id: null,
+      action: "UPDATE_AI_MODEL",
+      details: {
+        operation: "provider_health_recheck",
+        provider: data.providerId,
+        checked: providerModels.length,
+        healthy,
+        degraded,
+        failing,
+        discovery_available: discoveryAvailable,
+      },
+    });
+    if (auditError) console.error("[admin] AI provider health audit failed", auditError.message);
+
+    return { ok: true, checked: providerModels.length, healthy, degraded, failing };
   });
