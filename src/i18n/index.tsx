@@ -20,16 +20,18 @@ import { enCreatorPage, type CreatorPageTranslationKey } from "@/i18n/locales/en
 import { elCreatorPage } from "@/i18n/locales/el-creator-page";
 import { enPasswordReset, type PasswordResetTranslationKey } from "@/i18n/locales/en-password-reset";
 import { elPasswordReset } from "@/i18n/locales/el-password-reset";
+import { enAiModels, type AiModelsTranslationKey } from "@/i18n/locales/en-ai-models";
+import { elAiModels } from "@/i18n/locales/el-ai-models";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey | PreferencesTranslationKey | CreatorPageTranslationKey | PasswordResetTranslationKey;
+export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey | PreferencesTranslationKey | CreatorPageTranslationKey | PasswordResetTranslationKey | AiModelsTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 const ACCOUNT_LANGUAGE_KEY = "interface_language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover, ...enPreferences, ...enCreatorPage, ...enPasswordReset },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover, ...elPreferences, ...elCreatorPage, ...elPasswordReset },
+  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover, ...enPreferences, ...enCreatorPage, ...enPasswordReset, ...enAiModels },
+  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover, ...elPreferences, ...elCreatorPage, ...elPasswordReset, ...elAiModels },
 };
 
 function isAppLanguage(value: unknown): value is AppLanguage {

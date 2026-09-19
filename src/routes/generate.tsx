@@ -571,16 +571,20 @@ function GeneratePage() {
 
   useEffect(() => {
     if (!aiModelAccess) return;
-    if (!generationModelChosen || !aiModelAccess.availableModels.includes(generationModel as (typeof aiModelAccess.availableModels)[number])) setGenerationModel(aiModelAccess.defaultModel);
-    if (!qualityCheckModelChosen || !aiModelAccess.availableModels.includes(qualityCheckModel as (typeof aiModelAccess.availableModels)[number])) setQualityCheckModel(aiModelAccess.defaultModel);
+    const generatorAccess = aiModelAccess.generator;
+    const qualityAccess = aiModelAccess.qualityCheck;
+    if (!generationModelChosen || !generatorAccess.availableModels.includes(generationModel as (typeof generatorAccess.availableModels)[number])) setGenerationModel(generatorAccess.defaultModel);
+    if (!qualityCheckModelChosen || !qualityAccess.availableModels.includes(qualityCheckModel as (typeof qualityAccess.availableModels)[number])) setQualityCheckModel(qualityAccess.defaultModel);
   }, [aiModelAccess, generationModel, generationModelChosen, qualityCheckModel, qualityCheckModelChosen]);
 
   const modelAccessLoading = aiModelAccessLoading || (!aiModelAccess && !aiModelAccessError);
   const modelAccessReady = !!aiModelAccess;
-  const availableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.availableModels.includes(model.id)) : [];
-  const modelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && availableModels.length === 0;
-  const showGenerationModelSelector = availableModels.length > 1;
-  const showQualityCheckModelSelector = availableModels.length > 1;
+  const generationAvailableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.generator.availableModels.includes(model.id)) : [];
+  const qualityAvailableModels = modelAccessReady ? AI_MODELS.filter((model) => aiModelAccess.qualityCheck.availableModels.includes(model.id)) : [];
+  const generationModelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && generationAvailableModels.length === 0;
+  const qualityModelAccessUnavailable = (!!aiModelAccessError || modelAccessReady) && qualityAvailableModels.length === 0;
+  const showGenerationModelSelector = generationAvailableModels.length > 1;
+  const showQualityCheckModelSelector = qualityAvailableModels.length > 1;
   const songContextTargetPlatform = (
     songContext as (GenerationContext & { targetPlatform?: AITargetPlatform }) | null
   )?.targetPlatform;
@@ -887,10 +891,10 @@ function GeneratePage() {
 
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
-                <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("generator.generateWith")}</span><select aria-label={t("generator.aiModel")} value={generationModel} onChange={(e) => { setGenerationModel(e.target.value); setGenerationModelChosen(true); }} className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{availableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
-              ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : modelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: aiModelLabel(generationModel) })}</p>}
+                <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("generator.generateWith")}</span><select aria-label={t("generator.aiModel")} value={generationModel} onChange={(e) => { setGenerationModel(e.target.value); setGenerationModelChosen(true); }} className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{generationAvailableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
+              ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : generationModelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: aiModelLabel(generationModel) })}</p>}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <button onClick={generate} disabled={busy || checking || blocked || !ready || modelAccessLoading || modelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
+                <button onClick={generate} disabled={busy || checking || blocked || !ready || modelAccessLoading || generationModelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
                 <span className="text-xs text-muted-foreground">{blocked ? t("generator.tryAgainMinutes", { minutes: minutesLeft }) : t("generator.generationsRemaining", { remaining, limit: HOURLY_LIMIT })}</span>
               </div>
             </div>
@@ -921,7 +925,7 @@ function GeneratePage() {
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
               <button onClick={save} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
-              <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={availableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={modelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
+              <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}
         </div>
