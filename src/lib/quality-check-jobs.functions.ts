@@ -68,7 +68,7 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
     const { getModelForUser } = await import("@/lib/ai-provider.server");
-    await getModelForUser(context.userId, data.qualityCheckModel ?? undefined);
+    await getModelForUser(context.userId, data.qualityCheckModel ?? undefined, "quality_check");
 
     const { idempotencyKey, ...payload } = data;
     const { data: raw, error } = await (context.supabase as any).rpc(
