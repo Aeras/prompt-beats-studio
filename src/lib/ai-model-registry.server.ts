@@ -104,14 +104,13 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
         "id,provider,provider_model_id,display_name,status,access_policy,generator_compatible,generator_enabled,generator_reasoning_effort,quality_check_compatible,quality_check_enabled,quality_check_reasoning_effort",
       );
     if (error) throw error;
-    const normalized = ((data ?? []) as unknown as RegistryRow[])
+    return ((data ?? []) as unknown as RegistryRow[])
       .map(normalizeRow)
       .filter((model): model is RegistryModel => model !== null);
-    if (normalized.length) return normalized;
   } catch (error) {
     console.warn("[ai-registry] registry unavailable; using compatibility catalog", error);
+    return AI_MODEL_IDS.map(fallbackModel);
   }
-  return AI_MODEL_IDS.map(fallbackModel);
 }
 
 export async function getRegistryModel(modelId: string): Promise<RegistryModel | null> {
@@ -126,12 +125,11 @@ export async function getRegistryModel(modelId: string): Promise<RegistryModel |
       .eq("provider_model_id", modelId)
       .maybeSingle();
     if (error) throw error;
-    const normalized = data ? normalizeRow(data as unknown as RegistryRow) : null;
-    if (normalized) return normalized;
+    return data ? normalizeRow(data as unknown as RegistryRow) : null;
   } catch (error) {
     console.warn("[ai-registry] model lookup failed; using compatibility catalog", error);
+    return fallbackModel(modelId);
   }
-  return fallbackModel(modelId);
 }
 
 const settingKeyFor = (operation: AiModelOperation) =>
