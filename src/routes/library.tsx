@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updateSavedPromptOrganization } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
+import { listSongAnalyses } from "@/lib/song-analyzer.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -97,6 +98,7 @@ function LibraryPage() {
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
   const prompts = useQuery({ queryKey: ["library", "prompts", user?.id], queryFn: () => listSavedPrompts(), enabled: Boolean(user) });
   const projects = useQuery({ queryKey: ["library", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user) });
+  const analyses = useQuery({ queryKey: ["library", "song-analyses", user?.id], queryFn: () => listSongAnalyses(), enabled: Boolean(user) });
   const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
   const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
 
@@ -178,7 +180,8 @@ function LibraryPage() {
           <PromptProjectLibrary
             prompts={prompts.data?.prompts ?? []}
             projects={projects.data?.projects ?? []}
-            loading={prompts.isLoading || projects.isLoading}
+            analyses={analyses.data?.analyses ?? []}
+            loading={prompts.isLoading || projects.isLoading || analyses.isLoading}
             view={promptView}
             onViewChange={setPromptView}
             search={promptSearch}
@@ -208,9 +211,24 @@ type SavedPrompt = {
   created_at: string; updated_at: string;
 };
 type PromptProject = { id: string; name: string; created_at: string; updated_at: string };
+type SongAnalysisItem = {
+  id: string; project_id: string; model: string; created_at: string;
+  generator_ready: {
+    musicStyle: string; mood: string; instruments: string[];
+    bpm: { approximate: number | null; rangeMin: number | null; rangeMax: number | null; confidence: string; notes: string };
+    songStructure: string[]; productionStyle: string; additionalInstructions: string;
+  };
+  detailed_analysis: {
+    genreAndStyle: string; moodAndEmotionalArc: string; tempoAndGroove: string;
+    instrumentation: Array<{ observation: string; confidence: string }>;
+    arrangement: string; songStructure: string; vocals: string;
+    productionAndMix: Array<{ observation: string; confidence: string }>;
+    dynamicsAndEnergy: string; notableCharacteristics: string[]; confidenceAndUncertaintyNotes: string[];
+  };
+};
 
-function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, search, onSearchChange }: {
-  prompts: SavedPrompt[]; projects: PromptProject[]; loading: boolean; view: "all" | "projects";
+function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onViewChange, search, onSearchChange }: {
+  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: SongAnalysisItem[]; loading: boolean; view: "all" | "projects";
   onViewChange: (view: "all" | "projects") => void; search: string; onSearchChange: (value: string) => void;
 }) {
   const { t, language } = useI18n();
@@ -222,7 +240,7 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const filtered = prompts.filter(matches);
-  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)));
+  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   const refresh = async () => {
@@ -269,22 +287,25 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
         <div className="space-y-4">
           {openProject ? (() => {
             const items = prompts.filter((p) => p.project_id === openProject.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
+            const analysisItems = analyses.filter((a) => a.project_id === openProject.id);
             return <section className="space-y-4">
               <div className="glass rounded-2xl p-4">
                 <button type="button" onClick={() => { setOpenProjectId(null); onSearchChange(""); }} className="mb-3 text-xs font-semibold text-accent">← Projects</button>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
+                  <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{analysisItems.length} analyses · {prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
                   <div className="flex gap-2"><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν prompts σε αυτό το project." : "No prompts in this project."}</p>}</div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
             </section>;
           })() : <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProjects.map((project) => {
-                const count = prompts.filter((p) => p.project_id === project.id).length;
+                const promptCount = prompts.filter((p) => p.project_id === project.id).length;
+                const analysisCount = analyses.filter((a) => a.project_id === project.id).length;
+                const count = promptCount + analysisCount;
                 return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
-                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} prompts</span></span></button>
+                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} items{analysisCount ? ` · ${analysisCount} analysis` : ""}</span></span></button>
                   <div className="flex shrink-0 gap-1"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </article>;
               })}
@@ -294,6 +315,33 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
         </div>
       )}
     </div>
+  );
+}
+
+function SongAnalysisCard({ analysis }: { analysis: SongAnalysisItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const bpm = analysis.generator_ready.bpm;
+  const bpmText = bpm.rangeMin != null && bpm.rangeMax != null
+    ? `${bpm.rangeMin}–${bpm.rangeMax} BPM`
+    : bpm.approximate != null ? `≈ ${bpm.approximate} BPM` : "BPM uncertain";
+  return (
+    <article className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">Initial Song Analysis</p>
+          <h3 className="mt-1 font-display font-bold">{analysis.generator_ready.musicStyle}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{analysis.generator_ready.mood} · {bpmText} · {bpm.confidence} confidence</p>
+        </div>
+        <button type="button" onClick={() => setExpanded((value) => !value)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:text-accent">{expanded ? "Hide" : "Open"}</button>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Model: {analysis.model}</p>
+      {expanded && <div className="mt-4 space-y-3 border-t border-white/10 pt-4 text-sm">
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">Instruments</p><p className="mt-1 whitespace-pre-wrap">{analysis.generator_ready.instruments.join("\n")}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">Structure</p><p className="mt-1">{analysis.generator_ready.songStructure.join(" → ")}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">Production</p><p className="mt-1">{analysis.generator_ready.productionStyle}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">Detailed analysis</p><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{analysis.detailed_analysis.genreAndStyle}\n\n{analysis.detailed_analysis.moodAndEmotionalArc}\n\n{analysis.detailed_analysis.tempoAndGroove}\n\n{analysis.detailed_analysis.arrangement}\n\n{analysis.detailed_analysis.vocals}\n\n{analysis.detailed_analysis.dynamicsAndEnergy}</p></div>
+      </div>}
+    </article>
   );
 }
 
