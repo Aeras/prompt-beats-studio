@@ -105,7 +105,12 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         const avatarBucket = supabase.storage.from("avatars");
         const { error: uploadError } = await avatarBucket.upload(filePath, avatarFile, { upsert: true, contentType: avatarFile.type });
         if (uploadError) throw uploadError;
-        avatarUrl = supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
+        const { data: signed, error: signedUrlError } = await avatarBucket.createSignedUrl(
+          filePath,
+          60 * 60 * 24 * 365,
+        );
+        if (signedUrlError) throw signedUrlError;
+        avatarUrl = signed?.signedUrl ?? null;
         if (!avatarUrl) throw new Error(t("editProfile.avatarUrlError"));
       }
 
