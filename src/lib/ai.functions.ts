@@ -1707,7 +1707,11 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getEffectiveModelAccess } = await import("@/lib/ai-provider.server");
-    return getEffectiveModelAccess(context.userId);
+    const [generator, qualityCheck] = await Promise.all([
+      getEffectiveModelAccess(context.userId, "generator"),
+      getEffectiveModelAccess(context.userId, "quality_check"),
+    ]);
+    return { generator, qualityCheck };
   });
 
 /**
