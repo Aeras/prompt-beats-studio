@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Cpu, DollarSign, Pencil, PlugZap, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Check, Cpu, DollarSign, HeartPulse, Pencil, PlugZap, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/i18n";
@@ -9,6 +9,8 @@ import {
   checkAiProviderModels,
   getAdminAiModels,
   getDetectedAiProviders,
+  recheckAdminAiModelHealth,
+  recheckAdminAiProviderHealth,
   runAiProviderCompatibilityTests,
   setAdminAiModelDefault,
   updateAdminAiModel,
@@ -219,6 +221,24 @@ export function AiModelsPanel() {
       toast.error(error instanceof Error ? error.message : t("aiModels.addModelError")),
   });
 
+  const modelHealth = useMutation({
+    mutationFn: (id: string) => recheckAdminAiModelHealth({ data: { id } }),
+    onSuccess: (result) => {
+      toast.success(t("aiModels.healthRechecked", { status: result.healthStatus }));
+      qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : t("aiModels.healthCheckError")),
+  });
+
+  const providerHealth = useMutation({
+    mutationFn: (providerId: string) => recheckAdminAiProviderHealth({ data: { providerId: providerId as any } }),
+    onSuccess: (result) => {
+      toast.success(t("aiModels.providerHealthRechecked", { checked: result.checked }));
+      qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : t("aiModels.healthCheckError")),
+  });
+
   useEffect(() => {
     if (!data) return;
     setGeneratorDefault(data.generatorDefault ?? "");
@@ -250,6 +270,19 @@ export function AiModelsPanel() {
   };
   const accessLabel = (value: AdminAiModel["accessPolicy"]) => value === "admin_only" ? t("aiModels.adminOnly") : value === "selected_users" ? t("aiModels.selectedUsers") : t("aiModels.allUsers");
   const pricingLabel = (value: AdminAiModel["pricingStatus"]) => value === "verified" ? t("aiModels.verified") : value === "outdated" ? t("aiModels.outdated") : t("aiModels.unknown");
+  const healthLabel = (value: AdminAiModel["healthStatus"]) =>
+    value === "healthy" ? t("aiModels.healthy") :
+    value === "degraded" ? t("aiModels.degraded") :
+    value === "failing" ? t("aiModels.failing") :
+    t("aiModels.healthUnknown");
+  const healthKind = (value: AdminAiModel["healthStatus"]) =>
+    value === "healthy" ? "enabled" : value === "degraded" ? "testing" : value === "failing" ? "disabled" : "unknown";
+  const staleCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const isStale = (model: AdminAiModel) => !model.lastCheckedAt || new Date(model.lastCheckedAt).getTime() < staleCutoff;
+  const generatorDefaultModel = data.models.find((m) => m.providerModelId === data.generatorDefault);
+  const qualityDefaultModel = data.models.find((m) => m.providerModelId === data.qualityDefault);
+  const generatorNeedsAttention = !!generatorDefaultModel && (generatorDefaultModel.healthStatus === "failing" || generatorDefaultModel.healthStatus === "degraded" || generatorDefaultModel.deprecated || isStale(generatorDefaultModel));
+  const qualityNeedsAttention = !!qualityDefaultModel && (qualityDefaultModel.healthStatus === "failing" || qualityDefaultModel.healthStatus === "degraded" || qualityDefaultModel.deprecated || isStale(qualityDefaultModel));
 
   return <div className="space-y-5">
     <div><h2 className="font-display text-xl font-bold">{t("aiModels.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("aiModels.subtitle")}</p></div>
@@ -258,6 +291,14 @@ export function AiModelsPanel() {
       <div className="glass rounded-2xl p-4"><div className="flex items-center gap-2 text-sm font-semibold"><Cpu className="h-4 w-4 text-primary" />{t("aiModels.generatorDefault")}</div><div className="mt-3 flex gap-2"><select value={generatorDefault} onChange={(e) => setGeneratorDefault(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm">{generatorOptions.map((m) => <option key={m.id} value={m.providerModelId}>{m.displayName}</option>)}</select><button disabled={!generatorDefault || setDefault.isPending} onClick={() => setDefault.mutate({ operation: "generator", model: generatorDefault })} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{t("aiModels.saveDefault")}</button></div></div>
       <div className="glass rounded-2xl p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" />{t("aiModels.qualityDefault")}</div><div className="mt-3 flex gap-2"><select value={qualityDefault} onChange={(e) => setQualityDefault(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm">{qualityOptions.map((m) => <option key={m.id} value={m.providerModelId}>{m.displayName}</option>)}</select><button disabled={!qualityDefault || setDefault.isPending} onClick={() => setDefault.mutate({ operation: "quality_check", model: qualityDefault })} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{t("aiModels.saveDefault")}</button></div></div>
     </div>
+
+    {(generatorNeedsAttention || qualityNeedsAttention) && <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+      <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div>
+        <div className="font-semibold">{t("aiModels.defaultAttentionTitle")}</div>
+        {generatorNeedsAttention && <p className="mt-1">{t("aiModels.generatorDefaultAttention")}</p>}
+        {qualityNeedsAttention && <p className="mt-1">{t("aiModels.qualityDefaultAttention")}</p>}
+      </div></div>
+    </div>}
 
     <div className="glass overflow-hidden rounded-2xl">
       <div className="border-b border-white/10 px-4 py-3">
@@ -293,6 +334,14 @@ export function AiModelsPanel() {
               >
                 <RefreshCw className={cn("h-4 w-4", providerCheck.isPending && "animate-spin")} />
                 {providerCheck.isPending ? t("aiModels.checkingApi") : t("aiModels.checkApi")}
+              </button>
+              <button
+                disabled={!selectedProvider || providerHealth.isPending}
+                onClick={() => providerHealth.mutate(selectedProvider)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold hover:border-primary/40 hover:text-primary disabled:opacity-50"
+              >
+                <HeartPulse className={cn("h-4 w-4", providerHealth.isPending && "animate-pulse")} />
+                {providerHealth.isPending ? t("aiModels.recheckingProvider") : t("aiModels.recheckProvider")}
               </button>
             </div>
 
@@ -396,19 +445,34 @@ export function AiModelsPanel() {
     <div className="glass overflow-hidden rounded-2xl">
       <div className="border-b border-white/10 px-4 py-3"><h3 className="font-display text-sm font-semibold">{t("aiModels.installed")}</h3></div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">{t("aiModels.model")}</th><th className="px-4 py-3">{t("aiModels.provider")}</th><th className="px-4 py-3">{t("aiModels.generator")}</th><th className="px-4 py-3">{t("aiModels.qualityCheck")}</th><th className="px-4 py-3">{t("aiModels.status")}</th><th className="px-4 py-3">{t("aiModels.access")}</th><th className="px-4 py-3">{t("aiModels.pricing")}</th><th className="px-4 py-3">{t("aiModels.actions")}</th></tr></thead>
+        <table className="w-full min-w-[1080px] text-left text-sm">
+          <thead className="text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">{t("aiModels.model")}</th><th className="px-4 py-3">{t("aiModels.provider")}</th><th className="px-4 py-3">{t("aiModels.generator")}</th><th className="px-4 py-3">{t("aiModels.qualityCheck")}</th><th className="px-4 py-3">{t("aiModels.status")}</th><th className="px-4 py-3">{t("aiModels.health")}</th><th className="px-4 py-3">{t("aiModels.access")}</th><th className="px-4 py-3">{t("aiModels.pricing")}</th><th className="px-4 py-3">{t("aiModels.actions")}</th></tr></thead>
           <tbody>
-            {data.models.length === 0 && <tr><td colSpan={8} className="px-4 py-6 text-muted-foreground">{t("aiModels.noModels")}</td></tr>}
+            {data.models.length === 0 && <tr><td colSpan={9} className="px-4 py-6 text-muted-foreground">{t("aiModels.noModels")}</td></tr>}
             {data.models.map((model) => <tr key={model.id} className="border-t border-white/5 align-top">
               <td className="px-4 py-3"><div className="font-medium">{model.displayName}</div><div className="mt-1 text-xs text-muted-foreground">{model.providerModelId}</div><div className="mt-2 flex flex-wrap gap-1">{data.generatorDefault === model.providerModelId && <Pill kind="enabled">{t("aiModels.generator")} · {t("aiModels.defaultBadge")}</Pill>}{data.qualityDefault === model.providerModelId && <Pill kind="enabled">{t("aiModels.qualityCheck")} · {t("aiModels.defaultBadge")}</Pill>}{model.preview && <Pill kind="testing">{t("aiModels.preview")}</Pill>}</div></td>
               <td className="px-4 py-3 capitalize">{model.provider}</td>
               <td className="px-4 py-3">{model.generatorCompatible && model.generatorEnabled ? <Check className="h-4 w-4 text-emerald-300" /> : <span className="text-muted-foreground">—</span>}</td>
               <td className="px-4 py-3">{model.qualityCheckCompatible && model.qualityCheckEnabled ? <Check className="h-4 w-4 text-emerald-300" /> : <span className="text-muted-foreground">—</span>}</td>
               <td className="px-4 py-3"><Pill kind={model.status}>{statusLabel(model.status)}</Pill></td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-1">
+                  <Pill kind={healthKind(model.healthStatus)}>{healthLabel(model.healthStatus)}</Pill>
+                  {isStale(model) && <Pill kind="outdated">{t("aiModels.stale")}</Pill>}
+                  {model.deprecated && <Pill kind="deprecated">{t("aiModels.deprecated")}</Pill>}
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  {model.lastCheckedAt ? t("aiModels.lastChecked", { date: new Date(model.lastCheckedAt).toLocaleString() }) : t("aiModels.neverChecked")}
+                </div>
+              </td>
               <td className="px-4 py-3"><Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill></td>
               <td className="px-4 py-3"><Pill kind={model.pricingStatus}>{pricingLabel(model.pricingStatus)}</Pill>{model.pricingStatus === "verified" && <div className="mt-1 text-xs text-muted-foreground"><span>$</span>{model.inputPricePerMillion ?? "—"} {t("aiModels.inputShort")} · <span>$</span>{model.outputPricePerMillion ?? "—"} {t("aiModels.outputShort")}</div>}</td>
-              <td className="px-4 py-3"><button onClick={() => setEditing(model)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs hover:border-primary/40 hover:text-primary"><Pencil className="h-3.5 w-3.5" />{t("aiModels.edit")}</button></td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setEditing(model)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs hover:border-primary/40 hover:text-primary"><Pencil className="h-3.5 w-3.5" />{t("aiModels.edit")}</button>
+                  <button disabled={modelHealth.isPending && modelHealth.variables === model.id} onClick={() => modelHealth.mutate(model.id)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs hover:border-primary/40 hover:text-primary disabled:opacity-50"><HeartPulse className="h-3.5 w-3.5" />{modelHealth.isPending && modelHealth.variables === model.id ? t("aiModels.rechecking") : t("aiModels.recheck")}</button>
+                </div>
+              </td>
             </tr>)}
           </tbody>
         </table>
