@@ -14,6 +14,7 @@ import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed"
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -68,7 +69,7 @@ function TrackPage() {
   const createdDate = track ? formatDate(track.created_at) : null;
   const embedUrl = getTrackEmbedUrl(track?.source_type, track?.source_id);
   const canUseNativePlayer = canUseNativeTrackPlayer(track?.source_type);
-  const artwork = track?.cover_url ?? artist?.avatar_url ?? (track ? `https://i.pravatar.cc/640?u=${track.id}` : artFallback);
+  const artwork = track?.cover_url ?? (artist ? getUserAvatarUrl(artist.avatar_url) : artFallback);
 
   useEffect(() => { if (track) setPlayCount(track.plays ?? 0); }, [track?.id, track?.plays]);
 
