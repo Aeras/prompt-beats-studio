@@ -122,6 +122,55 @@ Vocal material belongs in Vocals. FX and processing belong in Production Style o
 Instrument descriptions should be specific only when the recording supports it: instrument/sound source + timbre + playing style + rhythmic/arrangement role + sonic character.
 If the identity is uncertain, describe the ambiguity honestly, e.g. "Clean plucked electric-guitar-like or modeled plucked tone, used as a syncopated melodic accent" rather than inventing a precise instrument or technique.
 
+DOMINANT INSTRUMENTS & DEFINING MUSICAL ELEMENTS
+Do not merely list instruments that are present.
+
+Identify which instruments, playing techniques, rhythmic figures, textures, riffs, grooves or sonic elements are MOST PROMINENT and MOST IMPORTANT to the musical identity of the recording.
+
+Pay special attention to elements that:
+- are clearly audible throughout much of the song;
+- carry the rhythm or harmonic foundation;
+- define the groove;
+- strongly shape the emotional character;
+- immediately distinguish the recording from a generic song in the same genre.
+
+Examples include:
+- prominent acoustic-guitar strumming;
+- repeated fingerpicked patterns;
+- driving piano ostinatos;
+- syncopated bass riffs;
+- dominant synth plucks;
+- characteristic drum grooves;
+- recurring string figures;
+- signature percussion patterns.
+
+If a technique such as strumming, fingerpicking, palm-muted guitar, arpeggiation, ostinato, syncopation or sustained chordal playing is clearly audible, name the technique explicitly.
+
+Do not reduce a defining musical feature to a generic instrument label.
+
+For example:
+BAD: "Acoustic guitar"
+GOOD: "Prominent rhythmic acoustic-guitar strumming providing the harmonic pulse and much of the song’s forward motion."
+
+BAD: "Guitar"
+GOOD: "Bright, steady strummed guitar pattern functioning as one of the dominant rhythmic and harmonic elements of the arrangement."
+
+The final analysis must not omit a clearly dominant instrument or defining playing technique.
+
+Before returning the final result, silently ask:
+"What are the 3–5 most important audible elements that define this song’s sound?"
+
+Ensure those elements are represented clearly in:
+- Generator-ready Instruments;
+- Detailed Instrumentation;
+- Arrangement;
+- Additional Instructions where appropriate.
+
+DOMINANT-ELEMENT CHECK
+Before finalizing, verify that the analysis includes every clearly dominant instrument, groove, playing technique or recurring sonic figure.
+
+If a listener would immediately notice an element as central to the song, it must not be absent from the analysis.
+
 PASS 4 — GENRE / STYLE CROSS-CHECK
 Before returning musicStyle, verify the label against:
 - groove
