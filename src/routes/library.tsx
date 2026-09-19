@@ -217,11 +217,13 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const q = search.trim().toLowerCase();
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const filtered = prompts.filter(matches);
   const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)));
+  const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   const refresh = async () => {
     await Promise.all([
@@ -265,16 +267,29 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
         </div>
       ) : (
         <div className="space-y-4">
-          {visibleProjects.map((project) => {
-            const items = prompts.filter((p) => p.project_id === project.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
-            return <section key={project.id} className="glass rounded-2xl p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-accent" /><h2 className="truncate font-display font-bold">{project.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{items.length} {language === "el" ? "prompts" : "prompts"}</p></div>
-                <div className="flex gap-2"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
+          {openProject ? (() => {
+            const items = prompts.filter((p) => p.project_id === openProject.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
+            return <section className="space-y-4">
+              <div className="glass rounded-2xl p-4">
+                <button type="button" onClick={() => { setOpenProjectId(null); onSearchChange(""); }} className="mb-3 text-xs font-semibold text-accent">← Projects</button>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
+                  <div className="flex gap-2"><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
+                </div>
               </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} compact />)}{items.length === 0 && <p className="text-xs text-muted-foreground">{language === "el" ? "Δεν υπάρχουν prompts σε αυτό το project." : "No prompts in this project."}</p>}</div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν prompts σε αυτό το project." : "No prompts in this project."}</p>}</div>
             </section>;
-          })}
+          })() : <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleProjects.map((project) => {
+                const count = prompts.filter((p) => p.project_id === project.id).length;
+                return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
+                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} prompts</span></span></button>
+                  <div className="flex shrink-0 gap-1"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
+                </article>;
+              })}
+            </div>
+          </>}
           {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
         </div>
       )}
