@@ -126,6 +126,25 @@ export const setAdminModelAccess = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
+
+    if (data.mode === "custom") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: registryRows, error: registryError } = await supabaseAdmin
+        .from("ai_models" as never)
+        .select("provider_model_id,status,access_policy")
+        .in("provider_model_id", data.models);
+      if (registryError) throw new Error("Could not verify AI model access.");
+
+      const assignable = new Set(
+        ((registryRows ?? []) as unknown as Array<{ provider_model_id: string; status: string; access_policy: string }>)
+          .filter((row) => (row.status === "enabled" || row.status === "testing") && row.access_policy !== "admin_only")
+          .map((row) => row.provider_model_id),
+      );
+      if (data.models.some((model) => !assignable.has(model))) {
+        throw new Error("One or more selected AI models cannot be assigned to users.");
+      }
+    }
+
     const { error } = await context.supabase.rpc("admin_set_model_access", {
       _target_user_id: data.userId,
       _access_mode: data.mode,
