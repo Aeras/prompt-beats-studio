@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Cpu, DollarSign, Pencil, ShieldCheck, X } from "lucide-react";
+import { Check, Cpu, DollarSign, Pencil, PlugZap, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/i18n";
 import {
+  checkAiProviderModels,
   getAdminAiModels,
+  getDetectedAiProviders,
   setAdminAiModelDefault,
   updateAdminAiModel,
   type AdminAiModel,
@@ -169,6 +171,31 @@ export function AiModelsPanel() {
   const [generatorDefault, setGeneratorDefault] = useState("");
   const [qualityDefault, setQualityDefault] = useState("");
   const [editing, setEditing] = useState<AdminAiModel | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState("");
+
+  const providersQuery = useQuery({
+    queryKey: ["admin-ai-providers"],
+    queryFn: () => getDetectedAiProviders(),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    const providers = providersQuery.data?.providers ?? [];
+    if (!providers.length) {
+      setSelectedProvider("");
+      return;
+    }
+    if (!providers.some((provider) => provider.id === selectedProvider)) {
+      setSelectedProvider(providers[0].id);
+    }
+  }, [providersQuery.data, selectedProvider]);
+
+  const providerCheck = useMutation({
+    mutationFn: (providerId: string) =>
+      checkAiProviderModels({ data: { providerId: providerId as any } }),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : t("aiModels.providerCheckError")),
+  });
 
   useEffect(() => {
     if (!data) return;
@@ -208,6 +235,90 @@ export function AiModelsPanel() {
     <div className="grid gap-3 lg:grid-cols-2">
       <div className="glass rounded-2xl p-4"><div className="flex items-center gap-2 text-sm font-semibold"><Cpu className="h-4 w-4 text-primary" />{t("aiModels.generatorDefault")}</div><div className="mt-3 flex gap-2"><select value={generatorDefault} onChange={(e) => setGeneratorDefault(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm">{generatorOptions.map((m) => <option key={m.id} value={m.providerModelId}>{m.displayName}</option>)}</select><button disabled={!generatorDefault || setDefault.isPending} onClick={() => setDefault.mutate({ operation: "generator", model: generatorDefault })} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{t("aiModels.saveDefault")}</button></div></div>
       <div className="glass rounded-2xl p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" />{t("aiModels.qualityDefault")}</div><div className="mt-3 flex gap-2"><select value={qualityDefault} onChange={(e) => setQualityDefault(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm">{qualityOptions.map((m) => <option key={m.id} value={m.providerModelId}>{m.displayName}</option>)}</select><button disabled={!qualityDefault || setDefault.isPending} onClick={() => setDefault.mutate({ operation: "quality_check", model: qualityDefault })} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{t("aiModels.saveDefault")}</button></div></div>
+    </div>
+
+    <div className="glass overflow-hidden rounded-2xl">
+      <div className="border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2"><PlugZap className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold">{t("aiModels.providers")}</h3></div>
+        <p className="mt-1 text-xs text-muted-foreground">{t("aiModels.providersHint")}</p>
+      </div>
+      <div className="p-4">
+        {providersQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">{t("aiModels.loading")}</p>
+        ) : (providersQuery.data?.providers.length ?? 0) === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("aiModels.noProviders")}</p>
+        ) : (
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={selectedProvider}
+                onChange={(e) => {
+                  setSelectedProvider(e.target.value);
+                  providerCheck.reset();
+                }}
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
+              >
+                {providersQuery.data?.providers.map((provider) => (
+                  <option key={provider.id} value={provider.id}>{provider.label}</option>
+                ))}
+              </select>
+              <button
+                disabled={!selectedProvider || providerCheck.isPending}
+                onClick={() => providerCheck.mutate(selectedProvider)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                <RefreshCw className={cn("h-4 w-4", providerCheck.isPending && "animate-spin")} />
+                {providerCheck.isPending ? t("aiModels.checkingApi") : t("aiModels.checkApi")}
+              </button>
+            </div>
+
+            {providerCheck.data && providerCheck.data.provider.id === selectedProvider && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+                <div className="border-b border-white/10 px-4 py-3">
+                  <div className="font-display text-sm font-semibold">{providerCheck.data.provider.label} · {t("aiModels.discoveredModels")}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("aiModels.phase4Notice")}</p>
+                </div>
+                {providerCheck.data.models.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">{t("aiModels.noDiscoveredModels")}</p>
+                ) : (
+                  <div className="max-h-80 overflow-auto">
+                    <table className="w-full min-w-[620px] text-left text-sm">
+                      <thead className="sticky top-0 bg-[#17131f] text-[11px] uppercase text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-3">{t("aiModels.model")}</th>
+                          <th className="px-4 py-3">{t("aiModels.status")}</th>
+                          <th className="px-4 py-3">{t("aiModels.contextWindow")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {providerCheck.data.models.map((model) => (
+                          <tr key={model.id} className="border-t border-white/5">
+                            <td className="px-4 py-3">
+                              <div className="font-medium">{model.name}</div>
+                              <div className="mt-1 text-xs text-muted-foreground">{model.id}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                <Pill kind={model.installed ? "enabled" : "testing"}>
+                                  {model.installed ? t("aiModels.alreadyInstalled") : t("aiModels.newCandidate")}
+                                </Pill>
+                                {model.deprecated && <Pill kind="deprecated">{t("aiModels.providerDeprecated")}</Pill>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              {model.contextWindow == null ? "—" : model.contextWindow.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
 
     <div className="glass overflow-hidden rounded-2xl">
