@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -129,7 +130,7 @@ function Onboarding() {
         <div className="mt-6 space-y-3">
           <div className="glass flex items-center gap-4 rounded-2xl p-4">
             <img
-              src={avatarPreview ?? profile?.avatar_url ?? `https://i.pravatar.cc/80?u=${user?.id ?? "new"}`}
+              src={avatarPreview ?? getUserAvatarUrl(profile?.avatar_url)}
               alt={t("onboarding.avatarPreview")}
               width={56}
               height={56}
