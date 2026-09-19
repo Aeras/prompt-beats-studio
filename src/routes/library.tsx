@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX } from "lucide-react";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
@@ -216,6 +216,7 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
   const { t, language } = useI18n();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
   const q = search.trim().toLowerCase();
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
@@ -250,12 +251,16 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
           {(["all", "projects"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? (language === "el" ? "Όλα τα Prompts" : "All Prompts") : (language === "el" ? "Projects" : "Projects")}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
+        <div className="flex shrink-0 gap-1">
+          <button type="button" aria-pressed={promptDisplayMode === "expanded"} onClick={() => setPromptDisplayMode("expanded")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "expanded" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Κάρτες" : "Cards"}</button>
+          <button type="button" aria-pressed={promptDisplayMode === "list"} onClick={() => setPromptDisplayMode("list")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "list" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Λίστα" : "List"}</button>
+        </div>
         <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
       </div>
 
       {view === "all" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filtered.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} />)}
+          {filtered.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}
           {!loading && filtered.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{q ? (language === "el" ? "Δεν βρέθηκαν prompts." : "No prompts found.") : t("library.noPrompts")}</p>}
         </div>
       ) : (
@@ -277,10 +282,11 @@ function PromptProjectLibrary({ prompts, projects, loading, view, onViewChange, 
   );
 }
 
-function SavedPromptCard({ prompt, projects, compact = false }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean }) {
+function SavedPromptCard({ prompt, projects, compact = false, listMode = false }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean }) {
   const { t, language } = useI18n();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const project = projects.find((p) => p.id === prompt.project_id);
 
@@ -312,14 +318,15 @@ function SavedPromptCard({ prompt, projects, compact = false }: { prompt: SavedP
     <article className={cn("rounded-2xl border border-white/10 bg-black/20", compact ? "p-3" : "glass p-4")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{prompt.version_label ? ` · ${prompt.version_label}` : ""}</span>}</div>
+          <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.project_id && prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{prompt.version_label ? ` · ${prompt.version_label}` : ""}</span>}</div>
           <p className="truncate text-[11px] text-muted-foreground">{[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="flex shrink-0 gap-1"><button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
       </div>
-      <div className="mt-3 flex items-center gap-2"><select value={prompt.project_id ?? ""} onChange={(e) => move(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"><option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{prompt.project_id && <button title={language === "el" ? "Αφαίρεση από project" : "Remove from project"} onClick={() => move("")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderX className="h-4 w-4" /></button>}</div>
-      {!compact && prompt.tags && <pre className="mt-3 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.tags}</pre>}
-      {!compact && prompt.lyrics && <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.lyrics}</pre>}
+      {listMode && <button type="button" onClick={() => setExpanded((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-accent"><ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />{expanded ? (language === "el" ? "Απόκρυψη" : "Hide") : (language === "el" ? "Προβολή prompt" : "Show prompt")}</button>}
+      {(!listMode || expanded) && <div className="mt-3 flex items-center gap-2"><select value={prompt.project_id ?? ""} onChange={(e) => move(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"><option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{prompt.project_id && <button title={language === "el" ? "Αφαίρεση από project" : "Remove from project"} onClick={() => move("")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderX className="h-4 w-4" /></button>}</div>}
+      {(!listMode || expanded) && !compact && prompt.tags && <pre className="mt-3 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.tags}</pre>}
+      {(!listMode || expanded) && !compact && prompt.lyrics && <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">{prompt.lyrics}</pre>}
     </article>
   );
 }
