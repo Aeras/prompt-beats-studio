@@ -121,6 +121,9 @@ export const enAiModels = {
   "aiModels.defaultAttentionTitle": "A default model requires attention",
   "aiModels.generatorDefaultAttention": "The Generator default is stale, degraded, failing, or deprecated. Review its health before changing it.",
   "aiModels.qualityDefaultAttention": "The Quality Check default is stale, degraded, failing, or deprecated. Review its health before changing it.",
+  "aiModels.compatibilityProgress": "Testing {completed}/{total}…",
+  "aiModels.stopCompatibility": "Stop",
+  "aiModels.compatibilityStopped": "Test stopped after {completed}/{total} models. Partial results are shown.",
   "aiModels.defaultNotEligible": "This model cannot be used as the selected default."
 } as const;
 
