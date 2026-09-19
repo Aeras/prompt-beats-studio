@@ -9,6 +9,7 @@ import type { TranslationKey } from "@/i18n/locales/en";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
@@ -54,7 +55,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
 
       <div className="mt-auto">
         {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
-          <img src={profile?.avatar_url ?? `https://i.pravatar.cc/80?u=${user.id}`} alt={t("onboarding.avatarPreview")} width={40} height={40} loading="lazy" className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60" />
+          <img src={getUserAvatarUrl(profile?.avatar_url)} alt={t("onboarding.avatarPreview")} width={40} height={40} loading="lazy" className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60" />
           <div className="min-w-0 flex-1">{profile?.handle ? <Link to="/u/$handle" params={{ handle: profile.handle }} className="truncate text-sm font-medium hover:text-accent">@{profile.handle}</Link> : <p className="truncate text-sm font-medium">{t("nav.you")}</p>}<p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("nav.signedIn")}</p></div>
           <button aria-label={t("nav.signOut")} onClick={signOut} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><LogOut className="h-4 w-4" /></button>
         </div> : <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10"><LogIn className="h-4 w-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t("nav.signIn")}</p><p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p></div></Link>}
