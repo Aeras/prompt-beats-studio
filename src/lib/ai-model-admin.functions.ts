@@ -37,6 +37,12 @@ export type AdminAiModel = {
   deprecated: boolean;
   retirementDate: string | null;
   notes: string | null;
+  discoveredAt: string | null;
+  lastCheckedAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastErrorCode: string | null;
+  healthStatus: "healthy" | "degraded" | "failing" | "unknown";
 };
 
 const mapRow = (row: any): AdminAiModel => ({
@@ -63,6 +69,12 @@ const mapRow = (row: any): AdminAiModel => ({
   deprecated: row.deprecated === true,
   retirementDate: row.retirement_date,
   notes: row.notes,
+  discoveredAt: row.discovered_at,
+  lastCheckedAt: row.last_checked_at,
+  lastSuccessAt: row.last_success_at,
+  lastFailureAt: row.last_failure_at,
+  lastErrorCode: row.last_error_code,
+  healthStatus: row.health_status,
 });
 
 async function readDefaultModel(supabaseAdmin: any, key: string) {
@@ -425,4 +437,218 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
       model: (inserted as any).provider_model_id as string,
       compatibility,
     };
+  });
+
+
+const healthModelInput = z.object({
+  id: z.string().uuid(),
+});
+
+function healthFromCompatibility(status: string) {
+  if (status === "compatible" || status === "generator_only" || status === "quality_check_only") {
+    return { healthStatus: "healthy" as const, success: true, errorCode: null as string | null };
+  }
+  if (status === "inconclusive") {
+    return { healthStatus: "degraded" as const, success: false, errorCode: "inconclusive" };
+  }
+  return { healthStatus: "failing" as const, success: false, errorCode: "compatibility_failed" };
+}
+
+export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => healthModelInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error || !row) throw new Error("AI model not found.");
+
+    const model = row as any;
+    const providerId = providerIdSchema.safeParse(model.provider);
+    const now = new Date().toISOString();
+
+    if (!providerId.success) {
+      await supabaseAdmin.from("ai_models" as never).update({
+        last_checked_at: now,
+        last_failure_at: now,
+        last_error_code: "unsupported_provider",
+        health_status: "degraded",
+        updated_at: now,
+      } as never).eq("id", data.id);
+      return { ok: true, healthStatus: "degraded" as const, listed: null, compatibility: null };
+    }
+
+    const installed = await readInstalledForDiscovery(supabaseAdmin);
+    try {
+      const {
+        discoverProviderModels,
+        testSingleProviderModelCompatibility,
+      } = await import("@/lib/ai-provider-registry.server");
+
+      const discovery = await discoverProviderModels(providerId.data, installed);
+      const discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
+
+      if (!discovered) {
+        await supabaseAdmin.from("ai_models" as never).update({
+          last_checked_at: now,
+          last_failure_at: now,
+          last_error_code: "not_listed_by_provider",
+          health_status: "degraded",
+          updated_at: now,
+        } as never).eq("id", data.id);
+        return { ok: true, healthStatus: "degraded" as const, listed: false, compatibility: null };
+      }
+
+      const compatibility = await testSingleProviderModelCompatibility(providerId.data, {
+        ...discovered,
+        installed: false,
+      });
+      const health = healthFromCompatibility(compatibility.status);
+
+      await supabaseAdmin.from("ai_models" as never).update({
+        deprecated: discovered.deprecated === true,
+        last_checked_at: now,
+        ...(health.success
+          ? { last_success_at: now, last_error_code: null }
+          : { last_failure_at: now, last_error_code: health.errorCode }),
+        health_status: health.healthStatus,
+        updated_at: now,
+      } as never).eq("id", data.id);
+
+      const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+        admin_user_id: context.userId,
+        target_user_id: null,
+        action: "UPDATE_AI_MODEL",
+        details: {
+          operation: "health_recheck",
+          model: model.provider_model_id,
+          provider: model.provider,
+          listed: true,
+          compatibility: compatibility.status,
+          health_status: health.healthStatus,
+        },
+      });
+      if (auditError) console.error("[admin] AI model health audit failed", auditError.message);
+
+      return {
+        ok: true,
+        healthStatus: health.healthStatus,
+        listed: true,
+        compatibility: compatibility.status,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "provider_check_failed";
+      await supabaseAdmin.from("ai_models" as never).update({
+        last_checked_at: now,
+        last_failure_at: now,
+        last_error_code: message.slice(0, 160),
+        health_status: "degraded",
+        updated_at: now,
+      } as never).eq("id", data.id);
+      return { ok: true, healthStatus: "degraded" as const, listed: null, compatibility: null };
+    }
+  });
+
+const healthProviderInput = z.object({
+  providerId: providerIdSchema,
+});
+
+export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => healthProviderInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select("*")
+      .eq("provider", data.providerId);
+    if (error) throw new Error("Could not read installed provider models.");
+
+    const providerModels = (rows ?? []) as any[];
+    if (!providerModels.length) return { ok: true, checked: 0, healthy: 0, degraded: 0, failing: 0 };
+
+    const installed = await readInstalledForDiscovery(supabaseAdmin);
+    const now = new Date().toISOString();
+
+    try {
+      const {
+        discoverProviderModels,
+        testSingleProviderModelCompatibility,
+      } = await import("@/lib/ai-provider-registry.server");
+      const discovery = await discoverProviderModels(data.providerId, installed);
+
+      let healthy = 0;
+      let degraded = 0;
+      let failing = 0;
+
+      for (const model of providerModels) {
+        const discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
+        if (!discovered) {
+          degraded += 1;
+          await supabaseAdmin.from("ai_models" as never).update({
+            last_checked_at: now,
+            last_failure_at: now,
+            last_error_code: "not_listed_by_provider",
+            health_status: "degraded",
+            updated_at: now,
+          } as never).eq("id", model.id);
+          continue;
+        }
+
+        const compatibility = await testSingleProviderModelCompatibility(data.providerId, {
+          ...discovered,
+          installed: false,
+        });
+        const health = healthFromCompatibility(compatibility.status);
+        if (health.healthStatus === "healthy") healthy += 1;
+        else if (health.healthStatus === "failing") failing += 1;
+        else degraded += 1;
+
+        await supabaseAdmin.from("ai_models" as never).update({
+          deprecated: discovered.deprecated === true,
+          last_checked_at: now,
+          ...(health.success
+            ? { last_success_at: now, last_error_code: null }
+            : { last_failure_at: now, last_error_code: health.errorCode }),
+          health_status: health.healthStatus,
+          updated_at: now,
+        } as never).eq("id", model.id);
+      }
+
+      const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+        admin_user_id: context.userId,
+        target_user_id: null,
+        action: "UPDATE_AI_MODEL",
+        details: {
+          operation: "provider_health_recheck",
+          provider: data.providerId,
+          checked: providerModels.length,
+          healthy,
+          degraded,
+          failing,
+        },
+      });
+      if (auditError) console.error("[admin] AI provider health audit failed", auditError.message);
+
+      return { ok: true, checked: providerModels.length, healthy, degraded, failing };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "provider_check_failed";
+      for (const model of providerModels) {
+        await supabaseAdmin.from("ai_models" as never).update({
+          last_checked_at: now,
+          last_failure_at: now,
+          last_error_code: message.slice(0, 160),
+          health_status: "degraded",
+          updated_at: now,
+        } as never).eq("id", model.id);
+      }
+      return { ok: true, checked: providerModels.length, healthy: 0, degraded: providerModels.length, failing: 0 };
+    }
   });
