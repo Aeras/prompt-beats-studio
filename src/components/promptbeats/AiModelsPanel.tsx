@@ -55,7 +55,13 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
   const [notes, setNotes] = useState(model.notes ?? "");
 
   const mutation = useMutation({
-    mutationFn: () => updateAdminAiModel({ data: {
+    mutationFn: () => {
+      const parsedInputPrice = toNullableNumber(inputPrice);
+      const parsedOutputPrice = toNullableNumber(outputPrice);
+      if (pricingStatus === "verified" && (parsedInputPrice == null || parsedOutputPrice == null)) {
+        throw new Error(t("aiModels.verifiedPricingRequired"));
+      }
+      return updateAdminAiModel({ data: {
       id: model.id,
       displayName,
       status,
@@ -64,13 +70,14 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
       qualityCheckEnabled: qualityEnabled,
       generatorReasoningEffort: generatorReasoning,
       qualityCheckReasoningEffort: qualityReasoning,
-      inputPricePerMillion: toNullableNumber(inputPrice),
-      outputPricePerMillion: toNullableNumber(outputPrice),
+      inputPricePerMillion: parsedInputPrice,
+      outputPricePerMillion: parsedOutputPrice,
       cachedInputPricePerMillion: toNullableNumber(cachedInputPrice),
       cacheWritePricePerMillion: toNullableNumber(cacheWritePrice),
       pricingStatus,
       notes: notes.trim() || null,
-    } }),
+    } });
+    },
     onSuccess: () => {
       toast.success(t("aiModels.saved"));
       qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
