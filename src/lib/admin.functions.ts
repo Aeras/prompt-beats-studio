@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const adminUserId = z.string().uuid();
@@ -122,7 +121,7 @@ export const setAdminModelAccess = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({
     userId: adminUserId,
     mode: accessMode,
-    models: z.array(z.enum(AI_MODEL_IDS as [AiModelId, ...AiModelId[]])).max(AI_MODEL_IDS.length).default([]),
+    models: z.array(z.string().trim().min(1).max(240)).max(100).default([]),
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);

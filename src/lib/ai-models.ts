@@ -19,7 +19,9 @@ export const AI_MODELS = [
   { id: "gpt-6-astra", label: "GPT-6 Astra", provider: "openai" },
 ] as const;
 
-export type AiModelId = (typeof AI_MODELS)[number]["id"];
+// Registry-backed models can be added at runtime, so model identifiers are not
+// limited to the legacy compile-time catalog below.
+export type AiModelId = string;
 
 export const DEFAULT_AI_MODEL: AiModelId = "gemini-3-flash-preview";
 
@@ -30,7 +32,7 @@ export const ADMIN_ONLY_AI_MODEL_IDS = [
   "gpt-5.6-terra",
   "gpt-5.6-sol",
   "gpt-6-astra",
-] as const satisfies readonly AiModelId[];
+] as const;
 
 const ADMIN_ONLY_AI_MODEL_SET = new Set<string>(ADMIN_ONLY_AI_MODEL_IDS);
 

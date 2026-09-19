@@ -5,9 +5,11 @@ import { toast } from "sonner";
 
 import { useI18n } from "@/i18n";
 import {
+  addDiscoveredAiModel,
   checkAiProviderModels,
   getAdminAiModels,
   getDetectedAiProviders,
+  runAiProviderCompatibilityTests,
   setAdminAiModelDefault,
   updateAdminAiModel,
   type AdminAiModel,
@@ -172,6 +174,7 @@ export function AiModelsPanel() {
   const [qualityDefault, setQualityDefault] = useState("");
   const [editing, setEditing] = useState<AdminAiModel | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [addedModelIds, setAddedModelIds] = useState<Set<string>>(() => new Set());
 
   const providersQuery = useQuery({
     queryKey: ["admin-ai-providers"],
@@ -195,6 +198,25 @@ export function AiModelsPanel() {
       checkAiProviderModels({ data: { providerId: providerId as any } }),
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : t("aiModels.providerCheckError")),
+  });
+
+  const compatibilityTest = useMutation({
+    mutationFn: (input: { providerId: string; modelIds: string[] }) =>
+      runAiProviderCompatibilityTests({ data: input as any }),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : t("aiModels.compatibilityError")),
+  });
+
+  const addModel = useMutation({
+    mutationFn: (modelId: string) =>
+      addDiscoveredAiModel({ data: { providerId: selectedProvider as any, modelId } }),
+    onSuccess: (result) => {
+      setAddedModelIds((current) => new Set(current).add(result.model));
+      toast.success(t("aiModels.modelAdded"));
+      qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : t("aiModels.addModelError")),
   });
 
   useEffect(() => {
@@ -255,6 +277,8 @@ export function AiModelsPanel() {
                 onChange={(e) => {
                   setSelectedProvider(e.target.value);
                   providerCheck.reset();
+                  compatibilityTest.reset();
+                  setAddedModelIds(new Set());
                 }}
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
               >
@@ -273,47 +297,95 @@ export function AiModelsPanel() {
             </div>
 
             {providerCheck.data && providerCheck.data.provider.id === selectedProvider && (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-                <div className="border-b border-white/10 px-4 py-3">
-                  <div className="font-display text-sm font-semibold">{providerCheck.data.provider.label} · {t("aiModels.discoveredModels")}</div>
-                  <p className="mt-1 text-xs text-muted-foreground">{t("aiModels.phase4Notice")}</p>
-                </div>
-                {providerCheck.data.models.length === 0 ? (
-                  <p className="p-4 text-sm text-muted-foreground">{t("aiModels.noDiscoveredModels")}</p>
-                ) : (
-                  <div className="max-h-80 overflow-auto">
-                    <table className="w-full min-w-[620px] text-left text-sm">
-                      <thead className="sticky top-0 bg-[#17131f] text-[11px] uppercase text-muted-foreground">
-                        <tr>
-                          <th className="px-4 py-3">{t("aiModels.model")}</th>
-                          <th className="px-4 py-3">{t("aiModels.status")}</th>
-                          <th className="px-4 py-3">{t("aiModels.contextWindow")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {providerCheck.data.models.map((model) => (
-                          <tr key={model.id} className="border-t border-white/5">
-                            <td className="px-4 py-3">
-                              <div className="font-medium">{model.name}</div>
-                              <div className="mt-1 text-xs text-muted-foreground">{model.id}</div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-1">
-                                <Pill kind={model.installed ? "enabled" : "testing"}>
-                                  {model.installed ? t("aiModels.alreadyInstalled") : t("aiModels.newCandidate")}
-                                </Pill>
-                                {model.deprecated && <Pill kind="deprecated">{t("aiModels.providerDeprecated")}</Pill>}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                              {model.contextWindow == null ? "—" : model.contextWindow.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="mt-4 space-y-4">
+                <div className="rounded-2xl border border-white/10 p-4">
+                  <div className="font-display text-sm font-semibold">{providerCheck.data.provider.label} · {t("aiModels.discoverySummary")}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <div className="rounded-xl border border-white/10 bg-black/15 p-3"><div className="text-xs text-muted-foreground">{t("aiModels.returnedCount")}</div><div className="mt-1 text-lg font-semibold">{providerCheck.data.summary.returned}</div></div>
+                    <div className="rounded-xl border border-white/10 bg-black/15 p-3"><div className="text-xs text-muted-foreground">{t("aiModels.candidateCount")}</div><div className="mt-1 text-lg font-semibold">{providerCheck.data.summary.candidates}</div></div>
+                    <div className="rounded-xl border border-white/10 bg-black/15 p-3"><div className="text-xs text-muted-foreground">{t("aiModels.installedCount")}</div><div className="mt-1 text-lg font-semibold">{providerCheck.data.summary.installed}</div></div>
+                    <div className="rounded-xl border border-white/10 bg-black/15 p-3"><div className="text-xs text-muted-foreground">{t("aiModels.excludedCount")}</div><div className="mt-1 text-lg font-semibold">{providerCheck.data.summary.excluded}</div></div>
                   </div>
-                )}
+
+                  {providerCheck.data.models.filter((model) => !model.installed && !model.deprecated).length === 0 ? (
+                    <p className="mt-4 text-sm text-muted-foreground">{t("aiModels.noTestableCandidates")}</p>
+                  ) : (
+                    <button
+                      disabled={compatibilityTest.isPending}
+                      onClick={() => compatibilityTest.mutate({
+                        providerId: selectedProvider,
+                        modelIds: providerCheck.data!.models
+                          .filter((model) => !model.installed && !model.deprecated)
+                          .map((model) => model.id),
+                      })}
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      <RefreshCw className={cn("h-4 w-4", compatibilityTest.isPending && "animate-spin")} />
+                      {compatibilityTest.isPending ? t("aiModels.runningCompatibility") : t("aiModels.runCompatibility")}
+                    </button>
+                  )}
+                </div>
+
+                {compatibilityTest.data && compatibilityTest.data.provider.id === selectedProvider && (() => {
+                  const addable = compatibilityTest.data.results.filter((result) =>
+                    result.status === "compatible" ||
+                    result.status === "generator_only" ||
+                    result.status === "quality_check_only"
+                  );
+                  const unsupported = compatibilityTest.data.results.filter((result) => result.status === "unsupported").length;
+                  const inconclusive = compatibilityTest.data.results.filter((result) => result.status === "inconclusive").length;
+
+                  return <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <div className="border-b border-white/10 px-4 py-3">
+                      <div className="font-display text-sm font-semibold">{t("aiModels.compatibleModels")}</div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("aiModels.compatibilitySummary", { compatible: addable.length, unsupported, inconclusive })}
+                      </p>
+                    </div>
+                    {addable.length === 0 ? (
+                      <p className="p-4 text-sm text-muted-foreground">{t("aiModels.noCompatibleModels")}</p>
+                    ) : (
+                      <div className="max-h-96 overflow-auto">
+                        <table className="w-full min-w-[720px] text-left text-sm">
+                          <thead className="sticky top-0 bg-[#17131f] text-[11px] uppercase text-muted-foreground">
+                            <tr>
+                              <th className="px-4 py-3">{t("aiModels.model")}</th>
+                              <th className="px-4 py-3">{t("aiModels.compatibility")}</th>
+                              <th className="px-4 py-3">{t("aiModels.contextWindow")}</th>
+                              <th className="px-4 py-3">{t("aiModels.actions")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {addable.map((model) => {
+                              const added = addedModelIds.has(model.id);
+                              const statusLabel =
+                                model.status === "compatible" ? t("aiModels.compatible") :
+                                model.status === "generator_only" ? t("aiModels.generatorOnly") :
+                                t("aiModels.qualityOnly");
+                              return <tr key={model.id} className="border-t border-white/5">
+                                <td className="px-4 py-3">
+                                  <div className="font-medium">{model.name}</div>
+                                  <div className="mt-1 text-xs text-muted-foreground">{model.id}</div>
+                                </td>
+                                <td className="px-4 py-3"><Pill kind={model.status === "compatible" ? "enabled" : "testing"}>{statusLabel}</Pill></td>
+                                <td className="px-4 py-3 text-muted-foreground">{model.contextWindow == null ? "—" : model.contextWindow.toLocaleString()}</td>
+                                <td className="px-4 py-3">
+                                  <button
+                                    disabled={added || (addModel.isPending && addModel.variables === model.id)}
+                                    onClick={() => addModel.mutate(model.id)}
+                                    className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                                  >
+                                    {added ? t("aiModels.added") : (addModel.isPending && addModel.variables === model.id) ? t("aiModels.adding") : t("aiModels.addModel")}
+                                  </button>
+                                </td>
+                              </tr>;
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>;
+                })()}
               </div>
             )}
           </>

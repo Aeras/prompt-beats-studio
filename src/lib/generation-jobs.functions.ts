@@ -10,7 +10,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { AI_MODEL_IDS } from "@/lib/ai-models";
 import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
@@ -23,7 +22,7 @@ const jobInput = z.object({
   genre: z.string().trim().min(1),
   mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(40),
-  generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+  generationModel: z.string().trim().min(1).max(240).nullish(),
   advanced: z.boolean().default(false),
   baseMusicStyle: z.string().trim().default(""),
   instruments: z.string().trim().default(""),

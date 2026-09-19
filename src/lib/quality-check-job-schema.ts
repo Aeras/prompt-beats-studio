@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { AI_MODEL_IDS } from "@/lib/ai-models";
 import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
@@ -21,7 +20,7 @@ export const durableQualityCheckInput = z.object({
     lyrics: z.string().trim().min(1).max(12000),
     note: z.string().trim().min(1).max(6000),
   }),
-  qualityCheckModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+  qualityCheckModel: z.string().trim().min(1).max(240).nullish(),
   generationId: z.string().uuid().nullish(),
 });
 

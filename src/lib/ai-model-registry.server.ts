@@ -39,10 +39,6 @@ type RegistryRow = {
   quality_check_reasoning_effort: RegistryReasoningEffort | null;
 };
 
-function isKnownModelId(value: string): value is AiModelId {
-  return (AI_MODEL_IDS as readonly string[]).includes(value);
-}
-
 function isRegistryNotMigrated(error: unknown) {
   return Boolean(
     error &&
@@ -70,8 +66,7 @@ function fallbackModel(id: AiModelId): RegistryModel {
   };
 }
 
-function normalizeRow(row: RegistryRow): RegistryModel | null {
-  if (!isKnownModelId(row.provider_model_id)) return null;
+function normalizeRow(row: RegistryRow): RegistryModel {
   return {
     id: row.id,
     provider: row.provider,
@@ -114,8 +109,7 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
       );
     if (error) throw error;
     return ((data ?? []) as unknown as RegistryRow[])
-      .map(normalizeRow)
-      .filter((model): model is RegistryModel => model !== null);
+.map(normalizeRow);
   } catch (error) {
     if (isRegistryNotMigrated(error)) {
       console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
@@ -127,7 +121,6 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
 }
 
 export async function getRegistryModel(modelId: string): Promise<RegistryModel | null> {
-  if (!isKnownModelId(modelId)) return null;
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin

@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getAiAnalytics, type Breakdown } from "@/lib/ai-analytics.functions";
 import { BLOCK_REASONS, deleteAdminUser, getAdminOverview, getAdminUserDetail, listAdminRegistrationBlocks, listAdminUsers, removeAdminRegistrationBlock, setAdminModelAccess, setModerationStatus, setAdminUserBanned, setAdminUserRole, type AdminUser, type RegistrationBlock } from "@/lib/admin.functions";
 import { getAdminAiModels } from "@/lib/ai-model-admin.functions";
-import { AI_MODEL_IDS, type AiModelId } from "@/lib/ai-models";
+import type { AiModelId } from "@/lib/ai-models";
 import { cn } from "@/lib/utils";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
@@ -102,7 +102,7 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   useEffect(() => {
     if (!data) return;
     setMode(data.model_access.mode);
-    setModels(data.model_access.models.filter((id): id is AiModelId => AI_MODEL_IDS.includes(id as AiModelId)));
+    setModels(data.model_access.models as AiModelId[]);
     if (data.role !== "admin") setRoleDraft(data.role);
   }, [data]);
 
