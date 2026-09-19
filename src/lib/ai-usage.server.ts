@@ -11,7 +11,8 @@ export type AiOperation =
   | "quality_check"
   | "repair"
   | "post_repair_quality_check"
-  | "song_setup_assistant";
+  | "song_setup_assistant"
+  | "song_analysis";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
