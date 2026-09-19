@@ -294,15 +294,9 @@ export const setAdminDonationGlobalSetting = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ enabled: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("app_settings")
-      .upsert({
-        key: "creator_donations_enabled",
-        value: { enabled: data.enabled },
-        updated_at: new Date().toISOString(),
-        updated_by: context.userId,
-      }, { onConflict: "key" });
+    const { error } = await context.supabase.rpc("admin_set_creator_donations_global", {
+      _enabled: data.enabled,
+    });
     if (error) throw new Error("Could not update creator donation settings.");
     return { ok: true, enabled: data.enabled };
   });
@@ -324,15 +318,11 @@ export const setAdminUserDonationAccess = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("user_donation_settings" as never)
-      .upsert({
-        user_id: data.userId,
-        admin_override: data.override,
-        admin_updated_by: context.userId,
-        updated_at: new Date().toISOString(),
-      } as never, { onConflict: "user_id" });
+    const { error } = await context.supabase.rpc("admin_set_creator_donation_access", {
+      _target_user_id: data.userId,
+      _override: data.override,
+    });
     if (error) throw new Error("Could not update creator donation access.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return { ok: true, ...(await readUserDonationState(supabaseAdmin, data.userId)) };
   });
