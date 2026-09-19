@@ -617,27 +617,34 @@ async function flushUsage(userId: string, generationId: string | null, records: 
   }
 }
 
-/** Loads the provider layer (server-only) and binds it to the active model. */
+/** Loads the provider layer (server-only) and binds it to the resolved model. */
 async function activeCaller(
+  operation: "generator" | "quality_check",
   modelOverride?: string,
   userId?: string,
 ): Promise<{
   call: ModelCaller;
   model: string;
   provider: string;
+  reasoningEffort?: import("@/lib/ai-provider.server").ReasoningEffort;
   schemas: {
     song: Record<string, unknown>;
     quality: Record<string, unknown>;
   };
 }> {
   const provider = await import("@/lib/ai-provider.server");
-  const model = userId
-    ? await provider.getModelForUser(userId, modelOverride)
-    : (modelOverride ?? (await provider.getActiveModel()));
+  const resolved = userId
+    ? await provider.resolveAiModelForUser(userId, operation, modelOverride)
+    : {
+        model: modelOverride ?? (await provider.getActiveModel(operation)),
+        provider: provider.providerOf(modelOverride ?? (await provider.getActiveModel(operation))),
+        reasoningEffort: operation === "generator" ? "medium" as const : "high" as const,
+      };
   return {
-    call: provider.modelCaller(model),
-    model,
-    provider: provider.providerOf(model),
+    call: provider.modelCaller(resolved.model, resolved.provider),
+    model: resolved.model,
+    provider: resolved.provider,
+    reasoningEffort: resolved.reasoningEffort,
     schemas: { song: provider.SONG_SCHEMA, quality: provider.QUALITY_SCHEMA },
   };
 }
@@ -1591,7 +1598,8 @@ export async function runSongGeneration(
   userId: string,
   generationId: string | null,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
-  const { call, model, provider, schemas } = await activeCaller(
+  const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
+    "generator",
     data.generationModel ?? undefined,
     userId,
   );
@@ -1604,7 +1612,7 @@ export async function runSongGeneration(
       prompt: buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
-      reasoningEffort: "medium",
+      reasoningEffort: reasoningEffort ?? "medium",
     });
   } catch (err) {
     await flushUsage(userId, generationId, [
@@ -1702,7 +1710,8 @@ export const checkSongQuality = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => qualityCheckInput.parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
-    const { call, model, provider, schemas } = await activeCaller(
+    const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
+      "quality_check",
       data.qualityCheckModel ?? undefined,
       context.userId,
     );
