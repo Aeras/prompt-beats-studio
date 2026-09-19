@@ -16,6 +16,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const Route = createFileRoute("/u/$handle")({
   head: ({ params }) => ({
@@ -111,7 +112,7 @@ function CreatorPage() {
           <>
             <header className="glass-strong flex flex-col gap-4 rounded-3xl p-6 sm:flex-row sm:items-center">
               <img
-                src={profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`}
+                src={getUserAvatarUrl(profile.avatar_url)}
                 alt={`${profile.artist_alias ?? profile.handle} avatar`}
                 width={88}
                 height={88}
