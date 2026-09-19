@@ -446,6 +446,23 @@ const healthModelInput = z.object({
 
 type HealthState = "healthy" | "degraded" | "failing";
 
+const HEALTH_PROBE_TIMEOUT_MS = 20_000;
+const PROVIDER_HEALTH_CONCURRENCY = 2;
+
+async function withHealthProbeTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("runtime_probe_timeout")), HEALTH_PROBE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 function hadConsecutiveFailure(model: any): boolean {
   if (!model.last_failure_at) return false;
   if (!model.last_success_at) return true;
@@ -456,12 +473,12 @@ async function runInstalledModelRuntimeProbe(model: any): Promise<{ ok: true } |
   try {
     const { modelCaller } = await import("@/lib/ai-provider.server");
     const call = modelCaller(String(model.provider_model_id), String(model.provider));
-    const result = await call({
+    const result = await withHealthProbeTimeout(call({
       system: "You are a PromptBeats health check. Return only a tiny JSON object.",
       prompt: 'Return exactly {"ok":true}.',
       maxTokens: 64,
       reasoningEffort: model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
-    });
+    }));
     if (result.stopReason !== "end_turn") {
       return { ok: false, errorCode: "incomplete_runtime_response" };
     }
@@ -643,26 +660,33 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
     let degraded = 0;
     let failing = 0;
 
-    for (const model of providerModels) {
-      const discovered = discoveryAvailable
-        ? discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ?? null
-        : null;
-      const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
+    for (let start = 0; start < providerModels.length; start += PROVIDER_HEALTH_CONCURRENCY) {
+      const batch = providerModels.slice(start, start + PROVIDER_HEALTH_CONCURRENCY);
+      const results = await Promise.all(batch.map(async (model) => {
+        const discovered = discoveryAvailable
+          ? discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ?? null
+          : null;
+        const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
 
-      if (health.healthStatus === "healthy") healthy += 1;
-      else if (health.healthStatus === "failing") failing += 1;
-      else degraded += 1;
+        await supabaseAdmin.from("ai_models" as never).update({
+          ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+          last_checked_at: now,
+          ...(health.success
+            ? { last_success_at: now }
+            : { last_failure_at: now }),
+          last_error_code: health.errorCode,
+          health_status: health.healthStatus,
+          updated_at: now,
+        } as never).eq("id", model.id);
 
-      await supabaseAdmin.from("ai_models" as never).update({
-        ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
-        last_checked_at: now,
-        ...(health.success
-          ? { last_success_at: now }
-          : { last_failure_at: now }),
-        last_error_code: health.errorCode,
-        health_status: health.healthStatus,
-        updated_at: now,
-      } as never).eq("id", model.id);
+        return health.healthStatus;
+      }));
+
+      for (const healthStatus of results) {
+        if (healthStatus === "healthy") healthy += 1;
+        else if (healthStatus === "failing") failing += 1;
+        else degraded += 1;
+      }
     }
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({

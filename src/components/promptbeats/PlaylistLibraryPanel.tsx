@@ -34,6 +34,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
 
 type PlaylistTrackRow = {
   id: string;
@@ -68,9 +69,6 @@ type PlaylistSummary = {
 type PlaylistViewMode = "standard" | "compact" | "list";
 
 const PLAYLIST_VIEW_KEY = "promptbeats:playlist-view-mode";
-const COVER_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_COVER_BYTES = 8 * 1024 * 1024;
-
 function formatTrackDuration(seconds: number | null) {
   if (!seconds) return "--:--";
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -131,9 +129,7 @@ function readPlaylistViewMode(): PlaylistViewMode {
 }
 
 async function uploadPlaylistCover(file: File, userId: string) {
-  if (!COVER_MIME.has(file.type)) throw new Error("Playlist covers must be JPG, PNG or WebP.");
-  if (file.size > MAX_COVER_BYTES) throw new Error("Playlist cover must be smaller than 8 MB.");
-  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const extension = validateCoverFile(file);
   const path = `${userId}/playlists/${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("track-covers").upload(path, file, { cacheControl: "3600", upsert: false });
   if (error) throw new Error(error.message);
@@ -298,7 +294,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
         <div className="glass mt-4 rounded-2xl p-4">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <input autoFocus value={name} maxLength={80} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !coverFile) void submit(); }} placeholder={copy.name} className="h-11 min-w-0 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60" />
-            <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><ImagePlus className="h-4 w-4" />{coverFile ? coverFile.name : copy.cover}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></label>
+            <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><ImagePlus className="h-4 w-4" />{coverFile ? coverFile.name : copy.cover}<input type="file" accept={COVER_ACCEPT} className="hidden" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></label>
           </div>
           <div className="mt-3 flex flex-wrap justify-end gap-2">
             <button onClick={() => { setCreating(false); setName(""); setCoverFile(null); setError(null); }} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground">{copy.cancel}</button>

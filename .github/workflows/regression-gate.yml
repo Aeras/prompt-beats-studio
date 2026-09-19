@@ -1,0 +1,36 @@
+name: Regression gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # The repository has legacy lint debt that predates this gate. Keep the
+      # lint report visible on every PR without making unrelated existing
+      # violations block otherwise valid changes. Build remains mandatory.
+      - name: Lint report
+        continue-on-error: true
+        run: bun run lint
