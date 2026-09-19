@@ -72,5 +72,18 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.close": "Κλείσιμο",
   "aiModels.saving": "Αποθήκευση…",
   "aiModels.verifiedPricingRequired": "Για επιβεβαιωμένο pricing απαιτούνται τιμές input και output.",
+  "aiModels.providers": "Συνδέσεις providers",
+  "aiModels.providersHint": "Εμφανίζονται μόνο providers με ρυθμισμένα server-side credentials.",
+  "aiModels.noProviders": "Δεν εντοπίστηκαν ρυθμισμένοι AI providers.",
+  "aiModels.checkApi": "Έλεγχος API",
+  "aiModels.checkingApi": "Έλεγχος…",
+  "aiModels.providerCheckError": "Δεν ήταν δυνατός ο έλεγχος αυτού του provider.",
+  "aiModels.discoveredModels": "Διαθέσιμα μοντέλα",
+  "aiModels.newCandidate": "Νέο candidate",
+  "aiModels.alreadyInstalled": "Ήδη εγκατεστημένο",
+  "aiModels.providerDeprecated": "Deprecated",
+  "aiModels.contextWindow": "Context",
+  "aiModels.noDiscoveredModels": "Ο provider δεν επέστρεψε συμβατά μοντέλα δημιουργίας κειμένου.",
+  "aiModels.phase4Notice": "Η προσθήκη νέων μοντέλων θα ενεργοποιηθεί στη Phase 4 μετά από Compatibility Test.",
   "aiModels.defaultNotEligible": "Αυτό το μοντέλο δεν μπορεί να χρησιμοποιηθεί ως επιλεγμένη προεπιλογή."
 };
