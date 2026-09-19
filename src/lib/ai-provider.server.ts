@@ -12,7 +12,6 @@ import { GoogleGenAI } from "@google/genai";
 
 import {
   AI_MODELS,
-  AI_MODEL_IDS,
   DEFAULT_AI_MODEL,
   type AiModelId,
 } from "@/lib/ai-models";
@@ -66,17 +65,14 @@ export function providerOf(model: string) {
   return AI_MODELS.find((m) => m.id === model)?.provider ?? "gemini";
 }
 
-function isAiModelId(model: string): model is AiModelId {
-  return AI_MODEL_IDS.includes(model as AiModelId);
-}
-
 function sanitizeAllowedModels(models: string[] | null | undefined): AiModelId[] {
   const seen = new Set<string>();
   const allowed: AiModelId[] = [];
   for (const model of models ?? []) {
-    if (!isAiModelId(model) || seen.has(model)) continue;
-    seen.add(model);
-    allowed.push(model);
+    const normalized = typeof model === "string" ? model.trim() : "";
+    if (!normalized || normalized.length > 240 || seen.has(normalized)) continue;
+    seen.add(normalized);
+    allowed.push(normalized);
   }
   return allowed;
 }
@@ -284,7 +280,7 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
  * identical to every other provider; only transport differs.
  */
 async function callOpenAiCompatible(
-  providerName: "groq" | "openrouter" | "xai",
+  providerName: string,
   endpoint: string,
   apiKey: string,
   model: string,
@@ -545,7 +541,20 @@ export function modelCaller(model: string, providerOverride?: string): ModelCall
     if (provider === "openrouter") return callOpenRouter(model, call);
     if (provider === "xai") return callXai(model, call);
     if (provider === "openai") return callOpenAI(model, call);
-    return callGemini(model, call);
+    if (provider === "gemini") return callGemini(model, call);
+
+    const configs: Record<string, { secret: string; endpoint: string; jsonMode: boolean }> = {
+      deepseek: { secret: "DEEPSEEK_API_KEY", endpoint: "https://api.deepseek.com/chat/completions", jsonMode: true },
+      together: { secret: "TOGETHER_API_KEY", endpoint: "https://api.together.xyz/v1/chat/completions", jsonMode: true },
+      fireworks: { secret: "FIREWORKS_API_KEY", endpoint: "https://api.fireworks.ai/inference/v1/chat/completions", jsonMode: true },
+      cerebras: { secret: "CEREBRAS_API_KEY", endpoint: "https://api.cerebras.ai/v1/chat/completions", jsonMode: true },
+      nvidia: { secret: "NVIDIA_API_KEY", endpoint: "https://integrate.api.nvidia.com/v1/chat/completions", jsonMode: true },
+    };
+    const config = configs[provider];
+    if (!config) throw new Error("This AI provider is not supported for PromptBeats generation.");
+    const apiKey = process.env[config.secret];
+    if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+    return callOpenAiCompatible(provider, config.endpoint, apiKey, model, call, config.jsonMode);
   };
 }
 
@@ -651,7 +660,9 @@ export async function resolveAiModelForUser(
   operation: AiModelOperation,
   requestedModel?: string,
 ): Promise<ResolvedAiModel> {
-  if (requestedModel && !isAiModelId(requestedModel)) throw new Error("Unsupported AI model.");
+  if (requestedModel && (!requestedModel.trim() || requestedModel.length > 240)) {
+    throw new Error("Unsupported AI model.");
+  }
   const access = await getEffectiveModelAccess(userId, operation);
   const selected = (requestedModel ?? access.defaultModel) as AiModelId;
   if (!(access.availableModels as readonly string[]).includes(selected)) {
