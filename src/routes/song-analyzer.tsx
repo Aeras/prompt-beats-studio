@@ -203,10 +203,10 @@ function SongAnalyzerPage() {
     </div>
   );
 
-  if (loading) return <AppShell header={header}><main className="p-8 text-sm text-muted-foreground">Loading…</main></AppShell>;
-  if (!user) return <AppShell header={header}><main className="mx-auto max-w-xl p-8"><div className="glass rounded-2xl p-8 text-center"><p className="text-sm text-muted-foreground">{t("songAnalyzer.signIn")}</p><Link to="/auth" className="mt-4 inline-flex rounded-xl bg-gradient-neon px-4 py-2 text-sm font-semibold">Sign in</Link></div></main></AppShell>;
+  if (loading) return <AppShell header={header}><main className="p-8 text-sm text-muted-foreground">{t("songAnalyzer.loading")}</main></AppShell>;
+  if (!user) return <AppShell header={header}><main className="mx-auto max-w-xl p-8"><div className="glass rounded-2xl p-8 text-center"><p className="text-sm text-muted-foreground">{t("songAnalyzer.signIn")}</p><Link to="/auth" className="mt-4 inline-flex rounded-xl bg-gradient-neon px-4 py-2 text-sm font-semibold">{t("songAnalyzer.signInButton")}</Link></div></main></AppShell>;
   if (access.isError) return <AppShell header={header}><main className="mx-auto max-w-xl p-8"><div className="glass rounded-2xl border border-red-400/20 p-8 text-center"><ShieldAlert className="mx-auto h-8 w-8 text-red-300" /><h1 className="mt-3 font-display text-lg font-bold">{t("songAnalyzer.adminRequired")}</h1><p className="mt-2 text-sm text-muted-foreground">{t("songAnalyzer.adminRequiredBody")}</p></div></main></AppShell>;
-  if (access.isLoading) return <AppShell header={header}><main className="p-8 text-sm text-muted-foreground">Checking access…</main></AppShell>;
+  if (access.isLoading) return <AppShell header={header}><main className="p-8 text-sm text-muted-foreground">{t("songAnalyzer.checkingAccess")}</main></AppShell>;
 
   return (
     <AppShell header={header}>
