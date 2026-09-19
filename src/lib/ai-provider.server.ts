@@ -14,9 +14,17 @@ import {
   AI_MODELS,
   AI_MODEL_IDS,
   DEFAULT_AI_MODEL,
-  isAdminOnlyAiModel,
   type AiModelId,
 } from "@/lib/ai-models";
+import {
+  getInstalledRegistryModels,
+  getOperationDefaultModel,
+  getRegistryModel,
+  isModelEligibleForOperation,
+  reasoningForOperation,
+  type AiModelOperation,
+  type RegistryModel,
+} from "@/lib/ai-model-registry.server";
 
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -528,8 +536,8 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
-export function modelCaller(model: string): ModelCaller {
-  const provider = providerOf(model) as string;
+export function modelCaller(model: string, providerOverride?: string): ModelCaller {
+  const provider = providerOverride ?? providerOf(model);
   return (call) => {
     if (provider === "anthropic") return callAnthropic(model, call);
     if (provider === "mistral") return callMistral(model, call);
@@ -542,33 +550,11 @@ export function modelCaller(model: string): ModelCaller {
 }
 
 /**
- * Server-authoritative active model. Read with the privileged client from a
- * table that is unreachable from the browser, so a client can never influence
- * which provider is used.
+ * Server-authoritative operation default. The legacy no-argument form maps to
+ * Generator so older call sites remain safe during the Phase 1 transition.
  */
-export async function getActiveModel(): Promise<AiModelId> {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("app_settings")
-      .select("value")
-      .eq("key", "ai_model")
-      .maybeSingle();
-    const value = (data as { value?: { model?: string } } | null)?.value;
-    const model = value?.model;
-    if (model && AI_MODELS.some((m) => m.id === model)) return model as AiModelId;
-    await supabaseAdmin.from("app_settings").upsert(
-      {
-        key: "ai_model",
-        value: { model: DEFAULT_AI_MODEL },
-        updated_at: new Date().toISOString(),
-      } as never,
-      { onConflict: "key" },
-    );
-  } catch {
-    /* fall back to the default below */
-  }
-  return DEFAULT_AI_MODEL;
+export async function getActiveModel(operation: AiModelOperation = "generator"): Promise<AiModelId> {
+  return (await getOperationDefaultModel(operation)).providerModelId;
 }
 
 export type EffectiveAiModelAccess = {
@@ -578,21 +564,37 @@ export type EffectiveAiModelAccess = {
   accessMode: "admin" | "inherit" | "custom";
 };
 
-export async function getEffectiveModelAccess(userId: string): Promise<EffectiveAiModelAccess> {
-  const active = await getActiveModel();
+async function eligibleModelsForOperation(operation: AiModelOperation) {
+  const models = await getInstalledRegistryModels();
+  return models.filter((model) => isModelEligibleForOperation(model, operation));
+}
+
+export async function getEffectiveModelAccess(
+  userId: string,
+  operation: AiModelOperation = "generator",
+): Promise<EffectiveAiModelAccess> {
+  const configuredDefault = await getOperationDefaultModel(operation);
   const supabaseAdmin = await assertAiEligibleUser(userId);
+
   if (await hasAdminBypass(userId)) {
+    const available = await eligibleModelsForOperation(operation);
     return {
-      activeModel: active,
-      defaultModel: active,
-      availableModels: [...AI_MODEL_IDS],
+      activeModel: configuredDefault.providerModelId,
+      defaultModel: configuredDefault.providerModelId,
+      availableModels: available.map((model) => model.providerModelId),
       accessMode: "admin",
     };
   }
 
-  // Admin-only models must never leak through the global active model to
-  // normal users. Non-admins inherit the regular default instead.
-  const nonAdminActive = isAdminOnlyAiModel(active) ? DEFAULT_AI_MODEL : active;
+  // Restricted defaults must never leak to an inheriting normal account.
+  let inheritedDefault = configuredDefault;
+  if (configuredDefault.accessPolicy !== "all_users") {
+    const fallback = await getRegistryModel(DEFAULT_AI_MODEL);
+    if (!fallback || !isModelEligibleForOperation(fallback, operation) || fallback.accessPolicy !== "all_users") {
+      throw new Error("No AI model is available for this account.");
+    }
+    inheritedDefault = fallback;
+  }
 
   const { data: override, error: overrideError } = await supabaseAdmin
     .from("user_model_access")
@@ -602,58 +604,119 @@ export async function getEffectiveModelAccess(userId: string): Promise<Effective
   if (overrideError) {
     if (overrideError.code === "42P01") {
       return {
-        activeModel: nonAdminActive,
-        defaultModel: nonAdminActive,
-        availableModels: [nonAdminActive],
+        activeModel: inheritedDefault.providerModelId,
+        defaultModel: inheritedDefault.providerModelId,
+        availableModels: [inheritedDefault.providerModelId],
         accessMode: "inherit",
       };
     }
     throw new Error("Could not verify AI model access.");
   }
+
   const access = override as { access_mode?: string; allowed_models?: string[] } | null;
   if (access?.access_mode !== "custom") {
     return {
-      activeModel: nonAdminActive,
-      defaultModel: nonAdminActive,
-      availableModels: [nonAdminActive],
+      activeModel: inheritedDefault.providerModelId,
+      defaultModel: inheritedDefault.providerModelId,
+      availableModels: [inheritedDefault.providerModelId],
       accessMode: "inherit",
     };
   }
-  const allowed = sanitizeAllowedModels(access.allowed_models);
+
+  const requestedIds = sanitizeAllowedModels(access.allowed_models);
+  const allowed: RegistryModel[] = [];
+  for (const id of requestedIds) {
+    const model = await getRegistryModel(id);
+    if (!model) continue;
+    if (!isModelEligibleForOperation(model, operation)) continue;
+    if (model.accessPolicy === "admin_only") continue;
+    allowed.push(model);
+  }
+
   if (!allowed.length) throw new Error("No AI model is available for this account.");
+  const allowedIds = allowed.map((model) => model.providerModelId);
+  const defaultModel = allowedIds.includes(inheritedDefault.providerModelId)
+    ? inheritedDefault.providerModelId
+    : (allowedIds[0] as AiModelId);
+
   return {
-    activeModel: nonAdminActive,
-    defaultModel: allowed.includes(nonAdminActive) ? nonAdminActive : (allowed[0] as AiModelId),
-    availableModels: allowed,
+    activeModel: inheritedDefault.providerModelId,
+    defaultModel,
+    availableModels: allowedIds,
     accessMode: "custom",
   };
 }
 
-/** Resolve a provider model without trusting a browser-supplied model id. */
-export async function getModelForUser(userId: string, requestedModel?: string): Promise<AiModelId> {
+export type ResolvedAiModel = {
+  model: AiModelId;
+  provider: string;
+  reasoningEffort?: ReasoningEffort;
+};
+
+export async function resolveAiModelForUser(
+  userId: string,
+  operation: AiModelOperation,
+  requestedModel?: string,
+): Promise<ResolvedAiModel> {
   if (requestedModel && !isAiModelId(requestedModel)) throw new Error("Unsupported AI model.");
-  const access = await getEffectiveModelAccess(userId);
-  if (!requestedModel) return access.defaultModel;
-  if (!(access.availableModels as readonly string[]).includes(requestedModel)) {
+  const access = await getEffectiveModelAccess(userId, operation);
+  const selected = (requestedModel ?? access.defaultModel) as AiModelId;
+  if (!(access.availableModels as readonly string[]).includes(selected)) {
     throw new Error("That AI model is not available for this account.");
   }
-  return requestedModel as AiModelId;
+
+  const registryModel = await getRegistryModel(selected);
+  if (!registryModel || !isModelEligibleForOperation(registryModel, operation)) {
+    throw new Error("That AI model is not available for this operation.");
+  }
+
+  return {
+    model: registryModel.providerModelId,
+    provider: registryModel.provider,
+    reasoningEffort: reasoningForOperation(registryModel, operation),
+  };
 }
 
-/** Admin-only write path; the caller must already have verified admin rights. */
+/** Compatibility wrapper for older call sites; Generator remains the default operation. */
+export async function getModelForUser(
+  userId: string,
+  requestedModel?: string,
+  operation: AiModelOperation = "generator",
+): Promise<AiModelId> {
+  return (await resolveAiModelForUser(userId, operation, requestedModel)).model;
+}
+
+/**
+ * Legacy admin write path. Until Phase 2 introduces separate controls, changing
+ * the old shared active model updates both operation defaults together.
+ */
 export async function setActiveModel(model: AiModelId, userId: string) {
+  const registryModel = await getRegistryModel(model);
+  if (
+    !registryModel ||
+    !isModelEligibleForOperation(registryModel, "generator") ||
+    !isModelEligibleForOperation(registryModel, "quality_check")
+  ) {
+    throw new Error("That AI model cannot be used as both defaults.");
+  }
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("app_settings").upsert(
-    {
-      key: "ai_model",
-      value: { model },
-      updated_at: new Date().toISOString(),
-      updated_by: userId,
-    } as never,
-    { onConflict: "key" },
-  );
-  if (error) throw new Error(error.message);
-  return { model };
+  const now = new Date().toISOString();
+  const value = { registryId: registryModel.id, model: registryModel.providerModelId };
+
+  for (const key of ["ai_model", "ai_generator_default_model", "ai_quality_check_default_model"]) {
+    const { error } = await supabaseAdmin.from("app_settings").upsert(
+      {
+        key,
+        value,
+        updated_at: now,
+        updated_by: userId,
+      } as never,
+      { onConflict: "key" },
+    );
+    if (error) throw new Error(error.message);
+  }
+  return { model: registryModel.providerModelId };
 }
 
 /** JSON schemas used for provider-side structured output. */

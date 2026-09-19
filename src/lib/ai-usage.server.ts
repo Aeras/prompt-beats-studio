@@ -2,7 +2,7 @@
  * AI usage recording. Observes provider responses only — it never issues an
  * AI call of its own and never blocks the AI pipeline.
  */
-import { estimateCostUsd } from "@/lib/ai-pricing.server";
+import { estimateCostUsdForModel } from "@/lib/ai-pricing.server";
 
 export type AiOperation =
   | "generate"
@@ -52,7 +52,7 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
       input_tokens: input,
       output_tokens: output,
       total_tokens: total,
-      estimated_cost_usd: estimateCostUsd(rec.model, input, output, {
+      estimated_cost_usd: await estimateCostUsdForModel(rec.model, input, output, {
         cachedInputTokens: rec.usage?.cachedInputTokens,
         cacheWriteTokens: rec.usage?.cacheWriteTokens,
       }),

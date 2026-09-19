@@ -134,7 +134,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_has_role", { _role: "admin" });
     assertGenerationInputLimits(data, isAdmin === true);
-    await getModelForUser(context.userId, data.generationModel ?? undefined);
+    await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
     const { idempotencyKey, advanced: _advanced, baseMusicStyle: _baseMusicStyle, instruments: _instruments, ...payload } = data;
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,

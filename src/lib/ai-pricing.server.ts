@@ -69,16 +69,17 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
  * Returns null when the model has no known pricing or usage is unavailable,
  * so the dashboard can render "N/A" instead of a fabricated number.
  */
-export function estimateCostUsd(
-  model: string,
+type PriceDetails = {
+  cachedInputTokens?: number | null;
+  cacheWriteTokens?: number | null;
+};
+
+function estimateWithPrice(
+  price: ModelPrice | null | undefined,
   inputTokens: number | null | undefined,
   outputTokens: number | null | undefined,
-  details?: {
-    cachedInputTokens?: number | null;
-    cacheWriteTokens?: number | null;
-  },
+  details?: PriceDetails,
 ): number | null {
-  const price = MODEL_PRICING[model];
   if (!price) return null;
   if (inputTokens == null && outputTokens == null) return null;
 
@@ -96,4 +97,69 @@ export function estimateCostUsd(
     (cacheWrite / 1_000_000) * (price.cacheWritePerMillion ?? price.inputPerMillion);
   const outputCost = ((outputTokens ?? 0) / 1_000_000) * price.outputPerMillion;
   return Number((inputCost + outputCost).toFixed(6));
+}
+
+/** Compatibility calculator retained while Phase 1 is rolled out. */
+export function estimateCostUsd(
+  model: string,
+  inputTokens: number | null | undefined,
+  outputTokens: number | null | undefined,
+  details?: PriceDetails,
+): number | null {
+  return estimateWithPrice(MODEL_PRICING[model], inputTokens, outputTokens, details);
+}
+
+/**
+ * Registry-authoritative cost calculation. If the registry is temporarily
+ * unavailable during rollout/rollback, the previous hardcoded pricing table is
+ * used only as a compatibility fallback.
+ */
+export async function estimateCostUsdForModel(
+  model: string,
+  inputTokens: number | null | undefined,
+  outputTokens: number | null | undefined,
+  details?: PriceDetails,
+): Promise<number | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select(
+        "input_price_per_million,output_price_per_million,cached_input_price_per_million,cache_write_price_per_million,pricing_status",
+      )
+      .eq("provider_model_id", model)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+
+    const row = data as unknown as {
+      input_price_per_million: number | string | null;
+      output_price_per_million: number | string | null;
+      cached_input_price_per_million: number | string | null;
+      cache_write_price_per_million: number | string | null;
+      pricing_status: string;
+    };
+    if (
+      row.pricing_status !== "verified" ||
+      row.input_price_per_million == null ||
+      row.output_price_per_million == null
+    ) {
+      return null;
+    }
+
+    const price: ModelPrice = {
+      inputPerMillion: Number(row.input_price_per_million),
+      outputPerMillion: Number(row.output_price_per_million),
+      ...(row.cached_input_price_per_million == null
+        ? {}
+        : { cachedInputPerMillion: Number(row.cached_input_price_per_million) }),
+      ...(row.cache_write_price_per_million == null
+        ? {}
+        : { cacheWritePerMillion: Number(row.cache_write_price_per_million) }),
+    };
+    return estimateWithPrice(price, inputTokens, outputTokens, details);
+  } catch (error) {
+    console.warn("[ai-pricing] registry pricing unavailable; using compatibility pricing", error);
+    return estimateCostUsd(model, inputTokens, outputTokens, details);
+  }
 }
