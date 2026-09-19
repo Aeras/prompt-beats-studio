@@ -78,6 +78,7 @@ import {
 const JOB_STORAGE_KEY = "pb:generation-job";
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
 const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
+const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 
 export const Route = createFileRoute("/generate")({
   head: () => ({
@@ -510,6 +511,49 @@ function GeneratePage() {
   const [now, setNow] = useState(Date.now());
   const [jobId, setJobId] = useState<string | null>(null);
   const pendingKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(SONG_ANALYZER_HANDOFF_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(SONG_ANALYZER_HANDOFF_KEY);
+    try {
+      const handoff = JSON.parse(raw) as {
+        musicStyle?: string;
+        mood?: string;
+        instruments?: string[];
+        bpm?: { approximate?: number | null; rangeMin?: number | null; rangeMax?: number | null; confidence?: string; notes?: string };
+        songStructure?: string[];
+        productionStyle?: string;
+        additionalInstructions?: string;
+      };
+      setAdvanced(true);
+      setGenres([]);
+      setCustomGenre(handoff.musicStyle?.trim() ?? "");
+      setMoods([]);
+      setCustomMood(handoff.mood?.trim() ?? "");
+      setInstruments([]);
+      setCustomInstruments((handoff.instruments ?? []).join(", "));
+      setStructure(Array.isArray(handoff.songStructure) ? handoff.songStructure : []);
+      setProduction(handoff.productionStyle?.trim() ?? "");
+      setInstructions(handoff.additionalInstructions?.trim() ?? "");
+      const bpmText = handoff.bpm?.rangeMin != null && handoff.bpm?.rangeMax != null
+        ? `${handoff.bpm.rangeMin}-${handoff.bpm.rangeMax}`
+        : handoff.bpm?.approximate != null
+          ? String(handoff.bpm.approximate)
+          : "";
+      if (bpmText) {
+        setBpm("Custom");
+        setCustomBpm(bpmText);
+      } else {
+        setBpm("Auto");
+        setCustomBpm("");
+      }
+      setStatus("Song Analyzer fields loaded. Review or edit them before generating.");
+    } catch {
+      setStatus("Could not load Song Analyzer fields.");
+    }
+  }, []);
 
   function rememberJob(id: string | null) {
     if (typeof window === "undefined") return;
