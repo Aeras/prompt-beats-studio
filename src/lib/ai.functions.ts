@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
-import { AI_MODEL_IDS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
+import { DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
@@ -22,7 +22,7 @@ const generateInput = z.object({
   targetPlatform: z
     .enum(AI_TARGET_PLATFORMS as [AITargetPlatform, ...AITargetPlatform[]])
     .default(DEFAULT_AI_TARGET_PLATFORM),
-  generationModel: z.enum(AI_MODEL_IDS as [string, ...string[]]).nullish(),
+  generationModel: z.string().trim().min(1).max(240).nullish(),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
