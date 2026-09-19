@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown } from "lucide-react";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updateSavedPromptOrganization } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
-import { listSongAnalyses } from "@/lib/song-analyzer.functions";
+import { deleteSongAnalysis, listSongAnalyses, updateSongAnalysisOrganization } from "@/lib/song-analyzer.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -91,7 +91,7 @@ function LibraryPage() {
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
   const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]>("all");
-  const [promptView, setPromptView] = useState<"all" | "projects">("all");
+  const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
   const handle = profile?.handle ? `@${profile.handle}` : t("nav.you");
 
@@ -212,7 +212,7 @@ type SavedPrompt = {
 };
 type PromptProject = { id: string; name: string; created_at: string; updated_at: string };
 type SongAnalysisItem = {
-  id: string; project_id: string; model: string; created_at: string;
+  id: string; name: string; project_id: string | null; model: string; created_at: string;
   generator_ready: {
     musicStyle: string; mood: string; instruments: string[];
     bpm: { approximate: number | null; rangeMin: number | null; rangeMax: number | null; confidence: string; notes: string };
@@ -228,8 +228,8 @@ type SongAnalysisItem = {
 };
 
 function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onViewChange, search, onSearchChange }: {
-  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: SongAnalysisItem[]; loading: boolean; view: "all" | "projects";
-  onViewChange: (view: "all" | "projects") => void; search: string; onSearchChange: (value: string) => void;
+  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: SongAnalysisItem[]; loading: boolean; view: "all" | "projects" | "analyses";
+  onViewChange: (view: "all" | "projects" | "analyses") => void; search: string; onSearchChange: (value: string) => void;
 }) {
   const { t, language } = useI18n();
   const queryClient = useQueryClient();
@@ -239,14 +239,17 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   const q = search.trim().toLowerCase();
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
+  const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
   const filtered = prompts.filter(matches);
-  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id));
+  const filteredAnalyses = analyses.filter(matchesAnalysis);
+  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
       queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
     ]);
   };
   const createProject = async () => {
@@ -260,7 +263,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
     setBusy(true); try { await renamePromptProject({ data: { id: project.id, name } }); await refresh(); } finally { setBusy(false); }
   };
   const removeProject = async (project: PromptProject) => {
-    if (!window.confirm(language === "el" ? "Να διαγραφεί το project; Τα prompts θα παραμείνουν στη βιβλιοθήκη χωρίς project." : "Delete this project? Its prompts will remain in your library with no project.")) return;
+    if (!window.confirm(language === "el" ? "Να διαγραφεί το project; Τα prompts και οι αναλύσεις θα παραμείνουν στη βιβλιοθήκη χωρίς project." : "Delete this project? Its prompts and analyses will remain in your library with no project.")) return;
     setBusy(true); try { await deletePromptProject({ data: { id: project.id } }); await refresh(); } finally { setBusy(false); }
   };
 
@@ -268,13 +271,13 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
     <div className="mt-6 space-y-4">
       <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
         <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
-          {(["all", "projects"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? (language === "el" ? "Όλα τα Prompts" : "All Prompts") : (language === "el" ? "Projects" : "Projects")}</button>)}
+          {(["all", "projects", "analyses"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
-        <div className="flex shrink-0 gap-1">
+        {view !== "analyses" && <div className="flex shrink-0 gap-1">
           <button type="button" aria-pressed={promptDisplayMode === "expanded"} onClick={() => setPromptDisplayMode("expanded")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "expanded" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Κάρτες" : "Cards"}</button>
           <button type="button" aria-pressed={promptDisplayMode === "list"} onClick={() => setPromptDisplayMode("list")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "list" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Λίστα" : "List"}</button>
-        </div>
+        </div>}
         <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
       </div>
 
@@ -283,11 +286,16 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
           {filtered.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}
           {!loading && filtered.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{q ? (language === "el" ? "Δεν βρέθηκαν prompts." : "No prompts found.") : t("library.noPrompts")}</p>}
         </div>
+      ) : view === "analyses" ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {filteredAnalyses.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}
+          {!loading && filteredAnalyses.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{q ? t("library.analysisNoMatch") : t("library.analysisNone")}</p>}
+        </div>
       ) : (
         <div className="space-y-4">
           {openProject ? (() => {
             const items = prompts.filter((p) => p.project_id === openProject.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
-            const analysisItems = analyses.filter((a) => a.project_id === openProject.id);
+            const analysisItems = analyses.filter((a) => a.project_id === openProject.id && matchesAnalysis(a));
             return <section className="space-y-4">
               <div className="glass rounded-2xl p-4">
                 <button type="button" onClick={() => { setOpenProjectId(null); onSearchChange(""); }} className="mb-3 text-xs font-semibold text-accent">← Projects</button>
@@ -296,7 +304,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
                   <div className="flex gap-2"><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
             </section>;
           })() : <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -318,28 +326,97 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   );
 }
 
-function SongAnalysisCard({ analysis }: { analysis: SongAnalysisItem }) {
+function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; projects: PromptProject[] }) {
+  const { t, language } = useI18n();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const project = projects.find((item) => item.id === analysis.project_id) ?? null;
   const bpm = analysis.generator_ready.bpm;
   const bpmText = bpm.rangeMin != null && bpm.rangeMax != null
     ? `${bpm.rangeMin}–${bpm.rangeMax} BPM`
     : bpm.approximate != null ? `≈ ${bpm.approximate} BPM` : "BPM uncertain";
+  const fullText = [
+    `Music Style:\n${analysis.generator_ready.musicStyle}`,
+    `Mood:\n${analysis.generator_ready.mood}`,
+    `BPM:\n${bpmText} · confidence: ${bpm.confidence}\n${bpm.notes}`,
+    `Song Structure:\n${analysis.generator_ready.songStructure.join(" → ")}`,
+    `Instruments:\n${analysis.generator_ready.instruments.join("\n")}`,
+    `Production Style:\n${analysis.generator_ready.productionStyle}`,
+    `Additional Instructions:\n${analysis.generator_ready.additionalInstructions || "—"}`,
+    `Genre & Style:\n${analysis.detailed_analysis.genreAndStyle}`,
+    `Mood & Emotional Arc:\n${analysis.detailed_analysis.moodAndEmotionalArc}`,
+    `Tempo & Groove:\n${analysis.detailed_analysis.tempoAndGroove}`,
+    `Instrumentation:\n${analysis.detailed_analysis.instrumentation.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
+    `Arrangement:\n${analysis.detailed_analysis.arrangement}`,
+    `Song Structure:\n${analysis.detailed_analysis.songStructure}`,
+    `Vocals:\n${analysis.detailed_analysis.vocals}`,
+    `Production & Mix:\n${analysis.detailed_analysis.productionAndMix.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
+    `Dynamics & Energy:\n${analysis.detailed_analysis.dynamicsAndEnergy}`,
+    `Notable Characteristics:\n${analysis.detailed_analysis.notableCharacteristics.join("\n")}`,
+    `Confidence / Uncertainty Notes:\n${analysis.detailed_analysis.confidenceAndUncertaintyNotes.join("\n")}`,
+  ].join("\n\n");
+  const refresh = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
+    queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+  ]);
+  const move = async (projectId: string) => {
+    await updateSongAnalysisOrganization({ data: { id: analysis.id, projectId: projectId || null } });
+    await refresh();
+  };
+  const rename = async () => {
+    const name = window.prompt(language === "el" ? "Όνομα ανάλυσης" : "Analysis name", analysis.name)?.trim();
+    if (!name || name === analysis.name) return;
+    await updateSongAnalysisOrganization({ data: { id: analysis.id, name } });
+    await refresh();
+  };
+  const remove = async () => {
+    if (!window.confirm(t("library.analysisDeleteConfirm"))) return;
+    setDeleting(true);
+    try { await deleteSongAnalysis({ data: { id: analysis.id } }); await refresh(); } finally { setDeleting(false); }
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(fullText); setCopied(true); window.setTimeout(() => setCopied(false), 1500); } catch {}
+  };
+  const send = () => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem("pb:song-analyzer-handoff", JSON.stringify(analysis.generator_ready));
+    void navigate({ to: "/generate" });
+  };
+
   return (
     <article className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">Initial Song Analysis</p>
-          <h3 className="mt-1 font-display font-bold">{analysis.generator_ready.musicStyle}</h3>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">{t("library.analysisInitial")}</p>
+          <h3 className="mt-1 truncate font-display font-bold">{analysis.name}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{analysis.generator_ready.musicStyle}</p>
           <p className="mt-1 text-xs text-muted-foreground">{analysis.generator_ready.mood} · {bpmText} · {bpm.confidence} confidence</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{project?.name ?? t("library.analysisStandalone")} · {new Date(analysis.created_at).toLocaleDateString()}</p>
         </div>
-        <button type="button" onClick={() => setExpanded((value) => !value)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:text-accent">{expanded ? "Hide" : "Open"}</button>
+        <div className="flex shrink-0 gap-1">
+          <button type="button" onClick={rename} title={language === "el" ? "Μετονομασία" : "Rename"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={copy} title={t("library.analysisCopy")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button>
+          <button type="button" onClick={send} title={t("library.analysisSendGenerator")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Wand2 className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={remove} disabled={deleting} title={t("library.analysisDelete")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button>
+        </div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Model: {analysis.model}</p>
+      <p className="mt-3 text-xs text-muted-foreground">{t("library.analysisModel")}: {analysis.model}</p>
+      <div className="mt-3 flex items-center gap-2">
+        <select value={analysis.project_id ?? ""} onChange={(e) => move(e.target.value)} aria-label={t("library.analysisMove")} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs">
+          <option value="">{t("songAnalyzer.noProject")}</option>
+          {projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+        {analysis.project_id && <button type="button" onClick={() => move("")} title={t("library.analysisRemoveProject")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderX className="h-4 w-4" /></button>}
+      </div>
+      <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-3 inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:text-accent"><ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />{expanded ? t("library.analysisHide") : t("library.analysisOpen")}</button>
       {expanded && <div className="mt-4 space-y-3 border-t border-white/10 pt-4 text-sm">
-        <div><p className="text-[10px] uppercase tracking-wider text-accent">Instruments</p><p className="mt-1 whitespace-pre-wrap">{analysis.generator_ready.instruments.join("\n")}</p></div>
-        <div><p className="text-[10px] uppercase tracking-wider text-accent">Structure</p><p className="mt-1">{analysis.generator_ready.songStructure.join(" → ")}</p></div>
-        <div><p className="text-[10px] uppercase tracking-wider text-accent">Production</p><p className="mt-1">{analysis.generator_ready.productionStyle}</p></div>
-        <div><p className="text-[10px] uppercase tracking-wider text-accent">Detailed analysis</p><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{analysis.detailed_analysis.genreAndStyle}\n\n{analysis.detailed_analysis.moodAndEmotionalArc}\n\n{analysis.detailed_analysis.tempoAndGroove}\n\n{analysis.detailed_analysis.arrangement}\n\n{analysis.detailed_analysis.vocals}\n\n{analysis.detailed_analysis.dynamicsAndEnergy}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">{t("songAnalyzer.instruments")}</p><p className="mt-1 whitespace-pre-wrap">{analysis.generator_ready.instruments.join("\n")}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">{t("songAnalyzer.songStructure")}</p><p className="mt-1">{analysis.generator_ready.songStructure.join(" → ")}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">{t("songAnalyzer.productionStyle")}</p><p className="mt-1">{analysis.generator_ready.productionStyle}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-accent">{t("songAnalyzer.detailed")}</p><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{analysis.detailed_analysis.genreAndStyle}\n\n{analysis.detailed_analysis.moodAndEmotionalArc}\n\n{analysis.detailed_analysis.tempoAndGroove}\n\n{analysis.detailed_analysis.arrangement}\n\n{analysis.detailed_analysis.vocals}\n\n{analysis.detailed_analysis.dynamicsAndEnergy}</p></div>
       </div>}
     </article>
   );

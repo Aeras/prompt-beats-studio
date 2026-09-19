@@ -79,21 +79,75 @@ Analyze only what is supported by the supplied audio. Your job is to convert an 
 2) a detailed, audio-grounded song analysis.
 
 NON-NEGOTIABLE GROUNDING RULES
-- Do not invent instruments, production techniques, vocal traits, structure, tempo, or mix details that cannot be reasonably heard.
-- When an observation is uncertain, say so and lower confidence instead of guessing.
-- BPM must never use fake precision. Use approximate when stable; use a range when tempo is ambiguous, changing, rubato, half/double-time uncertain, or otherwise unclear.
-- Instrument descriptions should be specific when the recording supports it: instrument + timbre + playing style + rhythmic/arrangement role + sonic character. Prefer descriptions such as "Warm fingerpicked steel-string acoustic guitar performing steady arpeggiated figures" over generic labels.
-- Distinguish clearly audible instrumentation from uncertain or layered sounds.
+- Do not invent instruments, production techniques, vocal traits, structure, tempo, groove, or mix details that cannot be reasonably heard.
+- When an observation is uncertain, state the ambiguity and lower confidence instead of guessing.
+- Confidence is evidential, not decorative: HIGH only when the audio provides strong, clear support; MEDIUM when a plausible competing interpretation remains; LOW when multiple interpretations remain plausible.
 - Do not identify copyrighted songs, artists, lyric text, melodies, or distinctive protected passages. Describe musical characteristics abstractly and transformation-safely.
 - Do not quote or transcribe lyrics. Vocal analysis may describe delivery, register, texture, layering, phrasing, and role without reproducing words.
-- Generator-ready fields must be useful musical directions, not a reconstruction of copyrighted expression.
+- Generator-ready fields must preserve the major musical identity and sonic direction without reconstructing copyrighted expression.
+
+INTERNAL VALIDATION PASSES — perform silently before producing JSON
+
+PASS 1 — RAW AUDIO OBSERVATION
+Before assigning genre labels, establish what is actually audible:
+- rhythmic pulse and groove
+- drums/percussion
+- bass
+- harmonic instruments
+- melodic instruments
+- vocals
+- texture
+- section changes
+- energy changes
+Do not begin from a genre stereotype.
+
+PASS 2 — TEMPO VALIDATION
+Explicitly test:
+- half-time ambiguity
+- double-time ambiguity
+- perceived pulse
+- actual rhythmic subdivision
+- whether a listener would naturally feel the song at half or double the counted BPM
+If two tempo interpretations are plausible, report the primary perceived tempo and the alternate half/double-time interpretation in bpm.notes and detailedAnalysis.tempoAndGroove.
+Do not assign HIGH BPM confidence until half-time/double-time ambiguity has been checked.
+BPM must never use fake precision. Use approximate when stable; use a range when the pulse itself is uncertain or variable.
+
+PASS 3 — INSTRUMENT VALIDATION
+generatorReady.instruments may contain ONLY:
+- musical instruments
+- instrument-like synth parts
+- clearly musical sound sources
+Do NOT put lead vocals, backing vocals, vocal chops, risers, sweeps, impacts, transition FX, reverb, delay, white noise, or generic production effects in generatorReady.instruments.
+Vocal material belongs in Vocals. FX and processing belong in Production Style or Additional Instructions.
+Instrument descriptions should be specific only when the recording supports it: instrument/sound source + timbre + playing style + rhythmic/arrangement role + sonic character.
+If the identity is uncertain, describe the ambiguity honestly, e.g. "Clean plucked electric-guitar-like or modeled plucked tone, used as a syncopated melodic accent" rather than inventing a precise instrument or technique.
+
+PASS 4 — GENRE / STYLE CROSS-CHECK
+Before returning musicStyle, verify the label against:
+- groove
+- tempo feel
+- instrumentation
+- vocal approach
+- arrangement
+- production character
+A single trait is not enough to define the whole song. For example, a plucked synth or pumping compression alone does not justify a Slap House label.
+
+PASS 5 — ARRANGEMENT / STRUCTURE VALIDATION
+Identify only sections actually supported by audible musical change.
+Do not over-construct sections.
+When a boundary is ambiguous (for example Pre-Chorus vs Transitional Verse, or Instrumental Break vs Bridge), use cautious wording and reflect the uncertainty in confidence notes.
+
+PASS 6 — GENERATOR-READY CONSISTENCY CHECK
+Before finalizing JSON, ask internally:
+"If another music-generation system received ONLY these Generator-ready fields, would they preserve the major musical identity, groove, instrumentation, emotional direction, arrangement and production character of the source recording?"
+If not, revise the Generator-ready fields before answering.
 
 GENERATOR-READY RULES
-- musicStyle: concise but rich genre/style direction.
+- musicStyle: concise but rich genre/style direction validated against the full recording.
 - mood: emotional/vibe direction.
-- instruments: an array of descriptive instrument/sonic-role strings.
-- bpm: approximate/range/confidence/notes.
-- songStructure: ordered section labels suitable for PromptBeats Generator, e.g. ["Intro","Verse 1","Pre-Chorus","Chorus","Verse 2","Chorus","Bridge","Final Chorus","Outro"]. Use only sections supported by the audio.
+- instruments: descriptive musical sound-source strings only; exclude vocals and FX.
+- bpm: approximate/range/confidence/notes, including half/double-time ambiguity where relevant.
+- songStructure: ordered section labels suitable for PromptBeats Generator. Use only sections supported by the audio.
 - productionStyle: production, mix, space, texture, stereo, dynamics and aesthetic direction.
 - additionalInstructions: useful recreation guidance that remains abstract and copyright-safe.
 
@@ -301,8 +355,16 @@ export const analyzeSong = createServerFn({ method: "POST" })
         throw new Error("Gemini returned invalid Analyzer JSON");
       }
       const result = songAnalysisResultSchema.parse(parsed);
+      const forbiddenInstrumentPattern = /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise)\b/i;
+      const sanitizedResult: SongAnalysisResult = {
+        ...result,
+        generatorReady: {
+          ...result.generatorReady,
+          instruments: result.generatorReady.instruments.filter((item) => !forbiddenInstrumentPattern.test(item)),
+        },
+      };
       success = true;
-      return { result, model: data.model };
+      return { result: sanitizedResult, model: data.model };
     } finally {
       await recordAiUsage({
         userId: context.userId,
@@ -316,39 +378,49 @@ export const analyzeSong = createServerFn({ method: "POST" })
   });
 
 const saveAnalysisInput = z.object({
-  projectId: z.string().uuid(),
+  name: z.string().trim().min(1).max(200),
+  projectId: z.string().uuid().nullable().optional(),
   model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]),
   result: songAnalysisResultSchema,
 });
 
-export const saveSongAnalysisToProject = createServerFn({ method: "POST" })
+async function assertOwnedProject(supabase: any, userId: string, projectId: string | null | undefined) {
+  if (!projectId) return;
+  const { data: project, error } = await supabase
+    .from("prompt_projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !project) throw new Error("Project not found");
+}
+
+export const saveSongAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => saveAnalysisInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
     const supabase = context.supabase as any;
-    const { data: project, error: projectError } = await supabase
-      .from("prompt_projects")
-      .select("id")
-      .eq("id", data.projectId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (projectError || !project) throw new Error("Project not found");
+    await assertOwnedProject(supabase, context.userId, data.projectId);
 
     const { data: saved, error } = await supabase
       .from("song_analyses")
       .insert({
         user_id: context.userId,
-        project_id: data.projectId,
+        name: data.name,
+        project_id: data.projectId ?? null,
         model: data.model,
         generator_ready: data.result.generatorReady,
         detailed_analysis: data.result.detailedAnalysis,
       })
-      .select("id, project_id, model, generator_ready, detailed_analysis, created_at")
+      .select("id, name, project_id, model, generator_ready, detailed_analysis, created_at")
       .single();
     if (error) throw new Error(error.message);
     return { analysis: saved };
   });
+
+/** Backward-compatible export for callers created by the first Analyzer release. */
+export const saveSongAnalysisToProject = saveSongAnalysis;
 
 export const listSongAnalyses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -356,11 +428,38 @@ export const listSongAnalyses = createServerFn({ method: "GET" })
     const supabase = context.supabase as any;
     const { data, error } = await supabase
       .from("song_analyses")
-      .select("id, project_id, model, generator_ready, detailed_analysis, created_at")
+      .select("id, name, project_id, model, generator_ready, detailed_analysis, created_at")
       .eq("user_id", context.userId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { analyses: data ?? [] };
+  });
+
+const updateAnalysisInput = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(200).optional(),
+  projectId: z.string().uuid().nullable().optional(),
+});
+
+export const updateSongAnalysisOrganization = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => updateAnalysisInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as any;
+    if (data.projectId !== undefined) {
+      await assertOwnedProject(supabase, context.userId, data.projectId);
+    }
+    const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.projectId !== undefined) patch.project_id = data.projectId;
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { error } = await supabase
+      .from("song_analyses")
+      .update(patch)
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
   });
 
 export const deleteSongAnalysis = createServerFn({ method: "POST" })

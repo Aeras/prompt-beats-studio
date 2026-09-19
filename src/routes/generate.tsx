@@ -537,14 +537,14 @@ function GeneratePage() {
       setStructure(Array.isArray(handoff.songStructure) ? handoff.songStructure : []);
       setProduction(handoff.productionStyle?.trim() ?? "");
       setInstructions(handoff.additionalInstructions?.trim() ?? "");
-      const bpmText = handoff.bpm?.rangeMin != null && handoff.bpm?.rangeMax != null
-        ? `${handoff.bpm.rangeMin}-${handoff.bpm.rangeMax}`
-        : handoff.bpm?.approximate != null
-          ? String(handoff.bpm.approximate)
-          : "";
-      if (bpmText) {
+      const bpmValue = handoff.bpm?.approximate != null
+        ? Math.round(handoff.bpm.approximate)
+        : handoff.bpm?.rangeMin != null && handoff.bpm?.rangeMax != null
+          ? Math.round((handoff.bpm.rangeMin + handoff.bpm.rangeMax) / 2)
+          : null;
+      if (bpmValue != null && Number.isFinite(bpmValue)) {
         setBpm("Custom");
-        setCustomBpm(bpmText);
+        setCustomBpm(String(bpmValue));
       } else {
         setBpm("Auto");
         setCustomBpm("");
