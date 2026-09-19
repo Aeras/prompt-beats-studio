@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useModeration } from "@/hooks/useModeration";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
 
 export type EditableTrack = {
   id: string;
@@ -83,7 +84,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   };
   const uploadCover = async (file: File) => {
     if (!user) throw new Error(t("studio.signInCover"));
-    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const ext = validateCoverFile(file);
     const path = `${user.id}/${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("track-covers").upload(path, file, { cacheControl: "3600", upsert: false });
     if (uploadError) throw new Error(t("owner.coverUploadFailed"));
@@ -133,7 +134,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label={t("owner.lyrics")} className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
           {isUpload && <>
             <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? t("owner.replaceAudioSelected", { name: audioFile.name }) : t("owner.replaceAudio")}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? t("owner.replaceCoverSelected", { name: coverFile.name }) : t("owner.replaceCover")}</span><input type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? t("owner.replaceCoverSelected", { name: coverFile.name }) : t("owner.replaceCover")}</span><input type="file" accept={COVER_ACCEPT} onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
           </>}
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
           <div className="flex gap-3"><button onClick={save} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />} {busy ? t("owner.saving") : t("owner.save")}</button><button onClick={() => setEditing(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground">{t("owner.cancel")}</button></div>
