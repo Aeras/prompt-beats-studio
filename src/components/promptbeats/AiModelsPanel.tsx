@@ -210,7 +210,7 @@ export function AiModelsPanel() {
               <td className="px-4 py-3">{model.qualityCheckCompatible && model.qualityCheckEnabled ? <Check className="h-4 w-4 text-emerald-300" /> : <span className="text-muted-foreground">—</span>}</td>
               <td className="px-4 py-3"><Pill kind={model.status}>{statusLabel(model.status)}</Pill></td>
               <td className="px-4 py-3"><Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill></td>
-              <td className="px-4 py-3"><Pill kind={model.pricingStatus}>{pricingLabel(model.pricingStatus)}</Pill>{model.pricingStatus === "verified" && <div className="mt-1 text-xs text-muted-foreground"><span>$</span>{model.inputPricePerMillion ?? "—"} in · <span>$</span>{model.outputPricePerMillion ?? "—"} out</div>}</td>
+              <td className="px-4 py-3"><Pill kind={model.pricingStatus}>{pricingLabel(model.pricingStatus)}</Pill>{model.pricingStatus === "verified" && <div className="mt-1 text-xs text-muted-foreground"><span>$</span>{model.inputPricePerMillion ?? "—"} {t("aiModels.inputShort")} · <span>$</span>{model.outputPricePerMillion ?? "—"} {t("aiModels.outputShort")}</div>}</td>
               <td className="px-4 py-3"><button onClick={() => setEditing(model)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs hover:border-primary/40 hover:text-primary"><Pencil className="h-3.5 w-3.5" />{t("aiModels.edit")}</button></td>
             </tr>)}
           </tbody>
