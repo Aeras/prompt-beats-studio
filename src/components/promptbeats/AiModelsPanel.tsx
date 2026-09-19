@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Cpu, DollarSign, Pencil, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ function badgeClass(kind: string) {
   return "border-white/10 bg-white/5 text-muted-foreground";
 }
 
-function Pill({ children, kind }: { children: React.ReactNode; kind: string }) {
+function Pill({ children, kind }: { children: ReactNode; kind: string }) {
   return <span className={cn("inline-flex rounded-full border px-2 py-1 text-[11px]", badgeClass(kind))}>{children}</span>;
 }
 
