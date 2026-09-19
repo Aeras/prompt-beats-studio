@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, Loader2, Save, Send, ShieldAlert, Upload } from "lucide-react";
+import { AudioLines, Loader2, Save, Send, ShieldAlert, Trash2, Upload } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import {
   SONG_ANALYZER_MODELS,
   type SongAnalysisResult,
 } from "@/lib/song-analyzer.functions";
+import { clearAnalyzerSessionAudio, loadAnalyzerSessionAudio, saveAnalyzerSessionAudio, sweepStaleAnalyzerAudio } from "@/lib/song-analyzer-session-audio";
 
 const ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 
@@ -75,6 +76,23 @@ function SongAnalyzerPage() {
   const [newProject, setNewProject] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [restoringAudio, setRestoringAudio] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        await sweepStaleAnalyzerAudio();
+        const restored = await loadAnalyzerSessionAudio();
+        if (!cancelled && restored) setFile(restored);
+      } catch {
+        // Analyzer still works without browser session persistence.
+      } finally {
+        if (!cancelled) setRestoringAudio(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const fileError = useMemo(() => {
     if (!file) return null;
@@ -165,21 +183,46 @@ function SongAnalyzerPage() {
 
             <label className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 px-4 py-8 text-center hover:border-accent/50">
               <Upload className="h-7 w-7 text-accent" />
-              <span className="mt-2 text-sm font-semibold">{file ? file.name : "Choose audio file"}</span>
+              <span className="mt-2 text-sm font-semibold">{restoringAudio ? "Restoring session audio…" : file ? file.name : "Choose audio file"}</span>
               <span className="mt-1 text-xs text-muted-foreground">MP3, WAV, M4A/MP4, AAC, OGG or FLAC · max 15 MB</span>
               <input
                 type="file"
                 className="hidden"
                 accept=".mp3,.wav,.m4a,.mp4,.aac,.ogg,.flac,audio/*"
                 onChange={(event) => {
-                  setFile(event.target.files?.[0] ?? null);
+                  const nextFile = event.target.files?.[0] ?? null;
+                  setFile(nextFile);
                   setResult(null);
                   setSaved(false);
                   setError(null);
+                  if (nextFile) {
+                    void saveAnalyzerSessionAudio(nextFile).catch(() => {
+                      setError("The audio is ready for analysis, but this browser could not preserve it across refresh.");
+                    });
+                  }
                 }}
               />
             </label>
             {fileError && <p className="mt-2 text-xs text-red-400">{fileError}</p>}
+            {file && !fileError && (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <p className="text-[11px] text-muted-foreground">Kept only in this browser Analyzer session so you can compare multiple models without uploading again.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    setResult(null);
+                    setResultModel(null);
+                    setSaved(false);
+                    setError(null);
+                    void clearAnalyzerSessionAudio().catch(() => undefined);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300"
+                >
+                  <Trash2 className="h-3 w-3" /> Clear audio
+                </button>
+              </div>
+            )}
 
             <label className="mt-5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Analyzer model
