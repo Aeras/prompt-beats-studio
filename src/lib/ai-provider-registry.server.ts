@@ -215,7 +215,11 @@ function classifyHttpFailure(status: number): ProbeOutcome {
 
 function validProbeJson(text: string, operation: "generator" | "quality_check"): boolean {
   try {
-    const value = JSON.parse(text) as Record<string, unknown>;
+    const trimmed = text.trim();
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start < 0 || end < start) return false;
+    const value = JSON.parse(trimmed.slice(start, end + 1)) as Record<string, unknown>;
     if (operation === "generator") return typeof value.title === "string" && typeof value.lyrics === "string";
     return typeof value.passed === "boolean" && typeof value.score === "number";
   } catch {
@@ -259,7 +263,7 @@ async function probeModel(
           model: modelId,
           instructions: system,
           input: prompt,
-          max_output_tokens: 120,
+          max_output_tokens: 256,
           text: { format: { type: "json_schema", name: "promptbeats_probe", strict: true, schema } },
         }),
       });
@@ -318,7 +322,7 @@ async function probeModel(
           systemInstruction: { parts: [{ text: system }] },
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: schema,
+            responseSchema: JSON.parse(JSON.stringify(schema).replace(/"type":"(object|string|number|boolean)"/g, (_match, type) => `"type":"${String(type).toUpperCase()}"`)),
             maxOutputTokens: 120,
           },
         }),
