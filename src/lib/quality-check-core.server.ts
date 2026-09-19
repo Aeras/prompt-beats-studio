@@ -676,9 +676,14 @@ export async function runDurableQualityCheck(
   records: DurableQualityUsageRecord[];
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
-  const model = await providerLayer.getModelForUser(userId, data.qualityCheckModel ?? undefined);
-  const provider = providerLayer.providerOf(model);
-  const call = providerLayer.modelCaller(model);
+  const resolved = await providerLayer.resolveAiModelForUser(
+    userId,
+    "quality_check",
+    data.qualityCheckModel ?? undefined,
+  );
+  const model = resolved.model;
+  const provider = resolved.provider;
+  const call = providerLayer.modelCaller(model, provider);
   const records: DurableQualityUsageRecord[] = [];
 
   await beforeProvider({ provider, model });
@@ -690,7 +695,7 @@ export async function runDurableQualityCheck(
       prompt: buildQualityPrompt(data),
       maxTokens: 8192,
       schema: providerLayer.QUALITY_SCHEMA,
-      reasoningEffort: "high",
+      reasoningEffort: resolved.reasoningEffort ?? "high",
     });
   } catch (err) {
     records.push({ operation: "quality_check", provider, model, usage: null, success: false });
