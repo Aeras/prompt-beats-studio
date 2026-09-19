@@ -156,36 +156,60 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/95 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label={t("editProfile.title")} onClick={() => closeModal()}>
-          <div className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-3xl border border-white/10 bg-[#0b0b0f] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3"><h2 className="font-display text-lg font-bold">{t("editProfile.title")}</h2><button aria-label={t("common.close")} onClick={() => closeModal()} className="text-muted-foreground transition-colors hover:text-foreground"><X className="h-4 w-4" /></button></div>
-
-            <div className="mt-5 space-y-3">
-              <div className="space-y-2 rounded-2xl border border-white/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("preferences.title")}</p>
-                <LanguageSelector className="border-0 bg-transparent p-0" />
-                <p className="text-[11px] leading-snug text-muted-foreground">{t("preferences.languageHint")}</p>
-              </div>
-
-              <div className="glass flex items-center gap-4 rounded-2xl p-4">
-                <img src={avatarPreview ?? getUserAvatarUrl(profile.avatar_url)} alt={t("editProfile.avatarPreview")} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-primary/60" />
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Upload className="h-4 w-4" />{avatarFile ? avatarFile.name.slice(0, 24) : t("onboarding.uploadAvatar")}<input type="file" accept="image/*" className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} /></label>
-              </div>
-
-              <input value={name} onChange={(e) => setName(e.target.value.slice(0, 60))} placeholder={t("editProfile.displayName")} aria-label={t("editProfile.displayName")} className={inputClass} />
-              <textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 500))} placeholder={t("editProfile.bioPlaceholder")} aria-label={t("editProfile.bio")} rows={4} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
-              <input value={website} onChange={(e) => setWebsite(e.target.value.slice(0, 300))} placeholder={t("editProfile.websiteOptional")} aria-label={t("editProfile.website")} className={inputClass} />
-              <input value={instagram} onChange={(e) => setInstagram(e.target.value.slice(0, 300))} placeholder={t("editProfile.instagramOptional")} aria-label={t("editProfile.instagram")} className={inputClass} />
-              <input value={tiktok} onChange={(e) => setTiktok(e.target.value.slice(0, 300))} placeholder={t("editProfile.tiktokOptional")} aria-label={t("editProfile.tiktok")} className={inputClass} />
-              <input value={xUrl} onChange={(e) => setXUrl(e.target.value.slice(0, 300))} placeholder={t("editProfile.twitterOptional")} aria-label={t("editProfile.twitter")} className={inputClass} />
-              <input value={youtube} onChange={(e) => setYoutube(e.target.value.slice(0, 300))} placeholder={t("editProfile.youtubeOptional")} aria-label={t("editProfile.youtube")} className={inputClass} />
-
-              <DonationSettingsEditor />
-
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-2 backdrop-blur-md sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={t("editProfile.title")} onClick={() => closeModal()}>
+          <div className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b0f] shadow-2xl sm:max-h-[92vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
+              <div><h2 className="font-display text-xl font-bold">{t("editProfile.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("editProfile.settingsHint")}</p></div>
+              <button aria-label={t("common.close")} onClick={() => closeModal()} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/40 hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
 
-            {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}
-            <button onClick={save} disabled={busy || !name.trim()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? t("profile.saving") : t("profile.save")}</button>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+              <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+                <div className="space-y-5">
+                  <section className="glass space-y-4 rounded-2xl border border-white/10 p-4 sm:p-5">
+                    <div><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("editProfile.profileSection")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("editProfile.profileSectionHint")}</p></div>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <img src={avatarPreview ?? getUserAvatarUrl(profile.avatar_url)} alt={t("editProfile.avatarPreview")} width={88} height={88} className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-primary/60 sm:h-24 sm:w-24" />
+                      <div className="min-w-0">
+                        <p className="mb-2 text-xs font-medium text-foreground">{t("editProfile.avatar")}</p>
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Upload className="h-4 w-4" />{avatarFile ? avatarFile.name.slice(0, 28) : t("editProfile.uploadAvatar")}<input type="file" accept="image/*" className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} /></label>
+                      </div>
+                    </div>
+                    <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.displayName")}</span><input value={name} onChange={(e) => setName(e.target.value.slice(0, 60))} placeholder={t("editProfile.displayName")} className={inputClass} /></label>
+                    <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.bio")}</span><textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 500))} placeholder={t("editProfile.bioPlaceholder")} rows={5} className="w-full resize-y rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" /></label>
+                  </section>
+
+                  <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+                    <div><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("preferences.title")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("preferences.languageHint")}</p></div>
+                    <LanguageSelector className="border-white/10 bg-black/20" />
+                  </section>
+                </div>
+
+                <div className="space-y-5">
+                  <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+                    <div><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("editProfile.socialSection")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("editProfile.socialSectionHint")}</p></div>
+                    <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.website")}</span><input value={website} onChange={(e) => setWebsite(e.target.value.slice(0, 300))} placeholder={t("editProfile.websiteOptional")} className={inputClass} /></label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.instagram")}</span><input value={instagram} onChange={(e) => setInstagram(e.target.value.slice(0, 300))} placeholder={t("editProfile.instagramOptional")} className={inputClass} /></label>
+                      <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.tiktok")}</span><input value={tiktok} onChange={(e) => setTiktok(e.target.value.slice(0, 300))} placeholder={t("editProfile.tiktokOptional")} className={inputClass} /></label>
+                      <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.twitter")}</span><input value={xUrl} onChange={(e) => setXUrl(e.target.value.slice(0, 300))} placeholder={t("editProfile.twitterOptional")} className={inputClass} /></label>
+                      <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.youtube")}</span><input value={youtube} onChange={(e) => setYoutube(e.target.value.slice(0, 300))} placeholder={t("editProfile.youtubeOptional")} className={inputClass} /></label>
+                    </div>
+                  </section>
+
+                  <div>
+                    <div className="mb-2 px-1"><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("editProfile.supportSection")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("editProfile.supportSectionHint")}</p></div>
+                    <DonationSettingsEditor />
+                  </div>
+                </div>
+              </div>
+              {error && <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center text-xs text-destructive">{error}</p>}
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 bg-black/30 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button type="button" onClick={() => closeModal()} disabled={busy} className="rounded-xl border border-white/10 px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-50">{t("common.cancel")}</button>
+              <button onClick={save} disabled={busy || !name.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-6 py-2.5 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? t("profile.saving") : t("editProfile.saveChanges")}</button>
+            </div>
           </div>
         </div>, document.body,
       )}
