@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Heart, Loader2, Upload, UserRoundPen, X } from "lucide-react";
+import { Loader2, Upload, UserRoundPen, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,8 +23,6 @@ type EditableProfile = {
   tiktok_url?: string | null;
   x_url?: string | null;
   youtube_url?: string | null;
-  donation_provider?: string | null;
-  donation_url?: string | null;
   profile_completed?: boolean;
 };
 
@@ -43,8 +41,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [tiktok, setTiktok] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [youtube, setYoutube] = useState("");
-  const [paypalUrl, setPaypalUrl] = useState("");
-  const [revolutUrl, setRevolutUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,8 +54,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setTiktok(profile.tiktok_url || "");
     setXUrl(profile.x_url || "");
     setYoutube(profile.youtube_url || "");
-    setPaypalUrl(profile.donation_provider === "paypal" ? profile.donation_url || "" : "");
-    setRevolutUrl(profile.donation_provider === "revolut" ? profile.donation_url || "" : "");
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
@@ -187,12 +181,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
 
               <DonationSettingsEditor />
 
-              <div className="space-y-3 rounded-2xl border border-white/5 p-4 opacity-60">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><Heart className="h-3.5 w-3.5" /> {t("editProfile.legacyDonations")}</p>
-                <input value={paypalUrl} disabled placeholder={t("editProfile.paypalOptional")} aria-label="Legacy PayPal URL" className={inputClass} />
-                <input value={revolutUrl} disabled placeholder={t("editProfile.revolutOptional")} aria-label="Legacy Revolut URL" className={inputClass} />
-                <p className="text-[11px] leading-snug text-muted-foreground">{t("editProfile.legacyDonationHint")}</p>
-              </div>
             </div>
 
             {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}
