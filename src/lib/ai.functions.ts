@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
-import { AI_MODEL_IDS } from "@/lib/ai-models";
+import { AI_MODEL_IDS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
