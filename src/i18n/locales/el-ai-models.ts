@@ -62,6 +62,8 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.notCompatible": "Μη συμβατό",
   "aiModels.noModels": "Δεν βρέθηκαν εγκατεστημένα μοντέλα AI.",
   "aiModels.priceUnknown": "N/A",
+  "aiModels.inputShort": "input",
+  "aiModels.outputShort": "output",
   "aiModels.defaultProtection": "Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο πριν απενεργοποιήσεις αυτό.",
   "aiModels.manualPricingHint": "Οι τιμές καταχωρούνται χειροκίνητα σε USD ανά 1.000.000 tokens.",
   "aiModels.advancedPricing": "Προχωρημένο pricing",
