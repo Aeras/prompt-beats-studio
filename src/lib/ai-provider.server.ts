@@ -651,18 +651,29 @@ export async function getEffectiveModelAccess(
     };
   }
 
-  // Inherit mode uses the operation's configured default directly.
-  // access_policy controls explicit/manual model access, not execution of the
-  // global Generator/QC default selected by an administrator.
-  if (!isModelEligibleForOperation(configuredDefault, operation)) {
-    throw new Error("No AI model is available for this account.");
+  // Inherit mode may only expose models available to every non-admin user.
+  // Restricted defaults remain available to admins and explicitly granted
+  // custom accounts, but must not become an implicit grant to inherited users.
+  let inheritedDefault = configuredDefault;
+  if (
+    configuredDefault.accessPolicy !== "all_users" ||
+    !isModelEligibleForOperation(configuredDefault, operation)
+  ) {
+    const available = await eligibleModelsForOperation(operation);
+    const preferred = available.find(
+      (model) => model.providerModelId === DEFAULT_AI_MODEL && model.accessPolicy === "all_users",
+    );
+    const firstPublic = available.find((model) => model.accessPolicy === "all_users");
+    const fallback = preferred ?? firstPublic;
+    if (!fallback) throw new Error("No AI model is available for this account.");
+    inheritedDefault = fallback;
   }
 
   return {
-    activeModel: configuredDefault.providerModelId,
-    defaultModel: configuredDefault.providerModelId,
-    availableModels: [configuredDefault.providerModelId],
-    modelOptions: toModelOptions([configuredDefault]),
+    activeModel: inheritedDefault.providerModelId,
+    defaultModel: inheritedDefault.providerModelId,
+    availableModels: [inheritedDefault.providerModelId],
+    modelOptions: toModelOptions([inheritedDefault]),
     accessMode: "inherit",
   };
 }
