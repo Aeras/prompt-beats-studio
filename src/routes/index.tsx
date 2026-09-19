@@ -15,6 +15,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -126,7 +127,7 @@ function CreatorCard({ creator }: { creator: PublicCreatorSearchResult }) {
   const name = creator.display_name || creator.artist_alias || creator.handle || t("discover.creatorFallback");
   return (
     <Link to="/$handle" params={{ handle: `@${creator.handle}` }} className="glass flex items-center gap-3 rounded-2xl p-4 transition-colors hover:border-primary/40">
-      <img src={creator.avatar_url ?? `https://i.pravatar.cc/96?u=${creator.id}`} alt={`${name} avatar`} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-primary/40" />
+      <img src={getUserAvatarUrl(creator.avatar_url)} alt={`${name} avatar`} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-primary/40" />
       <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate font-display text-sm font-semibold">{name}</p><StaffBadge badge={creator.staff_badge} /></div><p className="truncate text-xs text-muted-foreground">@{creator.handle}</p></div>
     </Link>
   );

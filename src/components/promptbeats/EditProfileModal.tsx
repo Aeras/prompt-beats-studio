@@ -11,6 +11,7 @@ import { updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { DonationSettingsEditor } from "@/components/promptbeats/DonationSettingsEditor";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 type EditableProfile = {
   id: string;
@@ -167,7 +168,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
               </div>
 
               <div className="glass flex items-center gap-4 rounded-2xl p-4">
-                <img src={avatarPreview ?? profile.avatar_url ?? `https://i.pravatar.cc/80?u=${profile.id}`} alt={t("editProfile.avatarPreview")} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-primary/60" />
+                <img src={avatarPreview ?? getUserAvatarUrl(profile.avatar_url)} alt={t("editProfile.avatarPreview")} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-primary/60" />
                 <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Upload className="h-4 w-4" />{avatarFile ? avatarFile.name.slice(0, 24) : t("onboarding.uploadAvatar")}<input type="file" accept="image/*" className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} /></label>
               </div>
 

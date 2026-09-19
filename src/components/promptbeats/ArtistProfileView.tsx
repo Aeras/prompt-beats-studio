@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
 import { localizedAccountReasonLabel, localizedGenreLabel } from "@/i18n/ui-catalog";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 type Profile = {
   id: string;
@@ -154,7 +155,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
 
         {profile && <>
           <header className="glass-strong flex flex-col gap-4 rounded-3xl p-6 sm:flex-row sm:items-center">
-            <img src={profile.avatar_url ?? `https://i.pravatar.cc/120?u=${profile.id}`} alt={`${profile.artist_alias ?? profile.handle} avatar`} width={88} height={88} className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-primary/60" />
+            <img src={getUserAvatarUrl(profile.avatar_url)} alt={`${profile.artist_alias ?? profile.handle} avatar`} width={88} height={88} className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-primary/60" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3"><h1 className="min-w-0 truncate font-display text-2xl font-bold">{profile.artist_alias || profile.display_name || profile.handle}</h1><ShareProfileButton handle={profile.handle} /></div>
               <p className="text-xs text-muted-foreground">@{profile.handle}</p>
