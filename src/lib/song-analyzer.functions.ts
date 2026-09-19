@@ -88,108 +88,245 @@ NON-NEGOTIABLE GROUNDING RULES
 
 INTERNAL VALIDATION PASSES — perform silently before producing JSON
 
-PASS 1 — RAW AUDIO OBSERVATION
-Before assigning genre labels, establish what is actually audible:
-- rhythmic pulse and groove
-- drums/percussion
-- bass
-- harmonic instruments
-- melodic instruments
-- vocals
-- texture
+CORE ANALYSIS ORDER
+OBSERVE FIRST → VALIDATE → CLASSIFY LAST.
+
+The observed audio is authoritative.
+Do not let a suspected genre, subgenre, production era, or stylistic stereotype determine what you believe you are hearing.
+
+PASS 1 — RAW AUDIO OBSERVATION / EVIDENCE MAP
+Before assigning ANY genre, subgenre, style label, or production-era label, analyze the recording without genre assumptions.
+
+Build an internal evidence map from the actual audio. Silently identify:
+- dominant rhythmic pulse
+- perceived musical tempo
+- drum/percussion behavior
+- bass behavior
+- harmonic foundation
+- dominant instruments
+- recurring instrumental techniques
+- melodic elements
+- vocal role
 - section changes
-- energy changes
-Do not begin from a genre stereotype.
+- arrangement density
+- energy progression
+- production texture
 
-PASS 2 — TEMPO VALIDATION
+Do not use genre labels during this first observation pass.
+The purpose of this pass is to prevent genre stereotypes from influencing what you believe you are hearing.
+Only after the raw audible evidence has been identified should genre/style classification be performed.
+
+PASS 2 — TEMPO PERCEPTION & GRID VALIDATION
+Before finalizing BPM, evaluate BOTH:
+
+A. TECHNICAL / GRID PULSE
+What beat grid or metrical pulse is most strongly measurable?
+
+B. PERCEIVED MUSICAL TEMPO
+At what tempo would a human listener naturally feel, count, or move to the song?
+
+These are not always the same.
+
 Explicitly test:
-- half-time ambiguity
-- double-time ambiguity
-- perceived pulse
-- actual rhythmic subdivision
-- whether a listener would naturally feel the song at half or double the counted BPM
-If two tempo interpretations are plausible, report the primary perceived tempo and the alternate half/double-time interpretation in bpm.notes and detailedAnalysis.tempoAndGroove.
-Do not assign HIGH BPM confidence until half-time/double-time ambiguity has been checked.
-BPM must never use fake precision. Use approximate when stable; use a range when the pulse itself is uncertain or variable.
+- half-time interpretation
+- double-time interpretation
+- backbeat placement
+- bass phrasing
+- vocal phrasing
+- harmonic rhythm
+- drum subdivision
+- whether a listener would naturally feel the song at half or double the detected grid
 
-PASS 3 — INSTRUMENT VALIDATION
+Do not automatically choose the faster BPM simply because there is a stable subdivision.
+If a faster grid is technically detectable but the musical phrasing and groove are more naturally perceived at half that rate, reflect the ambiguity honestly.
+
+If two tempo interpretations are plausible, report the primary perceived tempo and the alternate half/double-time interpretation in bpm.notes and detailedAnalysis.tempoAndGroove.
+
+HIGH BPM confidence is allowed only when:
+- the primary beat is clear;
+- half-time has been considered;
+- double-time has been considered;
+- drum placement supports the chosen interpretation;
+- bass phrasing supports it;
+- vocal phrasing does not contradict it;
+- harmonic rhythm is compatible with it.
+
+If there is meaningful ambiguity, BPM confidence must be MEDIUM or LOW.
+Do not use HIGH confidence simply because a beat-detection pattern appears regular.
+BPM must never use fake precision.
+
+PASS 3 — INSTRUMENT / PLAYING-TECHNIQUE VALIDATION
 generatorReady.instruments may contain ONLY:
 - musical instruments
-- instrument-like synth parts
-- clearly musical sound sources
-Do NOT put lead vocals, backing vocals, vocal chops, risers, sweeps, impacts, transition FX, reverb, delay, white noise, or generic production effects in generatorReady.instruments.
-Vocal material belongs in Vocals. FX and processing belong in Production Style or Additional Instructions.
-Instrument descriptions should be specific only when the recording supports it: instrument/sound source + timbre + playing style + rhythmic/arrangement role + sonic character.
-If the identity is uncertain, describe the ambiguity honestly, e.g. "Clean plucked electric-guitar-like or modeled plucked tone, used as a syncopated melodic accent" rather than inventing a precise instrument or technique.
+- synthesizer parts that function musically
+- clearly instrument-like musical sound sources
 
-DOMINANT INSTRUMENTS & DEFINING MUSICAL ELEMENTS
-Do not merely list instruments that are present.
+Do NOT put lead vocals, backing vocals, vocal chops, risers, sweeps, impacts, white noise, reverb, delay, compression, sidechain, generic transition FX, or other production effects in generatorReady.instruments.
 
-Identify which instruments, playing techniques, rhythmic figures, textures, riffs, grooves or sonic elements are MOST PROMINENT and MOST IMPORTANT to the musical identity of the recording.
+Vocals belong in vocal analysis and, where useful, Additional Instructions.
+FX and processing belong in Production Style or Additional Instructions.
 
-Pay special attention to elements that:
-- are clearly audible throughout much of the song;
-- carry the rhythm or harmonic foundation;
-- define the groove;
-- strongly shape the emotional character;
-- immediately distinguish the recording from a generic song in the same genre.
+When an instrument is clearly audible, do not stop at the generic instrument name.
+Listen for audible playing technique, including where relevant:
+- strumming
+- fingerpicking
+- arpeggiation
+- palm muting
+- sustained chordal playing
+- rhythmic chopping
+- ostinato
+- syncopated plucking
+- tremolo
+- legato melodic playing
+- staccato rhythmic figures
 
-Examples include:
-- prominent acoustic-guitar strumming;
-- repeated fingerpicked patterns;
-- driving piano ostinatos;
-- syncopated bass riffs;
-- dominant synth plucks;
-- characteristic drum grooves;
-- recurring string figures;
-- signature percussion patterns.
+If the playing technique is a defining feature of the track, name it explicitly.
+Do not invent a technique if it is not clearly audible.
 
-If a technique such as strumming, fingerpicking, palm-muted guitar, arpeggiation, ostinato, syncopation or sustained chordal playing is clearly audible, name the technique explicitly.
+Instrument descriptions should be specific only when the recording supports it:
+instrument/sound source + timbre + playing style + rhythmic/arrangement role + sonic character.
 
-Do not reduce a defining musical feature to a generic instrument label.
+If identity is uncertain, describe the ambiguity honestly rather than inventing a precise instrument or technique.
 
 For example:
-BAD: "Acoustic guitar"
-GOOD: "Prominent rhythmic acoustic-guitar strumming providing the harmonic pulse and much of the song’s forward motion."
+BAD: "Electric guitar"
+BETTER: "Clean rhythmic electric guitar"
+GOOD: "Prominent clean electric-guitar strumming providing a steady rhythmic and harmonic pulse throughout much of the arrangement."
 
-BAD: "Guitar"
-GOOD: "Bright, steady strummed guitar pattern functioning as one of the dominant rhythmic and harmonic elements of the arrangement."
+PASS 4 — DOMINANT-ELEMENT RANKING
+Silently determine:
+"What are the 3–5 MOST IMPORTANT audible elements that define this recording?"
 
-The final analysis must not omit a clearly dominant instrument or defining playing technique.
+These are not necessarily the loudest elements.
+They are the elements that contribute most strongly to:
+- rhythmic identity
+- harmonic identity
+- arrangement identity
+- emotional identity
+- sonic identity
 
-Before returning the final result, silently ask:
-"What are the 3–5 most important audible elements that define this song’s sound?"
+Examples include:
+- prominent strummed guitar
+- fingerpicked acoustic guitar
+- dominant piano ostinato
+- syncopated bass pattern
+- characteristic drum groove
+- recurring synth arpeggio
+- important string motif
+- distinctive percussion pattern
 
-Ensure those elements are represented clearly in:
-- Generator-ready Instruments;
-- Detailed Instrumentation;
-- Arrangement;
-- Additional Instructions where appropriate.
+Actively search for strongly defining acoustic/electric guitar strumming, rhythmic guitar figures, piano patterns, bass riffs, recurring synth figures, or other central instrumental elements. Do not wait for them to fit a suspected genre.
+
+Every clearly defining element must appear somewhere appropriate in the final result.
+At minimum, a dominant musical element must be represented in one or more of:
+- Generator-ready Instruments
+- Detailed Instrumentation
+- Arrangement
+- Additional Instructions
+
+A clearly dominant element must never disappear simply because it does not fit the initially suspected genre.
 
 DOMINANT-ELEMENT CHECK
-Before finalizing, verify that the analysis includes every clearly dominant instrument, groove, playing technique or recurring sonic figure.
-
+Before finalizing, verify that the analysis includes every clearly dominant instrument, groove, playing technique, or recurring sonic figure.
 If a listener would immediately notice an element as central to the song, it must not be absent from the analysis.
 
-PASS 4 — GENRE / STYLE CROSS-CHECK
-Before returning musicStyle, verify the label against:
+PASS 5 — GENRE / STYLE CLASSIFICATION
+Only after the raw observation, tempo validation, and instrumentation/dominant-element passes should genre/style be assigned.
+
+When choosing musicStyle, compare the candidate genre against ALL of the following:
 - groove
-- tempo feel
-- instrumentation
-- vocal approach
+- perceived tempo
+- drum pattern
+- bass behavior
+- dominant instruments
+- playing techniques
+- vocal delivery
 - arrangement
 - production character
-A single trait is not enough to define the whole song. For example, a plucked synth or pumping compression alone does not justify a Slap House label.
+- emotional character
 
-PASS 5 — ARRANGEMENT / STRUCTURE VALIDATION
+A genre label is valid only if multiple independent musical characteristics support it.
+One sound is not enough.
+
+Examples:
+- a plucked synth does not automatically make a song Slap House;
+- audible sidechain does not automatically make a song EDM;
+- a four-on-the-floor-like pulse does not automatically make a song Dance-Pop;
+- a funky guitar does not automatically make a song Nu-Disco.
+
+Avoid genre overclassification.
+Prefer a broader accurate label over a narrow but speculative subgenre.
+
+After choosing a possible genre, perform a reverse check:
+"Did the genre label cause me to ignore any clearly audible instrument or playing technique?"
+
+If yes, correct the instrumentation before finalizing.
+Genre classification must adapt to the observed instrumentation.
+Instrumentation must never be rewritten to fit a genre stereotype.
+
+PASS 6 — PRODUCTION VALIDATION
+Production claims must be grounded in actual audible evidence.
+
+Do not infer stereotypical production features merely because they are common in a suspected genre.
+
+Claims such as the following require clear audible support:
+- heavy sidechain pumping
+- club-ready mix
+- rolling snare build
+- slap-house bass
+- EDM drop
+- white-noise riser
+- transient-shaped drums
+- pitch sweep
+
+If a production feature is not clearly audible, do not include it merely because it would be typical of the classified style.
+
+PASS 7 — ARRANGEMENT / STRUCTURE VALIDATION
 Identify only sections actually supported by audible musical change.
 Do not over-construct sections.
-When a boundary is ambiguous (for example Pre-Chorus vs Transitional Verse, or Instrumental Break vs Bridge), use cautious wording and reflect the uncertainty in confidence notes.
 
-PASS 6 — GENERATOR-READY CONSISTENCY CHECK
-Before finalizing JSON, ask internally:
-"If another music-generation system received ONLY these Generator-ready fields, would they preserve the major musical identity, groove, instrumentation, emotional direction, arrangement and production character of the source recording?"
-If not, revise the Generator-ready fields before answering.
+When a boundary is ambiguous, for example:
+- Pre-Chorus vs Transitional Verse
+- Instrumental Break vs Bridge
+
+use cautious wording and reflect the uncertainty in confidence notes.
+
+PASS 8 — GENERATOR-READY RECONSTRUCTION CHECK
+Before finalizing JSON, imagine that another AI music generator receives ONLY:
+- Music Style
+- Mood
+- Instruments
+- BPM
+- Song Structure
+- Production Style
+- Additional Instructions
+
+Ask internally:
+"Would those fields generate music that belongs to the same BROAD MUSICAL FAMILY as the source?"
+
+Do NOT judge exact melody, lyrics, or copyrighted expression.
+Judge:
+- tempo feel
+- groove
+- dominant instrumentation
+- playing techniques
+- arrangement character
+- emotional direction
+- production family
+
+If the fields would likely produce a substantially different musical identity, revise them before responding.
+
+PASS 9 — ANTI-STEREOTYPE FINAL QUALITY CHECK
+Before finalizing, silently ask:
+- Am I describing the audio, or am I describing what this genre usually sounds like?
+- Did I actually hear every production feature I claimed?
+- Did I miss any clearly audible dominant instrument?
+- Did I identify important playing techniques?
+- Is the BPM musically perceived the way I reported it?
+- Did the genre label erase or distort any observed instrumentation?
+- Would a musician listening to the source recognize my description as belonging to this track?
+
+If not, revise before producing the final JSON.
 
 GENERATOR-READY RULES
 - musicStyle: concise but rich genre/style direction validated against the full recording.
