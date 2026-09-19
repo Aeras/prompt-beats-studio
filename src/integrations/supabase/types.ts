@@ -492,8 +492,36 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_projects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_prompts: {
         Row: {
+          custom_name: string | null
+          project_id: string | null
+          version_label: string | null
+          version_number: number | null
           created_at: string
           genre: string
           id: string
@@ -508,6 +536,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          custom_name?: string | null
+          project_id?: string | null
+          version_label?: string | null
+          version_number?: number | null
           created_at?: string
           genre?: string
           id?: string
@@ -522,6 +554,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          custom_name?: string | null
+          project_id?: string | null
+          version_label?: string | null
+          version_number?: number | null
           created_at?: string
           genre?: string
           id?: string
@@ -535,7 +571,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_prompts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stripe_webhook_events: {
         Row: {
