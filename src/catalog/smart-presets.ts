@@ -26,8 +26,26 @@ export type SmartPreset = {
   searchTerms?: string[];
 };
 
+export type CulturalRegionId =
+  | "europe"
+  | "mena"
+  | "subsaharan-africa"
+  | "south-asia"
+  | "east-asia"
+  | "southeast-asia"
+  | "latin-america-caribbean"
+  | "north-america"
+  | "oceania"
+  | "other";
+
+export type CulturalRegion = {
+  id: CulturalRegionId;
+  name: { en: string; el: string };
+};
+
 export type CulturalStyle = {
   id: string;
+  region: CulturalRegionId;
   name: { en: string; el: string };
   musicStyles: string[];
   instruments: string[];
@@ -120,29 +138,212 @@ export const SMART_PRESETS: SmartPreset[] = [
   },
 ];
 
-export const CULTURAL_STYLES: CulturalStyle[] = [
-  { id:"greek", name:{en:"Greek",el:"Ελληνικό"}, musicStyles:["Folk"], instruments:["Bouzouki","Acoustic Guitar","Accordion","Percussion"], productionStyle:"Greek popular/folk character with bouzouki-led melodic identity, organic rhythm section and warm live-room feel.", additionalInstructions:"Use authentic Greek popular/folk phrasing and instrumentation without changing the lyrics language." },
-  { id:"balkan", name:{en:"Balkan",el:"Βαλκανικό"}, musicStyles:["Folk"], instruments:["Brass","Accordion","Clarinet","Percussion"], productionStyle:"Balkan folk/popular character with energetic brass or clarinet lines, accordion support and lively acoustic percussion.", additionalInstructions:"Keep the rhythmic and instrumental identity distinctly Balkan." },
-  { id:"turkish", name:{en:"Turkish",el:"Τουρκικό"}, musicStyles:["Folk"], instruments:["Saz","Strings","Clarinet","Percussion"], productionStyle:"Turkish popular/folk character with saz-like plucked textures, expressive melodic ornamentation, strings and hand percussion.", additionalInstructions:"Preserve a Turkish musical fingerprint while keeping lyrics language independent." },
-  { id:"arabic", name:{en:"Arabic",el:"Αραβικό"}, musicStyles:["Folk"], instruments:["Oud","Strings","Percussion","Flute"], productionStyle:"Arabic popular/folk palette with oud-style plucked lead, expressive strings, modal melodic color and hand percussion.", additionalInstructions:"Use an Arabic musical fingerprint without assuming Arabic lyrics." },
-  { id:"russian", name:{en:"Russian / Slavic",el:"Ρωσικό / Σλαβικό"}, musicStyles:["Folk"], instruments:["Accordion","Acoustic Guitar","Strings","Percussion"], productionStyle:"Russian/Slavic folk-popular color with accordion, acoustic ensemble texture and broad lyrical melodic movement.", additionalInstructions:"Use a Slavic cultural musical identity without changing the lyrics language." },
-  { id:"celtic", name:{en:"Celtic / Irish",el:"Κέλτικο / Ιρλανδικό"}, musicStyles:["Folk"], instruments:["Violin","Flute","Acoustic Guitar","Bodhran"], productionStyle:"Celtic/Irish folk character with fiddle, flute, acoustic strings and lively frame-drum pulse.", additionalInstructions:"Keep the melodic ornaments and acoustic ensemble recognizably Celtic." },
-  { id:"nordic", name:{en:"Nordic Folk",el:"Σκανδιναβικό Folk"}, musicStyles:["Folk"], instruments:["Violin","Acoustic Guitar","Percussion","Flute"], productionStyle:"Nordic folk atmosphere with sparse acoustic textures, modal melody and spacious natural ambience.", additionalInstructions:"Favor restrained Nordic color over generic cinematic folk." },
-  { id:"iberian", name:{en:"Iberian",el:"Ιβηρικό"}, musicStyles:["Folk","Latin"], instruments:["Classical Guitar","Hand Claps","Percussion","Bass"], productionStyle:"Iberian folk/popular character with nylon-string guitar, hand percussion and expressive rhythmic accents.", additionalInstructions:"Keep the musical fingerprint Iberian without forcing Spanish lyrics." },
-  { id:"mexican", name:{en:"Mexican",el:"Μεξικανικό"}, musicStyles:["Latin","Folk"], instruments:["Acoustic Guitar","Trumpet","Violin","Bass"], productionStyle:"Mexican popular/folk ensemble color with acoustic strings, trumpet/violin accents and strong melodic phrasing.", additionalInstructions:"Use a recognizably Mexican musical palette while preserving the chosen lyrics language." },
-  { id:"brazilian", name:{en:"Brazilian",el:"Βραζιλιάνικο"}, musicStyles:["Latin"], instruments:["Classical Guitar","Percussion","Bass","Piano"], productionStyle:"Brazilian popular groove with syncopated acoustic guitar, layered percussion and warm harmonic movement.", additionalInstructions:"Use Brazilian rhythmic character without assuming Portuguese lyrics." },
-  { id:"west-african", name:{en:"West African",el:"Δυτικοαφρικανικό"}, musicStyles:["Afrobeat","Folk"], instruments:["Percussion","Electric Guitar","Bass","Drums"], productionStyle:"West African popular/folk groove with interlocking percussion, light guitar patterns and fluid bass movement.", additionalInstructions:"Keep the groove culturally grounded and do not change the selected lyrics language." },
-  { id:"indian", name:{en:"Indian",el:"Ινδικό"}, musicStyles:["Folk"], instruments:["Sitar","Tabla","Strings","Flute"], productionStyle:"Indian popular/folk color with plucked lead, tabla-style percussion, drone-aware harmony and expressive melodic ornaments.", additionalInstructions:"Use Indian musical color without assuming Hindi or another specific lyrics language." },
-  { id:"japanese", name:{en:"Japanese Traditional / Popular",el:"Ιαπωνικό Traditional / Popular"}, musicStyles:["Folk"], instruments:["Koto","Flute","Percussion","Strings"], productionStyle:"Japanese traditional/popular color with koto-like plucked textures, flute and restrained percussion in a clean modern mix.", additionalInstructions:"Use a Japanese cultural fingerprint without changing the selected lyrics language." },
-  { id:"korean", name:{en:"Korean Traditional / Popular",el:"Κορεατικό Traditional / Popular"}, musicStyles:["Folk"], instruments:["Strings","Percussion","Flute"], productionStyle:"Korean traditional/popular color blended with modern production while preserving clear acoustic and percussive identity.", additionalInstructions:"Keep cultural style independent from the lyrics language." },
+const c = (
+  id: string,
+  region: CulturalRegionId,
+  en: string,
+  el: string,
+  musicStyles: string[],
+  instruments: string[],
+  productionStyle: string,
+  additionalInstructions?: string,
+): CulturalStyle => ({
+  id,
+  region,
+  name: { en, el },
+  musicStyles,
+  instruments,
+  productionStyle,
+  additionalInstructions:
+    additionalInstructions ??
+    `Use an authentic ${en} musical fingerprint while keeping the selected lyrics language unchanged.`,
+});
+
+export const CULTURAL_REGIONS: CulturalRegion[] = [
+  { id: "europe", name: { en: "Europe", el: "Ευρώπη" } },
+  { id: "mena", name: { en: "Middle East & North Africa", el: "Μέση Ανατολή & Βόρεια Αφρική" } },
+  { id: "subsaharan-africa", name: { en: "Sub-Saharan Africa", el: "Υποσαχάρια Αφρική" } },
+  { id: "south-asia", name: { en: "South Asia", el: "Νότια Ασία" } },
+  { id: "east-asia", name: { en: "East Asia", el: "Ανατολική Ασία" } },
+  { id: "southeast-asia", name: { en: "Southeast Asia", el: "Νοτιοανατολική Ασία" } },
+  { id: "latin-america-caribbean", name: { en: "Latin America & Caribbean", el: "Λατινική Αμερική & Καραϊβική" } },
+  { id: "north-america", name: { en: "North America", el: "Βόρεια Αμερική" } },
+  { id: "oceania", name: { en: "Oceania & Pacific", el: "Ωκεανία & Ειρηνικός" } },
+  { id: "other", name: { en: "Other / Custom", el: "Άλλο / Custom" } },
 ];
+
+export const CULTURAL_STYLES: CulturalStyle[] = [
+  // Europe
+  c("greek","europe","Greek","Ελληνικό",["Folk"],["Bouzouki","Acoustic Guitar","Accordion","Percussion"],"Greek popular/folk character with bouzouki-led melodic identity, organic rhythm section, dance-derived grooves and warm live-room production."),
+  c("balkan","europe","Balkan","Βαλκανικό",["Folk"],["Brass","Accordion","Clarinet","Percussion"],"Balkan folk/popular character with lively brass or clarinet, accordion support, asymmetric or driving dance rhythms and energetic acoustic production."),
+  c("albanian","europe","Albanian","Αλβανικό",["Folk"],["Clarinet","Violin","Lute","Percussion"],"Albanian folk/popular character with ornamented lead melody, clarinet or strings, regional dance pulse and direct live-ensemble energy."),
+  c("bulgarian","europe","Bulgarian","Βουλγαρικό",["Folk"],["Gaida","Kaval","Tambura","Percussion"],"Bulgarian folk character with gaida/kaval colors, tambura texture, asymmetric meters and strong ensemble accents."),
+  c("romanian","europe","Romanian","Ρουμανικό",["Folk"],["Violin","Cimbalom","Accordion","Clarinet"],"Romanian folk/popular color with agile violin, cimbalom or accordion, ornamented melody and animated dance rhythm."),
+  c("serbian","europe","Serbian / South Slavic","Σερβικό / Νοτιοσλαβικό",["Folk"],["Accordion","Brass","Clarinet","Percussion"],"Serbian and South-Slavic folk/popular character with accordion and brass, strong dance accents and festive ensemble production."),
+  c("croatian-adriatic","europe","Croatian / Adriatic","Κροατικό / Αδριατικό",["Folk"],["Mandolin","Acoustic Guitar","Accordion","Strings"],"Croatian and Adriatic folk/popular color with acoustic strings, accordion, lyrical melody and coastal ensemble warmth."),
+  c("italian","europe","Italian","Ιταλικό",["Folk","Pop"],["Mandolin","Acoustic Guitar","Accordion","Strings"],"Italian folk/popular character with lyrical melody, mandolin or acoustic guitar, accordion and warm song-forward production."),
+  c("french","europe","French","Γαλλικό",["Folk"],["Accordion","Acoustic Guitar","Violin","Upright Bass"],"French folk/chanson-rooted character with accordion, acoustic ensemble, graceful waltz or straight-song pulse and intimate production."),
+  c("german-central-european","europe","German / Central European","Γερμανικό / Κεντροευρωπαϊκό",["Folk"],["Accordion","Brass","Acoustic Guitar","Percussion"],"Central-European folk/popular character with accordion and brass, clear dance pulse, sturdy harmonic motion and polished live-band feel."),
+  c("austrian-alpine","europe","Austrian / Alpine","Αυστριακό / Alpine",["Folk"],["Accordion","Brass","Acoustic Guitar","Percussion"],"Austrian Alpine folk character with accordion, brass, buoyant triple or duple dance patterns and bright acoustic production."),
+  c("swiss-alpine","europe","Swiss / Alpine","Ελβετικό / Alpine",["Folk"],["Accordion","Alphorn","Acoustic Guitar","Percussion"],"Swiss Alpine folk color with accordion, alphorn-like sonority, acoustic strings and spacious mountain-ensemble character."),
+  c("iberian","europe","Iberian","Ιβηρικό",["Folk","Latin"],["Classical Guitar","Hand Claps","Percussion","Bass"],"Iberian folk/popular character with nylon-string guitar, hand percussion, expressive accents and warm rhythmic production."),
+  c("portuguese-fado","europe","Portuguese / Fado","Πορτογαλικό / Fado",["Folk"],["Portuguese Guitar","Classical Guitar","Upright Bass"],"Portuguese fado-rooted character with Portuguese-guitar style picking, intimate accompaniment, rubato-aware phrasing and emotionally focused production."),
+  c("celtic-irish","europe","Celtic / Irish","Κέλτικο / Ιρλανδικό",["Folk"],["Violin","Flute","Acoustic Guitar","Bodhran"],"Celtic/Irish folk character with fiddle, flute, acoustic strings, bodhrán-style pulse and flowing ornamented melody."),
+  c("scottish","europe","Scottish","Σκωτσέζικο",["Folk"],["Bagpipes","Violin","Acoustic Guitar","Percussion"],"Scottish folk character with pipe or fiddle colors, strong dance/march pulse and open acoustic ensemble production."),
+  c("english-folk","europe","English Folk","Αγγλικό Folk",["Folk"],["Acoustic Guitar","Violin","Mandolin","Flute"],"English folk character with acoustic strings, fiddle and flute, narrative phrasing and understated natural production."),
+  c("nordic","europe","Nordic Folk","Σκανδιναβικό Folk",["Folk"],["Violin","Acoustic Guitar","Percussion","Flute"],"Nordic folk atmosphere with modal melody, bowed-string focus, restrained pulse and spacious natural ambience."),
+  c("finnish","europe","Finnish","Φινλανδικό",["Folk"],["Kantele","Violin","Accordion","Percussion"],"Finnish folk character with kantele-like plucked texture, fiddle or accordion, modal melody and clear acoustic space."),
+  c("baltic","europe","Baltic","Βαλτικό",["Folk"],["Kankles","Violin","Flute","Percussion"],"Baltic folk character with plucked-zither colors, fiddle/flute layers, modal vocal-minded melody and organic pulse."),
+  c("polish","europe","Polish","Πολωνικό",["Folk"],["Violin","Accordion","Clarinet","Percussion"],"Polish folk/popular character with violin and accordion, lively mazurka/polka-derived rhythmic energy and bright ensemble sound."),
+  c("czech-slovak","europe","Czech / Slovak","Τσέχικο / Σλοβακικό",["Folk"],["Violin","Cimbalom","Accordion","Clarinet"],"Czech/Slovak folk character with violin, cimbalom or accordion, dance-driven pulse and natural ensemble interplay."),
+  c("hungarian","europe","Hungarian","Ουγγρικό",["Folk"],["Violin","Cimbalom","Clarinet","Double Bass"],"Hungarian folk character with virtuosic violin, cimbalom color, elastic tempo feel and intense dance phrasing."),
+  c("russian-slavic","europe","Russian / Slavic","Ρωσικό / Σλαβικό",["Folk"],["Balalaika","Accordion","Strings","Percussion"],"Russian/Slavic folk-popular color with balalaika/accordion texture, broad lyrical melody and grounded ensemble rhythm."),
+  c("ukrainian","europe","Ukrainian","Ουκρανικό",["Folk"],["Bandura","Violin","Accordion","Percussion"],"Ukrainian folk character with bandura-like plucked texture, vocal-style melody, dance pulse and bright acoustic ensemble production."),
+  c("georgian","europe","Georgian","Γεωργιανό",["Folk"],["Panduri","Strings","Percussion","Choir"],"Georgian folk character with panduri-like plucking, strong polyphonic-vocal influence, asymmetric accents and resonant ensemble production."),
+  c("armenian","europe","Armenian","Αρμενικό",["Folk"],["Duduk","Strings","Percussion","Clarinet"],"Armenian folk character with duduk-like expressive lead, modal melody, frame percussion and warm resonant production."),
+
+  // Middle East & North Africa
+  c("turkish","mena","Turkish","Τουρκικό",["Folk"],["Saz","Strings","Clarinet","Percussion"],"Turkish popular/folk character with saz-like plucked textures, expressive ornamentation, strings, clarinet and hand percussion."),
+  c("arabic","mena","Arabic","Αραβικό",["Folk"],["Oud","Qanun","Strings","Percussion"],"Arabic popular/folk palette with oud/qanun colors, modal melodic movement, ornamented strings and layered hand percussion."),
+  c("levantine","mena","Levantine","Λεβαντίνικο",["Folk"],["Oud","Qanun","Violin","Darbuka"],"Levantine folk/popular character with oud, qanun, violin and darbuka, lyrical maqam-inspired phrasing and danceable percussion."),
+  c("palestinian-jordanian","mena","Palestinian / Jordanian","Παλαιστινιακό / Ιορδανικό",["Folk"],["Oud","Mijwiz","Darbuka","Percussion"],"Palestinian/Jordanian folk character with dabke-rooted pulse, reed or oud colors, strong communal accents and live percussion."),
+  c("lebanese","mena","Lebanese","Λιβανέζικο",["Folk","Pop"],["Oud","Violin","Darbuka","Synth"],"Lebanese folk/popular character blending Arabic melodic ornamentation, darbuka pulse and polished modern-pop arrangement."),
+  c("syrian","mena","Syrian","Συριακό",["Folk"],["Oud","Qanun","Violin","Percussion"],"Syrian folk/classical-popular color with oud, qanun, violin, modal phrasing and refined hand-percussion support."),
+  c("iraqi","mena","Iraqi","Ιρακινό",["Folk"],["Oud","Santur","Joza","Percussion"],"Iraqi folk/popular character with maqam-informed melody, oud/santur colors, expressive bowed texture and measured percussion."),
+  c("persian","mena","Persian / Iranian","Περσικό / Ιρανικό",["Folk"],["Setar","Santur","Kamancheh","Tombak"],"Persian/Iranian folk character with setar/santur, kamancheh-like expression, intricate modal melody and tombak-style rhythmic detail."),
+  c("kurdish","mena","Kurdish","Κουρδικό",["Folk"],["Saz","Duduk","Daf","Percussion"],"Kurdish folk character with saz or wind lead, daf/frame-drum drive, modal melodic contour and communal dance energy."),
+  c("israeli-hebrew","mena","Israeli / Hebrew Folk","Ισραηλινό / Hebrew Folk",["Folk"],["Acoustic Guitar","Clarinet","Violin","Percussion"],"Israeli/Hebrew folk character with acoustic ensemble, clarinet/violin color, circle-dance pulse and clear melodic hooks."),
+  c("klezmer","mena","Klezmer / Ashkenazi","Klezmer / Ashkenazi",["Folk"],["Clarinet","Violin","Accordion","Double Bass"],"Klezmer/Ashkenazi character with expressive clarinet and violin, accordion, elastic dance rhythm and lively ornamentation."),
+  c("egyptian","mena","Egyptian","Αιγυπτιακό",["Folk","Pop"],["Oud","Strings","Darbuka","Accordion"],"Egyptian popular/folk character with oud, lush strings, darbuka, accordion color and strong melodic vocal framing."),
+  c("maghreb","mena","Maghreb / North African","Maghreb / Βορειοαφρικανικό",["Folk"],["Oud","Guembri","Percussion","Violin"],"Maghreb folk/popular character with plucked strings, guembri-like low end, hand percussion and cyclical groove."),
+  c("moroccan","mena","Moroccan","Μαροκινό",["Folk"],["Guembri","Oud","Qraqeb","Percussion"],"Moroccan folk/popular character with guembri, metallic qraqeb-style accents, hand percussion and hypnotic cyclical rhythm."),
+  c("algerian","mena","Algerian","Αλγερινό",["Folk"],["Mandole","Accordion","Percussion","Violin"],"Algerian folk/popular character with mandole/accordion colors, rai-influenced rhythmic drive and expressive melodic phrasing."),
+  c("tunisian","mena","Tunisian","Τυνησιακό",["Folk"],["Oud","Mezoued","Percussion","Violin"],"Tunisian folk/popular character with oud or mezoued-like reed color, hand percussion and North-African modal phrasing."),
+  c("amazigh","mena","Amazigh / Berber","Βερβερικό / Amazigh",["Folk"],["Bendir","Flute","Lute","Percussion"],"Amazigh/Berber folk character with frame drums, reed/flute color, repetitive call-and-response energy and earthy acoustic production."),
+  c("sudanese-nubian","mena","Sudanese / Nubian","Σουδανικό / Nubian",["Folk","Pop"],["Oud","Lyre","Percussion","Bass"],"Sudanese/Nubian character with pentatonic melodic color, oud or lyre textures, syncopated percussion and warm flowing groove."),
+
+  // Sub-Saharan Africa
+  c("west-african","subsaharan-africa","West African","Δυτικοαφρικανικό",["Afrobeat","Folk"],["Percussion","Electric Guitar","Bass","Kora"],"West African folk/popular groove with interlocking percussion, kora/guitar figures, fluid bass and call-and-response melodic motion."),
+  c("mande","subsaharan-africa","Mandé","Mandé",["Folk"],["Kora","Balafon","Ngoni","Percussion"],"Mandé musical character with kora, balafon and ngoni-like textures, layered polyrhythm and cyclical melodic development."),
+  c("griot","subsaharan-africa","Griot Tradition","Griot",["Folk"],["Kora","Ngoni","Percussion","Voice"],"Griot-rooted acoustic character with kora/ngoni accompaniment, narrative phrasing, cyclical pulse and responsive ensemble texture."),
+  c("nigerian","subsaharan-africa","Nigerian / West African Popular","Νιγηριανό / West African Popular",["Afrobeat","Pop"],["Percussion","Electric Guitar","Bass","Electronic Drums"],"Nigerian popular character with syncopated percussion, light guitar, elastic bass and contemporary Afro-pop production."),
+  c("ghanaian","subsaharan-africa","Ghanaian","Γκανέζικο",["Folk","Afrobeat"],["Highlife Guitar","Percussion","Brass","Bass"],"Ghanaian highlife-rooted character with interlocking guitar, brass accents, danceable percussion and buoyant bass."),
+  c("ethiopian-eritrean","subsaharan-africa","Ethiopian / Eritrean","Αιθιοπικό / Ερυθραϊκό",["Folk"],["Krar","Masenqo","Percussion","Keyboard"],"Ethiopian/Eritrean character with pentatonic modal language, krar/masenqo colors, distinctive groove and spacious melodic phrasing."),
+  c("east-african-swahili","subsaharan-africa","East African / Swahili","Ανατολικοαφρικανικό / Swahili",["Folk","Pop"],["Percussion","Electric Guitar","Bass","Keyboard"],"East-African/Swahili popular character with flowing guitar, layered percussion, melodic bass and warm dance-oriented production."),
+  c("kenyan","subsaharan-africa","Kenyan","Κενυατικό",["Folk","Pop"],["Electric Guitar","Percussion","Bass","Drums"],"Kenyan popular/folk character with guitar-led groove, syncopated percussion, melodic bass and clean live-band production."),
+  c("tanzanian","subsaharan-africa","Tanzanian","Τανζανικό",["Folk","Pop"],["Electric Guitar","Percussion","Bass","Keyboard"],"Tanzanian popular character with Swahili melodic phrasing, guitar-driven dance groove, percussion and modern rhythmic polish."),
+  c("congolese","subsaharan-africa","Congolese","Κονγκολέζικο",["Folk","Pop"],["Electric Guitar","Bass","Percussion","Drums"],"Congolese popular character with interlocking soukous-style guitars, agile bass, dance percussion and forward-moving groove."),
+  c("central-african","subsaharan-africa","Central African","Κεντροαφρικανικό",["Folk"],["Percussion","Thumb Piano","Guitar","Bass"],"Central-African folk/popular character with layered percussion, lamellophone or guitar figures, cyclical rhythm and communal melodic interplay."),
+  c("southern-african","subsaharan-africa","Southern African","Νοτιοαφρικανικό",["Folk","Pop"],["Percussion","Guitar","Bass","Choir"],"Southern-African character with vocal harmony, guitar, layered percussion and grounded dance pulse."),
+  c("south-african","subsaharan-africa","South African","Νοτιοαφρικανικό (Νότια Αφρική)",["Folk","Pop"],["Guitar","Bass","Percussion","Choir"],"South-African popular character with strong vocal harmony, guitar/bass interplay, syncopated rhythm and modern regional production."),
+  c("zulu-xhosa","subsaharan-africa","Zulu / Xhosa","Zulu / Xhosa",["Folk"],["Choir","Percussion","Guitar","Bass"],"Zulu/Xhosa-rooted character with layered vocal harmony, call-and-response, percussion and grounded communal pulse."),
+  c("malagasy","subsaharan-africa","Malagasy","Μαλαγασιανό",["Folk"],["Valiha","Acoustic Guitar","Percussion","Bass"],"Malagasy folk character with valiha-like plucked textures, bright guitar, buoyant rhythms and airy acoustic production."),
+
+  // South Asia
+  c("indian","south-asia","Indian","Ινδικό",["Folk"],["Sitar","Tabla","Strings","Flute"],"Indian popular/folk color with raga-informed melodic ornamentation, tabla-style percussion, drone-aware harmony and expressive lead instruments."),
+  c("hindustani","south-asia","Hindustani / North Indian","Hindustani / Βόρεια Ινδία",["Folk"],["Sitar","Tabla","Sarangi","Tanpura"],"North-Indian Hindustani character with raga-oriented melodic development, sitar/sarangi color, tabla and drone texture."),
+  c("carnatic","south-asia","Carnatic / South Indian","Carnatic / Νότια Ινδία",["Folk"],["Veena","Mridangam","Violin","Flute"],"South-Indian Carnatic character with ornamented melody, veena/violin color, mridangam rhythmic detail and drone-centered texture."),
+  c("punjabi","south-asia","Punjabi","Punjabi",["Folk","Pop"],["Dhol","Tumbi","Algoza","Bass"],"Punjabi folk/popular character with dhol drive, tumbi hooks, energetic dance rhythm and punchy modern low end."),
+  c("bengali","south-asia","Bengali","Μπενγκάλι",["Folk"],["Dotara","Flute","Tabla","Harmonium"],"Bengali folk character with dotara/flute colors, lyrical melodic phrasing, tabla or hand rhythm and warm acoustic accompaniment."),
+  c("gujarati","south-asia","Gujarati","Γκουτζαρατικό",["Folk"],["Dhol","Harmonium","Flute","Percussion"],"Gujarati folk character with lively dhol/percussion, circular dance energy, bright melody and festive ensemble production."),
+  c("rajasthani","south-asia","Rajasthani","Ρατζαστανικό",["Folk"],["Sarangi","Dholak","Khartal","Flute"],"Rajasthani folk character with sarangi-like lead, dholak/khartal rhythm, desert-folk ornamentation and vivid acoustic texture."),
+  c("marathi","south-asia","Marathi","Μαράθι",["Folk"],["Dholki","Harmonium","Flute","Percussion"],"Marathi folk/popular character with dholki pulse, harmonium, strong lyric-driven melody and regional dance energy."),
+  c("pakistani","south-asia","Pakistani","Πακιστανικό",["Folk"],["Harmonium","Tabla","Dholak","Strings"],"Pakistani folk/popular character with harmonium, tabla/dholak, ornamented vocals and warm acoustic-modern blend."),
+  c("qawwali","south-asia","Qawwali / Sufi South Asian","Qawwali / Sufi Νότιας Ασίας",["Folk"],["Harmonium","Tabla","Hand Claps","Choir"],"Qawwali/Sufi South-Asian character with harmonium, hand claps, tabla, call-and-response vocals and escalating devotional intensity."),
+  c("bangladeshi","south-asia","Bangladeshi","Μπανγκλαντεσιανό",["Folk"],["Dotara","Ektara","Tabla","Flute"],"Bangladeshi folk character with dotara/ektara textures, flute, hand rhythm and lyrical riverine folk sensibility."),
+  c("sri-lankan","south-asia","Sri Lankan","Σριλανκέζικο",["Folk"],["Drums","Flute","Strings","Percussion"],"Sri-Lankan folk/popular character with distinctive hand-drumming patterns, melodic flute/string color and lively regional pulse."),
+  c("nepali","south-asia","Nepali","Νεπαλέζικο",["Folk"],["Sarangi","Madal","Flute","Acoustic Guitar"],"Nepali folk character with sarangi, madal drum, flute and acoustic strings, lilting mountain-folk melody and natural production."),
+
+  // East Asia
+  c("chinese","east-asia","Chinese","Κινέζικο",["Folk"],["Erhu","Guzheng","Dizi","Percussion"],"Chinese traditional/popular character with erhu, guzheng and dizi colors, pentatonic melodic motion and balanced modern-acoustic production."),
+  c("cantonese","east-asia","Cantonese / South Chinese","Καντονέζικο / Νότια Κίνα",["Folk"],["Gaohu","Yangqin","Dizi","Percussion"],"Cantonese/South-Chinese character with gaohu/yangqin colors, agile melodic ornamentation and light traditional percussion."),
+  c("tibetan","east-asia","Tibetan","Θιβετιανό",["Folk"],["Flute","Drums","Long Horn","Drone"],"Tibetan-rooted folk atmosphere with sustained drone, ritual wind/brass color, drums and spacious highland sonority."),
+  c("mongolian","east-asia","Mongolian","Μογγολικό",["Folk"],["Morin Khuur","Percussion","Flute","Drone"],"Mongolian folk character with morin-khuur-like bowed lead, open drones, spacious pulse and steppe-inspired resonance."),
+  c("japanese","east-asia","Japanese Traditional / Popular","Ιαπωνικό Traditional / Popular",["Folk"],["Koto","Shakuhachi","Taiko","Strings"],"Japanese traditional/popular color with koto, shakuhachi and taiko-like accents, restrained space and clean modern production."),
+  c("okinawan","east-asia","Okinawan / Ryukyuan","Okinawan / Ryukyuan",["Folk"],["Sanshin","Flute","Percussion","Strings"],"Okinawan/Ryukyuan character with sanshin-like plucking, bright pentatonic melody, hand percussion and relaxed island pulse."),
+  c("korean","east-asia","Korean Traditional / Popular","Κορεατικό Traditional / Popular",["Folk"],["Gayageum","Daegeum","Janggu","Strings"],"Korean traditional/popular character with gayageum, daegeum and janggu-like colors, flexible rhythmic phrasing and modern acoustic clarity."),
+
+  // Southeast Asia
+  c("indonesian","southeast-asia","Indonesian","Ινδονησιακό",["Folk"],["Gamelan","Flute","Percussion","Strings"],"Indonesian regional character with metallophone/gamelan colors, layered cyclic rhythm, flute and spacious ensemble texture."),
+  c("javanese-gamelan","southeast-asia","Javanese / Gamelan","Ιαβανέζικο / Gamelan",["Folk"],["Gamelan","Gong","Rebab","Flute"],"Javanese gamelan character with interlocking metallophones, gong cycles, rebab/flute color and gradual layered motion."),
+  c("balinese","southeast-asia","Balinese","Μπαλινέζικο",["Folk"],["Gamelan","Gong","Flute","Percussion"],"Balinese character with bright interlocking gamelan patterns, gong punctuation, fast rhythmic detail and dramatic ensemble dynamics."),
+  c("malaysian","southeast-asia","Malaysian","Μαλαισιανό",["Folk"],["Gambus","Gong","Flute","Percussion"],"Malaysian folk/popular character with gambus-like plucking, gong/percussion layers, flowing melody and regional dance pulse."),
+  c("filipino","southeast-asia","Filipino","Φιλιππινέζικο",["Folk"],["Rondalla Strings","Acoustic Guitar","Percussion","Flute"],"Filipino folk/popular character with rondalla-style plucked strings, acoustic guitar, lyrical melody and light dance rhythm."),
+  c("thai","southeast-asia","Thai","Ταϊλανδέζικο",["Folk"],["Khim","Ranat","Flute","Percussion"],"Thai traditional/popular character with khim/ranat colors, ornamented melody, tuned percussion and clear rhythmic articulation."),
+  c("vietnamese","southeast-asia","Vietnamese","Βιετναμέζικο",["Folk"],["Dan Bau","Dan Tranh","Flute","Percussion"],"Vietnamese folk character with dan-bau/dan-tranh-like textures, expressive bends, flute and delicate rhythmic support."),
+  c("cambodian","southeast-asia","Cambodian","Καμποτζιανό",["Folk"],["Roneat","Tro","Flute","Percussion"],"Cambodian traditional character with roneat-like tuned percussion, bowed strings, flute and cyclical ensemble rhythm."),
+  c("laotian","southeast-asia","Laotian","Λαοτινό",["Folk"],["Khene","Flute","Percussion","Strings"],"Laotian folk character with khene reed-organ color, flowing melody, light percussion and spacious acoustic texture."),
+  c("burmese","southeast-asia","Burmese / Myanmar","Βιρμανικό / Myanmar",["Folk"],["Saung","Pat Waing","Flute","Percussion"],"Burmese/Myanmar character with saung-harp color, pat-waing-style drum-circle rhythm, flute and ornate melodic phrasing."),
+
+  // Latin America & Caribbean
+  c("mexican","latin-america-caribbean","Mexican","Μεξικανικό",["Latin","Folk"],["Acoustic Guitar","Trumpet","Violin","Bass"],"Mexican popular/folk ensemble color with acoustic strings, trumpet/violin accents, strong melodic phrasing and regional dance pulse."),
+  c("mariachi-ranchera","latin-america-caribbean","Mariachi / Ranchera","Mariachi / Ranchera",["Latin","Folk"],["Trumpet","Violin","Vihuela","Guitarron"],"Mariachi/ranchera character with trumpets, violins, vihuela and guitarrón, strong cadential accents and dramatic vocal framing."),
+  c("colombian","latin-america-caribbean","Colombian","Κολομβιανό",["Latin","Folk"],["Accordion","Percussion","Bass","Acoustic Guitar"],"Colombian regional character with accordion or guitar, layered percussion, buoyant bass and dance-oriented groove."),
+  c("venezuelan","latin-america-caribbean","Venezuelan","Βενεζουελάνικο",["Latin","Folk"],["Cuatro","Harp","Maracas","Bass"],"Venezuelan folk character with cuatro, harp and maracas, agile joropo-like rhythmic motion and bright acoustic energy."),
+  c("brazilian","latin-america-caribbean","Brazilian","Βραζιλιάνικο",["Latin"],["Classical Guitar","Percussion","Bass","Piano"],"Brazilian popular groove with syncopated acoustic guitar, layered percussion, warm harmony and fluid bass movement."),
+  c("argentine","latin-america-caribbean","Argentine","Αργεντίνικο",["Latin","Folk"],["Acoustic Guitar","Bandoneon","Violin","Bass"],"Argentine folk/popular character with guitar, bandoneon or violin colors, lyrical phrasing and regional dance-derived pulse."),
+  c("tango-rio-plata","latin-america-caribbean","Tango / Río de la Plata","Tango / Río de la Plata",["Latin"],["Bandoneon","Violin","Piano","Double Bass"],"Río-de-la-Plata tango character with bandoneon, violin, piano and double bass, dramatic rubato, marcato pulse and cinematic intimacy."),
+  c("chilean","latin-america-caribbean","Chilean","Χιλιανό",["Latin","Folk"],["Acoustic Guitar","Charango","Percussion","Flute"],"Chilean folk character with acoustic guitar/charango, lyrical melody, hand percussion and roots-oriented ensemble production."),
+  c("peruvian","latin-america-caribbean","Peruvian","Περουβιανό",["Latin","Folk"],["Charango","Quena","Cajon","Acoustic Guitar"],"Peruvian folk/popular character with charango, quena and cajón, Andean/coastal rhythmic color and warm acoustic production."),
+  c("andean","latin-america-caribbean","Andean","Ανδεων",["Latin","Folk"],["Charango","Quena","Pan Flute","Percussion"],"Andean character with charango, quena/panpipe colors, highland melodic contour and steady communal dance rhythm."),
+  c("bolivian","latin-america-caribbean","Bolivian","Βολιβιανό",["Latin","Folk"],["Charango","Pan Flute","Bomobo","Percussion"],"Bolivian Andean folk character with charango, panpipes, bombo-like drum and bright highland ensemble texture."),
+  c("ecuadorian","latin-america-caribbean","Ecuadorian","Εκουαδοριανό",["Latin","Folk"],["Acoustic Guitar","Pan Flute","Violin","Percussion"],"Ecuadorian folk character with guitar, panpipe/violin color, lilting Andean pulse and intimate acoustic production."),
+  c("cuban","latin-america-caribbean","Cuban","Κουβανέζικο",["Latin"],["Piano","Trumpet","Congas","Bass"],"Cuban popular character with clave-aware rhythm, piano montuno, brass, congas and syncopated bass interplay."),
+  c("puerto-rican","latin-america-caribbean","Puerto Rican","Πορτορικανικό",["Latin"],["Cuatro","Percussion","Bass","Brass"],"Puerto-Rican character with cuatro or brass color, layered Afro-Caribbean percussion, syncopated bass and strong dance pulse."),
+  c("dominican","latin-america-caribbean","Dominican","Δομινικανό",["Latin"],["Accordion","Güira","Tambora","Bass"],"Dominican character with accordion, güira and tambora-style rhythm, fast dance energy and clean melodic bass."),
+  c("caribbean","latin-america-caribbean","Caribbean","Καραϊβικό",["Latin","Folk"],["Percussion","Bass","Guitar","Keys"],"Broad Caribbean character with syncopated percussion, buoyant bass, guitar/keys and warm dance-oriented production."),
+  c("jamaican","latin-america-caribbean","Jamaican","Τζαμαϊκανό",["Reggae"],["Electric Guitar","Bass","Drums","Organ"],"Jamaican roots/popular character with offbeat guitar, deep melodic bass, one-drop or dancehall-derived pulse and spacious production."),
+  c("haitian","latin-america-caribbean","Haitian","Αϊτινό",["Folk"],["Percussion","Guitar","Bass","Keys"],"Haitian folk/popular character with layered hand drums, guitar/keys, call-and-response energy and syncopated dance groove."),
+  c("trinidad-calypso","latin-america-caribbean","Trinidadian / Calypso","Τρινινταντιανό / Calypso",["Folk","Latin"],["Steelpan","Percussion","Bass","Brass"],"Trinidadian/calypso character with steelpan, bright percussion, buoyant bass and festive brass or melodic accents."),
+
+  // North America
+  c("american-folk","north-america","American Folk","Αμερικανικό Folk",["Folk"],["Acoustic Guitar","Banjo","Violin","Upright Bass"],"American folk character with acoustic guitar, banjo/fiddle, upright bass and direct narrative song production."),
+  c("appalachian","north-america","Appalachian","Appalachian",["Folk"],["Banjo","Violin","Acoustic Guitar","Mandolin"],"Appalachian folk character with banjo, fiddle, guitar and mandolin, modal melody and driving old-time acoustic rhythm."),
+  c("bluegrass","north-america","Bluegrass","Bluegrass",["Folk"],["Banjo","Mandolin","Violin","Upright Bass"],"Bluegrass character with rapid banjo/mandolin picking, fiddle, upright bass, close vocal-harmony feel and energetic acoustic pulse."),
+  c("cajun-zydeco","north-america","Cajun / Zydeco","Cajun / Zydeco",["Folk"],["Accordion","Violin","WashBoard","Bass"],"Cajun/zydeco character with accordion, fiddle, washboard-style rhythm, danceable two-step pulse and lively Louisiana ensemble energy."),
+  c("native-north-american","north-america","Native North American","Ιθαγενές Βορειοαμερικανικό",["Folk"],["Drum","Flute","Percussion","Voice"],"Native North-American-inspired acoustic character centered on respectful drum/flute sonorities, spacious pulse and vocal-minded melodic simplicity.","Use broad, respectful Indigenous North-American acoustic references; avoid claiming a specific tribal tradition unless the user names one."),
+  c("canadian-folk","north-america","Canadian Folk","Καναδικό Folk",["Folk"],["Acoustic Guitar","Violin","Mandolin","Upright Bass"],"Canadian folk character with acoustic strings, fiddle, narrative melody and natural roots production."),
+  c("quebecois","north-america","Québécois / French Canadian","Québécois / Γαλλοκαναδικό",["Folk"],["Violin","Accordion","Acoustic Guitar","Percussion"],"Québécois/French-Canadian folk character with fiddle, accordion, foot-percussion energy and lively dance tunes."),
+  c("inuit-arctic","north-america","Inuit / Arctic","Inuit / Αρκτικό",["Folk"],["Frame Drum","Voice","Percussion","Drone"],"Arctic/Inuit-inspired character with frame-drum pulse, voice-centered texture, sparse drone and wide open acoustic space.","Use broad Arctic/Inuit-inspired sonic references respectfully; do not imitate sacred or community-specific material."),
+
+  // Oceania & Pacific
+  c("australian-folk","oceania","Australian Folk","Αυστραλιανό Folk",["Folk"],["Acoustic Guitar","Violin","Harmonica","Percussion"],"Australian folk character with acoustic guitar, fiddle/harmonica, narrative phrasing and earthy roots production."),
+  c("aboriginal-australian","oceania","Aboriginal Australian","Aboriginal Australian",["Folk"],["Didgeridoo","Clapsticks","Percussion","Voice"],"Aboriginal-Australian-inspired character with drone, clapstick-like pulse, sparse percussion and open natural space.","Use broad respectful sonic references; do not imitate sacred, ceremonial or community-specific material."),
+  c("maori","oceania","Māori","Māori",["Folk"],["Percussion","Flute","Acoustic Guitar","Choir"],"Māori-inspired popular/folk character with strong communal vocal presence, percussion, flute colors and grounded rhythmic emphasis.","Use broad respectful Māori musical references and avoid sacred or ceremonial imitation."),
+  c("polynesian","oceania","Polynesian","Πολυνησιακό",["Folk"],["Ukulele","Percussion","Acoustic Guitar","Choir"],"Polynesian island character with ukulele/acoustic strings, layered percussion, warm vocal harmony and relaxed-to-festive groove."),
+  c("hawaiian","oceania","Hawaiian","Χαβανέζικο",["Folk"],["Ukulele","Steel Guitar","Acoustic Guitar","Percussion"],"Hawaiian popular/folk character with ukulele, steel-guitar color, gentle syncopation and warm open-air production."),
+  c("samoan","oceania","Samoan","Σαμοανικό",["Folk"],["Percussion","Ukulele","Acoustic Guitar","Choir"],"Samoan folk/popular character with communal harmony, hand percussion, acoustic strings and strong island rhythmic identity."),
+  c("tongan","oceania","Tongan","Τονγκανικό",["Folk"],["Percussion","Ukulele","Acoustic Guitar","Choir"],"Tongan folk/popular character with layered voices, hand percussion, acoustic strings and stately-to-danceable island pulse."),
+  c("melanesian","oceania","Melanesian","Μελανησιακό",["Folk"],["Percussion","Bamboo Flute","Guitar","Choir"],"Melanesian regional character with vocal harmony, bamboo/flute colors, guitar and layered hand percussion."),
+  c("micronesian","oceania","Micronesian","Μικρονησιακό",["Folk"],["Percussion","Guitar","Ukulele","Choir"],"Micronesian island character with communal vocals, guitar/ukulele, hand percussion and light cyclical groove."),
+
+  c("custom","other","Custom cultural style","Προσαρμοσμένο πολιτισμικό στυλ",["Folk"],["Acoustic Guitar","Percussion"],"User-defined regional folk/popular character with culturally appropriate instrumentation, groove and production."),
+];
+
+function customCultureFromId(culturalStyleId: string): CulturalStyle | null {
+  if (!culturalStyleId.startsWith("custom:")) return null;
+  const raw = culturalStyleId.slice("custom:".length).trim().slice(0, 60);
+  if (!raw) return CULTURAL_STYLES.find((item) => item.id === "custom") ?? null;
+  return {
+    id: culturalStyleId,
+    region: "other",
+    name: { en: raw, el: raw },
+    musicStyles: ["Folk"],
+    instruments: ["Acoustic Guitar", "Percussion"],
+    productionStyle: `${raw} regional folk/popular character with culturally appropriate instrumentation, rhythmic language and production choices.`,
+    additionalInstructions: `Use an authentic ${raw} musical fingerprint while keeping the selected lyrics language unchanged. Avoid generic world-music substitutions when specific regional traits are known.`,
+  };
+}
 
 export function resolveSmartPreset(
   preset: SmartPreset,
   culturalStyleId?: string,
 ): SmartPreset {
   if (!preset.cultural) return preset;
-  const culture = CULTURAL_STYLES.find((item) => item.id === culturalStyleId) ?? CULTURAL_STYLES[0]!;
+  const culture =
+    (culturalStyleId ? customCultureFromId(culturalStyleId) : null) ??
+    CULTURAL_STYLES.find((item) => item.id === culturalStyleId) ??
+    CULTURAL_STYLES[0]!;
   return {
     ...preset,
     musicStyles: culture.musicStyles,

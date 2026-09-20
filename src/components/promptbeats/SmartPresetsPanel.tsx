@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Search, Sparkles } from "lucide-react";
 
 import {
+  CULTURAL_REGIONS,
   CULTURAL_STYLES,
   SMART_PRESETS,
+  type CulturalRegionId,
   type SmartPreset,
   type SmartPresetCategory,
 } from "@/catalog/smart-presets";
@@ -28,6 +30,32 @@ export function SmartPresetsPanel({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SmartPresetCategory | "all">("all");
+  const selectedStyleId = culturalStyleId.startsWith("custom:") ? "custom" : culturalStyleId;
+  const selectedStyle = CULTURAL_STYLES.find((item) => item.id === selectedStyleId);
+  const [culturalRegionId, setCulturalRegionId] = useState<CulturalRegionId | "">(
+    selectedStyle?.region ?? "",
+  );
+  const customCulturalStyle = culturalStyleId.startsWith("custom:")
+    ? culturalStyleId.slice("custom:".length)
+    : "";
+
+  useEffect(() => {
+    const styleId = culturalStyleId.startsWith("custom:") ? "custom" : culturalStyleId;
+    const style = CULTURAL_STYLES.find((item) => item.id === styleId);
+    setCulturalRegionId(style?.region ?? "");
+  }, [culturalStyleId]);
+
+  const regionalStyles = useMemo(
+    () => CULTURAL_STYLES.filter((style) => style.region === culturalRegionId),
+    [culturalRegionId],
+  );
+
+  const changeCulturalRegion = (value: string) => {
+    const regionId = value as CulturalRegionId;
+    setCulturalRegionId(regionId);
+    const firstStyle = CULTURAL_STYLES.find((style) => style.region === regionId);
+    onCulturalStyleChange(firstStyle?.id === "custom" ? "custom:" : firstStyle?.id ?? "");
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
@@ -122,25 +150,64 @@ export function SmartPresetsPanel({
                   </div>
 
                   {preset.cultural && (
-                    <label className="mt-3 block">
-                      <span className="mb-1 block text-[11px] text-muted-foreground">{t("generator.presets.culturalStyle")}</span>
-                      <select
-                        value={culturalStyleId}
-                        onChange={(event) => onCulturalStyleChange(event.target.value)}
-                        className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-xs outline-none focus:border-primary/60"
-                      >
-                        {CULTURAL_STYLES.map((style) => (
-                          <option key={style.id} value={style.id} className="bg-[#0a0a0c]">{style.name[language]}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{t("generator.presets.languageIndependent")}</p>
-                    </label>
+                    <div className="mt-3 space-y-2">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] text-muted-foreground">{t("generator.presets.culturalRegion")}</span>
+                        <select
+                          value={culturalRegionId}
+                          onChange={(event) => changeCulturalRegion(event.target.value)}
+                          className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-xs outline-none focus:border-primary/60"
+                        >
+                          <option value="" disabled className="bg-[#0a0a0c]">{t("generator.presets.selectCulturalRegion")}</option>
+                          {CULTURAL_REGIONS.map((region) => (
+                            <option key={region.id} value={region.id} className="bg-[#0a0a0c]">{region.name[language]}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] text-muted-foreground">{t("generator.presets.culturalStyle")}</span>
+                        <select
+                          value={selectedStyleId}
+                          disabled={!culturalRegionId}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            onCulturalStyleChange(next === "custom" ? "custom:" : next);
+                          }}
+                          className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:opacity-50 focus:border-primary/60"
+                        >
+                          <option value="" disabled className="bg-[#0a0a0c]">{t("generator.presets.selectCulturalStyle")}</option>
+                          {regionalStyles.map((style) => (
+                            <option key={style.id} value={style.id} className="bg-[#0a0a0c]">{style.name[language]}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {selectedStyleId === "custom" && (
+                        <input
+                          value={customCulturalStyle}
+                          onChange={(event) => onCulturalStyleChange(`custom:${event.target.value.slice(0, 60)}`)}
+                          maxLength={60}
+                          placeholder={t("generator.presets.customCulturalStylePlaceholder")}
+                          aria-label={t("generator.presets.customCulturalStylePlaceholder")}
+                          className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-xs outline-none placeholder:text-muted-foreground focus:border-primary/60"
+                        />
+                      )}
+
+                      <p className="text-[10px] text-muted-foreground">{t("generator.presets.languageIndependent")}</p>
+                    </div>
                   )}
 
                   <button
                     type="button"
                     onClick={() => onApply(preset)}
-                    className="mt-3 w-full rounded-lg border border-accent/40 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+                    disabled={Boolean(
+                      preset.cultural &&
+                      (!culturalRegionId ||
+                        !selectedStyleId ||
+                        (selectedStyleId === "custom" && !customCulturalStyle.trim()))
+                    )}
+                    className="mt-3 w-full rounded-lg border border-accent/40 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {active ? t("generator.presets.reapply") : t("generator.presets.apply")}
                   </button>
