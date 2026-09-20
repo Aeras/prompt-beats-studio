@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, Wand2, FilePenLine } from "lucide-react";
@@ -336,6 +336,11 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const dirty = draft !== (project.creation_notes ?? "");
+
+  useEffect(() => {
+    setDraft(project.creation_notes ?? "");
+    setSaved(false);
+  }, [project.id, project.creation_notes]);
 
   const save = async () => {
     if (!dirty || saving) return;
