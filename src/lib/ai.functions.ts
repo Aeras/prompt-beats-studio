@@ -33,6 +33,7 @@ const generateInput = z.object({
   instructions: z.string().trim().max(2000).default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: revisionJobContextSchema.nullish(),
+  inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
 const generationOutput = z.object({
