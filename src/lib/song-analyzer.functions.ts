@@ -224,6 +224,44 @@ Keep musical instruments separate from vocals and production effects.
 Instrument evidence must describe instrument, role, audible technique where clear, timbre where clear, prominence, confidence, and evidence.
 Do not invent playing technique or instrument type.
 
+SECTION-BY-SECTION INSTRUMENT SCAN
+
+Before finalizing instrumentEvidence, inspect each major song section separately.
+
+For every section, ask:
+- Does a new instrument enter here that was not present earlier?
+- Does a previously supporting instrument become dominant here?
+- Is there a solo, lead, riff, or harmonic layer that appears only in this section?
+- Does the outro introduce or expose an instrument more clearly than earlier sections?
+
+Do not omit an instrument merely because it appears only in one important section.
+If a clearly audible instrument appears in a bridge, solo, breakdown, final chorus, or outro, include it in instrumentEvidence and describe where it occurs.
+
+GUITAR VS SYNTH DISAMBIGUATION CHECK
+
+When a bright plucked, sustained, distorted, or lead-like timbre could plausibly be either electric guitar or synthesizer, do not automatically classify it as synth.
+
+Check for audible guitar indicators such as:
+- pick attack
+- palm muting
+- fret/string articulation
+- bends
+- vibrato
+- sustained overdriven notes
+- riff phrasing
+- chord voicing characteristic of guitar
+- amplifier/distortion texture
+
+Check for synth indicators such as:
+- perfectly uniform envelope
+- quantized/retriggered note shape
+- oscillator-like timbre
+- arpeggiator regularity
+- filter-envelope behavior
+- modulation that is clearly synthetic
+
+If the evidence remains ambiguous, lower confidence and state the uncertainty rather than forcing a synth or guitar label.
+
 TEMPORAL GROUNDING
 For claims about arrangement, instrument entrances, section changes, energy shifts, solos, or changing production texture, ground the observation in an approximate part of the track whenever possible.
 
@@ -247,6 +285,8 @@ Verify that you have not omitted:
 - a contrasting acoustic vs electronic layer;
 - an important playing technique;
 - a major change in instrumentation between sections.
+
+Pay special attention to instruments that appear only in solo, bridge, breakdown, final chorus, or outro sections.
 
 Do not limit instrumentEvidence to the 3–5 dominantElements.
 dominantElements are only the most defining elements; instrumentEvidence should preserve all clearly audible musically relevant instruments with appropriate prominence and confidence.
