@@ -905,6 +905,21 @@ function GeneratePage() {
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
+  const addStructureSection = (sectionType: string) => {
+    setStructure((previous) => [...previous, sectionType]);
+    setSongBlueprint((previous) => appendBlueprintSection(buildSongBlueprint(structure, previous), sectionType));
+  };
+
+  const removeStructureSection = (structureIndex: number) => {
+    setStructure((previous) => previous.filter((_, index) => index !== structureIndex));
+    setSongBlueprint((previous) => removeBlueprintSection(buildSongBlueprint(structure, previous), structureIndex));
+  };
+
+  const clearStructure = () => {
+    setStructure([]);
+    setSongBlueprint([]);
+  };
+
   const applySongSetup = (draft: SongSetupDraft) => {
     setAdvanced(true);
     setTheme(draft.theme.trim());
@@ -1391,7 +1406,7 @@ function GeneratePage() {
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} onClear={() => { setGenres([]); setCustomGenre(""); }} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} optionsOpen={showStyleTags} onToggleOptions={() => setShowStyleTags((value) => !value)} onClear={() => { setGenres([]); setCustomGenre(""); }} />{showStyleTags && <ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} />}</> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -1407,8 +1422,8 @@ function GeneratePage() {
             )}
 
             {advanced ? <>
-              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} onClear={() => { setMoods([]); setCustomMood(""); }} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
-              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} onClear={() => { setInstruments([]); setCustomInstruments(""); }} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
+              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} optionsOpen={showMoodTags} onToggleOptions={() => setShowMoodTags((value) => !value)} onClear={() => { setMoods([]); setCustomMood(""); }} />{showMoodTags && <ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} />}<input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
+              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} optionsOpen={showInstrumentTags} onToggleOptions={() => setShowInstrumentTags((value) => !value)} onClear={() => { setInstruments([]); setCustomInstruments(""); }} />{showInstrumentTags && <ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} />}<input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} onClear={() => { setBpm("Auto"); setCustomBpm(""); }} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
