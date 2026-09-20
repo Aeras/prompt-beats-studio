@@ -41,7 +41,7 @@ describe("lyrics section parser", () => {
 
   test("replaces only the targeted repeated occurrence", () => {
     const lyrics = "[Verse]\nA\n\n[Chorus]\nHOOK\n\n[Verse]\nB\n\n[Chorus]\nHOOK";
-    const replaced = replaceLyricsSection(lyrics, "verse:2", "NEW\n\n");
+    const replaced = replaceLyricsSection(lyrics, "verse:2", "NEW");
     expect(replaced.ok).toBe(true);
     if (!replaced.ok) return;
     expect(replaced.lyrics).toBe("[Verse]\nA\n\n[Chorus]\nHOOK\n\n[Verse]\nNEW\n\n[Chorus]\nHOOK");
