@@ -370,6 +370,28 @@ export const en = {
   "generator.structure.finalChorus": "Final Chorus",
   "generator.structure.outro": "Outro",
   "generator.structure.coda": "Coda"
+,
+
+  "generator.languageSearch": "Search languages…",
+  "generator.languageNoResults": "No matching language",
+  "generator.presets.title": "Smart Presets",
+  "generator.presets.description": "Start from a curated musical fingerprint, then edit every field freely.",
+  "generator.presets.active": "Applied preset: {preset}",
+  "generator.presets.browse": "Browse presets",
+  "generator.presets.close": "Close presets",
+  "generator.presets.search": "Search presets, styles or eras…",
+  "generator.presets.apply": "Apply preset",
+  "generator.presets.reapply": "Reapply preset",
+  "generator.presets.noResults": "No matching presets",
+  "generator.presets.culturalStyle": "Cultural style / region",
+  "generator.presets.languageIndependent": "This changes the musical fingerprint only. Lyrics language stays unchanged.",
+  "generator.presets.category.all": "All",
+  "generator.presets.category.pop": "Pop",
+  "generator.presets.category.rock": "Rock",
+  "generator.presets.category.electronic": "Electronic",
+  "generator.presets.category.hiphop": "Hip-Hop / R&B",
+  "generator.presets.category.acoustic": "Acoustic / Cinematic",
+  "generator.presets.category.global": "Global / Local",
 } as const;
 
 export type TranslationKey = keyof typeof en;
