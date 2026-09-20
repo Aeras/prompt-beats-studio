@@ -431,7 +431,9 @@ const externalValidationSchema = z.object({
   referenceStyles: z.array(z.string().trim().min(1).max(500)).max(12),
   referenceTempos: z.array(z.string().trim().min(1).max(300)).max(12),
   instrumentationCredits: z.array(z.string().trim().min(1).max(1000)).max(20),
+  keyOrChordReferences: z.array(z.string().trim().min(1).max(1000)).max(20),
   productionOrArrangementNotes: z.array(z.string().trim().min(1).max(1000)).max(20),
+  releaseContext: z.array(z.string().trim().min(1).max(1000)).max(20),
   discrepancies: z.array(z.string().trim().min(1).max(1500)).max(20),
   notes: z.array(z.string().trim().min(1).max(1500)).max(20),
 });
@@ -451,7 +453,9 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
     referenceStyles: { type: "array", items: { type: "string" } },
     referenceTempos: { type: "array", items: { type: "string" } },
     instrumentationCredits: { type: "array", items: { type: "string" } },
+    keyOrChordReferences: { type: "array", items: { type: "string" } },
     productionOrArrangementNotes: { type: "array", items: { type: "string" } },
+    releaseContext: { type: "array", items: { type: "string" } },
     discrepancies: { type: "array", items: { type: "string" } },
     notes: { type: "array", items: { type: "string" } },
   },
@@ -462,7 +466,9 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
     "referenceStyles",
     "referenceTempos",
     "instrumentationCredits",
+    "keyOrChordReferences",
     "productionOrArrangementNotes",
+    "releaseContext",
     "discrepancies",
     "notes",
   ],
@@ -582,7 +588,7 @@ SEARCH / SOURCE RULES
 - Do not guess.
 - Broad style validation matters more than forcing a narrow subgenre.
 - Public BPM references are validation signals only; half/double-time mismatches are common.
-- Instrumentation credits may be reported only when supported by a reliable source.
+- Key/chord references, instrumentation credits, production/arrangement notes, album/release context, and official credits may be collected only when supported by a reliable source.
 - If external claims conflict with the audio-only result, record the discrepancy. Do not decide that the external claim overrides the audio.
 
 Return only the requested structured JSON.
