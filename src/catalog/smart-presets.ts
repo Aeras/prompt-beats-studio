@@ -142,7 +142,7 @@ export function resolveSmartPreset(
   culturalStyleId?: string,
 ): SmartPreset {
   if (!preset.cultural) return preset;
-  const culture = CULTURAL_STYLES.find((item) => item.id === culturalStyleId) ?? CULTURAL_STYLES[0];
+  const culture = CULTURAL_STYLES.find((item) => item.id === culturalStyleId) ?? CULTURAL_STYLES[0]!;
   return {
     ...preset,
     musicStyles: culture.musicStyles,
