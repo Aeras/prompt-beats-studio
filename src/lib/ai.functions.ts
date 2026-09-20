@@ -16,6 +16,10 @@ import {
   revisionJobContextSchema,
 } from "@/lib/generator-revision.shared";
 import {
+  activeSongBlueprint,
+  songBlueprintSchema,
+} from "@/lib/song-blueprint.shared";
+import {
   lyricsSectionEditJobSchema,
   lyricsSectionEditOutputSchema,
   type LyricsSectionEditContext,
@@ -35,6 +39,7 @@ const generateInput = z.object({
   generationModel: z.string().trim().min(1).max(240).nullish(),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
+  songBlueprint: songBlueprintSchema,
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
