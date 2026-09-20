@@ -114,7 +114,16 @@ function TrackPage() {
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <Link to="/" className="inline-flex text-xs text-muted-foreground transition-colors hover:text-accent">← {t("auth.backFeed")}</Link>
         {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("common.loading")}</p>}
-        {!isLoading && !track && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("trackDetail.unavailable")}</p>}
+        {!isLoading && !track && (
+          <div className="glass rounded-2xl p-8 text-center">
+            {data?.unavailableReason === "private" && data.privateTitle && <h1 className="font-display text-xl font-bold">{data.privateTitle}</h1>}
+            <p className={data?.unavailableReason === "private" ? "mt-3 text-sm text-muted-foreground" : "text-sm text-muted-foreground"}>
+              {data?.unavailableReason === "private"
+                ? (language === "el" ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό." : "The creator made this track private.")
+                : t("trackDetail.unavailable")}
+            </p>
+          </div>
+        )}
         <TrackModerationControls trackId={id} />
 
         {track && <>
