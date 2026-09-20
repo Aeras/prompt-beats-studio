@@ -4,7 +4,7 @@ import {
   CUSTOM_LANGUAGE_VALUE,
   getSongLanguageOptions,
   SONG_LANGUAGE_VALUES,
-} from "@/catalog/song-languages";
+} from "./song-languages";
 
 describe("song language catalog", () => {
   test("contains the complete ISO 639-1 language set used by the picker", () => {
