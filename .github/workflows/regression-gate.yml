@@ -34,6 +34,9 @@ jobs:
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
+      - name: Export Center tests
+        run: bun test src/lib/export-center.shared.test.ts
+
       - name: Build
         run: bun run build
 
