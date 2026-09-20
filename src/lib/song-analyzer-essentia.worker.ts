@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-declare function importScripts(...urls: string[]): void;
+import Essentia from "essentia.js/dist/essentia.js-core.es.js";
+import { EssentiaWASM } from "essentia.js/dist/essentia-wasm.es.js";
 
 const ESSENTIA_VERSION = "0.1.3";
-const WASM_URL = `https://cdn.jsdelivr.net/npm/essentia.js@${ESSENTIA_VERSION}/dist/essentia-wasm.umd.js`;
-const CORE_URL = `https://cdn.jsdelivr.net/npm/essentia.js@${ESSENTIA_VERSION}/dist/essentia.js-core.umd.js`;
 
 let essentia: any | null = null;
 
@@ -46,12 +45,7 @@ function compactTicks(values: number[], max = 128) {
 
 function ensureEssentia() {
   if (essentia) return essentia;
-  importScripts(WASM_URL, CORE_URL);
-  const scope = self as any;
-  if (!scope.EssentiaWASM || !scope.Essentia) {
-    throw new Error("Essentia.js globals were not loaded.");
-  }
-  essentia = new scope.Essentia(scope.EssentiaWASM);
+  essentia = new Essentia(EssentiaWASM);
   return essentia;
 }
 
