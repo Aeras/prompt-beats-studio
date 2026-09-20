@@ -101,6 +101,28 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.update_track_share_link(
+  _share_id uuid,
+  _include_prompt boolean,
+  _include_lyrics boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+  UPDATE public.track_share_links
+  SET include_prompt = COALESCE(_include_prompt, false),
+      include_lyrics = COALESCE(_include_lyrics, false)
+  WHERE id = _share_id
+    AND owner_id = auth.uid()
+    AND revoked_at IS NULL;
+  IF NOT FOUND THEN RAISE EXCEPTION 'active share link not found'; END IF;
+END;
+$;
+
 CREATE OR REPLACE FUNCTION public.revoke_track_share_link(_share_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -272,12 +294,14 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.create_track_share_link(uuid, boolean, boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.update_track_share_link(uuid, boolean, boolean) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.revoke_track_share_link(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.record_track_public_share(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_track_share_by_token(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.list_my_share_management() FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.create_track_share_link(uuid, boolean, boolean) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_track_share_link(uuid, boolean, boolean) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.revoke_track_share_link(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.record_track_public_share(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_track_share_by_token(text) TO anon, authenticated, service_role;
