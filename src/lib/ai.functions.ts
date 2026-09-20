@@ -2320,7 +2320,7 @@ export const listPromptProjects = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("prompt_projects")
-      .select("id, name, created_at, updated_at")
+      .select("id, name, creation_notes, created_at, updated_at")
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { projects: data ?? [] };
@@ -2333,7 +2333,7 @@ export const createPromptProject = createServerFn({ method: "POST" })
     const { data: project, error } = await context.supabase
       .from("prompt_projects")
       .insert({ user_id: context.userId, name: data.name })
-      .select("id, name, created_at, updated_at")
+      .select("id, name, creation_notes, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return { project };
@@ -2344,6 +2344,27 @@ export const renamePromptProject = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("prompt_projects").update({ name: data.name, updated_at: new Date().toISOString() }).eq("id", data.id).eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updatePromptProjectCreationNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      creationNotes: z.string().max(6000),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("prompt_projects")
+      .update({
+        creation_notes: data.creationNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

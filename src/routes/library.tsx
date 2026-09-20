@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, Wand2, FilePenLine } from "lucide-react";
@@ -11,7 +11,7 @@ import type { CreatedWith } from "@/lib/created-with";
 import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
-import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updateSavedPromptOrganization } from "@/lib/ai.functions";
+import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updatePromptProjectCreationNotes, updateSavedPromptOrganization } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
 import { deleteSongAnalysis, listSongAnalyses, updateSongAnalysisOrganization } from "@/lib/song-analyzer.functions";
 import artFallback from "@/assets/art-3.jpg";
@@ -212,7 +212,7 @@ type SavedPrompt = {
   mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
   created_at: string; updated_at: string;
 };
-type PromptProject = { id: string; name: string; created_at: string; updated_at: string };
+type PromptProject = { id: string; name: string; creation_notes: string; created_at: string; updated_at: string };
 type SongAnalysisItem = {
   id: string; name: string; project_id: string | null; model: string; created_at: string;
   generator_ready: {
@@ -244,7 +244,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
   const filtered = prompts.filter(matches);
   const filteredAnalyses = analyses.filter(matchesAnalysis);
-  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
+  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   const refresh = async () => {
@@ -305,6 +305,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
                   <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{analysisItems.length} analyses · {prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
                   <div className="flex gap-2"><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </div>
+                <ProjectCreationNotes project={openProject} />
               </div>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
             </section>;
@@ -315,7 +316,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
                 const analysisCount = analyses.filter((a) => a.project_id === project.id).length;
                 const count = promptCount + analysisCount;
                 return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
-                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} items{analysisCount ? ` · ${analysisCount} analysis` : ""}</span></span></button>
+                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} items{analysisCount ? ` · ${analysisCount} analysis` : ""}</span>{project.creation_notes.trim() && <span className="mt-1 block truncate text-[11px] text-accent/80">{project.creation_notes}</span>}</span></button>
                   <div className="flex shrink-0 gap-1"><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </article>;
               })}
@@ -324,6 +325,95 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
           {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+function ProjectCreationNotes({ project }: { project: PromptProject }) {
+  const { language } = useI18n();
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState(project.creation_notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const dirty = draft !== (project.creation_notes ?? "");
+
+  useEffect(() => {
+    setDraft(project.creation_notes ?? "");
+    setSaved(false);
+    setError("");
+  }, [project.id, project.creation_notes]);
+
+  const save = async () => {
+    if (!dirty || saving) return;
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      await updatePromptProjectCreationNotes({
+        data: { id: project.id, creationNotes: draft },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (language === "el" ? "Η αποθήκευση απέτυχε." : "Could not save notes."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-accent/20 bg-accent/[0.035] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-accent">
+            {language === "el" ? "Creation Notes" : "Creation Notes"}
+          </h3>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {language === "el"
+              ? "Ιδέες, αναφορές, αποφάσεις παραγωγής και επόμενα βήματα για αυτό το project."
+              : "Ideas, references, production decisions and next steps for this project."}
+          </p>
+        </div>
+        {saved && (
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-accent">
+            <Check className="h-3.5 w-3.5" />
+            {language === "el" ? "Αποθηκεύτηκε" : "Saved"}
+          </span>
+        )}
+      </div>
+      <textarea
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value.slice(0, 6000));
+          setSaved(false);
+          setError("");
+        }}
+        rows={5}
+        maxLength={6000}
+        placeholder={
+          language === "el"
+            ? "π.χ. κρατάμε πιο σκοτεινό verse, δοκιμή δεύτερου chorus με κιθάρες, reference παραγωγής..."
+            : "e.g. darker verse, try a guitar-led second chorus, production reference..."
+        }
+        className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 text-sm leading-5 outline-none transition-shadow placeholder:text-muted-foreground focus:border-accent/50"
+      />
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-[10px] text-muted-foreground">{draft.length}/6000</span>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || saving}
+          className="inline-flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-xs font-semibold text-accent transition-all hover:bg-accent/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          {saving
+            ? (language === "el" ? "Αποθήκευση..." : "Saving...")
+            : (language === "el" ? "Αποθήκευση σημειώσεων" : "Save notes")}
+        </button>
+      </div>
     </div>
   );
 }

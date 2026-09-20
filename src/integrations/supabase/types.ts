@@ -495,6 +495,7 @@ export type Database = {
       prompt_projects: {
         Row: {
           created_at: string
+          creation_notes: string
           id: string
           name: string
           updated_at: string
@@ -502,6 +503,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creation_notes?: string
           id?: string
           name: string
           updated_at?: string
@@ -509,6 +511,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creation_notes?: string
           id?: string
           name?: string
           updated_at?: string
