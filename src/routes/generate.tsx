@@ -20,6 +20,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
+import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
 import {
   getCurrentUserAiModelAccess,
   getGenerationUsage,
@@ -87,6 +88,7 @@ const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 export const Route = createFileRoute("/generate")({
   validateSearch: z.object({
     mode: z.enum(["revision"]).optional(),
+    workspace: z.enum(["lyrics"]).optional(),
     project: z.string().uuid().optional(),
     base: z.string().uuid().optional(),
   }),
@@ -478,6 +480,8 @@ function GeneratePage() {
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
   const [revisionMeta, setRevisionMeta] = useState<RevisionMeta | null>(null);
+  const [workspaceFreshOpen, setWorkspaceFreshOpen] = useState(false);
+  const [workspaceResultSaved, setWorkspaceResultSaved] = useState(false);
   const [targetPlatform, setTargetPlatform] = useState<AITargetPlatform>(DEFAULT_AI_TARGET_PLATFORM);
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
@@ -513,6 +517,11 @@ function GeneratePage() {
     queryKey: ["generator", "revision-base", user?.id, revisionProjectId, revisionBasePromptId],
     queryFn: () => getPromptRevisionBase({ data: { projectId: revisionProjectId, basePromptId: revisionBasePromptId } }),
     enabled: Boolean(user && revisionMode && revisionProjectId && revisionBasePromptId),
+  });
+  const workspaceBase = useQuery({
+    queryKey: ["generator", "lyrics-workspace-base", user?.id, search.project, search.base],
+    queryFn: () => getPromptRevisionBase({ data: { projectId: search.project as string, basePromptId: search.base as string } }),
+    enabled: Boolean(user && search.workspace === "lyrics" && search.project && search.base),
   });
   const [result, setResult] = useState<GeneratorResult | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
@@ -669,8 +678,16 @@ function GeneratePage() {
     )?.targetPlatform;
     if (inputTargetPlatform) setTargetPlatform(inputTargetPlatform);
     if (job.status === "completed" && job.result) {
+      if ("sectionEdit" in job.result) {
+        setStatus(t("generator.failed"));
+        setBusy(false);
+        setJobId(null);
+        rememberJob(null);
+        return;
+      }
       const { revisionMeta: completedRevisionMeta, ...songResult } = job.result;
       setResult(songResult);
+      setWorkspaceResultSaved(false);
       setRevisionMeta(completedRevisionMeta ?? null);
       setSaved(Boolean(completedRevisionMeta));
       if (job.input?.operation === "revision" && job.input.revision) {
@@ -1099,6 +1116,124 @@ function GeneratePage() {
     });
   };
 
+  const openLyricsWorkspace = () => {
+    if (!result) return;
+    if (revisionMeta) {
+      void navigate({
+        to: "/generate",
+        search: {
+          workspace: "lyrics",
+          project: revisionMeta.projectId,
+          base: revisionMeta.savedPromptId,
+        },
+      });
+      return;
+    }
+    setWorkspaceFreshOpen(true);
+  };
+
+  const savedWorkspacePrompt = workspaceBase.data?.prompt;
+  const savedWorkspaceSnapshot = (savedWorkspacePrompt?.generator_input_snapshot ?? null) as GeneratorInputSnapshot | null;
+  const savedWorkspaceSong: LyricsWorkspaceSong | null = savedWorkspacePrompt ? {
+    title: savedWorkspacePrompt.title ?? "",
+    tags: savedWorkspacePrompt.tags ?? "",
+    note: savedWorkspacePrompt.note ?? "",
+    lyrics: savedWorkspacePrompt.lyrics ?? "",
+    theme: savedWorkspacePrompt.theme ?? "",
+    genre: savedWorkspacePrompt.genre ?? "",
+    mood: savedWorkspacePrompt.mood ?? "",
+    language: savedWorkspacePrompt.language ?? "",
+    targetPlatform: savedWorkspaceSnapshot?.targetPlatform ?? DEFAULT_AI_TARGET_PLATFORM,
+    generatorInputSnapshot: savedWorkspaceSnapshot,
+  } : null;
+
+  const freshWorkspaceSong: LyricsWorkspaceSong | null = result ? {
+    title: result.title,
+    tags: result.tags,
+    note: result.note,
+    lyrics: result.lyrics,
+    theme: songContext?.theme ?? theme.trim(),
+    genre: songContext?.genre ?? effectiveGenre,
+    mood: songContext?.mood ?? effectiveMood,
+    language: songContext?.language ?? effectiveLanguage,
+    targetPlatform: songContextTargetPlatform ?? targetPlatform,
+    generatorInputSnapshot: songContext?.inputSnapshot ?? currentSnapshot,
+  } : null;
+
+  const closeSavedWorkspace = (editedLyrics: string, savedVersion?: { id: string; versionNumber: number } | null) => {
+    if (!savedWorkspacePrompt) return;
+    setResult({
+      title: savedWorkspacePrompt.title ?? "",
+      tags: savedWorkspacePrompt.tags ?? "",
+      lyrics: editedLyrics,
+      note: savedWorkspacePrompt.note ?? "",
+    });
+    setWorkspaceResultSaved(true);
+    setSaved(true);
+    setQuality(null);
+    setQualityCheckResultModel(null);
+    setRevisionMeta(null);
+    setSongContext({
+      targetPlatform: savedWorkspaceSnapshot?.targetPlatform ?? DEFAULT_AI_TARGET_PLATFORM,
+      theme: savedWorkspacePrompt.theme ?? "",
+      genre: savedWorkspacePrompt.genre ?? "",
+      mood: savedWorkspacePrompt.mood ?? "",
+      language: savedWorkspacePrompt.language ?? "",
+      structure: savedWorkspaceSnapshot?.songStructure.join(" → ") ?? "",
+      production: savedWorkspaceSnapshot?.productionStyle ?? "",
+      instructions: savedWorkspaceSnapshot?.additionalInstructions ?? "",
+      operation: "generate",
+      revision: null,
+      inputSnapshot: savedWorkspaceSnapshot,
+    });
+    if (savedVersion) {
+      setStatus(t("lyricsWorkspace.savedAsVersion", { version: savedVersion.versionNumber }));
+    }
+    void navigate({ to: "/generate", search: {}, replace: true });
+  };
+
+  const closeFreshWorkspace = (editedLyrics: string) => {
+    if (result) setResult({ ...result, lyrics: editedLyrics });
+    setWorkspaceFreshOpen(false);
+    setQuality(null);
+    setQualityCheckResultModel(null);
+  };
+
+  if (search.workspace === "lyrics") {
+    return (
+      <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
+        <div className="px-4 py-6 pb-[180px] md:px-8 md:pb-[120px]">
+          <div className="mx-auto max-w-4xl">
+            {workspaceBase.isLoading && <p className="text-sm text-muted-foreground">{t("lyricsWorkspace.loading")}</p>}
+            {workspaceBase.error && <p className="text-sm text-red-400">{t("root.errorBody")}</p>}
+            {savedWorkspaceSong && (
+              <LyricsWorkspace
+                song={savedWorkspaceSong}
+                projectId={search.project ?? null}
+                projectName={workspaceBase.data?.project.name ?? null}
+                basePromptId={search.base ?? null}
+                baseVersionNumber={savedWorkspacePrompt?.version_number ?? null}
+                onClose={closeSavedWorkspace}
+              />
+            )}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (workspaceFreshOpen && freshWorkspaceSong) {
+    return (
+      <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
+        <div className="px-4 py-6 pb-[180px] md:px-8 md:pb-[120px]">
+          <div className="mx-auto max-w-4xl">
+            <LyricsWorkspace song={freshWorkspaceSong} onClose={(lyrics) => closeFreshWorkspace(lyrics)} />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   const styleLabel = (value: string) => translatedOption(advanced ? ADVANCED_MUSIC_STYLES : BASIC_MUSIC_STYLES, value, t);
   const moodLabel = (value: string) => translatedOption(advanced ? ADVANCED_MOODS : BASIC_MOODS, value, t);
   const instrumentLabel = (value: string) => translatedOption(INSTRUMENT_OPTIONS, value, t);
@@ -1295,11 +1430,14 @@ function GeneratePage() {
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
               <ResultSection title={t("generator.result.lyricsStructure")} value={result.lyrics} open={open.lyrics} onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))} onChange={(v) => setResult({ ...result, lyrics: v })} rows={18} />
+              <button type="button" onClick={openLyricsWorkspace} className="flex w-full items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent/10">
+                <Sparkles className="h-4 w-4" />{t("lyricsWorkspace.open")}
+              </button>
               <ResultSection title={t("generator.result.producerNote")} value={result.note} open={open.note} onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))} onChange={(v) => setResult({ ...result, note: v })} rows={5} />
               {hasAdminInputBypass && (
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
-              {!revisionMeta && <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>}
+              {!revisionMeta && !workspaceResultSaved && <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>}
               <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}
