@@ -103,7 +103,9 @@ export const followCreator = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return followSummary(supabaseAdmin as any, context.userId, data.userId);
+    const summary = await followSummary(supabaseAdmin as any, context.userId, data.userId);
+    if (!summary.isFollowing) throw new Error("Follow could not be verified.");
+    return summary;
   });
 
 export const unfollowCreator = createServerFn({ method: "POST" })
@@ -115,7 +117,9 @@ export const unfollowCreator = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return followSummary(supabaseAdmin as any, context.userId, data.userId);
+    const summary = await followSummary(supabaseAdmin as any, context.userId, data.userId);
+    if (summary.isFollowing) throw new Error("Unfollow could not be verified.");
+    return summary;
   });
 
 export const listCreatorFollowProfiles = createServerFn({ method: "POST" })
