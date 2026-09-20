@@ -135,7 +135,7 @@ const stageAEvidenceSchema = z.object({
   uncertaintyNotes: z.array(z.string().trim().min(1).max(2000)).max(30),
 });
 
-type StageAEvidence = z.infer<typeof stageAEvidenceSchema>;
+export type StageAEvidence = z.infer<typeof stageAEvidenceSchema>;
 
 const EVIDENCE_EXTRACTION_SYSTEM_PROMPT = `
 You are PromptBeats Stage A: RAW AUDIO EVIDENCE EXTRACTOR.
@@ -764,9 +764,11 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
 async function recordStageUsage(args: {
   userId: string;
   model: string;
+  stage: "evidence_extraction" | "final_synthesis" | "external_validation" | "external_reconciliation";
   usage: ReturnType<typeof normalizedUsage>;
   success: boolean;
 }) {
+  logStage(args.model, args.stage, args.success ? "usage_success" : "usage_failure", args.usage);
   await recordAiUsage({
     userId: args.userId,
     provider: "gemini",
@@ -801,9 +803,9 @@ export const analyzeSong = createServerFn({ method: "POST" })
         mimeType: data.mimeType,
         onUsage: (usage) => { evidenceUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: evidenceUsage, success: true });
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: true });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: evidenceUsage, success: false });
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: false });
       throw error;
     }
 
@@ -816,9 +818,9 @@ export const analyzeSong = createServerFn({ method: "POST" })
         evidence,
         onUsage: (usage) => { synthesisUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: synthesisUsage, success: true });
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: true });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: synthesisUsage, success: false });
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: false });
       throw error;
     }
 
@@ -826,7 +828,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
     const artist = data.artist?.trim();
 
     if (!trackTitle || !artist) {
-      return { result, model: data.model };
+      return { result, model: data.model, stageAEvidence: evidence };
     }
 
     let externalUsage: ReturnType<typeof normalizedUsage> = null;
@@ -841,14 +843,14 @@ export const analyzeSong = createServerFn({ method: "POST" })
       });
       external = validationResult.validation;
       externalUsage = validationResult.usage;
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: externalUsage, success: true });
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: true });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: externalUsage, success: false });
-      return { result, model: data.model };
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: false });
+      return { result, model: data.model, stageAEvidence: evidence };
     }
 
     if (!external.used || !external.identityConfirmed) {
-      return { result, model: data.model };
+      return { result, model: data.model, stageAEvidence: evidence };
     }
 
     let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
@@ -861,11 +863,11 @@ export const analyzeSong = createServerFn({ method: "POST" })
         externalValidation: external,
         onUsage: (usage) => { reconciliationUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: reconciliationUsage, success: true });
-      return { result: reconciled, model: data.model };
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: true });
+      return { result: reconciled, model: data.model, stageAEvidence: evidence };
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, usage: reconciliationUsage, success: false });
-      return { result, model: data.model };
+      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: false });
+      return { result, model: data.model, stageAEvidence: evidence };
     }
   });
 
