@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Loader2, Lock, RotateCcw, Save, Sparkles, Unlock, X } from "lucide-react";
+import { Check, Loader2, Lock, RotateCcw, Save, Sparkles, Unlock, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getCurrentUserAiModelAccess } from "@/lib/ai.functions";
@@ -313,8 +313,22 @@ export function LyricsWorkspace({
     }
   };
 
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [dirty]);
+
   const closeWorkspace = () => {
-    if (projectId && dirty && !window.confirm(t("lyricsWorkspace.unsavedConfirm"))) return;
+    if (projectId && dirty) {
+      if (!window.confirm(t("lyricsWorkspace.unsavedConfirm"))) return;
+      onClose(baselineLyrics, savedVersion);
+      return;
+    }
     onClose(lyrics, savedVersion);
   };
 
