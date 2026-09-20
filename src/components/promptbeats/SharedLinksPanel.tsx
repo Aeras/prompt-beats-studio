@@ -42,7 +42,9 @@ export function SharedLinksPanel() {
   };
 
   if (data.isLoading) return <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Φόρτωση κοινοποιήσεων..." : "Loading shares..."}</p>;
-  const tracks = data.data?.tracks ?? [];
+  const tracks = (data.data?.tracks ?? [])
+    .map((track) => ({ ...track, owner_links: track.owner_links.filter((link) => !link.revoked_at) }))
+    .filter((track) => track.owner_links.length > 0);
   if (!tracks.length) return <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν ακόμη κοινοποιήσεις για τα τραγούδια σου." : "No shares for your tracks yet."}</p>;
 
   return (
