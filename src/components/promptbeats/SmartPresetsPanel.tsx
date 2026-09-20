@@ -112,7 +112,13 @@ export function SmartPresetsPanel({
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="rounded-xl border border-accent/40 px-4 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+          aria-expanded={open}
+          aria-pressed={open}
+          className={
+            open
+              ? "rounded-xl border border-accent/60 bg-accent/15 px-4 py-2 text-xs font-semibold text-accent ring-1 ring-accent/30 shadow-[0_0_18px_color-mix(in_oklab,var(--neon)_18%,transparent)] transition-all active:scale-95"
+              : "rounded-xl border border-accent/40 px-4 py-2 text-xs font-semibold text-accent transition-all hover:bg-accent/10 active:scale-95"
+          }
         >
           {open ? t("generator.presets.close") : t("generator.presets.browse")}
         </button>
