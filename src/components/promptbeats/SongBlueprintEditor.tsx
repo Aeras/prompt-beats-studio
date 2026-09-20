@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, CopyCheck, Trash2 } from "lucide-react";
 
 import { useI18n } from "@/i18n";
@@ -26,6 +26,21 @@ export function SongBlueprintEditor({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [appliedAllIndex, setAppliedAllIndex] = useState<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+  }, []);
+
+  const showApplyAllFeedback = (structureIndex: number) => {
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+    setAppliedAllIndex(structureIndex);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setAppliedAllIndex(null);
+      feedbackTimerRef.current = null;
+    }, 1200);
+  };
 
   const entries = useMemo(
     () => buildSongBlueprint(structure, blueprint),
@@ -103,12 +118,20 @@ export function SongBlueprintEditor({
                         {entry.sectionType === "Chorus" && regularChorusCount > 1 && (
                           <button
                             type="button"
-                            onClick={() => onChange(applyInstructionToAllRegularChoruses(entries, entry.instruction))}
+                            onClick={() => {
+                              onChange(applyInstructionToAllRegularChoruses(entries, entry.instruction));
+                              showApplyAllFeedback(entry.structureIndex);
+                            }}
                             disabled={!entry.instruction.trim()}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-medium text-accent disabled:opacity-40"
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-medium text-accent transition-all active:scale-95 disabled:opacity-40",
+                              appliedAllIndex === entry.structureIndex && "bg-accent/15 ring-1 ring-accent/30",
+                            )}
                           >
                             <CopyCheck className="h-3.5 w-3.5" />
-                            {t("generator.blueprint.applyAllChorus")}
+                            {appliedAllIndex === entry.structureIndex
+                              ? t("generator.blueprint.appliedAllChorus")
+                              : t("generator.blueprint.applyAllChorus")}
                           </button>
                         )}
                         {entry.instruction && (
