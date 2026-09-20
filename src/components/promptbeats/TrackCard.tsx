@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Play, Pause, ChevronDown } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
@@ -13,6 +13,61 @@ import { TrackContentOverlay, type TrackContentKind } from "@/components/promptb
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import type { TrackGridMode } from "@/components/promptbeats/TrackGridView";
 import { useI18n } from "@/i18n";
+
+
+function PromptContentIcon({ compact = false }: { compact?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={cn("shrink-0 overflow-visible", compact ? "h-[18px] w-[18px]" : "h-5 w-5")}
+      fill="none"
+    >
+      <path
+        d="M4.2 13.7c1.3 3.4 4.4 5.5 7.9 5.5 3.7 0 6.9-2.4 8-5.9"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        className="text-cyan-300"
+      />
+      <path
+        d="M19.6 10.4C18.7 6.9 15.6 4.5 12 4.5c-3.7 0-6.9 2.5-8 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        className="text-violet-400"
+      />
+      <path
+        d="M8 12h1.4l.8-2.2 1.4 4.3 1.3-5.8 1.5 4.8.8-1.9H17"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-fuchsia-300"
+      />
+      <path
+        d="M17.8 3.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45Z"
+        fill="currentColor"
+        className="text-fuchsia-300"
+      />
+    </svg>
+  );
+}
+
+function LyricsContentIcon({ compact = false }: { compact?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={cn("shrink-0 overflow-visible", compact ? "h-[18px] w-[18px]" : "h-5 w-5")}
+      fill="none"
+    >
+      <path d="M4 6.5h9.5M4 10h8M4 13.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-fuchsia-300" />
+      <path d="M15.3 5.2v9.2a2.35 2.35 0 1 1-1.7-2.25V7.1l5.2-1.35v6.9a2.35 2.35 0 1 1-1.7-2.25V4.6l-1.8.6Z" fill="currentColor" className="text-violet-300" />
+      <path d="M3.8 18.1c2.7-2.2 5.1-2.3 7.4-.3 2 1.7 4.2 1.7 7-.35" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="text-cyan-300" />
+    </svg>
+  );
+}
 
 export function TrackCard({
   track,
@@ -148,15 +203,41 @@ export function TrackCard({
           </div>
         </div>
 
-        <div className={cn("flex", compact ? "flex-nowrap gap-1" : "flex-wrap gap-2")}>
-          {track.prompt?.trim() && <button onClick={(event) => toggleContent("prompt", event.currentTarget)} className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
-            {compact ? "Prompt" : activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
-            <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
-          </button>}
+        <div className={cn("flex items-center justify-start", compact ? "gap-1.5" : "gap-2")}>
+          {track.prompt?.trim() && (
+            <button
+              type="button"
+              onClick={(event) => toggleContent("prompt", event.currentTarget)}
+              aria-label={activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
+              title={activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
+              aria-pressed={activeContent === "prompt"}
+              className={cn(
+                "grid shrink-0 place-items-center rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+                compact ? "h-7 w-7" : "h-8 w-8",
+                activeContent === "prompt"
+                  ? "border-accent/70 bg-accent/20 shadow-[0_0_14px_-4px_color-mix(in_oklab,var(--neon)_80%,transparent)]"
+                  : "border-accent/35 bg-accent/[0.07] hover:border-accent/60 hover:bg-accent/15",
+              )}
+            >
+              <PromptContentIcon compact={compact} />
+            </button>
+          )}
           {track.lyrics?.trim() && (
-            <button onClick={(event) => toggleContent("lyrics", event.currentTarget)} className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
-              {compact ? (language === "el" ? "Στίχοι" : "Lyrics") : activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
-              <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "lyrics" && "rotate-180")} />
+            <button
+              type="button"
+              onClick={(event) => toggleContent("lyrics", event.currentTarget)}
+              aria-label={activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
+              title={activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
+              aria-pressed={activeContent === "lyrics"}
+              className={cn(
+                "grid shrink-0 place-items-center rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+                compact ? "h-7 w-7" : "h-8 w-8",
+                activeContent === "lyrics"
+                  ? "border-violet-300/70 bg-violet-400/15 shadow-[0_0_14px_-4px_rgba(196,140,255,0.8)]"
+                  : "border-white/12 bg-white/[0.03] hover:border-violet-300/45 hover:bg-violet-400/[0.08]",
+              )}
+            >
+              <LyricsContentIcon compact={compact} />
             </button>
           )}
         </div>
