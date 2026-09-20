@@ -817,7 +817,32 @@ function GeneratePage() {
             : musicStyleTooLong
               ? t("generator.selectionTooLong")
               : null;
-  const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError;
+  const currentSnapshot: GeneratorInputSnapshot = {
+    generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
+    theme: theme.trim(),
+    selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
+    customMusicStyle: customGenre.trim(),
+    selectedMoods: moods.filter((value) => value !== CUSTOM),
+    customMood: customMood.trim(),
+    language,
+    customLanguage: customLanguage.trim(),
+    selectedInstruments: [...instruments],
+    customInstruments: customInstruments.trim(),
+    bpmMode: bpm,
+    customBpm: customBpm.trim(),
+    songStructure: [...structure],
+    productionStyle: production.trim(),
+    additionalInstructions: instructions.trim(),
+    targetPlatform,
+    generationModel: generationModel || null,
+  };
+  const revisionReady = !revisionMode || (
+    !!revisionProjectId &&
+    !!revisionBasePromptId &&
+    !!revisionBase.data?.prompt &&
+    revisionRequest.trim().length > 0
+  );
+  const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError && revisionReady;
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
@@ -870,7 +895,29 @@ function GeneratePage() {
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
     try {
-      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, targetPlatform, generationModel, advanced, baseMusicStyle: baseGenre, instruments: instrumentsText, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
+      const res = await startGenerationJob({ data: {
+        idempotencyKey: key,
+        theme: theme.trim(),
+        genre: effectiveGenre,
+        mood: effectiveMood,
+        language: effectiveLanguage,
+        targetPlatform,
+        generationModel,
+        advanced: advanced || revisionMode,
+        baseMusicStyle: baseGenre,
+        instruments: instrumentsText,
+        structure: structure.join(" → ").slice(0, 600),
+        production: production.trim().slice(0, 2000),
+        instructions: instructions.trim().slice(0, 2000),
+        operation: revisionMode ? "revision" : "generate",
+        inputSnapshot: currentSnapshot,
+        revision: revisionMode ? {
+          projectId: revisionProjectId,
+          basePromptId: revisionBasePromptId,
+          revisionRequest: revisionRequest.trim(),
+          desiredSnapshot: currentSnapshot,
+        } : null,
+      } });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       if (res.rateLimited || !res.job) { setStatus(t("generator.rateLimit")); setBusy(false); pendingKey.current = null; return; }
       pendingKey.current = null; applyJob(res.job);
