@@ -116,9 +116,42 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
+function buildSongBlueprintPrompt(
+  blueprintInput: z.infer<typeof songBlueprintSchema>,
+  promptLabel: string,
+) {
+  const blueprint = activeSongBlueprint(blueprintInput);
+  if (!blueprint.length) return "";
+  const items = blueprint
+    .map(
+      (item) =>
+        `- Structure position ${item.structureIndex + 1}: ${item.sectionType} #${item.occurrence} — ${item.instruction.trim()}`,
+    )
+    .join("\n");
+
+  return `
+SONG BLUEPRINT — SECTION-SPECIFIC ARRANGEMENT DIRECTION
+
+The user supplied natural-language production/arrangement direction for specific occurrences of the requested Song Structure.
+
+${items}
+
+BLUEPRINT EXECUTION RULES
+- Treat every listed instruction as authoritative for that exact section occurrence only.
+- Repeated sections remain independent. Do NOT copy one occurrence\'s direction to another occurrence unless that other occurrence is also explicitly listed with the same instruction.
+- Translate each natural-language Blueprint instruction into one or, only when genuinely necessary, two concise square-bracketed production/performance directions inside that exact lyric section.
+- Put the direction immediately after the matching structural header or at the most musically appropriate point inside that section.
+- Blueprint instructions are production/performance direction, never sung lyric content.
+- Keep square-bracket directions short, concrete, generator-useful and restrained.
+- Do not flood the lyrics with redundant tags or restate global Music Style / Production Style information in every section.
+- Preserve global characteristics in the ${promptLabel}; use the Blueprint only for section-specific changes, entrances, exits, dynamics, instrumentation, vocal treatment or transitions.
+- Do not expose the user\'s raw Blueprint instruction text verbatim when a concise production direction communicates it better.
+`;
+}
 function buildPrompt(d: z.infer<typeof generateInput>) {
   const platformLabel = d.targetPlatform === "udio" ? "Udio" : "Suno";
   const promptLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Style Prompt";
+  const blueprintBlock = buildSongBlueprintPrompt(d.songBlueprint, promptLabel);
   return `Act as a top-tier music producer, professional songwriter, composer, arranger and AI-music prompt specialist.
 
 Transform the user's idea into one complete, original, coherent and professionally developed song concept optimized specifically for ${platformLabel}.
@@ -133,6 +166,7 @@ Target Platform: ${platformLabel}
 ${d.structure ? `Requested Song Structure (in this order): ${d.structure}` : ""}
 ${d.production ? `Requested Production Style: ${d.production}` : ""}
 ${d.instructions ? `Additional Instructions: ${d.instructions}` : ""}
+${blueprintBlock}
 
 ${
   d.structure || d.production || d.instructions
