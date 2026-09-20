@@ -125,7 +125,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $snapshot_guard$
 BEGIN
   IF OLD.generator_input_snapshot IS NOT NULL
      AND NEW.generator_input_snapshot IS DISTINCT FROM OLD.generator_input_snapshot THEN
@@ -133,7 +133,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$snapshot_guard$;
 
 DROP TRIGGER IF EXISTS trg_preserve_saved_prompt_generator_snapshot ON public.saved_prompts;
 CREATE TRIGGER trg_preserve_saved_prompt_generator_snapshot
