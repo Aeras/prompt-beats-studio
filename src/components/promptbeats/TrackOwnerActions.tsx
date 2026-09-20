@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { UPLOAD_GENRES } from "@/lib/tracks";
 import { CREATED_WITH_OPTIONS, type CreatedWith } from "@/lib/created-with";
-import { deleteTrack, discardUploads, updateTrack } from "@/lib/tracks.functions";
+import { deleteTrack, discardUploads, getMyTrackForEdit, updateTrack } from "@/lib/tracks.functions";
 import { getTrackDownloadPermission } from "@/lib/track-download.functions";
 import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/lib/track-sources";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,12 +67,28 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const refresh = () => queryClient.invalidateQueries();
   const openEdit = async () => {
     setError(null);
-    if (isUpload && isOwner) {
+    if (isOwner) {
       try {
-        const permission = await getTrackDownloadPermission({ data: { trackId: track.id } });
+        const [fresh, permission] = await Promise.all([
+          getMyTrackForEdit({ data: { id: track.id } }),
+          isUpload ? getTrackDownloadPermission({ data: { trackId: track.id } }) : Promise.resolve({ allowDownload: false }),
+        ]);
+        const value = fresh.track as EditableTrack;
+        setTitle(value.title);
+        const freshGenre = UPLOAD_GENRES.includes(value.genre as typeof UPLOAD_GENRES[number]) ? value.genre : "Custom";
+        setGenreOption(freshGenre);
+        setCustomGenre(freshGenre === "Custom" ? value.genre : "");
+        setPrompt(value.prompt ?? "");
+        setLyrics(value.lyrics ?? "");
+        setSourceUrl(value.source_url ?? value.audio_url);
+        setCreatedWith(value.created_with ?? "");
+        setIsPublished(value.is_published ?? true);
+        setPromptIsPublic(value.prompt_is_public ?? true);
+        setLyricsIsPublic(value.lyrics_is_public ?? true);
         setAllowDownload(permission.allowDownload);
       } catch (err) {
         setError(err instanceof Error ? err.message : t("owner.saveFailed"));
+        return;
       }
     }
     setEditing(true);
