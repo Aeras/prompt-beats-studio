@@ -22,6 +22,7 @@ import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
 import { LanguagePicker } from "@/components/promptbeats/LanguagePicker";
+import { LanguageVariantPicker } from "@/components/promptbeats/LanguageVariantPicker";
 import { SmartPresetsPanel } from "@/components/promptbeats/SmartPresetsPanel";
 import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
 import {
@@ -79,6 +80,7 @@ import {
 } from "@/lib/song-blueprint.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { buildPresetBlueprint, resolveSmartPreset, type SmartPreset } from "@/catalog/smart-presets";
+import { findSongLanguageVariantFromCanonical, getSongLanguageVariants, resolveSongLanguage } from "@/catalog/song-languages";
 import {
   BASIC_MUSIC_STYLES,
   BASIC_MOODS,
@@ -536,6 +538,7 @@ function GeneratePage() {
   const [bpm, setBpm] = useState("Auto");
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
+  const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -667,6 +670,7 @@ function GeneratePage() {
       setProduction(snapshot.productionStyle);
       setInstructions(snapshot.additionalInstructions);
       setLanguage(snapshot.language);
+      setLanguageVariant(snapshot.languageVariant ?? "");
       setCustomLanguage(snapshot.customLanguage);
       if (snapshot.generationModel) {
         setGenerationModel(snapshot.generationModel);
@@ -693,17 +697,25 @@ function GeneratePage() {
     setProduction("");
     setInstructions("");
     const storedLanguage = (prompt.language ?? "").trim();
+    const storedVariant = findSongLanguageVariantFromCanonical(storedLanguage);
     const knownLanguage = LANGUAGE_OPTIONS.find(
       (item) => item !== CUSTOM && item.toLowerCase() === storedLanguage.toLowerCase(),
     );
-    if (knownLanguage) {
+    if (storedVariant) {
+      setLanguage(storedVariant.language);
+      setLanguageVariant(storedVariant.variantId);
+      setCustomLanguage("");
+    } else if (knownLanguage) {
       setLanguage(knownLanguage);
+      setLanguageVariant("");
       setCustomLanguage("");
     } else if (storedLanguage) {
       setLanguage(CUSTOM);
+      setLanguageVariant("");
       setCustomLanguage(storedLanguage);
     } else {
       setLanguage("");
+      setLanguageVariant("");
       setCustomLanguage("");
     }
   }, [revisionMode, revisionBase.data]);
@@ -855,7 +867,8 @@ function GeneratePage() {
   const moodList = mergeValues(moods.filter((m) => m !== CUSTOM), useCustomMood ? customMood : "");
   const effectiveMood = moodList.join(", ");
 
-  const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
+  const baseLanguage = language === CUSTOM ? customLanguage.trim() : language;
+  const effectiveLanguage = language === CUSTOM ? baseLanguage : resolveSongLanguage(language, languageVariant);
   const musicStyleLimit = revisionMode ? 500 : advanced ? 150 : 400;
   const themeLimit = advanced ? 500 : 300;
   const moodLimit = advanced ? 120 : 60;
@@ -895,6 +908,7 @@ function GeneratePage() {
     selectedMoods: moods.filter((value) => value !== CUSTOM),
     customMood: customMood.trim(),
     language,
+    languageVariant,
     customLanguage: customLanguage.trim(),
     selectedInstruments: [...instruments],
     customInstruments: customInstruments.trim(),
@@ -1001,14 +1015,21 @@ function GeneratePage() {
     setInstructions(draft.additionalInstructions.trim());
 
     const requestedLanguage = draft.language.trim();
+    const requestedVariant = findSongLanguageVariantFromCanonical(requestedLanguage);
     const knownLanguage = LANGUAGE_OPTIONS.find(
       (item) => item !== CUSTOM && item.toLowerCase() === requestedLanguage.toLowerCase(),
     );
-    if (knownLanguage) {
+    if (requestedVariant) {
+      setLanguage(requestedVariant.language);
+      setLanguageVariant(requestedVariant.variantId);
+      setCustomLanguage("");
+    } else if (knownLanguage) {
       setLanguage(knownLanguage);
+      setLanguageVariant("");
       setCustomLanguage("");
     } else {
       setLanguage(CUSTOM);
+      setLanguageVariant("");
       setCustomLanguage(requestedLanguage);
     }
   };
@@ -1154,7 +1175,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -1535,18 +1556,21 @@ function GeneratePage() {
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
-              <div><SectionHeader title={t("generator.language")} onClear={() => { setLanguage(""); setCustomLanguage(""); }} /><LanguagePicker value={language} onChange={(value) => { setLanguage(value); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} /></div>
+              <div><SectionHeader title={t("generator.language")} onClear={() => { setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); }} /><LanguagePicker value={language} onChange={(value) => { setLanguage(value); setLanguageVariant(""); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} /></div>
             </> : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-3">
                   <select value={moods[0] ?? ""} onChange={(e) => pickPrimary(setMoods)(e.target.value)} aria-label={t("generator.mood")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMood")}</option>{MOOD_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MOODS, item, t)}</option>)}</select>
                   {moods[0] === CUSTOM && <input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass} />}
                 </div>
-                <LanguagePicker value={language} onChange={(value) => { setLanguage(value); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} />
+                <LanguagePicker value={language} onChange={(value) => { setLanguage(value); setLanguageVariant(""); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} />
               </div>
             )}
 
             {language === CUSTOM && <input value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)} placeholder={t("generator.customLanguagePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.language")}`} className={fieldClass} />}
+            {language !== CUSTOM && getSongLanguageVariants(language).length > 0 && (
+              <LanguageVariantPicker language={language} value={languageVariant} onChange={setLanguageVariant} />
+            )}
             {validationError && <p className="text-xs text-red-400">{validationError}</p>}
             {revisionMode && revisionBasePromptId && revisionBase.data?.prompt && !revisionRequest.trim() && <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>}
 

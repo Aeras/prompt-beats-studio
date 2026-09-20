@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import {
   CUSTOM_LANGUAGE_VALUE,
+  findSongLanguageVariantFromCanonical,
   getSongLanguageOptions,
+  getSongLanguageVariants,
+  resolveSongLanguage,
   SONG_LANGUAGE_VALUES,
 } from "./song-languages";
 
@@ -53,6 +56,32 @@ describe("song language catalog", () => {
     expect(options.find((item) => item.code === "ae")?.value).toBe("Avestan");
     expect(options.find((item) => item.code === "ak")?.value).toBe("Akan");
     expect(options.find((item) => item.code === "km")?.value).toBe("Khmer");
+  });
+
+  test("supports optional dialect variants without duplicating base languages", () => {
+    expect(getSongLanguageVariants("English").map((item) => item.id)).toEqual([
+      "us",
+      "uk",
+      "au",
+      "ca",
+      "ie",
+    ]);
+    expect(resolveSongLanguage("English", "")).toBe("English");
+    expect(resolveSongLanguage("English", "uk")).toBe("English (United Kingdom)");
+    expect(resolveSongLanguage("Portuguese", "br")).toBe("Portuguese (Brazil)");
+    expect(resolveSongLanguage("Greek", "cy")).toBe("Greek (Cyprus)");
+  });
+
+  test("can recover base language and variant from persisted canonical text", () => {
+    expect(findSongLanguageVariantFromCanonical("Spanish (Mexico)")).toEqual({
+      language: "Spanish",
+      variantId: "mx",
+    });
+    expect(findSongLanguageVariantFromCanonical("Chinese (Cantonese, Traditional)")).toEqual({
+      language: "Chinese",
+      variantId: "cantonese-traditional",
+    });
+    expect(findSongLanguageVariantFromCanonical("English")).toBeNull();
   });
 
   test("keeps Custom outside the canonical language list", () => {
