@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
@@ -24,6 +25,8 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   listPromptProjects,
+  listPromptProjectVersions,
+  getPromptRevisionBase,
   createPromptProject,
   HOURLY_LIMIT,
   type QualityReport,
@@ -62,6 +65,7 @@ import {
   type AITargetPlatform,
 } from "@/lib/ai-target-platforms";
 import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
+import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -81,6 +85,11 @@ const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 
 export const Route = createFileRoute("/generate")({
+  validateSearch: z.object({
+    mode: z.enum(["revision"]).optional(),
+    project: z.string().uuid().optional(),
+    base: z.string().uuid().optional(),
+  }),
   head: () => ({
     meta: [
       { title: "AI Prompt & Lyrics Generator for Suno and Udio — PromptBeats" },
@@ -458,8 +467,14 @@ function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const queryClient = useQueryClient();
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(search.mode === "revision");
+  const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
+  const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
+  const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
+  const [revisionRequest, setRevisionRequest] = useState("");
+  const [revisionMeta, setRevisionMeta] = useState<{ savedPromptId: string; projectId: string; versionNumber: number; parentPromptId: string } | null>(null);
   const [targetPlatform, setTargetPlatform] = useState<AITargetPlatform>(DEFAULT_AI_TARGET_PLATFORM);
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
@@ -485,7 +500,17 @@ function GeneratePage() {
   const [saveVersionLabel, setSaveVersionLabel] = useState("");
   const [saveNewProject, setSaveNewProject] = useState("");
   const [savingLibrary, setSavingLibrary] = useState(false);
-  const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && saveDialogOpen) });
+  const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && (saveDialogOpen || revisionMode)) });
+  const revisionVersions = useQuery({
+    queryKey: ["generator", "revision-versions", user?.id, revisionProjectId],
+    queryFn: () => listPromptProjectVersions({ data: { projectId: revisionProjectId } }),
+    enabled: Boolean(user && revisionMode && revisionProjectId),
+  });
+  const revisionBase = useQuery({
+    queryKey: ["generator", "revision-base", user?.id, revisionProjectId, revisionBasePromptId],
+    queryFn: () => getPromptRevisionBase({ data: { projectId: revisionProjectId, basePromptId: revisionBasePromptId } }),
+    enabled: Boolean(user && revisionMode && revisionProjectId && revisionBasePromptId),
+  });
   const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
