@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
+import { LanguagePicker } from "@/components/promptbeats/LanguagePicker";
+import { SmartPresetsPanel } from "@/components/promptbeats/SmartPresetsPanel";
 import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
 import {
   getCurrentUserAiModelAccess,
@@ -76,6 +78,7 @@ import {
   type SongBlueprintSection,
 } from "@/lib/song-blueprint.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
+import { buildPresetBlueprint, resolveSmartPreset, type SmartPreset } from "@/catalog/smart-presets";
 import {
   BASIC_MUSIC_STYLES,
   BASIC_MOODS,
@@ -526,6 +529,8 @@ function GeneratePage() {
   const [showMoodTags, setShowMoodTags] = useState(false);
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
   const [showStructureTags, setShowStructureTags] = useState(false);
+  const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
+  const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("greek");
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
@@ -609,6 +614,8 @@ function GeneratePage() {
       const handoffStructure = Array.isArray(handoff.songStructure) ? handoff.songStructure : [];
       setStructure(handoffStructure);
       setSongBlueprint(buildSongBlueprint(handoffStructure));
+      setActiveSmartPresetId("");
+      setPresetCulturalStyleId("greek");
       setProduction(handoff.productionStyle?.trim() ?? "");
       setInstructions(handoff.additionalInstructions?.trim() ?? "");
       const bpmValue = handoff.bpm?.approximate != null
@@ -655,6 +662,8 @@ function GeneratePage() {
       setCustomBpm(snapshot.customBpm);
       setStructure([...snapshot.songStructure]);
       setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
+      setActiveSmartPresetId(snapshot.smartPresetId ?? "");
+      setPresetCulturalStyleId(snapshot.culturalStyleId || "greek");
       setProduction(snapshot.productionStyle);
       setInstructions(snapshot.additionalInstructions);
       setLanguage(snapshot.language);
@@ -679,6 +688,8 @@ function GeneratePage() {
     setCustomBpm("");
     setStructure([]);
     setSongBlueprint([]);
+    setActiveSmartPresetId("");
+    setPresetCulturalStyleId("greek");
     setProduction("");
     setInstructions("");
     const storedLanguage = (prompt.language ?? "").trim();
@@ -876,6 +887,8 @@ function GeneratePage() {
               : null;
   const currentSnapshot: GeneratorInputSnapshot = {
     generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
+    smartPresetId: activeSmartPresetId,
+    culturalStyleId: activeSmartPresetId === "local-folk-popular" ? presetCulturalStyleId : "",
     theme: theme.trim(),
     selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
     customMusicStyle: customGenre.trim(),
@@ -920,8 +933,44 @@ function GeneratePage() {
     setSongBlueprint([]);
   };
 
+  const applySmartPreset = (preset: SmartPreset) => {
+    const resolved = resolveSmartPreset(preset, presetCulturalStyleId);
+    setAdvanced(true);
+
+    const knownStyles = resolved.musicStyles.filter((value) => ADVANCED_STYLES.includes(value));
+    const customStyles = resolved.musicStyles.filter((value) => !ADVANCED_STYLES.includes(value));
+    setGenres(knownStyles);
+    setCustomGenre(customStyles.join(", "));
+
+    const knownMoods = resolved.moods.filter((value) => ADVANCED_MOOD_VALUES.includes(value));
+    const customMoods = resolved.moods.filter((value) => !ADVANCED_MOOD_VALUES.includes(value));
+    setMoods(knownMoods);
+    setCustomMood(customMoods.join(", "));
+
+    const knownInstruments = resolved.instruments.filter((value) => INSTRUMENTS.includes(value));
+    const customInstrumentValues = resolved.instruments.filter((value) => !INSTRUMENTS.includes(value));
+    setInstruments(knownInstruments);
+    setCustomInstruments(customInstrumentValues.join(", "));
+
+    if (BPM_OPTIONS.includes(resolved.bpm)) {
+      setBpm(resolved.bpm);
+      setCustomBpm("");
+    } else {
+      setBpm("Custom");
+      setCustomBpm(resolved.bpm);
+    }
+
+    setStructure([...resolved.structure]);
+    setSongBlueprint(buildPresetBlueprint(resolved.structure, resolved));
+    setProduction(resolved.productionStyle);
+    setInstructions(resolved.additionalInstructions);
+    setActiveSmartPresetId(preset.id);
+  };
+
   const applySongSetup = (draft: SongSetupDraft) => {
     setAdvanced(true);
+    setActiveSmartPresetId("");
+    setPresetCulturalStyleId("greek");
     setTheme(draft.theme.trim());
     setGenres([]);
     setCustomGenre(draft.musicStyle.trim());
@@ -1091,7 +1140,7 @@ function GeneratePage() {
   });
   const applyState = makeApplyState(result, setResult);
 
-  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || showStyleTags || showMoodTags || showInstrumentTags || showStructureTags || targetPlatform !== DEFAULT_AI_TARGET_PLATFORM || !!result || !!quality;
+  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || !!activeSmartPresetId || showStyleTags || showMoodTags || showInstrumentTags || showStructureTags || targetPlatform !== DEFAULT_AI_TARGET_PLATFORM || !!result || !!quality;
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
@@ -1105,7 +1154,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId("greek"); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -1294,7 +1343,6 @@ function GeneratePage() {
   const styleLabel = (value: string) => translatedOption(advanced ? ADVANCED_MUSIC_STYLES : BASIC_MUSIC_STYLES, value, t);
   const moodLabel = (value: string) => translatedOption(advanced ? ADVANCED_MOODS : BASIC_MOODS, value, t);
   const instrumentLabel = (value: string) => translatedOption(INSTRUMENT_OPTIONS, value, t);
-  const languageLabel = (value: string) => translatedOption(SONG_LANGUAGES, value, t);
   const structureLabel = (value: string) => translatedOption(SONG_STRUCTURE_TAGS, value, t);
 
   return (
@@ -1398,6 +1446,15 @@ function GeneratePage() {
               </div>
             )}
 
+            {advanced && (
+              <SmartPresetsPanel
+                activePresetId={activeSmartPresetId}
+                culturalStyleId={presetCulturalStyleId}
+                onCulturalStyleChange={setPresetCulturalStyleId}
+                onApply={applySmartPreset}
+              />
+            )}
+
             <div>
               {advanced ? <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} /> : <FieldLabel>{t("generator.theme")}</FieldLabel>}
               <textarea value={theme} onChange={(e) => setTheme(e.target.value)} maxLength={hasAdminInputBypass ? undefined : themeLimit} rows={3} placeholder={t("generator.themePlaceholder")} aria-label={t("generator.theme")} className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
@@ -1478,14 +1535,14 @@ function GeneratePage() {
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
-              <div><SectionHeader title={t("generator.language")} onClear={() => { setLanguage(""); setCustomLanguage(""); }} /><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select></div>
+              <div><SectionHeader title={t("generator.language")} onClear={() => { setLanguage(""); setCustomLanguage(""); }} /><LanguagePicker value={language} onChange={(value) => { setLanguage(value); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} /></div>
             </> : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-3">
                   <select value={moods[0] ?? ""} onChange={(e) => pickPrimary(setMoods)(e.target.value)} aria-label={t("generator.mood")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMood")}</option>{MOOD_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MOODS, item, t)}</option>)}</select>
                   {moods[0] === CUSTOM && <input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} className={fieldClass} />}
                 </div>
-                <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label={t("generator.language")} className={fieldClass}><option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectLanguage")}</option>{LANGUAGE_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === CUSTOM ? t("generator.option.custom") : languageLabel(item)}</option>)}</select>
+                <LanguagePicker value={language} onChange={(value) => { setLanguage(value); if (value !== CUSTOM) setCustomLanguage(""); }} ariaLabel={t("generator.language")} />
               </div>
             )}
 
