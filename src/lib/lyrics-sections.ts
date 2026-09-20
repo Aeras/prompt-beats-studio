@@ -187,6 +187,63 @@ export function replaceLyricsSection(
   };
 }
 
+export function isRegularChorusSection(section: LyricsSection): boolean {
+  return baseStructuralLabel(section.label) === "chorus";
+}
+
+function splitLeadingInlineDirections(content: string) {
+  const lineRegex = /.*(?:\r\n|\n|\r|$)/g;
+  let prefixEnd = 0;
+  for (const match of content.matchAll(lineRegex)) {
+    const raw = match[0];
+    if (!raw) break;
+    const line = raw.replace(/[\r\n]+$/, "");
+    if (!line.trim()) {
+      prefixEnd += raw.length;
+      continue;
+    }
+    if (/^[\t ]*\[[^\]\r\n]+\][\t ]*$/.test(line) && !isStructuralSectionHeader(line)) {
+      prefixEnd += raw.length;
+      continue;
+    }
+    break;
+  }
+  return {
+    prefix: content.slice(0, prefixEnd),
+    lyricalBody: content.slice(prefixEnd),
+  };
+}
+
+export function replaceAllRegularChorusLyrics(
+  lyrics: string,
+  sourceSectionKey: string,
+  replacement: string,
+): { ok: true; lyrics: string; changedKeys: string[] } | { ok: false; error: string } {
+  const sections = parseLyricsSections(lyrics);
+  const source = sections.find((item) => item.key === sourceSectionKey);
+  if (!source) return { ok: false, error: "The selected lyric section no longer exists." };
+  if (!isRegularChorusSection(source)) {
+    return { ok: false, error: "Apply to all is only available for regular Chorus sections." };
+  }
+
+  const choruses = sections.filter(isRegularChorusSection);
+  if (choruses.length < 2) {
+    return { ok: false, error: "There is only one regular Chorus section." };
+  }
+
+  const replacementBody = splitLeadingInlineDirections(replacement).lyricalBody;
+  let output = lyrics;
+  const changedKeys: string[] = [];
+
+  for (const section of [...choruses].sort((a, b) => b.contentStart - a.contentStart)) {
+    const { prefix } = splitLeadingInlineDirections(section.content);
+    output = output.slice(0, section.contentStart) + prefix + replacementBody + output.slice(section.end);
+    changedKeys.push(section.key);
+  }
+
+  return { ok: true, lyrics: output, changedKeys: changedKeys.reverse() };
+}
+
 export function structuralHeadersInText(text: string): string[] {
   return text
     .split(/\r?\n/)
