@@ -125,16 +125,18 @@ export function TrackCard({
                 source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
                 created_with: track.createdWith ?? null,
                 is_published: track.isPublished ?? true,
+                prompt_is_public: track.promptIsPublic ?? true,
+                lyrics_is_public: track.lyricsIsPublic ?? true,
               }} />
             )}
           </div>
         </div>
 
         <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")}>
-          <button onClick={(event) => toggleContent("prompt", event.currentTarget)} className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
+          {track.prompt?.trim() && <button onClick={(event) => toggleContent("prompt", event.currentTarget)} className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
             {activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
             <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
-          </button>
+          </button>}
           {track.lyrics?.trim() && (
             <button onClick={(event) => toggleContent("lyrics", event.currentTarget)} className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
               {activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
