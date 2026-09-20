@@ -25,6 +25,7 @@ import {
   lyricsSectionEditRequestSchema,
 } from "@/lib/lyrics-workspace.shared";
 import { parseLyricsSections } from "@/lib/lyrics-sections";
+import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
@@ -38,6 +39,7 @@ const jobInput = z.object({
   baseMusicStyle: z.string().trim().default(""),
   instruments: z.string().trim().default(""),
   structure: z.string().trim().max(600).default(""),
+  songBlueprint: songBlueprintSchema,
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
@@ -102,6 +104,7 @@ const songInputShape = z.object({
   mood: z.string().default(""),
   language: z.string().default(""),
   structure: z.string().default(""),
+  songBlueprint: songBlueprintSchema,
   production: z.string().default(""),
   instructions: z.string().default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
