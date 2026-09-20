@@ -11,6 +11,10 @@ import {
   type AITargetPlatform,
 } from "@/lib/ai-target-platforms";
 import { generationPlatformGuidance } from "@/lib/ai-platform-guidance";
+import {
+  generatorInputSnapshotSchema,
+  revisionJobContextSchema,
+} from "@/lib/generator-revision.shared";
 
 export const HOURLY_LIMIT = 10;
 
@@ -27,6 +31,8 @@ const generateInput = z.object({
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
+  operation: z.enum(["generate", "revision"]).default("generate"),
+  revision: revisionJobContextSchema.nullish(),
 });
 
 const generationOutput = z.object({
@@ -42,6 +48,7 @@ const savedInput = z.object({
   project_id: z.string().uuid().nullable().optional(),
   version_number: z.number().int().positive().nullable().optional(),
   version_label: z.string().trim().max(120).nullable().optional(),
+  generator_input_snapshot: generatorInputSnapshotSchema.nullable().optional(),
   theme: z.string().trim().max(500).default(""),
   genre: z.string().trim().max(500).default(""),
   mood: z.string().trim().max(120).default(""),
