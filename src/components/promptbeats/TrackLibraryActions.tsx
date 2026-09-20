@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Bookmark, Download, ListPlus, Loader2, MoreHorizontal, Plus, X } from "lucide-react";
@@ -30,7 +30,7 @@ function base64ToBlob(value: string, mimeType: string) {
   return new Blob([bytes], { type: mimeType });
 }
 
-export function TrackLibraryActions({ track, compact = false }: { track: Track; compact?: boolean }) {
+export function TrackLibraryActions({ track, compact = false, ownerActions = null }: { track: Track; compact?: boolean; ownerActions?: ReactNode }) {
   const { language } = useI18n();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -232,6 +232,7 @@ export function TrackLibraryActions({ track, compact = false }: { track: Track; 
             </DropdownMenu.Item>
             {canPlaylist && <DropdownMenu.Item onSelect={() => setPlaylistOpen(true)} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><ListPlus className="h-4 w-4" /> {copy.playlist}</DropdownMenu.Item>}
             {canDownload && <DropdownMenu.Item onSelect={() => void download()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><Download className="h-4 w-4" /> {copy.download}</DropdownMenu.Item>}
+            {ownerActions}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
