@@ -789,7 +789,7 @@ function GeneratePage() {
   const effectiveMood = moodList.join(", ");
 
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
-  const musicStyleLimit = advanced ? 150 : 400;
+  const musicStyleLimit = revisionMode ? 500 : advanced ? 150 : 400;
   const themeLimit = advanced ? 500 : 300;
   const moodLimit = advanced ? 120 : 60;
   const instrumentsText = instrumentList.join(", ");
@@ -1224,8 +1224,8 @@ function GeneratePage() {
 
             {(advanced || customGenreSelected) && (
               <div>
-                <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />
-                {advanced && <p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p>}
+                <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? musicStyleLimit : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />
+                {advanced && <p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/{musicStyleLimit}</p>}
               </div>
             )}
 
