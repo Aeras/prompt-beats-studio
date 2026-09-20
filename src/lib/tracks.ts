@@ -14,6 +14,8 @@ export type Track = {
   audioUrl?: string;
   audioType?: "link" | "upload";
   isPublished?: boolean;
+  promptIsPublic?: boolean;
+  lyricsIsPublic?: boolean;
   sourceType?: PersistedTrackSourceType | undefined;
   sourceId?: string | null | undefined;
   createdWith?: CreatedWith | null;

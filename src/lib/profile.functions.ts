@@ -94,14 +94,14 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (!profile?.id) return { profile: null, tracks: [] };
-    const { data: tracks } = await supabase
-      .from("tracks")
-      .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: tracks } = await (supabaseAdmin.from("tracks") as any)
+      .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
   });
 
 /** Public artist page data by vanity handle, including track prompts. */
@@ -117,14 +117,14 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
       .eq("handle", handle)
       .maybeSingle();
     if (!profile?.id) return { profile: null, tracks: [] };
-    const { data: tracks } = await supabase
-      .from("tracks")
-      .select("id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: tracks } = await (supabaseAdmin.from("tracks") as any)
+      .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
   });
 
 
@@ -148,7 +148,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(50);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: tracks ?? [] };
+    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
   });
 
 /** Public creator search: returns only the safe identity projection. */

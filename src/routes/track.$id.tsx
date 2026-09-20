@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Play, Pause, Share2 } from "lucide-react";
+import { Check, Copy, Play, Pause } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
 import { getPublicTrackById } from "@/lib/tracks.functions";
@@ -15,6 +15,7 @@ import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { ShareTrackButton } from "@/components/promptbeats/ShareTrackButton";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -59,7 +60,6 @@ function TrackPage() {
   const { play, current, playing } = usePlayer();
   const prompt = useCopy();
   const lyrics = useCopy();
-  const share = useCopy();
 
   const track = data?.track ?? null;
   const [playCount, setPlayCount] = useState(() => track?.plays ?? 0);
@@ -114,7 +114,16 @@ function TrackPage() {
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <Link to="/" className="inline-flex text-xs text-muted-foreground transition-colors hover:text-accent">← {t("auth.backFeed")}</Link>
         {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("common.loading")}</p>}
-        {!isLoading && !track && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("trackDetail.unavailable")}</p>}
+        {!isLoading && !track && (
+          <div className="glass rounded-2xl p-8 text-center">
+            {data?.unavailableReason === "private" && data.privateTitle && <h1 className="font-display text-xl font-bold">{data.privateTitle}</h1>}
+            <p className={data?.unavailableReason === "private" ? "mt-3 text-sm text-muted-foreground" : "text-sm text-muted-foreground"}>
+              {data?.unavailableReason === "private"
+                ? (language === "el" ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό." : "The creator made this track private.")
+                : t("trackDetail.unavailable")}
+            </p>
+          </div>
+        )}
         <TrackModerationControls trackId={id} />
 
         {track && <>
@@ -151,10 +160,13 @@ function TrackPage() {
                     {current?.id === track.id && playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     {current?.id === track.id && playing ? t("trackDetail.pause") : t("trackDetail.playTrack")}
                   </button>}
-                  <button onClick={() => share.copy(typeof window !== "undefined" ? window.location.href : "")} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
-                    {share.copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-                    {share.copied ? t("trackDetail.linkCopied") : t("trackDetail.share")}
-                  </button>
+                  <ShareTrackButton
+                    trackId={track.id}
+                    ownerId={track.user_id}
+                    isPublished={track.is_published === true}
+                    promptIsPublic={track.prompt_is_public !== false}
+                    lyricsIsPublic={track.lyrics_is_public !== false}
+                  />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
@@ -174,12 +186,14 @@ function TrackPage() {
                     audioUrl: track.audio_url,
                     audioType: track.audio_type === "link" ? "link" : "upload",
                     isPublished: track.is_published,
+                    promptIsPublic: track.prompt_is_public,
+                    lyricsIsPublic: track.lyrics_is_public,
                     sourceType: track.source_type,
                     sourceId: track.source_id,
                     createdWith: track.created_with,
                     allowDownload: track.allow_download === true,
                   }} />
-                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with }} />
+                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with, is_published: track.is_published, prompt_is_public: track.prompt_is_public, lyrics_is_public: track.lyrics_is_public }} />
                 </div>
               </div>
             </div>

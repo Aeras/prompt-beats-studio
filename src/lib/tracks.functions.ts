@@ -23,11 +23,24 @@ const trackInput = z.object({
   duration_seconds: z.number().int().min(0).max(60 * 60).optional(),
   cover_url: z.string().url().max(1000).optional(),
   is_published: z.boolean().default(true),
+  prompt_is_public: z.boolean().default(true),
+  lyrics_is_public: z.boolean().default(true),
   allow_download: z.boolean().default(false),
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+
+
+function sanitizeTrackContent(track: any, viewerId?: string | null) {
+  if (!track) return track;
+  const owner = Boolean(viewerId && track.user_id === viewerId);
+  return {
+    ...track,
+    prompt: owner || track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+    lyrics: owner || track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+  };
+}
 
 const SUNO_HOSTS = new Set(["suno.com", "www.suno.com"]);
 const SUNO_ID = /^[A-Za-z0-9_-]{6,128}$/;
@@ -80,8 +93,9 @@ export const incrementTrackPlay = createServerFn({ method: "POST" })
 
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const supabase = createPublicServerClient();
-  const { data, error } = await (supabase.from("tracks") as any)
+  const { data, error } = await (supabaseAdmin.from("tracks") as any)
     .select(TRACK_COLUMNS)
     .eq("is_published", true)
     .order("created_at", { ascending: false })
@@ -106,7 +120,7 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
   }
   return {
     tracks: (data ?? []).map((t: any) => ({
-      ...t,
+      ...sanitizeTrackContent(t),
       handle: `@${handles.get(t.user_id) ?? "unknown"}`,
       creator_name: names.get(t.user_id) ?? "",
       staff_badge: badges.get(t.user_id) ?? null,
@@ -124,28 +138,49 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
     const accessToken = authorization?.replace(/^Bearer\s+/i, "") ?? null;
     const viewerId = request && accessToken ? await getUserIdFromRequest(request) : null;
     const supabase = viewerId && accessToken ? createPublicServerClient(accessToken) : createPublicServerClient();
-    const { data: track } = await (supabase.from("tracks") as any)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: track } = await (supabaseAdmin.from("tracks") as any)
       .select(TRACK_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
-    if (!track || (!track.is_published && track.user_id !== viewerId)) return { track: null, artist: null };
+    if (!track) return { track: null, artist: null, unavailableReason: "not_found" as const };
+    if (!track.is_published && track.user_id !== viewerId) {
+      return { track: null, artist: null, unavailableReason: "private" as const, privateTitle: track.title as string };
+    }
     const { data: artist } = await supabase
       .from("public_profiles")
       .select("id, handle, display_name, artist_alias, avatar_url, staff_badge")
       .eq("id", track.user_id)
       .maybeSingle();
-    return { track, artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null };
+    return { track: sanitizeTrackContent(track, viewerId), artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null, unavailableReason: null as null, privateTitle: null as null };
   });
 
 export const listMyTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase.from("tracks") as any)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await (supabaseAdmin.from("tracks") as any)
       .select(TRACK_COLUMNS)
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { tracks: data ?? [] };
+  });
+
+export const getMyTrackForEdit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: track, error } = await (supabaseAdmin.from("tracks") as any)
+      .select(TRACK_COLUMNS)
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .eq("moderation_status", "active")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!track) throw new Error("Track not found");
+    return { track };
   });
 
 export const createTrack = createServerFn({ method: "POST" })
@@ -162,7 +197,8 @@ export const createTrack = createServerFn({ method: "POST" })
       : await resolveExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
     if (data.source_type !== "upload" && !externalSource) throw new Error("Invalid external track link");
 
-    const { data: row, error } = await (context.supabase.from("tracks") as any)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await (supabaseAdmin.from("tracks") as any)
       .insert({
         ...data,
         created_with: externalSource ? null : data.created_with ?? null,
@@ -193,6 +229,8 @@ export const updateTrack = createServerFn({ method: "POST" })
       prompt: z.string().trim().max(4000).default(""),
       lyrics: z.string().trim().max(8000).default(""),
       is_published: z.boolean(),
+      prompt_is_public: z.boolean().default(true),
+      lyrics_is_public: z.boolean().default(true),
       allow_download: z.boolean().default(false),
       source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
       created_with: createdWithSchema.nullable().optional(),
@@ -230,6 +268,15 @@ export const updateTrack = createServerFn({ method: "POST" })
       _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
     } as never);
     if (error) throw new Error(error.message);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: visibilityError } = await (supabaseAdmin.from("tracks") as any)
+      .update({
+        prompt_is_public: data.prompt_is_public,
+        lyrics_is_public: data.lyrics_is_public,
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (visibilityError) throw new Error(visibilityError.message);
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
     if (payload?.cleanup_id) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -357,10 +404,11 @@ export const listLikedTracks = createServerFn({ method: "GET" })
     if (!ids.length) return { tracks: [] };
 
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const supabase = createPublicServerClient();
-    const { data: tracks } = await (supabase.from("tracks") as any).select(TRACK_COLUMNS).in("id", ids).eq("is_published", true);
+    const { data: tracks } = await (supabaseAdmin.from("tracks") as any).select(TRACK_COLUMNS).in("id", ids).eq("is_published", true).eq("moderation_status", "active");
 
-    const rows = tracks ?? [];
+    const rows = (tracks ?? []).map((track: any) => sanitizeTrackContent(track, context.userId));
     const userIds = [...new Set(rows.map((t: any) => t.user_id))] as string[];
     const handles = new Map<string, string>();
     if (userIds.length) {

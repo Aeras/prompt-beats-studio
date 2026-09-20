@@ -879,6 +879,7 @@ export type Database = {
           id: string
           is_published: boolean
           lyrics: string
+          lyrics_is_public: boolean
           moderation_locked_at: string | null
           moderation_locked_by: string | null
           moderation_reason_code: string | null
@@ -886,6 +887,7 @@ export type Database = {
           moderation_status: string
           plays: number
           prompt: string
+          prompt_is_public: boolean
           source_id: string | null
           source_type: string
           source_url: string | null
@@ -907,6 +909,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           lyrics?: string
+          lyrics_is_public?: boolean
           moderation_locked_at?: string | null
           moderation_locked_by?: string | null
           moderation_reason_code?: string | null
@@ -914,6 +917,7 @@ export type Database = {
           moderation_status?: string
           plays?: number
           prompt?: string
+          prompt_is_public?: boolean
           source_id?: string | null
           source_type?: string
           source_url?: string | null
@@ -935,6 +939,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           lyrics?: string
+          lyrics_is_public?: boolean
           moderation_locked_at?: string | null
           moderation_locked_by?: string | null
           moderation_reason_code?: string | null
@@ -942,6 +947,7 @@ export type Database = {
           moderation_status?: string
           plays?: number
           prompt?: string
+          prompt_is_public?: boolean
           source_id?: string | null
           source_type?: string
           source_url?: string | null

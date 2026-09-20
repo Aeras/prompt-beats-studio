@@ -25,11 +25,12 @@ async function cleanupPlaylistCover(userId: string, url: string | null | undefin
 }
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
-async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrder?: string[]) {
+async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrder?: string[], viewerId?: string) {
   if (!ids.length) return [];
-  const { data: tracks, error } = await supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: tracks, error } = await supabaseAdmin
     .from("tracks")
     .select(TRACK_COLUMNS)
     .in("id", ids);
@@ -50,7 +51,12 @@ async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrde
 
   const order = new Map((preferredOrder ?? ids).map((id, index) => [id, index]));
   return rows
-    .map((track: any) => ({ ...track, handle: `@${handles.get(track.user_id) ?? "unknown"}` }))
+    .map((track: any) => ({
+      ...track,
+      prompt: viewerId === track.user_id || track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+      lyrics: viewerId === track.user_id || track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+      handle: `@${handles.get(track.user_id) ?? "unknown"}`,
+    }))
     .sort((a: any, b: any) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
@@ -141,7 +147,7 @@ export const getPlaylist = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const orderedIds = (items ?? []).map((item: any) => item.track_id);
-    const tracks = await loadTracksWithHandles(context.supabase, orderedIds, orderedIds);
+    const tracks = await loadTracksWithHandles(context.supabase, orderedIds, orderedIds, context.userId);
     const trackMap = new Map(tracks.map((track: any) => [track.id, track]));
     const orderedTracks = orderedIds.map((id: string) => trackMap.get(id)).filter(Boolean);
 
@@ -298,7 +304,7 @@ export const listFavoriteTracks = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const ids = (favorites ?? []).map((favorite: any) => favorite.track_id);
-    return { tracks: await loadTracksWithHandles(context.supabase, ids, ids) };
+    return { tracks: await loadTracksWithHandles(context.supabase, ids, ids, context.userId) };
   });
 
 export const toggleFavorite = createServerFn({ method: "POST" })
