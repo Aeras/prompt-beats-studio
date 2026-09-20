@@ -29,6 +29,23 @@ export const createTrackShareLink = createServerFn({ method: "POST" })
     };
   });
 
+export const updateTrackShareLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    shareId: z.string().uuid(),
+    includePrompt: z.boolean(),
+    includeLyrics: z.boolean(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("update_track_share_link", {
+      _share_id: data.shareId,
+      _include_prompt: data.includePrompt,
+      _include_lyrics: data.includeLyrics,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const revokeTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ shareId: z.string().uuid() }).parse(input))
