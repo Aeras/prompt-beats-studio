@@ -41,6 +41,8 @@ type Row = {
   duration_seconds: number | null;
   plays: number;
   is_published: boolean;
+  prompt_is_public: boolean;
+  lyrics_is_public: boolean;
   allow_download: boolean;
   handle?: string;
 };
@@ -60,6 +62,8 @@ function toTrack(track: Row, handle: string): Track {
     audioUrl: track.audio_url,
     audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
     isPublished: track.is_published,
+    promptIsPublic: track.prompt_is_public,
+    lyricsIsPublic: track.lyrics_is_public,
     sourceType: track.source_type,
     sourceId: track.source_id,
     createdWith: track.created_with,
