@@ -18,6 +18,7 @@ import {
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
+import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 import { clearAnalyzerSessionAudio, loadAnalyzerSessionAudio, saveAnalyzerSessionAudio, sweepStaleAnalyzerAudio } from "@/lib/song-analyzer-session-audio";
 
@@ -82,7 +83,9 @@ function SongAnalyzerPage() {
   const [model, setModel] = useState(DEFAULT_SONG_ANALYZER_MODEL);
   const [result, setResult] = useState<SongAnalysisResult | null>(null);
   const [stage0Evidence, setStage0Evidence] = useState<Stage0DspEvidence | null>(null);
+  const [legacyStage0Evidence, setLegacyStage0Evidence] = useState<Stage0DspEvidence | null>(null);
   const [stage0DebugExpanded, setStage0DebugExpanded] = useState(false);
+  const [legacyStage0DebugExpanded, setLegacyStage0DebugExpanded] = useState(false);
   const [stageAEvidence, setStageAEvidence] = useState<StageAEvidence | null>(null);
   const [stageADebugExpanded, setStageADebugExpanded] = useState(false);
   const [resultModel, setResultModel] = useState<string | null>(null);
@@ -123,14 +126,18 @@ function SongAnalyzerPage() {
     setError(null);
     setSaved(false);
     setStage0Evidence(null);
+    setLegacyStage0Evidence(null);
     setStage0DebugExpanded(false);
+    setLegacyStage0DebugExpanded(false);
     setStageAEvidence(null);
     setStageADebugExpanded(false);
     try {
-      const [audioBase64, dspEvidence] = await Promise.all([
+      const [audioBase64, legacyDspEvidence] = await Promise.all([
         fileToBase64(file),
         analyzeStage0Dsp(file),
       ]);
+      setLegacyStage0Evidence(legacyDspEvidence);
+      const dspEvidence = await analyzeStage0Essentia(file, legacyDspEvidence);
       setStage0Evidence(dspEvidence);
       const response = await analyzeSong({
         data: {
@@ -208,6 +215,11 @@ function SongAnalyzerPage() {
     [stage0Evidence],
   );
 
+  const legacyStage0RawJson = useMemo(
+    () => legacyStage0Evidence ? JSON.stringify(legacyStage0Evidence, null, 2) : "",
+    [legacyStage0Evidence],
+  );
+
   const stageARawJson = useMemo(
     () => stageAEvidence ? JSON.stringify(stageAEvidence, null, 2) : "",
     [stageAEvidence],
@@ -261,6 +273,7 @@ function SongAnalyzerPage() {
                   setFile(nextFile);
                   setResult(null);
                   setStage0Evidence(null);
+                  setLegacyStage0Evidence(null);
                   setStageAEvidence(null);
                   setSaved(false);
                   setError(null);
@@ -277,7 +290,7 @@ function SongAnalyzerPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFile(null); setResult(null); setStage0Evidence(null); setStageAEvidence(null); setResultModel(null); setSaved(false); setError(null);
+                    setFile(null); setResult(null); setStage0Evidence(null); setLegacyStage0Evidence(null); setStageAEvidence(null); setResultModel(null); setSaved(false); setError(null);
                     void clearAnalyzerSessionAudio().catch(() => undefined);
                   }}
                   className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300"
@@ -333,12 +346,46 @@ function SongAnalyzerPage() {
               <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">{t("songAnalyzer.empty")}</div>
             ) : (
               <>
+                {legacyStage0Evidence && (
+                  <div className="glass rounded-2xl border border-white/10 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin Diagnostic</p>
+                        <h2 className="mt-1 font-display text-lg font-bold">Legacy Stage 0 — Comparison</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">Previous PromptBeats DSP retained only for side-by-side benchmark during the Essentia experiment.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <CopyAction label="Copy Legacy Stage 0 JSON" value={legacyStage0RawJson} />
+                        <button
+                          type="button"
+                          onClick={() => setLegacyStage0DebugExpanded((value) => !value)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:border-white/30 hover:text-foreground"
+                        >
+                          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${legacyStage0DebugExpanded ? "rotate-180" : ""}`} />
+                          {legacyStage0DebugExpanded ? "Collapse" : "Expand"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-muted-foreground">Engine</p><p className="mt-1 font-semibold">Legacy</p></div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-muted-foreground">Primary BPM</p><p className="mt-1 font-semibold">{legacyStage0Evidence.tempo?.primaryBpm ?? "—"}</p></div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-muted-foreground">Tempo confidence</p><p className="mt-1 font-semibold">{legacyStage0Evidence.tempo?.confidence != null ? legacyStage0Evidence.tempo.confidence.toFixed(2) : "—"}</p></div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-muted-foreground">Key candidate</p><p className="mt-1 font-semibold">{legacyStage0Evidence.tonal?.keyCandidate ?? "Uncertain"}</p></div>
+                    </div>
+                    {legacyStage0DebugExpanded && (
+                      <pre className="mt-4 max-h-[720px] overflow-auto rounded-xl border border-white/10 bg-black/40 p-4 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
+                        {legacyStage0RawJson}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
                 {stage0Evidence && (
                   <div className="glass rounded-2xl border border-cyan-400/20 p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Admin Diagnostic</p>
-                        <h2 className="mt-1 font-display text-lg font-bold">Stage 0 — DSP Evidence — Debug</h2>
+                        <h2 className="mt-1 font-display text-lg font-bold">Stage 0 — Essentia DSP/MIR Evidence — Debug</h2>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Deterministic signal-derived evidence. Supporting reference only — not musical ground truth and not persisted to the Library.
                         </p>
@@ -358,7 +405,7 @@ function SongAnalyzerPage() {
                     <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                         <p className="text-muted-foreground">DSP status</p>
-                        <p className="mt-1 font-semibold">{stage0Evidence.available ? "Available" : "Unavailable"}</p>
+                        <p className="mt-1 font-semibold">{stage0Evidence.available ? (stage0Evidence.engine?.name === "essentia" ? "Essentia" : "Legacy fallback") : "Unavailable"}</p>
                       </div>
                       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                         <p className="text-muted-foreground">Primary BPM</p>

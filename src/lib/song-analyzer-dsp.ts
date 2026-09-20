@@ -455,6 +455,21 @@ export async function analyzeStage0Dsp(file: File): Promise<Stage0DspEvidence> {
     const result: Stage0DspEvidence = {
       version: "stage0-dsp-v1",
       available: true,
+      engine: {
+        name: "legacy",
+        engineVersion: "promptbeats-legacy-v1",
+        methodVersion: "stage0-dsp-v1",
+        algorithms: [
+          "rms-envelope",
+          "positive-rms-onset-envelope",
+          "autocorrelation-tempo",
+          "segment-tempo-stability",
+          "custom-fft-chroma",
+          "profile-key-estimation",
+          "spectral-centroid-and-band-ratios",
+          "energy-change-candidates",
+        ],
+      },
       processing: {
         decodeMs: Number(decodeMs.toFixed(2)),
         dspMs: Number(dspMs.toFixed(2)),
@@ -516,6 +531,12 @@ export async function analyzeStage0Dsp(file: File): Promise<Stage0DspEvidence> {
     return {
       version: "stage0-dsp-v1",
       available: false,
+      engine: {
+        name: "legacy",
+        engineVersion: "promptbeats-legacy-v1",
+        methodVersion: "stage0-dsp-v1",
+        algorithms: [],
+      },
       processing: {
         decodeMs: decodeMs == null ? null : Number(decodeMs.toFixed(2)),
         dspMs: null,
