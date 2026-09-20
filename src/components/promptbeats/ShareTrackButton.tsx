@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Copy, Loader2, Mail, MoreHorizontal, Share2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -56,6 +56,9 @@ export function ShareTrackButton({
   const [optionBusy, setOptionBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragState = useRef<{ startY: number; lastY: number; lastTime: number } | null>(null);
 
   const title = trackTitle?.trim() || (language === "el" ? "Τραγούδι στο PromptBeats" : "Song on PromptBeats");
   const shareText = language === "el" ? `Άκουσε το «${title}» στο PromptBeats` : `Listen to “${title}” on PromptBeats`;
@@ -115,9 +118,51 @@ export function ShareTrackButton({
     }
   };
 
+  const closeShareHub = () => {
+    setDragY(0);
+    setDragging(false);
+    dragState.current = null;
+    setOpen(false);
+  };
+
+  const startSheetDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 639px)").matches) return;
+    dragState.current = {
+      startY: event.clientY,
+      lastY: event.clientY,
+      lastTime: performance.now(),
+    };
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveSheetDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current || !dragging) return;
+    const delta = Math.max(0, event.clientY - dragState.current.startY);
+    dragState.current.lastY = event.clientY;
+    dragState.current.lastTime = performance.now();
+    setDragY(delta);
+  };
+
+  const endSheetDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current) return;
+    const now = performance.now();
+    const elapsed = Math.max(1, now - dragState.current.lastTime);
+    const velocity = Math.max(0, (event.clientY - dragState.current.lastY) / elapsed);
+    const shouldClose = dragY >= 90 || (dragY >= 45 && velocity >= 0.65);
+    dragState.current = null;
+    setDragging(false);
+    if (shouldClose) {
+      closeShareHub();
+    } else {
+      setDragY(0);
+    }
+  };
+
   const openShareHub = () => {
     setCopied(false);
     setError("");
+    setDragY(0);
     setOpen(true);
 
     if (isOwner) {
@@ -230,9 +275,25 @@ export function ShareTrackButton({
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-song-title"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) closeShareHub();
+      }}
     >
-      <div className="glass-strong w-full max-w-lg rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
-        <div className="flex items-start justify-between gap-3">
+      <div
+        className="glass-strong w-full max-w-lg rounded-t-3xl p-5 sm:rounded-3xl sm:p-6"
+        style={{
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: dragging ? "none" : "transform 180ms ease-out",
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div
+          className="flex touch-none select-none items-start justify-between gap-3 sm:touch-auto sm:select-auto"
+          onPointerDown={startSheetDrag}
+          onPointerMove={moveSheetDrag}
+          onPointerUp={endSheetDrag}
+          onPointerCancel={endSheetDrag}
+        >
           <div>
             <h2 id="share-song-title" className="font-display text-lg font-bold">
               {language === "el" ? "Κοινοποίηση τραγουδιού" : "Share song"}
@@ -249,7 +310,7 @@ export function ShareTrackButton({
           </div>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={closeShareHub}
             aria-label={language === "el" ? "Κλείσιμο" : "Close"}
             className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
           >
