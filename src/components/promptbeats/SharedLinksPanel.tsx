@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import artFallback from "@/assets/art-3.jpg";
-import { listMyShareManagement, revokeTrackShareLink, type ShareManagementTrack } from "@/lib/track-sharing.functions";
+import { listMyShareManagement, revokeTrackShareLink, updateTrackShareLink, type ShareManagementTrack } from "@/lib/track-sharing.functions";
 
 function fmt(value: string | null, locale: string) {
   if (!value) return "—";
@@ -17,6 +17,7 @@ export function SharedLinksPanel() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
   const data = useQuery({ queryKey: ["library", "shared-links"], queryFn: () => listMyShareManagement() });
 
   const copy = async (token: string) => {
@@ -28,6 +29,16 @@ export function SharedLinksPanel() {
     setRevoking(id);
     try { await revokeTrackShareLink({ data: { shareId: id } }); await queryClient.invalidateQueries({ queryKey: ["library", "shared-links"] }); }
     finally { setRevoking(null); }
+  };
+
+  const updateLink = async (id: string, includePrompt: boolean, includeLyrics: boolean) => {
+    setUpdating(id);
+    try {
+      await updateTrackShareLink({ data: { shareId: id, includePrompt, includeLyrics } });
+      await queryClient.invalidateQueries({ queryKey: ["library", "shared-links"] });
+    } finally {
+      setUpdating(null);
+    }
   };
 
   if (data.isLoading) return <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Φόρτωση κοινοποιήσεων..." : "Loading shares..."}</p>;
@@ -61,7 +72,13 @@ export function SharedLinksPanel() {
                 return (
                   <div key={link.id} className="rounded-xl border border-white/10 bg-black/25 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] text-muted-foreground"><span className={active ? "text-accent" : "text-muted-foreground"}>{active ? (language === "el" ? "Ενεργό" : "Active") : (language === "el" ? "Ανακλήθηκε" : "Revoked")}</span>{" · "}Prompt {link.include_prompt ? "✓" : "—"} · Lyrics {link.include_lyrics ? "✓" : "—"}</div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className={active ? "text-accent" : "text-muted-foreground"}>{active ? (language === "el" ? "Ενεργό" : "Active") : (language === "el" ? "Ανακλήθηκε" : "Revoked")}</span>
+                        {active ? <>
+                          <button type="button" disabled={updating === link.id} onClick={() => updateLink(link.id, !link.include_prompt, link.include_lyrics)} className={link.include_prompt ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Prompt {link.include_prompt ? "✓" : "—"}</button>
+                          <button type="button" disabled={updating === link.id} onClick={() => updateLink(link.id, link.include_prompt, !link.include_lyrics)} className={link.include_lyrics ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Lyrics {link.include_lyrics ? "✓" : "—"}</button>
+                        </> : <span>Prompt {link.include_prompt ? "✓" : "—"} · Lyrics {link.include_lyrics ? "✓" : "—"}</span>}
+                      </div>
                       <div className="flex gap-1">
                         {active && <button type="button" onClick={() => copy(link.token)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied === link.token ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button>}
                         {active && <button type="button" onClick={() => revoke(link.id)} disabled={revoking === link.id} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{revoking === link.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button>}
