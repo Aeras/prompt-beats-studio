@@ -56,12 +56,13 @@ function looksLikeInlineDirection(label: string) {
 }
 
 export function isStructuralSectionHeader(line: string): boolean {
-  const match = line.match(/^\s*\[([^\]\r\n]+)\]\s*$/);
+  const match = line.match(/^[\t ]*\[([^\]\r\n]+)\][\t ]*$/);
   if (!match) return false;
   const label = normalizeLabel(match[1]!);
   if (!label || label.length > 80) return false;
   const base = baseStructuralLabel(label);
   if (STRUCTURAL_LABELS.has(base)) return true;
+  if (/\b(verse|chorus|refrain|hook|bridge|outro|intro|coda|breakdown|interlude|instrumental|solo)\b/i.test(base)) return true;
   if (looksLikeInlineDirection(label)) return false;
   // Preserve concise unknown/custom labels as structural sections.
   return label.split(/\s+/).length <= 5;
@@ -84,7 +85,7 @@ function friendlyLabel(label: string, occurrence: number, totalForLabel: number)
 }
 
 export function parseLyricsSections(lyrics: string): LyricsSection[] {
-  const headerRegex = /^\s*\[([^\]\r\n]+)\]\s*$/gm;
+  const headerRegex = /^[\t ]*\[([^\]\r\n]+)\][\t ]*$/gm;
   const headers: Array<{ start: number; end: number; raw: string; label: string }> = [];
   let match: RegExpExecArray | null;
   while ((match = headerRegex.exec(lyrics))) {
