@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { parseLyricsSections, replaceLyricsSection } from "./lyrics-sections";
+import {
+  parseLyricsSections,
+  replaceAllRegularChorusLyrics,
+  replaceLyricsSection,
+} from "./lyrics-sections";
 
 describe("lyrics section parser", () => {
   test("parses standard structural sections", () => {
@@ -53,6 +57,43 @@ describe("lyrics section parser", () => {
     expect(replaced.ok).toBe(true);
     if (!replaced.ok) return;
     expect(replaced.lyrics).toBe("[Verse]\nNEW\n\n[Chorus]\nB");
+  });
+
+  test("applies one Chorus lyric body to all regular Chorus occurrences only", () => {
+    const lyrics = [
+      "[Chorus]",
+      "[Full band enters]",
+      "OLD ONE",
+      "",
+      "[Verse]",
+      "VERSE",
+      "",
+      "[Chorus]",
+      "[Wide guitars]",
+      "OLD TWO",
+      "",
+      "[Final Chorus]",
+      "[Maximum lift]",
+      "FINAL OLD",
+    ].join("\n");
+
+    const replaced = replaceAllRegularChorusLyrics(
+      lyrics,
+      "chorus:1",
+      "[Full band enters]\nNEW HOOK",
+    );
+    expect(replaced.ok).toBe(true);
+    if (!replaced.ok) return;
+    expect(replaced.changedKeys).toEqual(["chorus:1", "chorus:2"]);
+    expect(replaced.lyrics).toContain("[Chorus]\n[Full band enters]\nNEW HOOK");
+    expect(replaced.lyrics).toContain("[Chorus]\n[Wide guitars]\nNEW HOOK");
+    expect(replaced.lyrics).toContain("[Final Chorus]\n[Maximum lift]\nFINAL OLD");
+  });
+
+  test("rejects apply-all outside regular Chorus", () => {
+    const lyrics = "[Verse]\nA\n\n[Verse]\nB";
+    const replaced = replaceAllRegularChorusLyrics(lyrics, "verse:1", "NEW");
+    expect(replaced.ok).toBe(false);
   });
 
   test("preserves CRLF and unrelated content", () => {
