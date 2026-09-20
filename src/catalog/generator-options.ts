@@ -1,4 +1,5 @@
 import type { TranslationKey } from "@/i18n/locales/en";
+import { SONG_LANGUAGE_VALUES } from "@/catalog/song-languages";
 
 export type LocalizedGeneratorOption = {
   id: string;
@@ -54,15 +55,8 @@ export const BASIC_MOODS = [
   option("custom", "Custom…", "generator.option.custom"),
 ] as const;
 
-export const SONG_LANGUAGES = [
-  option("greek", "Greek", "generator.language.greek"),
-  option("english", "English", "generator.language.english"),
-  option("spanish", "Spanish", "generator.language.spanish"),
-  option("russian", "Russian", "generator.language.russian"),
-  option("italian", "Italian", "generator.language.italian"),
-  option("french", "French", "generator.language.french"),
-  option("german", "German", "generator.language.german"),
-  option("portuguese", "Portuguese", "generator.language.portuguese"),
+export const SONG_LANGUAGES: readonly LocalizedGeneratorOption[] = [
+  ...SONG_LANGUAGE_VALUES.map((value) => fixedOption(value)),
   option("custom", "Custom…", "generator.option.custom"),
 ] as const;
 
