@@ -17,7 +17,7 @@ import {
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
-import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp.client";
+import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 import { clearAnalyzerSessionAudio, loadAnalyzerSessionAudio, saveAnalyzerSessionAudio, sweepStaleAnalyzerAudio } from "@/lib/song-analyzer-session-audio";
 
