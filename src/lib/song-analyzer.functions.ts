@@ -154,6 +154,20 @@ EVIDENCE-FIRST RULE
 Every important musical claim must be tied to something actually audible.
 If uncertain, lower confidence and describe the uncertainty.
 
+QUANTITATIVE DSP REFERENCE
+A deterministic Stage 0 DSP object is supplied with the audio.
+Treat Stage 0 as supporting signal-derived evidence, NOT as ground truth and never as a genre cue.
+Cross-check its tempo candidate, half/double-time candidates, stability, onset activity, energy curve, tonal estimate, and spectral metrics against what you actually hear.
+If auditory evidence strongly disagrees with DSP:
+- do not blindly follow DSP;
+- explicitly note the disagreement;
+- lower confidence where appropriate;
+- consider half-time/double-time ambiguity;
+- prefer interpretations supported by multiple independent musical signals.
+DSP disagreement is useful evidence; it is not automatically an LLM error.
+Weak key/chroma evidence must not influence genre.
+An energy rise must not automatically be labeled as a chorus, build, or drop.
+
 You must observe:
 1. dominant rhythmic pulse
 2. tempo candidates
@@ -887,11 +901,13 @@ export const analyzeSong = createServerFn({ method: "POST" })
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: true });
     } catch (error) {
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: false });
-      return { result, model: data.model, stageAEvidence: evidence };
+      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
+      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
 
     if (!external.used || !external.identityConfirmed) {
-      return { result, model: data.model, stageAEvidence: evidence };
+      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
+      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
 
     let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
@@ -906,10 +922,12 @@ export const analyzeSong = createServerFn({ method: "POST" })
         onUsage: (usage) => { reconciliationUsage = usage; },
       });
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: true });
-      return { result: reconciled, model: data.model, stageAEvidence: evidence };
+      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
+      return { result: reconciled, model: data.model, stage0Evidence, stageAEvidence: evidence };
     } catch (error) {
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: false });
-      return { result, model: data.model, stageAEvidence: evidence };
+      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
+      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
   });
 
