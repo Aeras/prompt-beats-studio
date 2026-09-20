@@ -50,8 +50,9 @@ function assertGenerationInputLimits(
 ) {
   if (isAdmin) return;
   if (input.advanced || input.operation === "revision") {
+    const musicStyleLimit = input.operation === "revision" ? 500 : 150;
     if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
-    if (!input.baseMusicStyle || input.baseMusicStyle.length > 150) throw new Error("Music Style must be 150 characters or fewer.");
+    if (!input.baseMusicStyle || input.baseMusicStyle.length > musicStyleLimit) throw new Error(`Music Style must be ${musicStyleLimit} characters or fewer.`);
     if (input.genre.length > 500) throw new Error("The composed music direction must be 500 characters or fewer.");
     if (input.mood.length > 120) throw new Error("Mood must be 120 characters or fewer.");
     if (input.instruments.length > 200) throw new Error("Instruments must be 200 characters or fewer.");
