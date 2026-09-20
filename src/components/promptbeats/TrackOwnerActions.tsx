@@ -28,6 +28,8 @@ export type EditableTrack = {
   source_url?: string | null | undefined;
   created_with?: CreatedWith | null | undefined;
   is_published?: boolean | undefined;
+  prompt_is_public?: boolean | undefined;
+  lyrics_is_public?: boolean | undefined;
 };
 
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
@@ -55,6 +57,8 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(track.is_published ?? true);
+  const [promptIsPublic, setPromptIsPublic] = useState(track.prompt_is_public ?? true);
+  const [lyricsIsPublic, setLyricsIsPublic] = useState(track.lyrics_is_public ?? true);
   const [allowDownload, setAllowDownload] = useState(false);
 
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
@@ -102,7 +106,7 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     try {
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
-      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, allow_download: isUpload ? allowDownload : false, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, prompt_is_public: promptIsPublic, lyrics_is_public: lyricsIsPublic, allow_download: isUpload ? allowDownload : false, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
       await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null);
     } catch (err) {
       if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* durable cleanup */ }
@@ -130,8 +134,14 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
           <select value={genreOption} onChange={(event) => setGenreOption(event.target.value)} aria-label={t("owner.musicGenre")} className={inputCls}>{UPLOAD_GENRES.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{localizedGenreLabel(genre, t)}</option>)}</select>
           {genreOption === "Custom" && <input value={customGenre} onChange={(event) => setCustomGenre(event.target.value)} maxLength={60} placeholder={t("owner.customGenre")} aria-label={t("owner.customGenre")} className={inputCls} />}
           {isUpload && <label className="block text-xs text-muted-foreground">{language === "el" ? "Δημιουργήθηκε με" : "Created with"}<select value={createdWith} onChange={(event) => setCreatedWith(event.target.value as CreatedWith)} className={`${inputCls} mt-1.5`}><option value="" disabled className="bg-[#0a0a0c]">{language === "el" ? "Επίλεξε πλατφόρμα" : "Select platform"}</option>{CREATED_WITH_OPTIONS.map((option) => <option key={option} value={option} className="bg-[#0a0a0c]">{option}</option>)}</select></label>}
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label={t("owner.stylePrompt")} className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
-          <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label={t("owner.lyrics")} className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
+          <div className="space-y-2">
+            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} rows={3} aria-label={t("owner.stylePrompt")} className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
+            <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{language === "el" ? "Ορατότητα Prompt" : "Prompt visibility"}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setPromptIsPublic(value)} aria-pressed={promptIsPublic === value} className={`rounded-full border px-3 py-1.5 text-xs ${promptIsPublic === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
+          </div>
+          <div className="space-y-2">
+            <textarea value={lyrics} onChange={(event) => setLyrics(event.target.value)} maxLength={8000} rows={5} aria-label={t("owner.lyrics")} className="w-full resize-y rounded-2xl border border-white/10 bg-black/40 p-4 text-sm outline-none focus:border-primary/60" />
+            <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{language === "el" ? "Ορατότητα Lyrics" : "Lyrics visibility"}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setLyricsIsPublic(value)} aria-pressed={lyricsIsPublic === value} className={`rounded-full border px-3 py-1.5 text-xs ${lyricsIsPublic === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
+          </div>
           {isUpload && <>
             <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? t("owner.replaceAudioSelected", { name: audioFile.name }) : t("owner.replaceAudio")}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
             <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? t("owner.replaceCoverSelected", { name: coverFile.name }) : t("owner.replaceCover")}</span><input type="file" accept={COVER_ACCEPT} onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
