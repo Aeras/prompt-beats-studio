@@ -715,7 +715,6 @@ function applyEvidenceGate(result: SongAnalysisResult, evidence: StageAEvidence)
 
 async function generateFinalFromEvidence(args: {
   apiKey?: string;
-  provider: SongAnalyzerProvider;
   model: SongAnalyzerModelId;
   evidence: StageAEvidence;
   stage0Evidence: Stage0DspEvidence;
