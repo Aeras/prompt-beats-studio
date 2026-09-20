@@ -18,7 +18,7 @@ import {
 import {
   downloadExportDocument,
   downloadProjectSeparateExport,
-} from "@/lib/export-center.client";
+} from "@/lib/export-center.browser";
 import {
   getProjectExportSource,
   getPromptExportSource,
