@@ -363,14 +363,18 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
     queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
-  ]);
-  const revise = () => {
+  ]);  const revise = () => {
     if (!prompt.project_id) return;
     void navigate({
       to: "/generate",
-      search: { mode: "revision", project: prompt.project_id, base: prompt.id },
+      search: {
+        mode: "revision",
+        project: prompt.project_id,
+        base: prompt.id,
+      },
     });
   };
+
   const move = async (projectId: string) => {
     await updateSongAnalysisOrganization({ data: { id: analysis.id, projectId: projectId || null } });
     await refresh();
@@ -454,6 +458,18 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false }
     if (name == null) return;
     await updateSavedPromptOrganization({ data: { id: prompt.id, custom_name: name || null } }); await refresh();
   };
+  const revise = () => {
+    if (!prompt.project_id) return;
+    void navigate({
+      to: "/generate",
+      search: {
+        mode: "revision",
+        project: prompt.project_id,
+        base: prompt.id,
+      },
+    });
+  };
+
   const move = async (projectId: string) => {
     const next = projectId || null;
     let version = prompt.version_number;
