@@ -138,8 +138,9 @@ export function FollowCreatorControl({ userId }: { userId: string }) {
     },
   });
 
-  if (!user || summary.isError) return null;
+  if (!user) return null;
   const data = summary.data;
+  const hasKnownState = Boolean(data);
 
   return (
     <>
@@ -147,23 +148,25 @@ export function FollowCreatorControl({ userId }: { userId: string }) {
         {!isSelf && (
           <button
             type="button"
-            disabled={!data || mutation.isPending}
+            disabled={!hasKnownState || mutation.isPending}
             onClick={() => data && mutation.mutate(data.isFollowing)}
             className={
-              "inline-flex min-w-28 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 " +
+              "inline-flex min-w-28 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all active:scale-95 disabled:opacity-60 " +
               (data?.isFollowing
-                ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/15"
+                ? "border-accent/50 bg-accent/12 text-accent shadow-[0_0_18px_color-mix(in_oklab,var(--neon)_16%,transparent)] hover:bg-accent/15"
                 : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15")
             }
           >
-            {mutation.isPending
+            {mutation.isPending || summary.isLoading
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : data?.isFollowing
                 ? <UserCheck className="h-4 w-4" />
                 : <UserPlus className="h-4 w-4" />}
             {data?.isFollowing
-              ? (language === "el" ? "Ακολουθείς" : "Following")
-              : (language === "el" ? "Ακολούθησε" : "Follow")}
+              ? (language === "el" ? "Ακολουθείς ✓" : "Following ✓")
+              : hasKnownState
+                ? (language === "el" ? "Ακολούθησε" : "Follow")
+                : (language === "el" ? "Έλεγχος…" : "Checking…")}
           </button>
         )}
 
@@ -180,6 +183,18 @@ export function FollowCreatorControl({ userId }: { userId: string }) {
           </div>
         )}
       </div>
+
+      {summary.isError && (
+        <button
+          type="button"
+          onClick={() => void summary.refetch()}
+          className="mt-2 text-[11px] text-muted-foreground underline-offset-2 hover:text-accent hover:underline"
+        >
+          {language === "el"
+            ? (data ? "Προσωρινό πρόβλημα συγχρονισμού — επανάληψη" : "Δεν ήταν δυνατός ο έλεγχος — επανάληψη")
+            : (data ? "Temporary sync issue — retry" : "Could not check follow status — retry")}
+        </button>
+      )}
 
       {listMode && (
         <FollowListDialog
