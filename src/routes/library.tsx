@@ -363,19 +363,7 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
     queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
-  ]);  const revise = () => {
-    if (!prompt.project_id) return;
-    void navigate({
-      to: "/generate",
-      search: {
-        mode: "revision",
-        project: prompt.project_id,
-        base: prompt.id,
-      },
-    });
-  };
-
-  const move = async (projectId: string) => {
+  ]);  const move = async (projectId: string) => {
     await updateSongAnalysisOrganization({ data: { id: analysis.id, projectId: projectId || null } });
     await refresh();
   };
