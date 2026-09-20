@@ -18,30 +18,37 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
 
   const localized = useMemo(() => getSongLanguageOptions(appLanguage), [appLanguage]);
   const english = useMemo(() => getSongLanguageOptions("en"), []);
-  const searchIndex = useMemo(
+  const greek = useMemo(() => getSongLanguageOptions("el"), []);
+  const englishIndex = useMemo(
     () => new Map(english.map((item) => [item.code, item.englishLabel.toLocaleLowerCase()])),
     [english],
+  );
+  const greekIndex = useMemo(
+    () => new Map(greek.map((item) => [item.code, item.label.toLocaleLowerCase()])),
+    [greek],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
     if (!q) return localized;
     return localized.filter((item) => {
-      const englishName = searchIndex.get(item.code) ?? "";
+      const englishName = englishIndex.get(item.code) ?? "";
+      const greekName = greekIndex.get(item.code) ?? "";
       return (
         item.label.toLocaleLowerCase().includes(q) ||
         item.englishLabel.toLocaleLowerCase().includes(q) ||
         englishName.includes(q) ||
+        greekName.includes(q) ||
         item.code.toLocaleLowerCase().includes(q)
       );
     });
-  }, [localized, query, searchIndex]);
+  }, [localized, query, englishIndex, greekIndex]);
 
   const selected = localized.find((item) => item.value === value);
   const displayValue =
     value === CUSTOM_LANGUAGE_VALUE
       ? t("generator.option.custom")
-      : selected?.label ?? value || t("generator.selectLanguage");
+      : (selected?.label ?? value) || t("generator.selectLanguage");
 
   return (
     <div className={`relative ${className}`}>
@@ -89,9 +96,14 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5"
                 >
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  {appLanguage === "el" && item.label !== item.englishLabel && (
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{item.englishLabel}</span>
-                  )}
+                  {(() => {
+                    const secondary = appLanguage === "el"
+                      ? item.englishLabel
+                      : (greek.find((entry) => entry.code === item.code)?.label ?? "");
+                    return secondary && secondary !== item.label
+                      ? <span className="shrink-0 text-[11px] text-muted-foreground">{secondary}</span>
+                      : null;
+                  })()}
                   {active && <Check className="h-4 w-4 shrink-0 text-accent" />}
                 </button>
               );
