@@ -15,7 +15,12 @@ import {
   type LyricsSectionAction,
   type LyricsSectionEditOutput,
 } from "@/lib/lyrics-workspace.shared";
-import { parseLyricsSections, replaceLyricsSection } from "@/lib/lyrics-sections";
+import {
+  isRegularChorusSection,
+  parseLyricsSections,
+  replaceAllRegularChorusLyrics,
+  replaceLyricsSection,
+} from "@/lib/lyrics-sections";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import type { AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n } from "@/i18n";
@@ -249,6 +254,13 @@ export function LyricsWorkspace({
   };
 
   const proposalOptions = proposal ? [proposal.replacement, ...proposal.alternatives] : [];
+  const editingSection = editingKey ? sections.find((item) => item.key === editingKey) ?? null : null;
+  const regularChoruses = sections.filter(isRegularChorusSection);
+  const canApplyAllChoruses =
+    Boolean(editingSection && isRegularChorusSection(editingSection)) &&
+    regularChoruses.length > 1;
+  const hasLockedRegularChorus = regularChoruses.some((section) => locked.has(section.key));
+
   const applyProposal = () => {
     if (!editingKey || !proposal || locked.has(editingKey)) return;
     const section = sections.find((item) => item.key === editingKey);
@@ -265,6 +277,30 @@ export function LyricsWorkspace({
     setUndoBySection((prev) => ({ ...prev, [editingKey]: section.content }));
     setLyrics(replaced.lyrics);
     setLastEditSummary(`${section.displayLabel} · ${t(actionLabelKey(action))}`.slice(0, 120));
+    setProposal(null);
+    setEditingKey(null);
+    setCustomInstruction("");
+  };
+
+  const applyProposalToAllChoruses = () => {
+    if (!editingKey || !proposal || !canApplyAllChoruses || hasLockedRegularChorus) return;
+    const chosen = proposalOptions[proposalChoice] ?? proposal.replacement;
+    const before = new Map(regularChoruses.map((section) => [section.key, section.content]));
+    const replaced = replaceAllRegularChorusLyrics(lyrics, editingKey, chosen);
+    if (!replaced.ok) {
+      setAiError(replaced.error);
+      return;
+    }
+    setUndoBySection((prev) => {
+      const next = { ...prev };
+      for (const key of replaced.changedKeys) {
+        const previous = before.get(key);
+        if (previous != null) next[key] = previous;
+      }
+      return next;
+    });
+    setLyrics(replaced.lyrics);
+    setLastEditSummary(`Chorus · ${t(actionLabelKey(action))}`.slice(0, 120));
     setProposal(null);
     setEditingKey(null);
     setCustomInstruction("");
@@ -458,6 +494,17 @@ export function LyricsWorkspace({
                       <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/50 p-3 text-sm leading-6">{proposalOptions[proposalChoice] ?? proposal.replacement}</pre>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={applyProposal} className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-neon px-4 text-xs font-semibold text-primary-foreground"><Check className="h-4 w-4" />{t("lyricsWorkspace.apply")}</button>
+                        {canApplyAllChoruses && (
+                          <button
+                            type="button"
+                            onClick={applyProposalToAllChoruses}
+                            disabled={hasLockedRegularChorus}
+                            title={hasLockedRegularChorus ? t("lyricsWorkspace.applyAllChorusesLocked") : t("lyricsWorkspace.applyAllChoruses")}
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-4 text-xs font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Check className="h-4 w-4" />{t("lyricsWorkspace.applyAllChoruses")}
+                          </button>
+                        )}
                         <button type="button" onClick={() => { setProposal(null); void runAiEdit(); }} disabled={Boolean(jobId)} className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground">{t("common.retry")}</button>
                         <button type="button" onClick={() => { setProposal(null); setEditingKey(null); }} className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground">{t("common.cancel")}</button>
                       </div>
