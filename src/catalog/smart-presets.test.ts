@@ -5,7 +5,7 @@ import {
   SMART_PRESETS,
   buildPresetBlueprint,
   resolveSmartPreset,
-} from "@/catalog/smart-presets";
+} from "./smart-presets";
 
 describe("Smart Presets catalog", () => {
   test("keeps the curated catalog within the requested release size", () => {
