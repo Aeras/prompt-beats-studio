@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, Check, Copy, Loader2, Save, ShieldAlert, Trash2, Upload, Wand2 } from "lucide-react";
+import { AudioLines, Check, ChevronDown, Copy, Loader2, Save, ShieldAlert, Trash2, Upload, Wand2 } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import {
   SONG_ANALYZER_MAX_FILE_BYTES,
   SONG_ANALYZER_MODELS,
   type SongAnalysisResult,
+  type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
 import { clearAnalyzerSessionAudio, loadAnalyzerSessionAudio, saveAnalyzerSessionAudio, sweepStaleAnalyzerAudio } from "@/lib/song-analyzer-session-audio";
 
@@ -78,6 +79,8 @@ function SongAnalyzerPage() {
   const [artist, setArtist] = useState("");
   const [model, setModel] = useState(DEFAULT_SONG_ANALYZER_MODEL);
   const [result, setResult] = useState<SongAnalysisResult | null>(null);
+  const [stageAEvidence, setStageAEvidence] = useState<StageAEvidence | null>(null);
+  const [stageADebugExpanded, setStageADebugExpanded] = useState(false);
   const [resultModel, setResultModel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +118,8 @@ function SongAnalyzerPage() {
     setBusy(true);
     setError(null);
     setSaved(false);
+    setStageAEvidence(null);
+    setStageADebugExpanded(false);
     try {
       const audioBase64 = await fileToBase64(file);
       const response = await analyzeSong({
@@ -127,6 +132,7 @@ function SongAnalyzerPage() {
         },
       });
       setResult(response.result);
+      setStageAEvidence(response.stageAEvidence);
       setResultModel(response.model);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("songAnalyzer.analysisFailed"));
@@ -185,6 +191,11 @@ function SongAnalyzerPage() {
     [t("songAnalyzer.additionalInstructions"), result.generatorReady.additionalInstructions || "—"],
   ] as const : [];
 
+  const stageARawJson = useMemo(
+    () => stageAEvidence ? JSON.stringify(stageAEvidence, null, 2) : "",
+    [stageAEvidence],
+  );
+
   const detailedFields = result ? [
     [t("songAnalyzer.genreStyle"), result.detailedAnalysis.genreAndStyle],
     [t("songAnalyzer.emotionalArc"), result.detailedAnalysis.moodAndEmotionalArc],
@@ -232,6 +243,7 @@ function SongAnalyzerPage() {
                   const nextFile = event.target.files?.[0] ?? null;
                   setFile(nextFile);
                   setResult(null);
+                  setStageAEvidence(null);
                   setSaved(false);
                   setError(null);
                   if (nextFile) {
@@ -247,7 +259,7 @@ function SongAnalyzerPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFile(null); setResult(null); setResultModel(null); setSaved(false); setError(null);
+                    setFile(null); setResult(null); setStageAEvidence(null); setResultModel(null); setSaved(false); setError(null);
                     void clearAnalyzerSessionAudio().catch(() => undefined);
                   }}
                   className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300"
@@ -303,6 +315,39 @@ function SongAnalyzerPage() {
               <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">{t("songAnalyzer.empty")}</div>
             ) : (
               <>
+                {stageAEvidence && (
+                  <div className="glass rounded-2xl border border-amber-400/20 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">Admin Diagnostic</p>
+                        <h2 className="mt-1 font-display text-lg font-bold">Stage A Evidence — Debug</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">Exact validated Stage A object returned before Stage B synthesis. Not persisted to the Library.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <CopyAction label="Copy Stage A JSON" value={stageARawJson} />
+                        <button
+                          type="button"
+                          onClick={() => setStageADebugExpanded((value) => !value)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:border-amber-400/40 hover:text-amber-200"
+                        >
+                          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${stageADebugExpanded ? "rotate-180" : ""}`} />
+                          {stageADebugExpanded ? "Collapse" : "Expand"}
+                        </button>
+                      </div>
+                    </div>
+                    {stageADebugExpanded && (
+                      <pre className="mt-4 max-h-[720px] overflow-auto rounded-xl border border-white/10 bg-black/40 p-4 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
+                        {stageARawJson}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
+                <div className="px-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">Stage B</p>
+                  <h2 className="mt-1 font-display text-lg font-bold">Final Musical Interpretation</h2>
+                </div>
+
                 <div className="glass rounded-2xl p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div><h2 className="font-display text-lg font-bold text-gradient-neon">{t("songAnalyzer.generatorReady")}</h2><p className="text-xs text-muted-foreground">{t("songAnalyzer.analyzedWith", { model: SONG_ANALYZER_MODELS.find((item) => item.id === resultModel)?.label ?? resultModel ?? "" })}</p></div>
