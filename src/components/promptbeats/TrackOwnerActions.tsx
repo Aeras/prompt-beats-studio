@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ImagePlus, Loader2, MoreHorizontal, Music, Pencil, Trash2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -35,7 +36,7 @@ export type EditableTrack = {
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
 const providerName = (sourceType: string) => sourceType === "suno" ? "Suno" : sourceType === "udio" ? "Udio" : "Upload File";
 
-export function TrackOwnerActions({ track, compact = false, menuMode = false }: { track: EditableTrack; compact?: boolean; menuMode?: boolean }) {
+export function TrackOwnerActions({ track, compact = false, menuMode = false, inlineMenuItems = false }: { track: EditableTrack; compact?: boolean; menuMode?: boolean; inlineMenuItems?: boolean }) {
   const { t, language } = useI18n();
   const { user } = useAuth();
   const { isAdmin } = useModeration();
@@ -198,6 +199,29 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false }: 
     </>,
     document.body,
   );
+
+  if (inlineMenuItems) {
+    return <>
+      {isOwner && (
+        <DropdownMenu.Item
+          onSelect={() => void openEdit()}
+          className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-foreground outline-none hover:bg-white/10 focus:bg-white/10"
+        >
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+          {t("owner.editTrack")}
+        </DropdownMenu.Item>
+      )}
+      <DropdownMenu.Item
+        onSelect={() => setConfirming(true)}
+        className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-destructive outline-none hover:bg-destructive/10 focus:bg-destructive/10"
+      >
+        <Trash2 className="h-4 w-4" />
+        {t("owner.deleteTrack")}
+      </DropdownMenu.Item>
+      {editModal}
+      {deleteModal}
+    </>;
+  }
 
   return <>
     {menuMode ? (
