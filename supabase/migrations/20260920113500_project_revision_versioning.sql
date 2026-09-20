@@ -84,11 +84,19 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF NEW.parent_prompt_id IS NOT NULL THEN
+    -- Project deletion may legitimately detach all versions through the
+    -- existing project FK's ON DELETE SET NULL behavior. Keep the lineage link
+    -- in that case; for project-bound rows, enforce same-user/same-project.
     IF NEW.project_id IS NULL THEN
-      RAISE EXCEPTION 'Revision parent requires a project';
-    END IF;
-
-    IF NOT EXISTS (
+      IF NOT EXISTS (
+        SELECT 1
+        FROM public.saved_prompts parent
+        WHERE parent.id = NEW.parent_prompt_id
+          AND parent.user_id = NEW.user_id
+      ) THEN
+        RAISE EXCEPTION 'Revision parent must belong to the same user';
+      END IF;
+    ELSIF NOT EXISTS (
       SELECT 1
       FROM public.saved_prompts parent
       WHERE parent.id = NEW.parent_prompt_id
@@ -111,6 +119,30 @@ FOR EACH ROW EXECUTE FUNCTION public.enforce_saved_prompt_revision_lineage();
 
 REVOKE ALL ON FUNCTION public.enforce_saved_prompt_revision_lineage() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.enforce_saved_prompt_revision_lineage() TO service_role;
+
+CREATE OR REPLACE FUNCTION public.preserve_saved_prompt_generator_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+BEGIN
+  IF OLD.generator_input_snapshot IS NOT NULL
+     AND NEW.generator_input_snapshot IS DISTINCT FROM OLD.generator_input_snapshot THEN
+    RAISE EXCEPTION 'Generator input snapshot is immutable once stored';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_preserve_saved_prompt_generator_snapshot ON public.saved_prompts;
+CREATE TRIGGER trg_preserve_saved_prompt_generator_snapshot
+BEFORE UPDATE OF generator_input_snapshot
+ON public.saved_prompts
+FOR EACH ROW EXECUTE FUNCTION public.preserve_saved_prompt_generator_snapshot();
+
+REVOKE ALL ON FUNCTION public.preserve_saved_prompt_generator_snapshot() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.preserve_saved_prompt_generator_snapshot() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.create_prompt_revision_version(
   _user_id uuid,
