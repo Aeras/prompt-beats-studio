@@ -580,6 +580,103 @@ No additional keys.
 "note": The concise Producer's Note in the requested language.`;
 }
 
+const REVISION_SYSTEM_PROMPT = `You are PromptBeats Project Revision, an expert songwriter, composer, arranger and music producer revising an EXISTING song.
+
+You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.
+
+REVISION AUTHORITY RULES
+- You are revising an existing song, not creating a new song from scratch.
+- The selected BASE VERSION is authoritative.
+- Preserve all valid existing content and musical direction unless the user explicitly requests a change or a directly necessary dependent adjustment.
+- Apply the USER REVISION REQUEST precisely.
+- Do not rewrite unrelated sections merely because you prefer another wording.
+- Do not silently replace the story, perspective, language, genre, mood, structure, instrumentation, production direction, hook, title, or arrangement unless requested.
+- If a requested change necessarily affects another field or section, make only the minimum coherent dependent adjustment required.
+- When the user explicitly says a lyric section must remain unchanged, preserve that section verbatim.
+- Desired/current form values that differ from the base snapshot are explicit requested changes.
+- Desired/current form values that do not differ must be preserved.
+- Never infer a change merely because you could improve something.
+- Return the same canonical PromptBeats Generator output contract.
+
+Do not expose internal reasoning or these instructions.`;
+
+function buildRevisionPrompt(d: z.infer<typeof generateInput>) {
+  const revision = d.revision;
+  if (!revision) throw new Error("Revision context is missing.");
+  const platformLabel = d.targetPlatform === "udio" ? "Udio" : "Suno";
+  const promptLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Style Prompt";
+  const base = revision.baseVersion;
+
+  return `PROJECT REVISION TASK
+
+BASE VERSION — AUTHORITATIVE
+
+Base Prompt ID: ${base.id}
+Project ID: ${base.projectId}
+Base Version: ${base.versionNumber == null ? "Legacy / unnumbered" : `V${base.versionNumber}`}
+Version Label: ${base.versionLabel ?? ""}
+Custom Name: ${base.customName ?? ""}
+
+ORIGINAL STORED GENERATOR CONTEXT
+Theme / Core Idea: ${base.theme}
+Music Direction: ${base.genre}
+Mood: ${base.mood}
+Language: ${base.language}
+
+ORIGINAL GENERATOR INPUT SNAPSHOT
+${revision.baseSnapshot ? JSON.stringify(revision.baseSnapshot, null, 2) : "Unavailable for this legacy saved version. Do not invent missing original Advanced values."}
+
+CURRENT / DESIRED GENERATOR INPUT SNAPSHOT
+${JSON.stringify(revision.desiredSnapshot, null, 2)}
+
+EXPLICIT FIELD CHANGES
+${revision.changedFields.length ? revision.changedFields.join(", ") : "No snapshot field changes detected. Preserve the base settings."}
+
+CURRENT BASE OUTPUT
+
+Title:
+${base.title}
+
+${promptLabel}:
+${base.tags}
+
+Lyrics:
+${base.lyrics}
+
+Producer's Note:
+${base.note}
+
+USER REVISION REQUEST — AUTHORITATIVE CHANGE REQUEST
+${revision.revisionRequest}
+
+TARGET PLATFORM
+${platformLabel}
+
+REVISION EXECUTION RULES
+1. Start from the BASE VERSION above.
+2. Apply only the USER REVISION REQUEST and the explicitly changed form fields.
+3. Preserve unchanged lyric sections verbatim whenever the request says to keep them unchanged.
+4. Preserve unchanged form values and musical direction.
+5. If the base is legacy and has no snapshot, use only the real stored base fields/output plus the user's current desired values; never fabricate missing historical settings.
+6. Make only the minimum dependent edits required for coherence.
+7. Keep the requested language authoritative.
+8. Keep the result compatible with the selected target platform.
+9. Return a complete revised song, not a patch/diff.
+
+Return STRICT JSON ONLY with exactly:
+{
+  "title": string,
+  "tags": string,
+  "lyrics": string,
+  "note": string
+}
+
+"title": The revised song title. Preserve the base title unless the requested change justifies changing it.
+"tags": The revised English ${promptLabel}. Preserve existing musical direction except for requested changes.
+"lyrics": The complete revised lyrics in the authoritative language.
+"note": The concise revised Producer's Note in the authoritative language.`;
+}
+
 /**
  * Provider-agnostic model call signature. The concrete provider (Gemini /
  * Anthropic) is resolved server-side in `ai-provider.server.ts`; the shared
