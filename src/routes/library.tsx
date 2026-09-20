@@ -206,7 +206,9 @@ function Section({ tracks, empty, playing, currentId, onPlay, gridMode }: { trac
 
 type SavedPrompt = {
   id: string; title: string | null; custom_name: string | null; project_id: string | null;
-  version_number: number | null; version_label: string | null; theme: string | null; genre: string | null;
+  version_number: number | null; version_label: string | null; generator_input_snapshot: unknown | null;
+  parent_prompt_id: string | null; revision_request: string | null; source_generation_job_id: string | null;
+  theme: string | null; genre: string | null;
   mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
   created_at: string; updated_at: string;
 };
@@ -362,6 +364,13 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
     queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
     queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
   ]);
+  const revise = () => {
+    if (!prompt.project_id) return;
+    void navigate({
+      to: "/generate",
+      search: { mode: "revision", project: prompt.project_id, base: prompt.id },
+    });
+  };
   const move = async (projectId: string) => {
     await updateSongAnalysisOrganization({ data: { id: analysis.id, projectId: projectId || null } });
     await refresh();
@@ -428,6 +437,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false }
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
 
   const refresh = () => Promise.all([
@@ -461,7 +471,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false }
           <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.project_id && prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{prompt.version_label ? ` · ${prompt.version_label}` : ""}</span>}</div>
           <p className="truncate text-[11px] text-muted-foreground">{[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
         </div>
-        <div className="flex shrink-0 gap-1"><button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
+        <div className="flex shrink-0 gap-1">{prompt.project_id && <button type="button" onClick={revise} aria-label={t("library.revisePrompt")} title={t("library.revisePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Wand2 className="h-3.5 w-3.5" /></button>}<button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
       </div>
       {listMode && <button type="button" onClick={() => setExpanded((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-accent"><ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />{expanded ? (language === "el" ? "Απόκρυψη" : "Hide") : (language === "el" ? "Προβολή prompt" : "Show prompt")}</button>}
       {(!listMode || expanded) && <div className="mt-3 flex items-center gap-2"><select value={prompt.project_id ?? ""} onChange={(e) => move(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"><option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{prompt.project_id && <button title={language === "el" ? "Αφαίρεση από project" : "Remove from project"} onClick={() => move("")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderX className="h-4 w-4" /></button>}</div>}

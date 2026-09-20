@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
@@ -24,6 +25,8 @@ import {
   getGenerationUsage,
   savePromptToLibrary,
   listPromptProjects,
+  listPromptProjectVersions,
+  getPromptRevisionBase,
   createPromptProject,
   HOURLY_LIMIT,
   type QualityReport,
@@ -62,6 +65,7 @@ import {
   type AITargetPlatform,
 } from "@/lib/ai-target-platforms";
 import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
+import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -81,6 +85,11 @@ const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 
 export const Route = createFileRoute("/generate")({
+  validateSearch: z.object({
+    mode: z.enum(["revision"]).optional(),
+    project: z.string().uuid().optional(),
+    base: z.string().uuid().optional(),
+  }),
   head: () => ({
     meta: [
       { title: "AI Prompt & Lyrics Generator for Suno and Udio — PromptBeats" },
@@ -109,6 +118,9 @@ const ADVANCED_MOOD_VALUES = ADVANCED_MOODS.map((option) => option.value);
 const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
 const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
 const BPM_OPTIONS = ["Auto", "Custom", ...CATALOG_BPM_OPTIONS.map((option) => option.value).filter((value) => value !== "Auto" && value !== "Custom")];
+
+type GeneratorResult = { title: string; tags: string; lyrics: string; note: string };
+type RevisionMeta = { savedPromptId: string; projectId: string; versionNumber: number; parentPromptId: string };
 
 function translatedOption(
   options: readonly LocalizedGeneratorOption[],
@@ -458,8 +470,14 @@ function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const queryClient = useQueryClient();
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(search.mode === "revision");
+  const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
+  const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
+  const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
+  const [revisionRequest, setRevisionRequest] = useState("");
+  const [revisionMeta, setRevisionMeta] = useState<RevisionMeta | null>(null);
   const [targetPlatform, setTargetPlatform] = useState<AITargetPlatform>(DEFAULT_AI_TARGET_PLATFORM);
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
@@ -485,8 +503,18 @@ function GeneratePage() {
   const [saveVersionLabel, setSaveVersionLabel] = useState("");
   const [saveNewProject, setSaveNewProject] = useState("");
   const [savingLibrary, setSavingLibrary] = useState(false);
-  const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && saveDialogOpen) });
-  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
+  const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && (saveDialogOpen || revisionMode)) });
+  const revisionVersions = useQuery({
+    queryKey: ["generator", "revision-versions", user?.id, revisionProjectId],
+    queryFn: () => listPromptProjectVersions({ data: { projectId: revisionProjectId } }),
+    enabled: Boolean(user && revisionMode && revisionProjectId),
+  });
+  const revisionBase = useQuery({
+    queryKey: ["generator", "revision-base", user?.id, revisionProjectId, revisionBasePromptId],
+    queryFn: () => getPromptRevisionBase({ data: { projectId: revisionProjectId, basePromptId: revisionBasePromptId } }),
+    enabled: Boolean(user && revisionMode && revisionProjectId && revisionBasePromptId),
+  });
+  const [result, setResult] = useState<GeneratorResult | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
@@ -555,6 +583,80 @@ function GeneratePage() {
     }
   }, []);
 
+  useEffect(() => {
+    const data = revisionBase.data;
+    if (!revisionMode || !data?.prompt) return;
+
+    const prompt = data.prompt;
+    const snapshot = prompt.generator_input_snapshot as GeneratorInputSnapshot | null;
+    setAdvanced(true);
+    setRevisionMeta(null);
+    setRevisionRequest("");
+    setResult(null);
+    setQuality(null);
+    setSaved(false);
+
+    if (snapshot) {
+      setTargetPlatform(snapshot.targetPlatform);
+      setTheme(snapshot.theme);
+      setGenres([...snapshot.selectedMusicStyles]);
+      setCustomGenre(snapshot.customMusicStyle);
+      setMoods([...snapshot.selectedMoods]);
+      setCustomMood(snapshot.customMood);
+      setInstruments([...snapshot.selectedInstruments]);
+      setCustomInstruments(snapshot.customInstruments);
+      setBpm(snapshot.bpmMode || "Auto");
+      setCustomBpm(snapshot.customBpm);
+      setStructure([...snapshot.songStructure]);
+      setProduction(snapshot.productionStyle);
+      setInstructions(snapshot.additionalInstructions);
+      setLanguage(snapshot.language);
+      setCustomLanguage(snapshot.customLanguage);
+      if (snapshot.generationModel) {
+        setGenerationModel(snapshot.generationModel);
+        setGenerationModelChosen(true);
+      }
+      return;
+    }
+
+    // Legacy saved versions: load only fields we actually stored. Never invent
+    // unavailable historical Advanced settings.
+    setTheme(prompt.theme ?? "");
+    setGenres([]);
+    setCustomGenre(prompt.genre ?? "");
+    setMoods([]);
+    setCustomMood(prompt.mood ?? "");
+    setInstruments([]);
+    setCustomInstruments("");
+    setBpm("Auto");
+    setCustomBpm("");
+    setStructure([]);
+    setProduction("");
+    setInstructions("");
+    const storedLanguage = (prompt.language ?? "").trim();
+    const knownLanguage = LANGUAGE_OPTIONS.find(
+      (item) => item !== CUSTOM && item.toLowerCase() === storedLanguage.toLowerCase(),
+    );
+    if (knownLanguage) {
+      setLanguage(knownLanguage);
+      setCustomLanguage("");
+    } else if (storedLanguage) {
+      setLanguage(CUSTOM);
+      setCustomLanguage(storedLanguage);
+    } else {
+      setLanguage("");
+      setCustomLanguage("");
+    }
+  }, [revisionMode, revisionBase.data]);
+
+  useEffect(() => {
+    if (search.mode !== "revision") return;
+    setRevisionMode(true);
+    setAdvanced(true);
+    if (search.project) setRevisionProjectId(search.project);
+    if (search.base) setRevisionBasePromptId(search.base);
+  }, [search.mode, search.project, search.base]);
+
   function rememberJob(id: string | null) {
     if (typeof window === "undefined") return;
     if (id) window.localStorage.setItem(JOB_STORAGE_KEY, id);
@@ -567,7 +669,25 @@ function GeneratePage() {
     )?.targetPlatform;
     if (inputTargetPlatform) setTargetPlatform(inputTargetPlatform);
     if (job.status === "completed" && job.result) {
-      setResult(job.result); setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return;
+      const { revisionMeta: completedRevisionMeta, ...songResult } = job.result;
+      setResult(songResult);
+      setRevisionMeta(completedRevisionMeta ?? null);
+      setSaved(Boolean(completedRevisionMeta));
+      if (job.input?.operation === "revision" && job.input.revision) {
+        setRevisionMode(true);
+        setAdvanced(true);
+        setRevisionProjectId(job.input.revision.projectId);
+        setRevisionBasePromptId(job.input.revision.basePromptId);
+        setRevisionRequest(job.input.revision.revisionRequest);
+      }
+      setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (completedRevisionMeta) {
+        void queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
+        void queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
+        void queryClient.invalidateQueries({ queryKey: ["generator", "revision-versions"], exact: false });
+      }
+      return;
     }
     if (job.status === "cancelled") { setBusy(false); setGenerationResultModel(null); setStatus(null); setJobId(null); rememberJob(null); return; }
     if (job.status === "failed") { setStatus(job.error ?? t("generator.failed")); setBusy(false); setGenerationResultModel(null); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return; }
@@ -669,7 +789,7 @@ function GeneratePage() {
   const effectiveMood = moodList.join(", ");
 
   const effectiveLanguage = language === CUSTOM ? customLanguage.trim() : language;
-  const musicStyleLimit = advanced ? 150 : 400;
+  const musicStyleLimit = revisionMode ? 500 : advanced ? 150 : 400;
   const themeLimit = advanced ? 500 : 300;
   const moodLimit = advanced ? 120 : 60;
   const instrumentsText = instrumentList.join(", ");
@@ -698,7 +818,32 @@ function GeneratePage() {
             : musicStyleTooLong
               ? t("generator.selectionTooLong")
               : null;
-  const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError;
+  const currentSnapshot: GeneratorInputSnapshot = {
+    generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
+    theme: theme.trim(),
+    selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
+    customMusicStyle: customGenre.trim(),
+    selectedMoods: moods.filter((value) => value !== CUSTOM),
+    customMood: customMood.trim(),
+    language,
+    customLanguage: customLanguage.trim(),
+    selectedInstruments: [...instruments],
+    customInstruments: customInstruments.trim(),
+    bpmMode: bpm,
+    customBpm: customBpm.trim(),
+    songStructure: [...structure],
+    productionStyle: production.trim(),
+    additionalInstructions: instructions.trim(),
+    targetPlatform,
+    generationModel: generationModel || null,
+  };
+  const revisionReady = !revisionMode || (
+    !!revisionProjectId &&
+    !!revisionBasePromptId &&
+    !!revisionBase.data?.prompt &&
+    revisionRequest.trim().length > 0
+  );
+  const ready = theme.trim().length >= 3 && !!baseGenre && !!effectiveMood && !!effectiveLanguage && !validationError && revisionReady;
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
@@ -751,7 +896,29 @@ function GeneratePage() {
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
     try {
-      const res = await startGenerationJob({ data: { idempotencyKey: key, theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, targetPlatform, generationModel, advanced, baseMusicStyle: baseGenre, instruments: instrumentsText, structure: structure.join(" → ").slice(0, 600), production: production.trim().slice(0, 2000), instructions: instructions.trim().slice(0, 2000) } });
+      const res = await startGenerationJob({ data: {
+        idempotencyKey: key,
+        theme: theme.trim(),
+        genre: effectiveGenre,
+        mood: effectiveMood,
+        language: effectiveLanguage,
+        targetPlatform,
+        generationModel,
+        advanced: advanced || revisionMode,
+        baseMusicStyle: baseGenre,
+        instruments: instrumentsText,
+        structure: structure.join(" → ").slice(0, 600),
+        production: production.trim().slice(0, 2000),
+        instructions: instructions.trim().slice(0, 2000),
+        operation: revisionMode ? "revision" : "generate",
+        inputSnapshot: currentSnapshot,
+        revision: revisionMode ? {
+          projectId: revisionProjectId,
+          basePromptId: revisionBasePromptId,
+          revisionRequest: revisionRequest.trim(),
+          desiredSnapshot: currentSnapshot,
+        } : null,
+      } });
       await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       if (res.rateLimited || !res.job) { setStatus(t("generator.rateLimit")); setBusy(false); pendingKey.current = null; return; }
       pendingKey.current = null; applyJob(res.job);
@@ -797,6 +964,7 @@ function GeneratePage() {
         theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result,
         custom_name: saveName.trim() || null, project_id: projectId,
         version_label: projectId ? (saveVersionLabel.trim() || null) : null,
+        generator_input_snapshot: songContext?.inputSnapshot ?? currentSnapshot,
       } });
       await queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
       await queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
@@ -867,6 +1035,70 @@ function GeneratePage() {
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
+  const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {
+    if (mode === "revision") {
+      setRevisionMode(true);
+      setAdvanced(true);
+      setResult(null);
+      setRevisionMeta(null);
+      setQuality(null);
+      void navigate({
+        to: "/generate",
+        search: {
+          mode: "revision",
+          project: revisionProjectId || undefined,
+          base: revisionBasePromptId || undefined,
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    setRevisionMode(false);
+    setAdvanced(mode === "advanced");
+    setRevisionProjectId("");
+    setRevisionBasePromptId("");
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    void navigate({ to: "/generate", search: {}, replace: true });
+  };
+
+  const confirmRevisionSwitch = () =>
+    !revisionRequest.trim() || window.confirm(t("generator.revisionSwitchConfirm"));
+
+  const changeRevisionProject = (projectId: string) => {
+    if (!confirmRevisionSwitch()) return;
+    setRevisionProjectId(projectId);
+    setRevisionBasePromptId("");
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    setResult(null);
+    setQuality(null);
+    void navigate({
+      to: "/generate",
+      search: { mode: "revision", project: projectId || undefined, base: undefined },
+      replace: true,
+    });
+  };
+
+  const changeRevisionBase = (basePromptId: string) => {
+    if (!confirmRevisionSwitch()) return;
+    setRevisionBasePromptId(basePromptId);
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    setResult(null);
+    setQuality(null);
+    void navigate({
+      to: "/generate",
+      search: {
+        mode: "revision",
+        project: revisionProjectId || undefined,
+        base: basePromptId || undefined,
+      },
+      replace: true,
+    });
+  };
+
   const styleLabel = (value: string) => translatedOption(advanced ? ADVANCED_MUSIC_STYLES : BASIC_MUSIC_STYLES, value, t);
   const moodLabel = (value: string) => translatedOption(advanced ? ADVANCED_MOODS : BASIC_MOODS, value, t);
   const instrumentLabel = (value: string) => translatedOption(INSTRUMENT_OPTIONS, value, t);
@@ -904,8 +1136,15 @@ function GeneratePage() {
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("generator.mode")}>
-                {[{ key: false, label: t("generator.basic") }, { key: true, label: t("generator.advanced") }].map((mode) => <button key={String(mode.key)} type="button" aria-pressed={advanced === mode.key} onClick={() => setAdvanced(mode.key)} className={advanced === mode.key ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>)}
-                {advanced && hasAdminInputBypass && (
+                {([
+                  { key: "basic" as const, label: t("generator.basic") },
+                  { key: "advanced" as const, label: t("generator.advanced") },
+                  { key: "revision" as const, label: t("generator.revision") },
+                ]).map((mode) => {
+                  const active = mode.key === "revision" ? revisionMode : !revisionMode && advanced === (mode.key === "advanced");
+                  return <button key={mode.key} type="button" aria-pressed={active} onClick={() => changeGeneratorMode(mode.key)} className={active ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>;
+                })}
+                {advanced && !revisionMode && hasAdminInputBypass && (
                   <button
                     type="button"
                     onClick={() => setSongSetupAssistantOpen(true)}
@@ -916,8 +1155,56 @@ function GeneratePage() {
                   </button>
                 )}
               </div>
-              {canClear && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
+              {canClear && !revisionMode && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
             </div>
+
+            {revisionMode && (
+              <div className="space-y-4 rounded-2xl border border-accent/30 bg-accent/[0.04] p-4">
+                <div>
+                  <h2 className="font-display text-base font-bold text-accent">{t("generator.revision")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("generator.revisionBaseHint")}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-xs font-medium">{t("generator.revisionProject")}</span>
+                    <select value={revisionProjectId} onChange={(e) => changeRevisionProject(e.target.value)} className={fieldClass}>
+                      <option value="">{t("generator.revisionSelectProject")}</option>
+                      {(promptProjects.data?.projects ?? []).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-xs font-medium">{t("generator.revisionVersion")}</span>
+                    <select value={revisionBasePromptId} onChange={(e) => changeRevisionBase(e.target.value)} disabled={!revisionProjectId || revisionVersions.isLoading} className={fieldClass}>
+                      <option value="">{t("generator.revisionSelectVersion")}</option>
+                      {(revisionVersions.data?.prompts ?? []).map((prompt) => (
+                        <option key={prompt.id} value={prompt.id}>
+                          {prompt.version_number ? `V${prompt.version_number}` : "—"}{prompt.version_label ? ` — ${prompt.version_label}` : prompt.custom_name ? ` — ${prompt.custom_name}` : prompt.title ? ` — ${prompt.title}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {revisionProjectId && !revisionVersions.isLoading && (revisionVersions.data?.prompts.length ?? 0) === 0 && <p className="text-xs text-muted-foreground">{t("generator.revisionNoVersions")}</p>}
+                {revisionBase.isLoading && <p className="text-xs text-muted-foreground">{t("generator.revisionLoading")}</p>}
+                {revisionBase.data?.prompt && (
+                  <>
+                    {!revisionBase.data.prompt.generator_input_snapshot && <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{t("generator.revisionLegacySnapshot")}</p>}
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{t("generator.revisionBase")}</p>
+                      <p className="mt-1 text-sm font-semibold">{revisionBase.data.prompt.title || revisionBase.data.prompt.custom_name || t("library.untitledPrompt")}</p>
+                      {revisionBase.data.prompt.tags && <pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">{revisionBase.data.prompt.tags}</pre>}
+                      {revisionBase.data.prompt.lyrics && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 text-[11px] text-muted-foreground">{revisionBase.data.prompt.lyrics}</pre>}
+                      {revisionBase.data.prompt.note && <p className="mt-2 text-[11px] text-muted-foreground">{revisionBase.data.prompt.note}</p>}
+                    </div>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-semibold text-foreground">{t("generator.revisionRequest")}</span>
+                      <textarea value={revisionRequest} onChange={(e) => setRevisionRequest(e.target.value.slice(0, 3000))} rows={4} placeholder={t("generator.revisionRequestPlaceholder")} className="w-full rounded-xl border border-accent/30 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
+                      <p className="text-right text-[11px] text-muted-foreground">{revisionRequest.length}/3000</p>
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
 
             <div>
               {advanced ? <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} /> : <FieldLabel>{t("generator.theme")}</FieldLabel>}
@@ -937,8 +1224,8 @@ function GeneratePage() {
 
             {(advanced || customGenreSelected) && (
               <div>
-                <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? 150 : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />
-                {advanced && <p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/150</p>}
+                <input value={customGenre} onChange={(e) => setCustomGenre(e.target.value)} placeholder={t("generator.customStylePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`} maxLength={advanced && !hasAdminInputBypass ? musicStyleLimit : undefined} className={advanced ? fieldClass + " mt-2" : fieldClass} />
+                {advanced && <p className="mt-1 text-right text-[11px] text-muted-foreground">{baseGenre.length}/{musicStyleLimit}</p>}
               </div>
             )}
 
@@ -969,6 +1256,7 @@ function GeneratePage() {
 
             {language === CUSTOM && <input value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)} placeholder={t("generator.customLanguagePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.language")}`} className={fieldClass} />}
             {validationError && <p className="text-xs text-red-400">{validationError}</p>}
+            {revisionMode && revisionBasePromptId && revisionBase.data?.prompt && !revisionRequest.trim() && <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>}
 
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
@@ -997,6 +1285,12 @@ function GeneratePage() {
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
               {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: registryModelLabel(generationResultModel) })}</p>}
+              {revisionMeta && (
+                <div className="rounded-xl border border-accent/30 bg-accent/[0.05] p-3 text-xs">
+                  <p className="font-semibold text-accent">{t("generator.revisionCreated", { version: revisionMeta.versionNumber })}</p>
+                  <p className="mt-1 text-muted-foreground">{t("generator.revisionAutoSaved")}</p>
+                </div>
+              )}
               <div className="flex justify-end"><button onClick={toggleAll} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{allOpen ? t("generator.collapseAll") : t("generator.expandAll")}</button></div>
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
@@ -1005,7 +1299,7 @@ function GeneratePage() {
               {hasAdminInputBypass && (
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
-              <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
+              {!revisionMeta && <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>}
               <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}

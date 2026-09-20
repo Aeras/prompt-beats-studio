@@ -14,6 +14,11 @@ import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
 } from "@/lib/ai-target-platforms";
+import {
+  diffGeneratorSnapshots,
+  generatorInputSnapshotSchema,
+  revisionJobContextSchema,
+} from "@/lib/generator-revision.shared";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
@@ -29,6 +34,14 @@ const jobInput = z.object({
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
+  operation: z.enum(["generate", "revision"]).default("generate"),
+  revision: z.object({
+    projectId: z.string().uuid(),
+    basePromptId: z.string().uuid(),
+    revisionRequest: z.string().trim().min(1).max(3000),
+    desiredSnapshot: generatorInputSnapshotSchema,
+  }).nullish(),
+  inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
 function assertGenerationInputLimits(
@@ -36,9 +49,10 @@ function assertGenerationInputLimits(
   isAdmin: boolean,
 ) {
   if (isAdmin) return;
-  if (input.advanced) {
+  if (input.advanced || input.operation === "revision") {
+    const musicStyleLimit = input.operation === "revision" ? 500 : 150;
     if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
-    if (!input.baseMusicStyle || input.baseMusicStyle.length > 150) throw new Error("Music Style must be 150 characters or fewer.");
+    if (!input.baseMusicStyle || input.baseMusicStyle.length > musicStyleLimit) throw new Error(`Music Style must be ${musicStyleLimit} characters or fewer.`);
     if (input.genre.length > 500) throw new Error("The composed music direction must be 500 characters or fewer.");
     if (input.mood.length > 120) throw new Error("Mood must be 120 characters or fewer.");
     if (input.instruments.length > 200) throw new Error("Instruments must be 200 characters or fewer.");
@@ -49,11 +63,19 @@ function assertGenerationInputLimits(
   if (input.mood.length > 60) throw new Error("Mood must be 60 characters or fewer.");
 }
 
+const revisionMetaShape = z.object({
+  savedPromptId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  versionNumber: z.number().int().positive(),
+  parentPromptId: z.string().uuid(),
+});
+
 const resultShape = z.object({
   title: z.string(),
   tags: z.string(),
   lyrics: z.string(),
   note: z.string(),
+  revisionMeta: revisionMetaShape.optional(),
 });
 
 /**
@@ -70,6 +92,9 @@ const inputShape = z.object({
   structure: z.string().default(""),
   production: z.string().default(""),
   instructions: z.string().default(""),
+  operation: z.enum(["generate", "revision"]).default("generate"),
+  revision: revisionJobContextSchema.nullish(),
+  inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
 export type GenerationContext = z.infer<typeof inputShape>;
@@ -134,7 +159,85 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { data: isAdmin } = await supabase.rpc("current_user_has_role", { _role: "admin" });
     assertGenerationInputLimits(data, isAdmin === true);
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
-    const { idempotencyKey, advanced: _advanced, baseMusicStyle: _baseMusicStyle, instruments: _instruments, ...payload } = data;
+
+    const {
+      idempotencyKey,
+      advanced: _advanced,
+      baseMusicStyle: _baseMusicStyle,
+      instruments: _instruments,
+      revision: clientRevision,
+      ...basePayload
+    } = data;
+
+    let payload: Record<string, unknown> = {
+      ...basePayload,
+      operation: "generate",
+      revision: null,
+    };
+
+    if (data.operation === "revision") {
+      if (!clientRevision) throw new Error("Revision context is required.");
+
+      const { data: project, error: projectError } = await supabase
+        .from("prompt_projects")
+        .select("id")
+        .eq("id", clientRevision.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (projectError) throw new Error(projectError.message);
+      if (!project) throw new Error("Project not found.");
+
+      const { data: basePrompt, error: baseError } = await supabase
+        .from("saved_prompts")
+        .select("id, project_id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
+        .eq("id", clientRevision.basePromptId)
+        .eq("project_id", clientRevision.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (baseError) throw new Error(baseError.message);
+      if (!basePrompt) throw new Error("Base version not found.");
+
+      const parsedBaseSnapshot = generatorInputSnapshotSchema.safeParse(
+        basePrompt.generator_input_snapshot,
+      );
+      const desiredSnapshot = generatorInputSnapshotSchema.parse({
+        ...clientRevision.desiredSnapshot,
+        generatorMode: "revision",
+      });
+      const revisionContext = revisionJobContextSchema.parse({
+        projectId: clientRevision.projectId,
+        basePromptId: clientRevision.basePromptId,
+        revisionRequest: clientRevision.revisionRequest,
+        baseVersion: {
+          id: basePrompt.id,
+          projectId: basePrompt.project_id,
+          versionNumber: basePrompt.version_number,
+          versionLabel: basePrompt.version_label,
+          customName: basePrompt.custom_name,
+          title: basePrompt.title ?? "",
+          theme: basePrompt.theme ?? "",
+          genre: basePrompt.genre ?? "",
+          mood: basePrompt.mood ?? "",
+          language: basePrompt.language ?? "",
+          tags: basePrompt.tags ?? "",
+          lyrics: basePrompt.lyrics ?? "",
+          note: basePrompt.note ?? "",
+        },
+        baseSnapshot: parsedBaseSnapshot.success ? parsedBaseSnapshot.data : null,
+        desiredSnapshot,
+        changedFields: diffGeneratorSnapshots(
+          parsedBaseSnapshot.success ? parsedBaseSnapshot.data : null,
+          desiredSnapshot,
+        ),
+      });
+
+      payload = {
+        ...basePayload,
+        operation: "revision",
+        revision: revisionContext,
+      };
+    }
+
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,
       _input: payload,
