@@ -262,6 +262,71 @@ Check for synth indicators such as:
 
 If the evidence remains ambiguous, lower confidence and state the uncertainty rather than forcing a synth or guitar label.
 
+INSTRUMENT IDENTITY — CULTURAL / CONTEXT BIAS GUARD
+
+Do not infer a specific regional instrument identity such as bouzouki, tzouras, mandolin, oud, lute, or similar instruments merely because:
+- the vocal language is Greek or another regional language;
+- the melody has modal or ornamented phrasing;
+- the track has Mediterranean, Balkan, Middle Eastern, or folk-associated characteristics;
+- the timbre is bright, metallic, or plucked.
+
+A specific instrument identity requires direct audible evidence from timbre, articulation, resonance, attack, sustain, string behavior, and playing technique.
+
+If the audio supports only a broader category, use a broader label such as:
+- plucked string instrument
+- electric guitar-like plucked instrument
+- acoustic string-like pluck
+- synth/plucked-string ambiguity
+
+Do not assign high confidence to a specific regional instrument unless the timbral evidence is genuinely distinctive.
+
+SECTION-SPECIFIC INSTRUMENT RE-EVALUATION
+
+Do not assume that a melodic or plucked element heard in one section is necessarily the same instrument in later sections.
+
+For each solo, bridge, final chorus, and outro, independently reassess the lead instrument.
+
+Specifically check for:
+- electric-guitar pick attack
+- palm muting
+- fret/string articulation
+- bends
+- vibrato
+- sustained overdriven notes
+- amplifier/distortion character
+- feedback-like sustain
+- lead-guitar phrasing
+- harmonized guitar lines
+
+If a later section has a materially different timbre or playing technique from the intro or verse, record it as a separate instrumentEvidence item when justified.
+
+LEAD GUITAR SOLO CHECK
+
+Whenever a section contains a prominent sustained, expressive, distorted, or overdriven melodic lead, explicitly test the hypothesis that it is electric guitar before classifying it as:
+- synthesizer lead
+- acoustic plucked string
+- bouzouki/mandolin-like instrument
+- generic melodic lead
+
+If guitar-specific indicators such as bends, vibrato, sustained distortion, pick attack, string articulation, or amplifier character are audible, prefer electric guitar or state a guitar/synth ambiguity with reduced confidence.
+
+Do not force a culturally specific acoustic-string interpretation when later-section evidence is more consistent with processed electric guitar.
+
+CONFIDENCE RULE
+
+When multiple plausible instrument identities remain, lower confidence.
+
+Do not output:
+- bouzouki
+- mandolin
+- tzouras
+- electric guitar
+- synth lead
+
+with high confidence unless the evidence clearly distinguishes it from the competing hypotheses.
+
+Use explicit uncertainty when needed.
+
 TEMPORAL GROUNDING
 For claims about arrangement, instrument entrances, section changes, energy shifts, solos, or changing production texture, ground the observation in an approximate part of the track whenever possible.
 
