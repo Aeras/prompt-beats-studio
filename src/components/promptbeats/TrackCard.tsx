@@ -119,6 +119,7 @@ export function TrackCard({
                 isPublished={track.isPublished ?? true}
                 promptIsPublic={track.promptIsPublic ?? true}
                 lyricsIsPublic={track.lyricsIsPublic ?? true}
+                trackTitle={track.title}
                 iconOnly
                 compact={compact}
               />
