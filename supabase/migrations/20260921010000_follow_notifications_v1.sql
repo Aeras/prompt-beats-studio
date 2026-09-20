@@ -39,8 +39,8 @@ CREATE TABLE public.notifications (
   created_at timestamptz NOT NULL DEFAULT now(),
   read_at timestamptz,
   CONSTRAINT notifications_track_shape CHECK (
-    (type = 'new_track' AND track_id IS NOT NULL)
-    OR (type = 'new_follower')
+    type = 'new_track'
+    OR (type = 'new_follower' AND track_id IS NULL)
   )
 );
 
