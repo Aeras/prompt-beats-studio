@@ -5,6 +5,7 @@ import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlu
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
+import { SharedLinksPanel } from "@/components/promptbeats/SharedLinksPanel";
 import { TrackGridModeToggle, trackGridClassName, useTrackGridMode, type TrackGridMode } from "@/components/promptbeats/TrackGridView";
 import type { Track } from "@/lib/tracks";
 import type { CreatedWith } from "@/lib/created-with";
@@ -81,7 +82,7 @@ export const Route = createFileRoute("/library")({
   component: LibraryPage,
 });
 
-const TABS = ["tracks", "playlists", "prompts", "favorites", "likes"] as const;
+const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
 const TRACK_VISIBILITY_FILTERS = ["all", "public", "private"] as const;
 
 function LibraryPage() {
@@ -112,6 +113,7 @@ function LibraryPage() {
   const tabLabel = (value: (typeof TABS)[number]) => {
     if (value === "tracks") return t("library.myTracks");
     if (value === "playlists") return language === "el" ? "Λίστες αναπαραγωγής" : "Playlists";
+    if (value === "shared") return "Shared Links";
     if (value === "prompts") return t("library.savedPrompts");
     if (value === "favorites") return language === "el" ? "Τα Αγαπημένα μου" : "My Favorites";
     return t("library.likedTracks");
@@ -161,6 +163,8 @@ function LibraryPage() {
         )}
 
         {tab === "playlists" && user && <PlaylistLibraryPanel userId={user.id} />}
+
+        {tab === "shared" && user && <SharedLinksPanel />}
 
         {tab === "favorites" && (
           <>
