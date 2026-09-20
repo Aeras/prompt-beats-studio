@@ -31,6 +31,9 @@ jobs:
       - name: Song Blueprint tests
         run: bun test src/lib/song-blueprint.test.ts
 
+      - name: Smart Presets and language catalog tests
+        run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
+
       - name: Build
         run: bun run build
 
