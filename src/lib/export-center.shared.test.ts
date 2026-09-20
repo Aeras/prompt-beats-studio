@@ -6,6 +6,7 @@ import {
   buildProjectPromptDocuments,
   buildProjectSummaryDocument,
   buildPromptExportDocument,
+  projectPromptFilenameBase,
   sanitizeExportFilename,
   serializeExportDocument,
   uniqueExportFilename,
