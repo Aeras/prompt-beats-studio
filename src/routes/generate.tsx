@@ -669,7 +669,24 @@ function GeneratePage() {
     )?.targetPlatform;
     if (inputTargetPlatform) setTargetPlatform(inputTargetPlatform);
     if (job.status === "completed" && job.result) {
-      setResult(job.result); setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return;
+      const { revisionMeta: completedRevisionMeta, ...songResult } = job.result;
+      setResult(songResult);
+      setRevisionMeta(completedRevisionMeta ?? null);
+      if (job.input?.operation === "revision" && job.input.revision) {
+        setRevisionMode(true);
+        setAdvanced(true);
+        setRevisionProjectId(job.input.revision.projectId);
+        setRevisionBasePromptId(job.input.revision.basePromptId);
+        setRevisionRequest(job.input.revision.revisionRequest);
+      }
+      setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null);
+      void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      if (completedRevisionMeta) {
+        void queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
+        void queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
+        void queryClient.invalidateQueries({ queryKey: ["generator", "revision-versions"], exact: false });
+      }
+      return;
     }
     if (job.status === "cancelled") { setBusy(false); setGenerationResultModel(null); setStatus(null); setJobId(null); rememberJob(null); return; }
     if (job.status === "failed") { setStatus(job.error ?? t("generator.failed")); setBusy(false); setGenerationResultModel(null); setJobId(null); rememberJob(null); void queryClient.invalidateQueries({ queryKey: ["ai-usage"] }); return; }
