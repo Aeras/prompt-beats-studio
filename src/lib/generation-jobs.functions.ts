@@ -156,7 +156,85 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { data: isAdmin } = await supabase.rpc("current_user_has_role", { _role: "admin" });
     assertGenerationInputLimits(data, isAdmin === true);
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
-    const { idempotencyKey, advanced: _advanced, baseMusicStyle: _baseMusicStyle, instruments: _instruments, ...payload } = data;
+
+    const {
+      idempotencyKey,
+      advanced: _advanced,
+      baseMusicStyle: _baseMusicStyle,
+      instruments: _instruments,
+      revision: clientRevision,
+      ...basePayload
+    } = data;
+
+    let payload: Record<string, unknown> = {
+      ...basePayload,
+      operation: "generate",
+      revision: null,
+    };
+
+    if (data.operation === "revision") {
+      if (!clientRevision) throw new Error("Revision context is required.");
+
+      const { data: project, error: projectError } = await supabase
+        .from("prompt_projects")
+        .select("id")
+        .eq("id", clientRevision.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (projectError) throw new Error(projectError.message);
+      if (!project) throw new Error("Project not found.");
+
+      const { data: basePrompt, error: baseError } = await supabase
+        .from("saved_prompts")
+        .select("id, project_id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
+        .eq("id", clientRevision.basePromptId)
+        .eq("project_id", clientRevision.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (baseError) throw new Error(baseError.message);
+      if (!basePrompt) throw new Error("Base version not found.");
+
+      const parsedBaseSnapshot = generatorInputSnapshotSchema.safeParse(
+        basePrompt.generator_input_snapshot,
+      );
+      const desiredSnapshot = generatorInputSnapshotSchema.parse({
+        ...clientRevision.desiredSnapshot,
+        generatorMode: "revision",
+      });
+      const revisionContext = revisionJobContextSchema.parse({
+        projectId: clientRevision.projectId,
+        basePromptId: clientRevision.basePromptId,
+        revisionRequest: clientRevision.revisionRequest,
+        baseVersion: {
+          id: basePrompt.id,
+          projectId: basePrompt.project_id,
+          versionNumber: basePrompt.version_number,
+          versionLabel: basePrompt.version_label,
+          customName: basePrompt.custom_name,
+          title: basePrompt.title ?? "",
+          theme: basePrompt.theme ?? "",
+          genre: basePrompt.genre ?? "",
+          mood: basePrompt.mood ?? "",
+          language: basePrompt.language ?? "",
+          tags: basePrompt.tags ?? "",
+          lyrics: basePrompt.lyrics ?? "",
+          note: basePrompt.note ?? "",
+        },
+        baseSnapshot: parsedBaseSnapshot.success ? parsedBaseSnapshot.data : null,
+        desiredSnapshot,
+        changedFields: diffGeneratorSnapshots(
+          parsedBaseSnapshot.success ? parsedBaseSnapshot.data : null,
+          desiredSnapshot,
+        ),
+      });
+
+      payload = {
+        ...basePayload,
+        operation: "revision",
+        revision: revisionContext,
+      };
+    }
+
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,
       _input: payload,
