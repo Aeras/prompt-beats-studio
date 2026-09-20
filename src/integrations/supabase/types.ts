@@ -1164,6 +1164,16 @@ export type Database = {
         }
         Returns: Json
       }
+      create_prompt_lyrics_workspace_version: {
+        Args: {
+          _lyrics: string
+          _parent_prompt_id: string
+          _project_id: string
+          _user_id: string
+          _version_label?: string
+        }
+        Returns: Json
+      }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
       edit_track_with_cleanup: {
