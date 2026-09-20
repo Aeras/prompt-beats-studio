@@ -61,7 +61,10 @@ const pending = new Map<number, {
 function getWorker() {
   if (worker) return worker;
 
-  worker = new Worker(new URL("./song-analyzer-essentia.worker.ts", import.meta.url));
+  worker = new Worker(new URL("./song-analyzer-essentia.worker.ts", import.meta.url), {
+    type: "module",
+    name: "promptbeats-essentia-stage0",
+  });
   worker.onmessage = (event: MessageEvent<EssentiaWorkerMessage>) => {
     const request = pending.get(event.data.id);
     if (!request) return;
