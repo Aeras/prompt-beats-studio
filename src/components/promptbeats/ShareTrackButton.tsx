@@ -16,6 +16,8 @@ type Props = {
   isPublished: boolean;
   promptIsPublic: boolean;
   lyricsIsPublic: boolean;
+  iconOnly?: boolean;
+  compact?: boolean;
 };
 
 export function ShareTrackButton({
@@ -24,6 +26,8 @@ export function ShareTrackButton({
   isPublished,
   promptIsPublic,
   lyricsIsPublic,
+  iconOnly = false,
+  compact = false,
 }: Props) {
   const { user } = useAuth();
   const { language } = useI18n();
@@ -37,7 +41,7 @@ export function ShareTrackButton({
   const [error, setError] = useState("");
 
   const copyPublic = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    const url = typeof window !== "undefined" ? `${window.location.origin}/track/${trackId}` : "";
     try {
       if (user && !isOwner) await recordTrackPublicShare({ data: { trackId } });
     } catch {
@@ -82,10 +86,13 @@ export function ShareTrackButton({
       <button
         type="button"
         onClick={copyPublic}
-        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+        aria-label={language === "el" ? "Κοινοποίηση" : "Share"}
+        className={iconOnly
+          ? `grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent ${compact ? "h-7 w-7" : "h-8 w-8"}`
+          : "inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}
       >
         {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-        {copied ? (language === "el" ? "Αντιγράφηκε" : "Copied") : (language === "el" ? "Κοινοποίηση" : "Share")}
+        {!iconOnly && (copied ? (language === "el" ? "Αντιγράφηκε" : "Copied") : (language === "el" ? "Κοινοποίηση" : "Share"))}
       </button>
     );
   }
@@ -142,10 +149,13 @@ export function ShareTrackButton({
           setError("");
           setOpen(true);
         }}
-        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+        aria-label={language === "el" ? "Κοινοποίηση" : "Share"}
+        className={iconOnly
+          ? `grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent ${compact ? "h-7 w-7" : "h-8 w-8"}`
+          : "inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}
       >
         <Share2 className="h-4 w-4" />
-        {language === "el" ? "Κοινοποίηση" : "Share"}
+        {!iconOnly && (language === "el" ? "Κοινοποίηση" : "Share")}
       </button>
       {modal}
     </>

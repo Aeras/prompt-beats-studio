@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ImagePlus, Loader2, Music, Pencil, Trash2, X } from "lucide-react";
+import { ImagePlus, Loader2, MoreHorizontal, Music, Pencil, Trash2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { UPLOAD_GENRES } from "@/lib/tracks";
@@ -35,7 +35,7 @@ export type EditableTrack = {
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
 const providerName = (sourceType: string) => sourceType === "suno" ? "Suno" : sourceType === "udio" ? "Udio" : "Upload File";
 
-export function TrackOwnerActions({ track, compact = false }: { track: EditableTrack; compact?: boolean }) {
+export function TrackOwnerActions({ track, compact = false, menuMode = false }: { track: EditableTrack; compact?: boolean; menuMode?: boolean }) {
   const { t, language } = useI18n();
   const { user } = useAuth();
   const { isAdmin } = useModeration();
@@ -45,6 +45,8 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
   const initialGenre = UPLOAD_GENRES.includes(track.genre as typeof UPLOAD_GENRES[number]) ? track.genre : "Custom";
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<Pick<DOMRect, "top" | "bottom" | "right"> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(track.title);
@@ -183,8 +185,39 @@ export function TrackOwnerActions({ track, compact = false }: { track: EditableT
     </div>, document.body,
   );
 
+  const actionsMenu = menuMode && menuOpen && menuAnchor && typeof document !== "undefined" && createPortal(
+    <>
+      <button type="button" aria-label={t("common.close")} onClick={() => setMenuOpen(false)} className="fixed inset-0 z-[89] cursor-default bg-transparent" />
+      <div
+        className="fixed z-[90] min-w-44 overflow-hidden rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 shadow-2xl backdrop-blur-xl"
+        style={{ top: Math.min(menuAnchor.bottom + 8, window.innerHeight - 120), right: Math.max(12, window.innerWidth - menuAnchor.right) }}
+      >
+        {isOwner && <button type="button" onClick={() => { setMenuOpen(false); void openEdit(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/5"><Pencil className="h-4 w-4 text-muted-foreground" />{t("owner.editTrack")}</button>}
+        <button type="button" onClick={() => { setMenuOpen(false); setConfirming(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"><Trash2 className="h-4 w-4" />{t("owner.deleteTrack")}</button>
+      </div>
+    </>,
+    document.body,
+  );
+
   return <>
-    <div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label={t("owner.editTrack")} onClick={() => void openEdit()} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label={t("owner.deleteTrack")} onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
+    {menuMode ? (
+      <button
+        type="button"
+        aria-label={language === "el" ? "Περισσότερες ενέργειες" : "More actions"}
+        aria-expanded={menuOpen}
+        onClick={(event) => {
+          const { top, bottom, right } = event.currentTarget.getBoundingClientRect();
+          setMenuAnchor({ top, bottom, right });
+          setMenuOpen((value) => !value);
+        }}
+        className={buttonClass}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+    ) : (
+      <div className="flex shrink-0 items-center gap-1.5">{isOwner && <button aria-label={t("owner.editTrack")} onClick={() => void openEdit()} className={buttonClass}><Pencil className="h-3.5 w-3.5" /></button>}<button aria-label={t("owner.deleteTrack")} onClick={() => setConfirming(true)} className={buttonClass + " hover:border-destructive/60 hover:text-destructive"}><Trash2 className="h-3.5 w-3.5" /></button></div>
+    )}
+    {actionsMenu}
     {editModal}
     {deleteModal}
   </>;

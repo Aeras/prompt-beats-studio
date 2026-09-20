@@ -6,6 +6,7 @@ import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
+import { ShareTrackButton } from "@/components/promptbeats/ShareTrackButton";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { TrackContentOverlay, type TrackContentKind } from "@/components/promptbeats/TrackContentOverlay";
@@ -112,7 +113,18 @@ export function TrackCard({
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
             <TrackLibraryActions track={track} compact={compact} />
             {track.userId && (
-              <TrackOwnerActions compact track={{
+              <ShareTrackButton
+                trackId={track.id}
+                ownerId={track.userId}
+                isPublished={track.isPublished ?? true}
+                promptIsPublic={track.promptIsPublic ?? true}
+                lyricsIsPublic={track.lyricsIsPublic ?? true}
+                iconOnly
+                compact={compact}
+              />
+            )}
+            {track.userId && (
+              <TrackOwnerActions compact={compact} menuMode track={{
                 id: track.id,
                 user_id: track.userId,
                 title: track.title,
@@ -132,14 +144,14 @@ export function TrackCard({
           </div>
         </div>
 
-        <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")}>
+        <div className={cn("flex", compact ? "flex-nowrap gap-1" : "flex-wrap gap-2")}>
           {track.prompt?.trim() && <button onClick={(event) => toggleContent("prompt", event.currentTarget)} className={cn("flex items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
-            {activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
+            {compact ? "Prompt" : activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
             <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "prompt" && "rotate-180")} />
           </button>}
           {track.lyrics?.trim() && (
             <button onClick={(event) => toggleContent("lyrics", event.currentTarget)} className={cn("flex items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:text-foreground", compact ? "gap-1 px-2 py-1 text-[10px]" : "gap-1.5 px-3 py-1.5 text-xs")}>
-              {activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
+              {compact ? (language === "el" ? "Στίχοι" : "Lyrics") : activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
               <ChevronDown className={cn(compact ? "h-3 w-3 transition-transform" : "h-3.5 w-3.5 transition-transform", activeContent === "lyrics" && "rotate-180")} />
             </button>
           )}
