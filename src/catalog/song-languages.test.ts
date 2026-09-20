@@ -27,6 +27,34 @@ describe("song language catalog", () => {
     expect(greek?.value).toBe("Greek");
   });
 
+  test("never exposes raw ISO codes as user-facing language names", () => {
+    for (const locale of ["en", "el"] as const) {
+      const options = getSongLanguageOptions(locale);
+      for (const item of options) {
+        expect(item.label.toLocaleLowerCase()).not.toBe(item.code.toLocaleLowerCase());
+        expect(item.englishLabel.toLocaleLowerCase()).not.toBe(item.code.toLocaleLowerCase());
+        expect(item.value.toLocaleLowerCase()).not.toBe(item.code.toLocaleLowerCase());
+      }
+    }
+  });
+
+  test("does not duplicate canonical languages in the picker", () => {
+    for (const locale of ["en", "el"] as const) {
+      const options = getSongLanguageOptions(locale);
+      const canonical = options.map((item) => item.value.toLocaleLowerCase());
+      expect(new Set(canonical).size).toBe(canonical.length);
+    }
+  });
+
+  test("resolves rare ISO languages to full names", () => {
+    const options = getSongLanguageOptions("en");
+    expect(options.find((item) => item.code === "aa")?.value).toBe("Afar");
+    expect(options.find((item) => item.code === "ab")?.value).toBe("Abkhazian");
+    expect(options.find((item) => item.code === "ae")?.value).toBe("Avestan");
+    expect(options.find((item) => item.code === "ak")?.value).toBe("Akan");
+    expect(options.find((item) => item.code === "km")?.value).toBe("Khmer");
+  });
+
   test("keeps Custom outside the canonical language list", () => {
     expect(SONG_LANGUAGE_VALUES.includes(CUSTOM_LANGUAGE_VALUE)).toBe(false);
   });
