@@ -108,4 +108,11 @@ describe("Export Center serializers", () => {
     expect(projectPromptFilenameBase(docs[0] as Extract<(typeof docs)[number], { exportType: "prompt" }>)).toBe("Version 1");
     expect(projectPromptFilenameBase(docs[1] as Extract<(typeof docs)[number], { exportType: "prompt" }>)).toBe("Version 2");
   });
+
+  test("browser ZIP path imports the version filename helper", async () => {
+    const browserSource = await Bun.file("src/lib/export-center.browser.ts").text();
+    const importBlock = browserSource.slice(0, browserSource.indexOf('from "@/lib/export-center.shared";'));
+    expect(importBlock).toContain("projectPromptFilenameBase");
+    expect(browserSource).toContain("projectPromptFilenameBase(document)");
+  });
 });
