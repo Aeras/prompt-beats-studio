@@ -177,6 +177,8 @@ function TrackPage() {
                     audioUrl: track.audio_url,
                     audioType: track.audio_type === "link" ? "link" : "upload",
                     isPublished: track.is_published,
+                    promptIsPublic: track.prompt_is_public,
+                    lyricsIsPublic: track.lyrics_is_public,
                     sourceType: track.source_type,
                     sourceId: track.source_id,
                     createdWith: track.created_with,
