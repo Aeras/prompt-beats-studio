@@ -13,6 +13,7 @@ export const generatorInputSnapshotSchema = z.object({
   selectedMoods: z.array(z.string().max(120)).max(24).default([]),
   customMood: z.string().max(120).default(""),
   language: z.string().max(80).default(""),
+  languageVariant: z.string().max(80).default(""),
   customLanguage: z.string().max(80).default(""),
   selectedInstruments: z.array(z.string().max(120)).max(40).default([]),
   customInstruments: z.string().max(200).default(""),
