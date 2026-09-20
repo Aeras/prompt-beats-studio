@@ -18,7 +18,7 @@ import { runSongGeneration, generateJobInput } from "@/lib/ai.functions";
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
 
-type AdminClient = { from: (t: string) => any };
+type AdminClient = { from: (t: string) => any; rpc: (fn: string, args?: Record<string, unknown>) => any };
 
 async function admin(): Promise<AdminClient> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -71,11 +71,55 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     if (markerError || !marked) throw new Error("The generation could not be started. Please try again.");
 
     const out = await runSongGeneration(input, job.user_id, job.generation_id);
+    let persistedResult: Record<string, unknown> = out.result;
+
+    if (input.operation === "revision" && input.revision) {
+      const revision = input.revision;
+      const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
+        _user_id: job.user_id,
+        _job_id: job.id,
+        _project_id: revision.projectId,
+        _parent_prompt_id: revision.basePromptId,
+        _revision_request: revision.revisionRequest,
+        _generator_input_snapshot: revision.desiredSnapshot,
+        _title: out.result.title,
+        _tags: out.result.tags,
+        _lyrics: out.result.lyrics,
+        _note: out.result.note,
+        _theme: input.theme,
+        _genre: input.genre,
+        _mood: input.mood,
+        _language: input.language,
+      });
+      if (saveError) {
+        console.error("[generation-job] revision save failed", job.id, saveError.message);
+        throw new Error("The revision version could not be saved.");
+      }
+      const meta = saved as {
+        id?: string;
+        project_id?: string;
+        version_number?: number;
+        parent_prompt_id?: string;
+      } | null;
+      if (!meta?.id || !meta.project_id || !meta.version_number || !meta.parent_prompt_id) {
+        throw new Error("The revision version could not be saved.");
+      }
+      persistedResult = {
+        ...out.result,
+        revisionMeta: {
+          savedPromptId: meta.id,
+          projectId: meta.project_id,
+          versionNumber: meta.version_number,
+          parentPromptId: meta.parent_prompt_id,
+        },
+      };
+    }
+
     await db
       .from("ai_generation_jobs")
       .update({
         status: "completed",
-        result: out.result,
+        result: persistedResult,
         provider: out.provider,
         model: out.model,
         error: null,
