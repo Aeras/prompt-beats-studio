@@ -941,6 +941,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
     try {
       result = await generateFinalFromEvidence({
         apiKey,
+        provider,
         model: data.model,
         evidence,
         stage0Evidence,
@@ -969,7 +970,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
     let external: ExternalValidation | null = null;
     try {
       const validationResult = await runExternalReferenceValidation({
-        apiKey,
+        apiKey: apiKey!,
         model: data.model,
         trackTitle,
         artist,
