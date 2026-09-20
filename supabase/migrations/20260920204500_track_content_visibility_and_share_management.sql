@@ -110,7 +110,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   UPDATE public.track_share_links
@@ -121,7 +121,7 @@ BEGIN
     AND revoked_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'active share link not found'; END IF;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.revoke_track_share_link(_share_id uuid)
 RETURNS void
