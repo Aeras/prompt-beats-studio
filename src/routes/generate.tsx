@@ -119,6 +119,9 @@ const INSTRUMENTS = INSTRUMENT_OPTIONS.map((option) => option.value);
 const STRUCTURE_TAGS = SONG_STRUCTURE_TAGS.map((option) => option.value);
 const BPM_OPTIONS = ["Auto", "Custom", ...CATALOG_BPM_OPTIONS.map((option) => option.value).filter((value) => value !== "Auto" && value !== "Custom")];
 
+type GeneratorResult = { title: string; tags: string; lyrics: string; note: string };
+type RevisionMeta = { savedPromptId: string; projectId: string; versionNumber: number; parentPromptId: string };
+
 function translatedOption(
   options: readonly LocalizedGeneratorOption[],
   value: string,
@@ -474,7 +477,7 @@ function GeneratePage() {
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
-  const [revisionMeta, setRevisionMeta] = useState<{ savedPromptId: string; projectId: string; versionNumber: number; parentPromptId: string } | null>(null);
+  const [revisionMeta, setRevisionMeta] = useState<RevisionMeta | null>(null);
   const [targetPlatform, setTargetPlatform] = useState<AITargetPlatform>(DEFAULT_AI_TARGET_PLATFORM);
   const [theme, setTheme] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
@@ -511,7 +514,7 @@ function GeneratePage() {
     queryFn: () => getPromptRevisionBase({ data: { projectId: revisionProjectId, basePromptId: revisionBasePromptId } }),
     enabled: Boolean(user && revisionMode && revisionProjectId && revisionBasePromptId),
   });
-  const [result, setResult] = useState<{ title: string; tags: string; lyrics: string; note: string } | null>(null);
+  const [result, setResult] = useState<GeneratorResult | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
@@ -579,6 +582,80 @@ function GeneratePage() {
       setStatus("Could not load Song Analyzer fields.");
     }
   }, []);
+
+  useEffect(() => {
+    const data = revisionBase.data;
+    if (!revisionMode || !data?.prompt) return;
+
+    const prompt = data.prompt;
+    const snapshot = prompt.generator_input_snapshot as GeneratorInputSnapshot | null;
+    setAdvanced(true);
+    setRevisionMeta(null);
+    setRevisionRequest("");
+    setResult(null);
+    setQuality(null);
+    setSaved(false);
+
+    if (snapshot) {
+      setTargetPlatform(snapshot.targetPlatform);
+      setTheme(snapshot.theme);
+      setGenres([...snapshot.selectedMusicStyles]);
+      setCustomGenre(snapshot.customMusicStyle);
+      setMoods([...snapshot.selectedMoods]);
+      setCustomMood(snapshot.customMood);
+      setInstruments([...snapshot.selectedInstruments]);
+      setCustomInstruments(snapshot.customInstruments);
+      setBpm(snapshot.bpmMode || "Auto");
+      setCustomBpm(snapshot.customBpm);
+      setStructure([...snapshot.songStructure]);
+      setProduction(snapshot.productionStyle);
+      setInstructions(snapshot.additionalInstructions);
+      setLanguage(snapshot.language);
+      setCustomLanguage(snapshot.customLanguage);
+      if (snapshot.generationModel) {
+        setGenerationModel(snapshot.generationModel);
+        setGenerationModelChosen(true);
+      }
+      return;
+    }
+
+    // Legacy saved versions: load only fields we actually stored. Never invent
+    // unavailable historical Advanced settings.
+    setTheme(prompt.theme ?? "");
+    setGenres([]);
+    setCustomGenre(prompt.genre ?? "");
+    setMoods([]);
+    setCustomMood(prompt.mood ?? "");
+    setInstruments([]);
+    setCustomInstruments("");
+    setBpm("Auto");
+    setCustomBpm("");
+    setStructure([]);
+    setProduction("");
+    setInstructions("");
+    const storedLanguage = (prompt.language ?? "").trim();
+    const knownLanguage = LANGUAGE_OPTIONS.find(
+      (item) => item !== CUSTOM && item.toLowerCase() === storedLanguage.toLowerCase(),
+    );
+    if (knownLanguage) {
+      setLanguage(knownLanguage);
+      setCustomLanguage("");
+    } else if (storedLanguage) {
+      setLanguage(CUSTOM);
+      setCustomLanguage(storedLanguage);
+    } else {
+      setLanguage("");
+      setCustomLanguage("");
+    }
+  }, [revisionMode, revisionBase.data]);
+
+  useEffect(() => {
+    if (search.mode !== "revision") return;
+    setRevisionMode(true);
+    setAdvanced(true);
+    if (search.project) setRevisionProjectId(search.project);
+    if (search.base) setRevisionBasePromptId(search.base);
+  }, [search.mode, search.project, search.base]);
 
   function rememberJob(id: string | null) {
     if (typeof window === "undefined") return;
