@@ -20,6 +20,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
+import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
 import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
 import {
   getCurrentUserAiModelAccess,
@@ -67,6 +68,13 @@ import {
 } from "@/lib/ai-target-platforms";
 import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
+import {
+  activeSongBlueprint,
+  appendBlueprintSection,
+  buildSongBlueprint,
+  removeBlueprintSection,
+  type SongBlueprintSection,
+} from "@/lib/song-blueprint.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -491,6 +499,11 @@ function GeneratePage() {
   const [instruments, setInstruments] = useState<string[]>([]);
   const [customInstruments, setCustomInstruments] = useState("");
   const [structure, setStructure] = useState<string[]>([]);
+  const [songBlueprint, setSongBlueprint] = useState<SongBlueprintSection[]>([]);
+  const [showStyleTags, setShowStyleTags] = useState(false);
+  const [showMoodTags, setShowMoodTags] = useState(false);
+  const [showInstrumentTags, setShowInstrumentTags] = useState(false);
+  const [showStructureTags, setShowStructureTags] = useState(false);
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
@@ -571,7 +584,9 @@ function GeneratePage() {
       setCustomMood(handoff.mood?.trim() ?? "");
       setInstruments([]);
       setCustomInstruments((handoff.instruments ?? []).join(", "));
-      setStructure(Array.isArray(handoff.songStructure) ? handoff.songStructure : []);
+      const handoffStructure = Array.isArray(handoff.songStructure) ? handoff.songStructure : [];
+      setStructure(handoffStructure);
+      setSongBlueprint(buildSongBlueprint(handoffStructure));
       setProduction(handoff.productionStyle?.trim() ?? "");
       setInstructions(handoff.additionalInstructions?.trim() ?? "");
       const bpmValue = handoff.bpm?.approximate != null
@@ -617,6 +632,7 @@ function GeneratePage() {
       setBpm(snapshot.bpmMode || "Auto");
       setCustomBpm(snapshot.customBpm);
       setStructure([...snapshot.songStructure]);
+      setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
       setProduction(snapshot.productionStyle);
       setInstructions(snapshot.additionalInstructions);
       setLanguage(snapshot.language);
@@ -640,6 +656,7 @@ function GeneratePage() {
     setBpm("Auto");
     setCustomBpm("");
     setStructure([]);
+    setSongBlueprint([]);
     setProduction("");
     setInstructions("");
     const storedLanguage = (prompt.language ?? "").trim();
@@ -849,6 +866,7 @@ function GeneratePage() {
     bpmMode: bpm,
     customBpm: customBpm.trim(),
     songStructure: [...structure],
+    songBlueprint: advanced || revisionMode ? buildSongBlueprint(structure, songBlueprint) : [],
     productionStyle: production.trim(),
     additionalInstructions: instructions.trim(),
     targetPlatform,
@@ -892,6 +910,7 @@ function GeneratePage() {
       .map((item) => item.trim())
       .filter((item): item is string => STRUCTURE_TAGS.includes(item));
     setStructure(parsedStructure);
+    setSongBlueprint(buildSongBlueprint(parsedStructure));
     setProduction(draft.productionStyle.trim());
     setInstructions(draft.additionalInstructions.trim());
 
@@ -925,6 +944,7 @@ function GeneratePage() {
         baseMusicStyle: baseGenre,
         instruments: instrumentsText,
         structure: structure.join(" → ").slice(0, 600),
+        songBlueprint: advanced || revisionMode ? activeSongBlueprint(buildSongBlueprint(structure, songBlueprint)) : [],
         production: production.trim().slice(0, 2000),
         instructions: instructions.trim().slice(0, 2000),
         operation: revisionMode ? "revision" : "generate",
@@ -1048,7 +1068,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
