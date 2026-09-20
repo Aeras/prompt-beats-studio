@@ -675,6 +675,11 @@ ${revision.baseSnapshot ? JSON.stringify(revision.baseSnapshot, null, 2) : "Unav
 CURRENT / DESIRED GENERATOR INPUT SNAPSHOT
 ${JSON.stringify(revision.desiredSnapshot, null, 2)}
 
+SONG BLUEPRINT
+${buildSongBlueprintPrompt(revision.desiredSnapshot.songBlueprint, promptLabel) || "No section-specific Blueprint instructions."}
+
+When Song Blueprint instructions are present, treat them as occurrence-specific production/arrangement requirements. Repeated sections remain independent unless the snapshot explicitly gives them the same instruction. Render Blueprint intent as concise square-bracketed production/performance directions in the relevant section rather than as sung lyrics.
+
 EXPLICIT FIELD CHANGES
 ${revision.changedFields.length ? revision.changedFields.join(", ") : "No snapshot field changes detected. Preserve the base settings."}
 
