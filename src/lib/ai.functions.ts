@@ -64,7 +64,7 @@ const savedInput = z.object({
   theme: z.string().trim().max(500).default(""),
   genre: z.string().trim().max(500).default(""),
   mood: z.string().trim().max(120).default(""),
-  language: z.string().trim().max(40).default(""),
+  language: z.string().trim().max(80).default(""),
   tags: z.string().trim().max(4000).default(""),
   lyrics: z.string().trim().max(12000).default(""),
   note: z.string().trim().max(6000).default(""),
