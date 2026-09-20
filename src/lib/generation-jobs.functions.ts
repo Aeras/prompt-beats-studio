@@ -14,6 +14,11 @@ import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
 } from "@/lib/ai-target-platforms";
+import {
+  diffGeneratorSnapshots,
+  generatorInputSnapshotSchema,
+  revisionJobContextSchema,
+} from "@/lib/generator-revision.shared";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
@@ -29,6 +34,13 @@ const jobInput = z.object({
   structure: z.string().trim().max(600).default(""),
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
+  operation: z.enum(["generate", "revision"]).default("generate"),
+  revision: z.object({
+    projectId: z.string().uuid(),
+    basePromptId: z.string().uuid(),
+    revisionRequest: z.string().trim().min(1).max(3000),
+    desiredSnapshot: generatorInputSnapshotSchema,
+  }).nullish(),
 });
 
 function assertGenerationInputLimits(
@@ -36,7 +48,7 @@ function assertGenerationInputLimits(
   isAdmin: boolean,
 ) {
   if (isAdmin) return;
-  if (input.advanced) {
+  if (input.advanced || input.operation === "revision") {
     if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
     if (!input.baseMusicStyle || input.baseMusicStyle.length > 150) throw new Error("Music Style must be 150 characters or fewer.");
     if (input.genre.length > 500) throw new Error("The composed music direction must be 500 characters or fewer.");
@@ -49,11 +61,19 @@ function assertGenerationInputLimits(
   if (input.mood.length > 60) throw new Error("Mood must be 60 characters or fewer.");
 }
 
+const revisionMetaShape = z.object({
+  savedPromptId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  versionNumber: z.number().int().positive(),
+  parentPromptId: z.string().uuid(),
+});
+
 const resultShape = z.object({
   title: z.string(),
   tags: z.string(),
   lyrics: z.string(),
   note: z.string(),
+  revisionMeta: revisionMetaShape.optional(),
 });
 
 /**
@@ -70,6 +90,8 @@ const inputShape = z.object({
   structure: z.string().default(""),
   production: z.string().default(""),
   instructions: z.string().default(""),
+  operation: z.enum(["generate", "revision"]).default("generate"),
+  revision: revisionJobContextSchema.nullish(),
 });
 
 export type GenerationContext = z.infer<typeof inputShape>;
