@@ -78,7 +78,20 @@ export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = fals
           {!externalMediaAllowed ? <><p className="text-xs text-muted-foreground">{t("external.notice")}</p><button type="button" onClick={allowExternalMedia} className="rounded-full border border-accent/50 bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/25">{t("external.allow")}</button></> : <p className="text-xs text-muted-foreground">{t("external.loading")}</p>}
         </div>
       )}
-      {providerUrl && providerName && <a href={providerUrl} target="_blank" rel="noopener noreferrer" className="absolute right-2 top-2 z-10 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent">{t("external.openIn", { provider: providerName })}</a>}
+      {providerUrl && providerName && (
+        <a
+          href={providerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={
+            isUdio && compact
+              ? "absolute right-1 top-1 z-20 whitespace-nowrap rounded-full border border-white/15 bg-black/80 px-1.5 py-0.5 text-[9px] font-medium leading-tight text-white/90 shadow-sm backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent"
+              : "absolute right-2 top-2 z-10 whitespace-nowrap rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent"
+          }
+        >
+          {t("external.openIn", { provider: providerName })}
+        </a>
+      )}
     </div>
   );
 }
