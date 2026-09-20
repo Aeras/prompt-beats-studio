@@ -1429,9 +1429,52 @@ function GeneratePage() {
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
               </div>
               <div>
-                <SectionHeader title={t("generator.songStructure")} hint={t("generator.structureHint")} onClear={() => setStructure([])} />
-                {structure.length > 0 && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">{structure.map((item, i) => <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">{structureLabel(item)}<button type="button" aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })} onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))} className="text-accent/70 transition-colors hover:text-accent">×</button></span>)}</div>}
-                <div className="flex flex-wrap gap-2">{STRUCTURE_TAGS.map((item) => <button key={item} type="button" onClick={() => setStructure((p) => [...p, item])} className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{structureLabel(item)}</button>)}</div>
+                <SectionHeader
+                  title={t("generator.songStructure")}
+                  hint={t("generator.structureHint")}
+                  optionsOpen={showStructureTags}
+                  onToggleOptions={() => setShowStructureTags((value) => !value)}
+                  onClear={clearStructure}
+                />
+                {structure.length > 0 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
+                    {structure.map((item, i) => (
+                      <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">
+                        {structureLabel(item)}
+                        <button
+                          type="button"
+                          aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })}
+                          onClick={() => removeStructureSection(i)}
+                          className="text-accent/70 transition-colors hover:text-accent"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {showStructureTags && (
+                  <div className="flex flex-wrap gap-2">
+                    {STRUCTURE_TAGS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => addStructureSection(item)}
+                        className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                      >
+                        {structureLabel(item)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <SongBlueprintEditor
+                    structure={structure}
+                    blueprint={buildSongBlueprint(structure, songBlueprint)}
+                    onChange={setSongBlueprint}
+                    labelForSection={structureLabel}
+                  />
+                </div>
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
