@@ -33,7 +33,7 @@ const jobInput = z.object({
   theme: z.string().trim().min(3),
   genre: z.string().trim().min(1),
   mood: z.string().trim().min(1),
-  language: z.string().trim().min(1).max(40),
+  language: z.string().trim().min(1).max(80),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   advanced: z.boolean().default(false),
   baseMusicStyle: z.string().trim().default(""),
