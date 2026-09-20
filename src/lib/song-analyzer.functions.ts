@@ -177,6 +177,18 @@ DSP disagreement is useful evidence; it is not automatically an LLM error.
 Weak key/chroma evidence must not influence genre.
 An energy rise must not automatically be labeled as a chorus, build, or drop.
 
+DSP DISAGREEMENT THRESHOLD
+Do not reject a stable Stage 0 tempo candidate based only on a general subjective impression that the track "feels" faster or slower.
+
+To materially disagree with a stable DSP tempo candidate, require at least TWO independent audible rhythmic indicators, for example:
+- kick placement;
+- snare/backbeat placement;
+- bass phrase cycle;
+- vocal phrase length;
+- harmonic rhythm.
+
+If these signals instead suggest a half-time or double-time interpretation, preserve both interpretations and lower confidence rather than declaring the DSP estimate incorrect.
+
 You must observe:
 1. dominant rhythmic pulse
 2. tempo candidates
@@ -218,6 +230,35 @@ INSTRUMENTS / VOCALS / FX
 Keep musical instruments separate from vocals and production effects.
 Instrument evidence must describe instrument, role, audible technique where clear, timbre where clear, prominence, confidence, and evidence.
 Do not invent playing technique or instrument type.
+
+TEMPORAL GROUNDING
+For claims about arrangement, instrument entrances, section changes, energy shifts, solos, or changing production texture, ground the observation in an approximate part of the track whenever possible.
+
+Use approximate temporal references such as:
+- opening / early section
+- around the first major transition
+- middle section
+- later section
+- closing section
+
+Do not invent exact timestamps if you are not confident.
+The goal is to verify that an element is actually heard in a specific part of the recording rather than inferred from the overall impression.
+
+FULL-TRACK EVIDENCE COVERAGE CHECK
+Before returning the Stage A JSON, perform one final full-track pass mentally across the evidence you observed.
+
+Verify that you have not omitted:
+- a clearly recurring instrument;
+- a dominant harmonic or rhythmic layer;
+- an instrument that becomes prominent only in later sections;
+- a contrasting acoustic vs electronic layer;
+- an important playing technique;
+- a major change in instrumentation between sections.
+
+Do not limit instrumentEvidence to the 3–5 dominantElements.
+dominantElements are only the most defining elements; instrumentEvidence should preserve all clearly audible musically relevant instruments with appropriate prominence and confidence.
+
+If an instrument is clearly audible in only one important section, include it and describe where it appears rather than omitting it.
 
 PRODUCTION
 Only report production/mix features that are directly audible.
@@ -266,10 +307,53 @@ If evidence does not support a narrow genre, use a broader accurate label.
 Broad accuracy is better than narrow speculation.
 A polished or electronic element does not automatically justify Dance-Pop, EDM, Club-Pop, Slap House, Nu-Disco, or another club-oriented label.
 
+STYLE CONTRADICTION CHECK
+Before selecting Music Style, identify whether any dominant Stage A evidence materially contradicts the proposed label.
+
+A narrow style label is allowed only if it explains the dominant rhythmic feel, instrumentation, arrangement, and production together.
+
+If the proposed label explains only one prominent element, broaden it or use a hybrid description.
+
 GENERATOR-READY INSTRUMENTS
 Generator-ready Instruments must be derived directly from Stage A instrument evidence.
 Do not include vocals, FX, risers, sweeps, reverb, delay, sidechain, white noise, compression, or transition effects.
 Preserve dominant instruments and defining playing techniques.
+
+EVIDENCE COMPLETENESS / MUSICAL IDENTITY PRESERVATION
+Do not over-compress a layered arrangement into generic instrument labels or a narrow style label.
+
+When Stage A provides evidence of a broader or more specific musical identity:
+- preserve acoustic-led or live-instrument-led identity when dominant;
+- preserve clearly reported electronic layers such as pads, programmed drums, or synth bass when Stage A explicitly identifies them;
+- do not let one prominent electric guitar part dominate the classification if the total evidence points to a broader hybrid arrangement;
+- do not reduce a multi-layered arrangement to generic labels such as "Electric Guitar / Drum Kit / Bass" when Stage A contains more specific supported instrumentation or techniques;
+- retain important harmonic, textural, and rhythmic layers that materially define the recording;
+- reflect the complete supported section sequence when Stage A provides clear arrangement changes or section evidence;
+- summarize Mood / Vibe from the full Stage A emotional evidence rather than only the highest-energy passages;
+- preserve reflective, emotive, melodic, atmospheric, restrained, or intimate qualities when Stage A supports them, even if the track also becomes energetic or driving.
+
+Before finalizing Music Style, ask:
+Does this label explain the total Stage A evidence, including the dominant instruments, acoustic/electronic balance, groove, arrangement, production texture, and vocal character?
+If a narrower label overweights one element or ignores important supported layers, broaden or revise the label.
+
+Before finalizing Instruments and Production Style, verify that no high-prominence or defining Stage A element has been omitted merely because a more generic description would be simpler.
+
+EVIDENCE ACCOUNTING GATE
+Before producing Generator-ready fields:
+
+1. Read every Stage A dominantElement with prominence "dominant" or "major".
+2. Read every Stage A instrumentEvidence item with prominence "dominant" or "major".
+3. Determine whether each materially defining item is represented in at least one of:
+   - Music Style
+   - Instruments
+   - Production Style
+   - Additional Instructions
+
+A defining Stage A element may be summarized, but it must not disappear.
+
+Supporting elements may be omitted when they do not materially affect the generator-ready identity.
+
+If removing an element would cause a music generator to recreate a substantially different arrangement, that element is materially defining and must be preserved.
 
 BPM
 Choose ONE generator-ready BPM value.
