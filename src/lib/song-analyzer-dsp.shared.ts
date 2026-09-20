@@ -42,6 +42,8 @@ export const stage0DspEvidenceSchema = z.object({
     meanRms: nullableMetric,
     stdRms: nullableMetric,
     dynamicRangeDb: nullableMetric,
+    loudnessDb: nullableMetric.optional(),
+    dynamicComplexity: nullableMetric.optional(),
     energySegments: z.array(z.object({
       startSec: z.number().nonnegative().finite(),
       endSec: z.number().nonnegative().finite(),
@@ -56,6 +58,7 @@ export const stage0DspEvidenceSchema = z.object({
   }).nullable(),
   tonal: z.object({
     keyCandidate: z.string().max(50).nullable(),
+    scaleCandidate: z.string().max(30).nullable().optional(),
     keyConfidence: z.number().min(0).max(1).nullable(),
     chromaSummary: z.array(z.number().min(0).max(1).finite()).length(12),
     notes: z.string().max(1500),
