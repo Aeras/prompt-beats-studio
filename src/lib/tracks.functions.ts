@@ -178,7 +178,8 @@ export const createTrack = createServerFn({ method: "POST" })
       : await resolveExternalTrackSource(data.source_type as ExternalTrackSourceType, data.audio_url);
     if (data.source_type !== "upload" && !externalSource) throw new Error("Invalid external track link");
 
-    const { data: row, error } = await (context.supabase.from("tracks") as any)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await (supabaseAdmin.from("tracks") as any)
       .insert({
         ...data,
         created_with: externalSource ? null : data.created_with ?? null,
