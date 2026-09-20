@@ -560,7 +560,11 @@ export type Database = {
       saved_prompts: {
         Row: {
           custom_name: string | null
+          generator_input_snapshot: Json | null
+          parent_prompt_id: string | null
           project_id: string | null
+          revision_request: string | null
+          source_generation_job_id: string | null
           version_label: string | null
           version_number: number | null
           created_at: string
@@ -578,7 +582,11 @@ export type Database = {
         }
         Insert: {
           custom_name?: string | null
+          generator_input_snapshot?: Json | null
+          parent_prompt_id?: string | null
           project_id?: string | null
+          revision_request?: string | null
+          source_generation_job_id?: string | null
           version_label?: string | null
           version_number?: number | null
           created_at?: string
@@ -596,7 +604,11 @@ export type Database = {
         }
         Update: {
           custom_name?: string | null
+          generator_input_snapshot?: Json | null
+          parent_prompt_id?: string | null
           project_id?: string | null
+          revision_request?: string | null
+          source_generation_job_id?: string | null
           version_label?: string | null
           version_number?: number | null
           created_at?: string
@@ -614,10 +626,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "saved_prompts_parent_prompt_id_fkey"
+            columns: ["parent_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "saved_prompts_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_prompts_source_generation_job_id_fkey"
+            columns: ["source_generation_job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -1119,6 +1145,25 @@ export type Database = {
         Returns: boolean
       }
       current_user_is_banned: { Args: never; Returns: boolean }
+      create_prompt_revision_version: {
+        Args: {
+          _genre: string
+          _generator_input_snapshot: Json
+          _job_id: string
+          _language: string
+          _lyrics: string
+          _mood: string
+          _note: string
+          _parent_prompt_id: string
+          _project_id: string
+          _revision_request: string
+          _tags: string
+          _theme: string
+          _title: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
       edit_track_with_cleanup: {
