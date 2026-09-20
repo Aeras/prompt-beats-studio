@@ -164,6 +164,22 @@ export const listMyTracks = createServerFn({ method: "GET" })
     return { tracks: data ?? [] };
   });
 
+export const getMyTrackForEdit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: track, error } = await (supabaseAdmin.from("tracks") as any)
+      .select(TRACK_COLUMNS)
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .eq("moderation_status", "active")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!track) throw new Error("Track not found");
+    return { track };
+  });
+
 export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
@@ -250,8 +266,7 @@ export const updateTrack = createServerFn({ method: "POST" })
     } as never);
     if (error) throw new Error(error.message);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: visibilityError } = await supabaseAdmin
-      .from("tracks")
+    const { error: visibilityError } = await (supabaseAdmin.from("tracks") as any)
       .update({
         prompt_is_public: data.prompt_is_public,
         lyrics_is_public: data.lyrics_is_public,
