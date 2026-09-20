@@ -143,13 +143,16 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
       .select(TRACK_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
-    if (!track || (!track.is_published && track.user_id !== viewerId)) return { track: null, artist: null };
+    if (!track) return { track: null, artist: null, unavailableReason: "not_found" as const };
+    if (!track.is_published && track.user_id !== viewerId) {
+      return { track: null, artist: null, unavailableReason: "private" as const, privateTitle: track.title as string };
+    }
     const { data: artist } = await supabase
       .from("public_profiles")
       .select("id, handle, display_name, artist_alias, avatar_url, staff_badge")
       .eq("id", track.user_id)
       .maybeSingle();
-    return { track: sanitizeTrackContent(track, viewerId), artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null };
+    return { track: sanitizeTrackContent(track, viewerId), artist: artist?.id ? { ...artist, id: artist.id, handle: artist.handle ?? "" } : null, unavailableReason: null as null, privateTitle: null as null };
   });
 
 export const listMyTracks = createServerFn({ method: "GET" })
