@@ -166,6 +166,7 @@ function TrackPage() {
                     isPublished={track.is_published === true}
                     promptIsPublic={track.prompt_is_public !== false}
                     lyricsIsPublic={track.lyrics_is_public !== false}
+                    trackTitle={track.title}
                   />
                 </div>
 
