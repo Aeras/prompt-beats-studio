@@ -34,6 +34,22 @@ export function TrackCard({
   const embedUrl = getTrackEmbedUrl(track.sourceType, track.sourceId);
   const canUseNativePlayer = canUseNativeTrackPlayer(track.sourceType);
   const compact = viewMode === "compact";
+  const ownerTrack = track.userId ? {
+    id: track.id,
+    user_id: track.userId,
+    title: track.title,
+    genre: track.genre,
+    prompt: track.prompt,
+    lyrics: track.lyrics,
+    audio_url: track.audioUrl ?? "",
+    audio_type: track.audioType ?? "upload",
+    source_type: track.sourceType,
+    source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
+    created_with: track.createdWith ?? null,
+    is_published: track.isPublished ?? true,
+    prompt_is_public: track.promptIsPublic ?? true,
+    lyrics_is_public: track.lyricsIsPublic ?? true,
+  } : null;
 
   useEffect(() => {
     const onPlayCounted = (event: Event) => {
@@ -111,7 +127,11 @@ export function TrackCard({
           </div>
           <div className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-2")}>
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
-            <TrackLibraryActions track={track} compact={compact} />
+            <TrackLibraryActions
+              track={track}
+              compact={compact}
+              ownerActions={compact && ownerTrack ? <TrackOwnerActions compact inlineMenuItems track={ownerTrack} /> : null}
+            />
             {track.userId && (
               <ShareTrackButton
                 trackId={track.id}
@@ -124,24 +144,7 @@ export function TrackCard({
                 compact={compact}
               />
             )}
-            {track.userId && (
-              <TrackOwnerActions compact={compact} menuMode track={{
-                id: track.id,
-                user_id: track.userId,
-                title: track.title,
-                genre: track.genre,
-                prompt: track.prompt,
-                lyrics: track.lyrics,
-                audio_url: track.audioUrl ?? "",
-                audio_type: track.audioType ?? "upload",
-                source_type: track.sourceType,
-                source_url: track.sourceType === "upload" ? null : track.audioUrl ?? null,
-                created_with: track.createdWith ?? null,
-                is_published: track.isPublished ?? true,
-                prompt_is_public: track.promptIsPublic ?? true,
-                lyrics_is_public: track.lyricsIsPublic ?? true,
-              }} />
-            )}
+            {!compact && ownerTrack && <TrackOwnerActions menuMode track={ownerTrack} />}
           </div>
         </div>
 
