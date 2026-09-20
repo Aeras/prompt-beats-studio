@@ -335,17 +335,20 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
   const [draft, setDraft] = useState(project.creation_notes ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const dirty = draft !== (project.creation_notes ?? "");
 
   useEffect(() => {
     setDraft(project.creation_notes ?? "");
     setSaved(false);
+    setError("");
   }, [project.id, project.creation_notes]);
 
   const save = async () => {
     if (!dirty || saving) return;
     setSaving(true);
     setSaved(false);
+    setError("");
     try {
       await updatePromptProjectCreationNotes({
         data: { id: project.id, creationNotes: draft },
@@ -353,6 +356,8 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
       await queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (language === "el" ? "Η αποθήκευση απέτυχε." : "Could not save notes."));
     } finally {
       setSaving(false);
     }
@@ -383,6 +388,7 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
         onChange={(event) => {
           setDraft(event.target.value.slice(0, 6000));
           setSaved(false);
+          setError("");
         }}
         rows={5}
         maxLength={6000}
@@ -393,6 +399,7 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
         }
         className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 text-sm leading-5 outline-none transition-shadow placeholder:text-muted-foreground focus:border-accent/50"
       />
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       <div className="mt-2 flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground">{draft.length}/6000</span>
         <button
