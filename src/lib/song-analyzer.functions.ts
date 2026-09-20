@@ -5,12 +5,21 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { recordAiUsage } from "@/lib/ai-usage.server";
+import { modelCaller } from "@/lib/ai-provider.server";
 import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
 export const SONG_ANALYZER_MODELS = [
-  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-  { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "gemini" },
+  { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "gemini" },
+  { id: "voxtral-small-latest", label: "Voxtral Small", provider: "mistral" },
 ] as const;
+
+type SongAnalyzerModelId = (typeof SONG_ANALYZER_MODELS)[number]["id"];
+type SongAnalyzerProvider = (typeof SONG_ANALYZER_MODELS)[number]["provider"];
+
+function analyzerProvider(model: string): SongAnalyzerProvider {
+  return SONG_ANALYZER_MODELS.find((item) => item.id === model)?.provider ?? "gemini";
+}
 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -483,7 +492,7 @@ function normalizedUsage(payload: any) {
 }
 
 function logStage(model: string, stage: string, event: string, details?: unknown) {
-  console.info("[song-analyzer]", { model, stage, event, details });
+  console.info("[song-analyzer]", { provider: analyzerProvider(model), model, stage, event, details });
 }
 
 function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, stage: string): T {
@@ -504,14 +513,64 @@ function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, s
 }
 
 async function generateAudioEvidence(args: {
-  apiKey: string;
-  model: string;
+  apiKey?: string;
+  provider: SongAnalyzerProvider;
+  model: SongAnalyzerModelId;
   audioBase64: string;
   mimeType: string;
   stage0Evidence: Stage0DspEvidence;
   onUsage: (usage: ReturnType<typeof normalizedUsage>) => void;
 }) {
   const stage = "evidence_extraction";
+  const prompt = [
+    "Extract raw musical evidence only. Do not classify genre or style. Return only schema-compliant JSON.",
+    "",
+    "QUANTITATIVE DSP REFERENCE",
+    "The following values were computed directly from the same audio signal by deterministic DSP analysis.",
+    "Treat them as SUPPORTING EVIDENCE, not unquestionable truth.",
+    "If your auditory interpretation strongly disagrees:",
+    "- do not blindly follow the DSP;",
+    "- explicitly note the disagreement;",
+    "- lower confidence where appropriate;",
+    "- consider half-time/double-time ambiguity;",
+    "- prefer the interpretation supported by multiple independent signals.",
+    "DSP values must never generate genre assumptions.",
+    "Energy changes are supporting evidence only and must not be mapped automatically to section labels.",
+    "Weak key/chroma evidence must not influence genre classification.",
+    "",
+    JSON.stringify(args.stage0Evidence),
+  ].join("\n");
+
+  if (args.provider === "mistral") {
+    let modelResult;
+    try {
+      modelResult = await modelCaller(args.model, "mistral")({
+        system: EVIDENCE_EXTRACTION_SYSTEM_PROMPT,
+        prompt,
+        maxTokens: 8192,
+        schema: EVIDENCE_RESPONSE_SCHEMA,
+        inputAudio: { base64: args.audioBase64, mimeType: args.mimeType },
+      });
+    } catch (error) {
+      logStage(args.model, stage, "provider_request_failure", error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+    args.onUsage(modelResult.usage);
+    if (modelResult.stopReason && modelResult.stopReason !== "end_turn") {
+      logStage(args.model, stage, "non_success_stop_reason", modelResult.stopReason);
+      throw new Error(`Mistral evidence extraction stopped before completion: ${modelResult.stopReason}`);
+    }
+    const text = modelResult.text.trim();
+    if (!text) {
+      logStage(args.model, stage, "missing_json");
+      throw new Error("Mistral evidence extraction returned no JSON");
+    }
+    const evidence = parseStructured(text, stageAEvidenceSchema, args.model, stage);
+    logStage(args.model, stage, "success", { dominantElements: evidence.dominantElements.length, instruments: evidence.instrumentEvidence.length });
+    return evidence;
+  }
+
+  if (!args.apiKey) throw new Error("Gemini API is not configured");
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
     {
@@ -523,26 +582,7 @@ async function generateAudioEvidence(args: {
           role: "user",
           parts: [
             { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
-            {
-              text: [
-                "Extract raw musical evidence only. Do not classify genre or style. Return only schema-compliant JSON.",
-                "",
-                "QUANTITATIVE DSP REFERENCE",
-                "The following values were computed directly from the same audio signal by deterministic DSP analysis.",
-                "Treat them as SUPPORTING EVIDENCE, not unquestionable truth.",
-                "If your auditory interpretation strongly disagrees:",
-                "- do not blindly follow the DSP;",
-                "- explicitly note the disagreement;",
-                "- lower confidence where appropriate;",
-                "- consider half-time/double-time ambiguity;",
-                "- prefer the interpretation supported by multiple independent signals.",
-                "DSP values must never generate genre assumptions.",
-                "Energy changes are supporting evidence only and must not be mapped automatically to section labels.",
-                "Weak key/chroma evidence must not influence genre classification.",
-                "",
-                JSON.stringify(args.stage0Evidence),
-              ].join("\n"),
-            },
+            { text: prompt },
           ],
         }],
         generationConfig: {
@@ -626,8 +666,9 @@ function applyEvidenceGate(result: SongAnalysisResult, evidence: StageAEvidence)
 }
 
 async function generateFinalFromEvidence(args: {
-  apiKey: string;
-  model: string;
+  apiKey?: string;
+  provider: SongAnalyzerProvider;
+  model: SongAnalyzerModelId;
   evidence: StageAEvidence;
   stage0Evidence: Stage0DspEvidence;
   initialResult?: SongAnalysisResult;
@@ -646,6 +687,36 @@ async function generateFinalFromEvidence(args: {
     "\nProduce the final canonical Analyzer JSON. Every specific musical claim must be grounded in Stage A evidence.",
   ].filter(Boolean).join("\n");
 
+  if (args.provider === "mistral") {
+    let modelResult;
+    try {
+      modelResult = await modelCaller(args.model, "mistral")({
+        system: ANALYZER_SYSTEM_PROMPT,
+        prompt: context,
+        maxTokens: 8192,
+        schema: ANALYZER_RESPONSE_SCHEMA,
+      });
+    } catch (error) {
+      logStage(args.model, stage, "provider_request_failure", error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+    args.onUsage(modelResult.usage);
+    if (modelResult.stopReason && modelResult.stopReason !== "end_turn") {
+      logStage(args.model, stage, "non_success_stop_reason", modelResult.stopReason);
+      throw new Error(`Mistral final synthesis stopped before completion: ${modelResult.stopReason}`);
+    }
+    const text = modelResult.text.trim();
+    if (!text) {
+      logStage(args.model, stage, "missing_json");
+      throw new Error("Mistral final synthesis returned no JSON");
+    }
+    const final = parseStructured(text, songAnalysisResultSchema, args.model, stage);
+    const gated = applyEvidenceGate(final, args.evidence);
+    logStage(args.model, stage, "success");
+    return gated;
+  }
+
+  if (!args.apiKey) throw new Error("Gemini API is not configured");
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
     {
@@ -782,7 +853,7 @@ Return only the requested structured JSON.
 const analyzeInput = z.object({
   audioBase64: z.string().min(1).max(21_500_000),
   mimeType: z.enum(supportedMimeTypes),
-  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]).default(DEFAULT_SONG_ANALYZER_MODEL),
+  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "voxtral-small-latest"]).default(DEFAULT_SONG_ANALYZER_MODEL),
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
   stage0Evidence: stage0DspEvidenceSchema,
@@ -803,6 +874,7 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
 
 async function recordStageUsage(args: {
   userId: string;
+  provider: SongAnalyzerProvider;
   model: string;
   stage: "evidence_extraction" | "final_synthesis" | "external_validation" | "external_reconciliation";
   usage: ReturnType<typeof normalizedUsage>;
@@ -811,7 +883,7 @@ async function recordStageUsage(args: {
   logStage(args.model, args.stage, args.success ? "usage_success" : "usage_failure", args.usage);
   await recordAiUsage({
     userId: args.userId,
-    provider: "gemini",
+    provider: args.provider,
     model: args.model,
     operation: "song_analysis",
     usage: args.usage,
@@ -830,8 +902,10 @@ export const analyzeSong = createServerFn({ method: "POST" })
       throw new Error("Audio file exceeds the 15 MB Analyzer limit.");
     }
 
-    const apiKey = process.env["GEMINI_API_KEY"];
-    if (!apiKey) throw new Error("Gemini API is not configured");
+    const provider = analyzerProvider(data.model);
+    const apiKey = provider === "gemini" ? process.env["GEMINI_API_KEY"] : undefined;
+    if (provider === "gemini" && !apiKey) throw new Error("Gemini API is not configured");
+    if (provider === "mistral" && !process.env["MISTRAL_API_KEY"]) throw new Error("Mistral API is not configured");
 
     const totalStartedAt = Date.now();
     const stage0Evidence = data.stage0Evidence;
@@ -847,16 +921,17 @@ export const analyzeSong = createServerFn({ method: "POST" })
     try {
       evidence = await generateAudioEvidence({
         apiKey,
+        provider,
         model: data.model,
         audioBase64: data.audioBase64,
         mimeType: data.mimeType,
         stage0Evidence,
         onUsage: (usage) => { evidenceUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: true });
+      await recordStageUsage({ userId: context.userId, provider, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: true });
       logStage(data.model, "evidence_extraction", "timing", { durationMs: Date.now() - stageAStartedAt });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: false });
+      await recordStageUsage({ userId: context.userId, provider, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: false });
       throw error;
     }
 
@@ -871,17 +946,21 @@ export const analyzeSong = createServerFn({ method: "POST" })
         stage0Evidence,
         onUsage: (usage) => { synthesisUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: true });
+      await recordStageUsage({ userId: context.userId, provider, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: true });
       logStage(data.model, "final_synthesis", "timing", { durationMs: Date.now() - stageBStartedAt });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: false });
+      await recordStageUsage({ userId: context.userId, provider, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: false });
       throw error;
     }
 
     const trackTitle = data.trackTitle?.trim();
     const artist = data.artist?.trim();
 
-    if (!trackTitle || !artist) {
+    if (provider === "mistral" && trackTitle && artist) {
+      logStage(data.model, "external_validation", "skipped", "Optional Google-grounded external validation is Gemini-specific; Voxtral result remains audio/DSP evidence only.");
+    }
+
+    if (!trackTitle || !artist || provider !== "gemini") {
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
@@ -898,9 +977,9 @@ export const analyzeSong = createServerFn({ method: "POST" })
       });
       external = validationResult.validation;
       externalUsage = validationResult.usage;
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: true });
+      await recordStageUsage({ userId: context.userId, provider: "gemini", model: data.model, stage: "external_validation", usage: externalUsage, success: true });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: false });
+      await recordStageUsage({ userId: context.userId, provider: "gemini", model: data.model, stage: "external_validation", usage: externalUsage, success: false });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
@@ -914,6 +993,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
     try {
       const reconciled = await generateFinalFromEvidence({
         apiKey,
+        provider,
         model: data.model,
         evidence,
         stage0Evidence,
@@ -921,11 +1001,11 @@ export const analyzeSong = createServerFn({ method: "POST" })
         externalValidation: external,
         onUsage: (usage) => { reconciliationUsage = usage; },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: true });
+      await recordStageUsage({ userId: context.userId, provider: "gemini", model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: true });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result: reconciled, model: data.model, stage0Evidence, stageAEvidence: evidence };
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: false });
+      await recordStageUsage({ userId: context.userId, provider: "gemini", model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: false });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
@@ -934,7 +1014,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
 const saveAnalysisInput = z.object({
   name: z.string().trim().min(1).max(200),
   projectId: z.string().uuid().nullable().optional(),
-  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]),
+  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "voxtral-small-latest"]),
   result: songAnalysisResultSchema,
 });
 
