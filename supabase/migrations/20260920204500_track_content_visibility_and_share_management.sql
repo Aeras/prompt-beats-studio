@@ -129,6 +129,7 @@ BEGIN
     WHERE id = _track_id
       AND is_published = true
       AND moderation_status = 'active'
+      AND user_id <> auth.uid()
   ) THEN
     RETURN;
   END IF;
