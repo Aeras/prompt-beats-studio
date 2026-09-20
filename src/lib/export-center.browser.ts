@@ -6,6 +6,7 @@ import {
   buildProjectSummaryDocument,
   exportExtension,
   exportMime,
+  projectPromptFilenameBase,
   sanitizeExportFilename,
   serializeExportDocument,
   uniqueExportFilename,
