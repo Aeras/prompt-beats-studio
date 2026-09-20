@@ -37,6 +37,9 @@ jobs:
       - name: Export Center tests
         run: bun test src/lib/export-center.shared.test.ts
 
+      - name: Follow and Notifications tests
+        run: bun test src/lib/follow-notifications.test.ts
+
       - name: Build
         run: bun run build
 

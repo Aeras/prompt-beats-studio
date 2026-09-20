@@ -6,6 +6,7 @@ import { Check, Copy, Globe, Instagram, Music, Play, Pause, Share2, ShieldBan, T
 
 import { usePlayer } from "@/lib/player";
 import { DonationMethods } from "@/components/promptbeats/DonationMethods";
+import { FollowCreatorControl } from "@/components/promptbeats/FollowCreatorControl";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
@@ -162,6 +163,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
               <StaffBadge badge={profile.staff_badge} />
               {profile.bio ? <p className="mt-2 text-sm text-muted-foreground">{profile.bio}</p> : null}
               <SocialLinks profile={profile} />
+              <FollowCreatorControl userId={profile.id} />
             </div>
             <div className="flex shrink-0 flex-col gap-2"><EditProfileModal profile={profile} /><BanUserToggle userId={profile.id} /></div>
           </header>

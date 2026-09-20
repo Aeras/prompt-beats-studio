@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Menu, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
+import { NotificationCenter } from "@/components/promptbeats/NotificationCenter";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,6 +168,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
                 <Menu className="h-5 w-5" />
               </button>
               <div className="min-w-0 flex-1">{header}</div>
+              {authenticated && <NotificationCenter />}
             </div>
           </div>
         </header>
