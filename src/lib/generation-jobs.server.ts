@@ -13,7 +13,11 @@
  *   never reached the provider are safely reaped.
  * - Only the service-role client (server-only) writes job state.
  */
-import { runSongGeneration, generateJobInput } from "@/lib/ai.functions";
+import {
+  durableAiJobInput,
+  runLyricsSectionEdit,
+  runSongGeneration,
+} from "@/lib/ai.functions";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
@@ -59,7 +63,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   };
 
   try {
-    const input = generateJobInput.parse(job.input_payload);
+    const input = durableAiJobInput.parse(job.input_payload);
     const { data: marked, error: markerError } = await db
       .from("ai_generation_jobs")
       .update({ provider_started_at: new Date().toISOString() })
@@ -69,6 +73,24 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       .select("id")
       .maybeSingle();
     if (markerError || !marked) throw new Error("The generation could not be started. Please try again.");
+
+    if (input.operation === "lyrics_section_edit") {
+      const out = await runLyricsSectionEdit(input, job.user_id, job.generation_id);
+      await db
+        .from("ai_generation_jobs")
+        .update({
+          status: "completed",
+          result: { sectionEdit: out.result },
+          provider: out.provider,
+          model: out.model,
+          error: null,
+          attempts: (job.attempts ?? 0) + 1,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id)
+        .eq("status", "processing");
+      return { ran: true };
+    }
 
     const out = await runSongGeneration(input, job.user_id, job.generation_id);
     let persistedResult: Record<string, unknown> = out.result;
