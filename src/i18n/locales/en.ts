@@ -147,6 +147,8 @@ export const en = {
   "lyricsWorkspace.preview": "Preview — nothing changes until you apply",
   "lyricsWorkspace.option": "Option {option}",
   "lyricsWorkspace.apply": "Apply",
+  "lyricsWorkspace.applyAllChoruses": "Apply to all Chorus",
+  "lyricsWorkspace.applyAllChorusesLocked": "Unlock all Chorus sections to apply this change to all of them.",
   "lyricsWorkspace.unsaved": "Unsaved lyric changes",
   "lyricsWorkspace.noUnsaved": "No unsaved lyric changes",
   "lyricsWorkspace.sectionCount": "{count} sections",

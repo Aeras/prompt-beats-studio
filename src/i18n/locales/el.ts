@@ -149,6 +149,8 @@ export const el: Record<TranslationKey, string> = {
   "lyricsWorkspace.preview": "Προεπισκόπηση — τίποτα δεν αλλάζει πριν πατήσεις Εφαρμογή",
   "lyricsWorkspace.option": "Επιλογή {option}",
   "lyricsWorkspace.apply": "Εφαρμογή",
+  "lyricsWorkspace.applyAllChoruses": "Εφαρμογή σε όλα τα Chorus",
+  "lyricsWorkspace.applyAllChorusesLocked": "Ξεκλείδωσε όλα τα Chorus για να εφαρμοστεί η αλλαγή σε όλα.",
   "lyricsWorkspace.unsaved": "Μη αποθηκευμένες αλλαγές στίχων",
   "lyricsWorkspace.noUnsaved": "Δεν υπάρχουν μη αποθηκευμένες αλλαγές",
   "lyricsWorkspace.sectionCount": "{count} ενότητες",
