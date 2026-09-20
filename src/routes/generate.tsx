@@ -193,19 +193,41 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
 }
 
-function SectionHeader({ title, hint, onClear }: { title: string; hint?: string; onClear?: () => void }) {
+function SectionHeader({
+  title,
+  hint,
+  onClear,
+  optionsOpen,
+  onToggleOptions,
+}: {
+  title: string;
+  hint?: string;
+  onClear?: () => void;
+  optionsOpen?: boolean;
+  onToggleOptions?: () => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
       {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
+      {onToggleOptions && (
+        <button
+          type="button"
+          onClick={onToggleOptions}
+          aria-expanded={optionsOpen}
+          className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent/10"
+        >
+          {optionsOpen ? t("generator.hideTags") : t("generator.showTags")}
+        </button>
+      )}
       {onClear && (
         <button
           type="button"
           onClick={onClear}
           aria-label={`${t("generator.clear")} ${title}`}
           title={`${t("generator.clear")} ${title}`}
-          className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"
+          className={onToggleOptions ? "shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300" : "ml-auto shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"}
         >
           <Trash2 className="h-3 w-3" />
         </button>
