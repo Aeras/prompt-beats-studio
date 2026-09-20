@@ -28,7 +28,7 @@ export const songSetupDraftSchema = z.object({
   songStructure: z.string().trim().min(1).max(600),
   productionStyle: z.string().trim().max(2000),
   additionalInstructions: z.string().trim().max(2000),
-  language: z.string().trim().min(1).max(40),
+  language: z.string().trim().min(1).max(80),
 });
 
 export type SongSetupDraft = z.infer<typeof songSetupDraftSchema>;
