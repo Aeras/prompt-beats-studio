@@ -371,6 +371,18 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
       search: { mode: "revision", project: prompt.project_id, base: prompt.id },
     });
   };
+  const revise = () => {
+    if (!prompt.project_id) return;
+    void navigate({
+      to: "/generate",
+      search: {
+        mode: "revision",
+        project: prompt.project_id,
+        base: prompt.id,
+      },
+    });
+  };
+
   const move = async (projectId: string) => {
     await updateSongAnalysisOrganization({ data: { id: analysis.id, projectId: projectId || null } });
     await refresh();
