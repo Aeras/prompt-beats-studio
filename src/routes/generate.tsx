@@ -1033,6 +1033,70 @@ function GeneratePage() {
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
+  const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {
+    if (mode === "revision") {
+      setRevisionMode(true);
+      setAdvanced(true);
+      setResult(null);
+      setRevisionMeta(null);
+      setQuality(null);
+      void navigate({
+        to: "/generate",
+        search: {
+          mode: "revision",
+          project: revisionProjectId || undefined,
+          base: revisionBasePromptId || undefined,
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    setRevisionMode(false);
+    setAdvanced(mode === "advanced");
+    setRevisionProjectId("");
+    setRevisionBasePromptId("");
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    void navigate({ to: "/generate", search: {}, replace: true });
+  };
+
+  const confirmRevisionSwitch = () =>
+    !revisionRequest.trim() || window.confirm(t("generator.revisionSwitchConfirm"));
+
+  const changeRevisionProject = (projectId: string) => {
+    if (!confirmRevisionSwitch()) return;
+    setRevisionProjectId(projectId);
+    setRevisionBasePromptId("");
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    setResult(null);
+    setQuality(null);
+    void navigate({
+      to: "/generate",
+      search: { mode: "revision", project: projectId || undefined, base: undefined },
+      replace: true,
+    });
+  };
+
+  const changeRevisionBase = (basePromptId: string) => {
+    if (!confirmRevisionSwitch()) return;
+    setRevisionBasePromptId(basePromptId);
+    setRevisionRequest("");
+    setRevisionMeta(null);
+    setResult(null);
+    setQuality(null);
+    void navigate({
+      to: "/generate",
+      search: {
+        mode: "revision",
+        project: revisionProjectId || undefined,
+        base: basePromptId || undefined,
+      },
+      replace: true,
+    });
+  };
+
   const styleLabel = (value: string) => translatedOption(advanced ? ADVANCED_MUSIC_STYLES : BASIC_MUSIC_STYLES, value, t);
   const moodLabel = (value: string) => translatedOption(advanced ? ADVANCED_MOODS : BASIC_MOODS, value, t);
   const instrumentLabel = (value: string) => translatedOption(INSTRUMENT_OPTIONS, value, t);
@@ -1070,8 +1134,15 @@ function GeneratePage() {
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("generator.mode")}>
-                {[{ key: false, label: t("generator.basic") }, { key: true, label: t("generator.advanced") }].map((mode) => <button key={String(mode.key)} type="button" aria-pressed={advanced === mode.key} onClick={() => setAdvanced(mode.key)} className={advanced === mode.key ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>)}
-                {advanced && hasAdminInputBypass && (
+                {([
+                  { key: "basic" as const, label: t("generator.basic") },
+                  { key: "advanced" as const, label: t("generator.advanced") },
+                  { key: "revision" as const, label: t("generator.revision") },
+                ]).map((mode) => {
+                  const active = mode.key === "revision" ? revisionMode : !revisionMode && advanced === (mode.key === "advanced");
+                  return <button key={mode.key} type="button" aria-pressed={active} onClick={() => changeGeneratorMode(mode.key)} className={active ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>;
+                })}
+                {advanced && !revisionMode && hasAdminInputBypass && (
                   <button
                     type="button"
                     onClick={() => setSongSetupAssistantOpen(true)}
@@ -1084,6 +1155,54 @@ function GeneratePage() {
               </div>
               {canClear && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
             </div>
+
+            {revisionMode && (
+              <div className="space-y-4 rounded-2xl border border-accent/30 bg-accent/[0.04] p-4">
+                <div>
+                  <h2 className="font-display text-base font-bold text-accent">{t("generator.revision")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("generator.revisionBaseHint")}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-xs font-medium">{t("generator.revisionProject")}</span>
+                    <select value={revisionProjectId} onChange={(e) => changeRevisionProject(e.target.value)} className={fieldClass}>
+                      <option value="">{t("generator.revisionSelectProject")}</option>
+                      {(promptProjects.data?.projects ?? []).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-xs font-medium">{t("generator.revisionVersion")}</span>
+                    <select value={revisionBasePromptId} onChange={(e) => changeRevisionBase(e.target.value)} disabled={!revisionProjectId || revisionVersions.isLoading} className={fieldClass}>
+                      <option value="">{t("generator.revisionSelectVersion")}</option>
+                      {(revisionVersions.data?.prompts ?? []).map((prompt) => (
+                        <option key={prompt.id} value={prompt.id}>
+                          {prompt.version_number ? `V${prompt.version_number}` : "—"}{prompt.version_label ? ` — ${prompt.version_label}` : prompt.custom_name ? ` — ${prompt.custom_name}` : prompt.title ? ` — ${prompt.title}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {revisionProjectId && !revisionVersions.isLoading && (revisionVersions.data?.prompts.length ?? 0) === 0 && <p className="text-xs text-muted-foreground">{t("generator.revisionNoVersions")}</p>}
+                {revisionBase.isLoading && <p className="text-xs text-muted-foreground">{t("generator.revisionLoading")}</p>}
+                {revisionBase.data?.prompt && (
+                  <>
+                    {!revisionBase.data.prompt.generator_input_snapshot && <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{t("generator.revisionLegacySnapshot")}</p>}
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{t("generator.revisionBase")}</p>
+                      <p className="mt-1 text-sm font-semibold">{revisionBase.data.prompt.title || revisionBase.data.prompt.custom_name || t("library.untitledPrompt")}</p>
+                      {revisionBase.data.prompt.tags && <pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">{revisionBase.data.prompt.tags}</pre>}
+                      {revisionBase.data.prompt.lyrics && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 text-[11px] text-muted-foreground">{revisionBase.data.prompt.lyrics}</pre>}
+                      {revisionBase.data.prompt.note && <p className="mt-2 text-[11px] text-muted-foreground">{revisionBase.data.prompt.note}</p>}
+                    </div>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-semibold text-foreground">{t("generator.revisionRequest")}</span>
+                      <textarea value={revisionRequest} onChange={(e) => setRevisionRequest(e.target.value.slice(0, 3000))} rows={4} placeholder={t("generator.revisionRequestPlaceholder")} className="w-full rounded-xl border border-accent/30 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" />
+                      <p className="text-right text-[11px] text-muted-foreground">{revisionRequest.length}/3000</p>
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
 
             <div>
               {advanced ? <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} /> : <FieldLabel>{t("generator.theme")}</FieldLabel>}
