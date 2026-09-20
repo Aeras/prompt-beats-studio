@@ -88,7 +88,9 @@ export function LyricsWorkspace({
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
 
   const sections = useMemo(() => parseLyricsSections(lyrics), [lyrics]);
   const dirty = lyrics !== baselineLyrics;
@@ -109,6 +111,15 @@ export function LyricsWorkspace({
       window.clearInterval(pollRef.current);
       pollRef.current = null;
     }
+  };
+
+  const showActionFeedback = (message: string) => {
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+    setActionFeedback(message);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setActionFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 1400);
   };
 
   const acceptCompletedJob = (job: GenerationJob) => {
@@ -184,6 +195,7 @@ export function LyricsWorkspace({
     return () => {
       cancelled = true;
       clearPolling();
+      if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
     };
     // Initial source identity only; do not recover a stale job after every manual edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -301,6 +313,7 @@ export function LyricsWorkspace({
     });
     setLyrics(replaced.lyrics);
     setLastEditSummary(`Chorus · ${t(actionLabelKey(action))}`.slice(0, 120));
+    showActionFeedback(t("lyricsWorkspace.appliedAllChoruses"));
     setProposal(null);
     setEditingKey(null);
     setCustomInstruction("");
@@ -411,6 +424,12 @@ export function LyricsWorkspace({
           {t("lyricsWorkspace.savedAsVersion", { version: savedVersion.versionNumber })}
         </p>
       )}
+      {actionFeedback && (
+        <p role="status" className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 p-3 text-xs font-medium text-accent">
+          <Check className="h-4 w-4 shrink-0" />
+          {actionFeedback}
+        </p>
+      )}
       {saveError && <p className="text-xs text-red-400">{saveError}</p>}
 
       <div className="space-y-3">
@@ -500,7 +519,7 @@ export function LyricsWorkspace({
                             onClick={applyProposalToAllChoruses}
                             disabled={hasLockedRegularChorus}
                             title={hasLockedRegularChorus ? t("lyricsWorkspace.applyAllChorusesLocked") : t("lyricsWorkspace.applyAllChoruses")}
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-4 text-xs font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-4 text-xs font-semibold text-accent transition-all hover:bg-accent/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Check className="h-4 w-4" />{t("lyricsWorkspace.applyAllChoruses")}
                           </button>
