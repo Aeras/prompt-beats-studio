@@ -84,6 +84,12 @@ function friendlyLabel(label: string, occurrence: number, totalForLabel: number)
   return `${label} ${occurrence}`;
 }
 
+function editableContentEnd(lyrics: string, contentStart: number, boundaryEnd: number) {
+  const body = lyrics.slice(contentStart, boundaryEnd);
+  const trailing = body.match(/[\t \r\n]+$/);
+  return trailing ? boundaryEnd - trailing[0].length : boundaryEnd;
+}
+
 export function parseLyricsSections(lyrics: string): LyricsSection[] {
   const headerRegex = /^[\t ]*\[([^\]\r\n]+)\][\t ]*$/gm;
   const headers: Array<{ start: number; end: number; raw: string; label: string }> = [];
@@ -126,6 +132,8 @@ export function parseLyricsSections(lyrics: string): LyricsSection[] {
   const seen = new Map<string, number>();
   const sections: LyricsSection[] = [];
   if (headers[0]!.start > 0) {
+    const boundaryEnd = headers[0]!.start;
+    const end = editableContentEnd(lyrics, 0, boundaryEnd);
     sections.push({
       key: "preamble:1",
       label: "Preamble",
@@ -135,8 +143,8 @@ export function parseLyricsSections(lyrics: string): LyricsSection[] {
       rawHeader: null,
       headerStart: 0,
       contentStart: 0,
-      end: headers[0]!.start,
-      content: lyrics.slice(0, headers[0]!.start),
+      end,
+      content: lyrics.slice(0, end),
       synthetic: true,
     });
   }
@@ -145,7 +153,8 @@ export function parseLyricsSections(lyrics: string): LyricsSection[] {
     const id = slug(header.label);
     const occurrence = (seen.get(id) ?? 0) + 1;
     seen.set(id, occurrence);
-    const end = headers[headerIndex + 1]?.start ?? lyrics.length;
+    const boundaryEnd = headers[headerIndex + 1]?.start ?? lyrics.length;
+    const end = editableContentEnd(lyrics, header.end, boundaryEnd);
     sections.push({
       key: `${id}:${occurrence}`,
       label: header.label,
