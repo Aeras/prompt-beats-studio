@@ -7,6 +7,83 @@ export type SongLanguageOption = {
 
 export const CUSTOM_LANGUAGE_VALUE = "Custom…";
 
+export type SongLanguageVariant = {
+  id: string;
+  canonical: string;
+  label: { en: string; el: string };
+};
+
+export const SONG_LANGUAGE_VARIANTS: Record<string, SongLanguageVariant[]> = {
+  English: [
+    { id: "us", canonical: "English (United States)", label: { en: "United States", el: "Ηνωμένες Πολιτείες" } },
+    { id: "uk", canonical: "English (United Kingdom)", label: { en: "United Kingdom", el: "Ηνωμένο Βασίλειο" } },
+    { id: "au", canonical: "English (Australia)", label: { en: "Australia", el: "Αυστραλία" } },
+    { id: "ca", canonical: "English (Canada)", label: { en: "Canada", el: "Καναδάς" } },
+    { id: "ie", canonical: "English (Ireland)", label: { en: "Ireland", el: "Ιρλανδία" } },
+  ],
+  Spanish: [
+    { id: "es", canonical: "Spanish (Spain)", label: { en: "Spain", el: "Ισπανία" } },
+    { id: "mx", canonical: "Spanish (Mexico)", label: { en: "Mexico", el: "Μεξικό" } },
+    { id: "ar-rioplatense", canonical: "Spanish (Argentina / Rioplatense)", label: { en: "Argentina / Rioplatense", el: "Αργεντινή / Rioplatense" } },
+    { id: "caribbean", canonical: "Spanish (Caribbean)", label: { en: "Caribbean", el: "Καραϊβική" } },
+    { id: "latam-neutral", canonical: "Spanish (Latin American Neutral)", label: { en: "Latin American Neutral", el: "Ουδέτερα Λατινικής Αμερικής" } },
+  ],
+  Portuguese: [
+    { id: "br", canonical: "Portuguese (Brazil)", label: { en: "Brazil", el: "Βραζιλία" } },
+    { id: "pt", canonical: "Portuguese (Portugal)", label: { en: "Portugal", el: "Πορτογαλία" } },
+  ],
+  Chinese: [
+    { id: "mandarin-simplified", canonical: "Chinese (Mandarin, Simplified)", label: { en: "Mandarin — Simplified", el: "Μανδαρινικά — Απλοποιημένα" } },
+    { id: "mandarin-traditional", canonical: "Chinese (Mandarin, Traditional)", label: { en: "Mandarin — Traditional", el: "Μανδαρινικά — Παραδοσιακά" } },
+    { id: "cantonese-traditional", canonical: "Chinese (Cantonese, Traditional)", label: { en: "Cantonese — Traditional", el: "Καντονέζικα — Παραδοσιακά" } },
+  ],
+  Arabic: [
+    { id: "msa", canonical: "Arabic (Modern Standard Arabic)", label: { en: "Modern Standard Arabic", el: "Σύγχρονα Πρότυπα Αραβικά" } },
+    { id: "egyptian", canonical: "Arabic (Egyptian)", label: { en: "Egyptian", el: "Αιγυπτιακά" } },
+    { id: "levantine", canonical: "Arabic (Levantine)", label: { en: "Levantine", el: "Λεβαντίνικα" } },
+    { id: "gulf", canonical: "Arabic (Gulf)", label: { en: "Gulf", el: "Αραβικά του Κόλπου" } },
+    { id: "iraqi", canonical: "Arabic (Iraqi)", label: { en: "Iraqi", el: "Ιρακινά" } },
+    { id: "maghrebi", canonical: "Arabic (Maghrebi)", label: { en: "Maghrebi", el: "Μαγκρεμπινά" } },
+  ],
+  French: [
+    { id: "fr", canonical: "French (France)", label: { en: "France", el: "Γαλλία" } },
+    { id: "ca-quebec", canonical: "French (Canada / Québécois)", label: { en: "Canada / Québécois", el: "Καναδάς / Κεμπεκουά" } },
+    { id: "be", canonical: "French (Belgium)", label: { en: "Belgium", el: "Βέλγιο" } },
+  ],
+  German: [
+    { id: "de", canonical: "German (Germany)", label: { en: "Germany", el: "Γερμανία" } },
+    { id: "at", canonical: "German (Austria)", label: { en: "Austria", el: "Αυστρία" } },
+    { id: "ch", canonical: "German (Swiss Standard German)", label: { en: "Switzerland", el: "Ελβετία" } },
+  ],
+  Dutch: [
+    { id: "nl", canonical: "Dutch (Netherlands)", label: { en: "Netherlands", el: "Ολλανδία" } },
+    { id: "be-flemish", canonical: "Dutch (Belgium / Flemish)", label: { en: "Belgium / Flemish", el: "Βέλγιο / Φλαμανδικά" } },
+  ],
+  Greek: [
+    { id: "gr", canonical: "Greek (Greece)", label: { en: "Greece", el: "Ελλάδα" } },
+    { id: "cy", canonical: "Greek (Cyprus)", label: { en: "Cyprus", el: "Κύπρος" } },
+  ],
+};
+
+export function getSongLanguageVariants(language: string): SongLanguageVariant[] {
+  return SONG_LANGUAGE_VARIANTS[language] ?? [];
+}
+
+export function resolveSongLanguage(language: string, variantId = ""): string {
+  if (!language || language === CUSTOM_LANGUAGE_VALUE || !variantId) return language;
+  return getSongLanguageVariants(language).find((variant) => variant.id === variantId)?.canonical ?? language;
+}
+
+export function findSongLanguageVariantFromCanonical(value: string): { language: string; variantId: string } | null {
+  const normalized = value.trim().toLocaleLowerCase();
+  for (const [language, variants] of Object.entries(SONG_LANGUAGE_VARIANTS)) {
+    const match = variants.find((variant) => variant.canonical.toLocaleLowerCase() === normalized);
+    if (match) return { language, variantId: match.id };
+  }
+  return null;
+}
+
+
 const ISO_639_1_CODES = [
   "aa","ab","ae","af","ak","am","an","ar","as","av","ay","az","ba","be","bg","bh","bi","bm","bn","bo","br","bs",
   "ca","ce","ch","co","cr","cs","cu","cv","cy","da","de","dv","dz","ee","el","en","eo","es","et","eu","fa","ff",
