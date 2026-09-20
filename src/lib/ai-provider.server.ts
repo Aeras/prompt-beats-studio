@@ -763,6 +763,19 @@ export const SONG_SCHEMA: Record<string, unknown> = {
   required: ["title", "tags", "lyrics", "note"],
 };
 
+export const LYRICS_SECTION_EDIT_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    sectionLabel: { type: "STRING" },
+    replacement: { type: "STRING" },
+    alternatives: {
+      type: "ARRAY",
+      items: { type: "STRING" },
+    },
+  },
+  required: ["sectionLabel", "replacement", "alternatives"],
+};
+
 const SUGGESTION_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
   properties: {
