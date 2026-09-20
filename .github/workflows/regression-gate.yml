@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lyrics section parser tests
+        run: bun test src/lib/lyrics-sections.test.ts
+
       - name: Build
         run: bun run build
 
