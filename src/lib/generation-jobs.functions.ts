@@ -351,7 +351,15 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
       return { rateLimited: true as const, job: null };
     }
-    return { rateLimited: false as const, job: toJob(raw as JobRow) };
+    const job = toJob(raw as JobRow);
+    if (
+      job.input?.operation !== "lyrics_section_edit" ||
+      job.input.sectionEdit.sectionKey !== payload.sectionEdit.sectionKey ||
+      job.input.sectionEdit.fullLyrics !== payload.sectionEdit.fullLyrics
+    ) {
+      throw new Error("Another AI action is already in progress. Please wait for it to finish.");
+    }
+    return { rateLimited: false as const, job };
   });
 
 /** Polls one job. Ownership is enforced by row-level security. */
