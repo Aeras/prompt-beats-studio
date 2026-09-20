@@ -47,6 +47,14 @@ describe("lyrics section parser", () => {
     expect(replaced.lyrics).toBe("[Verse]\nA\n\n[Chorus]\nHOOK\n\n[Verse]\nNEW\n\n[Chorus]\nHOOK");
   });
 
+  test("preserves separator whitespace when replacement has no trailing newline", () => {
+    const lyrics = "[Verse]\nA\n\n[Chorus]\nB";
+    const replaced = replaceLyricsSection(lyrics, "verse:1", "NEW");
+    expect(replaced.ok).toBe(true);
+    if (!replaced.ok) return;
+    expect(replaced.lyrics).toBe("[Verse]\nNEW\n\n[Chorus]\nB");
+  });
+
   test("preserves CRLF and unrelated content", () => {
     const lyrics = "[Verse]\r\nA\r\n\r\n[Chorus]\r\nB";
     const replaced = replaceLyricsSection(lyrics, "chorus:1", "C");
