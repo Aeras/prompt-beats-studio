@@ -5,6 +5,8 @@ import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
 export const generatorInputSnapshotSchema = z.object({
   generatorMode: z.enum(["basic", "advanced", "revision"]),
+  smartPresetId: z.string().max(80).default(""),
+  culturalStyleId: z.string().max(80).default(""),
   theme: z.string().max(500).default(""),
   selectedMusicStyles: z.array(z.string().max(150)).max(24).default([]),
   customMusicStyle: z.string().max(500).default(""),
