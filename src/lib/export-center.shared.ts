@@ -373,3 +373,8 @@ export function exportMime(format: ExportFormat) {
   if (format === "md") return "text/markdown";
   return "text/plain";
 }
+
+
+export function projectPromptFilenameBase(document: Extract<ExportDocument, { exportType: "prompt" }>) {
+  return document.prompt.versionNumber != null ? `Version ${document.prompt.versionNumber}` : document.title;
+}

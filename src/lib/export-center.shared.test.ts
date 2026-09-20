@@ -6,6 +6,7 @@ import {
   buildProjectPromptDocuments,
   buildProjectSummaryDocument,
   buildPromptExportDocument,
+  projectPromptFilenameBase,
   sanitizeExportFilename,
   serializeExportDocument,
   uniqueExportFilename,
@@ -100,5 +101,11 @@ describe("Export Center serializers", () => {
     const used = new Set<string>();
     expect(uniqueExportFilename("Version 2", "md", used)).toBe("Version 2.md");
     expect(uniqueExportFilename("Version 2", "md", used)).toBe("Version 2 (2).md");
+  });
+
+  test("uses version numbers for separate project filenames", () => {
+    const docs = buildProjectPromptDocuments(projectSource, "en");
+    expect(projectPromptFilenameBase(docs[0] as Extract<(typeof docs)[number], { exportType: "prompt" }>)).toBe("Version 1");
+    expect(projectPromptFilenameBase(docs[1] as Extract<(typeof docs)[number], { exportType: "prompt" }>)).toBe("Version 2");
   });
 });
