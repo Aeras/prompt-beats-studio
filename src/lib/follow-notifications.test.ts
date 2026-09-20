@@ -60,4 +60,18 @@ describe("Follow + Notifications v1 architecture", () => {
     const sql = await migrationSql();
     expect(sql).toContain("type text NOT NULL CHECK (type IN ('new_track', 'new_follower'))");
   });
+
+  test("Follow control stays visible when summary refresh fails", async () => {
+    const component = await Bun.file("src/components/promptbeats/FollowCreatorControl.tsx").text();
+    expect(component).not.toContain("if (!user || summary.isError) return null");
+    expect(component).toContain("if (!user) return null");
+    expect(component).toContain("Ακολουθείς ✓");
+    expect(component).toContain("summary.refetch()");
+  });
+
+  test("Follow and unfollow mutations verify the persisted database relation", async () => {
+    const server = await Bun.file("src/lib/follow-notifications.functions.ts").text();
+    expect(server).toContain('if (!summary.isFollowing) throw new Error("Follow could not be verified.")');
+    expect(server).toContain('if (summary.isFollowing) throw new Error("Unfollow could not be verified.")');
+  });
 });
