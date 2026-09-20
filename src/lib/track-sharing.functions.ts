@@ -13,7 +13,7 @@ export const createTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => shareLinkInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("create_track_share_link", {
+    const { data: result, error } = await (context.supabase as any).rpc("create_track_share_link", {
       _track_id: data.trackId,
       _include_prompt: data.includePrompt,
       _include_lyrics: data.includeLyrics,
@@ -33,7 +33,7 @@ export const revokeTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ shareId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("revoke_track_share_link", {
+    const { error } = await (context.supabase as any).rpc("revoke_track_share_link", {
       _share_id: data.shareId,
     } as never);
     if (error) throw new Error(error.message);
@@ -44,7 +44,7 @@ export const recordTrackPublicShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("record_track_public_share", {
+    const { error } = await (context.supabase as any).rpc("record_track_public_share", {
       _track_id: data.trackId,
     } as never);
     if (error) throw new Error(error.message);
@@ -55,7 +55,7 @@ export const getTrackShareByToken = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ token: z.string().min(20).max(80) }).parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: result, error } = await supabaseAdmin.rpc("get_track_share_by_token", {
+    const { data: result, error } = await (supabaseAdmin as any).rpc("get_track_share_by_token", {
       _token: data.token,
     } as never);
     if (error) throw new Error(error.message);
@@ -127,7 +127,7 @@ export type ShareManagementTrack = {
 export const listMyShareManagement = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("list_my_share_management");
+    const { data, error } = await (context.supabase as any).rpc("list_my_share_management");
     if (error) throw new Error(error.message);
     return { tracks: (Array.isArray(data) ? data : []) as ShareManagementTrack[] };
   });
