@@ -17,6 +17,8 @@ import {
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
+import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp.client";
+import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 import { clearAnalyzerSessionAudio, loadAnalyzerSessionAudio, saveAnalyzerSessionAudio, sweepStaleAnalyzerAudio } from "@/lib/song-analyzer-session-audio";
 
 const ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
@@ -79,6 +81,8 @@ function SongAnalyzerPage() {
   const [artist, setArtist] = useState("");
   const [model, setModel] = useState(DEFAULT_SONG_ANALYZER_MODEL);
   const [result, setResult] = useState<SongAnalysisResult | null>(null);
+  const [stage0Evidence, setStage0Evidence] = useState<Stage0DspEvidence | null>(null);
+  const [stage0DebugExpanded, setStage0DebugExpanded] = useState(false);
   const [stageAEvidence, setStageAEvidence] = useState<StageAEvidence | null>(null);
   const [stageADebugExpanded, setStageADebugExpanded] = useState(false);
   const [resultModel, setResultModel] = useState<string | null>(null);
@@ -118,10 +122,16 @@ function SongAnalyzerPage() {
     setBusy(true);
     setError(null);
     setSaved(false);
+    setStage0Evidence(null);
+    setStage0DebugExpanded(false);
     setStageAEvidence(null);
     setStageADebugExpanded(false);
     try {
-      const audioBase64 = await fileToBase64(file);
+      const [audioBase64, dspEvidence] = await Promise.all([
+        fileToBase64(file),
+        analyzeStage0Dsp(file),
+      ]);
+      setStage0Evidence(dspEvidence);
       const response = await analyzeSong({
         data: {
           audioBase64,
@@ -129,9 +139,11 @@ function SongAnalyzerPage() {
           model: model as any,
           trackTitle: trackTitle.trim() || undefined,
           artist: artist.trim() || undefined,
+          stage0Evidence: dspEvidence,
         },
       });
       setResult(response.result);
+      setStage0Evidence(response.stage0Evidence);
       setStageAEvidence(response.stageAEvidence);
       setResultModel(response.model);
     } catch (err) {
@@ -191,6 +203,11 @@ function SongAnalyzerPage() {
     [t("songAnalyzer.additionalInstructions"), result.generatorReady.additionalInstructions || "—"],
   ] as const : [];
 
+  const stage0RawJson = useMemo(
+    () => stage0Evidence ? JSON.stringify(stage0Evidence, null, 2) : "",
+    [stage0Evidence],
+  );
+
   const stageARawJson = useMemo(
     () => stageAEvidence ? JSON.stringify(stageAEvidence, null, 2) : "",
     [stageAEvidence],
@@ -243,6 +260,7 @@ function SongAnalyzerPage() {
                   const nextFile = event.target.files?.[0] ?? null;
                   setFile(nextFile);
                   setResult(null);
+                  setStage0Evidence(null);
                   setStageAEvidence(null);
                   setSaved(false);
                   setError(null);
@@ -259,7 +277,7 @@ function SongAnalyzerPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFile(null); setResult(null); setStageAEvidence(null); setResultModel(null); setSaved(false); setError(null);
+                    setFile(null); setResult(null); setStage0Evidence(null); setStageAEvidence(null); setResultModel(null); setSaved(false); setError(null);
                     void clearAnalyzerSessionAudio().catch(() => undefined);
                   }}
                   className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300"
@@ -315,6 +333,54 @@ function SongAnalyzerPage() {
               <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">{t("songAnalyzer.empty")}</div>
             ) : (
               <>
+                {stage0Evidence && (
+                  <div className="glass rounded-2xl border border-cyan-400/20 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Admin Diagnostic</p>
+                        <h2 className="mt-1 font-display text-lg font-bold">Stage 0 — DSP Evidence — Debug</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Deterministic signal-derived evidence. Supporting reference only — not musical ground truth and not persisted to the Library.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <CopyAction label="Copy Stage 0 JSON" value={stage0RawJson} />
+                        <button
+                          type="button"
+                          onClick={() => setStage0DebugExpanded((value) => !value)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:border-cyan-400/40 hover:text-cyan-200"
+                        >
+                          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${stage0DebugExpanded ? "rotate-180" : ""}`} />
+                          {stage0DebugExpanded ? "Collapse" : "Expand"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-muted-foreground">DSP status</p>
+                        <p className="mt-1 font-semibold">{stage0Evidence.available ? "Available" : "Unavailable"}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-muted-foreground">Primary BPM</p>
+                        <p className="mt-1 font-semibold">{stage0Evidence.tempo?.primaryBpm ?? "—"}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-muted-foreground">Tempo confidence</p>
+                        <p className="mt-1 font-semibold">{stage0Evidence.tempo?.confidence != null ? stage0Evidence.tempo.confidence.toFixed(2) : "—"}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-muted-foreground">Key candidate</p>
+                        <p className="mt-1 font-semibold">{stage0Evidence.tonal?.keyCandidate ?? "Uncertain"}</p>
+                      </div>
+                    </div>
+                    {stage0DebugExpanded && (
+                      <pre className="mt-4 max-h-[720px] overflow-auto rounded-xl border border-white/10 bg-black/40 p-4 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
+                        {stage0RawJson}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
                 {stageAEvidence && (
                   <div className="glass rounded-2xl border border-amber-400/20 p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
