@@ -19,6 +19,12 @@ import {
   generatorInputSnapshotSchema,
   revisionJobContextSchema,
 } from "@/lib/generator-revision.shared";
+import {
+  lyricsSectionEditJobSchema,
+  lyricsSectionEditOutputSchema,
+  lyricsSectionEditRequestSchema,
+} from "@/lib/lyrics-workspace.shared";
+import { parseLyricsSections } from "@/lib/lyrics-sections";
 
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
@@ -70,7 +76,7 @@ const revisionMetaShape = z.object({
   parentPromptId: z.string().uuid(),
 });
 
-const resultShape = z.object({
+const songResultShape = z.object({
   title: z.string(),
   tags: z.string(),
   lyrics: z.string(),
@@ -78,12 +84,18 @@ const resultShape = z.object({
   revisionMeta: revisionMetaShape.optional(),
 });
 
+const sectionEditResultShape = z.object({
+  sectionEdit: lyricsSectionEditOutputSchema,
+});
+
+const resultShape = z.union([songResultShape, sectionEditResultShape]);
+
 /**
  * The original generation brief, persisted with the job. This is the
  * authoritative recovery source for Quality Check after a refresh or a
  * completely closed browser — never localStorage, never the result text.
  */
-const inputShape = z.object({
+const songInputShape = z.object({
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().default(""),
   genre: z.string().default(""),
@@ -97,7 +109,10 @@ const inputShape = z.object({
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
-export type GenerationContext = z.infer<typeof inputShape>;
+const inputShape = z.union([songInputShape, lyricsSectionEditJobSchema]);
+
+export type GenerationContext = z.infer<typeof songInputShape>;
+export type DurableGenerationJobInput = z.infer<typeof inputShape>;
 
 type JobRow = {
   id: string;
@@ -250,6 +265,95 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     return { rateLimited: false as const, job };
   });
 
+export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => lyricsSectionEditRequestSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const { getModelForUser } = await import("@/lib/ai-provider.server");
+    await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
+
+    let authoritative = {
+      title: data.title,
+      tags: data.tags,
+      note: data.note,
+      theme: data.theme,
+      genre: data.genre,
+      mood: data.mood,
+      language: data.language,
+      targetPlatform: data.targetPlatform,
+      generatorInputSnapshot: data.generatorInputSnapshot,
+    };
+
+    if (data.projectId || data.basePromptId) {
+      if (!data.projectId || !data.basePromptId) {
+        throw new Error("Project and base version must be supplied together.");
+      }
+      const { data: project, error: projectError } = await supabase
+        .from("prompt_projects")
+        .select("id")
+        .eq("id", data.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (projectError) throw new Error(projectError.message);
+      if (!project) throw new Error("Project not found.");
+
+      const { data: basePrompt, error: baseError } = await supabase
+        .from("saved_prompts")
+        .select("id, project_id, title, tags, note, theme, genre, mood, language, generator_input_snapshot")
+        .eq("id", data.basePromptId)
+        .eq("project_id", data.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (baseError) throw new Error(baseError.message);
+      if (!basePrompt) throw new Error("Base version not found.");
+
+      const snapshot = generatorInputSnapshotSchema.safeParse(basePrompt.generator_input_snapshot);
+      authoritative = {
+        title: basePrompt.title ?? "",
+        tags: basePrompt.tags ?? "",
+        note: basePrompt.note ?? "",
+        theme: basePrompt.theme ?? "",
+        genre: basePrompt.genre ?? "",
+        mood: basePrompt.mood ?? "",
+        language: (basePrompt.language ?? data.language).trim() || data.language,
+        targetPlatform: snapshot.success ? snapshot.data.targetPlatform : data.targetPlatform,
+        generatorInputSnapshot: snapshot.success ? snapshot.data : null,
+      };
+    }
+
+    const sections = parseLyricsSections(data.fullLyrics);
+    const selected = sections.find((section) => section.key === data.sectionKey);
+    if (!selected) throw new Error("The selected lyric section no longer exists.");
+
+    const payload = lyricsSectionEditJobSchema.parse({
+      operation: "lyrics_section_edit",
+      generationModel: data.generationModel ?? null,
+      sectionEdit: {
+        fullLyrics: data.fullLyrics,
+        sectionKey: selected.key,
+        sectionLabel: selected.label,
+        sectionOccurrence: selected.occurrence,
+        selectedContent: selected.content,
+        action: data.action,
+        customInstruction: data.customInstruction,
+        ...authoritative,
+        projectId: data.projectId ?? null,
+        basePromptId: data.basePromptId ?? null,
+      },
+    });
+
+    const { data: raw, error } = await supabase.rpc("start_generation_job", {
+      _idempotency_key: data.idempotencyKey,
+      _input: payload,
+    });
+    if (error) throw new Error(`The section edit could not be started (${error.message}).`);
+    if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
+      return { rateLimited: true as const, job: null };
+    }
+    return { rateLimited: false as const, job: toJob(raw as JobRow) };
+  });
+
 /** Polls one job. Ownership is enforced by row-level security. */
 export const getGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -275,7 +379,7 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const supabase = context.supabase;
-    const { data: row } = await supabase
+    const { data: rows } = await supabase
       .from("ai_generation_jobs")
       .select(JOB_COLUMNS)
       .eq("user_id", context.userId)
@@ -283,9 +387,31 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
       .in("status", ["pending", "processing", "completed"])
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return { job: row ? toJob(row as JobRow) : null };
+      .limit(20);
+    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+      const parsed = inputShape.safeParse(candidate.input_payload);
+      return parsed.success && parsed.data.operation !== "lyrics_section_edit";
+    });
+    return { job: row ? toJob(row) : null };
+  });
+
+export const getLatestLyricsSectionEditJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: rows } = await context.supabase
+      .from("ai_generation_jobs")
+      .select(JOB_COLUMNS)
+      .eq("user_id", context.userId)
+      .is("dismissed_at", null)
+      .in("status", ["pending", "processing", "completed"])
+      .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+      const parsed = inputShape.safeParse(candidate.input_payload);
+      return parsed.success && parsed.data.operation === "lyrics_section_edit";
+    });
+    return { job: row ? toJob(row) : null };
   });
 
 /**
