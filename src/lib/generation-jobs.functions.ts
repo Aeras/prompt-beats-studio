@@ -41,6 +41,7 @@ const jobInput = z.object({
     revisionRequest: z.string().trim().min(1).max(3000),
     desiredSnapshot: generatorInputSnapshotSchema,
   }).nullish(),
+  inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
 function assertGenerationInputLimits(
@@ -92,6 +93,7 @@ const inputShape = z.object({
   instructions: z.string().default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: revisionJobContextSchema.nullish(),
+  inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
 export type GenerationContext = z.infer<typeof inputShape>;
