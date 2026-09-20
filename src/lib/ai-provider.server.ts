@@ -38,6 +38,11 @@ export type ModelCall = {
   schema?: Record<string, unknown>;
   /** Provider-specific reasoning budget; ignored by providers that do not expose it. */
   reasoningEffort?: ReasoningEffort;
+  /** Optional raw audio input for providers/models that support multimodal chat. */
+  inputAudio?: {
+    base64: string;
+    mimeType?: string;
+  };
 };
 
 export type ModelResult = {
@@ -195,11 +200,18 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   const apiKey = process.env["MISTRAL_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
 
+  const userContent = call.inputAudio
+    ? [
+        { type: "input_audio", input_audio: call.inputAudio.base64 },
+        { type: "text", text: call.prompt },
+      ]
+    : call.prompt;
+
   const body = JSON.stringify({
     model,
     messages: [
       { role: "system", content: call.system },
-      { role: "user", content: call.prompt },
+      { role: "user", content: userContent },
     ],
     max_tokens: call.maxTokens ?? 8192,
     // PromptBeats already asks for a JSON object and performs strict Zod
@@ -208,15 +220,28 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
     response_format: { type: "json_object" },
   });
 
-  const send = () =>
-    fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
-      },
-      body,
-    });
+  const send = async () => {
+    const controller = call.inputAudio ? new AbortController() : null;
+    const timeout = controller ? setTimeout(() => controller.abort(), 90_000) : null;
+    try {
+      return await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${apiKey}`,
+        },
+        body,
+        ...(controller ? { signal: controller.signal } : {}),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("The Mistral audio request timed out.");
+      }
+      throw error;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  };
 
   let res = await send();
   if (res.status === 429) {
@@ -229,6 +254,9 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   if (!res.ok) {
     const errorBody = await res.text();
     console.error(`[ai-provider] Mistral request failed (${res.status})`, errorBody.slice(0, 1000));
+    if (res.status === 400 && call.inputAudio) {
+      throw new Error("Mistral could not process this audio input or format.");
+    }
     if (res.status === 429) {
       throw new Error(
         "This AI model has reached its request limit on the connected Mistral account. Please try another model or try again later.",
