@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { recordAiUsage } from "@/lib/ai-usage.server";
+import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
 export const SONG_ANALYZER_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
@@ -493,6 +494,7 @@ async function generateAudioEvidence(args: {
   model: string;
   audioBase64: string;
   mimeType: string;
+  stage0Evidence: Stage0DspEvidence;
   onUsage: (usage: ReturnType<typeof normalizedUsage>) => void;
 }) {
   const stage = "evidence_extraction";
@@ -507,7 +509,26 @@ async function generateAudioEvidence(args: {
           role: "user",
           parts: [
             { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
-            { text: "Extract raw musical evidence only. Do not classify genre or style. Return only schema-compliant JSON." },
+            {
+              text: [
+                "Extract raw musical evidence only. Do not classify genre or style. Return only schema-compliant JSON.",
+                "",
+                "QUANTITATIVE DSP REFERENCE",
+                "The following values were computed directly from the same audio signal by deterministic DSP analysis.",
+                "Treat them as SUPPORTING EVIDENCE, not unquestionable truth.",
+                "If your auditory interpretation strongly disagrees:",
+                "- do not blindly follow the DSP;",
+                "- explicitly note the disagreement;",
+                "- lower confidence where appropriate;",
+                "- consider half-time/double-time ambiguity;",
+                "- prefer the interpretation supported by multiple independent signals.",
+                "DSP values must never generate genre assumptions.",
+                "Energy changes are supporting evidence only and must not be mapped automatically to section labels.",
+                "Weak key/chroma evidence must not influence genre classification.",
+                "",
+                JSON.stringify(args.stage0Evidence),
+              ].join("\n"),
+            },
           ],
         }],
         generationConfig: {
@@ -594,6 +615,7 @@ async function generateFinalFromEvidence(args: {
   apiKey: string;
   model: string;
   evidence: StageAEvidence;
+  stage0Evidence: Stage0DspEvidence;
   initialResult?: SongAnalysisResult;
   externalValidation?: ExternalValidation | null;
   onUsage: (usage: ReturnType<typeof normalizedUsage>) => void;
@@ -602,6 +624,9 @@ async function generateFinalFromEvidence(args: {
   const context = [
     "STAGE A EVIDENCE:",
     JSON.stringify(args.evidence),
+    "\nSTAGE 0 QUANTITATIVE DSP SUPPORTING EVIDENCE:",
+    JSON.stringify(args.stage0Evidence),
+    "\nStage 0 is supporting evidence only. It cannot authorize any new instrument, groove, production, or genre claim absent from Stage A. Use it only to cross-check tempo, energy/dynamics, tonal uncertainty, and confidence.",
     args.initialResult ? "\nPREVIOUS STAGE B RESULT TO RECHECK:\n" + JSON.stringify(args.initialResult) : "",
     args.externalValidation ? "\nOPTIONAL EXTERNAL VALIDATION (secondary context only; cannot introduce new musical claims):\n" + JSON.stringify(args.externalValidation) : "",
     "\nProduce the final canonical Analyzer JSON. Every specific musical claim must be grounded in Stage A evidence.",
@@ -746,6 +771,7 @@ const analyzeInput = z.object({
   model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]).default(DEFAULT_SONG_ANALYZER_MODEL),
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
+  stage0Evidence: stage0DspEvidenceSchema,
 });
 
 export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
@@ -793,17 +819,28 @@ export const analyzeSong = createServerFn({ method: "POST" })
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
 
+    const totalStartedAt = Date.now();
+    const stage0Evidence = data.stage0Evidence;
+    logStage(data.model, "stage0_dsp", stage0Evidence.available ? "available" : "unavailable", {
+      processing: stage0Evidence.processing,
+      tempo: stage0Evidence.tempo,
+      limitations: stage0Evidence.limitations,
+    });
+
     let evidenceUsage: ReturnType<typeof normalizedUsage> = null;
     let evidence: StageAEvidence;
+    const stageAStartedAt = Date.now();
     try {
       evidence = await generateAudioEvidence({
         apiKey,
         model: data.model,
         audioBase64: data.audioBase64,
         mimeType: data.mimeType,
+        stage0Evidence,
         onUsage: (usage) => { evidenceUsage = usage; },
       });
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: true });
+      logStage(data.model, "evidence_extraction", "timing", { durationMs: Date.now() - stageAStartedAt });
     } catch (error) {
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: false });
       throw error;
@@ -811,14 +848,17 @@ export const analyzeSong = createServerFn({ method: "POST" })
 
     let synthesisUsage: ReturnType<typeof normalizedUsage> = null;
     let result: SongAnalysisResult;
+    const stageBStartedAt = Date.now();
     try {
       result = await generateFinalFromEvidence({
         apiKey,
         model: data.model,
         evidence,
+        stage0Evidence,
         onUsage: (usage) => { synthesisUsage = usage; },
       });
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: true });
+      logStage(data.model, "final_synthesis", "timing", { durationMs: Date.now() - stageBStartedAt });
     } catch (error) {
       await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: false });
       throw error;
@@ -828,7 +868,8 @@ export const analyzeSong = createServerFn({ method: "POST" })
     const artist = data.artist?.trim();
 
     if (!trackTitle || !artist) {
-      return { result, model: data.model, stageAEvidence: evidence };
+      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
+      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
 
     let externalUsage: ReturnType<typeof normalizedUsage> = null;
@@ -859,6 +900,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         apiKey,
         model: data.model,
         evidence,
+        stage0Evidence,
         initialResult: result,
         externalValidation: external,
         onUsage: (usage) => { reconciliationUsage = usage; },
