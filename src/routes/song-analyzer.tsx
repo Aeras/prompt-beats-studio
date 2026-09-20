@@ -74,6 +74,8 @@ function SongAnalyzerPage() {
   });
 
   const [file, setFile] = useState<File | null>(null);
+  const [trackTitle, setTrackTitle] = useState("");
+  const [artist, setArtist] = useState("");
   const [model, setModel] = useState(DEFAULT_SONG_ANALYZER_MODEL);
   const [result, setResult] = useState<SongAnalysisResult | null>(null);
   const [resultModel, setResultModel] = useState<string | null>(null);
@@ -120,6 +122,8 @@ function SongAnalyzerPage() {
           audioBase64,
           mimeType: file.type as any,
           model: model as any,
+          trackTitle: trackTitle.trim() || undefined,
+          artist: artist.trim() || undefined,
         },
       });
       setResult(response.result);
@@ -252,6 +256,33 @@ function SongAnalyzerPage() {
                 </button>
               </div>
             )}
+
+            <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("songAnalyzer.optionalReference")}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("songAnalyzer.optionalReferenceHelp")}</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  {t("songAnalyzer.trackTitleOptional")}
+                  <input
+                    value={trackTitle}
+                    onChange={(e) => setTrackTitle(e.target.value)}
+                    maxLength={200}
+                    autoComplete="off"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
+                  />
+                </label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  {t("songAnalyzer.artistOptional")}
+                  <input
+                    value={artist}
+                    onChange={(e) => setArtist(e.target.value)}
+                    maxLength={200}
+                    autoComplete="off"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
+                  />
+                </label>
+              </div>
+            </div>
 
             <label className="mt-5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t("songAnalyzer.model")}

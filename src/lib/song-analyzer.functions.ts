@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -422,6 +423,255 @@ const ANALYZER_RESPONSE_SCHEMA: Record<string, unknown> = {
   required: ["generatorReady", "detailedAnalysis"],
 };
 
+
+const externalValidationSchema = z.object({
+  identityConfirmed: z.boolean(),
+  styleAgreement: z.enum(["strong", "partial", "weak", "conflicting"]),
+  tempoAgreement: z.enum(["strong", "partial", "weak", "conflicting"]),
+  referenceStyles: z.array(z.string().trim().min(1).max(500)).max(12),
+  referenceTempos: z.array(z.string().trim().min(1).max(300)).max(12),
+  instrumentationCredits: z.array(z.string().trim().min(1).max(1000)).max(20),
+  keyOrChordReferences: z.array(z.string().trim().min(1).max(1000)).max(20),
+  productionOrArrangementNotes: z.array(z.string().trim().min(1).max(1000)).max(20),
+  releaseContext: z.array(z.string().trim().min(1).max(1000)).max(20),
+  discrepancies: z.array(z.string().trim().min(1).max(1500)).max(20),
+  notes: z.array(z.string().trim().min(1).max(1500)).max(20),
+});
+
+type ExternalValidation = z.infer<typeof externalValidationSchema> & {
+  used: boolean;
+  supportingSourcesCount: number;
+  sourceTitles: string[];
+};
+
+const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
+  type: "object",
+  properties: {
+    identityConfirmed: { type: "boolean" },
+    styleAgreement: { type: "string", enum: ["strong", "partial", "weak", "conflicting"] },
+    tempoAgreement: { type: "string", enum: ["strong", "partial", "weak", "conflicting"] },
+    referenceStyles: { type: "array", items: { type: "string" } },
+    referenceTempos: { type: "array", items: { type: "string" } },
+    instrumentationCredits: { type: "array", items: { type: "string" } },
+    keyOrChordReferences: { type: "array", items: { type: "string" } },
+    productionOrArrangementNotes: { type: "array", items: { type: "string" } },
+    releaseContext: { type: "array", items: { type: "string" } },
+    discrepancies: { type: "array", items: { type: "string" } },
+    notes: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "identityConfirmed",
+    "styleAgreement",
+    "tempoAgreement",
+    "referenceStyles",
+    "referenceTempos",
+    "instrumentationCredits",
+    "keyOrChordReferences",
+    "productionOrArrangementNotes",
+    "releaseContext",
+    "discrepancies",
+    "notes",
+  ],
+} as const;
+
+function sanitizeSongAnalysis(result: SongAnalysisResult): SongAnalysisResult {
+  const forbiddenInstrumentPattern = /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise|compression|sidechain)\b/i;
+  return {
+    ...result,
+    generatorReady: {
+      ...result.generatorReady,
+      instruments: result.generatorReady.instruments.filter((item) => !forbiddenInstrumentPattern.test(item)),
+    },
+  };
+}
+
+async function generateStructuredSongAnalysis(args: {
+  apiKey: string;
+  model: string;
+  audioBase64: string;
+  mimeType: string;
+  systemPrompt: string;
+  userText: string;
+  onUsage: (usage: ReturnType<typeof normalizedUsage>) => void;
+}) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": args.apiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: args.systemPrompt }] },
+        contents: [{
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: args.mimeType,
+                data: args.audioBase64,
+              },
+            },
+            { text: args.userText },
+          ],
+        }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: ANALYZER_RESPONSE_SCHEMA,
+          maxOutputTokens: 8192,
+          temperature: 0.2,
+        },
+      }),
+    },
+  );
+
+  const payload = await response.json() as any;
+  args.onUsage(normalizedUsage(payload));
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `Gemini analysis failed (${response.status})`);
+  }
+
+  const candidate = payload?.candidates?.[0];
+  const finishReason = candidate?.finishReason ?? null;
+  if (finishReason && finishReason !== "STOP") {
+    throw new Error(`Gemini analysis stopped before completion: ${finishReason}`);
+  }
+
+  const text = (candidate?.content?.parts ?? [])
+    .map((part: any) => typeof part?.text === "string" ? part.text : "")
+    .join("")
+    .trim();
+  if (!text) throw new Error("Gemini returned no analysis");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("Gemini returned invalid Analyzer JSON");
+  }
+
+  return sanitizeSongAnalysis(songAnalysisResultSchema.parse(parsed));
+}
+
+async function runExternalReferenceValidation(args: {
+  apiKey: string;
+  model: string;
+  trackTitle: string;
+  artist: string;
+  initialAnalysis: SongAnalysisResult;
+}) {
+  const ai = new GoogleGenAI({ apiKey: args.apiKey });
+  const prompt = `
+You are performing SECONDARY external-reference validation for an AI music-analysis system.
+
+IMPORTANT ORDER OF AUTHORITY
+- The supplied audio was already analyzed independently BEFORE this lookup.
+- The audio analysis is primary and authoritative.
+- External references may support, challenge, or contextualize that analysis, but must never replace direct audio observation.
+- Do not infer instrumentation or production stereotypes from genre metadata.
+- Do not rewrite the audio analysis here. Only validate the exact track identity and collect cautious reference signals.
+
+USER-PROVIDED TRACK IDENTITY
+Track Title: ${args.trackTitle}
+Artist: ${args.artist}
+
+INDEPENDENT AUDIO-ONLY ANALYSIS TO CROSS-CHECK
+${JSON.stringify(args.initialAnalysis)}
+
+SEARCH / SOURCE RULES
+- Search only for the exact artist + track combination.
+- Prefer official artist/label pages, reputable music databases, official streaming metadata, liner-note/credit sources, and reliable music-reference sites.
+- Treat low-quality SEO pages, autogenerated metadata pages, and generic BPM/chord pages as weak evidence.
+- If identity is ambiguous, multiple songs share the title, or the artist/title combination cannot be confidently confirmed, set identityConfirmed=false.
+- Do not guess.
+- Broad style validation matters more than forcing a narrow subgenre.
+- Public BPM references are validation signals only; half/double-time mismatches are common.
+- Key/chord references, instrumentation credits, production/arrangement notes, album/release context, and official credits may be collected only when supported by a reliable source.
+- If external claims conflict with the audio-only result, record the discrepancy. Do not decide that the external claim overrides the audio.
+
+Return only the requested structured JSON.
+`.trim();
+
+  const response = await ai.models.generateContent({
+    model: args.model,
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseFormat: {
+        text: {
+          mimeType: "application/json",
+          schema: EXTERNAL_VALIDATION_RESPONSE_FORMAT,
+        },
+      },
+      temperature: 0.1,
+    } as any,
+  });
+
+  const usage = normalizedUsage(response as any);
+  const text = String((response as any).text ?? "").trim();
+  if (!text) throw new Error("External validation returned no structured result");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("External validation returned invalid JSON");
+  }
+
+  const validated = externalValidationSchema.parse(parsed);
+  const chunks = ((response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) as any[];
+  const uniqueSources = new Map<string, string>();
+  for (const chunk of chunks) {
+    const uri = chunk?.web?.uri;
+    const title = chunk?.web?.title;
+    if (typeof uri === "string" && uri) uniqueSources.set(uri, typeof title === "string" ? title : uri);
+  }
+
+  const supportingSourcesCount = uniqueSources.size;
+  const used = validated.identityConfirmed && supportingSourcesCount > 0;
+
+  return {
+    validation: {
+      ...validated,
+      used,
+      supportingSourcesCount,
+      sourceTitles: [...uniqueSources.values()].slice(0, 12),
+    } satisfies ExternalValidation,
+    usage,
+  };
+}
+
+const EXTERNAL_RECONCILIATION_PROMPT = `
+OPTIONAL EXTERNAL REFERENCE RECONCILIATION
+
+The audio recording remains the PRIMARY and AUTHORITATIVE source.
+You are now receiving:
+1) the same source audio,
+2) an independent audio-only analysis produced before any web lookup, and
+3) a small external-reference validation summary gathered afterward.
+
+External references are SECONDARY evidence only.
+They may support, challenge, or contextualize the initial analysis, but they must never replace clearly audible observations.
+
+When external references disagree with the audio:
+- keep the audio-grounded observation;
+- lower confidence where appropriate;
+- prefer broader / less speculative genre classification;
+- recheck tempo interpretation, instrumentation, playing techniques, groove, production claims, and arrangement;
+- never add an instrument or production feature merely because metadata says it is typical of a genre.
+
+Use external information mainly to catch obvious outliers in broad musical family, tempo interpretation, and documented credits.
+Do not reconstruct the audio description from metadata.
+Do not copy copyrighted melody, lyrics, hooks, or protected arrangement details.
+
+Before returning the final JSON, ask:
+"After re-listening to the audio, does the external evidence expose a likely mistake in the initial analysis, or is the audio analysis still better supported?"
+
+Return the same canonical Analyzer JSON schema only.
+`.trim();
+
 async function requireAdmin(context: { supabase: any }) {
   const { data: isAdmin, error } = await context.supabase.rpc("current_user_has_role", { _role: "admin" });
   if (error || isAdmin !== true) throw new Error("Not allowed");
@@ -451,6 +701,8 @@ const analyzeInput = z.object({
   audioBase64: z.string().min(1).max(21_500_000),
   mimeType: z.enum(supportedMimeTypes),
   model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]).default(DEFAULT_SONG_ANALYZER_MODEL),
+  trackTitle: z.string().trim().min(1).max(200).optional(),
+  artist: z.string().trim().min(1).max(200).optional(),
 });
 
 export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
@@ -480,86 +732,130 @@ export const analyzeSong = createServerFn({ method: "POST" })
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
 
-    let usage: ReturnType<typeof normalizedUsage> = null;
-    let success = false;
+    let initialUsage: ReturnType<typeof normalizedUsage> = null;
+    let initialResult: SongAnalysisResult;
+
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(data.model)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: ANALYZER_SYSTEM_PROMPT }] },
-            contents: [{
-              role: "user",
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: data.mimeType,
-                    data: data.audioBase64,
-                  },
-                },
-                {
-                  text: "Analyze the supplied complete song recording using the canonical PromptBeats Analyzer rules. Return only schema-compliant JSON.",
-                },
-              ],
-            }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: ANALYZER_RESPONSE_SCHEMA,
-              maxOutputTokens: 8192,
-              temperature: 0.2,
-            },
-          }),
-        },
-      );
-
-      const payload = await response.json() as any;
-      usage = normalizedUsage(payload);
-      if (!response.ok) {
-        throw new Error(payload?.error?.message || `Gemini analysis failed (${response.status})`);
-      }
-
-      const candidate = payload?.candidates?.[0];
-      const finishReason = candidate?.finishReason ?? null;
-      if (finishReason && finishReason !== "STOP") {
-        throw new Error(`Gemini analysis stopped before completion: ${finishReason}`);
-      }
-      const text = (candidate?.content?.parts ?? [])
-        .map((part: any) => typeof part?.text === "string" ? part.text : "")
-        .join("")
-        .trim();
-      if (!text) throw new Error("Gemini returned no analysis");
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        throw new Error("Gemini returned invalid Analyzer JSON");
-      }
-      const result = songAnalysisResultSchema.parse(parsed);
-      const forbiddenInstrumentPattern = /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise)\b/i;
-      const sanitizedResult: SongAnalysisResult = {
-        ...result,
-        generatorReady: {
-          ...result.generatorReady,
-          instruments: result.generatorReady.instruments.filter((item) => !forbiddenInstrumentPattern.test(item)),
-        },
-      };
-      success = true;
-      return { result: sanitizedResult, model: data.model };
-    } finally {
+      initialResult = await generateStructuredSongAnalysis({
+        apiKey,
+        model: data.model,
+        audioBase64: data.audioBase64,
+        mimeType: data.mimeType,
+        systemPrompt: ANALYZER_SYSTEM_PROMPT,
+        userText: "Analyze the supplied complete song recording using the canonical PromptBeats Analyzer rules. Do not infer track identity from filename or metadata. Return only schema-compliant JSON.",
+        onUsage: (usage) => { initialUsage = usage; },
+      });
       await recordAiUsage({
         userId: context.userId,
         provider: "gemini",
         model: data.model,
         operation: "song_analysis",
-        usage,
-        success,
+        usage: initialUsage,
+        success: true,
       });
+    } catch (error) {
+      await recordAiUsage({
+        userId: context.userId,
+        provider: "gemini",
+        model: data.model,
+        operation: "song_analysis",
+        usage: initialUsage,
+        success: false,
+      });
+      throw error;
+    }
+
+    const trackTitle = data.trackTitle?.trim();
+    const artist = data.artist?.trim();
+
+    // External validation is optional and only runs when BOTH user-supplied identity fields exist.
+    // The first audio analysis above is completed before these fields are ever used.
+    if (!trackTitle || !artist) {
+      return { result: initialResult, model: data.model };
+    }
+
+    let external: ExternalValidation | null = null;
+    let externalUsage: ReturnType<typeof normalizedUsage> = null;
+    try {
+      const validationResult = await runExternalReferenceValidation({
+        apiKey,
+        model: data.model,
+        trackTitle,
+        artist,
+        initialAnalysis: initialResult,
+      });
+      external = validationResult.validation;
+      externalUsage = validationResult.usage;
+      await recordAiUsage({
+        userId: context.userId,
+        provider: "gemini",
+        model: data.model,
+        operation: "song_analysis",
+        usage: externalUsage,
+        success: true,
+      });
+    } catch (error) {
+      console.warn("[song-analyzer] external validation skipped", error);
+      await recordAiUsage({
+        userId: context.userId,
+        provider: "gemini",
+        model: data.model,
+        operation: "song_analysis",
+        usage: externalUsage,
+        success: false,
+      });
+      return { result: initialResult, model: data.model };
+    }
+
+    if (!external.used || !external.identityConfirmed) {
+      return { result: initialResult, model: data.model };
+    }
+
+    let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
+    try {
+      const reconciled = await generateStructuredSongAnalysis({
+        apiKey,
+        model: data.model,
+        audioBase64: data.audioBase64,
+        mimeType: data.mimeType,
+        systemPrompt: `${ANALYZER_SYSTEM_PROMPT}\n\n${EXTERNAL_RECONCILIATION_PROMPT}`,
+        userText: [
+          "The independent audio-only analysis was:",
+          JSON.stringify(initialResult),
+          "",
+          "Optional external-reference validation summary:",
+          JSON.stringify({
+            trackTitle,
+            artist,
+            ...external,
+          }),
+          "",
+          "Re-listen to the supplied audio and produce the FINAL schema-compliant analysis. Audio remains authoritative.",
+        ].join("\n"),
+        onUsage: (usage) => { reconciliationUsage = usage; },
+      });
+
+      await recordAiUsage({
+        userId: context.userId,
+        provider: "gemini",
+        model: data.model,
+        operation: "song_analysis",
+        usage: reconciliationUsage,
+        success: true,
+      });
+
+      return { result: reconciled, model: data.model };
+    } catch (error) {
+      console.warn("[song-analyzer] reconciliation failed; using audio-only result", error);
+      await recordAiUsage({
+        userId: context.userId,
+        provider: "gemini",
+        model: data.model,
+        operation: "song_analysis",
+        usage: reconciliationUsage,
+        success: false,
+      });
+      return { result: initialResult, model: data.model };
     }
   });
 
