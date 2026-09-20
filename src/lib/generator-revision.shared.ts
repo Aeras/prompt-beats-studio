@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
+import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
 export const generatorInputSnapshotSchema = z.object({
   generatorMode: z.enum(["basic", "advanced", "revision"]),
@@ -16,6 +17,7 @@ export const generatorInputSnapshotSchema = z.object({
   bpmMode: z.string().max(40).default("Auto"),
   customBpm: z.string().max(20).default(""),
   songStructure: z.array(z.string().max(80)).max(40).default([]),
+  songBlueprint: songBlueprintSchema,
   productionStyle: z.string().max(2000).default(""),
   additionalInstructions: z.string().max(2000).default(""),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),

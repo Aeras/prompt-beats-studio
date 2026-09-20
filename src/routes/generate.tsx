@@ -20,6 +20,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
+import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
 import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
 import {
   getCurrentUserAiModelAccess,
@@ -67,6 +68,13 @@ import {
 } from "@/lib/ai-target-platforms";
 import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
+import {
+  activeSongBlueprint,
+  appendBlueprintSection,
+  buildSongBlueprint,
+  removeBlueprintSection,
+  type SongBlueprintSection,
+} from "@/lib/song-blueprint.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import {
   BASIC_MUSIC_STYLES,
@@ -185,19 +193,41 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{children}</p>;
 }
 
-function SectionHeader({ title, hint, onClear }: { title: string; hint?: string; onClear?: () => void }) {
+function SectionHeader({
+  title,
+  hint,
+  onClear,
+  optionsOpen,
+  onToggleOptions,
+}: {
+  title: string;
+  hint?: string;
+  onClear?: () => void;
+  optionsOpen?: boolean;
+  onToggleOptions?: () => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">{title}</span>
       {hint && <span className="text-[10px] text-muted-foreground">{"\u00b7 "}{hint}</span>}
+      {onToggleOptions && (
+        <button
+          type="button"
+          onClick={onToggleOptions}
+          aria-expanded={optionsOpen}
+          className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent/10"
+        >
+          {optionsOpen ? t("generator.hideTags") : t("generator.showTags")}
+        </button>
+      )}
       {onClear && (
         <button
           type="button"
           onClick={onClear}
           aria-label={`${t("generator.clear")} ${title}`}
           title={`${t("generator.clear")} ${title}`}
-          className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"
+          className={onToggleOptions ? "shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300" : "ml-auto shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"}
         >
           <Trash2 className="h-3 w-3" />
         </button>
@@ -491,6 +521,11 @@ function GeneratePage() {
   const [instruments, setInstruments] = useState<string[]>([]);
   const [customInstruments, setCustomInstruments] = useState("");
   const [structure, setStructure] = useState<string[]>([]);
+  const [songBlueprint, setSongBlueprint] = useState<SongBlueprintSection[]>([]);
+  const [showStyleTags, setShowStyleTags] = useState(false);
+  const [showMoodTags, setShowMoodTags] = useState(false);
+  const [showInstrumentTags, setShowInstrumentTags] = useState(false);
+  const [showStructureTags, setShowStructureTags] = useState(false);
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
@@ -571,7 +606,9 @@ function GeneratePage() {
       setCustomMood(handoff.mood?.trim() ?? "");
       setInstruments([]);
       setCustomInstruments((handoff.instruments ?? []).join(", "));
-      setStructure(Array.isArray(handoff.songStructure) ? handoff.songStructure : []);
+      const handoffStructure = Array.isArray(handoff.songStructure) ? handoff.songStructure : [];
+      setStructure(handoffStructure);
+      setSongBlueprint(buildSongBlueprint(handoffStructure));
       setProduction(handoff.productionStyle?.trim() ?? "");
       setInstructions(handoff.additionalInstructions?.trim() ?? "");
       const bpmValue = handoff.bpm?.approximate != null
@@ -617,6 +654,7 @@ function GeneratePage() {
       setBpm(snapshot.bpmMode || "Auto");
       setCustomBpm(snapshot.customBpm);
       setStructure([...snapshot.songStructure]);
+      setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
       setProduction(snapshot.productionStyle);
       setInstructions(snapshot.additionalInstructions);
       setLanguage(snapshot.language);
@@ -640,6 +678,7 @@ function GeneratePage() {
     setBpm("Auto");
     setCustomBpm("");
     setStructure([]);
+    setSongBlueprint([]);
     setProduction("");
     setInstructions("");
     const storedLanguage = (prompt.language ?? "").trim();
@@ -849,6 +888,7 @@ function GeneratePage() {
     bpmMode: bpm,
     customBpm: customBpm.trim(),
     songStructure: [...structure],
+    songBlueprint: advanced || revisionMode ? buildSongBlueprint(structure, songBlueprint) : [],
     productionStyle: production.trim(),
     additionalInstructions: instructions.trim(),
     targetPlatform,
@@ -864,6 +904,21 @@ function GeneratePage() {
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+
+  const addStructureSection = (sectionType: string) => {
+    setStructure((previous) => [...previous, sectionType]);
+    setSongBlueprint((previous) => appendBlueprintSection(buildSongBlueprint(structure, previous), sectionType));
+  };
+
+  const removeStructureSection = (structureIndex: number) => {
+    setStructure((previous) => previous.filter((_, index) => index !== structureIndex));
+    setSongBlueprint((previous) => removeBlueprintSection(buildSongBlueprint(structure, previous), structureIndex));
+  };
+
+  const clearStructure = () => {
+    setStructure([]);
+    setSongBlueprint([]);
+  };
 
   const applySongSetup = (draft: SongSetupDraft) => {
     setAdvanced(true);
@@ -892,6 +947,7 @@ function GeneratePage() {
       .map((item) => item.trim())
       .filter((item): item is string => STRUCTURE_TAGS.includes(item));
     setStructure(parsedStructure);
+    setSongBlueprint(buildSongBlueprint(parsedStructure));
     setProduction(draft.productionStyle.trim());
     setInstructions(draft.additionalInstructions.trim());
 
@@ -925,6 +981,7 @@ function GeneratePage() {
         baseMusicStyle: baseGenre,
         instruments: instrumentsText,
         structure: structure.join(" → ").slice(0, 600),
+        songBlueprint: advanced || revisionMode ? activeSongBlueprint(buildSongBlueprint(structure, songBlueprint)) : [],
         production: production.trim().slice(0, 2000),
         instructions: instructions.trim().slice(0, 2000),
         operation: revisionMode ? "revision" : "generate",
@@ -1048,7 +1105,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -1349,7 +1406,7 @@ function GeneratePage() {
 
             <div>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
-              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} onClear={() => { setGenres([]); setCustomGenre(""); }} /><ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} /></> : (
+              {advanced ? <><SectionHeader title={t("generator.musicStyle")} hint={t("generator.pickMany")} optionsOpen={showStyleTags} onToggleOptions={() => setShowStyleTags((value) => !value)} onClear={() => { setGenres([]); setCustomGenre(""); }} />{showStyleTags && <ChipGroup label={t("generator.musicStyle")} options={ADVANCED_STYLES.filter((style) => style !== CUSTOM)} selected={genres} onToggle={toggleValue(setGenres)} labelFor={styleLabel} />}</> : (
                 <select value={genres[0] ?? ""} onChange={(e) => pickPrimary(setGenres)(e.target.value)} aria-label={t("generator.musicStyle")} className={fieldClass}>
                   <option value="" disabled className="bg-[#0a0a0c]">{t("generator.selectMusicStyle")}</option>
                   {GENRE_OPTIONS.map((genre) => <option key={genre} value={genre} className="bg-[#0a0a0c]">{genre === CUSTOM ? t("generator.option.custom") : translatedOption(BASIC_MUSIC_STYLES, genre, t)}</option>)}
@@ -1365,16 +1422,59 @@ function GeneratePage() {
             )}
 
             {advanced ? <>
-              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} onClear={() => { setMoods([]); setCustomMood(""); }} /><ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} /><input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
-              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} onClear={() => { setInstruments([]); setCustomInstruments(""); }} /><ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} /><input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
+              <div><SectionHeader title={t("generator.mood")} hint={t("generator.pickMany")} optionsOpen={showMoodTags} onToggleOptions={() => setShowMoodTags((value) => !value)} onClear={() => { setMoods([]); setCustomMood(""); }} />{showMoodTags && <ChipGroup label={t("generator.mood")} options={ADVANCED_MOOD_VALUES} selected={moods} onToggle={toggleValue(setMoods)} labelFor={moodLabel} />}<input value={customMood} onChange={(e) => setCustomMood(e.target.value)} placeholder={t("generator.customMoodPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.mood")}`} maxLength={hasAdminInputBypass ? undefined : 120} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{effectiveMood.length}/120</p></div>
+              <div><SectionHeader title={t("generator.instruments")} hint={t("generator.pickMany")} optionsOpen={showInstrumentTags} onToggleOptions={() => setShowInstrumentTags((value) => !value)} onClear={() => { setInstruments([]); setCustomInstruments(""); }} />{showInstrumentTags && <ChipGroup label={t("generator.instruments")} options={INSTRUMENTS} selected={instruments} onToggle={toggleValue(setInstruments)} labelFor={instrumentLabel} />}<input value={customInstruments} onChange={(e) => setCustomInstruments(e.target.value)} placeholder={t("generator.customInstrumentsPlaceholder")} aria-label={`${t("common.custom")} ${t("generator.instruments")}`} maxLength={hasAdminInputBypass ? undefined : 200} className={fieldClass + " mt-2"} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{instrumentsText.length}/200</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><SectionHeader title={t("generator.bpm")} hint={t("generator.chooseOne")} onClear={() => { setBpm("Auto"); setCustomBpm(""); }} /><select value={bpm} onChange={(e) => setBpm(e.target.value)} aria-label={t("generator.bpm")} className={fieldClass}>{BPM_OPTIONS.map((item) => <option key={item} value={item} className="bg-[#0a0a0c]">{item === "Auto" ? t("generator.option.auto") : item === "Custom" ? t("common.custom") : item}</option>)}</select></div>
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
               </div>
               <div>
-                <SectionHeader title={t("generator.songStructure")} hint={t("generator.structureHint")} onClear={() => setStructure([])} />
-                {structure.length > 0 && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">{structure.map((item, i) => <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">{structureLabel(item)}<button type="button" aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })} onClick={() => setStructure((p) => p.filter((_, idx) => idx !== i))} className="text-accent/70 transition-colors hover:text-accent">×</button></span>)}</div>}
-                <div className="flex flex-wrap gap-2">{STRUCTURE_TAGS.map((item) => <button key={item} type="button" onClick={() => setStructure((p) => [...p, item])} className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{structureLabel(item)}</button>)}</div>
+                <SectionHeader
+                  title={t("generator.songStructure")}
+                  hint={t("generator.structureHint")}
+                  optionsOpen={showStructureTags}
+                  onToggleOptions={() => setShowStructureTags((value) => !value)}
+                  onClear={clearStructure}
+                />
+                {structure.length > 0 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
+                    {structure.map((item, i) => (
+                      <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">
+                        {structureLabel(item)}
+                        <button
+                          type="button"
+                          aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })}
+                          onClick={() => removeStructureSection(i)}
+                          className="text-accent/70 transition-colors hover:text-accent"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {showStructureTags && (
+                  <div className="flex flex-wrap gap-2">
+                    {STRUCTURE_TAGS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => addStructureSection(item)}
+                        className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                      >
+                        {structureLabel(item)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <SongBlueprintEditor
+                    structure={structure}
+                    blueprint={buildSongBlueprint(structure, songBlueprint)}
+                    onChange={setSongBlueprint}
+                    labelForSection={structureLabel}
+                  />
+                </div>
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>

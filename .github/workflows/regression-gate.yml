@@ -28,6 +28,9 @@ jobs:
       - name: Lyrics section parser tests
         run: bun test src/lib/lyrics-sections.test.ts
 
+      - name: Song Blueprint tests
+        run: bun test src/lib/song-blueprint.test.ts
+
       - name: Build
         run: bun run build
 
