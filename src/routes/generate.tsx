@@ -672,6 +672,7 @@ function GeneratePage() {
       const { revisionMeta: completedRevisionMeta, ...songResult } = job.result;
       setResult(songResult);
       setRevisionMeta(completedRevisionMeta ?? null);
+      setSaved(Boolean(completedRevisionMeta));
       if (job.input?.operation === "revision" && job.input.revision) {
         setRevisionMode(true);
         setAdvanced(true);
@@ -963,6 +964,7 @@ function GeneratePage() {
         theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result,
         custom_name: saveName.trim() || null, project_id: projectId,
         version_label: projectId ? (saveVersionLabel.trim() || null) : null,
+        generator_input_snapshot: songContext?.inputSnapshot ?? currentSnapshot,
       } });
       await queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });
       await queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false });
@@ -1254,6 +1256,7 @@ function GeneratePage() {
 
             {language === CUSTOM && <input value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)} placeholder={t("generator.customLanguagePlaceholder")} aria-label={`${t("common.custom")} ${t("generator.language")}`} className={fieldClass} />}
             {validationError && <p className="text-xs text-red-400">{validationError}</p>}
+            {revisionMode && revisionBasePromptId && revisionBase.data?.prompt && !revisionRequest.trim() && <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>}
 
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
@@ -1282,6 +1285,12 @@ function GeneratePage() {
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
               {generationResultModel && <p className="text-xs text-muted-foreground">{t("generator.generatedWith", { model: registryModelLabel(generationResultModel) })}</p>}
+              {revisionMeta && (
+                <div className="rounded-xl border border-accent/30 bg-accent/[0.05] p-3 text-xs">
+                  <p className="font-semibold text-accent">{t("generator.revisionCreated", { version: revisionMeta.versionNumber })}</p>
+                  <p className="mt-1 text-muted-foreground">{t("generator.revisionAutoSaved")}</p>
+                </div>
+              )}
               <div className="flex justify-end"><button onClick={toggleAll} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{allOpen ? t("generator.collapseAll") : t("generator.expandAll")}</button></div>
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
@@ -1290,7 +1299,7 @@ function GeneratePage() {
               {hasAdminInputBypass && (
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
-              <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>
+              {!revisionMeta && <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>}
               <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
             </div>
           )}
