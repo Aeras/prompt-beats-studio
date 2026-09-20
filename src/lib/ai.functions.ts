@@ -1724,9 +1724,10 @@ export async function runSongGeneration(
 
   let generated: ModelResult;
   try {
+    const isRevision = data.operation === "revision";
     generated = await call({
-      system: SYSTEM_PROMPT,
-      prompt: buildPrompt(data),
+      system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
+      prompt: isRevision ? buildRevisionPrompt(data) : buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
       reasoningEffort: reasoningEffort ?? "medium",
