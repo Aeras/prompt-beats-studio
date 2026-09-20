@@ -158,8 +158,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         )}
       >
         <header className="glass-strong sticky top-0 z-20 border-b">
-          <div className="mx-auto max-w-[1900px] px-4 py-3 md:px-8 md:py-4">
-            <div className="flex items-center gap-3">
+          <div className="relative mx-auto max-w-[1900px] px-4 py-3 md:px-8 md:py-4">
+            <div className="flex items-start gap-3">
               <button
                 aria-label={t("shell.openMenu")}
                 onClick={() => setDrawer(true)}
@@ -167,9 +167,13 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="min-w-0 flex-1">{header}</div>
-              {authenticated && <NotificationCenter />}
+              <div className={cn("min-w-0 flex-1", authenticated && "pr-14 md:pr-16")}>{header}</div>
             </div>
+            {authenticated && (
+              <div className="absolute right-4 top-3 z-10 md:right-8 md:top-4">
+                <NotificationCenter />
+              </div>
+            )}
           </div>
         </header>
 
