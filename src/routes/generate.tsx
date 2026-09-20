@@ -1155,7 +1155,7 @@ function GeneratePage() {
                   </button>
                 )}
               </div>
-              {canClear && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
+              {canClear && !revisionMode && <button onClick={() => setConfirmClear(true)} disabled={busy || checking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}</button>}
             </div>
 
             {revisionMode && (
