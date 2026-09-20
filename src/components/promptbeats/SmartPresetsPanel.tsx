@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Search, Sparkles } from "lucide-react";
 
 import {
@@ -30,6 +30,8 @@ export function SmartPresetsPanel({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SmartPresetCategory | "all">("all");
+  const [appliedPresetId, setAppliedPresetId] = useState("");
+  const feedbackTimerRef = useRef<number | null>(null);
   const selectedStyleId = culturalStyleId.startsWith("custom:") ? "custom" : culturalStyleId;
   const selectedStyle = CULTURAL_STYLES.find((item) => item.id === selectedStyleId);
   const [culturalRegionId, setCulturalRegionId] = useState<CulturalRegionId | "">(
@@ -44,6 +46,20 @@ export function SmartPresetsPanel({
     const style = CULTURAL_STYLES.find((item) => item.id === styleId);
     setCulturalRegionId(style?.region ?? "");
   }, [culturalStyleId]);
+
+  useEffect(() => () => {
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+  }, []);
+
+  const applyPresetWithFeedback = (preset: SmartPreset) => {
+    onApply(preset);
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+    setAppliedPresetId(preset.id);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setAppliedPresetId("");
+      feedbackTimerRef.current = null;
+    }, 1200);
+  };
 
   const regionalStyles = useMemo(
     () => CULTURAL_STYLES.filter((style) => style.region === culturalRegionId),
@@ -200,16 +216,29 @@ export function SmartPresetsPanel({
 
                   <button
                     type="button"
-                    onClick={() => onApply(preset)}
+                    onClick={() => applyPresetWithFeedback(preset)}
                     disabled={Boolean(
                       preset.cultural &&
                       (!culturalRegionId ||
                         !selectedStyleId ||
                         (selectedStyleId === "custom" && !customCulturalStyle.trim()))
                     )}
-                    className="mt-3 w-full rounded-lg border border-accent/40 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    className={
+                      appliedPresetId === preset.id
+                        ? "mt-3 w-full rounded-lg border border-accent/50 bg-accent/15 px-3 py-2 text-xs font-semibold text-accent ring-1 ring-accent/30 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        : "mt-3 w-full rounded-lg border border-accent/40 px-3 py-2 text-xs font-semibold text-accent transition-all hover:bg-accent/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                    }
                   >
-                    {active ? t("generator.presets.reapply") : t("generator.presets.apply")}
+                    {appliedPresetId === preset.id ? (
+                      <span className="inline-flex items-center justify-center gap-1.5">
+                        <Check className="h-3.5 w-3.5" />
+                        {t("generator.presets.applied")}
+                      </span>
+                    ) : active ? (
+                      t("generator.presets.reapply")
+                    ) : (
+                      t("generator.presets.apply")
+                    )}
                   </button>
                 </div>
               );
