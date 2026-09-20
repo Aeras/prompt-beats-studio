@@ -530,7 +530,7 @@ function GeneratePage() {
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
   const [showStructureTags, setShowStructureTags] = useState(false);
   const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
-  const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("greek");
+  const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
   const [bpm, setBpm] = useState("Auto");
@@ -615,7 +615,7 @@ function GeneratePage() {
       setStructure(handoffStructure);
       setSongBlueprint(buildSongBlueprint(handoffStructure));
       setActiveSmartPresetId("");
-      setPresetCulturalStyleId("greek");
+      setPresetCulturalStyleId("");
       setProduction(handoff.productionStyle?.trim() ?? "");
       setInstructions(handoff.additionalInstructions?.trim() ?? "");
       const bpmValue = handoff.bpm?.approximate != null
@@ -663,7 +663,7 @@ function GeneratePage() {
       setStructure([...snapshot.songStructure]);
       setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
       setActiveSmartPresetId(snapshot.smartPresetId ?? "");
-      setPresetCulturalStyleId(snapshot.culturalStyleId || "greek");
+      setPresetCulturalStyleId(snapshot.culturalStyleId || "");
       setProduction(snapshot.productionStyle);
       setInstructions(snapshot.additionalInstructions);
       setLanguage(snapshot.language);
@@ -689,7 +689,7 @@ function GeneratePage() {
     setStructure([]);
     setSongBlueprint([]);
     setActiveSmartPresetId("");
-    setPresetCulturalStyleId("greek");
+    setPresetCulturalStyleId("");
     setProduction("");
     setInstructions("");
     const storedLanguage = (prompt.language ?? "").trim();
@@ -970,7 +970,7 @@ function GeneratePage() {
   const applySongSetup = (draft: SongSetupDraft) => {
     setAdvanced(true);
     setActiveSmartPresetId("");
-    setPresetCulturalStyleId("greek");
+    setPresetCulturalStyleId("");
     setTheme(draft.theme.trim());
     setGenres([]);
     setCustomGenre(draft.musicStyle.trim());
@@ -1154,7 +1154,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId("greek"); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
