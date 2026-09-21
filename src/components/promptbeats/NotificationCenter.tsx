@@ -14,6 +14,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
@@ -255,6 +256,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
 
 export function NotificationCenter() {
   const { user } = useAuth();
+  const featureAccess = useFeatureAccess("notifications");
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const [desktopOpen, setDesktopOpen] = useState(false);
@@ -268,7 +270,7 @@ export function NotificationCenter() {
     refetchOnWindowFocus: "always",
     staleTime: 20_000,
   });
-  if (!user) return null;
+  if (!user || !featureAccess.allowed) return null;
   const count = unread.data?.count ?? 0;
 
   const opened = () => {
