@@ -14,7 +14,7 @@ export const ACCOUNT_BLOCK_REASONS = [
 const accountBlockReasonCode = z.enum(ACCOUNT_BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]]);
 
 
-export type ModerationRole = "admin" | "senior_moderator" | "moderator" | "user";
+export type ModerationRole = "super_admin" | "admin" | "senior_moderator" | "moderator" | "user";
 export type ModerationStatus = "active" | "suspended";
 
 export type ModerationContext = {
