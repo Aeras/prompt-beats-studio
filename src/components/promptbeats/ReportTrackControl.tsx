@@ -3,9 +3,13 @@ import { createPortal } from "react-dom";
 import { Flag, Loader2, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useI18n } from "@/i18n";
+import { useI18n, type AppTranslationKey } from "@/i18n";
 import { REPORT_CATEGORIES, submitTrackReport, type ReportCategory } from "@/lib/content-reports.functions";
 import { cn } from "@/lib/utils";
+
+function reportCategoryKey(category: ReportCategory) {
+  return `report.category.${category}` as AppTranslationKey;
+}
 
 export function ReportTrackControl({
   trackId,
@@ -119,7 +123,7 @@ export function ReportTrackControl({
             <label className="block text-xs text-muted-foreground">
               {t("report.reason")}
               <select value={category} onChange={(e) => setCategory(e.target.value as ReportCategory)} className="mt-1.5 h-11 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm text-foreground">
-                {REPORT_CATEGORIES.map((key) => <option key={key} value={key}>{t(`report.category.${key}`)}</option>)}
+                {REPORT_CATEGORIES.map((key) => <option key={key} value={key}>{t(reportCategoryKey(key))}</option>)}
               </select>
             </label>
             <label className="block text-xs text-muted-foreground">
