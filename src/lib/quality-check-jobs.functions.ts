@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   durableQualityCheckInput,
   qualityReportSchema,
@@ -67,6 +68,7 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "quality_check");
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     await getModelForUser(context.userId, data.qualityCheckModel ?? undefined, "quality_check");
 
