@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Menu, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { NotificationCenter } from "@/components/promptbeats/NotificationCenter";
+import { ModerationCaseCenter } from "@/components/promptbeats/ModerationCaseCenter";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,10 +168,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className={cn("min-w-0 flex-1", authenticated && "pr-14 md:pr-16")}>{header}</div>
+              <div className={cn("min-w-0 flex-1", authenticated && "pr-28 md:pr-32")}>{header}</div>
             </div>
             {authenticated && (
-              <div className="absolute right-4 top-3 z-10 md:right-8 md:top-4">
+              <div className="absolute right-4 top-3 z-10 flex items-center gap-2 md:right-8 md:top-4">
+                <ModerationCaseCenter />
                 <NotificationCenter />
               </div>
             )}
