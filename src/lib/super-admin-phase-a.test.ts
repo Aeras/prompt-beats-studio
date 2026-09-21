@@ -164,4 +164,18 @@ describe("Super Admin Phase A", () => {
     expect(backfill).toBeGreaterThan(refreshFunction);
     expect(addConstraint).toBeGreaterThan(backfill);
   });
+
+  test("bootstrap migration promotes only the verified primary Admin", async () => {
+    const sql = await source("supabase/migrations/20260921060300_bootstrap_primary_super_admin.sql");
+    expect(sql).toContain("lower(email) = 'nikos76gr@gmail.com'");
+    expect(sql).toContain("v_match_count <> 1");
+    expect(sql).toContain("v_current_role <> 'admin'");
+    expect(sql).toContain("'super_admin'::public.app_role");
+    expect(sql).toContain("'ASSIGN_SUPER_ADMIN_ROLE'");
+    expect(sql).toContain("'previous_role', 'admin'");
+    expect(sql).toContain("'new_role', 'super_admin'");
+    expect(sql).toContain("'bootstrap', true");
+    expect(sql).toContain("refresh_public_staff_badge(v_user_id)");
+    expect(sql.toLowerCase()).not.toContain("@promptbeats.app");
+  });
 });
