@@ -202,7 +202,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(tracks).toContain("contains_explicit_lyrics: z.boolean()");
 
     const profiles = await source("src/lib/profile.functions.ts");
-    expect(profiles.match(/contains_explicit_lyrics/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(profiles.match(/contains_explicit_lyrics/g)?.length).toBeGreaterThanOrEqual(3);
 
     const sql = await source(migration);
     expect(sql).toContain("contains_explicit_lyrics boolean");
