@@ -3,6 +3,7 @@ import { Visualizer } from "./Visualizer";
 import { usePlayer } from "@/lib/player";
 import { usePipPlayer } from "@/hooks/usePipPlayer";
 import { useI18n } from "@/i18n";
+import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 
 function fmt(sec: number) {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -28,7 +29,7 @@ export function PlayerBar() {
       <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] md:gap-6 md:px-6 md:py-3">
         <div className="flex min-w-0 items-center gap-3">
           <img src={current.art} alt={t("track.coverAlt", { title: current.title })} width={640} height={640} loading="lazy" className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-white/15 md:h-14 md:w-14" />
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{current.title}</p><p className="truncate text-xs text-muted-foreground">{current.handle}</p></div>
+          <div className="min-w-0"><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold">{current.title}</p>{current.containsExplicitLyrics && <ExplicitBadge compact />}</div><p className="truncate text-xs text-muted-foreground">{current.handle}</p></div>
         </div>
 
         <div className="order-3 col-span-2 flex flex-col gap-1.5 md:order-none md:col-span-1">
