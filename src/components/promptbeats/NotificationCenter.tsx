@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
+import { useModeration } from "@/hooks/useModeration";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
   getNotificationPreferences,
@@ -267,6 +268,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
 export function NotificationCenter() {
   const { user } = useAuth();
   const featureAccess = useFeatureAccess("notifications");
+  const moderation = useModeration();
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const [desktopOpen, setDesktopOpen] = useState(false);
@@ -274,13 +276,13 @@ export function NotificationCenter() {
 
   const unread = useQuery({
     queryKey: ["notification-unread-count", user?.id ?? "anon"],
-    enabled: Boolean(user) && featureAccess.allowed,
+    enabled: Boolean(user) && (featureAccess.allowed || moderation.canViewUsers),
     queryFn: () => getUnreadNotificationCount(),
     refetchInterval: 60_000,
     refetchOnWindowFocus: "always",
     staleTime: 20_000,
   });
-  if (!user || !featureAccess.allowed) return null;
+  if (!user || (!featureAccess.allowed && !moderation.canViewUsers)) return null;
   const count = unread.data?.count ?? 0;
 
   const opened = () => {
