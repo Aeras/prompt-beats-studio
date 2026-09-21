@@ -140,16 +140,17 @@ function ReportDetail({
   return typeof document === "undefined" ? content : createPortal(content, document.body);
 }
 
-export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
+export function ReportsManagementPanel({ isAdmin, initialReportId = null }: { isAdmin: boolean; initialReportId?: string | null }) {
   const { t, language } = useI18n();
   const el = language === "el";
   const [scope, setScope] = useState<ReportScope>("open");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const { data = [], isLoading, isError } = useQuery({
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(initialReportId);
+  const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["content-reports", scope],
     queryFn: () => listContentReports({ data: { scope } }),
     staleTime: 15_000,
     refetchInterval: 30_000,
+    retry: 2,
   });
 
   const scopeLabel = (value: ReportScope) =>
@@ -168,7 +169,12 @@ export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
     </div>
 
     {isLoading && <p className="text-sm text-muted-foreground">{t("management.reportsLoading")}</p>}
-    {isError && <p className="glass rounded-2xl p-4 text-sm text-red-300">{t("management.reportsError")}</p>}
+    {isError && <div className="glass rounded-2xl p-4 text-sm text-red-300">
+      <p>{t("management.reportsError")}</p>
+      <button type="button" onClick={() => void refetch()} className="mt-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-accent">
+        {el ? "Δοκιμή ξανά" : "Retry"}
+      </button>
+    </div>}
     {!isLoading && !isError && data.length === 0 && <p className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.reportsNone")}</p>}
 
     {data.length > 0 && <div className="glass overflow-hidden rounded-2xl">
