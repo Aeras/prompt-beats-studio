@@ -17,7 +17,7 @@ export const BLOCK_REASONS = [
 const blockReasonCode = z.enum(BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]]);
 
 async function requireAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+  const { data, error } = await supabase.rpc("current_user_is_admin_level");
   if (error || data !== true) throw new Error("Not allowed");
 }
 
