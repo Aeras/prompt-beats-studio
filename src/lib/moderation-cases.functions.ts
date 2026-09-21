@@ -309,3 +309,14 @@ export const reopenModerationCase = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+
+export type ModerationCaseAssignee = { user_id: string; role: string; label: string };
+
+export const listModerationCaseAssignees = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (context.supabase as any).rpc("list_moderation_case_assignees");
+    if (error) throw new Error(error.message);
+    return (Array.isArray(data) ? data : []) as ModerationCaseAssignee[];
+  });
