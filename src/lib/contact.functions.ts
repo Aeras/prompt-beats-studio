@@ -39,12 +39,10 @@ export const sendContactForm = createServerFn({ method: "POST" })
     try {
       const { sendContactEmailViaSmtp } = await import("@/lib/contact-email.server");
       await sendContactEmailViaSmtp({
-
-          email: data.email,
-          alias: data.alias,
-          subject: data.subject,
-          message: data.message,
-        
+        email: data.email,
+        alias: data.alias,
+        subject: data.subject,
+        message: data.message,
       });
       return { sent: true };
     } catch (error) {
