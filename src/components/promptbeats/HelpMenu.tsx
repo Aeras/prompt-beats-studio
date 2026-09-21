@@ -58,11 +58,14 @@ export function HelpMenu() {
             </p>
           </div>
 
-          <DisabledItem
-            icon={LifeBuoy}
-            label={el ? "Βοήθεια" : "Help"}
-            comingSoon={el ? "Σύντομα" : "Soon"}
-          />
+          <Link
+            to="/help"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-white/5 hover:text-accent"
+          >
+            <LifeBuoy className="h-4 w-4 shrink-0" />
+            <span>{el ? "Βοήθεια" : "Help"}</span>
+          </Link>
 
           <Link
             to="/contact"
