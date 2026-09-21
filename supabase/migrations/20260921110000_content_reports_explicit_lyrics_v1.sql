@@ -6,10 +6,10 @@ ALTER TABLE public.tracks
 
 CREATE TABLE IF NOT EXISTS public.content_reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  reporter_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  reporter_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   target_type text NOT NULL CHECK (target_type IN ('track')),
   target_id uuid NOT NULL,
-  target_owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  target_owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   category text NOT NULL CHECK (category IN (
     'copyright_ip',
     'hate_discrimination',
