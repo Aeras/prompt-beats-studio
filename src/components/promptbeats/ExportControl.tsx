@@ -24,6 +24,7 @@ import {
   getPromptExportSource,
 } from "@/lib/export-center.functions";
 import { useI18n } from "@/i18n";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { cn } from "@/lib/utils";
 
 const formats: Array<{ value: ExportFormat; label: string; extension: string }> = [
@@ -45,6 +46,7 @@ export function ExportControl({
   compact?: boolean;
 }) {
   const { language } = useI18n();
+  const featureAccess = useFeatureAccess("export_center");
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>("md");
   const [mode, setMode] = useState<ProjectExportMode>("single");
@@ -92,6 +94,8 @@ export function ExportControl({
     export: "Export",
     fallbackError: "Export failed. Please try again.",
   };
+
+  if (!featureAccess.allowed) return null;
 
   const runExport = async () => {
     if (busy) return;

@@ -10,6 +10,7 @@ import {
   type SmartPresetCategory,
 } from "@/catalog/smart-presets";
 import { useI18n } from "@/i18n";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 type Props = {
   activePresetId: string;
@@ -27,6 +28,7 @@ export function SmartPresetsPanel({
   onApply,
 }: Props) {
   const { t, language } = useI18n();
+  const featureAccess = useFeatureAccess("smart_presets");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SmartPresetCategory | "all">("all");
@@ -93,6 +95,8 @@ export function SmartPresetsPanel({
   }, [category, query]);
 
   const activePreset = SMART_PRESETS.find((preset) => preset.id === activePresetId);
+
+  if (!featureAccess.allowed) return null;
 
   return (
     <div className="rounded-2xl border border-accent/25 bg-accent/[0.04] p-4">

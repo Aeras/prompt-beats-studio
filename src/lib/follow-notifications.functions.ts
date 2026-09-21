@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
 const userIdInput = z.object({ userId: z.string().uuid() });
 const followListInput = z.object({
@@ -84,6 +85,7 @@ export const getCreatorFollowSummary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => userIdInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "follow_creators");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: target, error } = await (supabaseAdmin.from("profiles") as any)
       .select("id")
@@ -98,6 +100,7 @@ export const followCreator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => userIdInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "follow_creators");
     const { error } = await (context.supabase as any).rpc("follow_creator", {
       _target_user_id: data.userId,
     });
@@ -112,6 +115,7 @@ export const unfollowCreator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => userIdInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "follow_creators");
     const { error } = await (context.supabase as any).rpc("unfollow_creator", {
       _target_user_id: data.userId,
     });
@@ -125,7 +129,8 @@ export const unfollowCreator = createServerFn({ method: "POST" })
 export const listCreatorFollowProfiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => followListInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "follow_creators");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const from = data.page * PAGE_SIZE;
     const to = from + PAGE_SIZE;
@@ -155,6 +160,7 @@ export const listCreatorFollowProfiles = createServerFn({ method: "POST" })
 export const getUnreadNotificationCount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const { count, error } = await (context.supabase as any)
       .from("notifications")
       .select("id", { count: "exact", head: true })
@@ -167,6 +173,7 @@ export const listNotifications = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => notificationPageInput.parse(input ?? {}))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const from = data.page * PAGE_SIZE;
     const to = from + PAGE_SIZE;
     const { data: rows, error } = await (context.supabase as any)
@@ -225,6 +232,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => notificationIdInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const { error } = await (context.supabase as any)
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -237,6 +245,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
 export const markAllNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const { error } = await (context.supabase as any)
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -248,6 +257,7 @@ export const markAllNotificationsRead = createServerFn({ method: "POST" })
 export const getNotificationPreferences = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const { data, error } = await (context.supabase as any)
       .from("notification_preferences")
       .select("new_track_enabled, new_follower_enabled")
@@ -264,6 +274,7 @@ export const updateNotificationPreferences = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => preferencesInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "notifications");
     const { error } = await (context.supabase as any)
       .from("notification_preferences")
       .upsert({

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, BarChart3, Coins, Cpu, LayoutDashboard, Shield, Sparkles, Users, X } from "lucide-react";
+import { AlertTriangle, BarChart3, Coins, Cpu, KeyRound, LayoutDashboard, Shield, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
@@ -12,13 +12,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { getAiAnalytics, type Breakdown } from "@/lib/ai-analytics.functions";
 import { BLOCK_REASONS, deleteAdminUser, getAdminOverview, getAdminUserDetail, listAdminRegistrationBlocks, listAdminUsers, removeAdminRegistrationBlock, setAdminModelAccess, setModerationStatus, setAdminUserBanned, setAdminUserRole, type AdminUser, type RegistrationBlock } from "@/lib/admin.functions";
 import { getAdminAiModels } from "@/lib/ai-model-admin.functions";
+import {
+  addSelectedFeatureUser,
+  listFeatureAccessPolicies,
+  listSelectedFeatureUsers,
+  removeSelectedFeatureUser,
+  searchFeatureAccessUsers,
+  setFeatureAccessPolicy,
+  type FeatureAccessMode,
+  type FeatureAccessPolicy,
+  type FeatureAccessUser,
+} from "@/lib/feature-access.functions";
 import type { AiModelId } from "@/lib/ai-models";
 import { cn } from "@/lib/utils";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
 
 export const Route = createFileRoute("/management")({ head: () => ({ meta: [{ title: "Admin Dashboard | PromptBeats" }, { name: "robots", content: "noindex" }] }), component: ManagementPage });
-type Section = "overview" | "analytics" | "models" | "users" | "registrations";
+type Section = "overview" | "analytics" | "models" | "users" | "registrations" | "features";
 type ReasonCode = (typeof BLOCK_REASONS)[number]["code"];
 type T = (key: AppTranslationKey, values?: Record<string, string | number>) => string;
 const RANGES = [{ days: 1, label: "24h" }, { days: 7, label: "7d" }, { days: 30, label: "30d" }, { days: 90, label: "90d" }] as const;
@@ -50,10 +61,10 @@ function DataTable({ title, rows }: { title: string; rows: Breakdown[] }) {
   return <div className="glass overflow-hidden rounded-2xl"><h2 className="border-b border-white/10 px-4 py-3 font-display text-sm font-semibold">{title}</h2><div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="text-[11px] uppercase text-muted-foreground"><tr>{headers.map((h) => <th key={h} className="px-4 py-2 font-medium">{h}</th>)}</tr></thead><tbody>{rows.length === 0 && <tr><td className="px-4 py-4 text-muted-foreground" colSpan={6}>{t("management.noPeriodData")}</td></tr>}{rows.map((r) => <tr key={r.key} className="border-t border-white/5"><td className="px-4 py-2">{r.key}</td><td className="px-4 py-2">{num(r.requests)}</td><td className="px-4 py-2">{num(r.inputTokens)}</td><td className="px-4 py-2">{num(r.outputTokens)}</td><td className="px-4 py-2">{usd(r.costUsd)}</td><td className="px-4 py-2">{num(r.failures)}</td></tr>)}</tbody></table></div></div>;
 }
 
-function AdminNav({ section, setSection, isAdmin }: { section: Section; setSection: (s: Section) => void; isAdmin: boolean }) {
+function AdminNav({ section, setSection, isAdmin, isSuperAdmin }: { section: Section; setSection: (s: Section) => void; isAdmin: boolean; isSuperAdmin: boolean }) {
   const { t } = useI18n();
   const items: Array<[Section, string, typeof LayoutDashboard]> = isAdmin
-    ? [["overview", t("management.overview"), LayoutDashboard], ["analytics", t("management.aiUsage"), BarChart3], ["models", t("management.models"), Cpu], ["users", t("management.users"), Users], ["registrations", t("management.blockedRegistrations"), Shield]]
+    ? [["overview", t("management.overview"), LayoutDashboard], ["analytics", t("management.aiUsage"), BarChart3], ["models", t("management.models"), Cpu], ["users", t("management.users"), Users], ["registrations", t("management.blockedRegistrations"), Shield], ...(isSuperAdmin ? [["features", t("management.featureAccess"), KeyRound] as [Section, string, typeof LayoutDashboard]] : [])]
     : [["users", t("management.users"), Users]];
   const future = isAdmin ? [t("management.subscriptions"), t("management.payments"), t("management.contentFiles"), t("management.settings")] : [];
   return <div className="flex gap-2 overflow-x-auto pb-1">{items.map(([id, label, Icon]) => <button key={id} onClick={() => setSection(id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm", section === id ? "border-primary/50 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{label}</button>)}{future.map((label) => <span key={label} className="hidden shrink-0 items-center rounded-xl border border-white/5 px-3 py-2 text-xs text-muted-foreground/50 sm:inline-flex">{label}</span>)}</div>;
@@ -208,10 +219,126 @@ function RegistrationBlocksPanel() {
   return <div className="space-y-4"><input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("management.searchBlockedEmail")} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm sm:max-w-md" />{error && <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("management.loadBlocksError")}</div>}{isLoading && <p className="text-sm text-muted-foreground">{t("management.loadingBlocks")}</p>}<div className="glass overflow-hidden rounded-2xl"><div className="divide-y divide-white/5">{data?.blocks.map((block) => <div key={block.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm">{block.email_normalized}</p><p className="text-xs text-muted-foreground">{reasonLabel(block.reason_code, t)}{block.reason_code === "other" && block.reason_text ? ` · ${block.reason_text}` : ""} · {new Date(block.blocked_at).toLocaleDateString(locale)}</p></div><button onClick={() => setConfirm(block)} className="self-start rounded-lg border border-white/10 px-3 py-2 text-xs text-primary hover:border-primary/40">{t("management.allowAgain")}</button></div>)}{data?.blocks.length === 0 && <p className="p-4 text-sm text-muted-foreground">{t("management.noBlocks")}</p>}</div>{data && <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-muted-foreground"><span>{t("management.blockCount", { count: num(data.total) })}</span><div className="flex gap-2"><button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="rounded-lg border border-white/10 px-3 py-1 disabled:opacity-40">{t("management.previous")}</button><button disabled={(page + 1) * 25 >= data.total} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-white/10 px-3 py-1 disabled:opacity-40">{t("management.next")}</button></div></div>}</div>{confirm && <Modal onClose={() => setConfirm(null)}><AlertTriangle className="h-6 w-6 text-amber-300" /><h2 className="mt-3 font-display text-xl font-bold">{t("management.allowTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{t("management.allowBody")}</p><button disabled={removal.isPending} onClick={() => removal.mutate()} className="mt-5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{removal.isPending ? t("management.updating") : t("management.allowRegistration")}</button></Modal>}</div>;
 }
 
+
+const FEATURE_MODE_BADGE: Record<FeatureAccessMode, string> = {
+  disabled: "OFF",
+  admins_only: "ADMIN",
+  selected_users: "BETA",
+  everyone: "PUBLIC",
+};
+
+function SelectedFeatureUsersEditor({ policy }: { policy: FeatureAccessPolicy }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(draft.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
+
+  const selected = useQuery({
+    queryKey: ["feature-access-selected", policy.feature_key],
+    queryFn: () => listSelectedFeatureUsers({ data: { featureKey: policy.feature_key } }),
+  });
+  const candidates = useQuery({
+    queryKey: ["feature-access-search", search],
+    queryFn: () => searchFeatureAccessUsers({ data: { search } }),
+    enabled: search.length > 0,
+  });
+  const selectedIds = new Set((selected.data ?? []).map((user) => user.user_id));
+
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["feature-access-selected", policy.feature_key] });
+    void qc.invalidateQueries({ queryKey: ["feature-access-policies"] });
+  };
+  const add = useMutation({
+    mutationFn: (user: FeatureAccessUser) => addSelectedFeatureUser({ data: { featureKey: policy.feature_key, userId: user.user_id } }),
+    onSuccess: () => { refresh(); setDraft(""); setSearch(""); toast.success(t("management.featureUserAdded")); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : t("management.featureSaveError")),
+  });
+  const remove = useMutation({
+    mutationFn: (user: FeatureAccessUser) => removeSelectedFeatureUser({ data: { featureKey: policy.feature_key, userId: user.user_id } }),
+    onSuccess: () => { refresh(); toast.success(t("management.featureUserRemoved")); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : t("management.featureSaveError")),
+  });
+
+  return <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+    <div>
+      <label className="text-xs text-muted-foreground">{t("management.featureSearchUsers")}
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("management.featureSearchPlaceholder")} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm" />
+      </label>
+      {search && <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-1">
+        {(candidates.data ?? []).filter((user) => !selectedIds.has(user.user_id)).map((user) => <button key={user.user_id} type="button" disabled={add.isPending} onClick={() => add.mutate(user)} className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-xs hover:bg-white/5">
+          <span className="min-w-0"><span className="block truncate text-foreground">{user.display_name || user.handle || user.email || user.user_id}</span><span className="block truncate text-muted-foreground">{user.email || (user.handle ? `@${user.handle}` : "")}</span></span>
+          <span className="shrink-0 text-accent">{t("management.featureAddUser")}</span>
+        </button>)}
+        {!candidates.isLoading && (candidates.data ?? []).filter((user) => !selectedIds.has(user.user_id)).length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">{t("management.featureNoUserMatches")}</p>}
+      </div>}
+    </div>
+
+    <div className="space-y-2">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("management.featureSelectedUsers")} · {selected.data?.length ?? policy.selected_count}</p>
+      {(selected.data ?? []).map((user) => <div key={user.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2">
+        <span className="min-w-0 text-xs"><span className="block truncate text-foreground">{user.display_name || user.handle || user.email || user.user_id}</span><span className="block truncate text-muted-foreground">{user.email || (user.handle ? `@${user.handle}` : "")}</span></span>
+        <button type="button" disabled={remove.isPending} onClick={() => remove.mutate(user)} className="shrink-0 text-xs text-red-300 hover:text-red-200">{t("management.featureRemoveUser")}</button>
+      </div>)}
+      {!selected.isLoading && (selected.data ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("management.featureNoSelectedUsers")}</p>}
+    </div>
+  </div>;
+}
+
+function FeatureAccessPanel() {
+  const { t, language } = useI18n();
+  const qc = useQueryClient();
+  const policies = useQuery({
+    queryKey: ["feature-access-policies"],
+    queryFn: () => listFeatureAccessPolicies(),
+  });
+  const update = useMutation({
+    mutationFn: ({ featureKey, accessMode }: { featureKey: FeatureAccessPolicy["feature_key"]; accessMode: FeatureAccessMode }) =>
+      setFeatureAccessPolicy({ data: { featureKey, accessMode } }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["feature-access-policies"] }); void qc.invalidateQueries({ queryKey: ["feature-access"] }); toast.success(t("management.featurePolicySaved")); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : t("management.featureSaveError")),
+  });
+
+  if (policies.isLoading) return <p className="text-sm text-muted-foreground">{t("management.featureLoading")}</p>;
+  if (policies.isError) return <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("management.featureLoadError")}</div>;
+
+  const modeLabel = (mode: FeatureAccessMode) => ({
+    disabled: t("management.featureModeDisabled"),
+    admins_only: t("management.featureModeAdmins"),
+    selected_users: t("management.featureModeSelected"),
+    everyone: t("management.featureModeEveryone"),
+  }[mode]);
+
+  return <div className="space-y-4">
+    <div className="glass rounded-2xl p-4">
+      <p className="text-sm font-semibold">{t("management.featureAccess")}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("management.featureAccessDescription")}</p>
+    </div>
+    {(policies.data ?? []).map((policy) => <article key={policy.feature_key} className="glass rounded-2xl p-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2"><h3 className="font-display text-base font-bold">{policy.display_name}</h3><span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{FEATURE_MODE_BADGE[policy.access_mode]}</span></div>
+          <p className="mt-1 text-xs text-muted-foreground">{policy.description}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{t("management.featureKey")}: <code>{policy.feature_key}</code>{policy.updated_at ? ` · ${t("management.featureUpdated")} ${new Date(policy.updated_at).toLocaleString(language === "el" ? "el-GR" : "en-US")}` : ""}{policy.updated_by_email ? ` · ${policy.updated_by_email}` : ""}</p>
+        </div>
+        <label className="shrink-0 text-xs text-muted-foreground">{t("management.featureAccessMode")}
+          <select value={policy.access_mode} disabled={update.isPending} onChange={(e) => update.mutate({ featureKey: policy.feature_key, accessMode: e.target.value as FeatureAccessMode })} className="mt-1 block w-full min-w-44 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground">
+            {(["disabled","admins_only","selected_users","everyone"] as FeatureAccessMode[]).map((mode) => <option key={mode} value={mode}>{modeLabel(mode)}</option>)}
+          </select>
+        </label>
+      </div>
+      {policy.access_mode === "selected_users" && <SelectedFeatureUsersEditor policy={policy} />}
+    </article>)}
+  </div>;
+}
+
 function ManagementPage() {
   const { t } = useI18n();
   const { user, loading } = useAuth();
-  const { isAdmin, canViewUsers } = useModeration();
+  const { isAdmin, isSuperAdmin, canViewUsers } = useModeration();
   const [section, setSection] = useState<Section>("overview");
   const [initialUserId, setInitialUserId] = useState<string | null>(null);
   const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">{isAdmin ? t("management.adminTitle") : t("management.staffTitle")}</h1><p className="text-[11px] text-muted-foreground md:text-xs">{isAdmin ? t("management.adminSubtitle") : t("management.staffSubtitle")}</p></div>;
@@ -221,6 +348,6 @@ function ManagementPage() {
 
   if (!loading && (!user || !canViewUsers)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.restricted")} <Link to="/" className="text-accent hover:underline">{t("management.backFeed")}</Link></div></main></AppShell>;
 
-  const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "models" ? t("management.models") : section === "users" ? t("management.usersModeration") : t("management.blockedRegistrations");
-  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}</main></AppShell>;
+  const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "models" ? t("management.models") : section === "users" ? t("management.usersModeration") : section === "features" ? t("management.featureAccess") : t("management.blockedRegistrations");
+  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}{!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}</main></AppShell>;
 }

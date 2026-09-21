@@ -64,7 +64,8 @@ describe("Follow + Notifications v1 architecture", () => {
   test("Follow control stays visible when summary refresh fails", async () => {
     const component = await Bun.file("src/components/promptbeats/FollowCreatorControl.tsx").text();
     expect(component).not.toContain("if (!user || summary.isError) return null");
-    expect(component).toContain("if (!user) return null");
+    expect(component).not.toMatch(/summary\.isError[^\n]*return null/);
+    expect(component).toContain('if (!user || !featureAccess.allowed) return null');
     expect(component).toContain("Ακολουθείς ✓");
     expect(component).toContain("summary.refetch()");
   });

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
@@ -97,13 +98,14 @@ function FollowListDialog({
 
 export function FollowCreatorControl({ userId }: { userId: string }) {
   const { user } = useAuth();
+  const featureAccess = useFeatureAccess("follow_creators");
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const [listMode, setListMode] = useState<"followers" | "following" | null>(null);
   const queryKey = ["creator-follow-summary", user?.id ?? "anon", userId];
   const summary = useQuery({
     queryKey,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && featureAccess.allowed,
     queryFn: () => getCreatorFollowSummary({ data: { userId } }),
     staleTime: 30_000,
   });
@@ -138,7 +140,7 @@ export function FollowCreatorControl({ userId }: { userId: string }) {
     },
   });
 
-  if (!user) return null;
+  if (!user || !featureAccess.allowed) return null;
   const data = summary.data;
   const hasKnownState = Boolean(data);
 
