@@ -828,6 +828,7 @@ BEGIN
           UNION ALL
           SELECT e.created_at FROM public.moderation_case_events e
           WHERE e.case_id=c.id AND e.creator_visible
+            AND e.event_type NOT IN ('creator_contacted','staff_message_sent','creator_reply')
         ) incoming
         WHERE incoming.created_at>COALESCE(rd.last_read_at,'epoch'::timestamptz)
       )
