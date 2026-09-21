@@ -18,6 +18,7 @@ import {
 import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
@@ -447,6 +448,7 @@ function QualityPanel({
   onQualityCheckModelChange,
   qualityCheckResultModel,
   showQualityCheckModelSelector,
+  featureAvailable,
 }: {
   quality: QualityReport | null;
   checking: boolean;
@@ -463,6 +465,7 @@ function QualityPanel({
   onQualityCheckModelChange: (model: string) => void;
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
+  featureAvailable: boolean;
 }) {
   const { t } = useI18n();
   const mode = quality ? "recheck" : "check";
@@ -473,17 +476,18 @@ function QualityPanel({
       {checking && <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("quality.checking")}</p>}
       {!checking && (
         <div className="mt-4 space-y-3">
-          {modelAccessLoading && <p className="text-xs text-muted-foreground">{t("quality.loadingModels")}</p>}
-          {modelAccessUnavailable && <p className="text-xs text-red-400">{t("quality.noModel")}</p>}
-          {modelAccessReady && !modelAccessUnavailable && showQualityCheckModelSelector && (
+          {!featureAvailable && <p className="text-xs text-muted-foreground">Quality Check is currently unavailable.</p>}
+          {featureAvailable && modelAccessLoading && <p className="text-xs text-muted-foreground">{t("quality.loadingModels")}</p>}
+          {featureAvailable && modelAccessUnavailable && <p className="text-xs text-red-400">{t("quality.noModel")}</p>}
+          {featureAvailable && modelAccessReady && !modelAccessUnavailable && showQualityCheckModelSelector && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground"><span>{t("quality.checkWith")}</span><select aria-label={t("quality.model")} value={qualityCheckModel} onChange={(e) => onQualityCheckModelChange(e.target.value)} className="max-w-[13rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{availableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
           )}
-          {modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && <p className="text-xs text-muted-foreground">{t("quality.checkWith")} {availableModels.find((item) => item.id === qualityCheckModel)?.label ?? aiModelLabel(qualityCheckModel)}</p>}
-          {confirm === mode ? (
+          {featureAvailable && modelAccessReady && !modelAccessUnavailable && !showQualityCheckModelSelector && <p className="text-xs text-muted-foreground">{t("quality.checkWith")} {availableModels.find((item) => item.id === qualityCheckModel)?.label ?? aiModelLabel(qualityCheckModel)}</p>}
+          {featureAvailable && (confirm === mode ? (
             <ConfirmBox message={quality ? t("quality.confirmAgain") : t("quality.confirmFirst")} confirmLabel={quality ? t("quality.checkAgain") : t("quality.check")} onConfirm={onCheck} onCancel={() => setConfirm(null)} />
           ) : (
             <CostButton label={quality ? t("quality.checkAgainCost") : t("quality.checkCost")} busy={false} busyLabel="" disabled={modelAccessLoading || modelAccessUnavailable} onClick={() => setConfirm(mode)} />
-          )}
+          ))}
           {checkError && <p className="text-xs text-red-400">{checkError}</p>}
         </div>
       )}
@@ -506,6 +510,10 @@ function ResultSection({ title, value, open, onToggle, onChange, rows }: { title
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
+  const generatorFeature = useFeatureAccess("ai_generator");
+  const qualityFeature = useFeatureAccess("quality_check");
+  const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
+  const musicLabFeature = useFeatureAccess("ai_music_lab");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
@@ -1035,6 +1043,7 @@ function GeneratePage() {
   };
 
   const generate = async () => {
+    if (!generatorFeature.allowed) { setStatus("AI Generator is currently unavailable."); return; }
     if (busy || jobId || checking || qualityActionId) return;
     setBusy(true); setStatus(t("generator.starting")); setSaved(false); setResult(null); setQuality(null); setGenerationResultModel(null); setQualityCheckResultModel(null); setSongContext(null); setApplied({}); setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID(); pendingKey.current = key;
@@ -1073,6 +1082,7 @@ function GeneratePage() {
   };
 
   const runCheck = async () => {
+    if (!qualityFeature.allowed) { setCheckError("Quality Check is currently unavailable."); return; }
     if (checking || qualityActionId) return;
     const target = resultRef.current; if (!target) return;
     const idempotencyKey = pendingQualityKey.current ?? crypto.randomUUID(); pendingQualityKey.current = idempotencyKey; setConfirm(null); setChecking(true); setCheckError(null);
@@ -1118,7 +1128,7 @@ function GeneratePage() {
   };
 
   const openMusicLab = () => {
-    if (!result || typeof window === "undefined") return;
+    if (!musicLabFeature.allowed || !result || typeof window === "undefined") return;
     window.sessionStorage.setItem(AI_MUSIC_LAB_TRANSFER_KEY, JSON.stringify({
       title: result.title,
       musicStyle: result.tags,
@@ -1244,7 +1254,7 @@ function GeneratePage() {
   };
 
   const openLyricsWorkspace = () => {
-    if (!result) return;
+    if (!lyricsWorkspaceFeature.allowed || !result) return;
     if (revisionMeta) {
       void navigate({
         to: "/generate",
@@ -1327,6 +1337,13 @@ function GeneratePage() {
   };
 
   if (search.workspace === "lyrics") {
+    if (!lyricsWorkspaceFeature.allowed) {
+      return (
+        <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
+          <div className="px-4 py-6 md:px-8"><div className="mx-auto max-w-4xl rounded-2xl border border-white/10 p-5 text-sm text-muted-foreground">Lyrics Workspace is currently unavailable.</div></div>
+        </AppShell>
+      );
+    }
     return (
       <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
         <div className="px-4 py-6 pb-[180px] md:px-8 md:pb-[120px]">
@@ -1349,7 +1366,7 @@ function GeneratePage() {
     );
   }
 
-  if (workspaceFreshOpen && freshWorkspaceSong) {
+  if (workspaceFreshOpen && freshWorkspaceSong && lyricsWorkspaceFeature.allowed) {
     return (
       <AppShell header={<div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">AI Prompt Studio</span></div>}>
         <div className="px-4 py-6 pb-[180px] md:px-8 md:pb-[120px]">
@@ -1579,7 +1596,7 @@ function GeneratePage() {
                 <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("generator.generateWith")}</span><select aria-label={t("generator.aiModel")} value={generationModel} onChange={(e) => { setGenerationModel(e.target.value); setGenerationModelChosen(true); }} className="max-w-[15rem] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">{generationAvailableModels.map((m) => <option key={m.id} value={m.id} className="bg-[#0a0a0c]">{m.label}</option>)}</select></label>
               ) : modelAccessLoading ? <p className="text-xs text-muted-foreground">{t("generator.loadingModels")}</p> : generationModelAccessUnavailable ? <p className="text-xs text-red-400">{t("generator.noModel")}</p> : <p className="text-xs text-muted-foreground">{t("generator.generationModel", { model: registryModelLabel(generationModel) })}</p>}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <button onClick={generate} disabled={busy || checking || blocked || !ready || modelAccessLoading || generationModelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
+                <button onClick={generate} disabled={!generatorFeature.allowed || busy || checking || blocked || !ready || modelAccessLoading || generationModelAccessUnavailable} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} {t("generator.generate")}</button>
                 <span className="text-xs text-muted-foreground">{blocked ? t("generator.tryAgainMinutes", { minutes: minutesLeft }) : t("generator.generationsRemaining", { remaining, limit: HOURLY_LIMIT })}</span>
               </div>
             </div>
@@ -1611,15 +1628,15 @@ function GeneratePage() {
               <ResultSection title={t("generator.result.songTitle")} value={result.title} open={open.title} onToggle={() => setOpen((p) => ({ ...p, title: !p.title }))} onChange={(v) => setResult({ ...result, title: v })} rows={2} />
               <ResultSection title={resultTagsLabel} value={result.tags} open={open.tags} onToggle={() => setOpen((p) => ({ ...p, tags: !p.tags }))} onChange={(v) => setResult({ ...result, tags: v })} rows={4} />
               <ResultSection title={t("generator.result.lyricsStructure")} value={result.lyrics} open={open.lyrics} onToggle={() => setOpen((p) => ({ ...p, lyrics: !p.lyrics }))} onChange={(v) => setResult({ ...result, lyrics: v })} rows={18} />
-              <button type="button" onClick={openLyricsWorkspace} className="flex w-full items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent/10">
+              {lyricsWorkspaceFeature.allowed && <button type="button" onClick={openLyricsWorkspace} className="flex w-full items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent/10">
                 <Sparkles className="h-4 w-4" />{t("lyricsWorkspace.open")}
-              </button>
+              </button>}
               <ResultSection title={t("generator.result.producerNote")} value={result.note} open={open.note} onToggle={() => setOpen((p) => ({ ...p, note: !p.note }))} onChange={(v) => setResult({ ...result, note: v })} rows={5} />
-              {hasAdminInputBypass && (
+              {musicLabFeature.allowed && (
                 <button onClick={openMusicLab} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"><Wand2 className="h-4 w-4" />{appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}</button>
               )}
               {!revisionMeta && !workspaceResultSaved && <button onClick={openSaveDialog} disabled={saved} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">{saved ? <Check className="h-4 w-4 text-accent" /> : <Save className="h-4 w-4" />}{saved ? t("generator.savedLibrary") : t("generator.saveLibrary")}</button>}
-              <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} />
+              <QualityPanel quality={quality} checking={checking} onCheck={runCheck} checkError={checkError} confirm={confirm} setConfirm={setConfirm} state={applyState} qualityCheckModel={qualityCheckModel} availableModels={qualityAvailableModels} modelAccessLoading={modelAccessLoading} modelAccessReady={modelAccessReady} modelAccessUnavailable={qualityModelAccessUnavailable} onQualityCheckModelChange={(model) => { setQualityCheckModel(model); setQualityCheckModelChosen(true); }} qualityCheckResultModel={qualityCheckResultModel} showQualityCheckModelSelector={showQualityCheckModelSelector} featureAvailable={qualityFeature.allowed} />
             </div>
           )}
         </div>
