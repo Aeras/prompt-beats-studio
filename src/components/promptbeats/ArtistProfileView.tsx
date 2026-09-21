@@ -61,6 +61,9 @@ type Track = {
   allow_download?: boolean;
   duration_seconds?: number | null;
   is_published?: boolean;
+  prompt_is_public?: boolean;
+  lyrics_is_public?: boolean;
+  contains_explicit_lyrics?: boolean;
   created_at?: string;
 };
 
