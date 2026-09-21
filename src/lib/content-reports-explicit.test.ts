@@ -123,7 +123,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
     const ui = await source("src/routes/management.tsx");
     expect(ui).toContain('["reports", t("management.reports"), Flag]');
     expect(ui).toContain(': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]');
-    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} />');
+    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={search.report} />');
     expect(ui).toContain('isSuperAdmin && section === "features"');
   });
 
@@ -221,6 +221,29 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(all).not.toContain("profanity");
     expect(all).not.toContain("swear");
     expect(sqlFunction(sql, "submit_track_report")).not.toContain("contains_explicit_lyrics");
+  });
+
+
+  test("report queue uses service-role staff RPCs to avoid request-scoped auth drift", async () => {
+    const server = await source("src/lib/content-reports.functions.ts");
+    const fix = await source("supabase/migrations/20260922003000_reports_staff_notifications_fix.sql");
+    expect(server).toContain('supabaseAdmin');
+    expect(server).toContain('list_content_reports_for_staff');
+    expect(server).toContain('get_content_report_for_staff');
+    expect(fix).toContain('CREATE OR REPLACE FUNCTION public.list_content_reports_for_staff');
+    expect(fix).toContain('CREATE OR REPLACE FUNCTION public.get_content_report_for_staff');
+    expect(fix).toContain('REVOKE ALL ON FUNCTION public.list_content_reports_for_staff(uuid,text) FROM PUBLIC,anon,authenticated');
+    expect(fix).toContain('GRANT EXECUTE ON FUNCTION public.list_content_reports_for_staff(uuid,text) TO service_role');
+  });
+
+  test("new reports create staff notifications and backfill open reports idempotently", async () => {
+    const fix = await source("supabase/migrations/20260922003000_reports_staff_notifications_fix.sql");
+    expect(fix).toContain("type IN ('new_track','new_follower','new_report')");
+    expect(fix).toContain("CREATE TRIGGER content_reports_notify_staff");
+    expect(fix).toContain("'new_report:'||NEW.id::text||':'||ur.user_id::text");
+    expect(fix).toContain("r.status IN ('open','under_review')");
+    expect(fix).toContain("ON CONFLICT(event_key) DO NOTHING");
+    expect(fix).toContain("public.app_role_rank(ur.role::text)>=2");
   });
 
   test("Reporting and Explicit are not added to Feature Access", async () => {

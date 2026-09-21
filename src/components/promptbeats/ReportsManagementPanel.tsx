@@ -140,16 +140,18 @@ function ReportDetail({
   return typeof document === "undefined" ? content : createPortal(content, document.body);
 }
 
-export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
+export function ReportsManagementPanel({ isAdmin, initialReportId }: { isAdmin: boolean; initialReportId?: string }) {
   const { t, language } = useI18n();
   const el = language === "el";
   const [scope, setScope] = useState<ReportScope>("open");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(initialReportId ?? null);
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
     queryFn: () => listContentReports({ data: { scope } }),
     staleTime: 15_000,
     refetchInterval: 30_000,
+    refetchOnWindowFocus: "always",
+    retry: 1,
   });
 
   const scopeLabel = (value: ReportScope) =>

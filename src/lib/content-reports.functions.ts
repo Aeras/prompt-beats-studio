@@ -90,7 +90,9 @@ export const listContentReports = createServerFn({ method: "POST" })
     scope: z.enum(["open","under_review","resolved","all"]).default("open"),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await (context.supabase as any).rpc("list_content_reports", {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await (supabaseAdmin as any).rpc("list_content_reports_for_staff", {
+      _actor: context.userId,
       _scope: data.scope,
     });
     if (error) throw new Error(error.message);
@@ -101,7 +103,9 @@ export const getContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ reportId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await (context.supabase as any).rpc("get_content_report", {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await (supabaseAdmin as any).rpc("get_content_report_for_staff", {
+      _actor: context.userId,
       _report_id: data.reportId,
     });
     if (error) throw new Error(error.message);

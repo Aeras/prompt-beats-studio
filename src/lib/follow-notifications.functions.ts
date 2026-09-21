@@ -30,11 +30,12 @@ export type FollowProfile = {
 
 export type NotificationItem = {
   id: string;
-  type: "new_track" | "new_follower";
+  type: "new_track" | "new_follower" | "new_report";
   createdAt: string;
   readAt: string | null;
   actor: FollowProfile | null;
   track: { id: string; title: string } | null;
+  reportId: string | null;
   targetAvailable: boolean;
 };
 
@@ -178,7 +179,7 @@ export const listNotifications = createServerFn({ method: "POST" })
     const to = from + PAGE_SIZE;
     const { data: rows, error } = await (context.supabase as any)
       .from("notifications")
-      .select("id, type, actor_user_id, track_id, created_at, read_at")
+      .select("id, type, actor_user_id, track_id, report_id, created_at, read_at")
       .order("created_at", { ascending: false })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -213,7 +214,11 @@ export const listNotifications = createServerFn({ method: "POST" })
       const actor = row.actor_user_id ? toProfile(actorMap.get(row.actor_user_id)) : null;
       const trackRow = row.track_id ? trackMap.get(row.track_id) : null;
       const track = trackRow ? { id: trackRow.id, title: trackRow.title } : null;
-      const targetAvailable = row.type === "new_track" ? Boolean(track) : Boolean(actor);
+      const reportId = row.report_id ?? null;
+      const targetAvailable =
+        row.type === "new_track" ? Boolean(track) :
+        row.type === "new_report" ? Boolean(reportId) :
+        Boolean(actor);
       return {
         id: row.id,
         type: row.type,
@@ -221,6 +226,7 @@ export const listNotifications = createServerFn({ method: "POST" })
         readAt: row.read_at ?? null,
         actor,
         track,
+        reportId,
         targetAvailable,
       };
     });
