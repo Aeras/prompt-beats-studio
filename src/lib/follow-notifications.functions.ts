@@ -30,11 +30,12 @@ export type FollowProfile = {
 
 export type NotificationItem = {
   id: string;
-  type: "new_track" | "new_follower";
+  type: "new_track" | "new_follower" | "new_report";
   createdAt: string;
   readAt: string | null;
   actor: FollowProfile | null;
   track: { id: string; title: string } | null;
+  report: { id: string; title: string; category: string; status: string } | null;
   targetAvailable: boolean;
 };
 
@@ -178,7 +179,7 @@ export const listNotifications = createServerFn({ method: "POST" })
     const to = from + PAGE_SIZE;
     const { data: rows, error } = await (context.supabase as any)
       .from("notifications")
-      .select("id, type, actor_user_id, track_id, created_at, read_at")
+      .select("id, type, actor_user_id, track_id, report_id, created_at, read_at")
       .order("created_at", { ascending: false })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -186,6 +187,7 @@ export const listNotifications = createServerFn({ method: "POST" })
     const pageRows = (rows ?? []).slice(0, PAGE_SIZE);
     const actorIds = [...new Set(pageRows.map((row: any) => row.actor_user_id).filter(Boolean))];
     const trackIds = [...new Set(pageRows.map((row: any) => row.track_id).filter(Boolean))];
+    const reportIds = [...new Set(pageRows.map((row: any) => row.report_id).filter(Boolean))];
 
     const actorMap = new Map<string, any>();
     if (actorIds.length) {
@@ -209,11 +211,31 @@ export const listNotifications = createServerFn({ method: "POST" })
       }
     }
 
+    const reportMap = new Map<string, any>();
+    if (reportIds.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: reports, error: reportError } = await (supabaseAdmin.from("content_reports") as any)
+        .select("id, target_title, category, status")
+        .in("id", reportIds);
+      if (reportError) throw new Error(reportError.message);
+      for (const report of reports ?? []) reportMap.set(report.id, report);
+    }
+
     const notifications: NotificationItem[] = pageRows.map((row: any) => {
       const actor = row.actor_user_id ? toProfile(actorMap.get(row.actor_user_id)) : null;
       const trackRow = row.track_id ? trackMap.get(row.track_id) : null;
       const track = trackRow ? { id: trackRow.id, title: trackRow.title } : null;
-      const targetAvailable = row.type === "new_track" ? Boolean(track) : Boolean(actor);
+      const reportRow = row.report_id ? reportMap.get(row.report_id) : null;
+      const report = reportRow ? {
+        id: reportRow.id,
+        title: reportRow.target_title,
+        category: reportRow.category,
+        status: reportRow.status,
+      } : null;
+      const targetAvailable =
+        row.type === "new_track" ? Boolean(track) :
+        row.type === "new_follower" ? Boolean(actor) :
+        Boolean(report);
       return {
         id: row.id,
         type: row.type,
@@ -221,6 +243,7 @@ export const listNotifications = createServerFn({ method: "POST" })
         readAt: row.read_at ?? null,
         actor,
         track,
+        report,
         targetAvailable,
       };
     });

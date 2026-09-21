@@ -52,6 +52,9 @@ jobs:
       - name: Reports and Explicit Lyrics tests
         run: bun test src/lib/content-reports-explicit.test.ts
 
+      - name: Report queue and staff notification tests
+        run: bun test src/lib/report-queue-notifications.test.ts
+
       - name: Moderation Cases and Appeals tests
         run: bun test src/lib/moderation-cases.test.ts
 
