@@ -61,6 +61,30 @@ describe("Follow + Notifications v1 architecture", () => {
     expect(sql).toContain("type text NOT NULL CHECK (type IN ('new_track', 'new_follower'))");
   });
 
+  test("report notification migration adds staff-only new_report events and backfills open reports", async () => {
+    const sql = await Bun.file("supabase/migrations/20260921223000_report_notifications_v1.sql").text();
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS report_id uuid REFERENCES public.content_reports");
+    expect(sql).toContain("CHECK (type IN ('new_track','new_follower','new_report'))");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.notify_staff_on_content_report()");
+    expect(sql).toContain("public.app_role_rank(ur.role::text) >= 2");
+    expect(sql).toContain("ur.moderation_status::text='active'");
+    expect(sql).toContain("public.can_use_feature(ur.user_id,'notifications')");
+    expect(sql).toContain("'new_report:' || NEW.id::text || ':' || ur.user_id::text");
+    expect(sql).toContain("WHERE r.status IN ('open','under_review')");
+    expect(sql).toContain("ON CONFLICT DO NOTHING");
+  });
+
+  test("notification UI supports moderation report events without exposing reporter identity", async () => {
+    const server = await Bun.file("src/lib/follow-notifications.functions.ts").text();
+    const ui = await Bun.file("src/components/promptbeats/NotificationCenter.tsx").text();
+    expect(server).toContain('"new_track" | "new_follower" | "new_report"');
+    expect(server).toContain("report_id");
+    expect(server).toContain('from("content_reports")');
+    expect(ui).toContain('item.type === "new_report"');
+    expect(ui).toContain("/management?reportId=");
+    expect(ui).toContain("Νέα αναφορά");
+  });
+
   test("Follow control stays visible when summary refresh fails", async () => {
     const component = await Bun.file("src/components/promptbeats/FollowCreatorControl.tsx").text();
     expect(component).not.toContain("if (!user || summary.isError) return null");
