@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,14 +45,13 @@ function ReportDetail({
   const [status, setStatus] = useState<ReportStatus>("open");
   const [resolution, setResolution] = useState("");
   const [notes, setNotes] = useState("");
-  const [initialized, setInitialized] = useState(false);
 
-  if (report && !initialized) {
-    setInitialized(true);
+  useEffect(() => {
+    if (!report) return;
     setStatus(report.status);
     setResolution(report.resolution ?? "");
     setNotes(report.moderator_notes ?? "");
-  }
+  }, [report]);
 
   const review = useMutation({
     mutationFn: () => reviewContentReport({ data: {
