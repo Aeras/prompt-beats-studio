@@ -4,6 +4,8 @@ import { ExternalLink } from "lucide-react";
 
 import { getTrackShareByToken } from "@/lib/track-sharing.functions";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
+import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { getTrackEmbedUrl } from "@/lib/track-sources";
 import { useI18n } from "@/i18n";
 import artFallback from "@/assets/art-3.jpg";
@@ -80,13 +82,13 @@ function SharedTrackPage() {
             )}
 
             <div className="space-y-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</p>
+              <div className="flex items-center gap-2"><p className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</p>{track.contains_explicit_lyrics && <ExplicitBadge />}</div>
               <h1 className="font-display text-3xl font-bold sm:text-4xl">{track.title}</h1>
               <p className="text-sm text-muted-foreground">{language === "el" ? "Από" : "By"} <span className="text-accent">{artistName}</span></p>
-              <Link to="/track/$id" params={{ id: track.id }} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground hover:border-accent/50 hover:text-accent">
+<div className="flex flex-wrap items-center gap-2">              <Link to="/track/$id" params={{ id: track.id }} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground hover:border-accent/50 hover:text-accent">
                 <ExternalLink className="h-4 w-4" />
                 {language === "el" ? "Άνοιγμα στο PromptBeats" : "Open in PromptBeats"}
-              </Link>
+              </Link><ReportTrackControl trackId={track.id} ownerId={track.user_id} isPublished iconOnly={false} /></div>
             </div>
           </div>
         </div>
