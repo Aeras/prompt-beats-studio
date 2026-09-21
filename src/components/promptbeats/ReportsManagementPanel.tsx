@@ -12,7 +12,7 @@ import {
   type ReportScope,
   type ReportStatus,
 } from "@/lib/content-reports.functions";
-import { getContentReportClient, listContentReportsClient } from "@/lib/content-reports.client";
+import { getContentReportClient, listContentReportsClient } from "@/lib/content-reports.browser";
 import { takeModerationCase } from "@/lib/moderation-cases.functions";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { cn } from "@/lib/utils";
