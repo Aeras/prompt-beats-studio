@@ -936,6 +936,7 @@ export type Database = {
           id: string
           read_at: string | null
           recipient_user_id: string
+          report_id: string | null
           track_id: string | null
           type: string
         }
@@ -946,6 +947,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           recipient_user_id: string
+          report_id?: string | null
           track_id?: string | null
           type: string
         }
@@ -956,6 +958,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           recipient_user_id?: string
+          report_id?: string | null
           track_id?: string | null
           type?: string
         }
@@ -986,6 +989,13 @@ export type Database = {
             columns: ["recipient_user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "content_reports"
             referencedColumns: ["id"]
           },
           {
