@@ -927,7 +927,6 @@ export type Database = {
           audio_type: string
           audio_url: string
           cover_url: string | null
-          contains_explicit_lyrics: boolean
           created_at: string
           created_with: string | null
           duration_seconds: number | null
@@ -1358,6 +1357,7 @@ export type Database = {
         Args: never
         Returns: {
           allow_download: boolean
+          contains_explicit_lyrics: boolean
           art_url: string
           audio_type: string
           audio_url: string
