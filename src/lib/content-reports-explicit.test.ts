@@ -128,7 +128,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
   });
 
   test("report queue uses authenticated browser RPC and fails instead of hanging indefinitely", async () => {
-    const client = await source("src/lib/content-reports.client.ts");
+    const client = await source("src/lib/content-reports.browser.ts");
     const ui = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
     expect(client).toContain('rpc("list_content_reports"');
     expect(client).toContain('rpc("get_content_report"');
