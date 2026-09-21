@@ -8,12 +8,14 @@ import { toast } from "sonner";
 import { ModerationCaseThread } from "@/components/promptbeats/ModerationCaseThread";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import {
-  getContentReport,
-  listContentReports,
   type ContentReport,
   type ReportScope,
   type ReportStatus,
 } from "@/lib/content-reports.functions";
+import {
+  getContentReportClient,
+  listContentReportsClient,
+} from "@/lib/content-reports.client";
 import { takeModerationCase } from "@/lib/moderation-cases.functions";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -41,7 +43,7 @@ function ReportDetail({
   const qc = useQueryClient();
   const { data: report, isLoading, isError } = useQuery({
     queryKey: ["content-report", reportId],
-    queryFn: () => getContentReport({ data: { reportId } }),
+    queryFn: () => getContentReportClient(reportId),
   });
 
   const take = useMutation({
@@ -147,7 +149,7 @@ export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
-    queryFn: () => listContentReports({ data: { scope } }),
+    queryFn: () => listContentReportsClient(scope),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
