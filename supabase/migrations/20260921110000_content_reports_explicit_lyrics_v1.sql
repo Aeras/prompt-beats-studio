@@ -372,7 +372,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $$
   WITH candidates AS MATERIALIZED (
     SELECT
       t.id,t.user_id,t.title,t.genre,
@@ -397,7 +397,7 @@ AS $
   ) counts
   ORDER BY (counts.likes*3+c.plays) DESC,c.created_at DESC,c.id ASC
   LIMIT 100;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.list_trending_tracks() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.list_trending_tracks() TO service_role;
@@ -407,7 +407,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $$
 DECLARE
   v_link public.track_share_links%ROWTYPE;
   v_track public.tracks%ROWTYPE;
@@ -479,6 +479,6 @@ BEGIN
     'artist',v_artist
   );
 END;
-$;
+$$;
 
 COMMIT;
