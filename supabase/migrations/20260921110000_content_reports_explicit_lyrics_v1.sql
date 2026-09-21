@@ -1,0 +1,338 @@
+-- PromptBeats Reports System + Explicit Lyrics V1
+BEGIN;
+
+ALTER TABLE public.tracks
+  ADD COLUMN IF NOT EXISTS contains_explicit_lyrics boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.content_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  target_type text NOT NULL CHECK (target_type IN ('track')),
+  target_id uuid NOT NULL,
+  target_owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  category text NOT NULL CHECK (category IN (
+    'copyright_ip',
+    'hate_discrimination',
+    'harassment_threats',
+    'sexual_inappropriate',
+    'impersonation',
+    'privacy_personal_info',
+    'illegal_content',
+    'spam_platform_abuse',
+    'other'
+  )),
+  details text,
+  supporting_url text,
+  status text NOT NULL DEFAULT 'open' CHECK (status IN (
+    'open',
+    'under_review',
+    'resolved_action_taken',
+    'resolved_no_violation',
+    'dismissed_abuse'
+  )),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  resolution text,
+  moderator_notes text,
+  CHECK (char_length(COALESCE(details,'')) <= 2000),
+  CHECK (char_length(COALESCE(supporting_url,'')) <= 1000),
+  CHECK (char_length(COALESCE(resolution,'')) <= 1000),
+  CHECK (char_length(COALESCE(moderator_notes,'')) <= 2000),
+  CHECK (category <> 'other' OR char_length(trim(COALESCE(details,''))) >= 5)
+);
+
+CREATE INDEX IF NOT EXISTS content_reports_target_idx
+  ON public.content_reports(target_type,target_id,created_at DESC);
+
+CREATE INDEX IF NOT EXISTS content_reports_status_idx
+  ON public.content_reports(status,created_at DESC);
+
+CREATE INDEX IF NOT EXISTS content_reports_reporter_recent_idx
+  ON public.content_reports(reporter_user_id,created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS content_reports_active_duplicate_idx
+  ON public.content_reports(reporter_user_id,target_type,target_id,category)
+  WHERE status IN ('open','under_review');
+
+ALTER TABLE public.content_reports ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.content_reports FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.content_reports TO service_role;
+
+CREATE OR REPLACE FUNCTION public.submit_track_report(
+  _track_id uuid,
+  _category text,
+  _details text DEFAULT NULL,
+  _supporting_url text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_actor uuid:=auth.uid();
+  v_owner uuid;
+  v_report_id uuid;
+  v_recent_count integer;
+BEGIN
+  IF v_actor IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+  PERFORM public._lock_user_security_state(v_actor);
+  IF NOT public.has_valid_account_state(v_actor) THEN RAISE EXCEPTION 'account is not available'; END IF;
+
+  IF _category NOT IN (
+    'copyright_ip','hate_discrimination','harassment_threats','sexual_inappropriate',
+    'impersonation','privacy_personal_info','illegal_content','spam_platform_abuse','other'
+  ) THEN RAISE EXCEPTION 'invalid report category'; END IF;
+
+  IF _category='other' AND char_length(trim(COALESCE(_details,''))) < 5 THEN
+    RAISE EXCEPTION 'details required';
+  END IF;
+
+  IF char_length(COALESCE(_details,'')) > 2000 OR char_length(COALESCE(_supporting_url,'')) > 1000 THEN
+    RAISE EXCEPTION 'report content too long';
+  END IF;
+
+  SELECT user_id INTO v_owner
+  FROM public.tracks
+  WHERE id=_track_id
+    AND is_published=true
+    AND moderation_status='active';
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'track not available'; END IF;
+  IF v_owner=v_actor THEN RAISE EXCEPTION 'cannot report own track'; END IF;
+
+  SELECT count(*)::integer INTO v_recent_count
+  FROM public.content_reports
+  WHERE reporter_user_id=v_actor AND created_at > now()-interval '1 hour';
+
+  IF v_recent_count >= 10 THEN RAISE EXCEPTION 'report rate limit exceeded'; END IF;
+
+  BEGIN
+    INSERT INTO public.content_reports(
+      reporter_user_id,target_type,target_id,target_owner_id,category,details,supporting_url
+    )
+    VALUES(
+      v_actor,'track',_track_id,v_owner,_category,
+      NULLIF(trim(COALESCE(_details,'')),''),
+      NULLIF(trim(COALESCE(_supporting_url,'')),'')
+    )
+    RETURNING id INTO v_report_id;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'duplicate active report';
+  END;
+
+  RETURN v_report_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_content_reports(
+  _scope text DEFAULT 'open'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_actor uuid:=auth.uid();
+  v_admin_level boolean;
+  v_result jsonb;
+BEGIN
+  IF v_actor IS NULL OR NOT public.has_moderation_capability('can_view_users') THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  IF _scope NOT IN ('open','under_review','resolved','all') THEN
+    RAISE EXCEPTION 'invalid report scope';
+  END IF;
+
+  v_admin_level:=public.current_user_is_admin_level();
+
+  SELECT COALESCE(jsonb_agg(row_data ORDER BY (row_data->>'created_at')::timestamptz DESC),'[]'::jsonb)
+  INTO v_result
+  FROM (
+    SELECT jsonb_strip_nulls(jsonb_build_object(
+      'id',r.id,
+      'target_type',r.target_type,
+      'target_id',r.target_id,
+      'target_owner_id',r.target_owner_id,
+      'category',r.category,
+      'details',r.details,
+      'supporting_url',r.supporting_url,
+      'status',r.status,
+      'created_at',r.created_at,
+      'reviewed_at',r.reviewed_at,
+      'reviewed_by',r.reviewed_by,
+      'resolution',r.resolution,
+      'moderator_notes',r.moderator_notes,
+      'track_title',t.title,
+      'track_is_published',t.is_published,
+      'track_moderation_status',t.moderation_status,
+      'creator_handle',owner_profile.handle,
+      'creator_display_name',owner_profile.display_name,
+      'creator_artist_alias',owner_profile.artist_alias,
+      'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END,
+      'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END,
+      'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END,
+      'reporter_display_name',CASE WHEN v_admin_level THEN reporter_profile.display_name ELSE NULL END
+    )) AS row_data
+    FROM public.content_reports r
+    JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+    LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
+    LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
+    LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
+    WHERE
+      _scope='all'
+      OR (_scope='open' AND r.status='open')
+      OR (_scope='under_review' AND r.status='under_review')
+      OR (_scope='resolved' AND r.status IN ('resolved_action_taken','resolved_no_violation','dismissed_abuse'))
+  ) q;
+
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_content_report(_report_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_actor uuid:=auth.uid();
+  v_admin_level boolean;
+  v_result jsonb;
+BEGIN
+  IF v_actor IS NULL OR NOT public.has_moderation_capability('can_view_users') THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  v_admin_level:=public.current_user_is_admin_level();
+
+  SELECT jsonb_strip_nulls(jsonb_build_object(
+    'id',r.id,
+    'target_type',r.target_type,
+    'target_id',r.target_id,
+    'target_owner_id',r.target_owner_id,
+    'category',r.category,
+    'details',r.details,
+    'supporting_url',r.supporting_url,
+    'status',r.status,
+    'created_at',r.created_at,
+    'reviewed_at',r.reviewed_at,
+    'reviewed_by',r.reviewed_by,
+    'resolution',r.resolution,
+    'moderator_notes',r.moderator_notes,
+    'track_title',t.title,
+    'track_is_published',t.is_published,
+    'track_moderation_status',t.moderation_status,
+    'creator_handle',owner_profile.handle,
+    'creator_display_name',owner_profile.display_name,
+    'creator_artist_alias',owner_profile.artist_alias,
+    'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END,
+    'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END,
+    'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END,
+    'reporter_display_name',CASE WHEN v_admin_level THEN reporter_profile.display_name ELSE NULL END
+  ))
+  INTO v_result
+  FROM public.content_reports r
+  JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+  LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
+  LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
+  LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
+  WHERE r.id=_report_id;
+
+  IF v_result IS NULL THEN RAISE EXCEPTION 'report not found'; END IF;
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.review_content_report(
+  _report_id uuid,
+  _status text,
+  _resolution text DEFAULT NULL,
+  _moderator_notes text DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_actor uuid:=auth.uid();
+  v_old_status text;
+  v_target_owner uuid;
+  v_target_id uuid;
+BEGIN
+  IF v_actor IS NULL OR NOT public.has_moderation_capability('can_view_users') THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  IF _status NOT IN ('open','under_review','resolved_action_taken','resolved_no_violation','dismissed_abuse') THEN
+    RAISE EXCEPTION 'invalid report status';
+  END IF;
+  IF char_length(COALESCE(_resolution,'')) > 1000 OR char_length(COALESCE(_moderator_notes,'')) > 2000 THEN
+    RAISE EXCEPTION 'review content too long';
+  END IF;
+
+  SELECT status,target_owner_id,target_id
+  INTO v_old_status,v_target_owner,v_target_id
+  FROM public.content_reports
+  WHERE id=_report_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'report not found'; END IF;
+
+  UPDATE public.content_reports
+  SET
+    status=_status,
+    reviewed_at=now(),
+    reviewed_by=v_actor,
+    resolution=NULLIF(trim(COALESCE(_resolution,'')),''),
+    moderator_notes=NULLIF(trim(COALESCE(_moderator_notes,'')),'')
+  WHERE id=_report_id;
+
+  INSERT INTO public.admin_audit_log(admin_user_id,target_user_id,action,details)
+  VALUES(
+    v_actor,
+    v_target_owner,
+    'REVIEW_CONTENT_REPORT',
+    jsonb_build_object(
+      'report_id',_report_id,
+      'target_type','track',
+      'target_id',v_target_id,
+      'previous_status',v_old_status,
+      'new_status',_status,
+      'resolution',NULLIF(trim(COALESCE(_resolution,'')),'')
+    )
+  );
+END;
+$$;
+
+ALTER TABLE public.admin_audit_log DROP CONSTRAINT IF EXISTS admin_audit_log_action_check;
+ALTER TABLE public.admin_audit_log ADD CONSTRAINT admin_audit_log_action_check CHECK (action IN (
+  'BLOCK_USER','UNBLOCK_USER','DELETE_USER','UPDATE_MODEL_ACCESS',
+  'BLOCK_REGISTRATION','UNBLOCK_REGISTRATION','ASSIGN_MODERATOR_ROLE',
+  'ASSIGN_SENIOR_MODERATOR_ROLE','REMOVE_MODERATOR_ROLE','CHANGE_MODERATOR_ROLE',
+  'SUSPEND_MODERATOR','REACTIVATE_MODERATOR','LOCK_TRACK','UNLOCK_TRACK','DELETE_TRACK',
+  'UPDATE_AI_MODEL','UPDATE_AI_MODEL_DEFAULT','ADD_AI_MODEL',
+  'UPDATE_DONATION_GLOBAL','UPDATE_DONATION_ACCESS',
+  'ASSIGN_ADMIN_ROLE','REMOVE_ADMIN_ROLE','ASSIGN_SUPER_ADMIN_ROLE','REMOVE_SUPER_ADMIN_ROLE',
+  'UPDATE_FEATURE_ACCESS_POLICY','ADD_FEATURE_ACCESS_USER','REMOVE_FEATURE_ACCESS_USER',
+  'REVIEW_CONTENT_REPORT'
+));
+
+REVOKE ALL ON FUNCTION public.submit_track_report(uuid,text,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.list_content_reports(text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.get_content_report(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.review_content_report(uuid,text,text,text) FROM PUBLIC,anon;
+
+GRANT EXECUTE ON FUNCTION public.submit_track_report(uuid,text,text,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.list_content_reports(text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.get_content_report(uuid) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.review_content_report(uuid,text,text,text) TO authenticated,service_role;
+
+COMMIT;
