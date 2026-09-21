@@ -96,7 +96,7 @@ async function readUsage(supabase: Supa, userId: string) {
 // it is never derived from client-supplied data and cannot apply to anonymous users
 // because requireSupabaseAuth guarantees an authenticated userId.
 async function isAdminUser(supabase: Supa, userId: string): Promise<boolean> {
-  const { data } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+  const { data } = await supabase.rpc("current_user_is_admin_level");
   return data === true;
 }
 
