@@ -196,7 +196,7 @@ export function ShareTrackButton({
   };
 
   const updateOwnerOption = async (kind: "prompt" | "lyrics", checked: boolean) => {
-    if (!isOwner || !shareId || optionBusy) return;
+    if (!sharingAccess.allowed || !isOwner || !shareId || optionBusy) return;
     const previousPrompt = includePrompt;
     const previousLyrics = includeLyrics;
     const nextPrompt = kind === "prompt" ? checked : includePrompt;
