@@ -246,4 +246,38 @@ describe("Reports System + Explicit Lyrics V1", () => {
       expect(el).toContain(`"${key}"`);
     }
   });
+  test("report queue reads directly from the authenticated Supabase client with a bounded wait", async () => {
+    const client = await source("src/lib/content-reports.client.ts");
+    const panel = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
+    expect(client).toContain('rpc("list_content_reports"');
+    expect(client).toContain('rpc("get_content_report"');
+    expect(client).toContain("Report request timed out.");
+    expect(panel).toContain("listContentReportsClient(scope)");
+    expect(panel).toContain("getContentReportClient(reportId)");
+    expect(panel).not.toContain("queryFn: () => listContentReports({ data: { scope } })");
+  });
+
+  test("new reports create privacy-preserving moderation notifications and support deep links", async () => {
+    const schema = await source("supabase/migrations/20260921233000_report_notifications_schema.sql");
+    const producer = await source("supabase/migrations/20260921233100_report_notifications_producer.sql");
+    const notifications = await source("src/lib/follow-notifications.functions.ts");
+    const ui = await source("src/components/promptbeats/NotificationCenter.tsx");
+    const management = await source("src/routes/management.tsx");
+
+    expect(schema).toContain("ADD COLUMN IF NOT EXISTS report_id uuid");
+    expect(schema).toContain("'new_report'");
+    expect(schema).toContain("has_moderation_capability('can_view_users')");
+    expect(producer).toContain("notify_staff_on_content_report");
+    expect(producer).toContain("actor_user_id");
+    expect(producer).toContain("NULL,");
+    expect(producer).toContain("app_role_rank(ur.role::text)>=2");
+    expect(producer).toContain("ON CONFLICT(event_key) DO NOTHING");
+    expect(producer).toContain("r.status IN ('open','under_review')");
+    expect(notifications).toContain('"new_report"');
+    expect(notifications).toContain("report_id");
+    expect(ui).toContain('item.type === "new_report"');
+    expect(ui).toContain("/management?section=reports&reportId=");
+    expect(management).toContain('requestedSection === "reports"');
+  });
+
 });
