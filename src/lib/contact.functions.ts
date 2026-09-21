@@ -37,16 +37,15 @@ export const sendContactForm = createServerFn({ method: "POST" })
     consumeRateLimit(data.email);
 
     try {
-      const { sendContactEmailViaLovable } = await import("@/lib/contact-email.server");
-      await sendContactEmailViaLovable(
-        {
+      const { sendContactEmailViaSmtp } = await import("@/lib/contact-email.server");
+      await sendContactEmailViaSmtp({
+
           email: data.email,
           alias: data.alias,
           subject: data.subject,
           message: data.message,
-        },
-        `contact-${crypto.randomUUID()}`,
-      );
+        
+      });
       return { sent: true };
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Too many contact requests")) throw error;
