@@ -123,8 +123,28 @@ describe("Reports System + Explicit Lyrics V1", () => {
     const ui = await source("src/routes/management.tsx");
     expect(ui).toContain('["reports", t("management.reports"), Flag]');
     expect(ui).toContain(': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]');
-    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} />');
+    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />');
     expect(ui).toContain('isSuperAdmin && section === "features"');
+  });
+
+  test("report queue uses authenticated browser RPC and fails instead of hanging indefinitely", async () => {
+    const client = await source("src/lib/content-reports.browser.ts");
+    const ui = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
+    expect(client).toContain('rpc("list_content_reports"');
+    expect(client).toContain('rpc("get_content_report"');
+    expect(client).toContain("Report request timed out.");
+    expect(ui).toContain("listContentReportsClient(scope)");
+    expect(ui).toContain("getContentReportClient(reportId)");
+  });
+
+  test("report notifications deep-link directly into the requested moderation report", async () => {
+    const management = await source("src/routes/management.tsx");
+    const reports = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
+    expect(management).toContain('params.get("reportId")');
+    expect(management).toContain('setSection("reports")');
+    expect(management).toContain("initialReportId={initialReportId}");
+    expect(reports).toContain("initialReportId");
+    expect(reports).toContain("setSelectedReportId(initialReportId)");
   });
 
   test("Management UI only renders Reporter column for Admin-level users", async () => {

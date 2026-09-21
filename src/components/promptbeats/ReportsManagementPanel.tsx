@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,12 +8,11 @@ import { toast } from "sonner";
 import { ModerationCaseThread } from "@/components/promptbeats/ModerationCaseThread";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import {
-  getContentReport,
-  listContentReports,
   type ContentReport,
   type ReportScope,
   type ReportStatus,
 } from "@/lib/content-reports.functions";
+import { getContentReportClient, listContentReportsClient } from "@/lib/content-reports.browser";
 import { takeModerationCase } from "@/lib/moderation-cases.functions";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -41,7 +40,7 @@ function ReportDetail({
   const qc = useQueryClient();
   const { data: report, isLoading, isError } = useQuery({
     queryKey: ["content-report", reportId],
-    queryFn: () => getContentReport({ data: { reportId } }),
+    queryFn: () => getContentReportClient(reportId),
   });
 
   const take = useMutation({
@@ -140,14 +139,17 @@ function ReportDetail({
   return typeof document === "undefined" ? content : createPortal(content, document.body);
 }
 
-export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
+export function ReportsManagementPanel({ isAdmin, initialReportId }: { isAdmin: boolean; initialReportId?: string | null }) {
   const { t, language } = useI18n();
   const el = language === "el";
   const [scope, setScope] = useState<ReportScope>("open");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(initialReportId ?? null);
+  useEffect(() => {
+    if (initialReportId) setSelectedReportId(initialReportId);
+  }, [initialReportId]);
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
-    queryFn: () => listContentReports({ data: { scope } }),
+    queryFn: () => listContentReportsClient(scope),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
