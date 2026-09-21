@@ -43,6 +43,9 @@ jobs:
       - name: Super Admin Phase A tests
         run: bun test src/lib/super-admin-phase-a.test.ts
 
+      - name: Feature Access Phase B tests
+        run: bun test src/lib/feature-access.test.ts
+
       - name: Build
         run: bun run build
 
