@@ -73,6 +73,30 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.record_track_public_share(_track_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN; END IF;
+  IF NOT public.current_user_can_use_feature('sharing_public_links') THEN RETURN; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.tracks
+    WHERE id=_track_id
+      AND is_published=true
+      AND moderation_status='active'
+      AND user_id<>auth.uid()
+  ) THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.track_share_events(track_id,shared_by)
+  VALUES(_track_id,auth.uid());
+END;
+$;
+
 CREATE OR REPLACE FUNCTION public.update_track_share_link(
   _share_id uuid,_include_prompt boolean,_include_lyrics boolean
 )
