@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   EXPORT_SCHEMA_VERSION,
   type ExportPromptRecord,
@@ -72,6 +73,7 @@ export const getPromptExportSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => promptExportInput.parse(input))
   .handler(async ({ data, context }): Promise<PromptExportSource> => {
+    await requireFeatureAccess(context.supabase, "export_center");
     const { data: prompt, error } = await context.supabase
       .from("saved_prompts")
       .select(promptSelect)
@@ -107,6 +109,7 @@ export const getProjectExportSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => projectExportInput.parse(input))
   .handler(async ({ data, context }): Promise<ProjectExportSource> => {
+    await requireFeatureAccess(context.supabase, "export_center");
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
       .select("name, creation_notes, created_at, updated_at")
