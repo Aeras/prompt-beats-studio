@@ -1,0 +1,254 @@
+import { describe, expect, test } from "bun:test";
+
+const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
+const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
+
+const CANONICAL_KEYS = [
+  "ai_generator",
+  "quality_check",
+  "ai_music_lab",
+  "song_analyzer",
+  "lyrics_workspace",
+  "smart_presets",
+  "export_center",
+  "track_uploads",
+  "sharing_public_links",
+  "playlists",
+  "favorites",
+  "likes",
+  "follow_creators",
+  "notifications",
+] as const;
+
+async function source(path: string) {
+  return Bun.file(path).text();
+}
+
+function functionBlock(sql: string, name: string) {
+  const start = sql.indexOf(`FUNCTION public.${name}`);
+  expect(start).toBeGreaterThan(-1);
+  const next = sql.indexOf("CREATE OR REPLACE FUNCTION public.", start + 20);
+  return sql.slice(start, next === -1 ? sql.length : next);
+}
+
+describe("Feature Access V2 — 14 features", () => {
+  test("canonical TypeScript registry contains exactly 14 unique feature keys", async () => {
+    const code = await source("src/lib/feature-access.functions.ts");
+    const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
+    expect(match).not.toBeNull();
+    const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
+    expect(keys).toEqual(CANONICAL_KEYS);
+    expect(new Set(keys).size).toBe(14);
+    expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
+  });
+
+  test("V2 migration adds only the ten new definitions, all defaulting to everyone", async () => {
+    const sql = await source(registryMigration);
+    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","export_center","follow_creators","notifications"].includes(key));
+    for (const key of newKeys) {
+      expect(sql).toContain(`('${key}'`);
+      const row = new RegExp(`\\('${key}'[^\\n]+,'everyone'\\)`);
+      expect(sql).toMatch(row);
+    }
+    for (const existing of ["smart_presets","export_center","follow_creators","notifications"]) {
+      expect(sql).not.toMatch(new RegExp(`\\('${existing}'[^\\n]+,'everyone'\\)`));
+    }
+    expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
+  });
+
+  test("Feature Access panel keeps stable feature_key identity and Super Admin boundary", async () => {
+    const ui = await source("src/routes/management.tsx");
+    expect(ui).toContain('key={policy.feature_key}');
+    expect(ui).toContain('isSuperAdmin && section === "features"');
+    expect(ui).toContain("<FeatureAccessPanel />");
+  });
+
+  test("AI Generator durable admission preserves recovery but gates before new credit/job creation", async () => {
+    const sql = await source(registryMigration);
+    const block = functionBlock(sql, "start_generation_job");
+    const idempotent = block.indexOf("idempotency_key=_idempotency_key");
+    const feature = block.indexOf("public.can_use_feature(v_user,v_feature_key)");
+    const credit = block.indexOf("INSERT INTO public.ai_generations");
+    const job = block.indexOf("INSERT INTO public.ai_generation_jobs");
+    expect(idempotent).toBeGreaterThan(-1);
+    expect(feature).toBeGreaterThan(idempotent);
+    expect(credit).toBeGreaterThan(feature);
+    expect(job).toBeGreaterThan(feature);
+    expect(block).toContain("lyrics_section_edit");
+    expect(block).toContain("'lyrics_workspace'");
+    expect(block).toContain("'ai_generator'");
+  });
+
+  test("Generator server entry points and Song Setup Assistant are gated before provider/model work", async () => {
+    const jobs = await source("src/lib/generation-jobs.functions.ts");
+    expect(jobs).toContain('requireFeatureAccess(context.supabase, "ai_generator")');
+    expect(jobs).toContain('requireFeatureAccess(context.supabase, "lyrics_workspace")');
+
+    const legacy = await source("src/lib/ai.functions.ts");
+    expect(legacy).toContain('requireFeatureAccess(context.supabase, "ai_generator")');
+    expect(legacy).toContain('requireFeatureAccess(context.supabase, "quality_check")');
+
+    const setup = await source("src/lib/song-setup-assistant.functions.ts");
+    const gate = setup.indexOf('requireFeatureAccess(context.supabase, "ai_generator")');
+    const provider = setup.indexOf('import("@/lib/ai-provider.server")');
+    expect(gate).toBeGreaterThan(-1);
+    expect(provider).toBeGreaterThan(gate);
+  });
+
+  test("Quality Check recovery remains readable while new durable admission is gated before creation", async () => {
+    const sql = await source(registryMigration);
+    for (const name of ["start_quality_check_job","claim_quality_check"]) {
+      const block = functionBlock(sql, name);
+      const existing = block.indexOf("idempotency_key=_idempotency_key");
+      const feature = block.indexOf("can_use_feature(v_user,'quality_check')");
+      expect(existing).toBeGreaterThan(-1);
+      expect(feature).toBeGreaterThan(existing);
+      if (name === "start_quality_check_job") {
+        expect(block.indexOf("INSERT INTO public.ai_quality_check_actions")).toBeGreaterThan(feature);
+        expect(block.indexOf("kick_quality_check_runner")).toBeGreaterThan(feature);
+      }
+    }
+    const server = await source("src/lib/quality-check-jobs.functions.ts");
+    const gate = server.indexOf('requireFeatureAccess(context.supabase, "quality_check")');
+    const model = server.indexOf("getModelForUser");
+    expect(gate).toBeGreaterThan(-1);
+    expect(model).toBeGreaterThan(gate);
+  });
+
+  test("AI Music Lab uses Feature Access instead of the former hardcoded Admin rollout gate", async () => {
+    const code = await source("src/lib/ai-music-lab.functions.ts");
+    expect(code).toContain('requireFeatureAccess(context.supabase, "ai_music_lab")');
+    expect(code).not.toContain("current_user_is_admin_level");
+    expect(code).not.toContain("async function requireAdmin");
+    const nav = await source("src/components/promptbeats/Sidebar.tsx");
+    expect(nav).toContain('useFeatureAccess("ai_music_lab")');
+  });
+
+  test("AI Music Lab internal Lyria save is independent from user Track Uploads", async () => {
+    const tracks = await source("src/lib/tracks.functions.ts");
+    expect(tracks).toContain("isInternalLyriaSave");
+    expect(tracks).toContain("lyria-temp/");
+    expect(tracks).toContain('!isInternalLyriaSave');
+  });
+
+  test("Song Analyzer provider path and route admission are Feature Access protected", async () => {
+    const server = await source("src/lib/song-analyzer.functions.ts");
+    expect(server).toContain('requireFeatureAccess(context.supabase, "song_analyzer")');
+    expect(server).not.toContain("async function requireAdmin");
+    const route = await source("src/routes/song-analyzer.tsx");
+    expect(route).toContain("getSongAnalyzerAccess()");
+    expect(route).toContain("access.isError");
+    const nav = await source("src/components/promptbeats/Sidebar.tsx");
+    expect(nav).toContain('useFeatureAccess("song_analyzer")');
+  });
+
+  test("Lyrics Workspace blocks dedicated UI and AI section edits but does not gate plain lyric display", async () => {
+    const jobs = await source("src/lib/generation-jobs.functions.ts");
+    expect(jobs).toContain('requireFeatureAccess(context.supabase, "lyrics_workspace")');
+    const route = await source("src/routes/generate.tsx");
+    expect(route).toContain('useFeatureAccess("lyrics_workspace")');
+    expect(route).toContain("Lyrics Workspace is currently unavailable.");
+    const trackCard = await source("src/components/promptbeats/TrackCard.tsx");
+    expect(trackCard).not.toContain('useFeatureAccess("lyrics_workspace")');
+  });
+
+  test("Track Uploads rejects before storage admission and gates new uploaded-track records only", async () => {
+    const api = await source("src/routes/api/upload.ts");
+    const gate = api.indexOf('_feature_key: "track_uploads"');
+    const admit = api.indexOf('rpc("admit_track_upload")');
+    const body = api.indexOf("request.formData()");
+    expect(gate).toBeGreaterThan(-1);
+    expect(admit).toBeGreaterThan(gate);
+    expect(body).toBeGreaterThan(admit);
+
+    const sql = await source(mutationMigration);
+    expect(functionBlock(sql, "admit_track_upload")).toContain("can_use_feature(v_user_id,'track_uploads')");
+    expect(sql).toContain("(source_type<>'upload' OR public.current_user_can_use_feature('track_uploads'))");
+
+    const tracks = await source("src/lib/tracks.functions.ts");
+    expect(tracks).toContain('requireFeatureAccess(context.supabase, "track_uploads")');
+    expect(tracks).toContain("data.new_audio_key");
+    expect(tracks).toContain("listMyTracks");
+  });
+
+  test("Sharing gates creation/update/analytics but preserves existing resolution and revocation", async () => {
+    const sql = await source(mutationMigration);
+    expect(functionBlock(sql, "create_track_share_link")).toContain("sharing_public_links");
+    expect(functionBlock(sql, "update_track_share_link")).toContain("sharing_public_links");
+    expect(functionBlock(sql, "record_track_public_share")).toContain("sharing_public_links");
+    expect(sql).not.toContain("CREATE OR REPLACE FUNCTION public.revoke_track_share_link");
+
+    const server = await source("src/lib/track-sharing.functions.ts");
+    expect(server).toContain('requireFeatureAccess(context.supabase, "sharing_public_links")');
+    const revokeAt = server.indexOf("export const revokeTrackShareLink");
+    const nextExport = server.indexOf("export const", revokeAt + 20);
+    const revokeBlock = server.slice(revokeAt, nextExport === -1 ? server.length : nextExport);
+    expect(revokeBlock).not.toContain("requireFeatureAccess");
+
+    const management = await source("src/components/promptbeats/SharedLinksPanel.tsx");
+    expect(management).toContain("revokeTrackShareLink");
+    expect(management).toContain("sharingAccess.allowed");
+  });
+
+  test("Playlists mutations are gated while list/get reads stay available", async () => {
+    const server = await source("src/lib/playlists.functions.ts");
+    for (const name of ["createPlaylist","updatePlaylist","deletePlaylist","addTrackToPlaylist","removeTrackFromPlaylist","reorderPlaylistTracks"]) {
+      const start = server.indexOf(`export const ${name}`);
+      const next = server.indexOf("export const", start + 20);
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "playlists")');
+    }
+    for (const name of ["listPlaylists","getPlaylist"]) {
+      const start = server.indexOf(`export const ${name}`);
+      const next = server.indexOf("export const", start + 20);
+      expect(server.slice(start, next === -1 ? server.length : next)).not.toContain('requireFeatureAccess(context.supabase, "playlists")');
+    }
+    const ui = await source("src/components/promptbeats/PlaylistLibraryPanel.tsx");
+    expect(ui).toContain('useFeatureAccess("playlists")');
+    expect(ui).toContain("canManage");
+  });
+
+  test("Favorites mutations are gated while existing favorite reads stay available", async () => {
+    const server = await source("src/lib/playlists.functions.ts");
+    const toggleStart = server.indexOf("export const toggleFavorite");
+    const toggleEnd = server.indexOf("export const", toggleStart + 20);
+    expect(server.slice(toggleStart, toggleEnd)).toContain('requireFeatureAccess(context.supabase, "favorites")');
+
+    const readStart = server.indexOf("export const listFavoriteTrackIds");
+    const readEnd = server.indexOf("export const", readStart + 20);
+    expect(server.slice(readStart, readEnd)).not.toContain('requireFeatureAccess(context.supabase, "favorites")');
+
+    const sql = await source(mutationMigration);
+    expect(sql).toContain("current_user_can_use_feature('favorites')");
+    expect(sql).not.toContain('DROP POLICY IF EXISTS "Users can view their own favorites"');
+  });
+
+  test("Likes mutations are gated while historical count display remains available", async () => {
+    const sql = await source(mutationMigration);
+    expect(sql).toContain("current_user_can_use_feature('likes')");
+    expect(sql).not.toContain("DELETE FROM public.likes");
+    const button = await source("src/components/promptbeats/LikeButton.tsx");
+    expect(button).toContain('useFeatureAccess("likes")');
+    expect(button).toContain("!featureAccess.allowed");
+    expect(button).toContain("count > 0");
+  });
+
+  test("new mutations do not delete historical user data or auto-revoke share links", async () => {
+    const sql = (await source(registryMigration)) + "\n" + (await source(mutationMigration));
+    for (const table of ["ai_generation_jobs","ai_quality_check_actions","playlists","playlist_tracks","favorites","likes","track_share_links","tracks"]) {
+      expect(sql).not.toMatch(new RegExp(`DELETE FROM public\\.${table}\\b`, "i"));
+    }
+    expect(sql).not.toContain("revoked_at=now()");
+  });
+
+  test("existing four feature integrations remain present", async () => {
+    const files = {
+      smart_presets: "src/components/promptbeats/SmartPresetsPanel.tsx",
+      export_center: "src/components/promptbeats/ExportControl.tsx",
+      follow_creators: "src/components/promptbeats/FollowCreatorControl.tsx",
+      notifications: "src/components/promptbeats/NotificationCenter.tsx",
+    } as const;
+    for (const [key,path] of Object.entries(files)) {
+      expect(await source(path)).toContain(`useFeatureAccess("${key}")`);
+    }
+  });
+});
