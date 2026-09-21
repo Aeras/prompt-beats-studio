@@ -26,7 +26,8 @@ function ContactPage() {
   const el = language === "el";
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
-  const initialized = useRef(false);
+  const initializedEmail = useRef(false);
+  const initializedAlias = useRef(false);
 
   const [email, setEmail] = useState("");
   const [alias, setAlias] = useState("");
@@ -36,12 +37,25 @@ function ContactPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (loading || initialized.current) return;
-    initialized.current = true;
-    if (user?.email) setEmail(user.email);
-    if (profile?.handle) setAlias("@" + profile.handle);
-    else if (profile?.artist_alias) setAlias(profile.artist_alias);
-    else if (profile?.display_name) setAlias(profile.display_name);
+    if (loading) return;
+
+    if (!initializedEmail.current && user?.email) {
+      initializedEmail.current = true;
+      setEmail((current) => current || user.email || "");
+    }
+
+    if (!initializedAlias.current) {
+      const preferredAlias = profile?.handle
+        ? "@" + profile.handle
+        : profile?.artist_alias
+          ? profile.artist_alias
+          : profile?.display_name ?? "";
+
+      if (preferredAlias) {
+        initializedAlias.current = true;
+        setAlias((current) => current || preferredAlias);
+      }
+    }
   }, [loading, user?.email, profile?.handle, profile?.artist_alias, profile?.display_name]);
 
   const clearForm = () => {
