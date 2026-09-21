@@ -33,6 +33,12 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "auth.googleFailed": "Η σύνδεση με Google απέτυχε. Δοκίμασε ξανά.",
   "auth.somethingWrong": "Κάτι πήγε στραβά",
   "auth.registrationBlocked": "Η εγγραφή με αυτή τη διεύθυνση email δεν επιτρέπεται. Αν πιστεύεις ότι ο περιορισμός εφαρμόστηκε κατά λάθος ή χρειάζεσαι βοήθεια, επικοινώνησε στο support@promptbeats.app.",
+  "auth.legalPrefix": "Έχω διαβάσει και αποδέχομαι τους",
+  "auth.termsLink": "Όρους Χρήσης",
+  "auth.legalMiddle": "και έχω ενημερωθεί για την",
+  "auth.privacyLink": "Πολιτική Απορρήτου",
+  "auth.legalSuffix": ".",
+  "auth.legalRequired": "Πρέπει να αποδεχθείς τους Όρους Χρήσης πριν δημιουργήσεις λογαριασμό.",
 
   "onboarding.title": "Ρύθμισε το προφίλ καλλιτέχνη σου",
   "onboarding.subtitle": "Προαιρετικό — μπορείς να το κάνεις αργότερα",
