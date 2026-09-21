@@ -152,4 +152,16 @@ describe("Super Admin Phase A", () => {
     expect(all.toLowerCase()).not.toContain("nikos76gr@gmail.com");
     expect(all.toLowerCase()).not.toContain("@promptbeats.app");
   });
+
+  test("rewrites persisted staff badges before enforcing the new badge constraint", async () => {
+    const sql = await source(coreMigrationPath);
+    const dropConstraint = sql.indexOf("DROP CONSTRAINT IF EXISTS public_staff_badges_badge_check");
+    const refreshFunction = sql.indexOf("CREATE OR REPLACE FUNCTION public.refresh_public_staff_badge");
+    const backfill = sql.indexOf("SELECT public.refresh_public_staff_badge(id) FROM public.profiles");
+    const addConstraint = sql.lastIndexOf("ADD CONSTRAINT public_staff_badges_badge_check");
+    expect(dropConstraint).toBeGreaterThan(-1);
+    expect(refreshFunction).toBeGreaterThan(dropConstraint);
+    expect(backfill).toBeGreaterThan(refreshFunction);
+    expect(addConstraint).toBeGreaterThan(backfill);
+  });
 });

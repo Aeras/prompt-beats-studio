@@ -70,9 +70,6 @@ ALTER TABLE public.admin_audit_log ADD CONSTRAINT admin_audit_log_action_check C
 ));
 
 ALTER TABLE public.public_staff_badges DROP CONSTRAINT IF EXISTS public_staff_badges_badge_check;
-ALTER TABLE public.public_staff_badges ADD CONSTRAINT public_staff_badges_badge_check CHECK (
-  badge IN ('PromptBeats Team','Admin','Trusted Safety Moderator','Senior Trusted Safety Moderator')
-);
 
 CREATE OR REPLACE FUNCTION public.get_my_moderation_context()
 RETURNS jsonb
@@ -317,5 +314,10 @@ CREATE POLICY "Admins can view all profiles"
   USING (public.current_user_is_admin_level());
 
 SELECT public.refresh_public_staff_badge(id) FROM public.profiles;
+
+ALTER TABLE public.public_staff_badges
+  ADD CONSTRAINT public_staff_badges_badge_check CHECK (
+    badge IN ('PromptBeats Team','Admin','Trusted Safety Moderator','Senior Trusted Safety Moderator')
+  );
 
 COMMIT;
