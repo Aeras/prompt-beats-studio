@@ -96,9 +96,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => setupInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin, error: roleError } = await context.supabase.rpc("current_user_has_role", {
-      _role: "admin",
-    });
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("current_user_is_admin_level");
     if (roleError || isAdmin !== true) throw new Error("Not allowed");
 
     const musicStyles = values(ADVANCED_MUSIC_STYLES);
