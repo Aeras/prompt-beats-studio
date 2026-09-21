@@ -74,6 +74,7 @@ function AiMusicLabPage() {
   const [saveLyrics, setSaveLyrics] = useState("");
   const [savePublished, setSavePublished] = useState(true);
   const [saveAllowDownload, setSaveAllowDownload] = useState(false);
+  const [saveContainsExplicitLyrics, setSaveContainsExplicitLyrics] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -167,6 +168,7 @@ function AiMusicLabPage() {
     setSaveLyrics(lyrics);
     setSavePublished(true);
     setSaveAllowDownload(false);
+    setSaveContainsExplicitLyrics(false);
     setCoverFile(null);
     setSaveError(null);
     setSaveOpen(true);
@@ -202,6 +204,7 @@ function AiMusicLabPage() {
         duration_seconds: durationSeconds,
         ...(cover ? { cover_url: cover.url } : {}),
         is_published: savePublished,
+        contains_explicit_lyrics: saveContainsExplicitLyrics,
         allow_download: saveAllowDownload,
       } });
       setSaveOpen(false);
@@ -297,7 +300,7 @@ function AiMusicLabPage() {
               <label className="block text-xs text-muted-foreground">{copy.musicPrompt}<textarea value={savePrompt} onChange={(e) => setSavePrompt(e.target.value)} rows={5} maxLength={4000} className={`${inputClass} mt-1.5 resize-y`} /></label>
               <label className="block text-xs text-muted-foreground">{copy.lyrics}<textarea value={saveLyrics} onChange={(e) => setSaveLyrics(e.target.value)} rows={8} maxLength={8000} className={`${inputClass} mt-1.5 resize-y`} /></label>
               <label className="block text-xs text-muted-foreground">{copy.createdWith}<div className="mt-1.5 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2.5 text-sm text-accent">Google Lyria 3.5</div></label>
-              <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{copy.visibility}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setSavePublished(value)} aria-pressed={savePublished === value} className={`rounded-full border px-3 py-1.5 text-xs ${savePublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? copy.public : copy.private}</button>)}</fieldset>
+              <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{copy.visibility}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setSavePublished(value)} aria-pressed={savePublished === value} className={`rounded-full border px-3 py-1.5 text-xs ${savePublished === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? copy.public : copy.private}</button>)}</fieldset><label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground"><input type="checkbox" checked={saveContainsExplicitLyrics} onChange={(e) => setSaveContainsExplicitLyrics(e.target.checked)} className="mt-0.5 h-4 w-4 accent-current" /><span><span className="block text-sm font-medium">{t("explicit.label")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("explicit.helper")}</span></span></label>
               <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground">
                 <input type="checkbox" checked={saveAllowDownload} onChange={(e) => setSaveAllowDownload(e.target.checked)} className="mt-0.5 h-4 w-4 accent-current" />
                 <span><span className="block text-sm font-medium">{copy.allowDownload}</span><span className="mt-0.5 block text-xs text-muted-foreground">{copy.allowDownloadHint}</span></span>
