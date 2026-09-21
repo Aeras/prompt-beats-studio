@@ -174,7 +174,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
-    const { data: isAdmin } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+    const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
 
