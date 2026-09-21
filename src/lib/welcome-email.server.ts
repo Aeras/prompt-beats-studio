@@ -1,7 +1,4 @@
-import { sendLovableEmail } from "@lovable.dev/email-js";
-
-const FROM = "PromptBeats <no-reply@notify.promptbeats.app>";
-const SENDER_DOMAIN = "notify.promptbeats.app";
+import { sendSmtpEmail } from "@/lib/smtp-email.server";
 
 export function renderWelcomeEmail(handle: string) {
   const name = handle.startsWith("@") ? handle : `@${handle}`;
@@ -39,41 +36,27 @@ export function renderWelcomeEmail(handle: string) {
 </html>`;
 }
 
-export async function sendWelcomeEmailViaLovable(
+export async function sendWelcomeEmailViaSmtp(
   to: string,
   handle: string,
-  idempotencyKey: string,
 ) {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("Lovable email service is not configured.");
-
   const name = handle.startsWith("@") ? handle : `@${handle}`;
 
-  return sendLovableEmail(
-    {
-      to,
-      from: FROM,
-      subject: "Welcome to PromptBeats",
-      html: renderWelcomeEmail(handle),
-      text: [
-        `Welcome, ${name}`,
-        "",
-        "You're in. PromptBeats is where AI-made music travels with the prompt that created it.",
-        "",
-        "Start here:",
-        "• Explore the discover feed and copy any prompt",
-        "• Open the AI Prompt Studio and shape your own sound",
-        "• Upload your track — it goes live with your prompt attached",
-        "",
-        "https://promptbeats.app",
-      ].join("\n"),
-      sender_domain: SENDER_DOMAIN,
-      purpose: "transactional",
-      idempotency_key: idempotencyKey,
-    },
-    {
-      apiKey,
-      sendUrl: process.env["LOVABLE_SEND_URL"],
-    },
-  );
+  return sendSmtpEmail({
+    to,
+    subject: "Welcome to PromptBeats",
+    html: renderWelcomeEmail(handle),
+    text: [
+      `Welcome, ${name}`,
+      "",
+      "You're in. PromptBeats is where AI-made music travels with the prompt that created it.",
+      "",
+      "Start here:",
+      "• Explore the discover feed and copy any prompt",
+      "• Open the AI Prompt Studio and shape your own sound",
+      "• Upload your track — it goes live with your prompt attached",
+      "",
+      "https://promptbeats.app",
+    ].join("\n"),
+  });
 }

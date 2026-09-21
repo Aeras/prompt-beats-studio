@@ -94,42 +94,49 @@ describe("Help menu and Contact Us", () => {
   test("contact submission is validated and sent only server-side", async () => {
     const fn = await source("src/lib/contact.functions.ts");
     const sender = await source("src/lib/contact-email.server.ts");
+    const smtp = await source("src/lib/smtp-email.server.ts");
     expect(fn).toContain("createServerFn");
     expect(fn).toContain("z.string().trim().email().max(254)");
     expect(fn).toContain("MAX_SENDS_PER_WINDOW = 3");
     expect(fn).toContain("website.trim()");
     expect(fn).toContain('await import("@/lib/contact-email.server")');
-    expect(sender).toContain('sendLovableEmail');
-    expect(sender).toContain('process.env["LOVABLE_API_KEY"]');
+    expect(sender).toContain('sendSmtpEmail');
     expect(sender).toContain('"support@promptbeats.app"');
-    expect(sender).toContain("reply_to: payload.email");
-    expect(sender).toContain('"PromptBeats <no-reply@notify.promptbeats.app>"');
-    expect(sender).toContain('sender_domain: SENDER_DOMAIN');
-    expect(sender).toContain('purpose: "transactional"');
+    expect(sender).toContain("replyTo: payload.email");
     expect(sender).toContain("escapeHtml");
-    expect(sender).not.toContain("RESEND_API_KEY");
-    expect(sender).not.toContain("api.resend.com");
+    expect(smtp).toContain('process.env["SMTP_PASSWORD"]');
+    expect(smtp).toContain('"mail.promptbeats.app"');
+    expect(smtp).toContain('"no-reply@promptbeats.app"');
+    expect(smtp).toContain('"AUTH LOGIN');
+    expect(smtp).toContain('rejectUnauthorized: true');
   });
 
-  test("all PromptBeats custom transactional email uses Lovable Email, not Resend", async () => {
-    const [welcome, emailFns, contact, contactFns] = await Promise.all([
+  test("all PromptBeats custom transactional email uses Polar55 SMTP, not Lovable Email or Resend", async () => {
+    const [welcome, emailFns, contact, contactFns, smtp, webhook, preview] = await Promise.all([
       source("src/lib/welcome-email.server.ts"),
       source("src/lib/email.functions.ts"),
       source("src/lib/contact-email.server.ts"),
       source("src/lib/contact.functions.ts"),
+      source("src/lib/smtp-email.server.ts"),
+      source("src/routes/lovable/email/auth/webhook.ts"),
+      source("src/routes/lovable/email/auth/preview.ts"),
     ]);
 
-    for (const file of [welcome, emailFns, contact, contactFns]) {
+    for (const file of [welcome, emailFns, contact, contactFns, smtp]) {
       expect(file).not.toContain("RESEND_API_KEY");
       expect(file).not.toContain("api.resend.com");
-      expect(file).not.toContain("ViaResend");
+      expect(file).not.toContain("sendLovableEmail");
+      expect(file).not.toContain("LOVABLE_API_KEY");
     }
 
-    expect(welcome).toContain('sendLovableEmail');
-    expect(welcome).toContain('process.env["LOVABLE_API_KEY"]');
-    expect(welcome).toContain('"PromptBeats <no-reply@notify.promptbeats.app>"');
-    expect(welcome).toContain('purpose: "transactional"');
-    expect(emailFns).toContain("sendWelcomeEmailViaLovable");
-    expect(contactFns).toContain("sendContactEmailViaLovable");
+    expect(welcome).toContain("sendWelcomeEmailViaSmtp");
+    expect(contact).toContain("sendContactEmailViaSmtp");
+    expect(emailFns).toContain("sendWelcomeEmailViaSmtp");
+    expect(contactFns).toContain("sendContactEmailViaSmtp");
+    expect(smtp).toContain('fromEmail = process.env["SMTP_FROM_EMAIL"] ?? "no-reply@promptbeats.app"');
+    expect(webhook).toContain("Lovable Email has been retired");
+    expect(preview).toContain("Lovable Email has been retired");
+    expect(webhook).not.toContain("@lovable.dev/email-js");
+    expect(preview).not.toContain("@lovable.dev/email-js");
   });
 });

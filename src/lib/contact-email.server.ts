@@ -1,7 +1,4 @@
-import { sendLovableEmail } from "@lovable.dev/email-js";
-
-const FROM = "PromptBeats <no-reply@notify.promptbeats.app>";
-const SENDER_DOMAIN = "notify.promptbeats.app";
+import { sendSmtpEmail } from "@/lib/smtp-email.server";
 
 function escapeHtml(value: string) {
   return value
@@ -47,34 +44,20 @@ export function renderContactEmail(payload: ContactEmailPayload) {
 </html>`;
 }
 
-export async function sendContactEmailViaLovable(
+export async function sendContactEmailViaSmtp(
   payload: ContactEmailPayload,
-  idempotencyKey: string,
 ) {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("Lovable email service is not configured.");
-
-  return sendLovableEmail(
-    {
-      to: "support@promptbeats.app",
-      from: FROM,
-      reply_to: payload.email,
-      subject: `PromptBeats Contact — ${payload.subject}`,
-      html: renderContactEmail(payload),
-      text: [
-        `Email: ${payload.email}`,
-        `Alias: ${payload.alias}`,
-        `Subject: ${payload.subject}`,
-        "",
-        payload.message,
-      ].join("\n"),
-      sender_domain: SENDER_DOMAIN,
-      purpose: "transactional",
-      idempotency_key: idempotencyKey,
-    },
-    {
-      apiKey,
-      sendUrl: process.env["LOVABLE_SEND_URL"],
-    },
-  );
+  return sendSmtpEmail({
+    to: "support@promptbeats.app",
+    replyTo: payload.email,
+    subject: `PromptBeats Contact — ${payload.subject}`,
+    html: renderContactEmail(payload),
+    text: [
+      `Email: ${payload.email}`,
+      `Alias: ${payload.alias}`,
+      `Subject: ${payload.subject}`,
+      "",
+      payload.message,
+    ].join("\n"),
+  });
 }
