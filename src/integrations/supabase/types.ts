@@ -1048,7 +1048,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      _is_admin_level_internal: { Args: { _user_id: string }; Returns: boolean }\n      _is_banned_internal: { Args: { _user_id: string }; Returns: boolean }
+      _is_admin_level_internal: { Args: { _user_id: string }; Returns: boolean }
+      _is_banned_internal: { Args: { _user_id: string }; Returns: boolean }
       _lock_user_security_pair: {
         Args: { _first: string; _second: string }
         Returns: undefined
@@ -1153,7 +1154,34 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
-      current_user_is_admin_level: { Args: never; Returns: boolean }\n      current_user_is_super_admin: { Args: never; Returns: boolean }\n      current_user_is_banned: { Args: never; Returns: boolean }
+      current_user_is_admin_level: { Args: never; Returns: boolean }
+      current_user_is_super_admin: { Args: never; Returns: boolean }
+      current_user_can_use_feature: {
+        Args: { _feature_key: string }
+        Returns: boolean
+      }
+      current_user_is_banned: { Args: never; Returns: boolean }
+      feature_access_add_user: {
+        Args: { _feature_key: string; _user_id: string }
+        Returns: boolean
+      }
+      feature_access_list: { Args: never; Returns: Json }
+      feature_access_remove_user: {
+        Args: { _feature_key: string; _user_id: string }
+        Returns: boolean
+      }
+      feature_access_search_users: {
+        Args: { _limit?: number; _search?: string }
+        Returns: Json
+      }
+      feature_access_selected_users: {
+        Args: { _feature_key: string }
+        Returns: Json
+      }
+      feature_access_set_policy: {
+        Args: { _access_mode: string; _feature_key: string }
+        Returns: undefined
+      }
       create_prompt_revision_version: {
         Args: {
           _genre: string
@@ -1223,6 +1251,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      can_use_feature: {
+        Args: { _feature_key: string; _user_id: string }
         Returns: boolean
       }
       has_valid_account_state: { Args: { _user_id: string }; Returns: boolean }
