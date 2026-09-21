@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import type { Track } from "@/lib/tracks";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import {
   addTrackToPlaylist,
@@ -33,6 +34,8 @@ function base64ToBlob(value: string, mimeType: string) {
 export function TrackLibraryActions({ track, compact = false, ownerActions = null }: { track: Track; compact?: boolean; ownerActions?: ReactNode }) {
   const { language } = useI18n();
   const { user } = useAuth();
+  const favoritesAccess = useFeatureAccess("favorites");
+  const playlistsAccess = useFeatureAccess("playlists");
   const queryClient = useQueryClient();
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -74,7 +77,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
         noPlaylists: "You do not have any playlists yet.",
       };
 
-  const canPlaylist = Boolean(user && track.sourceType === "upload" && track.audioUrl);
+  const canPlaylist = Boolean(playlistsAccess.allowed && user && track.sourceType === "upload" && track.audioUrl);
   const canDownload = Boolean(
     user
       && track.sourceType === "upload"
@@ -100,6 +103,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   if (!user) return null;
 
   const favorite = async () => {
+    if (!favoritesAccess.allowed) return;
     setBusy("favorite");
     try {
       await toggleFavorite({ data: { trackId: track.id } });
@@ -113,6 +117,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   };
 
   const addTo = async (playlistId: string) => {
+    if (!playlistsAccess.allowed) return;
     setBusy(playlistId);
     try {
       const result = await addTrackToPlaylist({ data: { playlistId, trackId: track.id } });
@@ -133,6 +138,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   };
 
   const createAndAdd = async () => {
+    if (!playlistsAccess.allowed) return;
     const name = newPlaylistName.trim();
     if (!name) return;
     setBusy("create");
@@ -227,7 +233,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content sideOffset={6} align="end" className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl">
-            <DropdownMenu.Item onSelect={() => void favorite()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10">
+            <DropdownMenu.Item disabled={!favoritesAccess.allowed} onSelect={() => void favorite()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40">
               <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-current text-accent" : ""}`} /> {isFavorite ? copy.removeFavorite : copy.addFavorite}
             </DropdownMenu.Item>
             {canPlaylist && <DropdownMenu.Item onSelect={() => setPlaylistOpen(true)} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><ListPlus className="h-4 w-4" /> {copy.playlist}</DropdownMenu.Item>}
@@ -243,7 +249,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   const iconClass = "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50";
   return <>
     <div className="flex shrink-0 items-center gap-1.5">
-      <button onClick={() => void favorite()} disabled={busy === "favorite"} aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite} title={isFavorite ? copy.removeFavorite : copy.addFavorite} className={iconClass}>
+      <button onClick={() => void favorite()} disabled={!favoritesAccess.allowed || busy === "favorite"} aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite} title={isFavorite ? copy.removeFavorite : copy.addFavorite} className={iconClass}>
         {busy === "favorite" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bookmark className={`h-3.5 w-3.5 ${isFavorite ? "fill-current text-accent" : ""}`} />}
       </button>
       {canPlaylist && <button onClick={() => setPlaylistOpen(true)} aria-label={copy.playlist} title={copy.playlist} className={iconClass}><ListPlus className="h-3.5 w-3.5" /></button>}
