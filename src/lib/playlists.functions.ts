@@ -26,7 +26,7 @@ async function cleanupPlaylistCover(userId: string, url: string | null | undefin
 }
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrder?: string[], viewerId?: string) {
   if (!ids.length) return [];
