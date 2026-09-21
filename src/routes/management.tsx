@@ -352,7 +352,9 @@ function ManagementPage() {
   const [initialUserId, setInitialUserId] = useState<string | null>(null);
   const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">{isAdmin ? t("management.adminTitle") : t("management.staffTitle")}</h1><p className="text-[11px] text-muted-foreground md:text-xs">{isAdmin ? t("management.adminSubtitle") : t("management.staffSubtitle")}</p></div>;
 
-  useEffect(() => { if (!loading) setSection(isAdmin ? "overview" : "users"); }, [loading, isAdmin]);
+  useEffect(() => {
+    if (!loading && search.section !== "reports") setSection(isAdmin ? "overview" : "users");
+  }, [loading, isAdmin, search.section]);
   useEffect(() => { const userId = new URLSearchParams(window.location.search).get("userId"); if (userId) { setInitialUserId(userId); setSection("users"); } }, []);
 
   if (!loading && (!user || !canViewUsers)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.restricted")} <Link to="/" className="text-accent hover:underline">{t("management.backFeed")}</Link></div></main></AppShell>;
