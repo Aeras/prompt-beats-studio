@@ -70,6 +70,7 @@ function Index() {
     createdWith: track.created_with,
     allowDownload: track.allow_download === true,
     durationSeconds: track.duration_seconds,
+    containsExplicitLyrics: track.contains_explicit_lyrics === true,
     staffBadge: track.staff_badge,
   }));
 

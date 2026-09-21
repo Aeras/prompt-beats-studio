@@ -16,6 +16,7 @@ export type Track = {
   isPublished?: boolean;
   promptIsPublic?: boolean;
   lyricsIsPublic?: boolean;
+  containsExplicitLyrics?: boolean;
   sourceType?: PersistedTrackSourceType | undefined;
   sourceId?: string | null | undefined;
   createdWith?: CreatedWith | null;

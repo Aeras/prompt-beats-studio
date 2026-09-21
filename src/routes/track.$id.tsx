@@ -9,6 +9,8 @@ import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
+import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
@@ -106,6 +108,7 @@ function TrackPage() {
       createdWith: track.created_with,
       allowDownload: track.allow_download === true,
       durationSeconds: track.duration_seconds,
+      containsExplicitLyrics: track.contains_explicit_lyrics === true,
     }, []);
   };
 
@@ -138,7 +141,7 @@ function TrackPage() {
               <div className="min-w-0 space-y-5">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent">{track.genre}</span>{track.contains_explicit_lyrics && <ExplicitBadge />}
                     {track.source_type === "upload" && track.created_with && <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-muted-foreground">{language === "el" ? "Δημιουργήθηκε με" : "Created with"} {track.created_with}</span>}
                   </div>
                   <h1 className="break-words font-display text-3xl font-bold leading-tight sm:text-4xl">{track.title}</h1>
@@ -168,6 +171,7 @@ function TrackPage() {
                     lyricsIsPublic={track.lyrics_is_public !== false}
                     trackTitle={track.title}
                   />
+                  <ReportTrackControl trackId={track.id} ownerId={track.user_id} isPublished={track.is_published === true} iconOnly={false} />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
@@ -189,12 +193,13 @@ function TrackPage() {
                     isPublished: track.is_published,
                     promptIsPublic: track.prompt_is_public,
                     lyricsIsPublic: track.lyrics_is_public,
+                    containsExplicitLyrics: track.contains_explicit_lyrics === true,
                     sourceType: track.source_type,
                     sourceId: track.source_id,
                     createdWith: track.created_with,
                     allowDownload: track.allow_download === true,
                   }} />
-                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with, is_published: track.is_published, prompt_is_public: track.prompt_is_public, lyrics_is_public: track.lyrics_is_public }} />
+                  <TrackOwnerActions track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, created_with: track.created_with, is_published: track.is_published, prompt_is_public: track.prompt_is_public, lyrics_is_public: track.lyrics_is_public, contains_explicit_lyrics: track.contains_explicit_lyrics === true }} />
                 </div>
               </div>
             </div>

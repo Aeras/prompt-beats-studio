@@ -45,6 +45,7 @@ type Row = {
   prompt_is_public: boolean;
   lyrics_is_public: boolean;
   allow_download: boolean;
+  contains_explicit_lyrics: boolean;
   handle?: string;
 };
 
@@ -70,6 +71,7 @@ function toTrack(track: Row, handle: string): Track {
     createdWith: track.created_with,
     allowDownload: track.allow_download === true,
     durationSeconds: track.duration_seconds,
+    containsExplicitLyrics: track.contains_explicit_lyrics === true,
   };
 }
 
