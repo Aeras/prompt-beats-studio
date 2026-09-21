@@ -8,6 +8,8 @@ import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
 import { ShareTrackButton } from "@/components/promptbeats/ShareTrackButton";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
+import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { TrackContentOverlay, type TrackContentKind } from "@/components/promptbeats/TrackContentOverlay";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
@@ -104,6 +106,7 @@ export function TrackCard({
     is_published: track.isPublished ?? true,
     prompt_is_public: track.promptIsPublic ?? true,
     lyrics_is_public: track.lyricsIsPublic ?? true,
+    contains_explicit_lyrics: track.containsExplicitLyrics ?? false,
   } : null;
 
   useEffect(() => {
@@ -155,6 +158,7 @@ export function TrackCard({
           <span className={cn("glass rounded-full uppercase tracking-widest text-accent", compact ? "px-1.5 py-0.5 text-[8px]" : "px-2.5 py-1 text-[10px]")}>
             {track.genre}
           </span>
+          {track.containsExplicitLyrics && <ExplicitBadge compact={compact} />}
           {track.createdWith && track.sourceType === "upload" && (
             <span className={cn("rounded-full bg-black/70 font-medium text-white/85 backdrop-blur-sm", compact ? "px-1.5 py-0.5 text-[8px]" : "px-2.5 py-1 text-[10px]")}>
               {language === "el" ? "Δημιουργήθηκε με" : "Created with"} {track.createdWith}
@@ -203,7 +207,7 @@ export function TrackCard({
           </div>
         </div>
 
-        <div className={cn("flex items-center justify-start", compact ? "gap-1.5" : "gap-2")}>
+        <div className={cn("flex items-center justify-between", compact ? "gap-1.5" : "gap-2")}><div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")}>
           {track.prompt?.trim() && (
             <button
               type="button"
@@ -240,6 +244,8 @@ export function TrackCard({
               <LyricsContentIcon compact={compact} />
             </button>
           )}
+          </div>
+          {track.userId && <ReportTrackControl trackId={track.id} ownerId={track.userId} isPublished={track.isPublished ?? true} compact={compact} />}
         </div>
       </div>
       {activeContent && (
