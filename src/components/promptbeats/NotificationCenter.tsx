@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { Bell, CheckCheck, Loader2, Music2, Settings2, UserPlus, X } from "lucide-react";
+import { Bell, CheckCheck, Flag, Loader2, Music2, Settings2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -127,6 +127,8 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
       void navigate({ to: "/track/$id", params: { id: item.track.id } });
     } else if (item.type === "new_follower" && item.actor) {
       void navigate({ to: "/artist/$id", params: { id: item.actor.id } });
+    } else if (item.type === "new_report" && item.report) {
+      window.location.assign(`/management?reportId=${encodeURIComponent(item.report.id)}`);
     }
   };
 
@@ -220,13 +222,21 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
               {item.actor
                 ? <img src={getUserAvatarUrl(item.actor.avatarUrl)} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
                 : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-muted-foreground">
-                    {item.type === "new_track" ? <Music2 className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                    {item.type === "new_track"
+                      ? <Music2 className="h-4 w-4" />
+                      : item.type === "new_report"
+                        ? <Flag className="h-4 w-4" />
+                        : <UserPlus className="h-4 w-4" />}
                   </span>}
               <span className="min-w-0 flex-1">
                 {item.type === "new_track" ? (
                   unavailable
                     ? <span className="block text-sm text-muted-foreground">{language === "el" ? "Αυτό το τραγούδι δεν είναι πλέον διαθέσιμο." : "This track is no longer available."}</span>
                     : <span className="block text-sm"><strong>{name}</strong> {language === "el" ? "δημοσίευσε" : "published"} <strong>“{item.track?.title}”</strong></span>
+                ) : item.type === "new_report" ? (
+                  unavailable
+                    ? <span className="block text-sm text-muted-foreground">{language === "el" ? "Αυτή η αναφορά δεν είναι πλέον διαθέσιμη." : "This report is no longer available."}</span>
+                    : <span className="block text-sm"><strong>{language === "el" ? "Νέα αναφορά" : "New report"}</strong> {language === "el" ? "για" : "for"} <strong>“{item.report?.title}”</strong></span>
                 ) : (
                   unavailable
                     ? <span className="block text-sm text-muted-foreground">{language === "el" ? "Αυτός ο δημιουργός δεν είναι πλέον διαθέσιμος." : "This creator is no longer available."}</span>
