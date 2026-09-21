@@ -55,6 +55,9 @@ jobs:
       - name: Moderation Cases and Appeals tests
         run: bun test src/lib/moderation-cases.test.ts
 
+      - name: Help and Contact Us tests
+        run: bun test src/lib/contact-help.test.ts
+
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts
 
