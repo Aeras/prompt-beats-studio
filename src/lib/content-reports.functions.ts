@@ -61,6 +61,19 @@ export type ContentReport = {
 const categorySchema = z.enum(REPORT_CATEGORIES);
 const statusSchema = z.enum(REPORT_STATUSES);
 
+async function withReportRpcTimeout<T>(operation: (signal: AbortSignal) => Promise<T>, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await operation(controller.signal);
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Report request timed out.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const submitTrackReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({
@@ -90,9 +103,11 @@ export const listContentReports = createServerFn({ method: "POST" })
     scope: z.enum(["open","under_review","resolved","all"]).default("open"),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await (context.supabase as any).rpc("list_content_reports", {
-      _scope: data.scope,
-    });
+    const { data: rows, error } = await withReportRpcTimeout((signal) =>
+      (context.supabase as any).rpc("list_content_reports", {
+        _scope: data.scope,
+      }).abortSignal(signal),
+    );
     if (error) throw new Error(error.message);
     return (Array.isArray(rows) ? rows : []) as ContentReport[];
   });
@@ -101,9 +116,11 @@ export const getContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ reportId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await (context.supabase as any).rpc("get_content_report", {
-      _report_id: data.reportId,
-    });
+    const { data: row, error } = await withReportRpcTimeout((signal) =>
+      (context.supabase as any).rpc("get_content_report", {
+        _report_id: data.reportId,
+      }).abortSignal(signal),
+    );
     if (error) throw new Error(error.message);
     return row as ContentReport;
   });
@@ -117,12 +134,14 @@ export const reviewContentReport = createServerFn({ method: "POST" })
     moderatorNotes: z.string().trim().max(2000).optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("review_content_report", {
-      _report_id: data.reportId,
-      _status: data.status,
-      _resolution: data.resolution?.trim() || null,
-      _moderator_notes: data.moderatorNotes?.trim() || null,
-    });
+    const { error } = await withReportRpcTimeout((signal) =>
+      (context.supabase as any).rpc("review_content_report", {
+        _report_id: data.reportId,
+        _status: data.status,
+        _resolution: data.resolution?.trim() || null,
+        _moderator_notes: data.moderatorNotes?.trim() || null,
+      }).abortSignal(signal),
+    );
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
