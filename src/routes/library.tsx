@@ -45,6 +45,7 @@ type Row = {
   prompt_is_public: boolean;
   lyrics_is_public: boolean;
   allow_download: boolean;
+  contains_explicit_lyrics: boolean;
   handle?: string;
 };
 
