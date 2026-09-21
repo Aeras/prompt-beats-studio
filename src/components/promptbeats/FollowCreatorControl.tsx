@@ -105,7 +105,7 @@ export function FollowCreatorControl({ userId }: { userId: string }) {
   const queryKey = ["creator-follow-summary", user?.id ?? "anon", userId];
   const summary = useQuery({
     queryKey,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && featureAccess.allowed,
     queryFn: () => getCreatorFollowSummary({ data: { userId } }),
     staleTime: 30_000,
   });
