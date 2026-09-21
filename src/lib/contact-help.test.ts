@@ -6,14 +6,58 @@ async function source(path: string) {
 }
 
 describe("Help menu and Contact Us", () => {
-  test("global Help menu exposes Contact Us and keeps future items disabled", async () => {
+  test("global Help menu exposes Help, Contact Us and all legal documents", async () => {
     const menu = await source("src/components/promptbeats/HelpMenu.tsx");
+    expect(menu).toContain('to="/help"');
     expect(menu).toContain('to="/contact"');
+    expect(menu).toContain('to="/terms"');
+    expect(menu).toContain('to="/privacy"');
+    expect(menu).toContain('to="/copyright-ip"');
     expect(menu).toContain("Contact Us");
     expect(menu).toContain("Επικοινωνία");
     expect(menu).toContain("Terms of Use");
     expect(menu).toContain("Privacy Policy");
-    expect(menu).toContain('aria-disabled="true"');
+    expect(menu).toContain("Copyright / IP Policy");
+    expect(menu).not.toContain('aria-disabled="true"');
+  });
+
+  test("signup requires explicit legal acceptance and records the accepted version", async () => {
+    const [auth, legalRegistry, migration] = await Promise.all([
+      source("src/routes/auth.tsx"),
+      source("src/lib/legal-documents.ts"),
+      source("supabase/migrations/20260921221500_legal_acceptance_v1.sql"),
+    ]);
+
+    expect(auth).toContain('type="checkbox"');
+    expect(auth).toContain('to="/terms"');
+    expect(auth).toContain('to="/privacy"');
+    expect(auth).toContain("!legalAccepted");
+    expect(auth).toContain("terms_accepted: true");
+    expect(auth).toContain("terms_version: LEGAL_VERSION");
+    expect(auth).toContain("privacy_policy_version: LEGAL_VERSION");
+    expect(legalRegistry).toContain('LEGAL_VERSION = "2026-09-21"');
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.legal_acceptances");
+    expect(migration).toContain("record_signup_legal_acceptance_trigger");
+    expect(migration).toContain("'terms_of_use'");
+    expect(migration).toContain("'privacy_policy'");
+  });
+
+  test("all three bilingual legal routes are published", async () => {
+    const [terms, privacy, copyright, registry] = await Promise.all([
+      source("src/routes/terms.tsx"),
+      source("src/routes/privacy.tsx"),
+      source("src/routes/copyright-ip.tsx"),
+      source("src/lib/legal-documents.ts"),
+    ]);
+    expect(terms).toContain('createFileRoute("/terms")');
+    expect(privacy).toContain('createFileRoute("/privacy")');
+    expect(copyright).toContain('createFileRoute("/copyright-ip")');
+    expect(registry).toContain("terms.el.md?raw");
+    expect(registry).toContain("terms.en.md?raw");
+    expect(registry).toContain("privacy.el.md?raw");
+    expect(registry).toContain("privacy.en.md?raw");
+    expect(registry).toContain("copyright-ip.el.md?raw");
+    expect(registry).toContain("copyright-ip.en.md?raw");
   });
 
   test("Help icon is always visible and is last after authenticated utility icons", async () => {
