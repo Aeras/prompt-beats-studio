@@ -264,7 +264,7 @@ export function NotificationCenter() {
 
   const unread = useQuery({
     queryKey: ["notification-unread-count", user?.id ?? "anon"],
-    enabled: Boolean(user),
+    enabled: Boolean(user) && featureAccess.allowed,
     queryFn: () => getUnreadNotificationCount(),
     refetchInterval: 60_000,
     refetchOnWindowFocus: "always",
