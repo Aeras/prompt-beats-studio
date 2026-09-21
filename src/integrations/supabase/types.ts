@@ -107,6 +107,60 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reports: {
+        Row: {
+          category: string
+          created_at: string
+          details: string | null
+          id: string
+          moderator_notes: string | null
+          reporter_user_id: string | null
+          resolution: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          supporting_url: string | null
+          target_id: string
+          target_owner_id: string | null
+          target_title: string
+          target_type: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          moderator_notes?: string | null
+          reporter_user_id?: string | null
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_url?: string | null
+          target_id: string
+          target_owner_id?: string | null
+          target_title: string
+          target_type: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          moderator_notes?: string | null
+          reporter_user_id?: string | null
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_url?: string | null
+          target_id?: string
+          target_owner_id?: string | null
+          target_title?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       ai_generation_jobs: {
         Row: {
           attempts: number
@@ -867,11 +921,13 @@ export type Database = {
       tracks: {
         Row: {
           allow_download: boolean
+          contains_explicit_lyrics: boolean
           art_url: string | null
           audio_key: string | null
           audio_type: string
           audio_url: string
           cover_url: string | null
+          contains_explicit_lyrics: boolean
           created_at: string
           created_with: string | null
           duration_seconds: number | null
@@ -902,6 +958,7 @@ export type Database = {
           audio_type?: string
           audio_url: string
           cover_url?: string | null
+          contains_explicit_lyrics?: boolean
           created_at?: string
           created_with?: string | null
           duration_seconds?: number | null
@@ -932,6 +989,7 @@ export type Database = {
           audio_type?: string
           audio_url?: string
           cover_url?: string | null
+          contains_explicit_lyrics?: boolean
           created_at?: string
           created_with?: string | null
           duration_seconds?: number | null
@@ -1147,6 +1205,32 @@ export type Database = {
           _model: string
           _provider: string
           _quality_report: Json
+        }
+        Returns: string
+      }
+      get_content_report: {
+        Args: { _report_id: string }
+        Returns: Json
+      }
+      list_content_reports: {
+        Args: { _scope?: string }
+        Returns: Json
+      }
+      review_content_report: {
+        Args: {
+          _moderator_notes?: string
+          _report_id: string
+          _resolution?: string
+          _status: string
+        }
+        Returns: undefined
+      }
+      submit_track_report: {
+        Args: {
+          _category: string
+          _details?: string
+          _supporting_url?: string
+          _track_id: string
         }
         Returns: string
       }
