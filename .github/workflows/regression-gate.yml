@@ -46,6 +46,9 @@ jobs:
       - name: Feature Access Phase B tests
         run: bun test src/lib/feature-access.test.ts
 
+      - name: app_role_rank hardening test
+        run: bun test src/lib/app-role-rank-hardening.test.ts
+
       - name: Build
         run: bun run build
 
