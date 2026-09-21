@@ -30,11 +30,12 @@ type Row = {
   promptIsPublic: boolean;
   lyricsIsPublic: boolean;
   allowDownload: boolean;
+  containsExplicitLyrics: boolean;
   prompt: string;
   lyrics: string;
 };
 
-const emptyRow = (): Row => ({ key: Math.random().toString(36).slice(2), file: null, cover: null, sourceType: "upload", sourceUrl: "", title: "", genre: "", customGenre: "", createdWith: "", isPublished: true, promptIsPublic: true, lyricsIsPublic: true, allowDownload: false, prompt: "", lyrics: "" });
+const emptyRow = (): Row => ({ key: Math.random().toString(36).slice(2), file: null, cover: null, sourceType: "upload", sourceUrl: "", title: "", genre: "", customGenre: "", createdWith: "", isPublished: true, promptIsPublic: true, lyricsIsPublic: true, allowDownload: false, containsExplicitLyrics: false, prompt: "", lyrics: "" });
 const stripExt = (name: string) => name.replace(/\.(mp3|wav)$/i, "");
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
 
@@ -92,14 +93,14 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       if (r.sourceType !== "upload") {
         const provider = r.sourceType === "suno" ? "Suno" : "Udio";
         if (!isSupportedExternalTrackUrl(r.sourceType, r.sourceUrl)) throw new Error(t("studio.validProviderLink", { provider }));
-        await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished, prompt_is_public: r.promptIsPublic, lyrics_is_public: r.lyricsIsPublic, allow_download: false } });
+        await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished, prompt_is_public: r.promptIsPublic, lyrics_is_public: r.lyricsIsPublic, contains_explicit_lyrics: r.containsExplicitLyrics, allow_download: false } });
         return;
       }
       if (!uploadAccess.allowed) throw new Error(language === "el" ? "Οι μεταφορτώσεις τραγουδιών δεν είναι διαθέσιμες." : "Track uploads are not available.");
       const durationSeconds = await readAudioDurationSeconds(r.file!);
       const payload = await uploadOne(r.file!, token); audioKey = payload.key;
       if (r.cover) { const cover = await uploadCover(r.cover); coverPath = cover.path; coverUrl = cover.url; }
-      await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, duration_seconds: durationSeconds, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished, prompt_is_public: r.promptIsPublic, lyrics_is_public: r.lyricsIsPublic, allow_download: r.allowDownload } });
+      await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: payload.url!, audio_type: "upload", source_type: "upload", created_with: r.createdWith || null, duration_seconds: durationSeconds, ...(audioKey ? { audio_key: audioKey } : {}), ...(coverUrl ? { cover_url: coverUrl } : {}), is_published: r.isPublished, prompt_is_public: r.promptIsPublic, lyrics_is_public: r.lyricsIsPublic, contains_explicit_lyrics: r.containsExplicitLyrics, allow_download: r.allowDownload } });
     } catch (err) {
       if (audioKey || coverPath) { try { await discardUploads({ data: { audioKey, coverPath } }); } catch { /* cleanup failure logged server-side */ } }
       throw err;
