@@ -188,7 +188,11 @@ export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
   .handler(async ({ data, context }) => {
-    if (data.source_type === "upload") await requireFeatureAccess(context.supabase, "track_uploads");
+    const isInternalLyriaSave = data.source_type === "upload"
+      && Boolean(data.audio_key?.startsWith(`tracks/${context.userId}/lyria-temp/`));
+    if (data.source_type === "upload" && !isInternalLyriaSave) {
+      await requireFeatureAccess(context.supabase, "track_uploads");
+    }
     if (data.source_type === "upload" && (!data.audio_key || !isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
       throw new Error("Invalid uploaded audio reference");
     }
