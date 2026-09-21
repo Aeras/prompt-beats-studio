@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 describe("app_role_rank search_path hardening", () => {
+  // Behavior guard: hardening must not change the existing role ordering.
   test("keeps the role ranking unchanged and pins search_path", async () => {
     const sql = await Bun.file("supabase/migrations/20260921080000_harden_app_role_rank_search_path.sql").text();
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.app_role_rank(_role text)");
