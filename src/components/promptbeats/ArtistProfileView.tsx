@@ -196,6 +196,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                   createdWith: (track.created_with as PlayerTrack["createdWith"]) ?? null,
                   allowDownload: track.allow_download === true,
                   durationSeconds: track.duration_seconds ?? null,
+                  containsExplicitLyrics: track.contains_explicit_lyrics === true,
                   isPublished: track.is_published ?? true,
                 };
                 const isPlaying = current?.id === track.id && playing;
