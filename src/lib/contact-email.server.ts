@@ -1,3 +1,8 @@
+import { sendLovableEmail } from "@lovable.dev/email-js";
+
+const FROM = "PromptBeats <no-reply@notify.promptbeats.app>";
+const SENDER_DOMAIN = "notify.promptbeats.app";
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -42,19 +47,17 @@ export function renderContactEmail(payload: ContactEmailPayload) {
 </html>`;
 }
 
-export async function sendContactEmailViaResend(payload: ContactEmailPayload) {
-  const apiKey = process.env["RESEND_API_KEY"];
-  if (!apiKey) throw new Error("Contact email service is not configured.");
+export async function sendContactEmailViaLovable(
+  payload: ContactEmailPayload,
+  idempotencyKey: string,
+) {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("Lovable email service is not configured.");
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "PromptBeats <no-reply@promptbeats.app>",
-      to: ["support@promptbeats.app"],
+  return sendLovableEmail(
+    {
+      to: "support@promptbeats.app",
+      from: FROM,
       reply_to: payload.email,
       subject: `PromptBeats Contact — ${payload.subject}`,
       html: renderContactEmail(payload),
@@ -65,9 +68,13 @@ export async function sendContactEmailViaResend(payload: ContactEmailPayload) {
         "",
         payload.message,
       ].join("\n"),
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Resend error (${res.status})`);
-  return (await res.json()) as { id?: string };
+      sender_domain: SENDER_DOMAIN,
+      purpose: "transactional",
+      idempotency_key: idempotencyKey,
+    },
+    {
+      apiKey,
+      sendUrl: process.env["LOVABLE_SEND_URL"],
+    },
+  );
 }
