@@ -33,6 +33,7 @@ import {
 } from "@/lib/playlists.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { cn } from "@/lib/utils";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
 
@@ -159,11 +160,13 @@ function PlaylistRow({
   language,
   onOpen,
   onDelete,
+  canManage,
 }: {
   playlist: PlaylistSummary;
   language: string;
   onOpen: () => void;
   onDelete: () => void;
+  canManage: boolean;
 }) {
   return (
     <div className="glass flex items-center gap-3 rounded-2xl p-2.5">
@@ -174,13 +177,15 @@ function PlaylistRow({
           <span className="mt-1 block truncate text-xs text-muted-foreground">{playlist.track_count} {language === "el" ? "τραγούδια" : "tracks"} · {totalDuration(playlist.duration_seconds ?? 0, language)}</span>
         </span>
       </button>
-      <button onClick={onDelete} aria-label={language === "el" ? "Διαγραφή λίστας" : "Delete playlist"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+      {canManage && <button onClick={onDelete} aria-label={language === "el" ? "Διαγραφή λίστας" : "Delete playlist"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>}
     </div>
   );
 }
 
 export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   const { language } = useI18n();
+  const featureAccess = useFeatureAccess("playlists");
+  const canManage = featureAccess.allowed;
   const queryClient = useQueryClient();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -234,6 +239,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   const rows = (playlists.data?.playlists ?? []) as PlaylistSummary[];
 
   const submit = async () => {
+    if (!canManage) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     setBusy("create");
@@ -256,6 +262,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   };
 
   const destroySummary = async (playlistId: string) => {
+    if (!canManage) return;
     setBusy(`delete:${playlistId}`);
     setError(null);
     try {
@@ -270,7 +277,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   };
 
   if (selectedPlaylistId) {
-    return <PlaylistDetail playlistId={selectedPlaylistId} userId={userId} onBack={() => setSelectedPlaylistId(null)} />;
+    return <PlaylistDetail playlistId={selectedPlaylistId} userId={userId} canManage={canManage} onBack={() => setSelectedPlaylistId(null)} />;
   }
 
   const desktopGrid = viewMode === "compact"
@@ -286,11 +293,11 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
         </div>
         <div className="flex items-center gap-2">
           <PlaylistViewToggle mode={viewMode} onChange={setViewMode} language={language} />
-          <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-3 py-2.5 text-sm font-semibold text-primary-foreground glow-neon sm:px-4"><Plus className="h-4 w-4" /><span>{copy.create}</span></button>
+          {canManage && <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-3 py-2.5 text-sm font-semibold text-primary-foreground glow-neon sm:px-4"><Plus className="h-4 w-4" /><span>{copy.create}</span></button>}
         </div>
       </div>
 
-      {creating && (
+      {canManage && creating && (
         <div className="glass mt-4 rounded-2xl p-4">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <input autoFocus value={name} maxLength={80} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !coverFile) void submit(); }} placeholder={copy.name} className="h-11 min-w-0 rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60" />
@@ -305,12 +312,12 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
       )}
 
       <div className="mt-5 space-y-2 sm:hidden">
-        {rows.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} language={language} onOpen={() => setSelectedPlaylistId(playlist.id)} onDelete={() => setConfirmDeleteId(playlist.id)} />)}
+        {rows.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} language={language} canManage={canManage} onOpen={() => setSelectedPlaylistId(playlist.id)} onDelete={() => setConfirmDeleteId(playlist.id)} />)}
       </div>
 
       {viewMode === "list" ? (
         <div className="mt-5 hidden space-y-2 sm:block">
-          {rows.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} language={language} onOpen={() => setSelectedPlaylistId(playlist.id)} onDelete={() => setConfirmDeleteId(playlist.id)} />)}
+          {rows.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} language={language} canManage={canManage} onOpen={() => setSelectedPlaylistId(playlist.id)} onDelete={() => setConfirmDeleteId(playlist.id)} />)}
         </div>
       ) : (
         <div className="mt-5 hidden sm:block">
@@ -327,7 +334,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
                   <p className="mt-1 truncate text-xs text-muted-foreground">{playlist.track_count} {copy.tracks} · {totalDuration(playlist.duration_seconds ?? 0, language)}</p>
                 </div>
               </button>
-              <button onClick={() => setConfirmDeleteId(playlist.id)} aria-label={copy.delete} className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/65 text-white/75 backdrop-blur transition-colors hover:border-destructive/60 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+              {canManage && <button onClick={() => setConfirmDeleteId(playlist.id)} aria-label={copy.delete} className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/65 text-white/75 backdrop-blur transition-colors hover:border-destructive/60 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>}
             </article>
           ))}
           </div>
@@ -337,7 +344,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
       {!playlists.isLoading && rows.length === 0 && <p className="glass mt-5 rounded-2xl p-8 text-center text-sm text-muted-foreground">{copy.empty}</p>}
       {error && !creating && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
-      {confirmDeleteId && (
+      {canManage && confirmDeleteId && (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="glass-strong w-full max-w-sm rounded-3xl p-5">
             <p className="text-sm">{copy.deleteConfirm}</p>
@@ -352,7 +359,7 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   );
 }
 
-function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; userId: string; onBack: () => void }) {
+function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId: string; userId: string; canManage: boolean; onBack: () => void }) {
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const { current, playing, play, shuffle, repeat, toggleShuffle, cycleRepeat } = usePlayer();
@@ -431,6 +438,7 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
   };
 
   const persistOrder = async (next: Track[]) => {
+    if (!canManage) return;
     setBusy("reorder");
     setError(null);
     try {
@@ -461,6 +469,7 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
   };
 
   const saveMetadata = async () => {
+    if (!canManage) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     setBusy("edit");
@@ -484,6 +493,7 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
   };
 
   const remove = async (trackId: string) => {
+    if (!canManage) return;
     setBusy(trackId);
     try {
       await removeTrackFromPlaylist({ data: { playlistId, trackId } });
@@ -496,6 +506,7 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
   };
 
   const destroy = async () => {
+    if (!canManage) return;
     setBusy("delete");
     try {
       await deletePlaylist({ data: { playlistId } });
@@ -527,12 +538,12 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
             {ordered.length > 0 && <button onClick={() => { const first = ordered[0]; if (first) play(first, ordered); }} title={copy.play} aria-label={copy.play} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon sm:inline-flex sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4"><Play className="h-4 w-4" /><span className="hidden sm:inline">{copy.play}</span></button>}
             <button onClick={toggleShuffle} aria-pressed={shuffle} title={shuffle ? copy.shuffleOn : copy.shuffleOff} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full border sm:rounded-xl", shuffle ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground")}><Shuffle className="h-4 w-4" /></button>
             <button onClick={cycleRepeat} aria-pressed={repeat !== "off"} title={repeatLabel} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full border sm:rounded-xl", repeat !== "off" ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground")}>{repeat === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}</button>
-            <button onClick={() => { setEditing(true); setName(detail.data?.playlist.name ?? ""); setCoverFile(null); setRemoveCover(false); }} title={copy.edit} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground hover:text-accent sm:rounded-xl"><Pencil className="h-4 w-4" /></button>
-            <button onClick={() => setConfirmDelete(true)} title={copy.delete} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground hover:border-destructive/50 hover:text-destructive sm:rounded-xl"><Trash2 className="h-4 w-4" /></button>
+            {canManage && <button onClick={() => { setEditing(true); setName(detail.data?.playlist.name ?? ""); setCoverFile(null); setRemoveCover(false); }} title={copy.edit} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground hover:text-accent sm:rounded-xl"><Pencil className="h-4 w-4" /></button>}
+            {canManage && <button onClick={() => setConfirmDelete(true)} title={copy.delete} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground hover:border-destructive/50 hover:text-destructive sm:rounded-xl"><Trash2 className="h-4 w-4" /></button>}
           </div>
         </div>
 
-        {editing && (
+        {canManage && editing && (
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
               <input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} className="h-11 min-w-0 rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-accent/60" />
@@ -546,18 +557,18 @@ function PlaylistDetail({ playlistId, userId, onBack }: { playlistId: string; us
           </div>
         )}
 
-        {confirmDelete && <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4"><span className="mr-auto text-sm">{copy.confirm}</span><button onClick={() => void destroy()} disabled={busy === "delete"} className="rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground">{busy === "delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.delete}</button><button onClick={() => setConfirmDelete(false)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground">{copy.cancel}</button></div>}
+        {canManage && confirmDelete && <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4"><span className="mr-auto text-sm">{copy.confirm}</span><button onClick={() => void destroy()} disabled={busy === "delete"} className="rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground">{busy === "delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.delete}</button><button onClick={() => setConfirmDelete(false)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground">{copy.cancel}</button></div>}
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
       </div>
 
       <div className="mt-5 space-y-2">
         {ordered.map((track) => (
           <article key={track.id} data-playlist-track-id={track.id} className={cn("glass flex items-center gap-3 rounded-2xl p-2.5 transition-colors", draggedId === track.id && "border-accent/60 bg-accent/5")} onDragOver={(event) => { event.preventDefault(); reorderToward(track.id); }}>
-            <button draggable onDragStart={() => setDraggedId(track.id)} onDragEnd={() => finishPointerDrag()} onPointerDown={(event) => { if (event.pointerType === "mouse") return; event.currentTarget.setPointerCapture(event.pointerId); setDraggedId(track.id); }} onPointerMove={(event) => { if (!draggedId || event.pointerType === "mouse") return; const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-playlist-track-id]"); const targetId = element?.dataset["playlistTrackId"]; if (targetId) reorderToward(targetId); }} onPointerUp={(event) => { if (event.pointerType === "mouse") return; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); finishPointerDrag(); }} title={copy.drag} aria-label={copy.drag} className="touch-none cursor-grab rounded-lg p-2 text-muted-foreground hover:text-accent active:cursor-grabbing"><GripVertical className="h-4 w-4" /></button>
+            {canManage && <button draggable onDragStart={() => setDraggedId(track.id)} onDragEnd={() => finishPointerDrag()} onPointerDown={(event) => { if (event.pointerType === "mouse") return; event.currentTarget.setPointerCapture(event.pointerId); setDraggedId(track.id); }} onPointerMove={(event) => { if (!draggedId || event.pointerType === "mouse") return; const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-playlist-track-id]"); const targetId = element?.dataset["playlistTrackId"]; if (targetId) reorderToward(targetId); }} onPointerUp={(event) => { if (event.pointerType === "mouse") return; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); finishPointerDrag(); }} title={copy.drag} aria-label={copy.drag} className="touch-none cursor-grab rounded-lg p-2 text-muted-foreground hover:text-accent active:cursor-grabbing"><GripVertical className="h-4 w-4" /></button>}
             <button onClick={() => play(track, ordered)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl"><img src={track.art} alt="" className="h-full w-full object-cover" /><span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity hover:opacity-100"><Play className="h-5 w-5 text-white" /></span></button>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{track.title}</p><p className="truncate text-xs text-muted-foreground">{track.handle} · {track.duration}</p></div>
             {current?.id === track.id && playing && <span className="hidden text-[10px] uppercase tracking-widest text-accent sm:block">{language === "el" ? "Παίζει" : "Playing"}</span>}
-            <button onClick={() => void remove(track.id)} disabled={busy === track.id} title={copy.remove} aria-label={copy.remove} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:opacity-50">{busy === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>
+            {canManage && <button onClick={() => void remove(track.id)} disabled={busy === track.id} title={copy.remove} aria-label={copy.remove} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:opacity-50">{busy === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}
           </article>
         ))}
       </div>
