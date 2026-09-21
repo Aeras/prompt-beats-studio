@@ -17,9 +17,11 @@ import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
 import { Route as ApiPublicJobsRunRouteImport } from './routes/api/public/jobs/run'
@@ -67,6 +69,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
+  id: '/song-analyzer',
+  path: '/song-analyzer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
   path: '/trending',
@@ -80,6 +87,11 @@ const ApiUploadRoute = ApiUploadRouteImport.update({
 const ArtistIdRoute = ArtistIdRouteImport.update({
   id: '/artist/$id',
   path: '/artist/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrackIdRoute = TrackIdRouteImport.update({
@@ -122,9 +134,11 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/song-analyzer': typeof SongAnalyzerRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
@@ -141,9 +155,11 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/song-analyzer': typeof SongAnalyzerRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
@@ -161,9 +177,11 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/song-analyzer': typeof SongAnalyzerRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
   '/api/public/jobs/run': typeof ApiPublicJobsRunRoute
@@ -182,9 +200,11 @@ export interface FileRouteTypes {
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/song-analyzer'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
     | '/api/public/jobs/run'
@@ -201,9 +221,11 @@ export interface FileRouteTypes {
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/song-analyzer'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
     | '/api/public/jobs/run'
@@ -220,9 +242,11 @@ export interface FileRouteTypes {
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/song-analyzer'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
     | '/api/public/jobs/run'
@@ -240,9 +264,11 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   ManagementRoute: typeof ManagementRoute
   OnboardingRoute: typeof OnboardingRoute
+  SongAnalyzerRoute: typeof SongAnalyzerRoute
   TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
+  ShareTokenRoute: typeof ShareTokenRoute
   TrackIdRoute: typeof TrackIdRoute
   UHandleRoute: typeof UHandleRoute
   ApiPublicJobsRunRoute: typeof ApiPublicJobsRunRoute
@@ -309,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/song-analyzer': {
+      id: '/song-analyzer'
+      path: '/song-analyzer'
+      fullPath: '/song-analyzer'
+      preLoaderRoute: typeof SongAnalyzerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trending': {
       id: '/trending'
       path: '/trending'
@@ -328,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/artist/$id'
       fullPath: '/artist/$id'
       preLoaderRoute: typeof ArtistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/track/$id': {
@@ -384,9 +424,11 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   ManagementRoute: ManagementRoute,
   OnboardingRoute: OnboardingRoute,
+  SongAnalyzerRoute: SongAnalyzerRoute,
   TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
+  ShareTokenRoute: ShareTokenRoute,
   TrackIdRoute: TrackIdRoute,
   UHandleRoute: UHandleRoute,
   ApiPublicJobsRunRoute: ApiPublicJobsRunRoute,
