@@ -973,6 +973,32 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.list_moderation_case_assignees()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+DECLARE v_actor uuid:=auth.uid(); v_result jsonb;
+BEGIN
+  IF v_actor IS NULL OR NOT public.current_user_is_admin_level() THEN RAISE EXCEPTION 'not allowed'; END IF;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'user_id',q.user_id,'role',q.role,'label',q.label
+  ) ORDER BY public.app_role_rank(q.role) DESC,q.label),'[]'::jsonb)
+  INTO v_result
+  FROM (
+    SELECT ur.user_id,ur.role::text AS role,
+      COALESCE(p.artist_alias,p.display_name,CASE WHEN p.handle IS NOT NULL THEN '@'||p.handle END,ur.user_id::text) AS label
+    FROM public.user_roles ur
+    LEFT JOIN public.profiles p ON p.id=ur.user_id
+    WHERE ur.moderation_status::text='active'
+      AND public.app_role_rank(ur.role::text)>=2
+  ) q;
+  RETURN v_result;
+END;
+$;
+
 -- Extend report projections with case ownership/status and per-staff unread state.
 CREATE OR REPLACE FUNCTION public.list_content_reports(_scope text DEFAULT 'open')
 RETURNS jsonb
@@ -1111,6 +1137,7 @@ REVOKE ALL ON FUNCTION public.mark_moderation_case_read(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.get_moderation_case_unread_count() FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.list_my_moderation_cases() FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.get_moderation_case(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.list_moderation_case_assignees() FROM PUBLIC,anon;
 
 GRANT EXECUTE ON FUNCTION public._moderation_case_actor_role(uuid) TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public._moderation_case_can_read(uuid,uuid) TO authenticated,service_role;
@@ -1128,5 +1155,6 @@ GRANT EXECUTE ON FUNCTION public.mark_moderation_case_read(uuid) TO authenticate
 GRANT EXECUTE ON FUNCTION public.get_moderation_case_unread_count() TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.list_my_moderation_cases() TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.get_moderation_case(uuid) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.list_moderation_case_assignees() TO authenticated,service_role;
 
 COMMIT;
