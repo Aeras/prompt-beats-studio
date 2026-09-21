@@ -143,7 +143,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
-      .select("id, title, genre, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
+      .select("id, title, genre, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, contains_explicit_lyrics, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
