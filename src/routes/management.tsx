@@ -342,13 +342,28 @@ function ManagementPage() {
   const { isAdmin, isSuperAdmin, canViewUsers } = useModeration();
   const [section, setSection] = useState<Section>("overview");
   const [initialUserId, setInitialUserId] = useState<string | null>(null);
+  const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">{isAdmin ? t("management.adminTitle") : t("management.staffTitle")}</h1><p className="text-[11px] text-muted-foreground md:text-xs">{isAdmin ? t("management.adminSubtitle") : t("management.staffSubtitle")}</p></div>;
 
   useEffect(() => { if (!loading) setSection(isAdmin ? "overview" : "users"); }, [loading, isAdmin]);
-  useEffect(() => { const userId = new URLSearchParams(window.location.search).get("userId"); if (userId) { setInitialUserId(userId); setSection("users"); } }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("userId");
+    const reportId = params.get("reportId");
+    const requestedSection = params.get("section");
+    if (userId) {
+      setInitialUserId(userId);
+      setSection("users");
+      return;
+    }
+    if (requestedSection === "reports") {
+      setSection("reports");
+      if (reportId) setInitialReportId(reportId);
+    }
+  }, []);
 
   if (!loading && (!user || !canViewUsers)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.restricted")} <Link to="/" className="text-accent hover:underline">{t("management.backFeed")}</Link></div></main></AppShell>;
 
   const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "models" ? t("management.models") : section === "users" ? t("management.usersModeration") : section === "reports" ? t("management.reports") : section === "features" ? t("management.featureAccess") : t("management.blockedRegistrations");
-  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}{!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}</main></AppShell>;
+  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}{!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}</main></AppShell>;
 }
