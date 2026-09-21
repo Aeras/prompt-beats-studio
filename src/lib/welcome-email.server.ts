@@ -1,3 +1,8 @@
+import { sendLovableEmail } from "@lovable.dev/email-js";
+
+const FROM = "PromptBeats <no-reply@notify.promptbeats.app>";
+const SENDER_DOMAIN = "notify.promptbeats.app";
+
 export function renderWelcomeEmail(handle: string) {
   const name = handle.startsWith("@") ? handle : `@${handle}`;
   return `<!doctype html>
@@ -34,20 +39,41 @@ export function renderWelcomeEmail(handle: string) {
 </html>`;
 }
 
-export async function sendWelcomeEmailViaResend(to: string, handle: string) {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env["RESEND_API_KEY"]!}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "PromptBeats <no-reply@promptbeats.app>",
-      to: [to],
+export async function sendWelcomeEmailViaLovable(
+  to: string,
+  handle: string,
+  idempotencyKey: string,
+) {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("Lovable email service is not configured.");
+
+  const name = handle.startsWith("@") ? handle : `@${handle}`;
+
+  return sendLovableEmail(
+    {
+      to,
+      from: FROM,
       subject: "Welcome to PromptBeats",
       html: renderWelcomeEmail(handle),
-    }),
-  });
-  if (!res.ok) throw new Error(`Resend error (${res.status}): ${await res.text()}`);
-  return (await res.json()) as { id?: string };
+      text: [
+        `Welcome, ${name}`,
+        "",
+        "You're in. PromptBeats is where AI-made music travels with the prompt that created it.",
+        "",
+        "Start here:",
+        "• Explore the discover feed and copy any prompt",
+        "• Open the AI Prompt Studio and shape your own sound",
+        "• Upload your track — it goes live with your prompt attached",
+        "",
+        "https://promptbeats.app",
+      ].join("\n"),
+      sender_domain: SENDER_DOMAIN,
+      purpose: "transactional",
+      idempotency_key: idempotencyKey,
+    },
+    {
+      apiKey,
+      sendUrl: process.env["LOVABLE_SEND_URL"],
+    },
+  );
 }
