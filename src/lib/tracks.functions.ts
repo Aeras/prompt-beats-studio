@@ -369,6 +369,7 @@ const trendingRows = z.array(z.object({
   source_id: z.string().nullable(),
   created_with: createdWithSchema.nullable(),
   allow_download: z.boolean(),
+  contains_explicit_lyrics: z.boolean(),
   art_url: z.string().nullable(),
   cover_url: z.string().nullable(),
   duration_seconds: z.number().nullable(),
