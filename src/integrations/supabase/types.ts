@@ -107,60 +107,6 @@ export type Database = {
         }
         Relationships: []
       }
-      content_reports: {
-        Row: {
-          category: string
-          created_at: string
-          details: string | null
-          id: string
-          moderator_notes: string | null
-          reporter_user_id: string | null
-          resolution: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
-          supporting_url: string | null
-          target_id: string
-          target_owner_id: string | null
-          target_title: string
-          target_type: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          details?: string | null
-          id?: string
-          moderator_notes?: string | null
-          reporter_user_id?: string | null
-          resolution?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          supporting_url?: string | null
-          target_id: string
-          target_owner_id?: string | null
-          target_title: string
-          target_type: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          details?: string | null
-          id?: string
-          moderator_notes?: string | null
-          reporter_user_id?: string | null
-          resolution?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          supporting_url?: string | null
-          target_id?: string
-          target_owner_id?: string | null
-          target_title?: string
-          target_type?: string
-        }
-        Relationships: []
-      }
       ai_generation_jobs: {
         Row: {
           attempts: number
@@ -242,6 +188,123 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_models: {
+        Row: {
+          access_policy: string
+          cache_write_price_per_million: number | null
+          cached_input_price_per_million: number | null
+          context_window: number | null
+          created_at: string
+          deprecated: boolean
+          discovered_at: string | null
+          display_name: string
+          generator_compatible: boolean
+          generator_enabled: boolean
+          generator_reasoning_effort: string | null
+          health_status: string
+          id: string
+          input_price_per_million: number | null
+          last_checked_at: string | null
+          last_error_code: string | null
+          last_failure_at: string | null
+          last_success_at: string | null
+          max_output_tokens: number | null
+          notes: string | null
+          output_price_per_million: number | null
+          preview: boolean
+          pricing_currency: string
+          pricing_status: string
+          pricing_updated_at: string | null
+          provider: string
+          provider_model_id: string
+          quality_check_compatible: boolean
+          quality_check_enabled: boolean
+          quality_check_reasoning_effort: string | null
+          reasoning_supported: boolean | null
+          retirement_date: string | null
+          status: string
+          structured_output_supported: boolean | null
+          updated_at: string
+          usage_reporting_supported: boolean | null
+        }
+        Insert: {
+          access_policy?: string
+          cache_write_price_per_million?: number | null
+          cached_input_price_per_million?: number | null
+          context_window?: number | null
+          created_at?: string
+          deprecated?: boolean
+          discovered_at?: string | null
+          display_name: string
+          generator_compatible?: boolean
+          generator_enabled?: boolean
+          generator_reasoning_effort?: string | null
+          health_status?: string
+          id?: string
+          input_price_per_million?: number | null
+          last_checked_at?: string | null
+          last_error_code?: string | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          max_output_tokens?: number | null
+          notes?: string | null
+          output_price_per_million?: number | null
+          preview?: boolean
+          pricing_currency?: string
+          pricing_status?: string
+          pricing_updated_at?: string | null
+          provider: string
+          provider_model_id: string
+          quality_check_compatible?: boolean
+          quality_check_enabled?: boolean
+          quality_check_reasoning_effort?: string | null
+          reasoning_supported?: boolean | null
+          retirement_date?: string | null
+          status?: string
+          structured_output_supported?: boolean | null
+          updated_at?: string
+          usage_reporting_supported?: boolean | null
+        }
+        Update: {
+          access_policy?: string
+          cache_write_price_per_million?: number | null
+          cached_input_price_per_million?: number | null
+          context_window?: number | null
+          created_at?: string
+          deprecated?: boolean
+          discovered_at?: string | null
+          display_name?: string
+          generator_compatible?: boolean
+          generator_enabled?: boolean
+          generator_reasoning_effort?: string | null
+          health_status?: string
+          id?: string
+          input_price_per_million?: number | null
+          last_checked_at?: string | null
+          last_error_code?: string | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          max_output_tokens?: number | null
+          notes?: string | null
+          output_price_per_million?: number | null
+          preview?: boolean
+          pricing_currency?: string
+          pricing_status?: string
+          pricing_updated_at?: string | null
+          provider?: string
+          provider_model_id?: string
+          quality_check_compatible?: boolean
+          quality_check_enabled?: boolean
+          quality_check_reasoning_effort?: string | null
+          reasoning_supported?: boolean | null
+          retirement_date?: string | null
+          status?: string
+          structured_output_supported?: boolean | null
+          updated_at?: string
+          usage_reporting_supported?: boolean | null
+        }
+        Relationships: []
+      }
       ai_quality_check_actions: {
         Row: {
           completed_at: string | null
@@ -306,6 +369,10 @@ export type Database = {
       }
       ai_usage_logs: {
         Row: {
+          cache_write_tokens: number | null
+          cached_input_tokens: number | null
+          cost_calculated_at: string | null
+          cost_status: string | null
           created_at: string
           estimated_cost_usd: number | null
           generation_id: string | null
@@ -314,12 +381,17 @@ export type Database = {
           model: string
           operation: string
           output_tokens: number | null
+          pricing_status_at_recording: string | null
           provider: string
           success: boolean
           total_tokens: number | null
           user_id: string | null
         }
         Insert: {
+          cache_write_tokens?: number | null
+          cached_input_tokens?: number | null
+          cost_calculated_at?: string | null
+          cost_status?: string | null
           created_at?: string
           estimated_cost_usd?: number | null
           generation_id?: string | null
@@ -328,12 +400,17 @@ export type Database = {
           model: string
           operation: string
           output_tokens?: number | null
+          pricing_status_at_recording?: string | null
           provider: string
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null
         }
         Update: {
+          cache_write_tokens?: number | null
+          cached_input_tokens?: number | null
+          cost_calculated_at?: string | null
+          cost_status?: string | null
           created_at?: string
           estimated_cost_usd?: number | null
           generation_id?: string | null
@@ -342,6 +419,7 @@ export type Database = {
           model?: string
           operation?: string
           output_tokens?: number | null
+          pricing_status_at_recording?: string | null
           provider?: string
           success?: boolean
           total_tokens?: number | null
@@ -369,6 +447,142 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      content_reports: {
+        Row: {
+          category: string
+          created_at: string
+          details: string | null
+          id: string
+          moderator_notes: string | null
+          reporter_user_id: string | null
+          resolution: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          supporting_url: string | null
+          target_id: string
+          target_owner_id: string | null
+          target_title: string
+          target_type: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          moderator_notes?: string | null
+          reporter_user_id?: string | null
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_url?: string | null
+          target_id: string
+          target_owner_id?: string | null
+          target_title: string
+          target_type: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          moderator_notes?: string | null
+          reporter_user_id?: string | null
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_url?: string | null
+          target_id?: string
+          target_owner_id?: string | null
+          target_title?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
+      favorites: {
+        Row: {
+          created_at: string
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_access_policies: {
+        Row: {
+          access_mode: string
+          description: string
+          display_name: string
+          feature_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          access_mode?: string
+          description?: string
+          display_name: string
+          feature_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          access_mode?: string
+          description?: string
+          display_name?: string
+          feature_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      feature_access_users: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          feature_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          feature_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          feature_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_access_users_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "feature_access_policies"
+            referencedColumns: ["feature_key"]
+          },
+        ]
       }
       likes: {
         Row: {
@@ -398,6 +612,456 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      moderation_case_appeals: {
+        Row: {
+          admin_action_summary: string | null
+          admin_proposed_at: string | null
+          admin_proposed_by: string | null
+          admin_proposed_outcome: string | null
+          admin_proposed_reason: string | null
+          appellant_user_id: string | null
+          case_id: string
+          final_action_summary: string | null
+          final_outcome: string | null
+          final_reason: string | null
+          finalized_at: string | null
+          id: string
+          statement: string
+          status: string
+          submitted_at: string
+          super_admin_action: string | null
+          super_admin_at: string | null
+          super_admin_by: string | null
+        }
+        Insert: {
+          admin_action_summary?: string | null
+          admin_proposed_at?: string | null
+          admin_proposed_by?: string | null
+          admin_proposed_outcome?: string | null
+          admin_proposed_reason?: string | null
+          appellant_user_id?: string | null
+          case_id: string
+          final_action_summary?: string | null
+          final_outcome?: string | null
+          final_reason?: string | null
+          finalized_at?: string | null
+          id?: string
+          statement: string
+          status?: string
+          submitted_at?: string
+          super_admin_action?: string | null
+          super_admin_at?: string | null
+          super_admin_by?: string | null
+        }
+        Update: {
+          admin_action_summary?: string | null
+          admin_proposed_at?: string | null
+          admin_proposed_by?: string | null
+          admin_proposed_outcome?: string | null
+          admin_proposed_reason?: string | null
+          appellant_user_id?: string | null
+          case_id?: string
+          final_action_summary?: string | null
+          final_outcome?: string | null
+          final_reason?: string | null
+          finalized_at?: string | null
+          id?: string
+          statement?: string
+          status?: string
+          submitted_at?: string
+          super_admin_action?: string | null
+          super_admin_at?: string | null
+          super_admin_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_case_appeals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_case_events: {
+        Row: {
+          actor_role: string | null
+          actor_user_id: string | null
+          case_id: string
+          created_at: string
+          creator_visible: boolean
+          event_type: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          case_id: string
+          created_at?: string
+          creator_visible?: boolean
+          event_type: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          case_id?: string
+          created_at?: string
+          creator_visible?: boolean
+          event_type?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_case_messages: {
+        Row: {
+          body: string
+          case_id: string
+          created_at: string
+          id: string
+          message_type: string
+          sender_side: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          body: string
+          case_id: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          sender_side: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          body?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          sender_side?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_case_messages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_case_notes: {
+        Row: {
+          author_user_id: string | null
+          body: string
+          case_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          author_user_id?: string | null
+          body: string
+          case_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          author_user_id?: string | null
+          body?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_case_notes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_case_reads: {
+        Row: {
+          case_id: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_case_reads_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_cases: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          closed_at: string | null
+          created_at: string
+          id: string
+          initial_action_summary: string | null
+          initial_appeal_eligible: boolean
+          initial_approved_at: string | null
+          initial_approved_by: string | null
+          initial_decision_outcome: string | null
+          initial_decision_reason: string | null
+          initial_proposed_at: string | null
+          initial_proposed_by: string | null
+          report_id: string
+          status: string
+          target_owner_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          initial_action_summary?: string | null
+          initial_appeal_eligible?: boolean
+          initial_approved_at?: string | null
+          initial_approved_by?: string | null
+          initial_decision_outcome?: string | null
+          initial_decision_reason?: string | null
+          initial_proposed_at?: string | null
+          initial_proposed_by?: string | null
+          report_id: string
+          status?: string
+          target_owner_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          initial_action_summary?: string | null
+          initial_appeal_eligible?: boolean
+          initial_approved_at?: string | null
+          initial_approved_by?: string | null
+          initial_decision_outcome?: string | null
+          initial_decision_reason?: string | null
+          initial_proposed_at?: string | null
+          initial_proposed_by?: string | null
+          report_id?: string
+          status?: string
+          target_owner_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_cases_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: true
+            referencedRelation: "content_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          new_follower_enabled: boolean
+          new_track_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          new_follower_enabled?: boolean
+          new_track_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          new_follower_enabled?: boolean
+          new_track_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_key: string
+          id: string
+          read_at: string | null
+          recipient_user_id: string
+          track_id: string | null
+          type: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_key: string
+          id?: string
+          read_at?: string | null
+          recipient_user_id: string
+          track_id?: string | null
+          type: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_key?: string
+          id?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          track_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlist_tracks: {
+        Row: {
+          added_at: string
+          playlist_id: string
+          position: number
+          track_id: string
+        }
+        Insert: {
+          added_at?: string
+          playlist_id: string
+          position: number
+          track_id: string
+        }
+        Update: {
+          added_at?: string
+          playlist_id?: string
+          position?: number
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          is_public: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profile_private: {
         Row: {
@@ -486,6 +1150,33 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_projects: {
+        Row: {
+          created_at: string
+          creation_notes: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          creation_notes?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          creation_notes?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       public_staff_badges: {
         Row: {
           badge: string | null
@@ -546,32 +1237,96 @@ export type Database = {
         }
         Relationships: []
       }
-      prompt_projects: {
+      saved_prompts: {
         Row: {
           created_at: string
-          creation_notes: string
+          custom_name: string | null
+          generator_input_snapshot: Json | null
+          genre: string
           id: string
-          name: string
+          language: string
+          lyrics: string
+          mood: string
+          note: string
+          parent_prompt_id: string | null
+          project_id: string | null
+          revision_request: string | null
+          source_generation_job_id: string | null
+          tags: string
+          theme: string
+          title: string | null
           updated_at: string
           user_id: string
+          version_label: string | null
+          version_number: number | null
         }
         Insert: {
           created_at?: string
-          creation_notes?: string
+          custom_name?: string | null
+          generator_input_snapshot?: Json | null
+          genre?: string
           id?: string
-          name: string
+          language?: string
+          lyrics?: string
+          mood?: string
+          note?: string
+          parent_prompt_id?: string | null
+          project_id?: string | null
+          revision_request?: string | null
+          source_generation_job_id?: string | null
+          tags?: string
+          theme?: string
+          title?: string | null
           updated_at?: string
           user_id: string
+          version_label?: string | null
+          version_number?: number | null
         }
         Update: {
           created_at?: string
-          creation_notes?: string
+          custom_name?: string | null
+          generator_input_snapshot?: Json | null
+          genre?: string
           id?: string
-          name?: string
+          language?: string
+          lyrics?: string
+          mood?: string
+          note?: string
+          parent_prompt_id?: string | null
+          project_id?: string | null
+          revision_request?: string | null
+          source_generation_job_id?: string | null
+          tags?: string
+          theme?: string
+          title?: string | null
           updated_at?: string
           user_id?: string
+          version_label?: string | null
+          version_number?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_prompts_parent_prompt_id_fkey"
+            columns: ["parent_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_prompts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_prompts_source_generation_job_id_fkey"
+            columns: ["source_generation_job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       song_analyses: {
         Row: {
@@ -610,97 +1365,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "prompt_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      saved_prompts: {
-        Row: {
-          custom_name: string | null
-          generator_input_snapshot: Json | null
-          parent_prompt_id: string | null
-          project_id: string | null
-          revision_request: string | null
-          source_generation_job_id: string | null
-          version_label: string | null
-          version_number: number | null
-          created_at: string
-          genre: string
-          id: string
-          language: string
-          lyrics: string
-          mood: string
-          note: string
-          tags: string
-          theme: string
-          title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          custom_name?: string | null
-          generator_input_snapshot?: Json | null
-          parent_prompt_id?: string | null
-          project_id?: string | null
-          revision_request?: string | null
-          source_generation_job_id?: string | null
-          version_label?: string | null
-          version_number?: number | null
-          created_at?: string
-          genre?: string
-          id?: string
-          language?: string
-          lyrics?: string
-          mood?: string
-          note?: string
-          tags?: string
-          theme?: string
-          title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          custom_name?: string | null
-          generator_input_snapshot?: Json | null
-          parent_prompt_id?: string | null
-          project_id?: string | null
-          revision_request?: string | null
-          source_generation_job_id?: string | null
-          version_label?: string | null
-          version_number?: number | null
-          created_at?: string
-          genre?: string
-          id?: string
-          language?: string
-          lyrics?: string
-          mood?: string
-          note?: string
-          tags?: string
-          theme?: string
-          title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saved_prompts_parent_prompt_id_fkey"
-            columns: ["parent_prompt_id"]
-            isOneToOne: false
-            referencedRelation: "saved_prompts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "saved_prompts_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "saved_prompts_source_generation_job_id_fkey"
-            columns: ["source_generation_job_id"]
-            isOneToOne: false
-            referencedRelation: "ai_generation_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -855,6 +1519,82 @@ export type Database = {
           },
         ]
       }
+      track_share_events: {
+        Row: {
+          created_at: string
+          id: string
+          shared_by: string | null
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          shared_by?: string | null
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          shared_by?: string | null
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_share_events_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_share_links: {
+        Row: {
+          created_at: string
+          id: string
+          include_lyrics: boolean
+          include_prompt: boolean
+          last_opened_at: string | null
+          open_count: number
+          owner_id: string
+          revoked_at: string | null
+          token: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          include_lyrics?: boolean
+          include_prompt?: boolean
+          last_opened_at?: string | null
+          open_count?: number
+          owner_id: string
+          revoked_at?: string | null
+          token?: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          include_lyrics?: boolean
+          include_prompt?: boolean
+          last_opened_at?: string | null
+          open_count?: number
+          owner_id?: string
+          revoked_at?: string | null
+          token?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_share_links_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       track_storage_cleanup: {
         Row: {
           attempt_count: number
@@ -921,15 +1661,16 @@ export type Database = {
       tracks: {
         Row: {
           allow_download: boolean
-          contains_explicit_lyrics: boolean
           art_url: string | null
           audio_key: string | null
           audio_type: string
           audio_url: string
+          contains_explicit_lyrics: boolean
           cover_url: string | null
           created_at: string
           created_with: string | null
           duration_seconds: number | null
+          first_published_at: string | null
           genre: string
           id: string
           is_published: boolean
@@ -956,11 +1697,12 @@ export type Database = {
           audio_key?: string | null
           audio_type?: string
           audio_url: string
-          cover_url?: string | null
           contains_explicit_lyrics?: boolean
+          cover_url?: string | null
           created_at?: string
           created_with?: string | null
           duration_seconds?: number | null
+          first_published_at?: string | null
           genre?: string
           id?: string
           is_published?: boolean
@@ -987,11 +1729,12 @@ export type Database = {
           audio_key?: string | null
           audio_type?: string
           audio_url?: string
-          cover_url?: string | null
           contains_explicit_lyrics?: boolean
+          cover_url?: string | null
           created_at?: string
           created_with?: string | null
           duration_seconds?: number | null
+          first_published_at?: string | null
           genre?: string
           id?: string
           is_published?: boolean
@@ -1013,6 +1756,122 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_donation_methods: {
+        Row: {
+          created_at: string
+          custom_label: string | null
+          id: string
+          is_enabled: boolean
+          privacy_acknowledged: boolean
+          provider: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          custom_label?: string | null
+          id?: string
+          is_enabled?: boolean
+          privacy_acknowledged?: boolean
+          provider: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          custom_label?: string | null
+          id?: string
+          is_enabled?: boolean
+          privacy_acknowledged?: boolean
+          provider?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      user_donation_settings: {
+        Row: {
+          admin_override: string
+          admin_updated_by: string | null
+          created_at: string
+          updated_at: string
+          user_enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          admin_override?: string
+          admin_updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+          user_enabled?: boolean
+          user_id: string
+        }
+        Update: {
+          admin_override?: string
+          admin_updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+          user_enabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          followed_user_id: string
+          follower_user_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          followed_user_id: string
+          follower_user_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          followed_user_id?: string
+          follower_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_follows_followed_user_id_fkey"
+            columns: ["followed_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_followed_user_id_fkey"
+            columns: ["followed_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_follower_user_id_fkey"
+            columns: ["follower_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_follower_user_id_fkey"
+            columns: ["follower_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_model_access: {
         Row: {
@@ -1098,6 +1957,16 @@ export type Database = {
       }
     }
     Functions: {
+      _calculate_ai_usage_cost: {
+        Args: {
+          p_cache_write_tokens?: number
+          p_cached_input_tokens?: number
+          p_input_tokens: number
+          p_model: string
+          p_output_tokens: number
+        }
+        Returns: number
+      }
       _has_role_internal: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1114,6 +1983,18 @@ export type Database = {
       _lock_user_security_state: {
         Args: { _user_id: string }
         Returns: undefined
+      }
+      _moderation_case_actor_role: {
+        Args: { _user_id: string }
+        Returns: string
+      }
+      _moderation_case_can_read: {
+        Args: { _actor: string; _case_id: string }
+        Returns: boolean
+      }
+      add_moderation_case_note: {
+        Args: { _body: string; _case_id: string }
+        Returns: string
       }
       admin_begin_account_deletion: {
         Args: { _target_user_id: string }
@@ -1139,6 +2020,14 @@ export type Database = {
       admin_overview: { Args: never; Returns: Json }
       admin_remove_registration_block: {
         Args: { _block_id: string }
+        Returns: undefined
+      }
+      admin_set_creator_donation_access: {
+        Args: { _override: string; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_set_creator_donations_global: {
+        Args: { _enabled: boolean }
         Returns: undefined
       }
       admin_set_model_access: {
@@ -1175,12 +2064,25 @@ export type Database = {
       }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
       admit_track_upload: { Args: never; Returns: boolean }
+      app_role_rank: { Args: { _role: string }; Returns: number }
+      approve_initial_case_decision: {
+        Args: { _case_id: string }
+        Returns: undefined
+      }
+      backfill_pending_ai_usage_costs: {
+        Args: { p_model: string }
+        Returns: number
+      }
       can_manage_track_storage_cleanup: {
         Args: { _cleanup_id: string }
         Returns: boolean
       }
       can_moderate_target: {
         Args: { _target_user_id: string }
+        Returns: boolean
+      }
+      can_use_feature: {
+        Args: { _feature_key: string; _user_id: string }
         Returns: boolean
       }
       capture_track_storage_cleanup: {
@@ -1207,43 +2109,75 @@ export type Database = {
         }
         Returns: string
       }
-      get_content_report: {
-        Args: { _report_id: string }
-        Returns: Json
-      }
-      list_content_reports: {
-        Args: { _scope?: string }
-        Returns: Json
-      }
-      review_content_report: {
+      create_prompt_lyrics_workspace_version: {
         Args: {
-          _moderator_notes?: string
-          _report_id: string
-          _resolution?: string
-          _status: string
+          _lyrics: string
+          _parent_prompt_id: string
+          _project_id: string
+          _user_id: string
+          _version_label?: string
         }
-        Returns: undefined
+        Returns: Json
       }
-      submit_track_report: {
+      create_prompt_revision_version: {
         Args: {
-          _category: string
-          _details?: string
-          _supporting_url?: string
+          _generator_input_snapshot: Json
+          _genre: string
+          _job_id: string
+          _language: string
+          _lyrics: string
+          _mood: string
+          _note: string
+          _parent_prompt_id: string
+          _project_id: string
+          _revision_request: string
+          _tags: string
+          _theme: string
+          _title: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      create_track_share_link: {
+        Args: {
+          _include_lyrics?: boolean
+          _include_prompt?: boolean
           _track_id: string
         }
-        Returns: string
+        Returns: Json
+      }
+      current_user_can_use_feature: {
+        Args: { _feature_key: string }
+        Returns: boolean
       }
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
       current_user_is_admin_level: { Args: never; Returns: boolean }
-      current_user_is_super_admin: { Args: never; Returns: boolean }
-      current_user_can_use_feature: {
-        Args: { _feature_key: string }
-        Returns: boolean
-      }
       current_user_is_banned: { Args: never; Returns: boolean }
+      current_user_is_super_admin: { Args: never; Returns: boolean }
+      delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
+      dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      edit_track_with_cleanup: {
+        Args: {
+          _allow_download?: boolean
+          _created_with?: string
+          _genre: string
+          _is_published: boolean
+          _lyrics: string
+          _new_audio_key?: string
+          _new_audio_url?: string
+          _new_cover_url?: string
+          _prompt: string
+          _source_id?: string
+          _source_type: string
+          _source_url?: string
+          _title: string
+          _track_id: string
+        }
+        Returns: Json
+      }
       feature_access_add_user: {
         Args: { _feature_key: string; _user_id: string }
         Returns: boolean
@@ -1265,66 +2199,32 @@ export type Database = {
         Args: { _access_mode: string; _feature_key: string }
         Returns: undefined
       }
-      create_prompt_revision_version: {
+      finalize_moderation_case_appeal: {
         Args: {
-          _genre: string
-          _generator_input_snapshot: Json
-          _job_id: string
-          _language: string
-          _lyrics: string
-          _mood: string
-          _note: string
-          _parent_prompt_id: string
-          _project_id: string
-          _revision_request: string
-          _tags: string
-          _theme: string
-          _title: string
-          _user_id: string
+          _action: string
+          _case_id: string
+          _override_action_summary?: string
+          _override_outcome?: string
+          _override_reason?: string
         }
-        Returns: Json
-      }
-      create_prompt_lyrics_workspace_version: {
-        Args: {
-          _lyrics: string
-          _parent_prompt_id: string
-          _project_id: string
-          _user_id: string
-          _version_label?: string
-        }
-        Returns: Json
-      }
-      delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
-      dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
-      edit_track_with_cleanup: {
-        Args: {
-          _created_with?: string
-          _genre: string
-          _is_published: boolean
-          _lyrics: string
-          _new_audio_key?: string
-          _new_audio_url?: string
-          _new_cover_url?: string
-          _prompt: string
-          _source_id?: string
-          _source_type: string
-          _source_url?: string
-          _title: string
-          _track_id: string
-        }
-        Returns: Json
+        Returns: undefined
       }
       finalize_quality_check_job: {
         Args: { _action_id: string }
         Returns: string
       }
+      follow_creator: { Args: { _target_user_id: string }; Returns: Json }
+      get_content_report: { Args: { _report_id: string }; Returns: Json }
       get_latest_quality_check_job: {
         Args: { _generation_id: string }
         Returns: Json
       }
+      get_moderation_case: { Args: { _case_id: string }; Returns: Json }
+      get_moderation_case_unread_count: { Args: never; Returns: number }
       get_my_account_status: { Args: never; Returns: Json }
       get_my_moderation_context: { Args: never; Returns: Json }
       get_quality_check_job: { Args: { _action_id: string }; Returns: Json }
+      get_track_share_by_token: { Args: { _token: string }; Returns: Json }
       has_moderation_capability: {
         Args: { _capability: string }
         Returns: boolean
@@ -1334,10 +2234,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      can_use_feature: {
-        Args: { _feature_key: string; _user_id: string }
         Returns: boolean
       }
       has_valid_account_state: { Args: { _user_id: string }; Returns: boolean }
@@ -1353,14 +2249,18 @@ export type Database = {
         Returns: undefined
       }
       like_count: { Args: { _track_id: string }; Returns: number }
+      list_content_reports: { Args: { _scope?: string }; Returns: Json }
+      list_moderation_case_assignees: { Args: never; Returns: Json }
+      list_my_moderation_cases: { Args: never; Returns: Json }
+      list_my_share_management: { Args: never; Returns: Json }
       list_trending_tracks: {
         Args: never
         Returns: {
           allow_download: boolean
-          contains_explicit_lyrics: boolean
           art_url: string
           audio_type: string
           audio_url: string
+          contains_explicit_lyrics: boolean
           cover_url: string
           created_at: string
           created_with: string
@@ -1379,9 +2279,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_moderation_case_read: {
+        Args: { _case_id: string }
+        Returns: undefined
+      }
       mark_quality_check_provider_started: {
         Args: { _idempotency_key: string }
         Returns: undefined
+      }
+      next_prompt_project_version: {
+        Args: { p_project_id: string }
+        Returns: number
       }
       normalize_registration_email: {
         Args: { _email: string }
@@ -1401,6 +2309,29 @@ export type Database = {
         }
         Returns: string
       }
+      propose_initial_case_decision: {
+        Args: {
+          _action_summary?: string
+          _appeal_eligible?: boolean
+          _case_id: string
+          _outcome: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      propose_moderation_case_appeal_decision: {
+        Args: {
+          _action_summary?: string
+          _case_id: string
+          _outcome: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      reassign_moderation_case: {
+        Args: { _case_id: string; _new_assignee?: string }
+        Returns: undefined
+      }
       reconcile_provider_committed_generation: {
         Args: { _job_id: string }
         Returns: boolean
@@ -1409,12 +2340,21 @@ export type Database = {
         Args: { _action_id: string }
         Returns: boolean
       }
+      record_track_public_share: {
+        Args: { _track_id: string }
+        Returns: undefined
+      }
       refresh_public_staff_badge: {
         Args: { _user_id: string }
         Returns: undefined
       }
       release_quality_check: {
         Args: { _idempotency_key: string }
+        Returns: undefined
+      }
+      reopen_moderation_case: { Args: { _case_id: string }; Returns: undefined }
+      reorder_playlist_tracks: {
+        Args: { _playlist_id: string; _track_ids: string[] }
         Returns: undefined
       }
       replace_track_with_audio_cleanup: {
@@ -1430,6 +2370,23 @@ export type Database = {
           _track_id: string
         }
         Returns: Json
+      }
+      review_content_report: {
+        Args: {
+          _moderator_notes?: string
+          _report_id: string
+          _resolution?: string
+          _status: string
+        }
+        Returns: undefined
+      }
+      revoke_track_share_link: {
+        Args: { _share_id: string }
+        Returns: undefined
+      }
+      send_moderation_case_message: {
+        Args: { _body: string; _case_id: string; _message_type: string }
+        Returns: string
       }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
@@ -1462,11 +2419,39 @@ export type Database = {
         Args: { _idempotency_key: string; _input: Json }
         Returns: Json
       }
+      submit_moderation_case_appeal: {
+        Args: { _case_id: string; _statement: string }
+        Returns: string
+      }
+      submit_track_report: {
+        Args: {
+          _category: string
+          _details?: string
+          _supporting_url?: string
+          _track_id: string
+        }
+        Returns: string
+      }
       sweep_generation_jobs: { Args: never; Returns: number }
+      take_moderation_case: { Args: { _report_id: string }; Returns: string }
       track_cover_path: { Args: { _cover_url: string }; Returns: string }
+      unfollow_creator: { Args: { _target_user_id: string }; Returns: Json }
+      update_track_share_link: {
+        Args: {
+          _include_lyrics: boolean
+          _include_prompt: boolean
+          _share_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "senior_moderator" | "super_admin"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "senior_moderator"
+        | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1594,7 +2579,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "senior_moderator", "super_admin"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "senior_moderator",
+        "super_admin",
+      ],
     },
   },
 } as const
