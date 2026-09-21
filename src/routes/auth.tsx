@@ -35,7 +35,7 @@ type ResetStage = "none" | "request" | "sent" | "update" | "done";
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,7 +151,7 @@ function AuthPage() {
               terms_accepted: true,
               terms_version: LEGAL_VERSION,
               privacy_policy_version: LEGAL_VERSION,
-              legal_locale: typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined,
+              legal_locale: language,
             },
           },
         });
