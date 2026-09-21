@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
 const playlistIdSchema = z.object({ playlistId: z.string().uuid() });
@@ -162,6 +163,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ name: nameSchema, trackId: z.string().uuid().optional(), coverUrl: coverUrlSchema.optional() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     if (data.trackId) await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
     if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
 
@@ -190,6 +192,7 @@ export const updatePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), name: nameSchema, coverUrl: coverUrlSchema }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
 
@@ -210,6 +213,7 @@ export const deletePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => playlistIdSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     const { error } = await (context.supabase as any)
       .from("playlists")
@@ -225,6 +229,7 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
 
@@ -260,6 +265,7 @@ export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     const { error } = await (context.supabase as any)
       .from("playlist_tracks")
@@ -274,6 +280,7 @@ export const reorderPlaylistTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()) }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     const { error } = await (context.supabase as any).rpc("reorder_playlist_tracks", {
       _playlist_id: data.playlistId,
       _track_ids: data.trackIds,
@@ -311,6 +318,7 @@ export const toggleFavorite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "favorites");
     const { data: existing, error: existingError } = await (context.supabase as any)
       .from("favorites")
       .select("track_id")
