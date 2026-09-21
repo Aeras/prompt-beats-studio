@@ -37,9 +37,6 @@ BEGIN
   IF _input IS NULL OR jsonb_typeof(_input)<>'object' THEN RAISE EXCEPTION 'invalid generation input'; END IF;
 
   v_feature_key:=CASE WHEN v_operation='lyrics_section_edit' THEN 'lyrics_workspace' ELSE 'ai_generator' END;
-  IF NOT public.can_use_feature(v_user,v_feature_key) THEN
-    RAISE EXCEPTION 'feature not available';
-  END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(v_user::text,0));
 
@@ -53,6 +50,10 @@ BEGIN
   WHERE user_id=v_user AND status IN('pending','processing') AND dismissed_at IS NULL
   ORDER BY created_at DESC LIMIT 1;
   IF FOUND THEN RETURN to_jsonb(v_job); END IF;
+
+  IF NOT public.can_use_feature(v_user,v_feature_key) THEN
+    RAISE EXCEPTION 'feature not available';
+  END IF;
 
   IF NOT public._is_admin_level_internal(v_user) THEN
     SELECT count(*)::integer INTO v_used
@@ -88,7 +89,6 @@ BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   PERFORM public._lock_user_security_state(v_user);
   IF NOT public.has_valid_account_state(v_user) THEN RAISE EXCEPTION 'account is not available'; END IF;
-  IF NOT public.can_use_feature(v_user,'quality_check') THEN RAISE EXCEPTION 'feature not available'; END IF;
   IF _input IS NULL OR jsonb_typeof(_input)<>'object' THEN RAISE EXCEPTION 'invalid quality check input'; END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(v_user::text,0));
 
@@ -111,6 +111,10 @@ BEGIN
       'actionId',v_action.id,'status',v_action.status,'qualityReport',v_action.quality_report,
       'provider',v_action.provider,'model',v_action.model,'error',v_action.error,'createdAt',v_action.created_at
     );
+  END IF;
+
+  IF NOT public.can_use_feature(v_user,'quality_check') THEN
+    RAISE EXCEPTION 'feature not available';
   END IF;
 
   IF NOT public._is_admin_level_internal(v_user) THEN
@@ -148,7 +152,6 @@ DECLARE
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   IF NOT public.has_valid_account_state(v_user) THEN RAISE EXCEPTION 'account is not available'; END IF;
-  IF NOT public.can_use_feature(v_user,'quality_check') THEN RAISE EXCEPTION 'feature not available'; END IF;
   PERFORM public._lock_user_security_state(v_user);
   PERFORM pg_advisory_xact_lock(hashtextextended(v_user::text,0));
 
@@ -167,6 +170,10 @@ BEGIN
      AND (v_action.provider_started_at IS NOT NULL OR v_action.updated_at>now()-interval '15 minutes')
   THEN
     RETURN jsonb_build_object('status','processing');
+  END IF;
+
+  IF NOT public.can_use_feature(v_user,'quality_check') THEN
+    RAISE EXCEPTION 'feature not available';
   END IF;
 
   IF NOT public._is_admin_level_internal(v_user) THEN
