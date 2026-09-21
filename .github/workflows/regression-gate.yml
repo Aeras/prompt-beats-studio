@@ -58,6 +58,9 @@ jobs:
       - name: Help and Contact Us tests
         run: bun test src/lib/contact-help.test.ts
 
+      - name: External Supabase cutover tests
+        run: bun test src/lib/supabase-cutover.test.ts
+
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts
 
