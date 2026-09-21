@@ -26,7 +26,6 @@ BEGIN
   FROM public.user_roles ur
   WHERE ur.moderation_status::text='active'
     AND public.app_role_rank(ur.role::text)>=2
-    AND public.can_use_feature(ur.user_id,'notifications')
   ON CONFLICT(event_key) DO NOTHING;
 
   RETURN NEW;
@@ -60,7 +59,6 @@ JOIN public.user_roles ur
   ON ur.moderation_status::text='active'
  AND public.app_role_rank(ur.role::text)>=2
 WHERE r.status IN ('open','under_review')
-  AND public.can_use_feature(ur.user_id,'notifications')
 ON CONFLICT(event_key) DO NOTHING;
 
 REVOKE ALL ON FUNCTION public.notify_staff_on_content_report() FROM PUBLIC,anon;
