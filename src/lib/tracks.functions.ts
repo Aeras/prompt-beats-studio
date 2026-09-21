@@ -27,10 +27,11 @@ const trackInput = z.object({
   prompt_is_public: z.boolean().default(true),
   lyrics_is_public: z.boolean().default(true),
   allow_download: z.boolean().default(false),
+  contains_explicit_lyrics: z.boolean().default(false),
 });
 
 const TRACK_COLUMNS =
-  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
+  "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
 
 function sanitizeTrackContent(track: any, viewerId?: string | null) {
@@ -238,6 +239,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       prompt_is_public: z.boolean().default(true),
       lyrics_is_public: z.boolean().default(true),
       allow_download: z.boolean().default(false),
+      contains_explicit_lyrics: z.boolean().default(false),
       source_type: z.enum(["upload", "suno", "udio", "legacy_link"]),
       created_with: createdWithSchema.nullable().optional(),
       source_url: z.string().url().max(1000).optional(),
@@ -280,6 +282,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       .update({
         prompt_is_public: data.prompt_is_public,
         lyrics_is_public: data.lyrics_is_public,
+        contains_explicit_lyrics: data.contains_explicit_lyrics,
       })
       .eq("id", data.id)
       .eq("user_id", context.userId);
