@@ -78,7 +78,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RETURN; END IF;
   IF NOT public.current_user_can_use_feature('sharing_public_links') THEN RETURN; END IF;
@@ -95,7 +95,7 @@ BEGIN
   INSERT INTO public.track_share_events(track_id,shared_by)
   VALUES(_track_id,auth.uid());
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.update_track_share_link(
   _share_id uuid,_include_prompt boolean,_include_lyrics boolean
