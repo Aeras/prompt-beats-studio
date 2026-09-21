@@ -45,6 +45,14 @@ describe("Supabase Auth branded email templates", () => {
     expect(html).toContain("{{ .NewEmail }}");
   });
 
+  test("dedicated email logo endpoint serves PNG with public caching", async () => {
+    const route = await source("src/routes/email-logo.ts");
+    expect(route).toContain('createFileRoute("/email-logo")');
+    expect(route).toContain('"Content-Type": "image/png"');
+    expect(route).toContain('"Cache-Control": "public, max-age=604800, immutable"');
+    expect(route).toContain('Buffer.from(LOGO_BASE64, "base64")');
+  });
+
   test("template manifest defines all six production subjects", async () => {
     const manifest = await source("supabase/email-templates/README.md");
     expect(manifest).toContain("Confirm your PromptBeats email");
