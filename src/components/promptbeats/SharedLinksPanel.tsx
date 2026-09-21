@@ -3,6 +3,7 @@ import { Check, Copy, Loader2, Share2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import artFallback from "@/assets/art-3.jpg";
 import { listMyShareManagement, revokeTrackShareLink, updateTrackShareLink, type ShareManagementTrack } from "@/lib/track-sharing.functions";
 
@@ -14,6 +15,7 @@ function fmt(value: string | null, locale: string) {
 
 export function SharedLinksPanel() {
   const { language } = useI18n();
+  const sharingAccess = useFeatureAccess("sharing_public_links");
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export function SharedLinksPanel() {
   };
 
   const updateLink = async (id: string, includePrompt: boolean, includeLyrics: boolean) => {
+    if (!sharingAccess.allowed) return;
     setUpdating(id);
     try {
       await updateTrackShareLink({ data: { shareId: id, includePrompt, includeLyrics } });
@@ -77,8 +80,8 @@ export function SharedLinksPanel() {
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                         <span className={active ? "text-accent" : "text-muted-foreground"}>{active ? (language === "el" ? "Ενεργό" : "Active") : (language === "el" ? "Ανακλήθηκε" : "Revoked")}</span>
                         {active ? <>
-                          <button type="button" disabled={updating === link.id} onClick={() => updateLink(link.id, !link.include_prompt, link.include_lyrics)} className={link.include_prompt ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Prompt {link.include_prompt ? "✓" : "—"}</button>
-                          <button type="button" disabled={updating === link.id} onClick={() => updateLink(link.id, link.include_prompt, !link.include_lyrics)} className={link.include_lyrics ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Lyrics {link.include_lyrics ? "✓" : "—"}</button>
+                          <button type="button" disabled={!sharingAccess.allowed || updating === link.id} onClick={() => updateLink(link.id, !link.include_prompt, link.include_lyrics)} className={link.include_prompt ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Prompt {link.include_prompt ? "✓" : "—"}</button>
+                          <button type="button" disabled={!sharingAccess.allowed || updating === link.id} onClick={() => updateLink(link.id, link.include_prompt, !link.include_lyrics)} className={link.include_lyrics ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent" : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"}>Lyrics {link.include_lyrics ? "✓" : "—"}</button>
                         </> : <span>Prompt {link.include_prompt ? "✓" : "—"} · Lyrics {link.include_lyrics ? "✓" : "—"}</span>}
                       </div>
                       <div className="flex gap-1">
