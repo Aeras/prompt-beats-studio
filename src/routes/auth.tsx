@@ -8,6 +8,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { sendWelcomeEmail } from "@/lib/email.functions";
 import { checkSignupAvailability, checkSignupRegistration } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
+import { LEGAL_VERSION } from "@/lib/legal-documents";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -34,7 +35,7 @@ type ResetStage = "none" | "request" | "sent" | "update" | "done";
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,6 +50,7 @@ function AuthPage() {
   const [resetStage, setResetStage] = useState<ResetStage>("none");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [legalAccepted, setLegalAccepted] = useState(false);
 
   const blockedRegistrationMessage = t("auth.registrationBlocked");
   const cleanHandleValue = handle.replace(/^@/, "").trim().toLowerCase();
@@ -89,7 +91,7 @@ function AuthPage() {
 
   const signupBlocked =
     mode === "signup" &&
-    (handleTaken || aliasTaken || checking || Boolean(handleFormatError) || !alias.trim() || !cleanHandleValue);
+    (handleTaken || aliasTaken || checking || Boolean(handleFormatError) || !alias.trim() || !cleanHandleValue || !legalAccepted);
 
   useEffect(() => {
     let active = true;
@@ -125,6 +127,7 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const cleanHandle = handle.replace(/^@/, "").trim().toLowerCase();
+        if (!legalAccepted) throw new Error(t("auth.legalRequired"));
         const registration = await checkSignupRegistration({ data: { email } });
         if (registration.blocked) throw new Error(blockedRegistrationMessage);
         if (!alias.trim()) throw new Error(t("auth.displayRequired"));
@@ -142,7 +145,14 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { handle: cleanHandle, display_name: alias.trim() },
+            data: {
+              handle: cleanHandle,
+              display_name: alias.trim(),
+              terms_accepted: true,
+              terms_version: LEGAL_VERSION,
+              privacy_policy_version: LEGAL_VERSION,
+              legal_locale: language,
+            },
           },
         });
         if (error) throw error;
@@ -362,7 +372,7 @@ function AuthPage() {
 
         <button
           onClick={google}
-          disabled={busy}
+          disabled={busy || (mode === "signup" && !legalAccepted)}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
         >
           {t("auth.continueGoogle")}
@@ -427,6 +437,27 @@ function AuthPage() {
             aria-label={t("auth.password")}
             className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
           />
+          {mode === "signup" && (
+            <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={legalAccepted}
+                onChange={(e) => setLegalAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--neon)]"
+              />
+              <span>
+                {t("auth.legalPrefix")}{" "}
+                <Link to="/terms" target="_blank" className="text-primary underline underline-offset-2 hover:text-accent">
+                  {t("auth.termsLink")}
+                </Link>{" "}
+                {t("auth.legalMiddle")}{" "}
+                <Link to="/privacy" target="_blank" className="text-primary underline underline-offset-2 hover:text-accent">
+                  {t("auth.privacyLink")}
+                </Link>
+                {t("auth.legalSuffix")}
+              </span>
+            </label>
+          )}
           {mode === "signin" && (
             <div className="flex justify-end px-1">
               <button type="button" onClick={() => { setMessage(null); setResetStage("request"); }} className="text-xs text-primary hover:underline">
@@ -458,7 +489,11 @@ function AuthPage() {
         <p className="mt-5 text-center text-xs text-muted-foreground">
           {mode === "signup" ? t("auth.alreadyAccount") : t("auth.newHere")}{" "}
           <button
-            onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+            onClick={() => {
+              setMode(mode === "signup" ? "signin" : "signup");
+              setLegalAccepted(false);
+              setMessage(null);
+            }}
             className="text-primary hover:underline"
           >
             {mode === "signup" ? t("auth.signIn") : t("auth.createOne")}
