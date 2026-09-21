@@ -87,8 +87,21 @@ describe("Help menu and Contact Us", () => {
     expect(page).toContain("Αποστολή");
     expect(page).toContain("Send");
     expect(page).toContain('navigate({ to: "/" })');
-    expect(page).toContain('setEmail(user.email)');
-    expect(page).toContain('setAlias("@" + profile.handle)');
+    expect(page).toContain('setEmail((current) => current || user.email || "")');
+    expect(page).toContain('"@" + profile.handle');
+  });
+
+  test("signed-in contact form prefills email and alias without racing profile load", async () => {
+    const contact = await source("src/routes/contact.tsx");
+    expect(contact).toContain("initializedEmail");
+    expect(contact).toContain("initializedAlias");
+    expect(contact).toContain("setEmail((current) => current || user.email || \"\")");
+    expect(contact).toContain('profile?.handle');
+    expect(contact).toContain('"@" + profile.handle');
+    expect(contact).toContain("profile?.artist_alias");
+    expect(contact).toContain("profile?.display_name");
+    expect(contact).toContain("setAlias((current) => current || preferredAlias)");
+    expect(contact).not.toContain("initialized.current = true");
   });
 
   test("contact submission is validated and sent only server-side", async () => {
