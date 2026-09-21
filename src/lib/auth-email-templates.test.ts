@@ -19,7 +19,7 @@ describe("Supabase Auth branded email templates", () => {
     for (const name of templates) {
       const html = await source(`supabase/email-templates/${name}`);
       expect(html).toContain("PromptBeats");
-      expect(html).toContain("promptbeats-logo.png");
+      expect(html).toContain("https://promptbeats.app/favicon.png");
       expect(html).toContain("https://promptbeats.app/terms");
       expect(html).toContain("https://promptbeats.app/privacy");
       expect(html).toContain("https://promptbeats.app/copyright-ip");
