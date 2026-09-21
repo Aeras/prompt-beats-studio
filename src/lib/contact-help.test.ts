@@ -87,8 +87,8 @@ describe("Help menu and Contact Us", () => {
     expect(page).toContain("Αποστολή");
     expect(page).toContain("Send");
     expect(page).toContain('navigate({ to: "/" })');
-    expect(page).toContain('setEmail(user.email)');
-    expect(page).toContain('setAlias("@" + profile.handle)');
+    expect(page).toContain('setEmail((current) => current || user.email || "")');
+    expect(page).toContain('"@" + profile.handle');
   });
 
   test("signed-in contact form prefills email and alias without racing profile load", async () => {
