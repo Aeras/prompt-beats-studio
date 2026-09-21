@@ -122,7 +122,7 @@ function validateMethod(input: z.infer<typeof methodInputSchema>) {
 }
 
 async function requireAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+  const { data, error } = await supabase.rpc("current_user_is_admin_level");
   if (error || data !== true) throw new Error("Not allowed");
 }
 
