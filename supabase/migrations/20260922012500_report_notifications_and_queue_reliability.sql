@@ -100,7 +100,7 @@ BEGIN
   )
   SELECT DISTINCT
     ur.user_id,
-    v_actor,
+    NULL,
     'new_report',
     _track_id,
     v_report_id,
@@ -114,5 +114,33 @@ BEGIN
   RETURN v_report_id;
 END;
 $$;
+
+
+-- Backfill currently actionable reports so the moderation bell reflects the
+-- queue immediately after this migration, without duplicating future events.
+INSERT INTO public.notifications(
+  recipient_user_id,
+  actor_user_id,
+  type,
+  track_id,
+  report_id,
+  event_key,
+  created_at
+)
+SELECT DISTINCT
+  ur.user_id,
+  NULL,
+  'new_report',
+  r.target_id,
+  r.id,
+  'new_report:' || r.id::text || ':' || ur.user_id::text,
+  r.created_at
+FROM public.content_reports r
+JOIN public.user_roles ur
+  ON ur.moderation_status::text='active'
+ AND public.app_role_rank(ur.role::text) >= 2
+WHERE r.status IN ('open','under_review')
+  AND public.can_use_feature(ur.user_id,'notifications')
+ON CONFLICT (event_key) DO NOTHING;
 
 COMMIT;
