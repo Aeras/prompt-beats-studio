@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import {
   createTrackShareLink,
@@ -44,6 +45,7 @@ export function ShareTrackButton({
   compact = false,
 }: Props) {
   const { user } = useAuth();
+  const sharingAccess = useFeatureAccess("sharing_public_links");
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const isOwner = user?.id === ownerId;
@@ -90,6 +92,11 @@ export function ShareTrackButton({
         setIncludePrompt(nextPrompt);
         setIncludeLyrics(nextLyrics);
         setShareUrl(`${window.location.origin}/share/${active.token}`);
+        return;
+      }
+
+      if (!sharingAccess.allowed) {
+        setError(language === "el" ? "Η δημιουργία νέων public links δεν είναι διαθέσιμη." : "Creating new public links is not available.");
         return;
       }
 
