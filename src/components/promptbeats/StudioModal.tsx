@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,6 +48,16 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || uploadAccess.isLoading || uploadAccess.allowed) return;
+    setRows((current) => current.map((row) =>
+      row.sourceType === "upload"
+        ? { ...row, sourceType: "suno", file: null, cover: null, createdWith: "", allowDownload: false }
+        : row
+    ));
+  }, [open, uploadAccess.allowed, uploadAccess.isLoading]);
+
   if (!open) return null;
 
   const createdWithLabel = language === "el" ? "Δημιουργήθηκε με" : "Created with";
