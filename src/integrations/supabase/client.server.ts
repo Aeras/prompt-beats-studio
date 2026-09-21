@@ -40,7 +40,7 @@ function createSupabaseAdminClient() {
       ...(!SUPABASE_URL ? ['EXTERNAL_SUPABASE_URL or SUPABASE_URL'] : []),
       ...(!SUPABASE_SERVICE_ROLE_KEY ? ['EXTERNAL_SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
