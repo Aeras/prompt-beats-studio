@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { CircleHelp, FileText, LifeBuoy, Mail, ShieldCheck } from "lucide-react";
+import { CircleHelp, Copyright, FileText, LifeBuoy, Mail, ShieldCheck } from "lucide-react";
 
 import { useI18n } from "@/i18n";
 
@@ -75,16 +75,30 @@ export function HelpMenu() {
 
           <div className="my-1 h-px bg-white/10" />
 
-          <DisabledItem
-            icon={FileText}
-            label={el ? "Όροι Χρήσης" : "Terms of Use"}
-            comingSoon={el ? "Σύντομα" : "Soon"}
-          />
-          <DisabledItem
-            icon={ShieldCheck}
-            label={el ? "Πολιτική Απορρήτου" : "Privacy Policy"}
-            comingSoon={el ? "Σύντομα" : "Soon"}
-          />
+          <Link
+            to="/terms"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-white/5 hover:text-accent"
+          >
+            <FileText className="h-4 w-4 shrink-0" />
+            <span>{el ? "Όροι Χρήσης" : "Terms of Use"}</span>
+          </Link>
+          <Link
+            to="/privacy"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-white/5 hover:text-accent"
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>{el ? "Πολιτική Απορρήτου" : "Privacy Policy"}</span>
+          </Link>
+          <Link
+            to="/copyright-ip"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-white/5 hover:text-accent"
+          >
+            <Copyright className="h-4 w-4 shrink-0" />
+            <span>{el ? "Copyright / Πνευματική Ιδιοκτησία" : "Copyright / IP Policy"}</span>
+          </Link>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
