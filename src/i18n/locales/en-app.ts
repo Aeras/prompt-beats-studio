@@ -31,6 +31,12 @@ export const enApp = {
   "auth.googleFailed": "Google sign-in failed. Try again.",
   "auth.somethingWrong": "Something went wrong",
   "auth.registrationBlocked": "Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.",
+  "auth.legalPrefix": "I have read and agree to the",
+  "auth.termsLink": "Terms of Use",
+  "auth.legalMiddle": "and acknowledge the",
+  "auth.privacyLink": "Privacy Policy",
+  "auth.legalSuffix": ".",
+  "auth.legalRequired": "You must accept the Terms of Use before creating an account.",
 
   "onboarding.title": "Set up your artist profile",
   "onboarding.subtitle": "Optional — you can do this later",
