@@ -19,7 +19,7 @@ describe("Supabase Auth branded email templates", () => {
     for (const name of templates) {
       const html = await source(`supabase/email-templates/${name}`);
       expect(html).toContain("PromptBeats");
-      expect(html).toContain("https://promptbeats.app/favicon.png");
+      expect(html).toContain("https://promptbeats.app/email-logo");
       expect(html).toContain("https://promptbeats.app/terms");
       expect(html).toContain("https://promptbeats.app/privacy");
       expect(html).toContain("https://promptbeats.app/copyright-ip");
@@ -43,6 +43,14 @@ describe("Supabase Auth branded email templates", () => {
   test("email-change template preserves the new-email variable", async () => {
     const html = await source("supabase/email-templates/email-change.html");
     expect(html).toContain("{{ .NewEmail }}");
+  });
+
+  test("dedicated email logo endpoint serves PNG with public caching", async () => {
+    const route = await source("src/routes/email-logo.ts");
+    expect(route).toContain('createFileRoute("/email-logo")');
+    expect(route).toContain('"Content-Type": "image/png"');
+    expect(route).toContain('"Cache-Control": "public, max-age=604800, immutable"');
+    expect(route).toContain('Buffer.from(LOGO_BASE64, "base64")');
   });
 
   test("template manifest defines all six production subjects", async () => {
