@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
 const shareLinkInput = z.object({
   trackId: z.string().uuid(),
@@ -13,6 +14,7 @@ export const createTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => shareLinkInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { data: result, error } = await (context.supabase as any).rpc("create_track_share_link", {
       _track_id: data.trackId,
       _include_prompt: data.includePrompt,
@@ -37,6 +39,7 @@ export const updateTrackShareLink = createServerFn({ method: "POST" })
     includeLyrics: z.boolean(),
   }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { error } = await (context.supabase as any).rpc("update_track_share_link", {
       _share_id: data.shareId,
       _include_prompt: data.includePrompt,
@@ -61,6 +64,7 @@ export const recordTrackPublicShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { error } = await (context.supabase as any).rpc("record_track_public_share", {
       _track_id: data.trackId,
     } as never);

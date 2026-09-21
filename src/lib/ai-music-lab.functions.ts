@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
 const songPackageSchema = z.object({
@@ -15,9 +16,8 @@ const songPackageSchema = z.object({
   message: "Song package is empty",
 });
 
-async function requireAdmin(context: { supabase: any }) {
-  const { data: isAdmin, error } = await context.supabase.rpc("current_user_is_admin_level");
-  if (error || isAdmin !== true) throw new Error("Not allowed");
+async function requireMusicLabAccess(context: { supabase: any }) {
+  await requireFeatureAccess(context.supabase, "ai_music_lab");
 }
 
 function isOwnedLyriaTempKey(key: string, userId: string) {
@@ -38,7 +38,7 @@ async function deleteUnusedLyriaTemp(context: { supabase: any; userId: string },
 export const getAiMusicLabAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context);
+    await requireMusicLabAccess(context);
     return { allowed: true as const };
   });
 
@@ -46,7 +46,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireMusicLabAccess(context);
 
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
@@ -129,7 +129,7 @@ export const downloadLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireMusicLabAccess(context);
     if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
 
     const { getR2Client, getR2Config } = await import("@/lib/r2.server");
@@ -148,7 +148,7 @@ export const discardLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireMusicLabAccess(context);
     if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
     const deleted = await deleteUnusedLyriaTemp(context, data.audioKey);
     return { ok: true as const, deleted };

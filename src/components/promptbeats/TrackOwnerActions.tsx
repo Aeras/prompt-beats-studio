@@ -12,6 +12,7 @@ import { type PersistedTrackSourceType, isSupportedExternalTrackUrl } from "@/li
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useModeration } from "@/hooks/useModeration";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
@@ -40,6 +41,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
   const { t, language } = useI18n();
   const { user } = useAuth();
   const { isAdmin } = useModeration();
+  const uploadAccess = useFeatureAccess("track_uploads");
   const queryClient = useQueryClient();
   const sourceType = (track.source_type ?? (track.audio_type === "upload" ? "upload" : "legacy_link")) as PersistedTrackSourceType;
   const isUpload = sourceType === "upload";
@@ -97,6 +99,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
     setEditing(true);
   };
   const uploadAudio = async (file: File) => {
+    if (!uploadAccess.allowed) throw new Error(language === "el" ? "Η αντικατάσταση ήχου δεν είναι διαθέσιμη." : "Replacement audio upload is not available.");
     const { data } = await supabase.auth.getSession();
     const body = new FormData();
     body.append("file", file);
@@ -162,7 +165,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
             <fieldset className="flex items-center gap-2"><legend className="mr-1 text-xs text-muted-foreground">{language === "el" ? "Ορατότητα Lyrics" : "Lyrics visibility"}</legend>{([true, false] as const).map((value) => <button key={String(value)} type="button" onClick={() => setLyricsIsPublic(value)} aria-pressed={lyricsIsPublic === value} className={`rounded-full border px-3 py-1.5 text-xs ${lyricsIsPublic === value ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground"}`}>{value ? t("common.public") : t("common.private")}</button>)}</fieldset>
           </div>
           {isUpload && <>
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? t("owner.replaceAudioSelected", { name: audioFile.name }) : t("owner.replaceAudio")}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>{audioFile ? t("owner.replaceAudioSelected", { name: audioFile.name }) : t("owner.replaceAudio")}</span><input type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" disabled={!uploadAccess.allowed} onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
             <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground"><ImagePlus className="h-4 w-4" /><span>{coverFile ? t("owner.replaceCoverSelected", { name: coverFile.name }) : t("owner.replaceCover")}</span><input type="file" accept={COVER_ACCEPT} onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="hidden" /></label>
           </>}
           {error && <p className="text-center text-xs text-destructive">{error}</p>}

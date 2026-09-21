@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 import {
@@ -2116,6 +2117,8 @@ export const checkSongQuality = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => qualityCheckInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "quality_check");
+    await requireFeatureAccess(context.supabase, "ai_generator");
     const supabase = context.supabase;
     const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
       "quality_check",

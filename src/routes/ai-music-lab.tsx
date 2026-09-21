@@ -321,20 +321,20 @@ function Header({ copy }: { copy: LabCopy }) {
 }
 
 const en = {
-  headerSub: "Experimental audio generation workspace", checking: "Checking admin access…", adminOnly: "Admin only",
+  headerSub: "Experimental audio generation workspace", checking: "Checking feature access…", adminOnly: "Feature Access",
   intro: "A separate workspace for testing real AI audio generation without changing the existing AI Prompt Studio. Google Lyria 3.5 is connected through the same Gemini API project.",
   testMode: "Test mode", songPackage: "Song package", songPackageHint: "The four fields mirror the PromptBeats generator result and are sent to Lyria as one structured song package.", reset: "Reset",
   title: "Title", titlePlaceholder: "Song title", musicStyle: "Music style", musicStylePlaceholder: "The complete PromptBeats music style prompt…", productionNotes: "Producer notes", productionPlaceholder: "Arrangement, dynamics, vocal treatment and production direction…", lyrics: "Lyrics", lyricsPlaceholder: "Paste or write the generated lyrics here…",
   preview: "Lyria request preview", previewHint: "This is the PromptBeats package used to build the server-side Lyria request.", emptyPreview: "Add a title, music style, lyrics or producer notes to preview the package.",
   generate: "Generate Audio with Lyria", generating: "Generating with Lyria…", costWarning: "Admin test: pressing Generate makes a paid Lyria 3.5 API request.", generationError: "Lyria generation failed.", result: "Generated audio", audioUnsupported: "Your browser does not support audio playback.", generatedText: "Lyria text output",
   download: "Download", downloading: "Downloading…", downloadError: "Could not download this audio file.", discard: "Discard", discardError: "Could not discard this generation.", savePromptBeats: "Save to PromptBeats", saveHint: "The generated audio and song details are ready. Add a cover if you want, choose visibility, then save.", genre: "Genre", musicPrompt: "Music prompt", createdWith: "Created with", visibility: "Visibility", public: "Public", private: "Private", allowDownload: "Allow download", allowDownloadHint: "Allow other signed-in users to download the audio file.", coverOptional: "Add cover art (optional)", publishTrack: "Publish Track", saveTrack: "Save Track", saving: "Saving…", saveError: "Could not save this track.", titleRequired: "A title is required.", signInRequired: "Sign in to save a cover.", close: "Close", untitled: "Untitled Lyria song",
-  adminProtected: "Admin-protected workspace", adminProtectedBody: "The sidebar item is shown only to admins, and every generation request also verifies the admin role on the server.",
+  adminProtected: "Feature Access protected workspace", adminProtectedBody: "Availability is controlled by PromptBeats Feature Access and every generation request is verified on the server.",
 } as const;
 
 type LabCopy = { [K in keyof typeof en]: string };
 
 const el: LabCopy = {
-  headerSub: "Πειραματικός χώρος δημιουργίας πραγματικού audio", checking: "Έλεγχος πρόσβασης διαχειριστή…", adminOnly: "Μόνο για admin",
+  headerSub: "Πειραματικός χώρος δημιουργίας πραγματικού audio", checking: "Έλεγχος Feature Access…", adminOnly: "Feature Access",
   intro: "Ξεχωριστός χώρος για δοκιμές πραγματικής δημιουργίας audio με AI, χωρίς να αλλάζει το υπάρχον AI Prompt Studio. Το Google Lyria 3.5 συνδέεται μέσω του ίδιου Gemini API project.",
   testMode: "Λειτουργία δοκιμών", songPackage: "Πακέτο τραγουδιού", songPackageHint: "Τα τέσσερα πεδία αντιστοιχούν ακριβώς στο αποτέλεσμα του PromptBeats Generator και στέλνονται στο Lyria ως ένα δομημένο πακέτο τραγουδιού.", reset: "Επαναφορά",
   title: "Τίτλος", titlePlaceholder: "Τίτλος τραγουδιού", musicStyle: "Μουσικό στυλ", musicStylePlaceholder: "Το ολοκληρωμένο Music Style prompt του PromptBeats…", productionNotes: "Σημειώσεις παραγωγής", productionPlaceholder: "Ενορχήστρωση, δυναμικές, επεξεργασία φωνής και κατεύθυνση παραγωγής…", lyrics: "Στίχοι", lyricsPlaceholder: "Επικόλλησε ή γράψε εδώ τους στίχους που δημιούργησε ο Generator…",

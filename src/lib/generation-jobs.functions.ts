@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   AI_TARGET_PLATFORMS,
   DEFAULT_AI_TARGET_PLATFORM,
@@ -172,6 +173,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "ai_generator");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
@@ -272,6 +274,7 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => lyricsSectionEditRequestSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "lyrics_workspace");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");

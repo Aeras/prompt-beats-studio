@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { cleanTrackStorage } from "@/lib/track-moderation.functions";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 import { normalizeExternalTrackSource, type ExternalTrackSourceType } from "@/lib/track-sources";
@@ -187,6 +188,11 @@ export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
   .handler(async ({ data, context }) => {
+    const isInternalLyriaSave = data.source_type === "upload"
+      && Boolean(data.audio_key?.startsWith(`tracks/${context.userId}/lyria-temp/`));
+    if (data.source_type === "upload" && !isInternalLyriaSave) {
+      await requireFeatureAccess(context.supabase, "track_uploads");
+    }
     if (data.source_type === "upload" && (!data.audio_key || !isSafeOwnedAudioKey(data.audio_key, context.userId) || data.audio_type !== "upload")) {
       throw new Error("Invalid uploaded audio reference");
     }
@@ -241,6 +247,7 @@ export const updateTrack = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    if (data.source_type === "upload" && data.new_audio_key) await requireFeatureAccess(context.supabase, "track_uploads");
     if (data.source_type === "upload" && data.new_audio_key && !isSafeOwnedAudioKey(data.new_audio_key, context.userId)) {
       throw new Error("Invalid uploaded audio reference");
     }

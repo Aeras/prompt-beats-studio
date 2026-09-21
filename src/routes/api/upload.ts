@@ -104,8 +104,15 @@ export const Route = createFileRoute("/api/upload")({
         const userId = await getUserIdFromRequest(request);
         if (!userId || !token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
-        const { data: admitted, error: admissionError } = await createPublicServerClient(token)
-          .rpc("admit_track_upload");
+        const client = createPublicServerClient(token);
+        const { data: allowed, error: featureError } = await client.rpc("current_user_can_use_feature", {
+          _feature_key: "track_uploads",
+        });
+        if (featureError || allowed !== true) {
+          return new Response(JSON.stringify({ error: "Track uploads are not available." }), { status: 403 });
+        }
+
+        const { data: admitted, error: admissionError } = await client.rpc("admit_track_upload");
         if (admissionError || admitted !== true) {
           return new Response(JSON.stringify({ error: "Upload limit reached. Please try again later." }), { status: 429 });
         }

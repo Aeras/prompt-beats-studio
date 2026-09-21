@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createTrack, discardUploads } from "@/lib/tracks.functions";
 import { useModeration } from "@/hooks/useModeration";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { readAudioDurationSeconds } from "@/lib/audio-duration";
@@ -41,11 +42,22 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const { t, language } = useI18n();
   const { user } = useAuth();
   const { isBanned } = useModeration();
+  const uploadAccess = useFeatureAccess("track_uploads");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || uploadAccess.isLoading || uploadAccess.allowed) return;
+    setRows((current) => current.map((row) =>
+      row.sourceType === "upload"
+        ? { ...row, sourceType: "suno", file: null, cover: null, createdWith: "", allowDownload: false }
+        : row
+    ));
+  }, [open, uploadAccess.allowed, uploadAccess.isLoading]);
+
   if (!open) return null;
 
   const createdWithLabel = language === "el" ? "Δημιουργήθηκε με" : "Created with";
@@ -57,6 +69,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const update = (key: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const pickFile = (key: string, file: File | null) => setRows((rs) => rs.map((r) => r.key === key ? { ...r, file, title: r.title.trim() ? r.title : file ? stripExt(file.name) : r.title } : r));
   const uploadOne = async (file: File, token: string | undefined) => {
+    if (!uploadAccess.allowed) throw new Error(language === "el" ? "Οι μεταφορτώσεις τραγουδιών δεν είναι διαθέσιμες." : "Track uploads are not available.");
     const body = new FormData(); body.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body });
     const payload = (await res.json()) as { url?: string; key?: string; error?: string };
@@ -82,6 +95,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
         await createTrack({ data: { title: r.title.trim(), genre: resolvedGenre(r), prompt: r.prompt, lyrics: r.lyrics, audio_url: r.sourceUrl, audio_type: "link", source_type: r.sourceType, created_with: null, is_published: r.isPublished, prompt_is_public: r.promptIsPublic, lyrics_is_public: r.lyricsIsPublic, allow_download: false } });
         return;
       }
+      if (!uploadAccess.allowed) throw new Error(language === "el" ? "Οι μεταφορτώσεις τραγουδιών δεν είναι διαθέσιμες." : "Track uploads are not available.");
       const durationSeconds = await readAudioDurationSeconds(r.file!);
       const payload = await uploadOne(r.file!, token); audioKey = payload.key;
       if (r.cover) { const cover = await uploadCover(r.cover); coverPath = cover.path; coverUrl = cover.url; }
@@ -120,7 +134,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
         {!isBanned && <div className="mt-6 space-y-5">
           {rows.map((r, i) => <section key={r.key} className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-4">
             <div className="flex items-center justify-between gap-3"><p className="text-xs uppercase tracking-widest text-accent">{t("studio.track", { number: i + 1 })}</p>{rows.length > 1 && <button aria-label={t("studio.removeTrack", { number: i + 1 })} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}</div>
-            <label className="block text-xs text-muted-foreground">{t("studio.audioSource")}<select value={r.sourceType} onChange={(e) => update(r.key, { sourceType: e.target.value as TrackSourceType, file: null, cover: null, sourceUrl: "", createdWith: "", allowDownload: false })} aria-label={`${t("studio.track", { number: i + 1 })} ${t("studio.audioSource")}`} className="mt-1.5 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none focus:border-accent/60"><option value="upload" className="bg-[#0a0a0c]">{t("studio.uploadFile")}</option><option value="suno" className="bg-[#0a0a0c]">Suno</option><option value="udio" className="bg-[#0a0a0c]">Udio</option></select></label>
+            <label className="block text-xs text-muted-foreground">{t("studio.audioSource")}<select value={r.sourceType} onChange={(e) => update(r.key, { sourceType: e.target.value as TrackSourceType, file: null, cover: null, sourceUrl: "", createdWith: "", allowDownload: false })} aria-label={`${t("studio.track", { number: i + 1 })} ${t("studio.audioSource")}`} className="mt-1.5 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none focus:border-accent/60"><option value="upload" disabled={!uploadAccess.allowed} className="bg-[#0a0a0c]">{t("studio.uploadFile")}</option><option value="suno" className="bg-[#0a0a0c]">Suno</option><option value="udio" className="bg-[#0a0a0c]">Udio</option></select></label>
             <fieldset className="flex items-center gap-2" aria-label={`${t("studio.track", { number: i + 1 })} ${t("studio.visibility")}`}><legend className="mr-1 text-xs text-muted-foreground">{t("studio.visibility")}</legend>{([true, false] as const).map((isPublished) => <button key={String(isPublished)} type="button" onClick={() => update(r.key, { isPublished })} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${r.isPublished === isPublished ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground"}`} aria-pressed={r.isPublished === isPublished}>{isPublished ? t("common.public") : t("common.private")}</button>)}</fieldset>
             {r.sourceType === "upload" && <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground"><input type="checkbox" checked={r.allowDownload} onChange={(e) => update(r.key, { allowDownload: e.target.checked })} className="mt-0.5 h-4 w-4 accent-current" /><span><span className="block text-sm font-medium">{allowDownloadLabel}</span><span className="mt-0.5 block text-xs text-muted-foreground">{allowDownloadHint}</span></span></label>}
             {r.sourceType === "upload" ? <><label htmlFor={`pb-audio-${r.key}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Music className="h-4 w-4 shrink-0" /><span className="truncate">{r.file ? r.file.name : t("studio.chooseAudio")}</span></label><input id={`pb-audio-${r.key}`} type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={(e) => pickFile(r.key, e.target.files?.[0] ?? null)} className="hidden" /><label htmlFor={`pb-cover-${r.key}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-black/40 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">{r.cover ? <img src={URL.createObjectURL(r.cover)} alt={t("studio.coverPreview", { number: i + 1 })} className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/15" /> : <ImagePlus className="h-4 w-4 shrink-0" />}<span className="truncate">{r.cover ? r.cover.name : t("studio.cover")}</span></label><input id={`pb-cover-${r.key}`} type="file" accept={COVER_ACCEPT} onChange={(e) => update(r.key, { cover: e.target.files?.[0] ?? null })} className="hidden" /><label className="block text-xs text-muted-foreground">{createdWithLabel}<select value={r.createdWith} onChange={(e) => update(r.key, { createdWith: e.target.value as CreatedWith })} className="mt-1.5 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none focus:border-accent/60"><option value="" disabled className="bg-[#0a0a0c]">{selectCreatedWith}</option>{CREATED_WITH_OPTIONS.map((option) => <option key={option} value={option} className="bg-[#0a0a0c]">{option}</option>)}</select></label></> : <input value={r.sourceUrl} onChange={(e) => update(r.key, { sourceUrl: e.target.value })} placeholder={`${r.sourceType === "suno" ? "Suno" : "Udio"} Link`} aria-label={`${t("studio.track", { number: i + 1 })} ${r.sourceType} link`} type="url" className={inputCls} />}
