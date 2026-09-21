@@ -51,6 +51,11 @@ export type ContentReport = {
   reporter_email?: string;
   reporter_handle?: string;
   reporter_display_name?: string;
+  case_id?: string;
+  case_status?: string;
+  case_assigned_to?: string;
+  case_assigned_label?: string;
+  case_unread_count?: number;
 };
 
 const categorySchema = z.enum(REPORT_CATEGORIES);

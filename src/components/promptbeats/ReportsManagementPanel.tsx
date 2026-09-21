@@ -1,24 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Flag, Loader2, X } from "lucide-react";
+import { ExternalLink, Flag, Loader2, MessageSquareWarning, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { ModerationCaseThread } from "@/components/promptbeats/ModerationCaseThread";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import {
   getContentReport,
   listContentReports,
-  reviewContentReport,
   type ContentReport,
   type ReportScope,
   type ReportStatus,
 } from "@/lib/content-reports.functions";
+import { takeModerationCase } from "@/lib/moderation-cases.functions";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const scopes: ReportScope[] = ["open","under_review","resolved","all"];
-const statuses: ReportStatus[] = ["open","under_review","resolved_action_taken","resolved_no_violation","dismissed_abuse"];
 
 function reportCategoryKey(category: ContentReport["category"]) {
   return `report.category.${category}` as AppTranslationKey;
@@ -37,44 +37,32 @@ function ReportDetail({
   onClose: () => void;
 }) {
   const { t, language } = useI18n();
+  const el = language === "el";
   const qc = useQueryClient();
   const { data: report, isLoading, isError } = useQuery({
     queryKey: ["content-report", reportId],
     queryFn: () => getContentReport({ data: { reportId } }),
   });
-  const [status, setStatus] = useState<ReportStatus>("open");
-  const [resolution, setResolution] = useState("");
-  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (!report) return;
-    setStatus(report.status);
-    setResolution(report.resolution ?? "");
-    setNotes(report.moderator_notes ?? "");
-  }, [report]);
-
-  const review = useMutation({
-    mutationFn: () => reviewContentReport({ data: {
-      reportId,
-      status,
-      resolution: resolution.trim() || undefined,
-      moderatorNotes: notes.trim() || undefined,
-    } }),
-    onSuccess: () => {
-      toast.success(t("management.reportReviewSaved"));
-      void qc.invalidateQueries({ queryKey: ["content-reports"] });
-      void qc.invalidateQueries({ queryKey: ["content-report", reportId] });
+  const take = useMutation({
+    mutationFn: () => takeModerationCase({ data: { reportId } }),
+    onSuccess: async () => {
+      toast.success(el ? "Η υπόθεση αναλήφθηκε." : "Case assigned to you.");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["content-report", reportId] }),
+        qc.invalidateQueries({ queryKey: ["content-reports"] }),
+      ]);
     },
-    onError: () => toast.error(t("management.reportReviewError")),
+    onError: (error) => toast.error(error instanceof Error ? error.message : (el ? "Δεν ήταν δυνατή η ανάληψη της υπόθεσης." : "Could not take case.")),
   });
 
   const content = (
     <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-6">
-      <div role="dialog" aria-modal="true" aria-labelledby="report-detail-title" className="glass-strong max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
+      <div role="dialog" aria-modal="true" aria-labelledby="report-detail-title" className="glass-strong max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="report-detail-title" className="font-display text-lg font-bold">{t("management.reportDetails")}</h2>
-            {report && <p className="mt-1 text-xs text-muted-foreground">{new Date(report.created_at).toLocaleString(language === "el" ? "el-GR" : "en-US")}</p>}
+            <h2 id="report-detail-title" className="font-display text-lg font-bold">{report?.case_id ? (el ? "Υπόθεση Moderation" : "Moderation Case") : t("management.reportDetails")}</h2>
+            {report && <p className="mt-1 text-xs text-muted-foreground">{new Date(report.created_at).toLocaleString(el ? "el-GR" : "en-US")}</p>}
           </div>
           <button type="button" onClick={onClose} aria-label={t("common.close")} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground"><X className="h-5 w-5" /></button>
         </header>
@@ -114,22 +102,36 @@ function ReportDetail({
 
           <TrackModerationControls trackId={report.target_id} />
 
-          <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
-            <label className="block text-xs text-muted-foreground">{t("management.reportStatus")}
-              <select value={status} onChange={(e) => setStatus(e.target.value as ReportStatus)} className="mt-1.5 h-11 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm text-foreground">
-                {statuses.map((value) => <option key={value} value={value}>{t(reportStatusKey(value))}</option>)}
-              </select>
-            </label>
-            <label className="mt-4 block text-xs text-muted-foreground">{t("management.reportResolution")}
-              <textarea value={resolution} onChange={(e) => setResolution(e.target.value)} maxLength={1000} rows={3} className="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-black/25 p-3 text-sm text-foreground" />
-            </label>
-            <label className="mt-4 block text-xs text-muted-foreground">{t("management.reportInternalNotes")}
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={4} className="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-black/25 p-3 text-sm text-foreground" />
-            </label>
-            <button type="button" disabled={review.isPending} onClick={() => review.mutate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-              {review.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{t("management.reportSaveReview")}
-            </button>
-          </div>
+          {!report.case_id && report.status !== "resolved_action_taken" && report.status !== "resolved_no_violation" && report.status !== "dismissed_abuse" && <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4">
+            <div className="flex items-start gap-3">
+              <UserCheck className="mt-0.5 h-5 w-5 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{el ? "Η αναφορά δεν έχει ακόμη αναληφθεί." : "This report has not been taken yet."}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{el ? "Με την ανάληψη δημιουργείται η πραγματική υπόθεση, καταγράφεται ο χειριστής και ξεκινά το case-based ιστορικό επικοινωνίας." : "Taking the report creates the moderation case, records its handler, and starts the case-based communication history."}</p>
+                <button type="button" disabled={take.isPending} onClick={() => take.mutate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                  {take.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                  {el ? "Ανάληψη Υπόθεσης" : "Take Case"}
+                </button>
+              </div>
+            </div>
+          </div>}
+
+          {report.case_id && <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2"><MessageSquareWarning className="h-4 w-4 text-accent" /><p className="text-sm font-semibold">{el ? "Case workspace" : "Case workspace"}</p></div>
+              <p className="text-xs text-muted-foreground">{el ? "Ανατέθηκε σε:" : "Assigned to:"} {report.case_assigned_label || "—"}</p>
+            </div>
+            <ModerationCaseThread caseId={report.case_id} staffView onChanged={() => {
+              void qc.invalidateQueries({ queryKey: ["content-report", reportId] });
+              void qc.invalidateQueries({ queryKey: ["content-reports"] });
+            }} />
+          </div>}
+
+          {!report.case_id && (report.status === "resolved_action_taken" || report.status === "resolved_no_violation" || report.status === "dismissed_abuse") && <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
+            <p className="text-xs font-semibold">{el ? "Legacy ολοκληρωμένη αναφορά" : "Legacy resolved report"}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{el ? "Η αναφορά ολοκληρώθηκε πριν ενεργοποιηθεί το σύστημα Moderation Cases." : "This report was resolved before Moderation Cases was enabled."}</p>
+            {report.resolution && <p className="mt-3 whitespace-pre-wrap text-sm">{report.resolution}</p>}
+          </div>}
         </div>}
       </div>
     </div>
@@ -140,12 +142,14 @@ function ReportDetail({
 
 export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
   const { t, language } = useI18n();
+  const el = language === "el";
   const [scope, setScope] = useState<ReportScope>("open");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
     queryFn: () => listContentReports({ data: { scope } }),
     staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 
   const scopeLabel = (value: ReportScope) =>
@@ -169,27 +173,33 @@ export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
 
     {data.length > 0 && <div className="glass overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[850px] text-left text-sm">
           <thead className="text-[11px] uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">{t("management.reportDate")}</th>
               <th className="px-4 py-3 font-medium">{t("management.reportTrack")}</th>
               <th className="px-4 py-3 font-medium">{t("management.reportCreator")}</th>
               <th className="px-4 py-3 font-medium">{t("management.reportReason")}</th>
-              <th className="px-4 py-3 font-medium">{t("management.reportStatus")}</th>
+              <th className="px-4 py-3 font-medium">{el ? "Υπόθεση" : "Case"}</th>
               {isAdmin && <th className="px-4 py-3 font-medium">{t("management.reportReporter")}</th>}
               <th className="px-4 py-3 font-medium">{t("management.reportAction")}</th>
             </tr>
           </thead>
           <tbody>
             {data.map((report) => <tr key={report.id} className="border-t border-white/5 align-top">
-              <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{new Date(report.created_at).toLocaleString(language === "el" ? "el-GR" : "en-US")}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{new Date(report.created_at).toLocaleString(el ? "el-GR" : "en-US")}</td>
               <td className="max-w-52 px-4 py-3"><span className="block truncate font-medium">{report.track_title}</span></td>
               <td className="max-w-48 px-4 py-3 text-xs text-muted-foreground"><span className="block truncate">{report.creator_artist_alias || report.creator_display_name || (report.creator_handle ? `@${report.creator_handle}` : "—")}</span></td>
               <td className="max-w-56 px-4 py-3 text-xs">{t(reportCategoryKey(report.category))}</td>
-              <td className="px-4 py-3 text-xs">{t(reportStatusKey(report.status))}</td>
+              <td className="max-w-52 px-4 py-3 text-xs">
+                {report.case_id ? <span className="block">
+                  <span className="font-medium text-foreground">{report.case_status?.replaceAll("_"," ")}</span>
+                  <span className="mt-1 block truncate text-muted-foreground">{report.case_assigned_label || (el ? "Χωρίς ανάθεση" : "Unassigned")}</span>
+                  {(report.case_unread_count ?? 0) > 0 && <span className="mt-1 inline-flex rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-black">{report.case_unread_count} {el ? "νέα" : "new"}</span>}
+                </span> : <span className="text-muted-foreground">{t(reportStatusKey(report.status))}</span>}
+              </td>
               {isAdmin && <td className="max-w-52 px-4 py-3 text-xs text-muted-foreground"><span className="block truncate">{report.reporter_display_name || (report.reporter_handle ? `@${report.reporter_handle}` : report.reporter_email || "—")}</span></td>}
-              <td className="px-4 py-3"><button type="button" onClick={() => setSelectedReportId(report.id)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-accent hover:border-accent/40">{t("management.reportDetails")}</button></td>
+              <td className="px-4 py-3"><button type="button" onClick={() => setSelectedReportId(report.id)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-accent hover:border-accent/40">{report.case_id ? (el ? "Άνοιγμα υπόθεσης" : "Open case") : t("management.reportDetails")}</button></td>
             </tr>)}
           </tbody>
         </table>
