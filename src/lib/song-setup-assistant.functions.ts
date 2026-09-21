@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   ADVANCED_MOODS,
   ADVANCED_MUSIC_STYLES,
@@ -96,6 +97,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => setupInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "ai_generator");
     const { data: isAdmin, error: roleError } = await context.supabase.rpc("current_user_is_admin_level");
     if (roleError || isAdmin !== true) throw new Error("Not allowed");
 
