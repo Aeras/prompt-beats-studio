@@ -20,8 +20,12 @@ export const sendWelcomeEmail = createServerFn({ method: "POST" })
 
     if (priv?.welcome_email_sent_at) return { sent: false, reason: "already-sent" };
 
-    const { sendWelcomeEmailViaResend } = await import("@/lib/welcome-email.server");
-    await sendWelcomeEmailViaResend(email, profile?.handle ?? email.split("@")[0]!);
+    const { sendWelcomeEmailViaLovable } = await import("@/lib/welcome-email.server");
+    await sendWelcomeEmailViaLovable(
+      email,
+      profile?.handle ?? email.split("@")[0]!,
+      `welcome-${userId}`,
+    );
 
     await supabase
       .from("profile_private")
