@@ -29,7 +29,14 @@ import { cn } from "@/lib/utils";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
 
-export const Route = createFileRoute("/management")({ head: () => ({ meta: [{ title: "Admin Dashboard | PromptBeats" }, { name: "robots", content: "noindex" }] }), component: ManagementPage });
+export const Route = createFileRoute("/management")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    section: search.section === "reports" ? "reports" as const : undefined,
+    report: typeof search.report === "string" ? search.report : undefined,
+  }),
+  head: () => ({ meta: [{ title: "Admin Dashboard | PromptBeats" }, { name: "robots", content: "noindex" }] }),
+  component: ManagementPage,
+});
 type Section = "overview" | "analytics" | "models" | "users" | "reports" | "registrations" | "features";
 type ReasonCode = (typeof BLOCK_REASONS)[number]["code"];
 type T = (key: AppTranslationKey, values?: Record<string, string | number>) => string;
@@ -340,7 +347,8 @@ function ManagementPage() {
   const { t } = useI18n();
   const { user, loading } = useAuth();
   const { isAdmin, isSuperAdmin, canViewUsers } = useModeration();
-  const [section, setSection] = useState<Section>("overview");
+  const search = Route.useSearch();
+  const [section, setSection] = useState<Section>(search.section === "reports" ? "reports" : "overview");
   const [initialUserId, setInitialUserId] = useState<string | null>(null);
   const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">{isAdmin ? t("management.adminTitle") : t("management.staffTitle")}</h1><p className="text-[11px] text-muted-foreground md:text-xs">{isAdmin ? t("management.adminSubtitle") : t("management.staffSubtitle")}</p></div>;
 
@@ -350,5 +358,5 @@ function ManagementPage() {
   if (!loading && (!user || !canViewUsers)) return <AppShell header={header}><main className="mx-auto max-w-[1600px] px-4 py-10 md:px-8"><div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.restricted")} <Link to="/" className="text-accent hover:underline">{t("management.backFeed")}</Link></div></main></AppShell>;
 
   const sectionTitle = section === "overview" ? t("management.overview") : section === "analytics" ? t("management.analyticsTitle") : section === "models" ? t("management.models") : section === "users" ? t("management.usersModeration") : section === "reports" ? t("management.reports") : section === "features" ? t("management.featureAccess") : t("management.blockedRegistrations");
-  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}{!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}</main></AppShell>;
+  return <AppShell header={header}><main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-primary">{t("management.controlPanel")}</p><h2 className="mt-1 font-display text-2xl font-bold">{sectionTitle}</h2></div><Link to="/" className="text-sm text-muted-foreground hover:text-foreground">{t("management.backApp")}</Link></div><AdminNav section={section} setSection={setSection} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />{!loading && isAdmin && section === "overview" && <OverviewPanel />}{!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}{!loading && isAdmin && section === "models" && <AiModelsPanel />}{!loading && section === "users" && <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />}{!loading && section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={search.report} />}{!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}{!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}</main></AppShell>;
 }
