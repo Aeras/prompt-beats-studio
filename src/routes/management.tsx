@@ -28,8 +28,15 @@ const reasonLabel = (code: string, t: T) => {
   return reason ? localizedAccountReasonLabel(reason.code, reason.label, t) : code;
 };
 const roleLabel = (role: string, status: string, t: T) => {
-  const base = role === "admin" ? t("management.admin") : role === "senior_moderator" ? t("management.seniorModerator") : role === "moderator" ? t("management.moderator") : t("management.user");
-  return status === "suspended" && role !== "admin" && role !== "user" ? `${base} · ${t("management.suspendedSuffix")}` : base;
+  const base =
+    role === "super_admin" ? t("management.promptBeatsTeam") :
+    role === "admin" ? t("management.admin") :
+    role === "senior_moderator" ? t("management.seniorModerator") :
+    role === "moderator" ? t("management.moderator") :
+    t("management.user");
+  return status === "suspended" && role !== "admin" && role !== "super_admin" && role !== "user"
+    ? `${base} · ${t("management.suspendedSuffix")}`
+    : base;
 };
 
 function Stat({ icon: Icon, label, value, sub }: { icon: typeof Coins; label: string; value: string; sub?: string }) {
@@ -84,6 +91,7 @@ function ReasonFields({ code, setCode, text, setText, label }: { code: ReasonCod
 
 function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: () => void; onChanged: () => void }) {
   const { t, language } = useI18n();
+  const { user } = useAuth();
   const num = (n: number) => n.toLocaleString(language === "el" ? "el-GR" : "en-US");
   const locale = language === "el" ? "el-GR" : "en-US";
   const moderation = useModeration();
@@ -98,13 +106,13 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   const [blockReasonText, setBlockReasonText] = useState("");
   const [showBlock, setShowBlock] = useState(false);
   const [showUnblock, setShowUnblock] = useState(false);
-  const [roleDraft, setRoleDraft] = useState<"user" | "moderator" | "senior_moderator">("user");
+  const [roleDraft, setRoleDraft] = useState<"user" | "moderator" | "senior_moderator" | "admin" | "super_admin">("user");
 
   useEffect(() => {
     if (!data) return;
     setMode(data.model_access.mode);
     setModels(data.model_access.models as AiModelId[]);
-    if (data.role !== "admin") setRoleDraft(data.role);
+    setRoleDraft(data.role);
   }, [data]);
 
   const ban = useMutation({ mutationFn: (input: { banned: boolean; reasonCode?: ReasonCode; reasonText?: string }) => setAdminUserBanned({ data: { userId, ...input } }), onSuccess: (_, input) => { toast.success(input.banned ? t("management.userBlocked") : t("management.userUnblocked")); setShowBlock(false); setShowUnblock(false); qc.invalidateQueries({ queryKey: ["admin-users"] }); qc.invalidateQueries({ queryKey: ["admin-user", userId] }); onChanged(); }, onError: (e) => toast.error(e instanceof Error ? e.message : t("management.updateAccountError")) });
@@ -116,11 +124,17 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
   if (isLoading) return <Modal onClose={onClose}>{t("management.loadingUser")}</Modal>;
   if (error || !data) return <Modal onClose={onClose}>{t("management.loadUserError")}</Modal>;
   const targetLabel = moderation.isAdmin ? (data.email || t("management.thisUser")) : (data.display_name || (data.handle ? `@${data.handle}` : t("management.thisUser")));
+  const isSelf = user?.id === data.id;
+  const isHighRole = data.role === "admin" || data.role === "super_admin";
+  const canEditRole = !isSelf && (moderation.isSuperAdmin || (moderation.isAdmin && !isHighRole));
+  const roleOptions = moderation.isSuperAdmin
+    ? (["user", "moderator", "senior_moderator", "admin", "super_admin"] as const)
+    : (["user", "moderator", "senior_moderator"] as const);
   const toggle = (id: AiModelId) => setModels((current) => current.includes(id) ? current.filter((m) => m !== id) : [...current, id]);
   const validReason = Boolean(blockReason) && (blockReason !== "other" || Boolean(blockReasonText.trim()));
   const validRegistrationReason = !blockRegistration || validReason;
-  const canModerateTarget = data.role !== "admin" && (moderation.isAdmin || moderation.canBlockUsers);
-  const canSuspendTarget = moderation.isAdmin || (moderation.canSuspendModerator && data.role === "moderator" && data.moderation_status === "active");
+  const canModerateTarget = !isSelf && !isHighRole && (moderation.isAdmin || moderation.canBlockUsers);
+  const canSuspendTarget = !isSelf && !isHighRole && (moderation.isAdmin || (moderation.canSuspendModerator && data.role === "moderator" && data.moderation_status === "active"));
   const assignableModels = (modelRegistry?.models ?? [])
     .filter((model) => (model.status === "enabled" || model.status === "testing") && model.accessPolicy !== "admin_only")
     .map((model) => ({ id: model.providerModelId as AiModelId, label: model.displayName }));
@@ -129,7 +143,25 @@ function UserDetails({ userId, onClose, onChanged }: { userId: string; onClose: 
     <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-xl font-bold">{t("management.userDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{moderation.isAdmin ? (data.email || t("management.noEmail")) : (data.display_name || (data.handle ? `@${data.handle}` : t("management.user")))}</p></div><button onClick={onClose} aria-label={t("common.close")}><X className="h-5 w-5" /></button></div>
     <div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label={t("management.displayName")} value={data.display_name || "—"} /><Info label={t("management.handle")} value={data.handle ? `@${data.handle}` : "—"} /><Info label={t("management.joined")} value={new Date(data.created_at).toLocaleString(locale)} /><Info label={t("management.role")} value={roleLabel(data.role, data.moderation_status, t)} /><Info label={t("management.status")} value={data.blocked ? `${t("management.blocked")} · ${reasonLabel(data.block_reason_code ?? "", t)}` : t("management.active")} /><Info label={t("management.generations")} value={num(data.generations)} /><Info label={t("management.aiRequests")} value={num(data.ai_requests)} />{data.blocked && <Info label={t("management.blockedAt")} value={data.blocked_at ? new Date(data.blocked_at).toLocaleString(locale) : "—"} />}</div>
 
-    {moderation.isAdmin && data.role !== "admin" && <section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">{t("management.roleManagement")}</h3><div className="mt-3 flex flex-wrap items-center gap-2"><select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value as typeof roleDraft)} className="rounded-lg border border-white/10 bg-[#17131f] px-3 py-2 text-sm"><option value="user">{t("management.user")}</option><option value="moderator">{t("management.moderator")}</option><option value="senior_moderator">{t("management.seniorModerator")}</option></select><button disabled={roleChange.isPending || roleDraft === data.role} onClick={() => { if (window.confirm(`${t("management.saveRole")}: ${targetLabel} → ${roleLabel(roleDraft, "active", t)}?`)) roleChange.mutate(); }} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{roleChange.isPending ? t("profile.saving") : t("management.saveRole")}</button></div>
+    {moderation.isAdmin && <section className="mt-6 border-t border-white/10 pt-5"><h3 className="font-display text-sm font-semibold">{t("management.roleManagement")}</h3>
+      {canEditRole ? <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value as typeof roleDraft)} className="rounded-lg border border-white/10 bg-[#17131f] px-3 py-2 text-sm">
+          {roleOptions.map((role) => <option key={role} value={role}>{roleLabel(role, "active", t)}</option>)}
+        </select>
+        <button
+          disabled={roleChange.isPending || roleDraft === data.role}
+          onClick={() => {
+            const highRisk = roleDraft === "admin" || roleDraft === "super_admin" || data.role === "admin" || data.role === "super_admin";
+            const message = highRisk
+              ? `${t("management.confirmHighRoleChange")}: ${targetLabel} — ${roleLabel(data.role, data.moderation_status, t)} → ${roleLabel(roleDraft, "active", t)}?`
+              : `${t("management.saveRole")}: ${targetLabel} → ${roleLabel(roleDraft, "active", t)}?`;
+            if (window.confirm(message)) roleChange.mutate();
+          }}
+          className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          {roleChange.isPending ? t("profile.saving") : t("management.saveRole")}
+        </button>
+      </div> : <p className="mt-3 text-xs text-muted-foreground">{isSelf ? t("management.selfRoleProtected") : t("management.protectedRole")}</p>}
       {(data.role === "moderator" || data.role === "senior_moderator") && data.moderation_status === "active" && <button disabled={moderationStatus.isPending || !canSuspendTarget} onClick={() => { const reason = window.prompt(t("management.suspensionReason")); if (reason?.trim() && window.confirm(`${t("management.suspendModeration")}: ${targetLabel}?`)) moderationStatus.mutate({ status: "suspended", reasonText: reason }); }} className="mt-3 rounded-lg border border-amber-400/30 px-3 py-2 text-xs text-amber-200 disabled:opacity-50">{t("management.suspendModeration")}</button>}
       {data.moderation_status === "suspended" && <button disabled={moderationStatus.isPending || !moderation.isAdmin} onClick={() => { if (window.confirm(`${t("management.reactivateModeration")}: ${targetLabel}?`)) moderationStatus.mutate({ status: "active" }); }} className="mt-3 ml-2 rounded-lg border border-primary/30 px-3 py-2 text-xs text-primary disabled:opacity-50">{t("management.reactivateModeration")}</button>}
     </section>}

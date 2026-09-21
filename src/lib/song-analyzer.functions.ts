@@ -649,7 +649,7 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
 } as const;
 
 async function requireAdmin(context: { supabase: any }) {
-  const { data: isAdmin, error } = await context.supabase.rpc("current_user_has_role", { _role: "admin" });
+  const { data: isAdmin, error } = await context.supabase.rpc("current_user_is_admin_level");
   if (error || isAdmin !== true) throw new Error("Not allowed");
 }
 

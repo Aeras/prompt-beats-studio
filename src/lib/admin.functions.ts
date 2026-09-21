@@ -17,7 +17,7 @@ export const BLOCK_REASONS = [
 const blockReasonCode = z.enum(BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]]);
 
 async function requireAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("current_user_has_role", { _role: "admin" });
+  const { data, error } = await supabase.rpc("current_user_is_admin_level");
   if (error || data !== true) throw new Error("Not allowed");
 }
 
@@ -44,7 +44,7 @@ export type AdminUser = {
   display_name: string | null;
   blocked: boolean;
   is_admin: boolean;
-  role: "admin" | "senior_moderator" | "moderator" | "user";
+  role: "super_admin" | "admin" | "senior_moderator" | "moderator" | "user";
   moderation_status: "active" | "suspended";
   generations: number;
 };
@@ -163,7 +163,7 @@ const deleteInput = z.object({
 
 export const setAdminUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: adminUserId, role: z.enum(["user", "moderator", "senior_moderator"]) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ userId: adminUserId, role: z.enum(["user", "moderator", "senior_moderator", "admin", "super_admin"]) }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_set_user_role", { _target_user_id: data.userId, _role: data.role });
@@ -355,7 +355,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     const targetUserId = authorizedTargetId;
     const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
     if (userError || !authUser.user) throw new Error("User not found");
-    const { data: targetAdmin } = await supabaseAdmin.from("user_roles").select("user_id").eq("user_id", targetUserId).eq("role", "admin").maybeSingle();
+    const { data: targetAdmin } = await supabaseAdmin.from("user_roles").select("user_id").eq("user_id", targetUserId).in("role", ["admin", "super_admin"]).maybeSingle();
     if (targetAdmin) throw new Error("Admin accounts cannot be deleted from this dashboard.");
     if ((authUser.user.email ?? "").toLowerCase() !== data.confirmationEmail.toLowerCase()) {
       throw new Error("The confirmation email does not match this account.");
