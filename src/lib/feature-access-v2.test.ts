@@ -156,10 +156,12 @@ describe("Feature Access V2 — 14 features", () => {
     const api = await source("src/routes/api/upload.ts");
     const gate = api.indexOf('_feature_key: "track_uploads"');
     const admit = api.indexOf('rpc("admit_track_upload")');
-    const body = api.indexOf("request.formData()");
+    const bodyRead = api.indexOf("readBoundedBody(request)");
+    const r2Upload = api.indexOf("uploadToR2(key");
     expect(gate).toBeGreaterThan(-1);
     expect(admit).toBeGreaterThan(gate);
-    expect(body).toBeGreaterThan(admit);
+    expect(bodyRead).toBeGreaterThan(admit);
+    expect(r2Upload).toBeGreaterThan(bodyRead);
 
     const sql = await source(mutationMigration);
     expect(functionBlock(sql, "admit_track_upload")).toContain("can_use_feature(v_user_id,'track_uploads')");
