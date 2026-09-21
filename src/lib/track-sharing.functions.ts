@@ -95,6 +95,7 @@ export const getTrackShareByToken = createServerFn({ method: "GET" })
             lyrics: string;
             prompt_is_public: boolean;
             lyrics_is_public: boolean;
+            contains_explicit_lyrics: boolean;
             audio_url: string;
             audio_type: string;
             source_type: string;
