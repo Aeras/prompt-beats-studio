@@ -1048,7 +1048,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      _is_banned_internal: { Args: { _user_id: string }; Returns: boolean }
+      _is_admin_level_internal: { Args: { _user_id: string }; Returns: boolean }\n      _is_banned_internal: { Args: { _user_id: string }; Returns: boolean }
       _lock_user_security_pair: {
         Args: { _first: string; _second: string }
         Returns: undefined
@@ -1153,7 +1153,7 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
-      current_user_is_banned: { Args: never; Returns: boolean }
+      current_user_is_admin_level: { Args: never; Returns: boolean }\n      current_user_is_super_admin: { Args: never; Returns: boolean }\n      current_user_is_banned: { Args: never; Returns: boolean }
       create_prompt_revision_version: {
         Args: {
           _genre: string
