@@ -94,13 +94,7 @@ async function assertAiEligibleUser(userId: string) {
 
 async function hasAdminBypass(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: isAdmin } = await supabaseAdmin.rpc(
-    "_has_role_internal",
-    {
-      _user_id: userId,
-      _role: "admin",
-    },
-  );
+  const { data: isAdmin } = await supabaseAdmin.rpc("_is_admin_level_internal", { _user_id: userId });
   return isAdmin === true;
 }
 
