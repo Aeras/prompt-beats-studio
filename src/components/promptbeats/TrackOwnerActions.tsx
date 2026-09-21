@@ -32,6 +32,7 @@ export type EditableTrack = {
   is_published?: boolean | undefined;
   prompt_is_public?: boolean | undefined;
   lyrics_is_public?: boolean | undefined;
+  contains_explicit_lyrics?: boolean | undefined;
 };
 
 const inputCls = "h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm outline-none focus:border-primary/60";
@@ -64,6 +65,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
   const [isPublished, setIsPublished] = useState(track.is_published ?? true);
   const [promptIsPublic, setPromptIsPublic] = useState(track.prompt_is_public ?? true);
   const [lyricsIsPublic, setLyricsIsPublic] = useState(track.lyrics_is_public ?? true);
+  const [containsExplicitLyrics, setContainsExplicitLyrics] = useState(track.contains_explicit_lyrics ?? false);
   const [allowDownload, setAllowDownload] = useState(false);
 
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
@@ -90,6 +92,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
         setIsPublished(value.is_published ?? true);
         setPromptIsPublic(value.prompt_is_public ?? true);
         setLyricsIsPublic(value.lyrics_is_public ?? true);
+        setContainsExplicitLyrics(value.contains_explicit_lyrics ?? false);
         setAllowDownload(permission.allowDownload);
       } catch (err) {
         setError(err instanceof Error ? err.message : t("owner.saveFailed"));
@@ -128,7 +131,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
     try {
       if (isUpload && audioFile) audio = await uploadAudio(audioFile);
       if (isUpload && coverFile) cover = await uploadCover(coverFile);
-      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, prompt_is_public: promptIsPublic, lyrics_is_public: lyricsIsPublic, allow_download: isUpload ? allowDownload : false, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
+      await updateTrack({ data: { id: track.id, title: title.trim(), genre, prompt, lyrics, is_published: isPublished, prompt_is_public: promptIsPublic, lyrics_is_public: lyricsIsPublic, contains_explicit_lyrics: containsExplicitLyrics, allow_download: isUpload ? allowDownload : false, source_type: sourceType, created_with: isUpload ? createdWith || null : null, ...(isUpload || sourceType === "legacy_link" ? {} : { source_url: sourceUrl }), ...(audio ? { new_audio_key: audio.key, new_audio_url: audio.url } : {}), ...(cover ? { new_cover_url: cover.url } : {}) } });
       await refresh(); setEditing(false); setAudioFile(null); setCoverFile(null);
     } catch (err) {
       if (audio || cover) try { await discardUploads({ data: { audioKey: audio?.key, coverPath: cover?.path } }); } catch { /* durable cleanup */ }
