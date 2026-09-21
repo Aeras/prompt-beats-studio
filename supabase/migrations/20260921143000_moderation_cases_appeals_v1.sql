@@ -980,7 +980,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS $$
 DECLARE v_actor uuid:=auth.uid(); v_result jsonb;
 BEGIN
   IF v_actor IS NULL OR NOT public.current_user_is_admin_level() THEN RAISE EXCEPTION 'not allowed'; END IF;
@@ -998,7 +998,7 @@ BEGIN
   ) q;
   RETURN v_result;
 END;
-$;
+$$;
 
 -- Extend report projections with case ownership/status and per-staff unread state.
 CREATE OR REPLACE FUNCTION public.list_content_reports(_scope text DEFAULT 'open')
