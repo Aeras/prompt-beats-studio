@@ -9,6 +9,8 @@ import { DonationMethods } from "@/components/promptbeats/DonationMethods";
 import { FollowCreatorControl } from "@/components/promptbeats/FollowCreatorControl";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
 import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
+import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
+import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
 import type { Track as PlayerTrack } from "@/lib/tracks";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
@@ -204,10 +206,12 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
                   <div className="flex items-center gap-2">
                     <Music className={cn("shrink-0 text-accent", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                     <Link to="/track/$id" params={{ id: track.id }} className={cn("truncate font-semibold hover:text-accent", compact ? "text-xs" : "text-sm")}>{track.title}</Link>
+                    {track.contains_explicit_lyrics === true && <ExplicitBadge compact={compact} />}
                     {track.prompt ? <CopyPromptButton prompt={track.prompt} /> : null}
                     <LikeButton trackId={track.id} />
                     <TrackLibraryActions track={nativeTrack} compact={compact} />
-                    <TrackOwnerActions compact track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url }} />
+                    <ReportTrackControl trackId={track.id} ownerId={track.user_id} isPublished={track.is_published ?? true} compact={compact} />
+                    <TrackOwnerActions compact track={{ id: track.id, user_id: track.user_id, title: track.title, genre: track.genre, prompt: track.prompt ?? "", lyrics: track.lyrics ?? "", audio_url: track.audio_url, audio_type: track.audio_type, source_type: track.source_type, source_url: track.source_url, is_published: track.is_published ?? true, prompt_is_public: track.prompt_is_public ?? true, lyrics_is_public: track.lyrics_is_public ?? true, contains_explicit_lyrics: track.contains_explicit_lyrics === true }} />
                   </div>
                   <p className={cn("uppercase tracking-widest text-muted-foreground", compact ? "text-[8px]" : "text-[10px]")}>{localizedGenreLabel(track.genre, t)}</p>
                   {compact ? (
