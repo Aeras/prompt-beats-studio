@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.content_reports (
   target_type text NOT NULL CHECK (target_type IN ('track')),
   target_id uuid NOT NULL,
   target_owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  target_title text NOT NULL CHECK (char_length(target_title) BETWEEN 1 AND 120),
   category text NOT NULL CHECK (category IN (
     'copyright_ip',
     'hate_discrimination',
@@ -73,6 +74,7 @@ AS $$
 DECLARE
   v_actor uuid:=auth.uid();
   v_owner uuid;
+  v_title text;
   v_report_id uuid;
   v_recent_count integer;
 BEGIN
@@ -98,7 +100,7 @@ BEGIN
     RAISE EXCEPTION 'invalid supporting url';
   END IF;
 
-  SELECT user_id INTO v_owner
+  SELECT user_id,title INTO v_owner,v_title
   FROM public.tracks
   WHERE id=_track_id
     AND is_published=true
@@ -115,10 +117,10 @@ BEGIN
 
   BEGIN
     INSERT INTO public.content_reports(
-      reporter_user_id,target_type,target_id,target_owner_id,category,details,supporting_url
+      reporter_user_id,target_type,target_id,target_owner_id,target_title,category,details,supporting_url
     )
     VALUES(
-      v_actor,'track',_track_id,v_owner,_category,
+      v_actor,'track',_track_id,v_owner,v_title,_category,
       NULLIF(trim(COALESCE(_details,'')),''),
       NULLIF(trim(COALESCE(_supporting_url,'')),'')
     )
@@ -172,9 +174,9 @@ BEGIN
       'reviewed_by',r.reviewed_by,
       'resolution',r.resolution,
       'moderator_notes',r.moderator_notes,
-      'track_title',t.title,
-      'track_is_published',t.is_published,
-      'track_moderation_status',t.moderation_status,
+      'track_title',COALESCE(t.title,r.target_title),
+      'track_is_published',COALESCE(t.is_published,false),
+      'track_moderation_status',COALESCE(t.moderation_status,'deleted'),
       'creator_handle',owner_profile.handle,
       'creator_display_name',owner_profile.display_name,
       'creator_artist_alias',owner_profile.artist_alias,
@@ -184,7 +186,7 @@ BEGIN
       'reporter_display_name',CASE WHEN v_admin_level THEN reporter_profile.display_name ELSE NULL END
     )) AS row_data
     FROM public.content_reports r
-    JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+    LEFT JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
     LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
     LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
     LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
@@ -244,7 +246,7 @@ BEGIN
   ))
   INTO v_result
   FROM public.content_reports r
-  JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+  LEFT JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
   LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
   LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
   LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
