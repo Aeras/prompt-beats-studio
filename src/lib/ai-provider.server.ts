@@ -108,6 +108,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   const apiKey = process.env["ANTHROPIC_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
 
+  const startedAt = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -120,33 +121,177 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       max_tokens: call.maxTokens ?? 8192,
       system: call.system,
       messages: [{ role: "user", content: call.prompt }],
+      // Anthropic explicitly recommends streaming for long-running Messages
+      // requests because intermediaries may drop otherwise-idle connections.
+      // We still accumulate the complete response before returning it to the
+      // existing PromptBeats parsing/validation pipeline.
+      stream: true,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text();
-    console.error(`[ai-provider] Anthropic request failed (${res.status})`, body.slice(0, 1000));
+    let errorType = "unknown";
+    try {
+      const parsed = JSON.parse(body) as { error?: { type?: string } };
+      errorType = parsed.error?.type ?? errorType;
+    } catch {
+      // Keep diagnostics metadata-only; never log prompt/lyrics content.
+    }
+    console.error("[ai-provider] Anthropic request failed", {
+      model,
+      status: res.status,
+      errorType,
+      durationMs: Date.now() - startedAt,
+      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+    });
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
-  const payload = (await res.json()) as {
-    stop_reason?: string | null;
-    content?: { type: string; text?: string }[];
-    usage?: { input_tokens?: number; output_tokens?: number };
+  if (!res.body) {
+    console.error("[ai-provider] Anthropic stream missing body", {
+      model,
+      durationMs: Date.now() - startedAt,
+      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+    });
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
+
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+  let buffer = "";
+  let text = "";
+  let reason: string | null = null;
+  let inputTokens: number | null = null;
+  let outputTokens: number | null = null;
+  let cachedInputTokens: number | null = null;
+  let cacheWriteTokens: number | null = null;
+
+  const processEvent = (rawData: string) => {
+    if (!rawData || rawData === "[DONE]") return;
+    const event = JSON.parse(rawData) as {
+      type?: string;
+      message?: {
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_read_input_tokens?: number;
+          cache_creation_input_tokens?: number;
+        };
+      };
+      delta?: {
+        type?: string;
+        text?: string;
+        stop_reason?: string | null;
+      };
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_read_input_tokens?: number;
+        cache_creation_input_tokens?: number;
+      };
+      error?: { type?: string; message?: string };
+    };
+
+    if (event.type === "message_start") {
+      const usage = event.message?.usage;
+      inputTokens = usage?.input_tokens ?? inputTokens;
+      outputTokens = usage?.output_tokens ?? outputTokens;
+      cachedInputTokens = usage?.cache_read_input_tokens ?? cachedInputTokens;
+      cacheWriteTokens = usage?.cache_creation_input_tokens ?? cacheWriteTokens;
+      return;
+    }
+
+    if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+      text += event.delta.text ?? "";
+      return;
+    }
+
+    if (event.type === "message_delta") {
+      reason = event.delta?.stop_reason ?? reason;
+      outputTokens = event.usage?.output_tokens ?? outputTokens;
+      return;
+    }
+
+    if (event.type === "error") {
+      const errorType = event.error?.type ?? "stream_error";
+      console.error("[ai-provider] Anthropic stream error", {
+        model,
+        errorType,
+        durationMs: Date.now() - startedAt,
+        requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+      });
+      throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+    }
   };
-  const text =
-    payload.content
-      ?.filter((b) => b.type === "text")
-      .map((b) => b.text ?? "")
-      .join("") ?? "";
-  const reason = payload.stop_reason ?? null;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const data = frame
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n");
+        if (data) processEvent(data);
+        boundary = buffer.indexOf("\n\n");
+      }
+
+      if (done) break;
+    }
+
+    const trailing = buffer.trim();
+    if (trailing) {
+      const data = trailing
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n");
+      if (data) processEvent(data);
+    }
+  } catch (error) {
+    console.error("[ai-provider] Anthropic stream interrupted", {
+      model,
+      durationMs: Date.now() - startedAt,
+      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+      errorType: error instanceof Error ? error.name : "unknown",
+    });
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
   const stopReason = reason === "stop_sequence" ? "end_turn" : reason;
-  const inputTokens = payload.usage?.input_tokens ?? null;
-  const outputTokens = payload.usage?.output_tokens ?? null;
   const usage =
-    inputTokens == null && outputTokens == null
+    inputTokens == null &&
+    outputTokens == null &&
+    cachedInputTokens == null &&
+    cacheWriteTokens == null
       ? null
-      : { inputTokens, outputTokens, totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0) };
+      : {
+          inputTokens,
+          outputTokens,
+          totalTokens:
+            inputTokens == null && outputTokens == null
+              ? null
+              : (inputTokens ?? 0) + (outputTokens ?? 0),
+          cachedInputTokens,
+          cacheWriteTokens,
+        };
+
+  console.info("[ai-provider] Anthropic stream completed", {
+    model,
+    stopReason,
+    durationMs: Date.now() - startedAt,
+    requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+  });
+
   return { text, stopReason, usage, provider: "anthropic", model };
 }
 
