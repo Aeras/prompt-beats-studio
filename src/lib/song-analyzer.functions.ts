@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { recordAiUsage } from "@/lib/ai-usage.server";
 import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
@@ -648,9 +649,8 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
   required: ["identityConfirmed","styleAgreement","tempoAgreement","referenceStyles","referenceTempos","instrumentationCredits","keyOrChordReferences","productionOrArrangementNotes","releaseContext","discrepancies","notes"],
 } as const;
 
-async function requireAdmin(context: { supabase: any }) {
-  const { data: isAdmin, error } = await context.supabase.rpc("current_user_is_admin_level");
-  if (error || isAdmin !== true) throw new Error("Not allowed");
+async function requireAnalyzerAccess(context: { supabase: any }) {
+  await requireFeatureAccess(context.supabase, "song_analyzer");
 }
 
 function normalizedUsage(payload: any) {
@@ -986,7 +986,7 @@ const analyzeInput = z.object({
 export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context);
+    await requireAnalyzerAccess(context);
     return {
       allowed: true as const,
       models: SONG_ANALYZER_MODELS,
@@ -1018,7 +1018,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => analyzeInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireAnalyzerAccess(context);
 
     const bytes = Buffer.from(data.audioBase64, "base64");
     if (!bytes.length || bytes.byteLength > SONG_ANALYZER_MAX_FILE_BYTES) {
@@ -1148,7 +1148,7 @@ export const saveSongAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => saveAnalysisInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireAnalyzerAccess(context);
     const supabase = context.supabase as any;
     await assertOwnedProject(supabase, context.userId, data.projectId);
 
