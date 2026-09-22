@@ -1,4 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  horizontalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { ChevronDown, Plus } from "lucide-react";
 
 import { useI18n } from "@/i18n";
@@ -12,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ArrangementSectionCard } from "@/components/promptbeats/ArrangementSectionCard";
 import { ArrangementSectionEditor } from "@/components/promptbeats/ArrangementSectionEditor";
+import { EnergyTimeline } from "@/components/promptbeats/EnergyTimeline";
 
 type Props = {
   sections: ArrangementSection[];
@@ -32,6 +48,54 @@ function sectionLabel(
     : labelForSection(section.sectionType);
 }
 
+type SortableCardProps = {
+  section: ArrangementSection;
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+};
+
+function SortableArrangementSectionCard({
+  section,
+  label,
+  selected,
+  onSelect,
+}: SortableCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.sectionId });
+
+  const style: CSSProperties = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0) scaleX(${transform.scaleX}) scaleY(${transform.scaleY})`
+      : undefined,
+    transition,
+    opacity: isDragging ? 0.72 : undefined,
+    zIndex: isDragging ? 20 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="shrink-0 motion-reduce:!transition-none"
+    >
+      <ArrangementSectionCard
+        section={section}
+        label={label}
+        selected={selected}
+        onSelect={onSelect}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
 export function VisualSongArrangement({
   sections,
   availableSectionTypes,
@@ -43,6 +107,14 @@ export function VisualSongArrangement({
   const [selectedId, setSelectedId] = useState<string | null>(sections[0]?.sectionId ?? null);
   const [addOpen, setAddOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   useEffect(() => {
     if (!sections.length) {
@@ -78,6 +150,12 @@ export function VisualSongArrangement({
   const commitMove = (sectionId: string, toIndex: number) => {
     onChange(moveArrangementSection(sections, sectionId, toIndex));
     setSelectedId(sectionId);
+  };
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const overIndex = sections.findIndex((section) => section.sectionId === String(over.id));
+    if (overIndex < 0) return;
+    commitMove(String(active.id), overIndex);
   };
 
   return (
@@ -124,16 +202,29 @@ export function VisualSongArrangement({
 
       {sections.length ? (
         <>
-          <div className="hidden gap-2 overflow-x-auto pb-2 md:flex">
-            {sections.map((section) => (
-              <ArrangementSectionCard
-                key={section.sectionId}
-                section={section}
-                label={sectionLabel(sections, section, labelForSection)}
-                selected={section.sectionId === selectedId}
-                onSelect={() => setSelectedId(section.sectionId)}
-              />
-            ))}
+          <div className="hidden md:block">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sections.map((section) => section.sectionId)}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {sections.map((section) => (
+                    <SortableArrangementSectionCard
+                      key={section.sectionId}
+                      section={section}
+                      label={sectionLabel(sections, section, labelForSection)}
+                      selected={section.sectionId === selectedId}
+                      onSelect={() => setSelectedId(section.sectionId)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
 
           <div className="space-y-2 md:hidden">
@@ -173,6 +264,11 @@ export function VisualSongArrangement({
               );
             })}
           </div>
+
+          <EnergyTimeline
+            sections={sections}
+            labelForSection={labelForSection}
+          />
 
           {selectedSection && (
             <div className="hidden md:block">
