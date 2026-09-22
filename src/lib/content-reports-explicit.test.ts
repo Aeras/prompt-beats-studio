@@ -127,14 +127,14 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(ui).toContain('isSuperAdmin && section === "features"');
   });
 
-  test("report queue uses authenticated browser RPC and fails instead of hanging indefinitely", async () => {
-    const client = await source("src/lib/content-reports.browser.ts");
+  test("report queue uses authenticated server functions backed by protected RPCs", async () => {
+    const server = await source("src/lib/content-reports.functions.ts");
     const ui = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
-    expect(client).toContain('rpc("list_content_reports"');
-    expect(client).toContain('rpc("get_content_report"');
-    expect(client).toContain("Report request timed out.");
-    expect(ui).toContain("listContentReportsClient(scope)");
-    expect(ui).toContain("getContentReportClient(reportId)");
+    expect(server).toContain("requireSupabaseAuth");
+    expect(server).toContain('rpc("list_content_reports"');
+    expect(server).toContain('rpc("get_content_report"');
+    expect(ui).toContain('listContentReports({ data: { scope } })');
+    expect(ui).toContain('getContentReport({ data: { reportId } })');
   });
 
   test("report notifications deep-link directly into the requested moderation report", async () => {
