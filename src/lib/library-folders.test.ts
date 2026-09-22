@@ -236,6 +236,13 @@ describe("Library folders foundation", () => {
     expect(library).toContain('draggable={desktopDnD}');
   });
 
+  test("switching Library tabs clears a previously open Project so the Projects folder browser is reachable", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain("setOpenProjectId(null); onViewChange(item);");
+    expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
+  });
+
   test("Move picker blocks the current location while Duplicate may target the same folder or Root", async () => {
     const library = await source("src/routes/library.tsx");
     const picker = await source("src/components/promptbeats/LibraryFolderPicker.tsx");
@@ -254,7 +261,7 @@ describe("Library folders foundation", () => {
     expect(library).toContain("Περιέχει υποφακέλους");
   });
 
-  test("touch drag shares the same Move operation and folder targets as desktop drag/drop", async () => {
+  test("touch drag shares the same Move operation and does not steal the stationary long-press gesture", async () => {
     const library = await source("src/routes/library.tsx");
 
     expect(library).toContain("touchDragHandlers");
@@ -263,6 +270,9 @@ describe("Library folders foundation", () => {
     expect(library).toContain("data-library-folder-drop-path");
     expect(library).toContain('event.pointerType === "mouse"');
     expect(library).toContain("Math.hypot");
+    expect(library).toContain("state.dragging = true");
+    expect(library).toContain("event.currentTarget.setPointerCapture?.(event.pointerId)");
+    expect(library).toContain("hasPointerCapture");
     expect(library).toContain("performMove(state.item.kind");
   });
 
