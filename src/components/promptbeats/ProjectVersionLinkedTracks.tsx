@@ -117,8 +117,9 @@ function TrackSelector({
   if (typeof document === "undefined" || typeof window === "undefined") return null;
 
   const viewportPadding = 12;
-  const mobileSafeBottom = window.innerWidth < 640 ? 64 : 12;
-  const availableBelow = Math.max(0, window.innerHeight - mobileSafeBottom - anchor.bottom - viewportPadding);
+  const mobileNav = document.querySelector<HTMLElement>('[data-pb-mobile-nav="true"]');
+  const viewportBottom = mobileNav?.getBoundingClientRect().top ?? window.innerHeight - viewportPadding;
+  const availableBelow = Math.max(0, viewportBottom - anchor.bottom - viewportPadding);
   const availableAbove = Math.max(0, anchor.top - viewportPadding);
   const openBelow = availableBelow >= Math.min(360, availableAbove);
   const width = Math.min(640, window.innerWidth - viewportPadding * 2);
@@ -128,8 +129,8 @@ function TrackSelector({
   );
   const maxHeight = Math.max(220, Math.min(640, openBelow ? availableBelow : availableAbove));
   const panelStyle = openBelow
-    ? { left, top: Math.min(anchor.bottom + 8, window.innerHeight - mobileSafeBottom - 220), width, maxHeight }
-    : { left, bottom: Math.max(mobileSafeBottom, window.innerHeight - anchor.top + 8), width, maxHeight };
+    ? { left, top: Math.min(anchor.bottom + 8, viewportBottom - 220), width, maxHeight }
+    : { left, bottom: Math.max(window.innerHeight - anchor.top + 8, window.innerHeight - viewportBottom), width, maxHeight };
 
   return createPortal(
     <>
