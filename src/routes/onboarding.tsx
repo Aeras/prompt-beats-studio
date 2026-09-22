@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { AVATAR_ACCEPT, validateAvatarFile } from "@/lib/avatar-upload";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -72,7 +73,7 @@ function Onboarding() {
 
   const uploadAvatar = async () => {
     if (!avatarFile || !user) return undefined;
-    const ext = avatarFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const ext = validateAvatarFile(avatarFile);
     const path = `${user.id}/avatar-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true });
     if (upErr) throw new Error(upErr.message);
@@ -139,7 +140,7 @@ function Onboarding() {
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
               <Upload className="h-4 w-4" />
               {avatarFile ? avatarFile.name.slice(0, 24) : t("onboarding.uploadAvatar")}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} />
+              <input type="file" accept={AVATAR_ACCEPT} className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} />
             </label>
           </div>
 
