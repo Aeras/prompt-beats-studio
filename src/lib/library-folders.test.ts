@@ -141,6 +141,50 @@ describe("Library folders foundation", () => {
     expect(library).toContain('folderId: view === "all" ? currentFolderId : null');
   });
 
+  test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph", async () => {
+    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder");
+    expect(sql).toContain("FOR v_source_prompt IN");
+    expect(sql).toContain("ORDER BY version_number ASC");
+    expect(sql).toContain("v_id_map");
+    expect(sql).toContain("v_new_parent_id");
+    expect(sql).toContain("duplicated_from_project_id");
+    expect(sql).toContain("duplicated_from_prompt_id");
+    expect(sql).toContain("preferred_prompt_id = NULLIF");
+    expect(sql).toContain("source_generation_job_id");
+  });
+
+  test("Duplicate standalone Prompt produces an independent copy in the selected folder", async () => {
+    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const server = await source("src/lib/library-folders.functions.ts");
+
+    expect(sql).toContain("duplicate_standalone_prompt_to_folder");
+    expect(sql).toContain("project_id IS NULL");
+    expect(sql).toContain("v_source.generator_input_snapshot");
+    expect(server).toContain("duplicateStandalonePromptToFolder");
+    expect(server).toContain("duplicatePromptProjectToFolder");
+  });
+
+  test("Duplicate does not copy audio or track records", async () => {
+    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+
+    expect(sql).not.toContain("INSERT INTO public.tracks");
+    expect(sql).not.toContain("audio_url");
+    expect(sql).not.toContain("audio_key");
+  });
+
+  test("folder UI exposes Duplicate and Undo Move without turning Undo into persistent history", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain('operation: "duplicate"');
+    expect(library).toContain("startDuplicateProject");
+    expect(library).toContain("startDuplicatePrompt");
+    expect(library).toContain("undoLastMove");
+    expect(library).toContain("previousFolderId");
+    expect(library).toContain('"Undo"');
+  });
+
   test("duplicate provenance columns exist without creating a branch graph", async () => {
     const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
 
