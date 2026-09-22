@@ -4,6 +4,7 @@ import { generatorInputSnapshotSchema } from "./generator-revision.shared";
 import { buildSongBlueprint, songBlueprintSchema } from "./song-blueprint.shared";
 import {
   applyEnergyToAllRegularChoruses,
+  applyInstructionToAllRegularChoruses,
   arrangementToSongBlueprint,
   arrangementToSongStructure,
   duplicateArrangementSection,
@@ -159,6 +160,25 @@ describe("Song Arrangement data foundation", () => {
       instruction: "late chorus",
       energy: 5,
     });
+  });
+
+  test("regular-Chorus instruction apply excludes Final Chorus in normalized runtime state", () => {
+    const arrangement = normalizeSongArrangement(
+      ["Chorus", "Verse", "Chorus", "Final Chorus"],
+      [],
+      idFactory("chorus-a", "verse-a", "chorus-b", "final-a"),
+    );
+    const next = applyInstructionToAllRegularChoruses(arrangement, "bigger drums");
+
+    expect(next[0]!.instruction).toBe("bigger drums");
+    expect(next[2]!.instruction).toBe("bigger drums");
+    expect(next[3]!.instruction).toBe("");
+    expect(next.map((section) => section.sectionId)).toEqual([
+      "chorus-a",
+      "verse-a",
+      "chorus-b",
+      "final-a",
+    ]);
   });
 
   test("regular-Chorus energy apply excludes Final Chorus", () => {

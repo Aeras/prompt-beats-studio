@@ -22,6 +22,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
+import { VisualSongArrangement } from "@/components/promptbeats/VisualSongArrangement";
 import { LanguagePicker } from "@/components/promptbeats/LanguagePicker";
 import { LanguageVariantPicker } from "@/components/promptbeats/LanguageVariantPicker";
 import { SmartPresetsPanel } from "@/components/promptbeats/SmartPresetsPanel";
@@ -74,11 +75,14 @@ import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import {
   activeSongBlueprint,
-  appendBlueprintSection,
   buildSongBlueprint,
-  removeBlueprintSection,
   type SongBlueprintSection,
 } from "@/lib/song-blueprint.shared";
+import {
+  arrangementToSongBlueprint,
+  arrangementToSongStructure,
+  normalizeSongArrangement,
+} from "@/lib/song-arrangement.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { buildPresetBlueprint, resolveSmartPreset, type SmartPreset } from "@/catalog/smart-presets";
 import { findSongLanguageVariantFromCanonical, getSongLanguageVariants, resolveSongLanguage } from "@/catalog/song-languages";
@@ -536,10 +540,26 @@ function GeneratePage() {
   const [customInstruments, setCustomInstruments] = useState("");
   const [structure, setStructure] = useState<string[]>([]);
   const [songBlueprint, setSongBlueprint] = useState<SongBlueprintSection[]>([]);
+  const arrangement = useMemo(
+    () => normalizeSongArrangement(structure, buildSongBlueprint(structure, songBlueprint)),
+    [structure, songBlueprint],
+  );
+
+  const commitArrangement = (next: ReturnType<typeof normalizeSongArrangement>) => {
+    setStructure(arrangementToSongStructure(next));
+    setSongBlueprint(arrangementToSongBlueprint(next));
+  };
+
+  useEffect(() => {
+    if (!structure.length) return;
+    const normalizedBlueprint = arrangementToSongBlueprint(arrangement);
+    if (JSON.stringify(songBlueprint) !== JSON.stringify(normalizedBlueprint)) {
+      setSongBlueprint(normalizedBlueprint);
+    }
+  }, [arrangement, songBlueprint, structure.length]);
   const [showStyleTags, setShowStyleTags] = useState(false);
   const [showMoodTags, setShowMoodTags] = useState(false);
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
-  const [showStructureTags, setShowStructureTags] = useState(false);
   const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
   const [production, setProduction] = useState("");
@@ -941,16 +961,6 @@ function GeneratePage() {
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
   const toggleValue = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) => setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
 
-  const addStructureSection = (sectionType: string) => {
-    setStructure((previous) => [...previous, sectionType]);
-    setSongBlueprint((previous) => appendBlueprintSection(buildSongBlueprint(structure, previous), sectionType));
-  };
-
-  const removeStructureSection = (structureIndex: number) => {
-    setStructure((previous) => previous.filter((_, index) => index !== structureIndex));
-    setSongBlueprint((previous) => removeBlueprintSection(buildSongBlueprint(structure, previous), structureIndex));
-  };
-
   const clearStructure = () => {
     setStructure([]);
     setSongBlueprint([]);
@@ -1172,7 +1182,7 @@ function GeneratePage() {
   });
   const applyState = makeApplyState(result, setResult);
 
-  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || !!activeSmartPresetId || showStyleTags || showMoodTags || showInstrumentTags || showStructureTags || targetPlatform !== DEFAULT_AI_TARGET_PLATFORM || !!result || !!quality;
+  const canClear = !!theme.trim() || genres.length > 0 || !!customGenre.trim() || moods.length > 0 || !!customMood.trim() || !!language || !!customLanguage.trim() || instruments.length > 0 || !!customInstruments.trim() || bpm !== "Auto" || !!customBpm.trim() || structure.length > 0 || !!production.trim() || !!instructions.trim() || !!activeSmartPresetId || showStyleTags || showMoodTags || showInstrumentTags || targetPlatform !== DEFAULT_AI_TARGET_PLATFORM || !!result || !!quality;
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
@@ -1186,7 +1196,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -1528,49 +1538,21 @@ function GeneratePage() {
                 <SectionHeader
                   title={t("generator.songStructure")}
                   hint={t("generator.structureHint")}
-                  optionsOpen={showStructureTags}
-                  onToggleOptions={() => setShowStructureTags((value) => !value)}
                   onClear={clearStructure}
                 />
-                {structure.length > 0 && (
-                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
-                    {structure.map((item, i) => (
-                      <span key={`${item}-${i}`} className="flex items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 py-1 text-xs text-accent">
-                        {structureLabel(item)}
-                        <button
-                          type="button"
-                          aria-label={t("generator.removeStructure", { name: structureLabel(item), position: i + 1 })}
-                          onClick={() => removeStructureSection(i)}
-                          className="text-accent/70 transition-colors hover:text-accent"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {showStructureTags && (
-                  <div className="flex flex-wrap gap-2">
-                    {STRUCTURE_TAGS.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => addStructureSection(item)}
-                        className="rounded-full border border-white/12 bg-black/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-                      >
-                        {structureLabel(item)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-3">
-                  <SongBlueprintEditor
-                    structure={structure}
-                    blueprint={buildSongBlueprint(structure, songBlueprint)}
-                    onChange={setSongBlueprint}
-                    labelForSection={structureLabel}
-                  />
-                </div>
+                <VisualSongArrangement
+                  sections={arrangement}
+                  availableSectionTypes={STRUCTURE_TAGS}
+                  labelForSection={structureLabel}
+                  onChange={commitArrangement}
+                  advancedView={
+                    <SongBlueprintEditor
+                      sections={arrangement}
+                      onChange={commitArrangement}
+                      labelForSection={structureLabel}
+                    />
+                  }
+                />
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>
