@@ -40,9 +40,24 @@ describe("Project Version History UI", () => {
     expect(compare).toContain("md:grid-cols-2");
   });
 
+  test("compare endpoint fetches only the two selected versions", async () => {
+    const ai = await source("src/lib/ai.functions.ts");
+    expect(ai).toContain('.in("id", [data.leftId, data.rightId])');
+  });
+
+  test("canonical project versions cannot be detached or moved by the library organization control", async () => {
+    const library = await source("src/routes/library.tsx");
+    const ai = await source("src/lib/ai.functions.ts");
+
+    expect(library).toContain("prompt.project_id && prompt.version_change_metadata");
+    expect(library).toContain("Version history");
+    expect(ai).toContain("Project versions cannot be moved between projects");
+  });
+
   test("migration history is checked into GitHub source of truth", async () => {
     const foundation = await source("supabase/migrations/20260922162948_project_version_history_foundation.sql");
     const writers = await source("supabase/migrations/20260922163129_project_version_history_writers.sql");
+    const preferredIndex = await source("supabase/migrations/20260922173938_project_version_history_preferred_index.sql");
 
     expect(foundation).toContain("version_change_metadata");
     expect(foundation).toContain("version_user_note");
@@ -50,5 +65,6 @@ describe("Project Version History UI", () => {
     expect(writers).toContain("preserve_saved_prompt_version_change_metadata");
     expect(writers).toContain("create_prompt_revision_version");
     expect(writers).toContain("create_prompt_lyrics_workspace_version");
+    expect(preferredIndex).toContain("prompt_projects_preferred_prompt_idx");
   });
 });
