@@ -129,6 +129,24 @@ export function buildGeneratorVersionMetadata(input?: {
   };
 }
 
+export function buildManualVersionMetadata(input: {
+  baseSnapshot?: GeneratorInputSnapshot | null;
+  desiredSnapshot?: GeneratorInputSnapshot | null;
+  beforeLyrics?: string | null;
+  afterLyrics?: string | null;
+}): VersionChangeMetadata {
+  const generated = buildGeneratorVersionMetadata(input);
+  return versionChangeMetadataSchema.parse({
+    ...generated,
+    source: "manual_edit",
+    title: "Added to project",
+    summary: generated.changedFields.length || generated.changedSections.length
+      ? generated.summary
+      : "A saved prompt was added to this project as a new version.",
+    userRequest: null,
+  });
+}
+
 export function buildLyricsWorkspaceVersionMetadata(input: {
   beforeLyrics: string;
   afterLyrics: string;
