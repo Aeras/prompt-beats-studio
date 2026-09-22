@@ -111,6 +111,9 @@ describe("Library folders foundation", () => {
     expect(picker).toContain("breadcrumbItems.map");
     expect(picker).toContain("disabledDestinationFolderId");
     expect(picker).toContain("destinationDisabled");
+    expect(picker).toContain("Folders in this location");
+    expect(picker).toContain("Current location:");
+    expect(picker).not.toContain("autoFocus");
   });
 
   test("Saved Prompts and Projects views share the current-folder file manager with recursive scoped search", async () => {
@@ -196,7 +199,7 @@ describe("Library folders foundation", () => {
     expect(library).toContain('"Undo"');
   });
 
-  test("mobile long-press opens the reusable action sheet after 550ms with movement cancellation", async () => {
+  test("mobile long-press opens the reusable anchored context menu after 550ms with movement cancellation", async () => {
     const sheet = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
     const library = await source("src/routes/library.tsx");
 
@@ -204,6 +207,7 @@ describe("Library folders foundation", () => {
     expect(sheet).toContain("Math.hypot");
     expect(sheet).toContain("> 8");
     expect(sheet).toContain("LibraryItemActionSheet");
+    expect(sheet).toContain('role="menu"');
     expect(sheet).toContain("Move to folder");
     expect(sheet).toContain("Duplicate");
     expect(library).toContain("LibraryLongPressButton");
@@ -261,17 +265,22 @@ describe("Library folders foundation", () => {
     expect(library).toContain("Περιέχει υποφακέλους");
   });
 
-  test("folder icon grid stays compact while keeping accessible explicit actions", async () => {
+  test("folder icon grid stays compact, branded and uses context menus instead of bottom sheets", async () => {
     const library = await source("src/routes/library.tsx");
-    const sheet = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
+    const icon = await source("src/components/promptbeats/PromptBeatsFolderIcon.tsx");
+    const menu = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
 
     expect(library).toContain("grid-cols-[repeat(auto-fill,minmax(84px,104px))]");
-    expect(library).toContain("h-[58px] w-[58px]");
+    expect(library).toContain("PromptBeatsFolderIcon");
     expect(library).toContain("line-clamp-2");
     expect(library).toContain("Folder options for");
+    expect(library).toContain("Project options for");
     expect(library).toContain("MoreHorizontal");
-    expect(sheet).toContain('role="dialog"');
-    expect(sheet).toContain('aria-modal="true"');
+    expect(icon).toContain("pb-folder-shell");
+    expect(icon).toContain("pb-folder-fill");
+    expect(menu).toContain('role="menu"');
+    expect(menu).toContain('role="menuitem"');
+    expect(menu).not.toContain('items-end bg-black/70');
   });
 
   test("touch drag shares the same Move operation and does not steal the stationary long-press gesture", async () => {
@@ -287,6 +296,9 @@ describe("Library folders foundation", () => {
     expect(library).toContain("event.currentTarget.setPointerCapture?.(event.pointerId)");
     expect(library).toContain("hasPointerCapture");
     expect(library).toContain("performMove(state.item.kind");
+    expect(library).toContain("setTouchDraggingKey");
+    expect(library).toContain("scale-[1.03]");
+    expect(library).toContain("md:cursor-grab");
   });
 
   test("Generator can save a standalone Prompt or new Project directly into a chosen Folder", async () => {
