@@ -140,7 +140,7 @@ describe("linked audio results per Project version", () => {
     const player = await source("src/lib/player.tsx");
 
     expect(ui).toContain("usePlayer");
-    expect(ui).toContain("{ countPlay: false }");
+    expect(ui).toContain("play(playerTrack, [playerTrack], { countPlay: false })");
     expect(player).toContain("countPlay: boolean");
     expect(player).toContain("if (!cycle.countPlay) return");
   });
