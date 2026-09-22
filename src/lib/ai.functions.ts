@@ -65,6 +65,7 @@ const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
   custom_name: z.string().trim().max(200).nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
+  folder_id: z.string().uuid().nullable().optional(),
   version_number: z.number().int().positive().nullable().optional(),
   version_label: z.string().trim().max(120).nullable().optional(),
   generator_input_snapshot: generatorInputSnapshotSchema.nullable().optional(),
@@ -2239,6 +2240,20 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => savedInput.parse(input))
   .handler(async ({ data, context }) => {
+    if (data.project_id && data.folder_id) {
+      throw new Error("Project versions inherit the Project folder. Do not assign a folder directly to a Project version.");
+    }
+    if (data.folder_id) {
+      const { data: folder, error: folderError } = await context.supabase
+        .from("library_folders")
+        .select("id")
+        .eq("id", data.folder_id)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (folderError) throw new Error(folderError.message);
+      if (!folder) throw new Error("Folder not found.");
+    }
+
     let versionNumber = data.version_number ?? null;
     let parentPromptId: string | null = null;
     let parentSnapshot: z.infer<typeof generatorInputSnapshotSchema> | null = null;
