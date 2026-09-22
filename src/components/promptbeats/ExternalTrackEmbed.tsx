@@ -6,6 +6,8 @@ import { useExternalMediaConsent } from "@/lib/external-media-consent";
 
 const UDIO_WIDTH = 700;
 const UDIO_HEIGHT = 228;
+const nearViewportListeners = new Map<Element, () => void>();
+let nearViewportObserver: IntersectionObserver | null = null;
 function observeNearViewport(element: Element, onVisible: () => void) {
   if (typeof IntersectionObserver === "undefined") { onVisible(); return () => undefined; }
   if (!nearViewportObserver) {
