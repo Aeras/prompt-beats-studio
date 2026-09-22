@@ -107,6 +107,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_auxiliary_admissions: {
+        Row: {
+          created_at: string
+          id: string
+          operation: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operation: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operation?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_generation_jobs: {
         Row: {
           attempts: number
@@ -445,6 +466,27 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      contact_rate_admissions: {
+        Row: {
+          created_at: string
+          email_hash: string
+          id: string
+          network_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email_hash: string
+          id?: string
+          network_hash: string
+        }
+        Update: {
+          created_at?: string
+          email_hash?: string
+          id?: string
+          network_hash?: string
         }
         Relationships: []
       }
@@ -2106,6 +2148,14 @@ export type Database = {
         Returns: undefined
       }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
+      admit_auxiliary_ai_request: {
+        Args: { _limit_per_hour?: number; _operation: string }
+        Returns: boolean
+      }
+      admit_contact_request: {
+        Args: { _email_hash: string; _network_hash: string }
+        Returns: boolean
+      }
       admit_track_upload: { Args: never; Returns: boolean }
       app_role_rank: { Args: { _role: string }; Returns: number }
       approve_initial_case_decision: {
