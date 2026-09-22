@@ -2225,7 +2225,8 @@ export type Database = {
           _parent_prompt_id: string
           _project_id: string
           _user_id: string
-          _version_label?: string
+          _version_change_metadata: Json
+          _version_label: string
         }
         Returns: Json
       }
@@ -2245,6 +2246,7 @@ export type Database = {
           _theme: string
           _title: string
           _user_id: string
+          _version_change_metadata: Json
         }
         Returns: Json
       }
