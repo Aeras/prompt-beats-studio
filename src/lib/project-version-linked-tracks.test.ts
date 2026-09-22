@@ -179,6 +179,80 @@ describe("linked audio results per Project version", () => {
     expect(diff).not.toContain("linked_track_count");
   });
 
+  test("same Track may be referenced by different versions because uniqueness is version-scoped", async () => {
+    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+
+    expect(sql).toContain("UNIQUE (version_prompt_id, track_id)");
+    expect(sql).not.toContain("UNIQUE (track_id)");
+  });
+
+  test("Project delete removes only relation rows through cascade and never deletes Tracks", async () => {
+    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+
+    expect(sql).toContain("project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE");
+    expect(sql).not.toContain("DELETE FROM public.tracks WHERE project_id");
+  });
+
+  test("Version delete removes its relation rows through cascade and leaves Tracks untouched", async () => {
+    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+
+    expect(sql).toContain("version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE");
+    expect(sql).not.toContain("DELETE FROM public.tracks WHERE version_prompt_id");
+  });
+
+  test("Track delete safely removes relation rows through cascade", async () => {
+    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+
+    expect(sql).toContain("track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE");
+  });
+
+  test("linked Track loading keeps graceful unavailable state instead of breaking Project content", async () => {
+    const server = await source("src/lib/project-version-tracks.functions.ts");
+
+    expect(server).toContain("Track no longer available");
+    expect(server).toContain("unavailable: !available");
+    expect(server).toContain("audio_url: available ? track.audio_url : null");
+  });
+
+  test("selector excludes external Suno, Udio and legacy-link Tracks server-side", async () => {
+    const server = await source("src/lib/project-version-tracks.functions.ts");
+    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+
+    expect(server).toContain('.eq("source_type", "upload")');
+    expect(sql).toContain("t.source_type = 'upload'");
+    expect(sql).not.toContain("source_type IN ('upload','suno'");
+  });
+
+  test("link endpoint validates Project and version ownership before calling relation RPC", async () => {
+    const server = await source("src/lib/project-version-tracks.functions.ts");
+
+    expect(server).toContain("assertOwnedProjectVersion");
+    expect(server).toContain('.eq("project_id", projectId)');
+    expect(server).toContain('.eq("user_id", userId)');
+  });
+
+  test("linked private Track metadata is exposed only through authenticated owner-scoped server functions", async () => {
+    const server = await source("src/lib/project-version-tracks.functions.ts");
+
+    expect(server).toContain(".middleware([requireSupabaseAuth])");
+    expect(server).toContain('.eq("user_id", context.userId)');
+    expect(server).not.toContain("createPublicServerClient");
+  });
+
+  test("primary ordering is deterministic: Primary first, then link time and Track id", async () => {
+    const server = await source("src/lib/project-version-tracks.functions.ts");
+
+    expect(server).toContain("if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1");
+    expect(server).toContain("a.relation_created_at.localeCompare(b.relation_created_at)");
+    expect(server).toContain("a.track_id.localeCompare(b.track_id)");
+  });
+
+  test("RLS auth lookup uses init-plan safe select wrapper", async () => {
+    const sql = await source("supabase/migrations/20260923011000_project_version_tracks_rls_perf.sql");
+
+    expect(sql).toContain("(select auth.uid()) = user_id");
+  });
+
   test("existing Projects remain valid because linked audio is represented only by optional relation rows", async () => {
     const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
 
