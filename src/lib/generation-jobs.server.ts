@@ -18,6 +18,7 @@ import {
   runLyricsSectionEdit,
   runSongGeneration,
 } from "@/lib/ai.functions";
+import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
