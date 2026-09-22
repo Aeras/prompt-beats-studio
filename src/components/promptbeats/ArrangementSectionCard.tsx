@@ -1,3 +1,4 @@
+import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { ArrangementSection } from "@/lib/song-arrangement.shared";
 
@@ -14,6 +15,7 @@ export function ArrangementSectionCard({
   selected,
   onSelect,
 }: Props) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -33,10 +35,10 @@ export function ArrangementSectionCard({
         </span>
       </div>
       <p className="mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-muted-foreground">
-        {section.instruction.trim() || "No Blueprint direction"}
+        {section.instruction.trim() || t("generator.arrangement.noBlueprint")}
       </p>
       <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
-        <span>{section.instruction.trim() ? "Blueprint ✓" : "Blueprint —"}</span>
+        <span>{section.instruction.trim() ? t("generator.arrangement.blueprintSet") : t("generator.arrangement.blueprintUnset")}</span>
       </div>
     </button>
   );
