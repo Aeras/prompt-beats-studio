@@ -480,7 +480,6 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         targetFolderId: item.currentFolderId,
         targetPath: "",
       };
-      event.currentTarget.setPointerCapture?.(event.pointerId);
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
       const state = touchDragRef.current;
@@ -488,6 +487,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       if (!state.dragging && Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > 12) {
         state.dragging = true;
         suppressTouchClickRef.current = true;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
         setTouchDraggingKey(`${item.kind}:${item.id}`);
       }
       if (!state.dragging) return;
@@ -510,7 +510,9 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       touchDragRef.current = null;
       setTouchDraggingKey(null);
       setDragOverFolderId(null);
-      event.currentTarget.releasePointerCapture?.(event.pointerId);
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
       if (!state.dragging) return;
       const destinationChanged = state.targetFolderId !== state.item.currentFolderId;
       const invalidSelfTarget = state.item.kind === "folder" && state.targetFolderId === state.item.id;
