@@ -121,6 +121,7 @@ export function LibraryItemActionSheet({
     <>
       <button
         type="button"
+        data-pb-no-press="true"
         aria-label={el ? "Κλείσιμο μενού" : "Close menu"}
         className="fixed inset-0 z-[94] cursor-default bg-transparent"
         onClick={onClose}
