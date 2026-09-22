@@ -345,6 +345,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     currentFolderId: string | null;
   }>(null);
   const q = search.trim().toLowerCase();
+  const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -358,26 +359,25 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const folderContents = useQuery({
     queryKey: ["library", "folder-contents", currentFolderId],
     queryFn: () => listLibraryFolderContents({ data: { folderId: currentFolderId } }),
-    enabled: (view === "all" || (view === "projects" && !openProjectId)) && !q,
+    enabled: (view === "all" || (view === "projects" && !openProject)) && !q,
   });
 
   const folderBreadcrumbs = useQuery({
     queryKey: ["library", "folder-breadcrumbs", currentFolderId],
     queryFn: () => getLibraryFolderBreadcrumbs({ data: { folderId: currentFolderId! } }),
-    enabled: (view === "all" || (view === "projects" && !openProjectId)) && Boolean(currentFolderId),
+    enabled: (view === "all" || (view === "projects" && !openProject)) && Boolean(currentFolderId),
   });
 
   const folderSearch = useQuery({
     queryKey: ["library", "folder-scope-search", currentFolderId, q],
     queryFn: () => searchLibraryScope({ data: { folderId: currentFolderId, query: q } }),
-    enabled: (view === "all" || (view === "projects" && !openProjectId)) && q.length > 0,
+    enabled: (view === "all" || (view === "projects" && !openProject)) && q.length > 0,
   });
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
   const visibleAnalyses = showAnalyses ? analyses : [];
   const filteredAnalyses = visibleAnalyses.filter(matchesAnalysis);
-  const openProject = projects.find((project) => project.id === openProjectId) ?? null;
   const folderSearchResults = (folderSearch.data?.results ?? []).filter((result) => view === "all" || result.item_type !== "prompt");
 
   const refresh = async () => {
@@ -720,7 +720,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     <div className="mt-6 space-y-4">
       <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
         <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
-          {(["all", "projects", ...(showAnalyses ? ["analyses"] as const : [])] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
+          {(["all", "projects", ...(showAnalyses ? ["analyses"] as const : [])] as const).map((item) => <button key={item} onClick={() => { setOpenProjectId(null); onViewChange(item); }} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
         {view !== "analyses" && <div className="flex shrink-0 gap-1">
