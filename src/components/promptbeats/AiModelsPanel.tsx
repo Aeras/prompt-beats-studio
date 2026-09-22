@@ -94,8 +94,24 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
 
   const isGeneratorDefault = generatorDefault === model.providerModelId;
   const isQualityDefault = qualityDefault === model.providerModelId;
+  const isDefaultModel = isGeneratorDefault || isQualityDefault;
   const defaultRisk = (isGeneratorDefault && (!generatorEnabled || status !== "enabled")) ||
-    (isQualityDefault && (!qualityEnabled || status !== "enabled"));
+    (isQualityDefault && (!qualityEnabled || status !== "enabled")) ||
+    (isDefaultModel && accessPolicy !== "all_users");
+
+  const defaultAccessMessage = isGeneratorDefault && isQualityDefault
+    ? t("aiModels.defaultAccessProtectionBoth")
+    : isGeneratorDefault
+      ? t("aiModels.defaultAccessProtectionGenerator")
+      : t("aiModels.defaultAccessProtectionQuality");
+
+  const handleAccessPolicyChange = (next: AdminAiModel["accessPolicy"]) => {
+    if (isDefaultModel && next !== "all_users") {
+      toast.error(defaultAccessMessage);
+      return;
+    }
+    setAccessPolicy(next);
+  };
 
   const reasoningOptions: Array<[Reasoning, string]> = [
     [null, t("aiModels.providerDefault")],
@@ -128,7 +144,7 @@ function AiModelEditor({ model, generatorDefault, qualityDefault, onClose }: {
         <label className="text-xs text-muted-foreground">{t("aiModels.modelId")}<input value={model.providerModelId} disabled className="mt-1 w-full rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-muted-foreground" /></label>
 
         <label className="text-xs text-muted-foreground">{t("aiModels.lifecycleStatus")}<select value={status} onChange={(e) => setStatus(e.target.value as AdminAiModel["status"])} className="mt-1 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"><option value="testing">{t("aiModels.testing")}</option><option value="enabled">{t("aiModels.enabled")}</option><option value="disabled">{t("aiModels.disabled")}</option><option value="deprecated">{t("aiModels.deprecated")}</option><option value="archived">{t("aiModels.archived")}</option></select></label>
-        <label className="text-xs text-muted-foreground">{t("aiModels.accessPolicy")}<select value={accessPolicy} onChange={(e) => setAccessPolicy(e.target.value as AdminAiModel["accessPolicy"])} className="mt-1 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"><option value="admin_only">{t("aiModels.adminOnly")}</option><option value="selected_users">{t("aiModels.selectedUsers")}</option><option value="all_users">{t("aiModels.allUsers")}</option></select></label>
+        <label className="text-xs text-muted-foreground">{t("aiModels.accessPolicy")}<select value={accessPolicy} onChange={(e) => handleAccessPolicyChange(e.target.value as AdminAiModel["accessPolicy"])} className="mt-1 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"><option value="admin_only">{t("aiModels.adminOnly")}</option><option value="selected_users">{t("aiModels.selectedUsers")}</option><option value="all_users">{t("aiModels.allUsers")}</option></select>{isDefaultModel && <span className="mt-1 block text-[11px] text-amber-200">{defaultAccessMessage}</span>}</label>
 
         <label className="flex items-center gap-3 rounded-2xl border border-white/10 p-3 text-sm"><input type="checkbox" checked={generatorEnabled} disabled={!model.generatorCompatible} onChange={(e) => setGeneratorEnabled(e.target.checked)} />{t("aiModels.useGenerator")}</label>
         <label className="flex items-center gap-3 rounded-2xl border border-white/10 p-3 text-sm"><input type="checkbox" checked={qualityEnabled} disabled={!model.qualityCheckCompatible} onChange={(e) => setQualityEnabled(e.target.checked)} />{t("aiModels.useQualityCheck")}</label>
@@ -287,8 +303,8 @@ export function AiModelsPanel() {
     onError: (error) => toast.error(error instanceof Error ? error.message : t("aiModels.defaultSaveError")),
   });
 
-  const generatorOptions = useMemo(() => data?.models.filter((m) => m.status === "enabled" && m.generatorCompatible && m.generatorEnabled) ?? [], [data]);
-  const qualityOptions = useMemo(() => data?.models.filter((m) => m.status === "enabled" && m.qualityCheckCompatible && m.qualityCheckEnabled) ?? [], [data]);
+  const generatorOptions = useMemo(() => data?.models.filter((m) => m.status === "enabled" && m.accessPolicy === "all_users" && m.generatorCompatible && m.generatorEnabled) ?? [], [data]);
+  const qualityOptions = useMemo(() => data?.models.filter((m) => m.status === "enabled" && m.accessPolicy === "all_users" && m.qualityCheckCompatible && m.qualityCheckEnabled) ?? [], [data]);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("aiModels.loading")}</p>;
   if (error || !data) return <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("aiModels.loadError")}</div>;
