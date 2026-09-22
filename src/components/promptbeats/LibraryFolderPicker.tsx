@@ -75,12 +75,12 @@ export function LibraryFolderPicker({
     : el ? "Αρχική" : "Root";
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-4">
       <section
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="glass-strong flex max-h-[86vh] w-full max-w-xl flex-col rounded-t-3xl border border-white/10 sm:rounded-3xl"
+        className="glass-strong flex max-h-[calc(100dvh-var(--pb-mobile-nav-offset)-0.5rem)] w-full max-w-xl flex-col rounded-t-3xl border border-white/10 sm:max-h-[86vh] sm:rounded-3xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4">
           <div>
