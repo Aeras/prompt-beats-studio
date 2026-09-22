@@ -4,6 +4,7 @@ import {
   buildGeneratorVersionMetadata,
   buildInitialVersionMetadata,
   buildLyricsWorkspaceVersionMetadata,
+  buildManualVersionMetadata,
   buildProjectRevisionVersionMetadata,
   diffLyricsSections,
   versionChangeChips,
@@ -113,6 +114,26 @@ describe("Project Version History metadata", () => {
     expect(metadata.changedSections).toEqual([]);
   });
 
+  test("standalone prompts added to an existing project get canonical manual lineage metadata", () => {
+    const desired = generatorInputSnapshotSchema.parse({
+      ...baseSnapshot,
+      customMood: "Hopeful",
+    });
+    const metadata = buildManualVersionMetadata({
+      baseSnapshot,
+      desiredSnapshot: desired,
+      beforeLyrics: "[Verse]\nOld",
+      afterLyrics: "[Verse]\nNew",
+    });
+
+    expect(metadata.source).toBe("manual_edit");
+    expect(metadata.title).toBe("Added to project");
+    expect(metadata.changedFields).toEqual(expect.arrayContaining(["customMood", "lyrics"]));
+    expect(metadata.changedSections).toEqual([
+      { sectionKey: "verse:1", sectionLabel: "Verse", changeType: "changed" },
+    ]);
+  });
+
   test("change chips are compact and derived from canonical metadata", () => {
     const metadata = versionChangeMetadataSchema.parse({
       schemaVersion: 1,
@@ -160,5 +181,7 @@ describe("Version history writer contracts", () => {
     expect(workspace).toContain("_version_change_metadata: versionChangeMetadata");
     expect(jobs).toContain("buildProjectRevisionVersionMetadata({");
     expect(jobs).toContain("_version_change_metadata: versionChangeMetadata");
+    expect(ai).toContain("Project versions cannot be moved between projects");
+    expect(ai).toContain("buildManualVersionMetadata({");
   });
 });

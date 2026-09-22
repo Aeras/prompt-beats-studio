@@ -273,25 +273,42 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
           </div>
           {selectedOpen.isLoading && <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{el ? "Φόρτωση έκδοσης..." : "Loading version..."}</div>}
           {selectedOpen.error && <p className="mt-4 text-xs text-red-400">{selectedOpen.error instanceof Error ? selectedOpen.error.message : (el ? "Η έκδοση δεν φορτώθηκε." : "Version could not be loaded.")}</p>}
-          {selectedOpen.data && (
-            <div className="mt-4 space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[
-                  [el ? "Τίτλος" : "Title", selectedOpen.data.prompt.title],
-                  [el ? "Είδος" : "Genre", selectedOpen.data.prompt.genre],
-                  [el ? "Διάθεση" : "Mood", selectedOpen.data.prompt.mood],
-                  [el ? "Γλώσσα" : "Language", selectedOpen.data.prompt.language],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-white/10 bg-black/20 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-                    <p className="mt-1 whitespace-pre-wrap text-xs">{value || "—"}</p>
-                  </div>
-                ))}
+          {selectedOpen.data && (() => {
+            const prompt = selectedOpen.data.prompt;
+            const snapshot = prompt.generator_input_snapshot;
+            const bpm = snapshot
+              ? snapshot.bpmMode === "Custom" && snapshot.customBpm
+                ? `${snapshot.customBpm} BPM`
+                : snapshot.bpmMode
+              : "";
+            return (
+              <div className="mt-4 space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    [el ? "Τίτλος" : "Title", prompt.title],
+                    [el ? "Θέμα" : "Theme", snapshot?.theme || prompt.theme],
+                    [el ? "Είδος" : "Genre", prompt.genre],
+                    [el ? "Διάθεση" : "Mood", prompt.mood],
+                    [el ? "Γλώσσα" : "Language", prompt.language],
+                    ["BPM", bpm],
+                    [el ? "Πλατφόρμα" : "Target Platform", snapshot?.targetPlatform],
+                    [el ? "Μοντέλο" : "Generation Model", snapshot?.generationModel],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs">{value || "—"}</p>
+                    </div>
+                  ))}
+                </div>
+                {snapshot?.songStructure?.length ? <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Song Structure</p><p className="mt-1 text-xs leading-5">{snapshot.songStructure.join(" → ")}</p></div> : null}
+                {snapshot?.productionStyle && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Στυλ παραγωγής" : "Production Style"}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{snapshot.productionStyle}</p></div>}
+                {snapshot?.additionalInstructions && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Πρόσθετες οδηγίες" : "Additional Instructions"}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{snapshot.additionalInstructions}</p></div>}
+                {prompt.tags && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Music Style / Prompt</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{prompt.tags}</p></div>}
+                {prompt.note && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Σημείωση παραγωγού" : "Producer Note"}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{prompt.note}</p></div>}
+                {prompt.lyrics && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Στίχοι" : "Lyrics"}</p><pre className="mt-2 max-h-[28rem] overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-5">{prompt.lyrics}</pre></div>}
               </div>
-              {selectedOpen.data.prompt.tags && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Music Style / Prompt</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{selectedOpen.data.prompt.tags}</p></div>}
-              {selectedOpen.data.prompt.lyrics && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Στίχοι" : "Lyrics"}</p><pre className="mt-2 max-h-[28rem] overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-5">{selectedOpen.data.prompt.lyrics}</pre></div>}
-            </div>
-          )}
+            );
+          })()}
         </section>
       )}
     </div>

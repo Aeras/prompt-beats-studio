@@ -29,6 +29,7 @@ import { structuralHeadersInText } from "@/lib/lyrics-sections";
 import {
   buildGeneratorVersionMetadata,
   buildInitialVersionMetadata,
+  buildManualVersionMetadata,
   versionChangeMetadataSchema,
 } from "@/lib/project-version-history.shared";
 
@@ -2438,7 +2439,8 @@ export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
       .from("saved_prompts")
       .select("id, version_number, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
       .eq("project_id", data.projectId)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .in("id", [data.leftId, data.rightId]);
     if (error) throw new Error(error.message);
 
     const selected = (rows ?? []).filter((row) => row.id === data.leftId || row.id === data.rightId);
@@ -2587,8 +2589,84 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
     version_label: z.string().trim().max(120).nullable().optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    const { id, ...patch } = data;
-    const { error } = await context.supabase.from("saved_prompts").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", context.userId);
+    const { data: current, error: currentError } = await context.supabase
+      .from("saved_prompts")
+      .select("id, project_id, version_number, version_change_metadata, generator_input_snapshot, lyrics")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (currentError) throw new Error(currentError.message);
+    if (!current) throw new Error("Prompt not found.");
+
+    const patch: Database["public"]["Tables"]["saved_prompts"]["Update"] = {
+      updated_at: new Date().toISOString(),
+    };
+    if (data.custom_name !== undefined) patch.custom_name = data.custom_name;
+    if (data.version_label !== undefined) patch.version_label = data.version_label;
+
+    if (data.project_id !== undefined && data.project_id !== current.project_id) {
+      if (current.project_id) {
+        throw new Error("Project versions cannot be moved between projects. Create or save a new version instead.");
+      }
+      if (!data.project_id) {
+        throw new Error("This prompt is not assigned to a project.");
+      }
+
+      const { data: targetProject, error: targetError } = await context.supabase
+        .from("prompt_projects")
+        .select("id")
+        .eq("id", data.project_id)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (targetError) throw new Error(targetError.message);
+      if (!targetProject) throw new Error("Project not found.");
+
+      const { data: previous, error: previousError } = await context.supabase
+        .from("saved_prompts")
+        .select("id, generator_input_snapshot, lyrics")
+        .eq("project_id", data.project_id)
+        .eq("user_id", context.userId)
+        .order("version_number", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (previousError) throw new Error(previousError.message);
+
+      const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", {
+        p_project_id: data.project_id,
+      });
+      if (versionError) throw new Error(versionError.message);
+      const versionNumber = Number(next ?? 1);
+
+      const currentSnapshot = generatorInputSnapshotSchema.safeParse(current.generator_input_snapshot);
+      const previousSnapshot = generatorInputSnapshotSchema.safeParse(previous?.generator_input_snapshot);
+      const metadata = versionNumber === 1
+        ? buildInitialVersionMetadata()
+        : buildManualVersionMetadata({
+            baseSnapshot: previousSnapshot.success ? previousSnapshot.data : null,
+            desiredSnapshot: currentSnapshot.success ? currentSnapshot.data : null,
+            beforeLyrics: previous?.lyrics ?? null,
+            afterLyrics: current.lyrics,
+          });
+
+      patch.project_id = data.project_id;
+      patch.version_number = versionNumber;
+      patch.parent_prompt_id = previous?.id ?? null;
+      patch.version_change_metadata = metadata as Json;
+
+      const { error: touchError } = await context.supabase
+        .from("prompt_projects")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", data.project_id)
+        .eq("user_id", context.userId);
+      if (touchError) throw new Error(touchError.message);
+    }
+
+    const { error } = await context.supabase
+      .from("saved_prompts")
+      .update(patch)
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
