@@ -35,6 +35,26 @@ type Props = {
   onSelectRight: (id: string) => void;
 };
 
+function localizedFieldLabel(item: ScalarFieldDiff, language: string) {
+  if (language !== "el") return item.label;
+  const labels: Record<string, string> = {
+    title: "Τίτλος",
+    theme: "Θέμα",
+    musicStyle: "Μουσικό στυλ",
+    mood: "Διάθεση",
+    instruments: "Όργανα",
+    bpm: "BPM",
+    language: "Γλώσσα",
+    productionStyle: "Στυλ παραγωγής",
+    additionalInstructions: "Πρόσθετες οδηγίες",
+    targetPlatform: "Πλατφόρμα στόχος",
+    generationModel: "Μοντέλο δημιουργίας",
+    stylePrompt: "Παραγόμενο Style Prompt",
+    producerNote: "Σημείωση παραγωγού",
+  };
+  return labels[item.key] ?? item.label;
+}
+
 function statusLabel(status: string, language: string) {
   const el = language === "el";
   if (status === "added") return el ? "Προστέθηκε" : "Added";
@@ -241,7 +261,7 @@ export function ProjectVersionCompare({
             <div className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-accent">{el ? "Στοιχεία Project" : "Project Fields"}</h4>
               {fields.map((item: ScalarFieldDiff) => (
-                <SideBySide key={item.key} label={item.label} status={item.status} before={item.before} after={item.after} leftLabel={leftLabel} rightLabel={rightLabel} language={language} />
+                <SideBySide key={item.key} label={localizedFieldLabel(item, language)} status={item.status} before={item.before} after={item.after} leftLabel={leftLabel} rightLabel={rightLabel} language={language} />
               ))}
             </div>
           )}
