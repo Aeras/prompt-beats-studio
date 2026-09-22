@@ -26,6 +26,11 @@ import {
   type LyricsSectionEditContext,
 } from "@/lib/lyrics-workspace.shared";
 import { structuralHeadersInText } from "@/lib/lyrics-sections";
+import {
+  buildGeneratorVersionMetadata,
+  buildInitialVersionMetadata,
+  versionChangeMetadataSchema,
+} from "@/lib/project-version-history.shared";
 
 export const HOURLY_LIMIT = 10;
 
@@ -2234,16 +2239,60 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => savedInput.parse(input))
   .handler(async ({ data, context }) => {
     let versionNumber = data.version_number ?? null;
-    if (data.project_id && versionNumber == null) {
-      const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", { p_project_id: data.project_id });
-      if (versionError) throw new Error(versionError.message);
-      versionNumber = Number(next ?? 1);
+    let parentPromptId: string | null = null;
+    let parentSnapshot: z.infer<typeof generatorInputSnapshotSchema> | null = null;
+    let parentLyrics: string | null = null;
+
+    if (data.project_id) {
+      if (versionNumber == null) {
+        const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", { p_project_id: data.project_id });
+        if (versionError) throw new Error(versionError.message);
+        versionNumber = Number(next ?? 1);
+      }
+
+      if (versionNumber > 1) {
+        const { data: previous, error: previousError } = await context.supabase
+          .from("saved_prompts")
+          .select("id, generator_input_snapshot, lyrics")
+          .eq("project_id", data.project_id)
+          .eq("user_id", context.userId)
+          .order("version_number", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (previousError) throw new Error(previousError.message);
+        parentPromptId = previous?.id ?? null;
+        const parsedParent = generatorInputSnapshotSchema.safeParse(previous?.generator_input_snapshot);
+        parentSnapshot = parsedParent.success ? parsedParent.data : null;
+        parentLyrics = previous?.lyrics ?? null;
+      }
     }
-    const { error } = await context.supabase
+
+    const versionMetadata = data.project_id
+      ? versionNumber === 1
+        ? buildInitialVersionMetadata()
+        : buildGeneratorVersionMetadata({
+            title: data.version_label,
+            baseSnapshot: parentSnapshot,
+            desiredSnapshot: data.generator_input_snapshot ?? null,
+            beforeLyrics: parentLyrics,
+            afterLyrics: data.lyrics,
+          })
+      : null;
+
+    const { data: inserted, error } = await context.supabase
       .from("saved_prompts")
-      .insert({ ...data, version_number: versionNumber, user_id: context.userId });
+      .insert({
+        ...data,
+        version_number: versionNumber,
+        parent_prompt_id: parentPromptId,
+        version_change_metadata: versionMetadata as Json | null,
+        user_id: context.userId,
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, id: inserted.id };
   });
 
 export const listSavedPrompts = createServerFn({ method: "GET" })
@@ -2251,7 +2300,7 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select("id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(250);
     if (error) throw new Error(error.message);
@@ -2280,6 +2329,90 @@ export const listPromptProjectVersions = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { prompts: prompts ?? [] };
+  });
+
+export const listProjectVersionHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: project, error: projectError } = await context.supabase
+      .from("prompt_projects")
+      .select("id, name, preferred_prompt_id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found.");
+
+    const { data: rows, error } = await context.supabase
+      .from("saved_prompts")
+      .select("id, title, custom_name, version_number, version_label, parent_prompt_id, version_change_metadata, version_user_note, created_at")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId)
+      .order("version_number", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    return {
+      project,
+      versions: (rows ?? []).map((row) => {
+        const parsed = versionChangeMetadataSchema.safeParse(row.version_change_metadata);
+        return {
+          ...row,
+          version_change_metadata: parsed.success ? parsed.data : null,
+        };
+      }),
+    };
+  });
+
+export const updateVersionUserNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    id: z.string().uuid(),
+    note: z.string().max(1000),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("saved_prompts")
+      .update({ version_user_note: data.note.trim() || null })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Version not found.");
+    return { ok: true };
+  });
+
+export const setPreferredProjectVersion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    promptId: z.string().uuid().nullable(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.promptId) {
+      const { data: version, error: versionError } = await context.supabase
+        .from("saved_prompts")
+        .select("id")
+        .eq("id", data.promptId)
+        .eq("project_id", data.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (versionError) throw new Error(versionError.message);
+      if (!version) throw new Error("Version not found.");
+    }
+
+    const { data: project, error } = await context.supabase
+      .from("prompt_projects")
+      .update({ preferred_prompt_id: data.promptId, updated_at: new Date().toISOString() })
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!project) throw new Error("Project not found.");
+    return { ok: true };
   });
 
 export const getPromptRevisionBase = createServerFn({ method: "POST" })
@@ -2332,7 +2465,7 @@ export const listPromptProjects = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("prompt_projects")
-      .select("id, name, creation_notes, created_at, updated_at")
+      .select("id, name, creation_notes, preferred_prompt_id, created_at, updated_at")
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { projects: data ?? [] };
@@ -2345,7 +2478,7 @@ export const createPromptProject = createServerFn({ method: "POST" })
     const { data: project, error } = await context.supabase
       .from("prompt_projects")
       .insert({ user_id: context.userId, name: data.name })
-      .select("id, name, creation_notes, created_at, updated_at")
+      .select("id, name, creation_notes, preferred_prompt_id, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return { project };

@@ -18,6 +18,7 @@ import {
   runLyricsSectionEdit,
   runSongGeneration,
 } from "@/lib/ai.functions";
+import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
@@ -97,6 +98,13 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
 
     if (input.operation === "revision" && input.revision) {
       const revision = input.revision;
+      const versionChangeMetadata = buildProjectRevisionVersionMetadata({
+        revisionRequest: revision.revisionRequest,
+        baseSnapshot: revision.baseSnapshot,
+        desiredSnapshot: revision.desiredSnapshot,
+        beforeLyrics: revision.baseVersion.lyrics,
+        afterLyrics: out.result.lyrics,
+      });
       const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
         _user_id: job.user_id,
         _job_id: job.id,
@@ -104,6 +112,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         _parent_prompt_id: revision.basePromptId,
         _revision_request: revision.revisionRequest,
         _generator_input_snapshot: revision.desiredSnapshot,
+        _version_change_metadata: versionChangeMetadata,
         _title: out.result.title,
         _tags: out.result.tags,
         _lyrics: out.result.lyrics,

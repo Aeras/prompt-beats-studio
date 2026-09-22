@@ -1241,6 +1241,7 @@ export type Database = {
           creation_notes: string
           id: string
           name: string
+          preferred_prompt_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1249,6 +1250,7 @@ export type Database = {
           creation_notes?: string
           id?: string
           name: string
+          preferred_prompt_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1257,10 +1259,19 @@ export type Database = {
           creation_notes?: string
           id?: string
           name?: string
+          preferred_prompt_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prompt_projects_preferred_prompt_id_fkey"
+            columns: ["preferred_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_staff_badges: {
         Row: {
@@ -1342,8 +1353,10 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
+          version_change_metadata: Json | null
           version_label: string | null
           version_number: number | null
+          version_user_note: string | null
         }
         Insert: {
           created_at?: string
@@ -1364,8 +1377,10 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
+          version_change_metadata?: Json | null
           version_label?: string | null
           version_number?: number | null
+          version_user_note?: string | null
         }
         Update: {
           created_at?: string
@@ -1386,8 +1401,10 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+          version_change_metadata?: Json | null
           version_label?: string | null
           version_number?: number | null
+          version_user_note?: string | null
         }
         Relationships: [
           {
@@ -2208,7 +2225,8 @@ export type Database = {
           _parent_prompt_id: string
           _project_id: string
           _user_id: string
-          _version_label?: string
+          _version_change_metadata: Json
+          _version_label: string
         }
         Returns: Json
       }
@@ -2228,6 +2246,7 @@ export type Database = {
           _theme: string
           _title: string
           _user_id: string
+          _version_change_metadata: Json
         }
         Returns: Json
       }
