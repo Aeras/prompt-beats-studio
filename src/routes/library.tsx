@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput } from "lucide-react";
@@ -358,27 +358,25 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const folderContents = useQuery({
     queryKey: ["library", "folder-contents", currentFolderId],
     queryFn: () => listLibraryFolderContents({ data: { folderId: currentFolderId } }),
-    enabled: (view === "all" || view === "projects") && !q && !openProjectId,
+    enabled: (view === "all" || (view === "projects" && !openProjectId)) && !q,
   });
 
   const folderBreadcrumbs = useQuery({
     queryKey: ["library", "folder-breadcrumbs", currentFolderId],
     queryFn: () => getLibraryFolderBreadcrumbs({ data: { folderId: currentFolderId! } }),
-    enabled: (view === "all" || view === "projects") && !openProjectId && Boolean(currentFolderId),
+    enabled: (view === "all" || (view === "projects" && !openProjectId)) && Boolean(currentFolderId),
   });
 
   const folderSearch = useQuery({
     queryKey: ["library", "folder-scope-search", currentFolderId, q],
     queryFn: () => searchLibraryScope({ data: { folderId: currentFolderId, query: q } }),
-    enabled: (view === "all" || view === "projects") && !openProjectId && q.length > 0,
+    enabled: (view === "all" || (view === "projects" && !openProjectId)) && q.length > 0,
   });
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
-  const filtered = prompts.filter(matches);
   const visibleAnalyses = showAnalyses ? analyses : [];
   const filteredAnalyses = visibleAnalyses.filter(matchesAnalysis);
-  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || visibleAnalyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
   const folderSearchResults = (folderSearch.data?.results ?? []).filter((result) => view === "all" || result.item_type !== "prompt");
 
@@ -532,7 +530,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       setDragOverFolderId(null);
       suppressTouchClickRef.current = false;
     },
-    onClickCapture: (event: ReactPointerEvent<HTMLElement> | any) => {
+    onClickCapture: (event: ReactMouseEvent<HTMLElement>) => {
       if (!suppressTouchClickRef.current) return;
       event.preventDefault();
       event.stopPropagation();
