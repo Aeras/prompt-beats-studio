@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { requireAuxiliaryAiAdmission } from "@/lib/ai-admission.server";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
 const songPackageSchema = z.object({
@@ -47,6 +48,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
+    await requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab");
 
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
