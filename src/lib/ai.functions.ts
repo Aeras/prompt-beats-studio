@@ -29,6 +29,7 @@ import { structuralHeadersInText } from "@/lib/lyrics-sections";
 import {
   buildGeneratorVersionMetadata,
   buildInitialVersionMetadata,
+  versionChangeMetadataSchema,
 } from "@/lib/project-version-history.shared";
 
 export const HOURLY_LIMIT = 10;
@@ -2328,6 +2329,90 @@ export const listPromptProjectVersions = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { prompts: prompts ?? [] };
+  });
+
+export const listProjectVersionHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: project, error: projectError } = await context.supabase
+      .from("prompt_projects")
+      .select("id, name, preferred_prompt_id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found.");
+
+    const { data: rows, error } = await context.supabase
+      .from("saved_prompts")
+      .select("id, title, custom_name, version_number, version_label, parent_prompt_id, version_change_metadata, version_user_note, created_at")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId)
+      .order("version_number", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    return {
+      project,
+      versions: (rows ?? []).map((row) => {
+        const parsed = versionChangeMetadataSchema.safeParse(row.version_change_metadata);
+        return {
+          ...row,
+          version_change_metadata: parsed.success ? parsed.data : null,
+        };
+      }),
+    };
+  });
+
+export const updateVersionUserNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    id: z.string().uuid(),
+    note: z.string().max(1000),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("saved_prompts")
+      .update({ version_user_note: data.note.trim() || null })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Version not found.");
+    return { ok: true };
+  });
+
+export const setPreferredProjectVersion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    promptId: z.string().uuid().nullable(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.promptId) {
+      const { data: version, error: versionError } = await context.supabase
+        .from("saved_prompts")
+        .select("id")
+        .eq("id", data.promptId)
+        .eq("project_id", data.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (versionError) throw new Error(versionError.message);
+      if (!version) throw new Error("Version not found.");
+    }
+
+    const { data: project, error } = await context.supabase
+      .from("prompt_projects")
+      .update({ preferred_prompt_id: data.promptId, updated_at: new Date().toISOString() })
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!project) throw new Error("Project not found.");
+    return { ok: true };
   });
 
 export const getPromptRevisionBase = createServerFn({ method: "POST" })
