@@ -311,6 +311,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderMessage, setFolderMessage] = useState("");
+  const [undoMove, setUndoMove] = useState<null | {
+    kind: "folder" | "project" | "prompt";
+    id: string;
+    previousFolderId: string | null;
+  }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
     operation: "move" | "duplicate";
     kind: "folder" | "project" | "prompt";
@@ -359,9 +364,9 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     ]);
   };
 
-  const flashFolderMessage = (message: string) => {
+  const flashFolderMessage = (message: string, keepForUndo = false) => {
     setFolderMessage(message);
-    window.setTimeout(() => setFolderMessage(""), 2600);
+    if (!keepForUndo) window.setTimeout(() => setFolderMessage(""), 2600);
   };
 
   const createFolder = async () => {
@@ -420,6 +425,33 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     if (!folderPicker) return;
     setBusy(true);
     try {
+      if (folderPicker.operation === "duplicate") {
+        if (folderPicker.kind === "project") {
+          await duplicatePromptProjectToFolder({
+            data: {
+              projectId: folderPicker.id,
+              destinationFolderId,
+              newName: folderPicker.newName || `${folderPicker.name} Copy`,
+            },
+          });
+        } else if (folderPicker.kind === "prompt") {
+          await duplicateStandalonePromptToFolder({
+            data: {
+              promptId: folderPicker.id,
+              destinationFolderId,
+              newName: folderPicker.newName || `${folderPicker.name} Copy`,
+            },
+          });
+        } else {
+          throw new Error("Folder duplication is not available.");
+        }
+        await refresh();
+        setUndoMove(null);
+        flashFolderMessage(language === "el" ? `Δημιουργήθηκε αντίγραφο στο ${path}.` : `Copy created in ${path}.`);
+        setFolderPicker(null);
+        return;
+      }
+
       if (folderPicker.kind === "folder") {
         await moveLibraryFolder({ data: { folderId: folderPicker.id, destinationFolderId } });
       } else if (folderPicker.kind === "project") {
@@ -428,13 +460,72 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         await moveStandalonePromptToFolder({ data: { promptId: folderPicker.id, destinationFolderId } });
       }
       await refresh();
-      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`);
+      setUndoMove({
+        kind: folderPicker.kind,
+        id: folderPicker.id,
+        previousFolderId: folderPicker.currentFolderId,
+      });
+      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`, true);
       setFolderPicker(null);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed."));
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η ενέργεια απέτυχε." : "Action failed."));
     } finally {
       setBusy(false);
     }
+  };
+
+  const undoLastMove = async () => {
+    if (!undoMove || busy) return;
+    setBusy(true);
+    try {
+      if (undoMove.kind === "folder") {
+        await moveLibraryFolder({ data: { folderId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      } else if (undoMove.kind === "project") {
+        await movePromptProjectToFolder({ data: { projectId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      } else {
+        await moveStandalonePromptToFolder({ data: { promptId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      }
+      await refresh();
+      setUndoMove(null);
+      flashFolderMessage(language === "el" ? "Η μετακίνηση αναιρέθηκε." : "Move undone.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η αναίρεση απέτυχε." : "Undo failed."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startDuplicateProject = (project: PromptProject) => {
+    const newName = window.prompt(
+      language === "el" ? "Όνομα αντιγράφου Project" : "Duplicate Project name",
+      language === "el" ? `${project.name} — Αντίγραφο` : `${project.name} — Copy`,
+    )?.trim();
+    if (!newName) return;
+    setFolderPicker({
+      operation: "duplicate",
+      kind: "project",
+      id: project.id,
+      name: project.name,
+      newName,
+      currentFolderId: project.folder_id ?? currentFolderId,
+    });
+  };
+
+  const startDuplicatePrompt = (prompt: SavedPrompt) => {
+    const sourceName = prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt");
+    const newName = window.prompt(
+      language === "el" ? "Όνομα αντιγράφου Prompt" : "Duplicate Prompt name",
+      language === "el" ? `${sourceName} — Αντίγραφο` : `${sourceName} — Copy`,
+    )?.trim();
+    if (!newName) return;
+    setFolderPicker({
+      operation: "duplicate",
+      kind: "prompt",
+      id: prompt.id,
+      name: sourceName,
+      newName,
+      currentFolderId: prompt.folder_id ?? currentFolderId,
+    });
   };
   const renameProject = async (project: PromptProject) => {
     const name = window.prompt(language === "el" ? "Νέο όνομα project" : "New project name", project.name)?.trim();
