@@ -411,6 +411,7 @@ export const listTrendingTracks = createServerFn({ method: "GET" }).handler(asyn
 export const listLikedTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "likes");
     const { data: likes, error } = await context.supabase.from("likes").select("track_id, created_at").eq("user_id", context.userId).order("created_at", { ascending: false }).limit(100);
     if (error) throw new Error(error.message);
     const ids = (likes ?? []).map((l) => l.track_id);
