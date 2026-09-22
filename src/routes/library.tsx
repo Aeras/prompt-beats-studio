@@ -833,7 +833,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/[0.07]"><Folder className="h-5 w-5 text-accent" /></span>
-                        <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language === "el" ? "Φάκελος" : "Folder"}</span></span>
+                        <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{folder.has_subfolders ? (language === "el" ? "Περιέχει υποφακέλους" : "Contains subfolders") : (language === "el" ? "Φάκελος" : "Folder")}</span></span>{folder.has_subfolders && <ChevronRight className="h-4 w-4 shrink-0 text-accent/70" aria-hidden="true" />}
                       </LibraryLongPressButton>
                       <div className="flex shrink-0 gap-1">
                         <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
@@ -1039,6 +1039,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         }
         initialFolderId={folderPicker?.currentFolderId ?? currentFolderId}
         excludedFolderIds={folderPicker?.operation === "move" && folderPicker?.kind === "folder" ? [folderPicker.id] : []}
+        disabledDestinationFolderId={folderPicker?.operation === "move" ? folderPicker.currentFolderId : undefined}
         onClose={() => setFolderPicker(null)}
         onSelect={moveFolderItem}
       />
