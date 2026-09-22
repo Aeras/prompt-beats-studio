@@ -110,7 +110,7 @@ function Index() {
       <div className="px-4 pt-4 md:px-8"><ProfileBanner /></div>
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
         <div className="flex items-start justify-between gap-3">
-          <div><h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("discover.titleLead")}</span>{" "}{t("discover.titleTail")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("discover.trackCount", { count: uploaded.length })}</p></div>
+          <div><h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("discover.titleLead")}</span>{" "}{t("discover.titleTail")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("discover.trackCount", { count: sourceFiltered.length })}</p></div>
           {category !== "creators" && <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>}
         </div>
         <div className={`mt-5 ${category === "creators" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : trackGridClassName(gridMode)}`}>
