@@ -659,6 +659,41 @@ export type Database = {
         }
         Relationships: []
       }
+      library_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -1239,28 +1274,59 @@ export type Database = {
         Row: {
           created_at: string
           creation_notes: string
+          duplicated_from_project_id: string | null
+          folder_id: string | null
           id: string
           name: string
+          preferred_prompt_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           creation_notes?: string
+          duplicated_from_project_id?: string | null
+          folder_id?: string | null
           id?: string
           name: string
+          preferred_prompt_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           creation_notes?: string
+          duplicated_from_project_id?: string | null
+          folder_id?: string | null
           id?: string
           name?: string
+          preferred_prompt_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prompt_projects_duplicated_from_project_id_fkey"
+            columns: ["duplicated_from_project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_projects_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_projects_preferred_prompt_id_fkey"
+            columns: ["preferred_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_staff_badges: {
         Row: {
@@ -1326,6 +1392,8 @@ export type Database = {
         Row: {
           created_at: string
           custom_name: string | null
+          duplicated_from_prompt_id: string | null
+          folder_id: string | null
           generator_input_snapshot: Json | null
           genre: string
           id: string
@@ -1342,12 +1410,16 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
+          version_change_metadata: Json | null
           version_label: string | null
           version_number: number | null
+          version_user_note: string | null
         }
         Insert: {
           created_at?: string
           custom_name?: string | null
+          duplicated_from_prompt_id?: string | null
+          folder_id?: string | null
           generator_input_snapshot?: Json | null
           genre?: string
           id?: string
@@ -1364,12 +1436,16 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
+          version_change_metadata?: Json | null
           version_label?: string | null
           version_number?: number | null
+          version_user_note?: string | null
         }
         Update: {
           created_at?: string
           custom_name?: string | null
+          duplicated_from_prompt_id?: string | null
+          folder_id?: string | null
           generator_input_snapshot?: Json | null
           genre?: string
           id?: string
@@ -1386,10 +1462,26 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+          version_change_metadata?: Json | null
           version_label?: string | null
           version_number?: number | null
+          version_user_note?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_prompts_duplicated_from_prompt_id_fkey"
+            columns: ["duplicated_from_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_prompts_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_prompts_parent_prompt_id_fkey"
             columns: ["parent_prompt_id"]
@@ -2208,7 +2300,8 @@ export type Database = {
           _parent_prompt_id: string
           _project_id: string
           _user_id: string
-          _version_label?: string
+          _version_change_metadata: Json
+          _version_label: string
         }
         Returns: Json
       }
@@ -2228,6 +2321,7 @@ export type Database = {
           _theme: string
           _title: string
           _user_id: string
+          _version_change_metadata: Json
         }
         Returns: Json
       }
@@ -2252,6 +2346,22 @@ export type Database = {
       current_user_is_super_admin: { Args: never; Returns: boolean }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      duplicate_prompt_project_to_folder: {
+        Args: {
+          _destination_folder_id: string
+          _new_name: string
+          _project_id: string
+        }
+        Returns: Json
+      }
+      duplicate_standalone_prompt_to_folder: {
+        Args: {
+          _destination_folder_id: string
+          _new_name: string
+          _prompt_id: string
+        }
+        Returns: Json
+      }
       edit_track_with_cleanup: {
         Args: {
           _allow_download?: boolean
@@ -2476,6 +2586,26 @@ export type Database = {
       revoke_track_share_link: {
         Args: { _share_id: string }
         Returns: undefined
+      }
+      search_library_folders: {
+        Args: { _query: string }
+        Returns: {
+          depth: number
+          id: string
+          name: string
+          parent_folder_id: string
+          path: string
+        }[]
+      }
+      search_library_scope: {
+        Args: { _folder_id: string; _query: string }
+        Returns: {
+          folder_id: string
+          item_id: string
+          item_type: string
+          name: string
+          path: string
+        }[]
       }
       send_moderation_case_message: {
         Args: { _body: string; _case_id: string; _message_type: string }
