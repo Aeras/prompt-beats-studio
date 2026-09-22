@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -70,8 +70,8 @@ function SideBySide({
 }: {
   label: string;
   status: string;
-  before: React.ReactNode;
-  after: React.ReactNode;
+  before: ReactNode;
+  after: ReactNode;
   leftLabel: string;
   rightLabel: string;
   language: string;
