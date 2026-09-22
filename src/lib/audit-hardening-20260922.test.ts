@@ -114,6 +114,15 @@ describe("September 22 production audit hardening", () => {
     expect(panel).toContain("defaultAccessProtectionQuality");
   });
 
+  test("prompt projects and song analyses expose only owner CRUD to authenticated", async () => {
+    const migration = await source("supabase/migrations/20260922151500_restore_project_analysis_table_crud_grants.sql");
+
+    expect(migration).toContain("REVOKE ALL ON TABLE public.prompt_projects FROM anon, authenticated, service_role");
+    expect(migration).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.prompt_projects TO authenticated, service_role");
+    expect(migration).toContain("REVOKE ALL ON TABLE public.song_analyses FROM anon, authenticated, service_role");
+    expect(migration).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.song_analyses TO authenticated, service_role");
+  });
+
   test("RLS event helper loses browser-facing EXECUTE grants", async () => {
     const migration = await source("supabase/migrations/20260922115500_harden_rls_auto_enable_grants.sql");
     expect(migration).toContain("REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated");
