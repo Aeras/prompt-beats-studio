@@ -10,6 +10,7 @@ const CANONICAL_KEYS = [
   "song_analyzer",
   "lyrics_workspace",
   "smart_presets",
+  "song_setup_assistant",
   "export_center",
   "track_uploads",
   "sharing_public_links",
@@ -31,14 +32,14 @@ function functionBlock(sql: string, name: string) {
   return sql.slice(start, next === -1 ? sql.length : next);
 }
 
-describe("Feature Access V2 — 14 features", () => {
-  test("canonical TypeScript registry contains exactly 14 unique feature keys", async () => {
+describe("Feature Access V2 — 15 features", () => {
+  test("canonical TypeScript registry contains exactly 15 unique feature keys", async () => {
     const code = await source("src/lib/feature-access.functions.ts");
     const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
     expect(match).not.toBeNull();
     const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
     expect(keys).toEqual(CANONICAL_KEYS);
-    expect(new Set(keys).size).toBe(14);
+    expect(new Set(keys).size).toBe(15);
     expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
   });
 
@@ -89,10 +90,17 @@ describe("Feature Access V2 — 14 features", () => {
     expect(legacy).toContain('requireFeatureAccess(context.supabase, "quality_check")');
 
     const setup = await source("src/lib/song-setup-assistant.functions.ts");
-    const gate = setup.indexOf('requireFeatureAccess(context.supabase, "ai_generator")');
+    const generatorGate = setup.indexOf('requireFeatureAccess(context.supabase, "ai_generator")');
+    const assistantGate = setup.indexOf('requireFeatureAccess(context.supabase, "song_setup_assistant")');
     const provider = setup.indexOf('import("@/lib/ai-provider.server")');
-    expect(gate).toBeGreaterThan(-1);
-    expect(provider).toBeGreaterThan(gate);
+    expect(generatorGate).toBeGreaterThan(-1);
+    expect(assistantGate).toBeGreaterThan(generatorGate);
+    expect(provider).toBeGreaterThan(assistantGate);
+    expect(setup).not.toContain("current_user_is_admin_level");
+
+    const route = await source("src/routes/generate.tsx");
+    expect(route).toContain('useFeatureAccess("song_setup_assistant")');
+    expect(route).toContain("songSetupFeature.allowed");
   });
 
   test("Quality Check recovery remains readable while new durable admission is gated before creation", async () => {
