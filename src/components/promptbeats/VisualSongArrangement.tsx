@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 
 import { useI18n } from "@/i18n";
@@ -18,7 +18,7 @@ type Props = {
   availableSectionTypes: string[];
   labelForSection: (value: string) => string;
   onChange: (next: ArrangementSection[]) => void;
-  advancedView?: React.ReactNode;
+  advancedView?: ReactNode;
 };
 
 function sectionLabel(
