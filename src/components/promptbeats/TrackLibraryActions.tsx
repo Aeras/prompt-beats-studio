@@ -176,7 +176,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   };
 
   const playlistModal = playlistOpen && typeof document !== "undefined" && createPortal(
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[110] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6" role="dialog" aria-modal="true">
       <div className="glass-strong max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl">
         <header className="flex items-center justify-between gap-3">
           <div>
