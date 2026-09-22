@@ -148,7 +148,7 @@ export function ReportsManagementPanel({ isAdmin, initialReportId }: { isAdmin: 
   useEffect(() => {
     if (initialReportId) setSelectedReportId(initialReportId);
   }, [initialReportId]);
-  const { data = [], isLoading, isError, error } = useQuery({
+  const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
     queryFn: () => listContentReports({ data: { scope } }),
     staleTime: 15_000,
@@ -171,7 +171,7 @@ export function ReportsManagementPanel({ isAdmin, initialReportId }: { isAdmin: 
     </div>
 
     {isLoading && <p className="text-sm text-muted-foreground">{t("management.reportsLoading")}</p>}
-    {isError && <div className="glass rounded-2xl p-4 text-sm text-red-300"><p>{t("management.reportsError")}</p><p className="mt-2 break-words font-mono text-xs text-red-200/90">{error instanceof Error ? error.message : String(error ?? "Unknown report loading error")}</p></div>}
+    {isError && <p className="glass rounded-2xl p-4 text-sm text-red-300">{t("management.reportsError")}</p>}
     {!isLoading && !isError && data.length === 0 && <p className="glass rounded-2xl p-6 text-sm text-muted-foreground">{t("management.reportsNone")}</p>}
 
     {data.length > 0 && <div className="glass overflow-hidden rounded-2xl">
