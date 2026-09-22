@@ -2301,7 +2301,7 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select("id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(250);
     if (error) throw new Error(error.message);
@@ -2521,7 +2521,7 @@ export const listPromptProjects = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("prompt_projects")
-      .select("id, name, creation_notes, preferred_prompt_id, created_at, updated_at")
+      .select("id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at")
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { projects: data ?? [] };
@@ -2529,12 +2529,30 @@ export const listPromptProjects = createServerFn({ method: "GET" })
 
 export const createPromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ name: z.string().trim().min(1).max(120) }).parse(input))
+  .inputValidator((input: unknown) => z.object({
+    name: z.string().trim().min(1).max(120),
+    folderId: z.string().uuid().nullable().optional(),
+  }).parse(input))
   .handler(async ({ data, context }) => {
+    if (data.folderId) {
+      const { data: folder, error: folderError } = await context.supabase
+        .from("library_folders")
+        .select("id")
+        .eq("id", data.folderId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (folderError) throw new Error(folderError.message);
+      if (!folder) throw new Error("Folder not found.");
+    }
+
     const { data: project, error } = await context.supabase
       .from("prompt_projects")
-      .insert({ user_id: context.userId, name: data.name })
-      .select("id, name, creation_notes, preferred_prompt_id, created_at, updated_at")
+      .insert({
+        user_id: context.userId,
+        name: data.name,
+        folder_id: data.folderId ?? null,
+      })
+      .select("id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return { project };
