@@ -23,6 +23,7 @@ import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
 import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
+import { LibraryItemActionSheet, useLibraryLongPress } from "@/components/promptbeats/LibraryItemActionSheet";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
