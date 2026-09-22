@@ -23,7 +23,7 @@ import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
 import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
-import { LibraryItemActionSheet, LibraryLongPressButton, useLibraryLongPress } from "@/components/promptbeats/LibraryItemActionSheet";
+import { LibraryItemActionSheet, LibraryLongPressButton } from "@/components/promptbeats/LibraryItemActionSheet";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -324,11 +324,6 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     id: string;
     name: string;
     currentFolderId: string | null;
-  }>(null);
-  const [mobileActions, setMobileActions] = useState<null | {
-    kind: "folder" | "project" | "prompt";
-    id: string;
-    name: string;
   }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
     operation: "move" | "duplicate";
