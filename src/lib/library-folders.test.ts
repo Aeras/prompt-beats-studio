@@ -7,7 +7,7 @@ async function source(path: string) {
 
 describe("Library folders foundation", () => {
   test("uses one shared hierarchical folder model for Projects and standalone Prompts", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.library_folders");
     expect(sql).toContain("parent_folder_id uuid NULL REFERENCES public.library_folders(id)");
@@ -19,7 +19,7 @@ describe("Library folders foundation", () => {
   });
 
   test("caps nesting at five levels and prevents circular hierarchy", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain("validate_library_folder_hierarchy");
     expect(sql).toContain("Folder nesting cannot exceed 5 levels");
@@ -29,7 +29,7 @@ describe("Library folders foundation", () => {
   });
 
   test("folder ownership is enforced in RLS and destination triggers", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain('CREATE POLICY "Users manage their own library folders"');
     expect(sql).toContain("user_id = (SELECT auth.uid())");
@@ -38,7 +38,7 @@ describe("Library folders foundation", () => {
   });
 
   test("same-name folders are allowed in different branches but not under the same parent", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain("library_folders_unique_sibling_name_idx");
     expect(sql).toContain("COALESCE(parent_folder_id");
@@ -88,7 +88,7 @@ describe("Library folders foundation", () => {
   });
 
   test("folder picker search exposes full paths without raw path storage", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.search_library_folders");
     expect(sql).toContain("tree.path || ' / ' || child.name");
@@ -108,7 +108,7 @@ describe("Library folders foundation", () => {
 
   test("Saved Prompts All view is a current-folder file manager with recursive scoped search", async () => {
     const library = await source("src/routes/library.tsx");
-    const searchMigration = await source("supabase/migrations/20260922192000_library_folder_recursive_search.sql");
+    const searchMigration = await source("supabase/migrations/20260922191129_library_folder_recursive_search.sql");
 
     expect(library).toContain("listLibraryFolderContents");
     expect(library).toContain("searchLibraryScope");
@@ -142,7 +142,7 @@ describe("Library folders foundation", () => {
   });
 
   test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const sql = await source("supabase/migrations/20260922191937_library_folder_transactional_duplicate.sql");
 
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder");
     expect(sql).toContain("FOR v_source_prompt IN");
@@ -156,7 +156,7 @@ describe("Library folders foundation", () => {
   });
 
   test("Duplicate standalone Prompt produces an independent copy in the selected folder", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const sql = await source("supabase/migrations/20260922191937_library_folder_transactional_duplicate.sql");
     const server = await source("src/lib/library-folders.functions.ts");
 
     expect(sql).toContain("duplicate_standalone_prompt_to_folder");
@@ -167,7 +167,7 @@ describe("Library folders foundation", () => {
   });
 
   test("Duplicate does not copy audio or track records", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const sql = await source("supabase/migrations/20260922191937_library_folder_transactional_duplicate.sql");
 
     expect(sql).not.toContain("INSERT INTO public.tracks");
     expect(sql).not.toContain("audio_url");
@@ -226,7 +226,7 @@ describe("Library folders foundation", () => {
   });
 
   test("duplicate provenance columns exist without creating a branch graph", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const sql = await source("supabase/migrations/20260922190357_library_folders_foundation.sql");
 
     expect(sql).toContain("duplicated_from_project_id");
     expect(sql).toContain("duplicated_from_prompt_id");
