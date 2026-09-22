@@ -37,10 +37,12 @@ export function buildSongBlueprint(
         item.sectionType === sectionType,
     );
     return {
+      ...(existing?.sectionId ? { sectionId: existing.sectionId } : {}),
       structureIndex,
       sectionType,
       occurrence,
       instruction: existing?.instruction ?? "",
+      ...(existing?.energy !== undefined ? { energy: existing.energy } : {}),
     };
   });
 }
