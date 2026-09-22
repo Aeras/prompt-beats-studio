@@ -1270,6 +1270,58 @@ export type Database = {
         }
         Relationships: []
       }
+      project_version_tracks: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          project_id: string
+          track_id: string
+          user_id: string
+          version_prompt_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          project_id: string
+          track_id: string
+          user_id: string
+          version_prompt_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          project_id?: string
+          track_id?: string
+          user_id?: string
+          version_prompt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_version_tracks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_version_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_version_tracks_version_prompt_id_fkey"
+            columns: ["version_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompt_projects: {
         Row: {
           created_at: string
@@ -2452,6 +2504,14 @@ export type Database = {
         Returns: undefined
       }
       like_count: { Args: { _track_id: string }; Returns: number }
+      link_project_version_tracks: {
+        Args: {
+          _project_id: string
+          _track_ids: string[]
+          _version_prompt_id: string
+        }
+        Returns: Json
+      }
       list_content_reports: { Args: { _scope?: string }; Returns: Json }
       list_moderation_case_assignees: { Args: never; Returns: Json }
       list_my_moderation_cases: { Args: never; Returns: Json }
@@ -2611,6 +2671,14 @@ export type Database = {
         Args: { _body: string; _case_id: string; _message_type: string }
         Returns: string
       }
+      set_primary_project_version_track: {
+        Args: {
+          _project_id: string
+          _track_id?: string
+          _version_prompt_id: string
+        }
+        Returns: Json
+      }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
         Returns: undefined
@@ -2659,6 +2727,14 @@ export type Database = {
       take_moderation_case: { Args: { _report_id: string }; Returns: string }
       track_cover_path: { Args: { _cover_url: string }; Returns: string }
       unfollow_creator: { Args: { _target_user_id: string }; Returns: Json }
+      unlink_project_version_track: {
+        Args: {
+          _project_id: string
+          _track_id: string
+          _version_prompt_id: string
+        }
+        Returns: Json
+      }
       update_track_share_link: {
         Args: {
           _include_lyrics: boolean

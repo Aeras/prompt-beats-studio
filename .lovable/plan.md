@@ -1,66 +1,77 @@
-# Build failure diagnosis — Library folders changes
+# Build failure diagnosis — current state
 
-## Result of running the current build check
+## What the build reports right now
 
-The type/build check stops immediately with a single error:
+Both the type check and the actual bundler fail on one and the same thing:
 
 ```text
-src/routes/library.tsx(976,15): error TS1005: ':' expected.
+typecheck: src/routes/library.tsx(976,15): error TS1005: ':' expected.
+build:    Error transforming route file /dev-server/src/routes/library.tsx:
+          SyntaxError: Unexpected token, expected ":" (976:14)
+          -> [plugin tanstack-start:route-tree-client-plugin] Crawling result not available
 ```
 
-This is a syntax (parse) error, not a type error. Because the file cannot be parsed, the
-compiler aborts there — no other file is reported, and any further errors in this file are
-hidden until this one is fixed.
+The second bundler message ("Crawling result not available") is a follow-on effect: the route
+tree cannot be crawled because one route file failed to parse. There is exactly **one** real
+error.
 
 ## Exact cause
 
-`src/routes/library.tsx` line 933 opens a conditional expression:
+`src/routes/library.tsx` line 933 opens a conditional expression that is never closed:
 
 ```tsx
 {openProject ? (() => {
    ...
-})()}        // <- line 976: the ternary has no ":" branch
+})()}        // <- line 976: the "? ... :" has no ":" branch
 ```
 
-The `? ... :` expression started on line 933 is never completed. The parser reaches the end
-of the immediately-invoked function on line 976 and expects `:` followed by the alternative
-branch, finds `}` instead, and fails.
-
-This is the branch that renders an opened Project (the `view === "analyses"` / non-list case).
-The recent Library folders work rewrote the surrounding block (the folder breadcrumb + folder
-grid branch that starts at line 740) and the alternative branch of this inner ternary was lost.
+The parser reaches the end of the immediately-invoked function on line 976, expects `:` and
+the alternative branch, finds `}` instead, and aborts. This is the block that renders an
+opened Project; the recent Library folders work rewrote the surrounding markup (the folder
+breadcrumb/grid branch starting at line 740) and the alternative branch of this inner ternary
+was lost.
 
 ## Minimal fix
 
-One line, in `src/routes/library.tsx` line 976 — close the ternary with an explicit empty
-branch:
+One line, `src/routes/library.tsx` line 976 — close the ternary:
 
 ```tsx
           })() : null}
 ```
 
-Nothing else is required to make the build parse. No database change, no migration, and no
-change to `LibraryFolderPicker.tsx`, `library-folders.functions.ts`,
-`library-folders.test.ts`, or `20260922210500_library_folder_integrity_hardening.sql` is
-implicated by this error — those files are never reached by the compiler.
+No database change, no migration, and no change to `LibraryFolderPicker.tsx`,
+`library-folders.functions.ts`, `library-folders.test.ts`, or
+`20260922210500_library_folder_integrity_hardening.sql` is implicated — the compiler never
+reaches those files.
 
-## Follow-up that the fix will expose
+## About the Linked Audio Results work
 
-Once the file parses, the type checker will continue through the rest of the project. The
-project already carried a large set of pre-existing strict-mode errors (test-runner types,
-optional/undefined mismatches, index-signature access), so expect those to reappear in the
-report. They are unrelated to the Library folders work, and they are separate from the
-publish blocker above.
+The files named in the latest request are **not present in this sandbox**:
+
+- `src/components/promptbeats/ProjectVersionLinkedTracks.tsx` — does not exist
+- `src/lib/project-version-tracks.functions.ts` — does not exist
+
+`ProjectVersionHistory.tsx`, `ProjectVersionCompare.tsx` and `player.tsx` are present and
+contain no linked-track code. So the sandbox source is not at commit `69f4243…`; the working
+source still corresponds to the Library folders state. Nothing about the linked-audio feature
+can be checked until that code is actually in the sandbox, and no linked-audio file appears in
+any build error.
+
+## Follow-up the fix will expose
+
+Once `library.tsx` parses, the type checker continues into the rest of the project, where a
+large set of pre-existing strict-mode errors (test-runner types, optional/undefined
+mismatches, index-signature access) will reappear. Those are unrelated to the Library folders
+work and separate from this publish blocker.
 
 ## One behavioural observation (not a build error)
 
-The analyses list (`filteredAnalyses.map(...)`, line 928) lives inside the branch guarded by
-`view === "all" || (view === "projects" && !openProject)`. In the `analyses` view with no
-project open, the alternative branch currently renders nothing. Closing the ternary with
-`null` keeps that as-is; if the Analyses tab is expected to show the analyses list, that
-branch needs the list rather than `null`. Worth confirming before the fix is applied.
+The analyses list (`filteredAnalyses.map(...)`, line 928) sits inside the branch guarded by
+`view === "all" || (view === "projects" && !openProject)`. In the Analyses view with no
+project open, the alternative branch renders nothing. Closing the ternary with `null` keeps
+that as-is; if the Analyses tab should show the list, that branch needs the list rather than
+`null`. Worth confirming before the fix is applied.
 
-## Scope of this task
+## Scope
 
-Diagnosis only — no files, commits, configuration, secrets, database, or deployments were
-changed.
+Diagnosis only — no files, commits, configuration, secrets, database, or deployments changed.
