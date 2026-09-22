@@ -200,6 +200,17 @@ export function updateArrangementEnergy(
   );
 }
 
+export function applyInstructionToAllRegularChoruses(
+  sections: ArrangementSection[],
+  instruction: string,
+): ArrangementSection[] {
+  return sections.map((section) =>
+    section.sectionType === "Chorus"
+      ? { ...section, instruction: instruction.slice(0, 800) }
+      : section,
+  );
+}
+
 export function applyEnergyToAllRegularChoruses(
   sections: ArrangementSection[],
   energy: SongEnergyLevel | null,
