@@ -4,6 +4,7 @@
 // For user-authenticated queries (with RLS), use the auth middleware instead.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { getServerSupabaseAdminConfig } from './config.server';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -30,24 +31,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL =
-    process.env['EXTERNAL_SUPABASE_URL'] ?? process.env['SUPABASE_URL'];
-  const SUPABASE_SERVICE_ROLE_KEY =
-    process.env['EXTERNAL_SUPABASE_SECRET_KEY'] ?? process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  const { url, secretKey } = getServerSupabaseAdminConfig();
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['EXTERNAL_SUPABASE_URL or SUPABASE_URL'] : []),
-      ...(!SUPABASE_SERVICE_ROLE_KEY ? ['EXTERNAL_SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
-  }
-
-  return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient<Database>(url, secretKey, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_SERVICE_ROLE_KEY),
+      fetch: createSupabaseFetch(secretKey),
     },
     auth: {
       storage: undefined,
