@@ -9,17 +9,19 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 export function LikeButton({ trackId, enabled = true }: { trackId: string; enabled?: boolean }) {
   const { t } = useI18n();
   const featureAccess = useFeatureAccess("likes");
-  const { count, liked, canLike, isPending, toggle } = useLikes(trackId, enabled);
+  const { count, liked, canLike, isPending, toggle } = useLikes(trackId, enabled && featureAccess.allowed);
   const label = liked ? t("like.remove") : t("like.add");
+
+  if (!featureAccess.allowed) return null;
 
   return (
     <button
       aria-label={label}
       aria-pressed={liked}
-      title={!featureAccess.allowed ? "Likes unavailable" : canLike ? label : t("nav.signIn")}
-      disabled={!enabled || !featureAccess.allowed || isPending}
+      title={canLike ? label : t("nav.signIn")}
+      disabled={!enabled || isPending}
       onClick={() => {
-        if (canLike && featureAccess.allowed) toggle();
+        if (canLike) toggle();
       }}
       className={cn(
         "flex shrink-0 items-center gap-1.5 text-xs transition-colors",
