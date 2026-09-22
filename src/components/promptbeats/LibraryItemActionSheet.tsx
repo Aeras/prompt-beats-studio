@@ -1,4 +1,4 @@
-import { useRef, type MouseEvent, type PointerEvent } from "react";
+import { useRef, type ButtonHTMLAttributes, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { Copy, FolderInput, Pencil, Trash2, X } from "lucide-react";
 
 type PointerPoint = { x: number; y: number };
@@ -42,6 +42,16 @@ export function useLibraryLongPress(onLongPress: () => void, disabled = false) {
       firedRef.current = false;
     },
   };
+}
+
+type LongPressButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+  children: ReactNode;
+  onLongPress: () => void;
+};
+
+export function LibraryLongPressButton({ children, onLongPress, ...props }: LongPressButtonProps) {
+  const longPress = useLibraryLongPress(onLongPress, props.disabled === true);
+  return <button type="button" {...props} {...longPress}>{children}</button>;
 }
 
 type Props = {
