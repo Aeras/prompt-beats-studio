@@ -14,11 +14,16 @@ import { Route as HandleRouteImport } from './routes/$handle'
 import { Route as AiMusicLabRouteImport } from './routes/ai-music-lab'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CopyrightIpRouteImport } from './routes/copyright-ip'
+import { Route as EmailLogoRouteImport } from './routes/email-logo'
 import { Route as GenerateRouteImport } from './routes/generate'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
@@ -55,9 +60,24 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CopyrightIpRoute = CopyrightIpRouteImport.update({
+  id: '/copyright-ip',
+  path: '/copyright-ip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailLogoRoute = EmailLogoRouteImport.update({
+  id: '/email-logo',
+  path: '/email-logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GenerateRoute = GenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LibraryRoute = LibraryRouteImport.update({
@@ -75,9 +95,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
   id: '/song-analyzer',
   path: '/song-analyzer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrendingRoute = TrendingRouteImport.update({
@@ -137,11 +167,16 @@ export interface FileRoutesByFullPath {
   '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/copyright-ip': typeof CopyrightIpRoute
+  '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
+  '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -159,11 +194,16 @@ export interface FileRoutesByTo {
   '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/copyright-ip': typeof CopyrightIpRoute
+  '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
+  '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -182,11 +222,16 @@ export interface FileRoutesById {
   '/ai-music-lab': typeof AiMusicLabRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/copyright-ip': typeof CopyrightIpRoute
+  '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
+  '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -206,11 +251,16 @@ export interface FileRouteTypes {
     | '/ai-music-lab'
     | '/auth'
     | '/contact'
+    | '/copyright-ip'
+    | '/email-logo'
     | '/generate'
+    | '/help'
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/privacy'
     | '/song-analyzer'
+    | '/terms'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
@@ -228,11 +278,16 @@ export interface FileRouteTypes {
     | '/ai-music-lab'
     | '/auth'
     | '/contact'
+    | '/copyright-ip'
+    | '/email-logo'
     | '/generate'
+    | '/help'
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/privacy'
     | '/song-analyzer'
+    | '/terms'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
@@ -250,11 +305,16 @@ export interface FileRouteTypes {
     | '/ai-music-lab'
     | '/auth'
     | '/contact'
+    | '/copyright-ip'
+    | '/email-logo'
     | '/generate'
+    | '/help'
     | '/library'
     | '/management'
     | '/onboarding'
+    | '/privacy'
     | '/song-analyzer'
+    | '/terms'
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
@@ -273,11 +333,16 @@ export interface RootRouteChildren {
   AiMusicLabRoute: typeof AiMusicLabRoute
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
+  CopyrightIpRoute: typeof CopyrightIpRoute
+  EmailLogoRoute: typeof EmailLogoRoute
   GenerateRoute: typeof GenerateRoute
+  HelpRoute: typeof HelpRoute
   LibraryRoute: typeof LibraryRoute
   ManagementRoute: typeof ManagementRoute
   OnboardingRoute: typeof OnboardingRoute
+  PrivacyRoute: typeof PrivacyRoute
   SongAnalyzerRoute: typeof SongAnalyzerRoute
+  TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
@@ -327,11 +392,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/copyright-ip': {
+      id: '/copyright-ip'
+      path: '/copyright-ip'
+      fullPath: '/copyright-ip'
+      preLoaderRoute: typeof CopyrightIpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email-logo': {
+      id: '/email-logo'
+      path: '/email-logo'
+      fullPath: '/email-logo'
+      preLoaderRoute: typeof EmailLogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/generate': {
       id: '/generate'
       path: '/generate'
       fullPath: '/generate'
       preLoaderRoute: typeof GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/library': {
@@ -355,11 +441,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/song-analyzer': {
       id: '/song-analyzer'
       path: '/song-analyzer'
       fullPath: '/song-analyzer'
       preLoaderRoute: typeof SongAnalyzerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trending': {
@@ -441,11 +541,16 @@ const rootRouteChildren: RootRouteChildren = {
   AiMusicLabRoute: AiMusicLabRoute,
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
+  CopyrightIpRoute: CopyrightIpRoute,
+  EmailLogoRoute: EmailLogoRoute,
   GenerateRoute: GenerateRoute,
+  HelpRoute: HelpRoute,
   LibraryRoute: LibraryRoute,
   ManagementRoute: ManagementRoute,
   OnboardingRoute: OnboardingRoute,
+  PrivacyRoute: PrivacyRoute,
   SongAnalyzerRoute: SongAnalyzerRoute,
+  TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
