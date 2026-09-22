@@ -24,7 +24,7 @@ function observeNearViewport(element: Element, onVisible: () => void) {
   return () => { nearViewportListeners.delete(element); nearViewportObserver?.unobserve(element); };
 }
 export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = false }: { sourceType: string | null | undefined; sourceId: string | null | undefined; title: string; compact?: boolean }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const embedUrl = getTrackEmbedUrl(sourceType, sourceId);
   const instanceId = `external-track-${useId()}`;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -64,10 +64,10 @@ export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = fals
         <div className={compact ? "flex h-full w-full flex-col items-center justify-center gap-1.5 bg-black/45 px-2 text-center" : "flex h-full w-full flex-col items-center justify-center gap-3 bg-black/40 px-4 text-center"}>
           {!externalMediaAllowed ? <>
             <p className={compact ? "max-w-[92%] text-[9px] leading-tight text-muted-foreground" : "text-xs text-muted-foreground"}>
-              {compact ? (providerName ? `${providerName} · ${t("external.notice")}` : t("external.notice")) : t("external.notice")}
+              {compact ? (language === "el" ? "Εξωτερικό player μπλοκαρισμένο" : "External player blocked") : t("external.notice")}
             </p>
             <button type="button" onClick={allowExternalMedia} className={compact ? "rounded-full border border-accent/50 bg-accent/15 px-2 py-1 text-[9px] font-semibold leading-none text-accent transition-colors hover:bg-accent/25" : "rounded-full border border-accent/50 bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/25"}>
-              {t("external.allow")}
+              {compact ? (language === "el" ? "Επιτρέπεται" : "Allow") : t("external.allow")}
             </button>
           </> : <p className={compact ? "text-[9px] text-muted-foreground" : "text-xs text-muted-foreground"}>{t("external.loading")}</p>}
         </div>
