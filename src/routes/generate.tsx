@@ -27,6 +27,7 @@ import { LanguagePicker } from "@/components/promptbeats/LanguagePicker";
 import { LanguageVariantPicker } from "@/components/promptbeats/LanguageVariantPicker";
 import { SmartPresetsPanel } from "@/components/promptbeats/SmartPresetsPanel";
 import { LyricsWorkspace, type LyricsWorkspaceSong } from "@/components/promptbeats/LyricsWorkspace";
+import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
 import {
   getCurrentUserAiModelAccess,
   getGenerationUsage,
@@ -582,6 +583,9 @@ function GeneratePage() {
   const [saveProjectId, setSaveProjectId] = useState("");
   const [saveVersionLabel, setSaveVersionLabel] = useState("");
   const [saveNewProject, setSaveNewProject] = useState("");
+  const [saveFolderId, setSaveFolderId] = useState<string | null>(null);
+  const [saveFolderPath, setSaveFolderPath] = useState("");
+  const [saveFolderPickerOpen, setSaveFolderPickerOpen] = useState(false);
   const [savingLibrary, setSavingLibrary] = useState(false);
   const promptProjects = useQuery({ queryKey: ["generator", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user && (saveDialogOpen || revisionMode)) });
   const revisionVersions = useQuery({
@@ -1125,6 +1129,9 @@ function GeneratePage() {
     setSaveProjectId("");
     setSaveVersionLabel("");
     setSaveNewProject("");
+    setSaveFolderId(null);
+    setSaveFolderPath("");
+    setSaveFolderPickerOpen(false);
     setSaveDialogOpen(true);
   };
 
@@ -1134,12 +1141,13 @@ function GeneratePage() {
     try {
       let projectId = saveProjectId || null;
       if (saveNewProject.trim()) {
-        const created = await createPromptProject({ data: { name: saveNewProject.trim() } });
+        const created = await createPromptProject({ data: { name: saveNewProject.trim(), folderId: saveFolderId } });
         projectId = created.project?.id ?? null;
       }
       await savePromptToLibrary({ data: {
         theme: theme.trim(), genre: effectiveGenre, mood: effectiveMood, language: effectiveLanguage, ...result,
         custom_name: saveName.trim() || null, project_id: projectId,
+        folder_id: projectId ? null : saveFolderId,
         version_label: projectId ? (saveVersionLabel.trim() || null) : null,
         generator_input_snapshot: songContext?.inputSnapshot ?? currentSnapshot,
       } });
@@ -1731,12 +1739,33 @@ function GeneratePage() {
               <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Όνομα Prompt" : "Prompt Name"}</span><input value={saveName} onChange={(e) => setSaveName(e.target.value.slice(0,200))} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>
               <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Αποθήκευση σε" : "Save to"}</span><select value={saveProjectId} onChange={(e) => { setSaveProjectId(e.target.value); if(e.target.value) setSaveNewProject(""); }} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm"><option value="">{appLanguage === "el" ? "Χωρίς Project" : "No Project"}</option>{(promptProjects.data?.projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
               <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Ή νέο Project" : "Or create project"}</span><input value={saveNewProject} onChange={(e) => { setSaveNewProject(e.target.value.slice(0,120)); if(e.target.value) setSaveProjectId(""); }} placeholder={appLanguage === "el" ? "Νέο όνομα project…" : "New project name…"} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>
+              {!saveProjectId && <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0"><p className="text-xs font-medium">{appLanguage === "el" ? "Φάκελος αποθήκευσης" : "Save folder"}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{saveFolderPath || (appLanguage === "el" ? "Αρχική / χωρίς φάκελο" : "Root / no folder")}</p></div>
+                  <button type="button" onClick={() => setSaveFolderPickerOpen(true)} className="shrink-0 rounded-lg border border-accent/30 px-3 py-2 text-xs font-semibold text-accent">{appLanguage === "el" ? "Επιλογή" : "Choose"}</button>
+                </div>
+                <p className="mt-2 text-[10px] text-muted-foreground">{saveNewProject.trim() ? (appLanguage === "el" ? "Το νέο Project θα δημιουργηθεί σε αυτόν τον φάκελο." : "The new Project will be created in this folder.") : (appLanguage === "el" ? "Το standalone Prompt θα αποθηκευτεί σε αυτόν τον φάκελο." : "The standalone Prompt will be saved in this folder.")}</p>
+              </div>}
               {(saveProjectId || saveNewProject.trim()) && <label className="block space-y-2"><span className="text-xs font-medium">{appLanguage === "el" ? "Ετικέτα έκδοσης (προαιρετικό)" : "Version label (optional)"}</span><input value={saveVersionLabel} onChange={(e) => setSaveVersionLabel(e.target.value.slice(0,120))} placeholder={appLanguage === "el" ? "π.χ. More Guitar" : "e.g. More Guitar"} className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm outline-none focus:border-primary/60" /></label>}
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button disabled={savingLibrary} onClick={() => setSaveDialogOpen(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-muted-foreground">{appLanguage === "el" ? "Ακύρωση" : "Cancel"}</button><button disabled={savingLibrary} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{savingLibrary && <Loader2 className="h-4 w-4 animate-spin" />}{appLanguage === "el" ? "Αποθήκευση" : "Save"}</button></div>
           </div>
         </div>, document.body,
       )}
+
+      <LibraryFolderPicker
+        open={saveFolderPickerOpen}
+        language={appLanguage}
+        title={appLanguage === "el" ? "Επιλογή φακέλου αποθήκευσης" : "Choose save folder"}
+        confirmLabel={appLanguage === "el" ? "Επιλογή" : "Choose"}
+        initialFolderId={saveFolderId}
+        onClose={() => setSaveFolderPickerOpen(false)}
+        onSelect={(folderId, path) => {
+          setSaveFolderId(folderId);
+          setSaveFolderPath(path);
+          setSaveFolderPickerOpen(false);
+        }}
+      />
 
       {songSetupFeature.allowed && (
         <SongSetupAssistantModal

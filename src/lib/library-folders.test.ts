@@ -185,6 +185,46 @@ describe("Library folders foundation", () => {
     expect(library).toContain('"Undo"');
   });
 
+  test("mobile long-press opens the reusable action sheet after 550ms with movement cancellation", async () => {
+    const sheet = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
+    const library = await source("src/routes/library.tsx");
+
+    expect(sheet).toContain("550");
+    expect(sheet).toContain("Math.hypot");
+    expect(sheet).toContain("> 8");
+    expect(sheet).toContain("LibraryItemActionSheet");
+    expect(sheet).toContain("Move to folder");
+    expect(sheet).toContain("Duplicate");
+    expect(library).toContain("LibraryLongPressButton");
+    expect(library).toContain("setActionSheetItem");
+  });
+
+  test("desktop drag/drop moves Folder, Project or standalone Prompt to Folder or Root", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain('application/x-promptbeats-library-item');
+    expect(library).toContain("startDrag");
+    expect(library).toContain("dropIntoFolder");
+    expect(library).toContain('kind: "folder"');
+    expect(library).toContain('kind: "project"');
+    expect(library).toContain('kind: "prompt"');
+    expect(library).toContain('dragOverFolderId === "root"');
+    expect(library).toContain("onDrop");
+  });
+
+  test("Generator can save a standalone Prompt or new Project directly into a chosen Folder", async () => {
+    const generator = await source("src/routes/generate.tsx");
+    const ai = await source("src/lib/ai.functions.ts");
+
+    expect(generator).toContain("LibraryFolderPicker");
+    expect(generator).toContain("saveFolderId");
+    expect(generator).toContain("saveFolderPath");
+    expect(generator).toContain("folderId: saveFolderId");
+    expect(generator).toContain("folder_id: projectId ? null : saveFolderId");
+    expect(ai).toContain("folder_id: z.string().uuid().nullable().optional()");
+    expect(ai).toContain("Project versions inherit the Project folder");
+  });
+
   test("duplicate provenance columns exist without creating a branch graph", async () => {
     const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
 
