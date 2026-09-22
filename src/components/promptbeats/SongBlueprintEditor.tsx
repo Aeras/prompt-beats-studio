@@ -4,28 +4,25 @@ import { ChevronDown, CopyCheck, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n";
 import {
   applyInstructionToAllRegularChoruses,
-  buildSongBlueprint,
-  updateBlueprintInstruction,
-  type SongBlueprintSection,
-} from "@/lib/song-blueprint.shared";
+  updateArrangementInstruction,
+  type ArrangementSection,
+} from "@/lib/song-arrangement.shared";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  structure: string[];
-  blueprint: SongBlueprintSection[];
-  onChange: (next: SongBlueprintSection[]) => void;
+  sections: ArrangementSection[];
+  onChange: (next: ArrangementSection[]) => void;
   labelForSection: (value: string) => string;
 };
 
 export function SongBlueprintEditor({
-  structure,
-  blueprint,
+  sections,
   onChange,
   labelForSection,
 }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openSectionId, setOpenSectionId] = useState<string | null>(null);
   const [appliedAllIndex, setAppliedAllIndex] = useState<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
 
@@ -42,14 +39,11 @@ export function SongBlueprintEditor({
     }, 1200);
   };
 
-  const entries = useMemo(
-    () => buildSongBlueprint(structure, blueprint),
-    [structure, blueprint],
-  );
+  const entries = useMemo(() => sections, [sections]);
   const regularChorusCount = entries.filter((item) => item.sectionType === "Chorus").length;
   const activeCount = entries.filter((item) => item.instruction.trim()).length;
 
-  if (!structure.length) return null;
+  if (!sections.length) return null;
 
   return (
     <div className="rounded-2xl border border-accent/20 bg-accent/[0.035]">
@@ -75,16 +69,16 @@ export function SongBlueprintEditor({
           <p className="text-xs leading-5 text-muted-foreground">{t("generator.blueprint.description")}</p>
 
           {entries.map((entry) => {
-            const isOpen = openIndex === entry.structureIndex;
+            const isOpen = openSectionId === entry.sectionId;
             const sameTypeCount = entries.filter((item) => item.sectionType === entry.sectionType).length;
             const displayLabel = sameTypeCount > 1
               ? `${labelForSection(entry.sectionType)} ${entry.occurrence}`
               : labelForSection(entry.sectionType);
             return (
-              <div key={`${entry.sectionType}-${entry.structureIndex}`} className="rounded-xl border border-white/10 bg-black/25">
+              <div key={entry.sectionId} className="rounded-xl border border-white/10 bg-black/25">
                 <button
                   type="button"
-                  onClick={() => setOpenIndex(isOpen ? null : entry.structureIndex)}
+                  onClick={() => setOpenSectionId(isOpen ? null : entry.sectionId)}
                   aria-expanded={isOpen}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
                 >
@@ -99,9 +93,9 @@ export function SongBlueprintEditor({
                       value={entry.instruction}
                       onChange={(event) =>
                         onChange(
-                          updateBlueprintInstruction(
+                          updateArrangementInstruction(
                             entries,
-                            entry.structureIndex,
+                            entry.sectionId,
                             event.target.value,
                           ),
                         )
@@ -137,7 +131,7 @@ export function SongBlueprintEditor({
                         {entry.instruction && (
                           <button
                             type="button"
-                            onClick={() => onChange(updateBlueprintInstruction(entries, entry.structureIndex, ""))}
+                            onClick={() => onChange(updateArrangementInstruction(entries, entry.sectionId, ""))}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-red-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
