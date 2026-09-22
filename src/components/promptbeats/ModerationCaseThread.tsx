@@ -121,6 +121,7 @@ export function ModerationCaseThread({
     refetchInterval: 10_000,
   });
   const item = detail.data;
+  const effectiveStaffView = staffView || item?.permissions.is_staff === true;
   const assignees = useQuery({
     queryKey: ["moderation-case-assignees"],
     queryFn: () => listModerationCaseAssignees(),
@@ -231,12 +232,12 @@ export function ModerationCaseThread({
         <div className="rounded-xl border border-white/10 bg-black/20 p-3">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{el ? "Χειριστής" : "Handler"}</p>
           <p className="mt-1 text-sm">{item.assigned_label || (el ? "Δεν έχει ανατεθεί" : "Unassigned")}</p>
-          {staffView && item.creator_label && <p className="mt-2 text-xs text-muted-foreground">{el ? "Δημιουργός:" : "Creator:"} {item.creator_label}</p>}
+          {effectiveStaffView && item.creator_label && <p className="mt-2 text-xs text-muted-foreground">{el ? "Δημιουργός:" : "Creator:"} {item.creator_label}</p>}
         </div>
       </div>
     </section>
 
-    {staffView && item.permissions.can_reassign && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
+    {effectiveStaffView && item.permissions.can_reassign && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
       <p className="text-xs font-semibold">{el ? "Ανάθεση υπόθεσης" : "Case assignment"}</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="h-10 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm">
@@ -256,7 +257,7 @@ export function ModerationCaseThread({
         ? <EventCard key={`event-${entry.value.id}`} event={entry.value} el={el} />
         : <div key={`message-${entry.value.id}`} className={cn("rounded-xl border p-3", entry.value.sender_side === "staff" ? "border-primary/20 bg-primary/5" : "border-white/10 bg-black/20")}>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold">{entry.value.sender_side === "staff" ? (el ? "PromptBeats Moderation" : "PromptBeats Moderation") : (staffView ? (entry.value.sender_label || (el ? "Δημιουργός" : "Creator")) : (el ? "Εσείς" : "You"))}</p>
+              <p className="text-xs font-semibold">{entry.value.sender_side === "staff" ? (el ? "PromptBeats Moderation" : "PromptBeats Moderation") : (effectiveStaffView ? (entry.value.sender_label || (el ? "Δημιουργός" : "Creator")) : (el ? "Εσείς" : "You"))}</p>
               <p className="text-[10px] text-muted-foreground">{new Date(entry.value.created_at).toLocaleString(el ? "el-GR" : "en-US")}</p>
             </div>
             <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{messageTypeLabel(entry.value.message_type, el)}</p>
@@ -266,17 +267,17 @@ export function ModerationCaseThread({
     </section>
 
     {item.permissions.can_write && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
-      <p className="text-xs font-semibold">{staffView ? (el ? "Μήνυμα προς δημιουργό" : "Message creator") : (el ? "Απάντηση στην υπόθεση" : "Reply to case")}</p>
-      {staffView && <select value={messageType} onChange={(e) => setMessageType(e.target.value as CaseMessageType)} className="mt-3 h-10 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm">
+      <p className="text-xs font-semibold">{effectiveStaffView ? (el ? "Μήνυμα προς δημιουργό" : "Message creator") : (el ? "Απάντηση στην υπόθεση" : "Reply to case")}</p>
+      {effectiveStaffView && <select value={messageType} onChange={(e) => setMessageType(e.target.value as CaseMessageType)} className="mt-3 h-10 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm">
         {CASE_MESSAGE_TYPES.map((type) => <option key={type} value={type}>{messageTypeLabel(type, el)}</option>)}
       </select>}
-      <textarea value={message} onChange={(e) => setMessage(e.target.value)} maxLength={5000} rows={4} placeholder={staffView ? (el ? "Γράψτε μόνο το συγκεκριμένο αίτημα ή την ενημέρωση για την υπόθεση…" : "Write only the case-specific request or update…") : (el ? "Γράψτε την απάντησή σας…" : "Write your reply…")} className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/25 p-3 text-sm" />
+      <textarea value={message} onChange={(e) => setMessage(e.target.value)} maxLength={5000} rows={4} placeholder={effectiveStaffView ? (el ? "Γράψτε μόνο το συγκεκριμένο αίτημα ή την ενημέρωση για την υπόθεση…" : "Write only the case-specific request or update…") : (el ? "Γράψτε την απάντησή σας…" : "Write your reply…")} className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/25 p-3 text-sm" />
       <button type="button" disabled={send.isPending || !message.trim()} onClick={() => send.mutate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
         {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{el ? "Αποστολή" : "Send"}
       </button>
     </section>}
 
-    {staffView && item.permissions.can_add_note && <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-4">
+    {effectiveStaffView && item.permissions.can_add_note && <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-4">
       <div className="flex items-center gap-2"><StickyNote className="h-4 w-4 text-amber-200" /><p className="text-xs font-semibold">{el ? "Εσωτερική σημείωση" : "Internal moderation note"}</p></div>
       <p className="mt-1 text-[11px] text-muted-foreground">{el ? "Δεν είναι ορατή στον δημιουργό." : "Never visible to the creator."}</p>
       <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={5000} rows={3} className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-black/25 p-3 text-sm" />
@@ -284,7 +285,7 @@ export function ModerationCaseThread({
       {item.notes.length > 0 && <div className="mt-4 space-y-2">{item.notes.map((n) => <div key={n.id} className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="text-[11px] font-semibold">{n.author_label || "Staff"}</p><p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{n.body}</p><p className="mt-2 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString(el ? "el-GR" : "en-US")}</p></div>)}</div>}
     </section>}
 
-    {staffView && item.permissions.can_propose_initial && item.status !== "pending_super_admin_approval" && !item.appeal && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
+    {effectiveStaffView && item.permissions.can_propose_initial && item.status !== "pending_super_admin_approval" && !item.appeal && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
       <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><p className="text-xs font-semibold">{el ? "Πρόταση αρχικής απόφασης" : "Propose initial decision"}</p></div>
       <select value={outcome} onChange={(e) => setOutcome(e.target.value as CaseOutcome)} className="mt-3 h-10 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 text-sm">{CASE_OUTCOMES.map((o) => <option key={o} value={o}>{outcomeLabel(o, el)}</option>)}</select>
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000} rows={3} placeholder={el ? "Βασικός λόγος απόφασης" : "Decision reason"} className="mt-3 w-full rounded-xl border border-white/10 bg-black/25 p-3 text-sm" />
@@ -293,21 +294,21 @@ export function ModerationCaseThread({
       <button type="button" disabled={propose.isPending || !reason.trim()} onClick={() => propose.mutate()} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{el ? "Αποστολή για έγκριση Admin" : "Send for Admin approval"}</button>
     </section>}
 
-    {staffView && item.status === "awaiting_admin_decision" && <section className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4">
+    {effectiveStaffView && item.status === "awaiting_admin_decision" && <section className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4">
       <p className="text-xs font-semibold">{el ? "Αρχική απόφαση σε αναμονή έγκρισης" : "Initial decision awaiting approval"}</p>
       <p className="mt-2 text-sm">{outcomeLabel(item.initial_decision_outcome, el)}</p>
       {item.initial_decision_reason && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{item.initial_decision_reason}</p>}
       {item.permissions.can_approve_initial ? <button type="button" disabled={approve.isPending} onClick={() => approve.mutate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"><CheckCircle2 className="h-4 w-4" />{el ? "Έγκριση αρχικής απόφασης" : "Approve initial decision"}</button> : <p className="mt-3 text-xs text-amber-200">{el ? "Απαιτείται έγκριση από άλλον Admin ή Super Admin." : "Approval by another Admin or a Super Admin is required."}</p>}
     </section>}
 
-    {!staffView && item.permissions.can_appeal && <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-4">
+    {!effectiveStaffView && item.permissions.can_appeal && <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-4">
       <p className="text-xs font-semibold">{el ? "Υποβολή ένστασης" : "Appeal Decision"}</p>
       <p className="mt-1 text-xs text-muted-foreground">{el ? "Η ένσταση θα επανεξεταστεί σε επίπεδο Admin και η τελική απόφαση θα εγκριθεί μόνο από Super Admin." : "An Admin will re-review the appeal and only a Super Admin can give final approval."}</p>
       <textarea value={appeal} onChange={(e) => setAppeal(e.target.value)} maxLength={5000} rows={5} className="mt-3 w-full rounded-xl border border-white/10 bg-black/25 p-3 text-sm" />
       <button type="button" disabled={appealMutation.isPending || !appeal.trim()} onClick={() => appealMutation.mutate()} className="mt-3 rounded-xl border border-amber-300/30 px-4 py-2.5 text-xs font-semibold text-amber-100 disabled:opacity-50">{el ? "Υποβολή ένστασης" : "Submit appeal"}</button>
     </section>}
 
-    {staffView && item.appeal && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
+    {effectiveStaffView && item.appeal && <section className="rounded-2xl border border-white/10 bg-black/15 p-4">
       <p className="text-xs font-semibold">{el ? "Ένσταση δημιουργού" : "Creator appeal"}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{item.appeal.statement}</p>
       {item.permissions.can_propose_appeal && <>
@@ -334,7 +335,7 @@ export function ModerationCaseThread({
       </div>}
     </section>}
 
-    {staffView && item.permissions.can_reopen && <button type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><RotateCcw className="h-4 w-4" />{el ? "Εξαιρετικό άνοιγμα υπόθεσης" : "Exceptionally reopen case"}</button>}
+    {effectiveStaffView && item.permissions.can_reopen && <button type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><RotateCcw className="h-4 w-4" />{el ? "Εξαιρετικό άνοιγμα υπόθεσης" : "Exceptionally reopen case"}</button>}
 
     <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-accent"><RefreshCw className="h-3.5 w-3.5" />{el ? "Ανανέωση" : "Refresh"}</button>
   </div>;
