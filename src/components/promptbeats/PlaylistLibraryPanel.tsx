@@ -37,6 +37,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { cn } from "@/lib/utils";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
+import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 type PlaylistTrackRow = {
   id: string;
@@ -376,6 +377,9 @@ function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId:
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, playlistId]);
 
   const copy = language === "el"
     ? {
@@ -523,7 +527,8 @@ function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId:
   };
 
   const repeatLabel = repeat === "one" ? copy.repeatOne : repeat === "all" ? copy.repeatAll : copy.repeatOff;
-  const durationSeconds = ordered.reduce((sum, track) => sum + (track.durationSeconds ?? 0), 0);
+  const visibleOrdered = filterByTrackSource(ordered, trackSource);
+  const durationSeconds = visibleOrdered.reduce((sum, track) => sum + (track.durationSeconds ?? 0), 0);
 
   return (
     <section className="mt-5">
@@ -564,11 +569,13 @@ function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId:
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
       </div>
 
+      <div className="mt-4 flex justify-end"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /></div>
+
       <div className="mt-5 space-y-2">
-        {ordered.map((track) => (
+        {visibleOrdered.map((track) => (
           <article key={track.id} data-playlist-track-id={track.id} className={cn("glass flex items-center gap-3 rounded-2xl p-2.5 transition-colors", draggedId === track.id && "border-accent/60 bg-accent/5")} onDragOver={(event) => { event.preventDefault(); reorderToward(track.id); }}>
-            {canManage && <button draggable onDragStart={() => setDraggedId(track.id)} onDragEnd={() => finishPointerDrag()} onPointerDown={(event) => { if (event.pointerType === "mouse") return; event.currentTarget.setPointerCapture(event.pointerId); setDraggedId(track.id); }} onPointerMove={(event) => { if (!draggedId || event.pointerType === "mouse") return; const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-playlist-track-id]"); const targetId = element?.dataset["playlistTrackId"]; if (targetId) reorderToward(targetId); }} onPointerUp={(event) => { if (event.pointerType === "mouse") return; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); finishPointerDrag(); }} title={copy.drag} aria-label={copy.drag} className="touch-none cursor-grab rounded-lg p-2 text-muted-foreground hover:text-accent active:cursor-grabbing"><GripVertical className="h-4 w-4" /></button>}
-            <button onClick={() => play(track, ordered)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl"><img src={track.art} alt="" className="h-full w-full object-cover" /><span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity hover:opacity-100"><Play className="h-5 w-5 text-white" /></span></button>
+            {canManage && trackSource === "all" && <button draggable onDragStart={() => setDraggedId(track.id)} onDragEnd={() => finishPointerDrag()} onPointerDown={(event) => { if (event.pointerType === "mouse") return; event.currentTarget.setPointerCapture(event.pointerId); setDraggedId(track.id); }} onPointerMove={(event) => { if (!draggedId || event.pointerType === "mouse") return; const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-playlist-track-id]"); const targetId = element?.dataset["playlistTrackId"]; if (targetId) reorderToward(targetId); }} onPointerUp={(event) => { if (event.pointerType === "mouse") return; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); finishPointerDrag(); }} title={copy.drag} aria-label={copy.drag} className="touch-none cursor-grab rounded-lg p-2 text-muted-foreground hover:text-accent active:cursor-grabbing"><GripVertical className="h-4 w-4" /></button>}
+            <button onClick={() => play(track, visibleOrdered)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl"><img src={track.art} alt="" className="h-full w-full object-cover" /><span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity hover:opacity-100"><Play className="h-5 w-5 text-white" /></span></button>
             <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold">{track.title}</p>{track.containsExplicitLyrics && <ExplicitBadge compact />}</div><p className="truncate text-xs text-muted-foreground">{track.handle} · {track.duration}</p></div>
             {current?.id === track.id && playing && <span className="hidden text-[10px] uppercase tracking-widest text-accent sm:block">{language === "el" ? "Παίζει" : "Playing"}</span>}
             {canManage && <button onClick={() => void remove(track.id)} disabled={busy === track.id} title={copy.remove} aria-label={copy.remove} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:opacity-50">{busy === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}
@@ -576,7 +583,7 @@ function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId:
         ))}
       </div>
 
-      {!detail.isLoading && ordered.length === 0 && <div className="glass mt-5 rounded-2xl p-8 text-center"><ListMusic className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">{copy.empty}</p></div>}
+      {!detail.isLoading && visibleOrdered.length === 0 && <div className="glass mt-5 rounded-2xl p-8 text-center"><ListMusic className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">{copy.empty}</p></div>}
       {busy === "reorder" && <p className="mt-2 text-center text-[11px] text-muted-foreground">{language === "el" ? "Αποθήκευση σειράς…" : "Saving order…"}</p>}
     </section>
   );
