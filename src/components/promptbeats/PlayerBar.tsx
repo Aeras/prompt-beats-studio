@@ -25,7 +25,7 @@ export function PlayerBar() {
   const repeatLabel = repeat === "one" ? t("player.repeatOne") : repeat === "all" ? t("player.repeatAll") : t("player.repeatOff");
 
   return (
-    <div className={isInline ? "glass-strong relative w-full min-w-0 overflow-hidden rounded-2xl border p-2 md:p-3" : "glass-strong fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t pb-[env(safe-area-inset-bottom)] sm:bottom-0"}>
+    <div className={isInline ? "glass-strong relative w-full min-w-0 overflow-hidden rounded-2xl border p-2 md:p-3" : "glass-strong fixed inset-x-0 bottom-[var(--pb-mobile-nav-offset)] z-40 border-t pb-[env(safe-area-inset-bottom)] sm:bottom-0"}>
       <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] md:gap-6 md:px-6 md:py-3">
         <div className="flex min-w-0 items-center gap-3">
           <img src={current.art} alt={t("track.coverAlt", { title: current.title })} width={640} height={640} loading="lazy" className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-white/15 md:h-14 md:w-14" />
