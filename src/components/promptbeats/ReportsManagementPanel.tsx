@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,11 +140,18 @@ function ReportDetail({
   return typeof document === "undefined" ? content : createPortal(content, document.body);
 }
 
-export function ReportsManagementPanel({ isAdmin }: { isAdmin: boolean }) {
+export function ReportsManagementPanel({ isAdmin, initialReportId = null }: { isAdmin: boolean; initialReportId?: string | null }) {
   const { t, language } = useI18n();
   const el = language === "el";
   const [scope, setScope] = useState<ReportScope>("open");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialReportId) return;
+    setScope("all");
+    setSelectedReportId(initialReportId);
+  }, [initialReportId]);
+
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["content-reports", scope],
     queryFn: () => listContentReports({ data: { scope } }),
