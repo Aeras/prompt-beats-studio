@@ -320,7 +320,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const [desktopDnD, setDesktopDnD] = useState(false);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "root">(null);
   const [actionSheetItem, setActionSheetItem] = useState<null | {
-    kind: "folder" | "project";
+    kind: "folder" | "project" | "prompt";
     id: string;
     name: string;
     currentFolderId: string | null;
@@ -764,6 +764,12 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                         currentFolderId,
                       })}
                       onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
+                      onLongPress={() => setActionSheetItem({
+                        kind: "prompt",
+                        id: prompt.id,
+                        name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
+                        currentFolderId,
+                      })}
                     />
                   ))}
                 </div>
@@ -1058,7 +1064,7 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
   );
 }
 
-function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder, onDuplicate }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void; onDuplicate?: () => void }) {
+function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder, onDuplicate, onLongPress }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void; onDuplicate?: () => void; onLongPress?: () => void }) {
   const { t, language } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
   const lyricsWorkspaceAccess = useFeatureAccess("lyrics_workspace");
@@ -1068,6 +1074,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false, 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
+  const longPress = useLibraryLongPress(() => onLongPress?.(), !onLongPress);
   const displayVersionLabel = prompt.source_generation_job_id && prompt.revision_request
     ? null
     : prompt.version_label;
@@ -1119,7 +1126,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false, 
   return (
     <article className={cn("rounded-2xl border border-white/10 bg-black/20", compact ? "p-3" : "glass p-4")}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0" {...longPress}>
           <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.project_id && prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{displayVersionLabel ? ` · ${displayVersionLabel}` : ""}</span>}</div>
           <p className="truncate text-[11px] text-muted-foreground">{[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
         </div>
