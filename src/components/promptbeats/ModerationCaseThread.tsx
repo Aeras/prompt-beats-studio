@@ -118,7 +118,7 @@ export function ModerationCaseThread({
   const detail = useQuery({
     queryKey: ["moderation-case", caseId],
     queryFn: () => getModerationCase({ data: { caseId } }),
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
   const item = detail.data;
   const assignees = useQuery({
