@@ -136,6 +136,7 @@ function TrackSelector({
     <>
       <button
         type="button"
+        data-pb-no-press="true"
         aria-label={el ? "Κλείσιμο επιλογής Track" : "Close Track selector"}
         onClick={onClose}
         className="fixed inset-0 z-[119] cursor-default bg-black/35 backdrop-blur-[2px]"
