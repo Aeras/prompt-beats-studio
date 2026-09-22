@@ -128,7 +128,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6">
       <div className="glass-strong max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-7">
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4"><div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-neon glow-neon"><Sparkles className="h-5 w-5 text-primary-foreground" /></div><div className="min-w-0"><h2 className="truncate text-lg font-bold">{t("studio.title")}</h2><p className="truncate text-xs text-muted-foreground">{t("studio.subtitle")}</p></div></div><button aria-label={t("studio.close")} onClick={onClose} className="shrink-0 text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button></header>
         {isBanned && <p className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">{t("studio.suspended")}</p>}
