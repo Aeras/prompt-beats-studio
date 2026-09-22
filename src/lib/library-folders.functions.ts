@@ -40,8 +40,6 @@ const searchFolderInput = z.object({
   query: z.string().trim().max(120).default(""),
 });
 
-type UserSupabase = Parameters<Parameters<typeof requireSupabaseAuth>[0]>[0] extends never ? never : never;
-
 async function requireOwnedFolder(
   supabase: any,
   userId: string,
