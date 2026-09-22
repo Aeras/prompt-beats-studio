@@ -110,7 +110,8 @@ describe("Help menu and Contact Us", () => {
     const smtp = await source("src/lib/smtp-email.server.ts");
     expect(fn).toContain("createServerFn");
     expect(fn).toContain("z.string().trim().email().max(254)");
-    expect(fn).toContain("MAX_SENDS_PER_WINDOW = 3");
+    expect(fn).toContain('rpc("admit_contact_request"');
+    expect(fn).toContain("requestNetworkFingerprint");
     expect(fn).toContain("website.trim()");
     expect(fn).toContain('await import("@/lib/contact-email.server")');
     expect(sender).toContain('sendSmtpEmail');
