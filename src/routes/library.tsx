@@ -602,6 +602,40 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     setBusy(true); try { await deletePromptProject({ data: { id: project.id } }); await refresh(); } finally { setBusy(false); }
   };
 
+  const renameStandalonePrompt = async (prompt: SavedPrompt) => {
+    const currentName = prompt.custom_name || prompt.title || prompt.theme || "";
+    const name = window.prompt(language === "el" ? "Όνομα prompt" : "Prompt name", currentName)?.trim();
+    if (name == null || name === currentName) return;
+    setBusy(true);
+    try {
+      await updateSavedPromptOrganization({ data: { id: prompt.id, custom_name: name || null } });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeStandalonePrompt = async (prompt: SavedPrompt) => {
+    if (!window.confirm(language === "el" ? "Να διαγραφεί αυτό το prompt;" : "Delete this prompt?")) return;
+    setBusy(true);
+    try {
+      await deleteSavedPrompt({ data: { id: prompt.id } });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const actionFolder = actionSheetItem?.kind === "folder"
+    ? (folderContents.data?.folders ?? []).find((item) => item.id === actionSheetItem.id) ?? null
+    : null;
+  const actionProject = actionSheetItem?.kind === "project"
+    ? projects.find((item) => item.id === actionSheetItem.id) ?? null
+    : null;
+  const actionPrompt = actionSheetItem?.kind === "prompt"
+    ? prompts.find((item) => item.id === actionSheetItem.id) ?? null
+    : null;
+
   return (
     <div className="mt-6 space-y-4">
       <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
@@ -637,7 +671,14 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
             {(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => (
               <span key={item.id} className="inline-flex shrink-0 items-center">
                 <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
-                <button type="button" onClick={() => { setCurrentFolderId(item.id); onSearchChange(""); }} className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">{item.name}</button>
+                <button
+                  type="button"
+                  onClick={() => { setCurrentFolderId(item.id); onSearchChange(""); }}
+                  onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(item.id); }}
+                  onDragLeave={() => setDragOverFolderId(null)}
+                  onDrop={(event) => void dropIntoFolder(event, item.id, (folderBreadcrumbs.data?.breadcrumbs ?? []).slice(0, (folderBreadcrumbs.data?.breadcrumbs ?? []).findIndex((crumb) => crumb.id === item.id) + 1).map((crumb) => crumb.name).join(" / "))}
+                  className={cn("rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent", dragOverFolderId === item.id && "bg-accent/10 text-accent")}
+                >{item.name}</button>
               </span>
             ))}
           </div>
@@ -857,6 +898,49 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
         </div>
       )}
+
+      <LibraryItemActionSheet
+        open={Boolean(actionSheetItem)}
+        language={language}
+        title={actionSheetItem?.name ?? ""}
+        canDuplicate={actionSheetItem?.kind === "project" || actionSheetItem?.kind === "prompt"}
+        onMove={() => {
+          if (!actionSheetItem) return;
+          setFolderPicker({
+            operation: "move",
+            kind: actionSheetItem.kind,
+            id: actionSheetItem.id,
+            name: actionSheetItem.name,
+            currentFolderId: actionSheetItem.currentFolderId,
+          });
+        }}
+        onDuplicate={
+          actionSheetItem?.kind === "project" && actionProject
+            ? () => startDuplicateProject(actionProject)
+            : actionSheetItem?.kind === "prompt" && actionPrompt
+              ? () => startDuplicatePrompt(actionPrompt)
+              : undefined
+        }
+        onRename={
+          actionSheetItem?.kind === "folder" && actionFolder
+            ? () => renameFolder(actionFolder)
+            : actionSheetItem?.kind === "project" && actionProject
+              ? () => renameProject(actionProject)
+              : actionSheetItem?.kind === "prompt" && actionPrompt
+                ? () => renameStandalonePrompt(actionPrompt)
+                : undefined
+        }
+        onDelete={
+          actionSheetItem?.kind === "folder" && actionFolder
+            ? () => removeFolder(actionFolder)
+            : actionSheetItem?.kind === "project" && actionProject
+              ? () => removeProject(actionProject)
+              : actionSheetItem?.kind === "prompt" && actionPrompt
+                ? () => removeStandalonePrompt(actionPrompt)
+                : undefined
+        }
+        onClose={() => setActionSheetItem(null)}
+      />
 
       <LibraryFolderPicker
         open={Boolean(folderPicker)}
