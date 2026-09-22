@@ -12,6 +12,7 @@ import type { Track } from "@/lib/tracks";
 import type { CreatedWith } from "@/lib/created-with";
 import { usePlayer } from "@/lib/player";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { listMyTracks, listLikedTracks } from "@/lib/tracks.functions";
 import { listSavedPrompts, deleteSavedPrompt, listPromptProjects, createPromptProject, renamePromptProject, deletePromptProject, updatePromptProjectCreationNotes, updateSavedPromptOrganization } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
@@ -95,6 +96,11 @@ const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] 
 function LibraryPage() {
   const { t, language } = useI18n();
   const { user, profile, loading } = useAuth();
+  const playlistsAccess = useFeatureAccess("playlists");
+  const sharingAccess = useFeatureAccess("sharing_public_links");
+  const favoritesAccess = useFeatureAccess("favorites");
+  const likesAccess = useFeatureAccess("likes");
+  const analyzerAccess = useFeatureAccess("song_analyzer");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const { preference: defaultTrackSource } = useTrackSourcePreference();
@@ -103,14 +109,33 @@ function LibraryPage() {
   const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
   useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
+
+  const availableTabs = TABS.filter((item) => {
+    if (item === "playlists") return playlistsAccess.allowed;
+    if (item === "shared") return sharingAccess.allowed;
+    if (item === "favorites") return favoritesAccess.allowed;
+    if (item === "likes") return likesAccess.allowed;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!availableTabs.includes(tab)) setTab("tracks");
+  }, [availableTabs, tab]);
+
+  useEffect(() => {
+    if (promptView === "analyses" && !analyzerAccess.allowed) {
+      setPromptView("all");
+    }
+  }, [analyzerAccess.allowed, promptView]);
+
   const handle = profile?.handle ? `@${profile.handle}` : t("nav.you");
 
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
   const prompts = useQuery({ queryKey: ["library", "prompts", user?.id], queryFn: () => listSavedPrompts(), enabled: Boolean(user) });
   const projects = useQuery({ queryKey: ["library", "prompt-projects", user?.id], queryFn: () => listPromptProjects(), enabled: Boolean(user) });
-  const analyses = useQuery({ queryKey: ["library", "song-analyses", user?.id], queryFn: () => listSongAnalyses(), enabled: Boolean(user) });
-  const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user) });
-  const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user) });
+  const analyses = useQuery({ queryKey: ["library", "song-analyses", user?.id], queryFn: () => listSongAnalyses(), enabled: Boolean(user && analyzerAccess.allowed) });
+  const liked = useQuery({ queryKey: ["library", "liked", user?.id], queryFn: () => listLikedTracks(), enabled: Boolean(user && likesAccess.allowed) });
+  const favorites = useQuery({ queryKey: ["library", "favorites", user?.id], queryFn: () => listFavoriteTracks(), enabled: Boolean(user && favoritesAccess.allowed) });
 
   const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
@@ -155,7 +180,7 @@ function LibraryPage() {
         <h1 className="font-display text-2xl font-bold md:text-3xl">{t("library.title")}</h1>
 
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {TABS.map((item) => <button key={item} onClick={() => setTab(item)} className={cn("shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all", tab === item ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon" : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent")}>{tabLabel(item)}</button>)}
+          {availableTabs.map((item) => <button key={item} onClick={() => setTab(item)} className={cn("shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all", tab === item ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon" : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent")}>{tabLabel(item)}</button>)}
         </div>
 
         {tab === "tracks" && (
@@ -187,18 +212,18 @@ function LibraryPage() {
           </>
         )}
 
-        {tab === "playlists" && user && <PlaylistLibraryPanel userId={user.id} />}
+        {tab === "playlists" && user && playlistsAccess.allowed && <PlaylistLibraryPanel userId={user.id} />}
 
-        {tab === "shared" && user && <SharedLinksPanel />}
+        {tab === "shared" && user && sharingAccess.allowed && <SharedLinksPanel />}
 
-        {tab === "favorites" && (
+        {tab === "favorites" && favoritesAccess.allowed && (
           <>
             <div className="mt-3 flex flex-wrap justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
             <Section empty={language === "el" ? "Δεν έχεις ακόμη αποθηκεύσει τραγούδια στα Αγαπημένα σου." : "You have not saved any favorite tracks yet."} tracks={filteredFavoriteTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, filteredFavoriteTracks)} gridMode={gridMode} />
           </>
         )}
 
-        {tab === "likes" && (
+        {tab === "likes" && likesAccess.allowed && (
           <>
             <div className="mt-3 flex flex-wrap justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
             <Section empty={t("library.noLikes")} tracks={filteredLikedTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, filteredLikedTracks)} gridMode={gridMode} />
@@ -210,7 +235,8 @@ function LibraryPage() {
             prompts={prompts.data?.prompts ?? []}
             projects={projects.data?.projects ?? []}
             analyses={analyses.data?.analyses ?? []}
-            loading={prompts.isLoading || projects.isLoading || analyses.isLoading}
+            loading={prompts.isLoading || projects.isLoading || (analyzerAccess.allowed && analyses.isLoading)}
+            showAnalyses={analyzerAccess.allowed}
             view={promptView}
             onViewChange={setPromptView}
             search={promptSearch}
@@ -259,8 +285,8 @@ type SongAnalysisItem = {
   };
 };
 
-function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onViewChange, search, onSearchChange }: {
-  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: SongAnalysisItem[]; loading: boolean; view: "all" | "projects" | "analyses";
+function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalyses, view, onViewChange, search, onSearchChange }: {
+  prompts: SavedPrompt[]; projects: PromptProject[]; analyses: SongAnalysisItem[]; loading: boolean; showAnalyses: boolean; view: "all" | "projects" | "analyses";
   onViewChange: (view: "all" | "projects" | "analyses") => void; search: string; onSearchChange: (value: string) => void;
 }) {
   const { t, language } = useI18n();
@@ -273,15 +299,16 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
   const filtered = prompts.filter(matches);
-  const filteredAnalyses = analyses.filter(matchesAnalysis);
-  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
+  const visibleAnalyses = showAnalyses ? analyses : [];
+  const filteredAnalyses = visibleAnalyses.filter(matchesAnalysis);
+  const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || visibleAnalyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
 
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
       queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
+      ...(showAnalyses ? [queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false })] : []),
     ]);
   };
   const createProject = async () => {
@@ -303,7 +330,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
     <div className="mt-6 space-y-4">
       <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
         <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
-          {(["all", "projects", "analyses"] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
+          {(["all", "projects", ...(showAnalyses ? ["analyses"] as const : [])] as const).map((item) => <button key={item} onClick={() => onViewChange(item)} className={cn("rounded-lg px-4 py-2 text-xs font-semibold transition-colors", view === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{item === "all" ? t("library.promptViewAll") : item === "projects" ? t("library.promptViewProjects") : t("library.promptViewAnalyses")}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder={language === "el" ? "Αναζήτηση prompts, projects, style, mood, στίχων…" : "Search prompts, projects, style, mood, lyrics…"} className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></label>
         {view !== "analyses" && <div className="flex shrink-0 gap-1">
@@ -327,7 +354,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
         <div className="space-y-4">
           {openProject ? (() => {
             const items = prompts.filter((p) => p.project_id === openProject.id && matches(p)).sort((a,b) => (a.version_number ?? 999999) - (b.version_number ?? 999999) || a.created_at.localeCompare(b.created_at));
-            const analysisItems = analyses.filter((a) => a.project_id === openProject.id && matchesAnalysis(a));
+            const analysisItems = visibleAnalyses.filter((a) => a.project_id === openProject.id && matchesAnalysis(a));
             return <section className="space-y-4">
               <div className="glass rounded-2xl p-4">
                 <button type="button" onClick={() => { setOpenProjectId(null); onSearchChange(""); }} className="mb-3 text-xs font-semibold text-accent">← Projects</button>
@@ -372,7 +399,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProjects.map((project) => {
                 const promptCount = prompts.filter((p) => p.project_id === project.id).length;
-                const analysisCount = analyses.filter((a) => a.project_id === project.id).length;
+                const analysisCount = visibleAnalyses.filter((a) => a.project_id === project.id).length;
                 const count = promptCount + analysisCount;
                 return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
                   <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} items{analysisCount ? ` · ${analysisCount} analysis` : ""}</span>{project.creation_notes.trim() && <span className="mt-1 block truncate text-[11px] text-accent/80">{project.creation_notes}</span>}</span></button>
