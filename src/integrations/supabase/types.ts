@@ -584,6 +584,39 @@ export type Database = {
           },
         ]
       }
+      legal_acceptances: {
+        Row: {
+          acceptance_type: string
+          accepted_at: string
+          document_key: string
+          id: string
+          locale: string | null
+          source: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          acceptance_type: string
+          accepted_at?: string
+          document_key: string
+          id?: string
+          locale?: string | null
+          source?: string
+          user_id: string
+          version: string
+        }
+        Update: {
+          acceptance_type?: string
+          accepted_at?: string
+          document_key?: string
+          id?: string
+          locale?: string | null
+          source?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string
@@ -936,6 +969,7 @@ export type Database = {
           id: string
           read_at: string | null
           recipient_user_id: string
+          report_id: string | null
           track_id: string | null
           type: string
         }
@@ -946,6 +980,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           recipient_user_id: string
+          report_id?: string | null
           track_id?: string | null
           type: string
         }
@@ -956,6 +991,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           recipient_user_id?: string
+          report_id?: string | null
           track_id?: string | null
           type?: string
         }
@@ -986,6 +1022,13 @@ export type Database = {
             columns: ["recipient_user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "content_reports"
             referencedColumns: ["id"]
           },
           {
