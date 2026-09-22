@@ -69,8 +69,12 @@ describe("Follow + Notifications v1 architecture", () => {
     expect(sql).toContain("public.app_role_rank(ur.role::text) >= 2");
     expect(sql).toContain("ur.moderation_status::text='active'");
     expect(sql).toContain("public.can_use_feature(ur.user_id,'notifications')");
+    expect(sql).toContain("COALESCE(pp.is_banned,false)=false");
+    expect(sql).toContain("JOIN public.profiles p ON p.id=ur.user_id");
     expect(sql).toContain("'new_report:' || NEW.id::text || ':' || ur.user_id::text");
     expect(sql).toContain("WHERE r.status IN ('open','under_review')");
+    expect(sql).toContain("(type='new_track' AND report_id IS NULL)");
+    expect(sql).toContain("(type='new_report' AND track_id IS NULL)");
     expect(sql).toContain("ON CONFLICT DO NOTHING");
   });
 
