@@ -67,6 +67,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
       "https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent",
       {
         method: "POST",
+        signal: AbortSignal.timeout(5 * 60 * 1000),
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
