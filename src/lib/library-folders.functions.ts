@@ -129,9 +129,27 @@ export const listLibraryFolderContents = createServerFn({ method: "POST" })
     if (projectsResult.error) throw new Error(projectsResult.error.message);
     if (promptsResult.error) throw new Error(promptsResult.error.message);
 
+    const folders = foldersResult.data ?? [];
+    const folderIds = folders.map((folder: { id: string }) => folder.id);
+    const subfolderParents = new Set<string>();
+    if (folderIds.length > 0) {
+      const { data: childFolders, error: childFoldersError } = await context.supabase
+        .from("library_folders")
+        .select("parent_folder_id")
+        .eq("user_id", context.userId)
+        .in("parent_folder_id", folderIds);
+      if (childFoldersError) throw new Error(childFoldersError.message);
+      for (const child of childFolders ?? []) {
+        if (child.parent_folder_id) subfolderParents.add(child.parent_folder_id);
+      }
+    }
+
     return {
       folderId,
-      folders: foldersResult.data ?? [],
+      folders: folders.map((folder: any) => ({
+        ...folder,
+        has_subfolders: subfolderParents.has(folder.id),
+      })),
       projects: projectsResult.data ?? [],
       prompts: promptsResult.data ?? [],
     };
