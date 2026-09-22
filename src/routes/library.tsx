@@ -20,6 +20,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
+import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -240,7 +241,7 @@ type SavedPrompt = {
   mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
   created_at: string; updated_at: string;
 };
-type PromptProject = { id: string; name: string; creation_notes: string; created_at: string; updated_at: string };
+type PromptProject = { id: string; name: string; creation_notes: string; preferred_prompt_id: string | null; created_at: string; updated_at: string };
 type SongAnalysisItem = {
   id: string; name: string; project_id: string | null; model: string; created_at: string;
   generator_ready: {
@@ -333,9 +334,38 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
                   <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{analysisItems.length} analyses · {prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
                   <div className="flex gap-2"><ExportControl kind="project" id={openProject.id} name={openProject.name} /><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
                 </div>
-                <ProjectCreationNotes project={openProject} />
               </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
+
+              <ProjectVersionHistory
+                projectId={openProject.id}
+                projectName={openProject.name}
+                language={language}
+              />
+
+              <ProjectCreationNotes project={openProject} />
+
+              <details className="glass rounded-2xl p-4" open>
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-accent">
+                  {language === "el" ? `Project Versions / Prompts (${items.length})` : `Project Versions / Prompts (${items.length})`}
+                </summary>
+                <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}
+                  {items.length === 0 && <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν αποθηκευμένες εκδόσεις σε αυτό το project." : "No saved versions in this project."}</p>}
+                </div>
+              </details>
+
+              {analysisItems.length > 0 && (
+                <details className="glass rounded-2xl p-4">
+                  <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-accent">
+                    {language === "el" ? `Αναλύσεις (${analysisItems.length})` : `Analyses (${analysisItems.length})`}
+                  </summary>
+                  <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    {analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}
+                  </div>
+                </details>
+              )}
+
+              {items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}
             </section>;
           })() : <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
