@@ -43,6 +43,17 @@ const searchScopeInput = z.object({
   folderId: nullableFolderIdSchema,
   query: z.string().trim().min(1).max(200),
 });
+const duplicateProjectInput = z.object({
+  projectId: z.string().uuid(),
+  destinationFolderId: nullableFolderIdSchema,
+  newName: z.string().trim().min(1).max(120),
+});
+
+const duplicatePromptInput = z.object({
+  promptId: z.string().uuid(),
+  destinationFolderId: nullableFolderIdSchema,
+  newName: z.string().trim().min(1).max(200),
+});
 
 async function requireOwnedFolder(
   supabase: any,
@@ -336,4 +347,53 @@ export const searchLibraryScope = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { results: results ?? [] };
+  });
+
+
+export const duplicatePromptProjectToFolder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => duplicateProjectInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireOwnedFolder(context.supabase, context.userId, data.destinationFolderId ?? null);
+
+    const { data: source, error: sourceError } = await context.supabase
+      .from("prompt_projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (sourceError) throw new Error(sourceError.message);
+    if (!source) throw new Error("Project not found.");
+
+    const { data: duplicated, error } = await context.supabase.rpc("duplicate_prompt_project_to_folder", {
+      _project_id: data.projectId,
+      _destination_folder_id: data.destinationFolderId ?? null,
+      _new_name: data.newName,
+    });
+    if (error) throw new Error(error.message);
+    return { duplicated };
+  });
+
+export const duplicateStandalonePromptToFolder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => duplicatePromptInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireOwnedFolder(context.supabase, context.userId, data.destinationFolderId ?? null);
+
+    const { data: source, error: sourceError } = await context.supabase
+      .from("saved_prompts")
+      .select("id, project_id")
+      .eq("id", data.promptId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (sourceError) throw new Error(sourceError.message);
+    if (!source || source.project_id) throw new Error("Standalone prompt not found.");
+
+    const { data: duplicated, error } = await context.supabase.rpc("duplicate_standalone_prompt_to_folder", {
+      _prompt_id: data.promptId,
+      _destination_folder_id: data.destinationFolderId ?? null,
+      _new_name: data.newName,
+    });
+    if (error) throw new Error(error.message);
+    return { duplicated };
   });

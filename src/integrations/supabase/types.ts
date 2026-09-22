@@ -2346,6 +2346,22 @@ export type Database = {
       current_user_is_super_admin: { Args: never; Returns: boolean }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      duplicate_prompt_project_to_folder: {
+        Args: {
+          _destination_folder_id: string
+          _new_name: string
+          _project_id: string
+        }
+        Returns: Json
+      }
+      duplicate_standalone_prompt_to_folder: {
+        Args: {
+          _destination_folder_id: string
+          _new_name: string
+          _prompt_id: string
+        }
+        Returns: Json
+      }
       edit_track_with_cleanup: {
         Args: {
           _allow_download?: boolean

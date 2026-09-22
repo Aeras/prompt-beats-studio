@@ -26,6 +26,8 @@ import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicke
 import {
   createLibraryFolder,
   deleteLibraryFolder,
+  duplicatePromptProjectToFolder,
+  duplicateStandalonePromptToFolder,
   getLibraryFolderBreadcrumbs,
   listLibraryFolderContents,
   moveLibraryFolder,
@@ -309,10 +311,17 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderMessage, setFolderMessage] = useState("");
+  const [undoMove, setUndoMove] = useState<null | {
+    kind: "folder" | "project" | "prompt";
+    id: string;
+    previousFolderId: string | null;
+  }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
+    operation: "move" | "duplicate";
     kind: "folder" | "project" | "prompt";
     id: string;
     name: string;
+    newName?: string;
     currentFolderId: string | null;
   }>(null);
   const q = search.trim().toLowerCase();
@@ -355,9 +364,9 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     ]);
   };
 
-  const flashFolderMessage = (message: string) => {
+  const flashFolderMessage = (message: string, keepForUndo = false) => {
     setFolderMessage(message);
-    window.setTimeout(() => setFolderMessage(""), 2600);
+    if (!keepForUndo) window.setTimeout(() => setFolderMessage(""), 2600);
   };
 
   const createFolder = async () => {
@@ -416,6 +425,33 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     if (!folderPicker) return;
     setBusy(true);
     try {
+      if (folderPicker.operation === "duplicate") {
+        if (folderPicker.kind === "project") {
+          await duplicatePromptProjectToFolder({
+            data: {
+              projectId: folderPicker.id,
+              destinationFolderId,
+              newName: folderPicker.newName || `${folderPicker.name} Copy`,
+            },
+          });
+        } else if (folderPicker.kind === "prompt") {
+          await duplicateStandalonePromptToFolder({
+            data: {
+              promptId: folderPicker.id,
+              destinationFolderId,
+              newName: folderPicker.newName || `${folderPicker.name} Copy`,
+            },
+          });
+        } else {
+          throw new Error("Folder duplication is not available.");
+        }
+        await refresh();
+        setUndoMove(null);
+        flashFolderMessage(language === "el" ? `Δημιουργήθηκε αντίγραφο στο ${path}.` : `Copy created in ${path}.`);
+        setFolderPicker(null);
+        return;
+      }
+
       if (folderPicker.kind === "folder") {
         await moveLibraryFolder({ data: { folderId: folderPicker.id, destinationFolderId } });
       } else if (folderPicker.kind === "project") {
@@ -424,13 +460,72 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         await moveStandalonePromptToFolder({ data: { promptId: folderPicker.id, destinationFolderId } });
       }
       await refresh();
-      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`);
+      setUndoMove({
+        kind: folderPicker.kind,
+        id: folderPicker.id,
+        previousFolderId: folderPicker.currentFolderId,
+      });
+      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`, true);
       setFolderPicker(null);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed."));
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η ενέργεια απέτυχε." : "Action failed."));
     } finally {
       setBusy(false);
     }
+  };
+
+  const undoLastMove = async () => {
+    if (!undoMove || busy) return;
+    setBusy(true);
+    try {
+      if (undoMove.kind === "folder") {
+        await moveLibraryFolder({ data: { folderId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      } else if (undoMove.kind === "project") {
+        await movePromptProjectToFolder({ data: { projectId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      } else {
+        await moveStandalonePromptToFolder({ data: { promptId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
+      }
+      await refresh();
+      setUndoMove(null);
+      flashFolderMessage(language === "el" ? "Η μετακίνηση αναιρέθηκε." : "Move undone.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η αναίρεση απέτυχε." : "Undo failed."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startDuplicateProject = (project: PromptProject) => {
+    const newName = window.prompt(
+      language === "el" ? "Όνομα αντιγράφου Project" : "Duplicate Project name",
+      language === "el" ? `${project.name} — Αντίγραφο` : `${project.name} — Copy`,
+    )?.trim();
+    if (!newName) return;
+    setFolderPicker({
+      operation: "duplicate",
+      kind: "project",
+      id: project.id,
+      name: project.name,
+      newName,
+      currentFolderId: project.folder_id ?? currentFolderId,
+    });
+  };
+
+  const startDuplicatePrompt = (prompt: SavedPrompt) => {
+    const sourceName = prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt");
+    const newName = window.prompt(
+      language === "el" ? "Όνομα αντιγράφου Prompt" : "Duplicate Prompt name",
+      language === "el" ? `${sourceName} — Αντίγραφο` : `${sourceName} — Copy`,
+    )?.trim();
+    if (!newName) return;
+    setFolderPicker({
+      operation: "duplicate",
+      kind: "prompt",
+      id: prompt.id,
+      name: sourceName,
+      newName,
+      currentFolderId: prompt.folder_id ?? currentFolderId,
+    });
   };
   const renameProject = async (project: PromptProject) => {
     const name = window.prompt(language === "el" ? "Νέο όνομα project" : "New project name", project.name)?.trim();
@@ -459,7 +554,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         </div>
       </div>
 
-      {folderMessage && <div className="rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent">{folderMessage}</div>}
+      {folderMessage && <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent"><span>{folderMessage}</span>{undoMove && <button type="button" onClick={undoLastMove} disabled={busy} className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold hover:bg-accent/10 disabled:opacity-50">{language === "el" ? "Αναίρεση" : "Undo"}</button>}</div>}
 
       {view === "all" ? (
         <div className="space-y-4">
@@ -528,7 +623,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                         <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language === "el" ? "Φάκελος" : "Folder"}</span></span>
                       </button>
                       <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => setFolderPicker({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => renameFolder(folder)} title={language === "el" ? "Μετονομασία" : "Rename"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => removeFolder(folder)} title={language === "el" ? "Διαγραφή" : "Delete"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
@@ -548,7 +643,8 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       </button>
                       <div className="flex shrink-0 gap-1">
                         <ExportControl kind="project" id={project.id} name={project.name} />
-                        <button type="button" onClick={() => setFolderPicker({ kind: "project", id: project.id, name: project.name, currentFolderId })} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => startDuplicateProject(project as PromptProject)} title={language === "el" ? "Δημιουργία αντιγράφου Project" : "Duplicate Project"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Copy className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "project", id: project.id, name: project.name, currentFolderId })} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
                         <button onClick={() => renameProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => removeProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
@@ -566,11 +662,13 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       projects={projects}
                       listMode={promptDisplayMode === "list"}
                       onMoveToFolder={() => setFolderPicker({
+                        operation: "move",
                         kind: "prompt",
                         id: prompt.id,
                         name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
                         currentFolderId,
                       })}
+                      onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
                     />
                   ))}
                 </div>
@@ -657,15 +755,23 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         open={Boolean(folderPicker)}
         language={language}
         title={
-          folderPicker?.kind === "folder"
-            ? (language === "el" ? "Μετακίνηση φακέλου" : "Move Folder")
-            : folderPicker?.kind === "project"
-              ? (language === "el" ? "Μετακίνηση Project" : "Move Project")
-              : (language === "el" ? "Μετακίνηση Prompt" : "Move Prompt")
+          folderPicker?.operation === "duplicate"
+            ? folderPicker.kind === "project"
+              ? (language === "el" ? "Αντιγραφή Project σε..." : "Duplicate Project to...")
+              : (language === "el" ? "Αντιγραφή Prompt σε..." : "Duplicate Prompt to...")
+            : folderPicker?.kind === "folder"
+              ? (language === "el" ? "Μετακίνηση φακέλου" : "Move Folder")
+              : folderPicker?.kind === "project"
+                ? (language === "el" ? "Μετακίνηση Project" : "Move Project")
+                : (language === "el" ? "Μετακίνηση Prompt" : "Move Prompt")
         }
-        confirmLabel={language === "el" ? "Μετακίνηση εδώ" : "Move here"}
+        confirmLabel={
+          folderPicker?.operation === "duplicate"
+            ? (language === "el" ? "Αντιγραφή εδώ" : "Duplicate here")
+            : (language === "el" ? "Μετακίνηση εδώ" : "Move here")
+        }
         initialFolderId={folderPicker?.currentFolderId ?? currentFolderId}
-        excludedFolderIds={folderPicker?.kind === "folder" ? [folderPicker.id] : []}
+        excludedFolderIds={folderPicker?.operation === "move" && folderPicker?.kind === "folder" ? [folderPicker.id] : []}
         onClose={() => setFolderPicker(null)}
         onSelect={moveFolderItem}
       />
@@ -857,7 +963,7 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
   );
 }
 
-function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void }) {
+function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder, onDuplicate }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void; onDuplicate?: () => void }) {
   const { t, language } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
   const lyricsWorkspaceAccess = useFeatureAccess("lyrics_workspace");
@@ -922,7 +1028,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false, 
           <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-display text-sm font-bold">{prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}</h3>{prompt.project_id && prompt.version_number && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-accent">V{prompt.version_number}{displayVersionLabel ? ` · ${displayVersionLabel}` : ""}</span>}</div>
           <p className="truncate text-[11px] text-muted-foreground">{[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}</p>
         </div>
-        <div className="flex shrink-0 gap-1">{prompt.project_id && lyricsWorkspaceAccess.allowed && <button type="button" onClick={editLyrics} aria-label={t("library.editLyrics")} title={t("library.editLyrics")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FilePenLine className="h-3.5 w-3.5" /></button>}{prompt.project_id && generatorAccess.allowed && <button type="button" onClick={revise} aria-label={t("library.revisePrompt")} title={t("library.revisePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Wand2 className="h-3.5 w-3.5" /></button>}{onMoveToFolder && !prompt.project_id && <button type="button" onClick={onMoveToFolder} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>}<button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><ExportControl kind="prompt" id={prompt.id} name={prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")} compact={compact} /><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
+        <div className="flex shrink-0 gap-1">{prompt.project_id && lyricsWorkspaceAccess.allowed && <button type="button" onClick={editLyrics} aria-label={t("library.editLyrics")} title={t("library.editLyrics")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FilePenLine className="h-3.5 w-3.5" /></button>}{prompt.project_id && generatorAccess.allowed && <button type="button" onClick={revise} aria-label={t("library.revisePrompt")} title={t("library.revisePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Wand2 className="h-3.5 w-3.5" /></button>}{onMoveToFolder && !prompt.project_id && <button type="button" onClick={onMoveToFolder} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>}{onDuplicate && !prompt.project_id && <button type="button" onClick={onDuplicate} title={language === "el" ? "Δημιουργία αντιγράφου Prompt" : "Duplicate Prompt"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Copy className="h-3.5 w-3.5" /></button>}<button onClick={rename} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} aria-label={t("library.copyPrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent">{copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}</button><ExportControl kind="prompt" id={prompt.id} name={prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")} compact={compact} /><button onClick={remove} disabled={deleting} aria-label={t("library.deletePrompt")} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div>
       </div>
       {listMode && <button type="button" onClick={() => setExpanded((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-accent"><ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />{expanded ? (language === "el" ? "Απόκρυψη" : "Hide") : (language === "el" ? "Προβολή prompt" : "Show prompt")}</button>}
       {(!listMode || expanded) && (
