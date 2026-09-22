@@ -54,6 +54,8 @@ describe("Library folders foundation", () => {
     expect(server).toContain('.from("prompt_projects")');
     expect(server).toContain('.from("saved_prompts")');
     expect(server).toContain('.is("project_id", null)');
+    expect(server).toContain("has_subfolders");
+    expect(server).toContain('.in("parent_folder_id", folderIds)');
   });
 
   test("moving a Project changes only the Project container location", async () => {
@@ -104,6 +106,8 @@ describe("Library folders foundation", () => {
     expect(picker).toContain('Root');
     expect(picker).toContain("onSelect(null");
     expect(picker).toContain("breadcrumbItems.map");
+    expect(picker).toContain("disabledDestinationFolderId");
+    expect(picker).toContain("destinationDisabled");
   });
 
   test("Saved Prompts and Projects views share the current-folder file manager with recursive scoped search", async () => {
@@ -225,6 +229,24 @@ describe("Library folders foundation", () => {
     expect(library).toContain('startDuplicateProject');
     expect(library).toContain('operation: "move"');
     expect(library).toContain('draggable={desktopDnD}');
+  });
+
+  test("Move picker blocks the current location while Duplicate may target the same folder or Root", async () => {
+    const library = await source("src/routes/library.tsx");
+    const picker = await source("src/components/promptbeats/LibraryFolderPicker.tsx");
+
+    expect(library).toContain('disabledDestinationFolderId={folderPicker?.operation === "move" ? folderPicker.currentFolderId : undefined}');
+    expect(picker).toContain('disabled={destinationDisabled(null)}');
+    expect(picker).toContain('disabled={destinationDisabled(currentFolderId)}');
+    expect(picker).not.toContain('disabled={currentFolderId === null}');
+  });
+
+  test("folder cards indicate when a folder contains subfolders", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain("folder.has_subfolders");
+    expect(library).toContain("Contains subfolders");
+    expect(library).toContain("Περιέχει υποφακέλους");
   });
 
   test("touch drag shares the same Move operation and folder targets as desktop drag/drop", async () => {
