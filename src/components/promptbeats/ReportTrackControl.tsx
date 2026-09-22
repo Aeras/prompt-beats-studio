@@ -92,7 +92,7 @@ export function ReportTrackControl({
   const legalCategory = category === "copyright_ip" || category === "illegal_content";
 
   const modal = open && typeof document !== "undefined" && createPortal(
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="report-track-title">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[120] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="report-track-title">
       <div className="glass-strong max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <header className="flex items-center justify-between gap-3">
           <h2 id="report-track-title" className="font-display text-lg font-bold">{success ? t("report.receivedTitle") : t("report.title")}</h2>
