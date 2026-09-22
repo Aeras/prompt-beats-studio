@@ -8,6 +8,7 @@ import { ModerationCaseCenter } from "@/components/promptbeats/ModerationCaseCen
 import { HelpMenu } from "@/components/promptbeats/HelpMenu";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
 import type { TranslationKey } from "@/i18n/locales/en";
@@ -48,6 +49,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const active = useActiveNav();
   const { t } = useI18n();
+  const generatorAccess = useFeatureAccess("ai_generator");
   const { isLocked, isInvalid, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
 
   useEffect(() => {
@@ -216,8 +218,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       `}</style>
 
       <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
-        <div className="grid h-full w-full grid-cols-4 items-center">
-          {MOBILE_TABS.map((tab) => {
+        <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
+          {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map((tab) => {
             const item = NAV.find((n) => n.id === tab.id)!;
             const isActive = active === tab.id;
             return (
