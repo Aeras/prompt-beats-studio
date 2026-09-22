@@ -462,9 +462,129 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       {folderMessage && <div className="rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent">{folderMessage}</div>}
 
       {view === "all" ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filtered.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}
-          {!loading && filtered.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{q ? (language === "el" ? "Δεν βρέθηκαν prompts." : "No prompts found.") : t("library.noPrompts")}</p>}
+        <div className="space-y-4">
+          <div className="glass flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl px-3 py-2 text-xs [scrollbar-width:none]">
+            <button type="button" onClick={() => { setCurrentFolderId(null); onSearchChange(""); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">
+              <Home className="h-3.5 w-3.5" />{language === "el" ? "Αρχική" : "Root"}
+            </button>
+            {(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => (
+              <span key={item.id} className="inline-flex shrink-0 items-center">
+                <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                <button type="button" onClick={() => { setCurrentFolderId(item.id); onSearchChange(""); }} className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">{item.name}</button>
+              </span>
+            ))}
+          </div>
+
+          {q ? (
+            folderSearch.isLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{language === "el" ? "Αναζήτηση..." : "Searching..."}</div>
+            ) : (folderSearch.data?.results ?? []).length ? (
+              <div className="space-y-2">
+                {(folderSearch.data?.results ?? []).map((result) => (
+                  <button
+                    key={`${result.item_type}:${result.item_id}`}
+                    type="button"
+                    onClick={() => {
+                      if (result.item_type === "folder") {
+                        setCurrentFolderId(result.item_id);
+                        onSearchChange("");
+                        return;
+                      }
+                      if (result.item_type === "project") {
+                        setOpenProjectId(result.item_id);
+                        onSearchChange("");
+                        onViewChange("projects");
+                        return;
+                      }
+                      setCurrentFolderId(result.folder_id ?? null);
+                      onSearchChange("");
+                    }}
+                    className="glass flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:border-accent/40"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-accent/20 bg-accent/[0.06]">
+                      <Folder className="h-5 w-5 text-accent" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{result.name}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{result.path}</span>
+                    </span>
+                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{result.item_type}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν βρέθηκαν αποτελέσματα σε αυτό το scope." : "No results found in this scope."}</p>
+            )
+          ) : folderContents.isLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{language === "el" ? "Φόρτωση φακέλου..." : "Loading folder..."}</div>
+          ) : (
+            <>
+              {(folderContents.data?.folders ?? []).length > 0 && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {(folderContents.data?.folders ?? []).map((folder) => (
+                    <article key={folder.id} className="glass flex items-center gap-2 rounded-2xl p-3">
+                      <button type="button" onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/[0.07]"><Folder className="h-5 w-5 text-accent" /></span>
+                        <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language === "el" ? "Φάκελος" : "Folder"}</span></span>
+                      </button>
+                      <div className="flex shrink-0 gap-1">
+                        <button type="button" onClick={() => setFolderPicker({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => renameFolder(folder)} title={language === "el" ? "Μετονομασία" : "Rename"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => removeFolder(folder)} title={language === "el" ? "Διαγραφή" : "Delete"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {(folderContents.data?.projects ?? []).length > 0 && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {(folderContents.data?.projects ?? []).map((project) => {
+                    const promptCount = prompts.filter((prompt) => prompt.project_id === project.id).length;
+                    return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
+                      <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); onViewChange("projects"); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span>
+                        <span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{promptCount} {language === "el" ? "εκδόσεις" : "versions"}</span>{project.creation_notes.trim() && <span className="mt-1 block truncate text-[11px] text-accent/80">{project.creation_notes}</span>}</span>
+                      </button>
+                      <div className="flex shrink-0 gap-1">
+                        <ExportControl kind="project" id={project.id} name={project.name} />
+                        <button type="button" onClick={() => setFolderPicker({ kind: "project", id: project.id, name: project.name, currentFolderId })} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => renameProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => removeProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </article>;
+                  })}
+                </div>
+              )}
+
+              {(folderContents.data?.prompts ?? []).length > 0 && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {(folderContents.data?.prompts ?? []).map((prompt) => (
+                    <SavedPromptCard
+                      key={prompt.id}
+                      prompt={prompt as SavedPrompt}
+                      projects={projects}
+                      listMode={promptDisplayMode === "list"}
+                      onMoveToFolder={() => setFolderPicker({
+                        kind: "prompt",
+                        id: prompt.id,
+                        name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
+                        currentFolderId,
+                      })}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {(folderContents.data?.folders ?? []).length === 0 && (folderContents.data?.projects ?? []).length === 0 && (folderContents.data?.prompts ?? []).length === 0 && (
+                <div className="glass rounded-2xl p-8 text-center">
+                  <Folder className="mx-auto h-8 w-8 text-accent/70" />
+                  <p className="mt-3 text-sm font-semibold">{language === "el" ? "Αυτός ο φάκελος είναι κενός." : "This folder is empty."}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{language === "el" ? "Δημιούργησε φάκελο ή Project, ή μετακίνησε εδώ υπάρχον περιεχόμενο." : "Create a folder or Project, or move existing content here."}</p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       ) : view === "analyses" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
