@@ -95,6 +95,52 @@ describe("Library folders foundation", () => {
     expect(sql).not.toContain("path text NOT NULL");
   });
 
+  test("Folder Picker is reusable for Move flows and always supports Root/breadcrumb navigation", async () => {
+    const picker = await source("src/components/promptbeats/LibraryFolderPicker.tsx");
+
+    expect(picker).toContain("listLibraryFolderContents");
+    expect(picker).toContain("getLibraryFolderBreadcrumbs");
+    expect(picker).toContain("searchLibraryFolders");
+    expect(picker).toContain('Root');
+    expect(picker).toContain("onSelect(null");
+    expect(picker).toContain("breadcrumbItems.map");
+  });
+
+  test("Saved Prompts All view is a current-folder file manager with recursive scoped search", async () => {
+    const library = await source("src/routes/library.tsx");
+    const searchMigration = await source("supabase/migrations/20260922192000_library_folder_recursive_search.sql");
+
+    expect(library).toContain("listLibraryFolderContents");
+    expect(library).toContain("searchLibraryScope");
+    expect(library).toContain("folder-breadcrumbs");
+    expect(library).toContain("Νέος Φάκελος");
+    expect(library).toContain("Move Project");
+    expect(searchMigration).toContain("WITH RECURSIVE full_tree");
+    expect(searchMigration).toContain("scope_tree AS");
+    expect(searchMigration).toContain("sp.project_id IS NULL");
+    expect(searchMigration).toContain("COALESCE(ft.path, 'Root')");
+  });
+
+  test("Folder browser moves Projects as containers and standalone Prompts independently", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain("movePromptProjectToFolder");
+    expect(library).toContain("moveStandalonePromptToFolder");
+    expect(library).toContain("moveLibraryFolder");
+    expect(library).toContain('kind: "project"');
+    expect(library).toContain('kind: "prompt"');
+    expect(library).toContain('kind: "folder"');
+  });
+
+  test("new Projects can be created directly inside the current folder", async () => {
+    const ai = await source("src/lib/ai.functions.ts");
+    const library = await source("src/routes/library.tsx");
+
+    expect(ai).toContain("folderId: z.string().uuid().nullable().optional()");
+    expect(ai).toContain("folder_id: data.folderId ?? null");
+    expect(library).toContain('folderId: view === "all" ? currentFolderId : null');
+  });
+
   test("duplicate provenance columns exist without creating a branch graph", async () => {
     const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
 
