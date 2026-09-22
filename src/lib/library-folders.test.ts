@@ -106,7 +106,7 @@ describe("Library folders foundation", () => {
     expect(picker).toContain("breadcrumbItems.map");
   });
 
-  test("Saved Prompts All view is a current-folder file manager with recursive scoped search", async () => {
+  test("Saved Prompts and Projects views share the current-folder file manager with recursive scoped search", async () => {
     const library = await source("src/routes/library.tsx");
     const searchMigration = await source("supabase/migrations/20260922192000_library_folder_recursive_search.sql");
 
@@ -115,6 +115,8 @@ describe("Library folders foundation", () => {
     expect(library).toContain("folder-breadcrumbs");
     expect(library).toContain("Νέος Φάκελος");
     expect(library).toContain("Move Project");
+    expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
+    expect(library).toContain('view === "all" && (folderContents.data?.prompts ?? []).length > 0');
     expect(searchMigration).toContain("WITH RECURSIVE full_tree");
     expect(searchMigration).toContain("scope_tree AS");
     expect(searchMigration).toContain("sp.project_id IS NULL");
@@ -138,7 +140,7 @@ describe("Library folders foundation", () => {
 
     expect(ai).toContain("folderId: z.string().uuid().nullable().optional()");
     expect(ai).toContain("folder_id: data.folderId ?? null");
-    expect(library).toContain('folderId: view === "all" ? currentFolderId : null');
+    expect(library).toContain('folderId: view === "analyses" ? null : currentFolderId');
   });
 
   test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph", async () => {
@@ -210,6 +212,31 @@ describe("Library folders foundation", () => {
     expect(library).toContain('kind: "prompt"');
     expect(library).toContain('dragOverFolderId === "root"');
     expect(library).toContain("onDrop");
+  });
+
+  test("Projects view exposes folders, long-press Move/Duplicate and drag/drop instead of a flat Projects list", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain('view !== "analyses" && <button disabled={busy} onClick={createFolder}');
+    expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
+    expect(library).toContain('folderSearchResults');
+    expect(library).toContain('view === "all" || result.item_type !== "prompt"');
+    expect(library).toContain('LibraryLongPressButton');
+    expect(library).toContain('startDuplicateProject');
+    expect(library).toContain('operation: "move"');
+    expect(library).toContain('draggable={desktopDnD}');
+  });
+
+  test("touch drag shares the same Move operation and folder targets as desktop drag/drop", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain("touchDragHandlers");
+    expect(library).toContain("document.elementFromPoint");
+    expect(library).toContain("data-library-folder-drop-id");
+    expect(library).toContain("data-library-folder-drop-path");
+    expect(library).toContain('event.pointerType === "mouse"');
+    expect(library).toContain("Math.hypot");
+    expect(library).toContain("performMove(state.item.kind");
   });
 
   test("Generator can save a standalone Prompt or new Project directly into a chosen Folder", async () => {
