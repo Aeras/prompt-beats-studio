@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
 import { localizedAccountReasonLabel, localizedGenreLabel } from "@/i18n/ui-catalog";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 type Profile = {
   id: string;
@@ -146,9 +147,13 @@ export function BanUserToggle({ userId }: { userId: string }) {
 }
 
 export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }: { profile: Profile | null; tracks: Track[]; isLoading: boolean; notFoundLabel?: string }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { play, current, playing } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
+  const visibleTracks = filterByTrackSource(tracks, trackSource);
   const compact = gridMode === "compact";
   const missingLabel = notFoundLabel ?? t("profile.notFound");
 
@@ -176,10 +181,10 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
           <DonationMethods userId={profile.id} />
 
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3"><h2 className="font-display text-lg font-semibold">{t("profile.discography")}</h2><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
-            {tracks.length === 0 && <p className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">{t("profile.noPublished")}</p>}
+            <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-display text-lg font-semibold">{t("profile.discography")}</h2><div className="flex flex-wrap items-center gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div></div>
+            {visibleTracks.length === 0 && <p className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">{t("profile.noPublished")}</p>}
             <div className={trackGridClassName(gridMode)}>
-              {tracks.map((track) => {
+              {visibleTracks.map((track) => {
                 const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
                 const canUseNativePlayer = canUseNativeTrackPlayer(track.source_type);
                 const largeArtwork = track.cover_url ?? track.art_url ?? profile.avatar_url ?? artFallback;
