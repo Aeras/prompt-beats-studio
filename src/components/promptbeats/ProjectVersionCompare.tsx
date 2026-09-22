@@ -23,6 +23,7 @@ type HistoryVersion = {
     title: string;
     summary: string;
   } | null;
+  linked_track_count?: number;
 };
 
 type Props = {
@@ -240,6 +241,10 @@ export function ProjectVersionCompare({
                 {diff.changeCount} {el ? (diff.changeCount === 1 ? "αλλαγή" : "αλλαγές") : (diff.changeCount === 1 ? "change" : "changes")}
               </span>
               {fieldSummary(diff, language).map((group) => <span key={group} className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-muted-foreground">{group}</span>)}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+              <span>{leftLabel} · 🎵 {leftVersion?.linked_track_count ?? 0} {el ? "συνδεδεμένα" : "linked"}</span>
+              <span>{rightLabel} · 🎵 {rightVersion?.linked_track_count ?? 0} {el ? "συνδεδεμένα" : "linked"}</span>
             </div>
           </div>
 
