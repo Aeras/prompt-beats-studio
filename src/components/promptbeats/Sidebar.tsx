@@ -10,7 +10,6 @@ import { useI18n } from "@/i18n";
 import type { TranslationKey } from "@/i18n/locales/en";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
-import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { SettingsPanel } from "@/components/promptbeats/SettingsPanel";
 
@@ -57,9 +56,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
       </nav>
 
       {!isBanned && <button onClick={onSubmit} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"><Plus className="h-4 w-4" />{t("nav.submitTrack")}</button>}
-      {!user && <LanguageSelector />}
-      {user && (
-        <button
+      <button
           type="button"
           onClick={() => setSettingsOpen(true)}
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
@@ -67,7 +64,6 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
           <Settings className="h-[18px] w-[18px] shrink-0" />
           <span>{language === "el" ? "Ρυθμίσεις" : "Settings"}</span>
         </button>
-      )}
 
       <div className="mt-auto">
         {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
