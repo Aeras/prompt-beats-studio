@@ -14,6 +14,7 @@ import {
 } from "@/lib/project-version-history.shared";
 import { cn } from "@/lib/utils";
 import { ProjectVersionCompare } from "@/components/promptbeats/ProjectVersionCompare";
+import { ProjectVersionLinkedTracks } from "@/components/promptbeats/ProjectVersionLinkedTracks";
 
 type Props = {
   projectId: string;
@@ -143,6 +144,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                           <span className="rounded-full border border-accent/25 bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">{versionLabel}</span>
                           <h4 className="font-display text-sm font-bold">{metadata?.title ?? version.version_label ?? (index === 0 ? (el ? "Αρχική έκδοση" : "Initial version") : (el ? "Νέα έκδοση" : "New version"))}</h4>
                           {isPreferred && <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 px-2 py-0.5 text-[10px] font-semibold text-amber-300"><Star className="h-3 w-3 fill-current" />{el ? "Προτιμώμενη" : "Preferred"}</span>}
+                          {version.linked_track_count > 0 && <span className="rounded-full border border-accent/20 bg-accent/[0.04] px-2 py-0.5 text-[10px] font-semibold text-accent">🎵 {version.linked_track_count}</span>}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">{metadata?.summary ?? (el ? "Αποθηκευμένη έκδοση του project." : "Saved project version.")}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -306,6 +308,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                 {prompt.tags && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Music Style / Prompt</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{prompt.tags}</p></div>}
                 {prompt.note && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Σημείωση παραγωγού" : "Producer Note"}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5">{prompt.note}</p></div>}
                 {prompt.lyrics && <div className="rounded-lg border border-white/10 bg-black/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{el ? "Στίχοι" : "Lyrics"}</p><pre className="mt-2 max-h-[28rem] overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-5">{prompt.lyrics}</pre></div>}
+                <ProjectVersionLinkedTracks projectId={projectId} versionId={prompt.id} language={language} />
               </div>
             );
           })()}
