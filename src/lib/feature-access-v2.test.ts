@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
 const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
+const songSetupMigration = "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
 
 const CANONICAL_KEYS = [
   "ai_generator",
@@ -45,7 +46,7 @@ describe("Feature Access V2 — 15 features", () => {
 
   test("V2 migration adds only the ten new definitions, all defaulting to everyone", async () => {
     const sql = await source(registryMigration);
-    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","export_center","follow_creators","notifications"].includes(key));
+    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","song_setup_assistant","export_center","follow_creators","notifications"].includes(key));
     for (const key of newKeys) {
       expect(sql).toContain(`('${key}'`);
       const row = new RegExp(`\\('${key}'[^\\n]+,'everyone'\\)`);
@@ -54,6 +55,14 @@ describe("Feature Access V2 — 15 features", () => {
     for (const existing of ["smart_presets","export_center","follow_creators","notifications"]) {
       expect(sql).not.toMatch(new RegExp(`\\('${existing}'[^\\n]+,'everyone'\\)`));
     }
+    expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
+  });
+
+  test("Song Setup Assistant is seeded independently as admins_only", async () => {
+    const sql = await source(songSetupMigration);
+    expect(sql).toContain("('song_setup_assistant'");
+    expect(sql).toContain("'Song Setup Assistant'");
+    expect(sql).toContain("'admins_only'");
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
   });
 
