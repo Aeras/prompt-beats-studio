@@ -34,17 +34,15 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     
-    const SUPABASE_URL =
-      process.env['EXTERNAL_SUPABASE_URL'] ?? process.env['SUPABASE_URL'];
-    const SUPABASE_PUBLISHABLE_KEY =
-      process.env['EXTERNAL_SUPABASE_PUBLISHABLE_KEY'] ?? process.env['SUPABASE_PUBLISHABLE_KEY'];
+    const SUPABASE_URL = process.env['SUPABASE_URL'];
+    const SUPABASE_PUBLISHABLE_KEY = process.env['SUPABASE_PUBLISHABLE_KEY'];
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [
-        ...(!SUPABASE_URL ? ['EXTERNAL_SUPABASE_URL or SUPABASE_URL'] : []),
-        ...(!SUPABASE_PUBLISHABLE_KEY ? ['EXTERNAL_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY'] : []),
+        ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
+        ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
       ];
-      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}.`;
+      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
       console.error(`[Supabase] ${message}`);
       throw new Error(message);
     }
@@ -100,29 +98,6 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
 
     if (!data.claims.sub) {
       throw new Error('Unauthorized: No user ID found in token');
-    }
-
-    // getClaims() validates the JWT but can still accept a token whose Auth
-    // user was deleted. Re-check the live Auth identity before authorizing any
-    // protected application operation.
-    const { data: authUser, error: authUserError } = await supabase.auth.getUser(token);
-    if (authUserError || !authUser.user || authUser.user.id !== data.claims.sub) {
-      throw new Error('ACCOUNT_INVALID: This account is no longer available.');
-    }
-
-    // Keep account blocking server-authoritative. Every protected server
-    // function passes through this middleware, so an active session cannot
-    // bypass a persisted block by calling an endpoint directly.
-    const { data: privateProfile, error: privateProfileError } = await supabase
-      .from('profile_private')
-      .select('is_banned')
-      .eq('user_id', data.claims.sub)
-      .maybeSingle();
-    if (privateProfileError || !privateProfile) {
-      throw new Error('Unable to verify account status. Please try again.');
-    }
-    if (privateProfile?.is_banned === true) {
-      throw new Error('ACCOUNT_DISABLED: This account is disabled.');
     }
 
     return next({
