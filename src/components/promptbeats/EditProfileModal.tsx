@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlayer } from "@/lib/player";
 import { updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
-import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { DonationSettingsEditor } from "@/components/promptbeats/DonationSettingsEditor";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 
@@ -179,10 +178,6 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                     <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.bio")}</span><textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 500))} placeholder={t("editProfile.bioPlaceholder")} rows={5} className="w-full resize-y rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]" /></label>
                   </section>
 
-                  <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-                    <div><p className="text-xs font-semibold uppercase tracking-widest text-accent">{t("preferences.title")}</p><p className="mt-1 text-[11px] text-muted-foreground">{t("preferences.languageHint")}</p></div>
-                    <LanguageSelector className="border-white/10 bg-black/20" />
-                  </section>
                 </div>
 
                 <div className="space-y-5">
