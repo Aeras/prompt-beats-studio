@@ -751,26 +751,32 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
               {(folderContents.data?.prompts ?? []).length > 0 && (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {(folderContents.data?.prompts ?? []).map((prompt) => (
-                    <SavedPromptCard
+                    <div
                       key={prompt.id}
-                      prompt={prompt as SavedPrompt}
-                      projects={projects}
-                      listMode={promptDisplayMode === "list"}
-                      onMoveToFolder={() => setFolderPicker({
-                        operation: "move",
-                        kind: "prompt",
-                        id: prompt.id,
-                        name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
-                        currentFolderId,
-                      })}
-                      onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
-                      onLongPress={() => setActionSheetItem({
-                        kind: "prompt",
-                        id: prompt.id,
-                        name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
-                        currentFolderId,
-                      })}
-                    />
+                      draggable={desktopDnD}
+                      onDragStart={(event) => startDrag(event, { kind: "prompt", id: prompt.id, currentFolderId })}
+                      onDragEnd={() => setDragOverFolderId(null)}
+                    >
+                      <SavedPromptCard
+                        prompt={prompt as SavedPrompt}
+                        projects={projects}
+                        listMode={promptDisplayMode === "list"}
+                        onMoveToFolder={() => setFolderPicker({
+                          operation: "move",
+                          kind: "prompt",
+                          id: prompt.id,
+                          name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
+                          currentFolderId,
+                        })}
+                        onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
+                        onLongPress={() => setActionSheetItem({
+                          kind: "prompt",
+                          id: prompt.id,
+                          name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
+                          currentFolderId,
+                        })}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
