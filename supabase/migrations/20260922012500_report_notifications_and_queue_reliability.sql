@@ -108,7 +108,6 @@ BEGIN
   FROM public.user_roles ur
   WHERE ur.moderation_status::text='active'
     AND public.app_role_rank(ur.role::text) >= 2
-    AND public.can_use_feature(ur.user_id,'notifications')
   ON CONFLICT (event_key) DO NOTHING;
 
   RETURN v_report_id;
@@ -142,5 +141,197 @@ JOIN public.user_roles ur
 WHERE r.status IN ('open','under_review')
   AND public.can_use_feature(ur.user_id,'notifications')
 ON CONFLICT (event_key) DO NOTHING;
+
+-- Report notifications are operational moderation events. Active moderation
+-- staff may read/mark them even when the end-user Notifications feature is
+-- disabled, while ordinary notification rows remain Feature Access-gated.
+DROP POLICY IF EXISTS "Recipients can read own notifications" ON public.notifications;
+CREATE POLICY "Recipients can read own notifications"
+  ON public.notifications FOR SELECT TO authenticated
+  USING (
+    recipient_user_id = auth.uid()
+    AND (
+      public.current_user_can_use_feature('notifications')
+      OR (
+        type = 'new_report'
+        AND public.has_moderation_capability('can_view_users')
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "Recipients can mark own notifications read" ON public.notifications;
+CREATE POLICY "Recipients can mark own notifications read"
+  ON public.notifications FOR UPDATE TO authenticated
+  USING (
+    recipient_user_id = auth.uid()
+    AND (
+      public.current_user_can_use_feature('notifications')
+      OR (
+        type = 'new_report'
+        AND public.has_moderation_capability('can_view_users')
+      )
+    )
+  )
+  WITH CHECK (
+    recipient_user_id = auth.uid()
+    AND (
+      public.current_user_can_use_feature('notifications')
+      OR (
+        type = 'new_report'
+        AND public.has_moderation_capability('can_view_users')
+      )
+    )
+  );
+
+-- Service-role report projections use the already authenticated server actor ID.
+-- This avoids making the management queue depend on forwarding a browser JWT
+-- through another PostgREST RPC hop.
+CREATE OR REPLACE FUNCTION public.list_content_reports_for_actor(
+  _actor uuid,
+  _scope text DEFAULT 'open'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+DECLARE
+  v_admin_level boolean;
+  v_result jsonb;
+BEGIN
+  IF _actor IS NULL OR NOT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id=_actor
+      AND ur.moderation_status::text='active'
+      AND public.app_role_rank(ur.role::text)>=2
+  ) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  IF _scope NOT IN ('open','under_review','resolved','all') THEN
+    RAISE EXCEPTION 'invalid report scope';
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id=_actor
+      AND ur.moderation_status::text='active'
+      AND public.app_role_rank(ur.role::text)>=4
+  ) INTO v_admin_level;
+
+  SELECT COALESCE(jsonb_agg(row_data ORDER BY (row_data->>'created_at')::timestamptz DESC),'[]'::jsonb)
+  INTO v_result
+  FROM (
+    SELECT jsonb_strip_nulls(jsonb_build_object(
+      'id',r.id,'target_type',r.target_type,'target_id',r.target_id,'target_owner_id',r.target_owner_id,
+      'category',r.category,'details',r.details,'supporting_url',r.supporting_url,'status',r.status,
+      'created_at',r.created_at,'reviewed_at',r.reviewed_at,'reviewed_by',r.reviewed_by,
+      'resolution',r.resolution,'moderator_notes',r.moderator_notes,
+      'track_title',COALESCE(t.title,r.target_title),
+      'track_is_published',COALESCE(t.is_published,false),
+      'track_moderation_status',COALESCE(t.moderation_status,'deleted'),
+      'creator_handle',owner_profile.handle,'creator_display_name',owner_profile.display_name,
+      'creator_artist_alias',owner_profile.artist_alias,
+      'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END,
+      'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END,
+      'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END,
+      'reporter_display_name',CASE WHEN v_admin_level THEN reporter_profile.display_name ELSE NULL END,
+      'case_id',mc.id,'case_status',mc.status,'case_assigned_to',mc.assigned_to,
+      'case_assigned_label',COALESCE(handler.artist_alias,handler.display_name,CASE WHEN handler.handle IS NOT NULL THEN '@'||handler.handle END),
+      'case_unread_count',CASE WHEN mc.id IS NULL THEN 0 ELSE (
+        SELECT count(*)::integer
+        FROM public.moderation_case_messages m
+        LEFT JOIN public.moderation_case_reads rd ON rd.case_id=mc.id AND rd.user_id=_actor
+        WHERE m.case_id=mc.id AND m.sender_side='creator'
+          AND m.created_at>COALESCE(rd.last_read_at,'epoch'::timestamptz)
+      ) END
+    )) AS row_data
+    FROM public.content_reports r
+    LEFT JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+    LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
+    LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
+    LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
+    LEFT JOIN public.moderation_cases mc ON mc.report_id=r.id
+    LEFT JOIN public.profiles handler ON handler.id=mc.assigned_to
+    WHERE
+      _scope='all'
+      OR (_scope='open' AND r.status='open')
+      OR (_scope='under_review' AND r.status='under_review')
+      OR (_scope='resolved' AND r.status IN ('resolved_action_taken','resolved_no_violation','dismissed_abuse'))
+  ) q;
+
+  RETURN v_result;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION public.get_content_report_for_actor(
+  _actor uuid,
+  _report_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+DECLARE
+  v_admin_level boolean;
+  v_result jsonb;
+BEGIN
+  IF _actor IS NULL OR NOT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id=_actor
+      AND ur.moderation_status::text='active'
+      AND public.app_role_rank(ur.role::text)>=2
+  ) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id=_actor
+      AND ur.moderation_status::text='active'
+      AND public.app_role_rank(ur.role::text)>=4
+  ) INTO v_admin_level;
+
+  SELECT jsonb_strip_nulls(jsonb_build_object(
+    'id',r.id,'target_type',r.target_type,'target_id',r.target_id,'target_owner_id',r.target_owner_id,
+    'category',r.category,'details',r.details,'supporting_url',r.supporting_url,'status',r.status,
+    'created_at',r.created_at,'reviewed_at',r.reviewed_at,'reviewed_by',r.reviewed_by,
+    'resolution',r.resolution,'moderator_notes',r.moderator_notes,
+    'track_title',COALESCE(t.title,r.target_title),'track_is_published',COALESCE(t.is_published,false),
+    'track_moderation_status',COALESCE(t.moderation_status,'deleted'),
+    'creator_handle',owner_profile.handle,'creator_display_name',owner_profile.display_name,
+    'creator_artist_alias',owner_profile.artist_alias,
+    'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END,
+    'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END,
+    'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END,
+    'reporter_display_name',CASE WHEN v_admin_level THEN reporter_profile.display_name ELSE NULL END,
+    'case_id',mc.id,'case_status',mc.status,'case_assigned_to',mc.assigned_to,
+    'case_assigned_label',COALESCE(handler.artist_alias,handler.display_name,CASE WHEN handler.handle IS NOT NULL THEN '@'||handler.handle END)
+  )) INTO v_result
+  FROM public.content_reports r
+  LEFT JOIN public.tracks t ON t.id=r.target_id AND r.target_type='track'
+  LEFT JOIN public.profiles owner_profile ON owner_profile.id=r.target_owner_id
+  LEFT JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level
+  LEFT JOIN public.profiles reporter_profile ON reporter_profile.id=r.reporter_user_id AND v_admin_level
+  LEFT JOIN public.moderation_cases mc ON mc.report_id=r.id
+  LEFT JOIN public.profiles handler ON handler.id=mc.assigned_to
+  WHERE r.id=_report_id;
+
+  IF v_result IS NULL THEN RAISE EXCEPTION 'report not found'; END IF;
+  RETURN v_result;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.list_content_reports_for_actor(uuid,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.get_content_report_for_actor(uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.list_content_reports_for_actor(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_content_report_for_actor(uuid,uuid) TO service_role;
 
 COMMIT;
