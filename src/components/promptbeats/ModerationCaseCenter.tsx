@@ -39,7 +39,7 @@ function CasePanel({ onClose }: { onClose: () => void }) {
   const cases = useQuery({
     queryKey: ["my-moderation-cases"],
     queryFn: () => listMyModerationCases(),
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
     refetchOnWindowFocus: "always",
   });
 
@@ -98,7 +98,7 @@ export function ModerationCaseCenter() {
     queryKey: ["moderation-case-unread-count", user?.id ?? "anon"],
     enabled: Boolean(user),
     queryFn: () => getModerationCaseUnreadCount(),
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
     refetchOnWindowFocus: "always",
     staleTime: 20_000,
   });
