@@ -60,7 +60,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                 onClick={() => external.setEnabled(!external.enabled)}
                 className={"relative mt-1 h-7 w-12 shrink-0 rounded-full border transition-colors " + (external.enabled ? "border-accent/60 bg-accent/35" : "border-white/15 bg-white/5")}
               >
-                <span className={"absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform " + (external.enabled ? "translate-x-6" : "translate-x-1")} />
+                <span className={"absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " + (external.enabled ? "translate-x-5" : "translate-x-0")} />
               </button>
             </div>
             <p className={"mt-3 text-xs font-semibold " + (external.enabled ? "text-accent" : "text-muted-foreground")}>
