@@ -19,6 +19,7 @@ import { deleteSongAnalysis, listSongAnalyses, updateSongAnalysisOrganization } 
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -97,10 +98,13 @@ function LibraryPage() {
   const { user, profile, loading } = useAuth();
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
   const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]>("all");
   const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
   const handle = profile?.handle ? `@${profile.handle}` : t("nav.you");
 
   const mine = useQuery({ queryKey: ["library", "mine", user?.id], queryFn: () => listMyTracks(), enabled: Boolean(user) });
@@ -115,7 +119,10 @@ function LibraryPage() {
   const favoriteTracks = (favorites.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const publicTrackCount = myTracks.filter((track: Track) => track.isPublished).length;
   const privateTrackCount = myTracks.length - publicTrackCount;
-  const filteredMyTracks = myTracks.filter((track: Track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
+  const sourceFilteredMyTracks = filterByTrackSource(myTracks, trackSource);
+  const filteredMyTracks = sourceFilteredMyTracks.filter((track: Track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
+  const filteredLikedTracks = filterByTrackSource(likedTracks, trackSource);
+  const filteredFavoriteTracks = filterByTrackSource(favoriteTracks, trackSource);
 
   const tabLabel = (value: (typeof TABS)[number]) => {
     if (value === "tracks") return t("library.myTracks");
@@ -163,7 +170,7 @@ function LibraryPage() {
                   return <button key={filter} onClick={() => setTrackVisibility(filter)} aria-pressed={trackVisibility === filter} className={cn("shrink-0 rounded-full border px-3 py-1 text-xs transition-all", trackVisibility === filter ? "border-accent/50 bg-accent/15 font-semibold text-accent" : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent")}>{visibilityLabel(filter)} ({count})</button>;
                 })}
               </div>
-              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
+              <div className="flex shrink-0 items-center gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" /></div>
             </div>
             <Section empty={emptyMyTracks} tracks={filteredMyTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, myTracks)} gridMode={gridMode} />
           </>
@@ -175,15 +182,15 @@ function LibraryPage() {
 
         {tab === "favorites" && (
           <>
-            <div className="mt-3 flex justify-end"><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
-            <Section empty={language === "el" ? "Δεν έχεις ακόμη αποθηκεύσει τραγούδια στα Αγαπημένα σου." : "You have not saved any favorite tracks yet."} tracks={favoriteTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, favoriteTracks)} gridMode={gridMode} />
+            <div className="mt-3 flex flex-wrap justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
+            <Section empty={language === "el" ? "Δεν έχεις ακόμη αποθηκεύσει τραγούδια στα Αγαπημένα σου." : "You have not saved any favorite tracks yet."} tracks={filteredFavoriteTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, filteredFavoriteTracks)} gridMode={gridMode} />
           </>
         )}
 
         {tab === "likes" && (
           <>
-            <div className="mt-3 flex justify-end"><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
-            <Section empty={t("library.noLikes")} tracks={likedTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, likedTracks)} gridMode={gridMode} />
+            <div className="mt-3 flex flex-wrap justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
+            <Section empty={t("library.noLikes")} tracks={filteredLikedTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, filteredLikedTracks)} gridMode={gridMode} />
           </>
         )}
 
