@@ -149,7 +149,7 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!track) return { track: null, artist: null, unavailableReason: "not_found" as const };
     if (!track.is_published && track.user_id !== viewerId) {
-      return { track: null, artist: null, unavailableReason: "private" as const, privateTitle: track.title as string };
+      return { track: null, artist: null, unavailableReason: "private" as const, privateTitle: null as null };
     }
     const { data: artist } = await supabase
       .from("public_profiles")
