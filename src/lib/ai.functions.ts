@@ -2415,6 +2415,60 @@ export const setPreferredProjectVersion = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    leftId: z.string().uuid(),
+    rightId: z.string().uuid(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.leftId === data.rightId) throw new Error("Select two different versions.");
+
+    const { data: project, error: projectError } = await context.supabase
+      .from("prompt_projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found.");
+
+    const { data: rows, error } = await context.supabase
+      .from("saved_prompts")
+      .select("id, version_number, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+
+    const selected = (rows ?? []).filter((row) => row.id === data.leftId || row.id === data.rightId);
+    if (selected.length !== 2) throw new Error("One or both versions could not be found.");
+
+    const normalize = (id: string) => {
+      const row = selected.find((item) => item.id === id);
+      if (!row) throw new Error("Version not found.");
+      const snapshot = generatorInputSnapshotSchema.safeParse(row.generator_input_snapshot);
+      return {
+        id: row.id,
+        versionNumber: row.version_number,
+        title: row.title ?? "",
+        theme: row.theme ?? "",
+        genre: row.genre ?? "",
+        mood: row.mood ?? "",
+        language: row.language ?? "",
+        tags: row.tags ?? "",
+        lyrics: row.lyrics ?? "",
+        note: row.note ?? "",
+        snapshot: snapshot.success ? snapshot.data : null,
+      };
+    };
+
+    return {
+      left: normalize(data.leftId),
+      right: normalize(data.rightId),
+    };
+  });
+
 export const getPromptRevisionBase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({

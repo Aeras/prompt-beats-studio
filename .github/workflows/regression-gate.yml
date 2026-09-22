@@ -46,6 +46,9 @@ jobs:
       - name: Project Version History tests
         run: bun test src/lib/project-version-history.test.ts
 
+      - name: Project Version Diff tests
+        run: bun test src/lib/project-version-diff.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
