@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput } from "lucide-react";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput, MoreHorizontal } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
@@ -814,7 +814,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           ) : (
             <>
               {(folderContents.data?.folders ?? []).length > 0 && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,104px))] gap-x-3 gap-y-5">
                   {(folderContents.data?.folders ?? []).map((folder) => (
                     <article
                       key={folder.id}
@@ -827,21 +827,44 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(folder.id); }}
                       onDragLeave={() => setDragOverFolderId(null)}
                       onDrop={(event) => void dropIntoFolder(event, folder.id, [...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / "))}
-                      className={cn("glass flex items-center gap-2 rounded-2xl p-3 transition-colors touch-pan-y", dragOverFolderId === folder.id && "border-accent/60 bg-accent/[0.08]", touchDraggingKey === `folder:${folder.id}` && "opacity-70")}
+                      className={cn(
+                        "group relative flex min-w-0 flex-col items-center rounded-2xl px-1.5 pb-2 pt-1 text-center transition-all touch-pan-y",
+                        "hover:bg-white/[0.035] focus-within:bg-white/[0.035]",
+                        dragOverFolderId === folder.id && "bg-accent/[0.09] ring-1 ring-accent/55",
+                        touchDraggingKey === `folder:${folder.id}` && "opacity-70",
+                      )}
                     >
                       <LibraryLongPressButton
                         onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }}
                         onLongPress={() => setActionSheetItem({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        className="flex w-full min-w-0 flex-col items-center text-center outline-none"
                       >
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/[0.07]"><Folder className="h-5 w-5 text-accent" /></span>
-                        <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{folder.has_subfolders ? (language === "el" ? "Περιέχει υποφακέλους" : "Contains subfolders") : (language === "el" ? "Φάκελος" : "Folder")}</span></span>{folder.has_subfolders && <ChevronRight className="h-4 w-4 shrink-0 text-accent/70" aria-hidden="true" />}
+                        <span className="relative grid h-[66px] w-[78px] place-items-center rounded-2xl transition-transform duration-150 group-hover:-translate-y-0.5">
+                          <span className="absolute inset-x-2 bottom-1 h-9 rounded-2xl bg-accent/10 blur-xl" aria-hidden="true" />
+                          <Folder className="relative h-[58px] w-[58px] fill-accent/[0.10] text-accent drop-shadow-[0_0_12px_hsl(var(--accent)/0.16)]" strokeWidth={1.55} />
+                          {folder.has_subfolders && (
+                            <span className="absolute bottom-1.5 right-2.5 h-2 w-2 rounded-full border border-background bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.55)]" aria-label={language === "el" ? "Περιέχει υποφακέλους" : "Contains subfolders"} />
+                          )}
+                        </span>
+                        <span
+                          className="mt-1 line-clamp-2 min-h-8 w-full break-words px-0.5 font-display text-[12px] font-semibold leading-4 text-foreground"
+                          title={folder.name}
+                        >
+                          {folder.name}
+                        </span>
                       </LibraryLongPressButton>
-                      <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "folder", id: folder.id, name: folder.name, currentFolderId })} aria-label={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => renameFolder(folder)} aria-label={language === "el" ? "Μετονομασία φακέλου" : "Rename folder"} title={language === "el" ? "Μετονομασία φακέλου" : "Rename folder"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => removeFolder(folder)} aria-label={language === "el" ? "Διαγραφή φακέλου" : "Delete folder"} title={language === "el" ? "Διαγραφή φακέλου" : "Delete folder"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActionSheetItem({ kind: "folder", id: folder.id, name: folder.name, currentFolderId });
+                        }}
+                        aria-label={language === "el" ? `Επιλογές φακέλου ${folder.name}` : `Folder options for ${folder.name}`}
+                        title={language === "el" ? "Επιλογές φακέλου" : "Folder options"}
+                        className="absolute right-0 top-0 grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-black/35 text-muted-foreground opacity-100 backdrop-blur-sm transition-colors hover:border-accent/35 hover:text-accent sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
                     </article>
                   ))}
                 </div>
