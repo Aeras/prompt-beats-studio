@@ -973,7 +973,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
 
               {items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}
             </section>;
-          })()}
+          })() : null}
         </div>
       )}
 
