@@ -145,10 +145,9 @@ export const getPublicTrackById = createServerFn({ method: "GET" })
     const { data: track } = await (supabaseAdmin.from("tracks") as any)
       .select(TRACK_COLUMNS)
       .eq("id", data.id)
+      .eq("moderation_status", "active")
       .maybeSingle();
-    if (!track || track.moderation_status !== "active") {
-      return { track: null, artist: null, unavailableReason: "not_found" as const };
-    }
+    if (!track) return { track: null, artist: null, unavailableReason: "not_found" as const };
     if (!track.is_published && track.user_id !== viewerId) {
       return { track: null, artist: null, unavailableReason: "private" as const, privateTitle: track.title as string };
     }
