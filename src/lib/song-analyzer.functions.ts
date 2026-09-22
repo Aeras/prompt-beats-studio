@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { requireAuxiliaryAiAdmission } from "@/lib/ai-admission.server";
 import { recordAiUsage } from "@/lib/ai-usage.server";
 import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
@@ -1019,6 +1020,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => analyzeInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAnalyzerAccess(context);
+    await requireAuxiliaryAiAdmission(context.supabase, "song_analyzer");
 
     const bytes = Buffer.from(data.audioBase64, "base64");
     if (!bytes.length || bytes.byteLength > SONG_ANALYZER_MAX_FILE_BYTES) {
