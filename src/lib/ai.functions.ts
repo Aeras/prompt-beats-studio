@@ -1632,6 +1632,8 @@ Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
 function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
+  const tagsLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Suno Style Prompt";
+
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
 
 Begin by reading the LYRICS line by line as a professional native songwriter and lyric editor. Identify every material lyric defect first. Judge each line by its exact wording as a native songwriter would, not by whether the listener can infer the intended meaning from context; a lyric defect remains a defect even when its meaning is guessable. Only after the lyrics review is complete should you consider Title, Music Style, Producer's Note and optional creative/vocal/production suggestions. A song MUST NOT receive "passed": true AND "score": 10 while any clear material lyric defect remains.
