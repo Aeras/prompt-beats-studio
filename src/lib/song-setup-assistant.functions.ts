@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { requireAuxiliaryAiAdmission } from "@/lib/ai-admission.server";
 import {
   ADVANCED_MOODS,
   ADVANCED_MUSIC_STYLES,
@@ -99,6 +100,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
+    await requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant");
 
     const musicStyles = values(ADVANCED_MUSIC_STYLES);
     const moods = values(ADVANCED_MOODS);
