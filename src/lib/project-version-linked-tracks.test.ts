@@ -130,12 +130,29 @@ describe("linked audio results per Project version", () => {
     expect(ui).not.toContain('type="file"');
   });
 
-  test("mobile selector respects the shared bottom-navigation safe boundary", async () => {
+  test("Track selector is portaled and anchored to the pressed action without leaving the viewport", async () => {
     const ui = await source("src/components/promptbeats/ProjectVersionLinkedTracks.tsx");
+    const shell = await source("src/components/promptbeats/AppShell.tsx");
 
-    expect(ui).toContain('data-pb-bottom-safe="true"');
-    expect(ui).toContain("max-h-[calc(100dvh-var(--pb-mobile-nav-offset)-0.5rem)]");
+    expect(ui).toContain("createPortal");
+    expect(ui).toContain("getBoundingClientRect()");
+    expect(ui).toContain("SelectorAnchor");
+    expect(ui).toContain('[data-pb-mobile-nav="true"]');
+    expect(ui).toContain("availableBelow");
+    expect(ui).toContain("availableAbove");
+    expect(ui).toContain("openBelow");
+    expect(shell).toContain('data-pb-mobile-nav="true"');
     expect(ui).toContain("overflow-y-auto");
+  });
+
+  test("Link Track action uses the shared pressed-state visual feedback utility", async () => {
+    const ui = await source("src/components/promptbeats/ProjectVersionLinkedTracks.tsx");
+    const styles = await source("src/styles.css");
+
+    expect(ui).toContain("pb-action-press");
+    expect(styles).toContain("@utility pb-action-press");
+    expect(styles).toContain("transform: scale(0.96)");
+    expect(styles).toContain("box-shadow:");
   });
 
   test("compact player reuses the global player and disables public play analytics for Project reference listening", async () => {
