@@ -90,10 +90,19 @@ export const listContentReports = createServerFn({ method: "POST" })
     scope: z.enum(["open","under_review","resolved","all"]).default("open"),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await (context.supabase as any).rpc("list_content_reports", {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const request = (supabaseAdmin as any).rpc("list_content_reports_for_staff", {
+      _actor_id: context.userId,
       _scope: data.scope,
     });
-    if (error) throw new Error(error.message);
+    const result = await Promise.race([
+      request,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Report queue request timed out.")), 15_000),
+      ),
+    ]);
+    if (result.error) throw new Error(result.error.message);
+    const rows = result.data;
     return (Array.isArray(rows) ? rows : []) as ContentReport[];
   });
 
@@ -101,11 +110,19 @@ export const getContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ reportId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await (context.supabase as any).rpc("get_content_report", {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const request = (supabaseAdmin as any).rpc("get_content_report_for_staff", {
+      _actor_id: context.userId,
       _report_id: data.reportId,
     });
-    if (error) throw new Error(error.message);
-    return row as ContentReport;
+    const result = await Promise.race([
+      request,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Report detail request timed out.")), 15_000),
+      ),
+    ]);
+    if (result.error) throw new Error(result.error.message);
+    return result.data as ContentReport;
   });
 
 export const reviewContentReport = createServerFn({ method: "POST" })
