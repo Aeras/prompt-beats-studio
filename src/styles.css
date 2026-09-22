@@ -66,6 +66,8 @@
   --gradient-neon: linear-gradient(135deg, var(--neon), var(--electric));
   --glow-neon: 0 0 24px color-mix(in oklab, var(--neon) 45%, transparent);
   --glow-electric: 0 0 24px color-mix(in oklab, var(--electric) 40%, transparent);
+  --pb-mobile-nav-content-height: 54px;
+  --pb-mobile-nav-offset: calc(var(--pb-mobile-nav-content-height) + env(safe-area-inset-bottom));
 }
 
 @layer base {
@@ -172,3 +174,19 @@ iframe[src*="lovable" i] {
   pointer-events: none !important;
 }
 
+
+
+/* Mobile bottom-navigation contract: bottom sheets and drawers marked with
+   data-pb-bottom-safe always stop above the persistent mobile nav. */
+@media (max-width: 639px) {
+  [data-pb-bottom-safe="true"] {
+    bottom: var(--pb-mobile-nav-offset) !important;
+    max-height: calc(100dvh - var(--pb-mobile-nav-offset)) !important;
+  }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --pb-mobile-nav-offset: 0px;
+  }
+}
