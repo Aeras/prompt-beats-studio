@@ -16,9 +16,9 @@ ALTER TABLE public.notifications
 ALTER TABLE public.notifications
   ADD CONSTRAINT notifications_shape_check
   CHECK (
-    (type='new_track' AND track_id IS NOT NULL AND report_id IS NULL)
+    (type='new_track' AND report_id IS NULL)
     OR (type='new_follower' AND track_id IS NULL AND report_id IS NULL)
-    OR (type='new_report' AND track_id IS NULL AND report_id IS NOT NULL)
+    OR (type='new_report' AND track_id IS NULL)
   );
 
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_new_report_once_idx
