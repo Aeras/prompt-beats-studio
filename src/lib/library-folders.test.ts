@@ -261,14 +261,15 @@ describe("Library folders foundation", () => {
     expect(library).toContain("Περιέχει υποφακέλους");
   });
 
-  test("folder actions keep explicit accessible labels and touch-sized targets", async () => {
+  test("folder icon grid stays compact while keeping accessible explicit actions", async () => {
     const library = await source("src/routes/library.tsx");
     const sheet = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
 
-    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"}');
-    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση Project σε φάκελο" : "Move Project to folder"}');
-    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση Prompt σε φάκελο" : "Move Prompt to folder"}');
-    expect(library).toContain("min-h-10 min-w-10");
+    expect(library).toContain("grid-cols-[repeat(auto-fill,minmax(84px,104px))]");
+    expect(library).toContain("h-[58px] w-[58px]");
+    expect(library).toContain("line-clamp-2");
+    expect(library).toContain("Folder options for");
+    expect(library).toContain("MoreHorizontal");
     expect(sheet).toContain('role="dialog"');
     expect(sheet).toContain('aria-modal="true"');
   });
