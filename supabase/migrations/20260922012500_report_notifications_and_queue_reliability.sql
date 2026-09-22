@@ -139,7 +139,6 @@ JOIN public.user_roles ur
   ON ur.moderation_status::text='active'
  AND public.app_role_rank(ur.role::text) >= 2
 WHERE r.status IN ('open','under_review')
-  AND public.can_use_feature(ur.user_id,'notifications')
 ON CONFLICT (event_key) DO NOTHING;
 
 -- Report notifications are operational moderation events. Active moderation
