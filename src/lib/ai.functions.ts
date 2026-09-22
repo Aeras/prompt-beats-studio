@@ -117,17 +117,22 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
-function buildSongBlueprintPrompt(
+export function buildSongBlueprintPrompt(
   blueprintInput: z.infer<typeof songBlueprintSchema>,
   promptLabel: string,
 ) {
   const blueprint = activeSongBlueprint(blueprintInput);
   if (!blueprint.length) return "";
   const items = blueprint
-    .map(
-      (item) =>
-        `- Structure position ${item.structureIndex + 1}: ${item.sectionType} #${item.occurrence} — ${item.instruction.trim()}`,
-    )
+    .map((item) => {
+      const details = [
+        item.energy != null ? `Energy target: ${item.energy}/5` : "",
+        item.instruction.trim()
+          ? `Direction: ${item.instruction.trim()}`
+          : "",
+      ].filter(Boolean);
+      return `- Structure position ${item.structureIndex + 1}: ${item.sectionType} #${item.occurrence} — ${details.join(" — ")}`;
+    })
     .join("\n");
 
   return `
@@ -138,8 +143,10 @@ The user supplied natural-language production/arrangement direction for specific
 ${items}
 
 BLUEPRINT EXECUTION RULES
-- Treat every listed instruction as authoritative for that exact section occurrence only.
-- Repeated sections remain independent. Do NOT copy one occurrence\'s direction to another occurrence unless that other occurrence is also explicitly listed with the same instruction.
+- Treat every listed instruction and energy target as authoritative for that exact section occurrence only.
+- Energy is a relative creative intensity / dynamics target from 1 (very low) to 5 (peak). It is NOT a BPM value, loudness measurement, mastering target or objective score.
+- Realize energy through musically appropriate dynamics, density, instrumentation, vocal intensity, rhythmic drive, register, layering and production contrast while preserving the requested genre and song coherence.
+- Repeated sections remain independent. Do NOT copy one occurrence\'s direction or energy target to another occurrence unless that other occurrence is also explicitly listed with the same value.
 - Translate each natural-language Blueprint instruction into one or, only when genuinely necessary, two concise square-bracketed production/performance directions inside that exact lyric section.
 - Put the direction immediately after the matching structural header or at the most musically appropriate point inside that section.
 - Blueprint instructions are production/performance direction, never sung lyric content.

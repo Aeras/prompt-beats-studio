@@ -207,6 +207,7 @@ export const el: Record<TranslationKey, string> = {
   "generator.blueprint.appliedAllChorus": "Εφαρμόστηκε σε όλα τα Chorus",
   "generator.blueprint.clearSection": "Καθαρισμός",
   "generator.arrangement.title": "Visual Arrangement",
+  "generator.arrangement.advanced": "Advanced",
   "generator.arrangement.hint": "Ρύθμισε τη σειρά των ενοτήτων, τις οδηγίες Blueprint και την ενέργεια. Σύρε τις ενότητες στο desktop ή χρησιμοποίησε Μετακίνηση πάνω / κάτω.",
   "generator.arrangement.add": "Προσθήκη ενότητας",
   "generator.arrangement.empty": "Πρόσθεσε μια ενότητα για να ξεκινήσεις το arrangement.",

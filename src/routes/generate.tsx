@@ -79,6 +79,7 @@ import {
   type SongBlueprintSection,
 } from "@/lib/song-blueprint.shared";
 import {
+  appendArrangementSection,
   arrangementToSongBlueprint,
   arrangementToSongStructure,
   normalizeSongArrangement,
@@ -560,6 +561,8 @@ function GeneratePage() {
   const [showStyleTags, setShowStyleTags] = useState(false);
   const [showMoodTags, setShowMoodTags] = useState(false);
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
+  const [showStructureTags, setShowStructureTags] = useState(false);
+  const [showArrangementAdvanced, setShowArrangementAdvanced] = useState(false);
   const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
   const [production, setProduction] = useState("");
@@ -965,6 +968,10 @@ function GeneratePage() {
     setStructure([]);
     setSongBlueprint([]);
   };
+  const addSimpleStructureSection = (sectionType: string) => {
+    commitArrangement(appendArrangementSection(arrangement, sectionType));
+  };
+
 
   const applySmartPreset = (preset: SmartPreset) => {
     const resolved = resolveSmartPreset(preset, presetCulturalStyleId);
@@ -1196,7 +1203,7 @@ function GeneratePage() {
       catch { setClearError(t("generator.dismissFailed")); return; }
       finally { setClearing(false); }
     }
-    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
+    setTheme(""); setGenres([]); setCustomGenre(""); setMoods([]); setCustomMood(""); setLanguage(""); setLanguageVariant(""); setCustomLanguage(""); setInstruments([]); setCustomInstruments(""); setStructure([]); setSongBlueprint([]); setShowStyleTags(false); setShowMoodTags(false); setShowInstrumentTags(false); setShowStructureTags(false); setShowArrangementAdvanced(false); setActiveSmartPresetId(""); setPresetCulturalStyleId(""); setProduction(""); setInstructions(""); setBpm("Auto"); setCustomBpm(""); setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM); setResult(null); setGenerationId(null); setGenerationResultModel(null); setQuality(null); setQualityCheckResultModel(null); setSongContext(null); setJobId(null); rememberJob(null); pendingKey.current = null; setQualityActionId(null); rememberQualityJob(null); pendingQualityKey.current = null; setBusy(false); setChecking(false); setCheckError(null); setStatus(null); setSaved(false); setApplied({}); setApplyErrors({}); setConfirm(null); setConfirmClear(false); setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
@@ -1535,24 +1542,87 @@ function GeneratePage() {
                 {bpm === "Custom" && <div><FieldLabel>{t("generator.customBpm")}</FieldLabel><input type="number" min={40} max={260} value={customBpm} onChange={(e) => setCustomBpm(e.target.value)} placeholder={t("generator.customBpmPlaceholder")} aria-label={t("generator.customBpm")} className={fieldClass} /></div>}
               </div>
               <div>
-                <SectionHeader
-                  title={t("generator.songStructure")}
-                  hint={t("generator.structureHint")}
-                  onClear={clearStructure}
-                />
-                <VisualSongArrangement
-                  sections={arrangement}
-                  availableSectionTypes={STRUCTURE_TAGS}
-                  labelForSection={structureLabel}
-                  onChange={commitArrangement}
-                  advancedView={
-                    <SongBlueprintEditor
-                      sections={arrangement}
-                      onChange={commitArrangement}
-                      labelForSection={structureLabel}
-                    />
-                  }
-                />
+                <div className="mb-2 flex items-center gap-2 rounded-md border border-white/5 border-l-2 border-l-accent bg-white/[0.02] px-2.5 py-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowStructureTags((value) => !value)}
+                    aria-expanded={showStructureTags}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-accent transition-transform ${showStructureTags ? "" : "-rotate-90"}`} />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/90">
+                      {t("generator.songStructure")}
+                    </span>
+                    <span className="hidden truncate text-[10px] text-muted-foreground sm:inline">
+                      · {t("generator.structureHint")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArrangementAdvanced((value) => !value)}
+                    aria-expanded={showArrangementAdvanced}
+                    className={showArrangementAdvanced || arrangement.some((section) => section.instruction.trim() || section.energy != null)
+                      ? "shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold text-accent transition-colors hover:bg-accent/10"
+                      : "shrink-0 rounded px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent"}
+                  >
+                    {t("generator.arrangement.advanced")}
+                  </button>
+                  {structure.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearStructure}
+                      aria-label={`${t("generator.clear")} ${t("generator.songStructure")}`}
+                      title={`${t("generator.clear")} ${t("generator.songStructure")}`}
+                      className="shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-red-300"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {showStructureTags && (
+                  <div className="mb-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div role="group" aria-label={t("generator.songStructure")} className="flex flex-wrap gap-2">
+                      {STRUCTURE_TAGS.map((sectionType) => (
+                        <button
+                          key={sectionType}
+                          type="button"
+                          onClick={() => addSimpleStructureSection(sectionType)}
+                          disabled={structure.length >= 40}
+                          className="rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-35"
+                        >
+                          {structureLabel(sectionType)}
+                        </button>
+                      ))}
+                    </div>
+                    {arrangement.length > 0 && (
+                      <p className="text-[10px] leading-5 text-muted-foreground">
+                        {arrangement.map((section) => {
+                          const count = arrangement.filter((item) => item.sectionType === section.sectionType).length;
+                          return count > 1
+                            ? `${structureLabel(section.sectionType)} ${section.occurrence}`
+                            : structureLabel(section.sectionType);
+                        }).join(" → ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {showArrangementAdvanced && (
+                  <VisualSongArrangement
+                    sections={arrangement}
+                    availableSectionTypes={STRUCTURE_TAGS}
+                    labelForSection={structureLabel}
+                    onChange={commitArrangement}
+                    advancedView={
+                      <SongBlueprintEditor
+                        sections={arrangement}
+                        onChange={commitArrangement}
+                        labelForSection={structureLabel}
+                      />
+                    }
+                  />
+                )}
               </div>
               <div><SectionHeader title={t("generator.productionStyle")} hint={t("common.optional")} onClear={() => setProduction("")} /><textarea value={production} onChange={(e) => setProduction(e.target.value)} rows={3} placeholder={t("generator.productionPlaceholder")} aria-label={t("generator.productionStyle")} className={fieldClass + " h-auto resize-y py-3"} /></div>
               <div><SectionHeader title={t("generator.additionalInstructions")} hint={t("common.optional")} onClear={() => setInstructions("")} /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={t("generator.additionalInstructionsPlaceholder")} aria-label={t("generator.additionalInstructions")} className={fieldClass + " h-auto resize-y py-3"} /></div>

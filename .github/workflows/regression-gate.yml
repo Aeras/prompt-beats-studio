@@ -40,6 +40,9 @@ jobs:
       - name: Song Arrangement UI tests
         run: bun test src/lib/song-arrangement-ui.test.ts
 
+      - name: Song Arrangement prompt tests
+        run: bun test src/lib/song-arrangement-prompt.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 

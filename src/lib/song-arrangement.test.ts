@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { generatorInputSnapshotSchema } from "./generator-revision.shared";
-import { buildSongBlueprint, songBlueprintSchema } from "./song-blueprint.shared";
+import { diffGeneratorSnapshots, generatorInputSnapshotSchema } from "./generator-revision.shared";
+import { activeSongBlueprint, buildSongBlueprint, songBlueprintSchema } from "./song-blueprint.shared";
 import {
   applyEnergyToAllRegularChoruses,
   applyInstructionToAllRegularChoruses,
@@ -194,6 +194,29 @@ describe("Song Arrangement data foundation", () => {
     expect(next[3]!.energy).toBeNull();
   });
 
+  test("energy-only sections are active Blueprint input", () => {
+    const parsed = songBlueprintSchema.parse([
+      {
+        sectionId: "intro-a",
+        structureIndex: 0,
+        sectionType: "Intro",
+        occurrence: 1,
+        instruction: "",
+        energy: 2,
+      },
+      {
+        sectionId: "verse-a",
+        structureIndex: 1,
+        sectionType: "Verse",
+        occurrence: 1,
+        instruction: "",
+        energy: null,
+      },
+    ]);
+
+    expect(activeSongBlueprint(parsed).map((section) => section.sectionId)).toEqual(["intro-a"]);
+  });
+
   test("serialized arrangement round-trip preserves stable IDs and energy", () => {
     let arrangement = normalizeSongArrangement(
       ["Intro", "Chorus"],
@@ -255,6 +278,39 @@ describe("Song Arrangement data foundation", () => {
     expect(parsed.songBlueprint[0]?.sectionId).toBeUndefined();
     expect(parsed.songBlueprint[0]?.energy).toBeUndefined();
     expect(parsed.songStructure).toEqual(["Verse", "Chorus"]);
+  });
+
+  test("revision diff detects arrangement energy changes in songBlueprint", () => {
+    const base = generatorInputSnapshotSchema.parse({
+      generatorMode: "advanced",
+      songStructure: ["Verse", "Chorus"],
+      songBlueprint: [
+        {
+          sectionId: "verse-a",
+          structureIndex: 0,
+          sectionType: "Verse",
+          occurrence: 1,
+          instruction: "",
+          energy: 2,
+        },
+        {
+          sectionId: "chorus-a",
+          structureIndex: 1,
+          sectionType: "Chorus",
+          occurrence: 1,
+          instruction: "wide",
+          energy: 4,
+        },
+      ],
+    });
+    const desired = generatorInputSnapshotSchema.parse({
+      ...base,
+      songBlueprint: base.songBlueprint.map((section) =>
+        section.sectionId === "chorus-a" ? { ...section, energy: 5 } : section,
+      ),
+    });
+
+    expect(diffGeneratorSnapshots(base, desired)).toContain("songBlueprint");
   });
 
   test("new GeneratorInputSnapshot accepts persisted section IDs and energy without a DB migration", () => {

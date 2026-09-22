@@ -102,5 +102,7 @@ export function applyInstructionToAllRegularChoruses(
 export function activeSongBlueprint(
   blueprint: SongBlueprintSection[],
 ): SongBlueprintSection[] {
-  return blueprint.filter((item) => item.instruction.trim().length > 0);
+  return blueprint.filter(
+    (item) => item.instruction.trim().length > 0 || item.energy != null,
+  );
 }

@@ -35,6 +35,17 @@ describe("Visual Arrangement Batch 3 UI", () => {
     expect(timeline).toContain('role="img"');
   });
 
+  test("Song Structure keeps simple section tags separate from the Advanced arrangement", async () => {
+    const generate = await source("src/routes/generate.tsx");
+
+    expect(generate).toContain("showStructureTags");
+    expect(generate).toContain("showArrangementAdvanced");
+    expect(generate).toContain("addSimpleStructureSection");
+    expect(generate).toContain('generator.arrangement.advanced');
+    expect(generate).toContain("setShowStructureTags((value) => !value)");
+    expect(generate).toContain("setShowArrangementAdvanced((value) => !value)");
+  });
+
   test("mobile section editor keeps explicit Move Up and Move Down controls", async () => {
     const editor = await source("src/components/promptbeats/ArrangementSectionEditor.tsx");
 
