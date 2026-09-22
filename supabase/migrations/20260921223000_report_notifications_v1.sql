@@ -18,7 +18,7 @@ ALTER TABLE public.notifications
   CHECK (
     (type='new_track' AND track_id IS NOT NULL AND report_id IS NULL)
     OR (type='new_follower' AND track_id IS NULL AND report_id IS NULL)
-    OR (type='new_report' AND report_id IS NOT NULL)
+    OR (type='new_report' AND track_id IS NULL AND report_id IS NOT NULL)
   );
 
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_new_report_once_idx
@@ -46,8 +46,11 @@ BEGIN
     NEW.id,
     'new_report:' || NEW.id::text || ':' || ur.user_id::text
   FROM public.user_roles ur
+  JOIN public.profiles p ON p.id=ur.user_id
+  LEFT JOIN public.profile_private pp ON pp.user_id=ur.user_id
   WHERE ur.moderation_status::text='active'
     AND public.app_role_rank(ur.role::text) >= 2
+    AND COALESCE(pp.is_banned,false)=false
     AND public.can_use_feature(ur.user_id,'notifications')
   ON CONFLICT DO NOTHING;
 
@@ -80,7 +83,10 @@ FROM public.content_reports r
 JOIN public.user_roles ur
   ON ur.moderation_status::text='active'
  AND public.app_role_rank(ur.role::text) >= 2
+JOIN public.profiles p ON p.id=ur.user_id
+LEFT JOIN public.profile_private pp ON pp.user_id=ur.user_id
 WHERE r.status IN ('open','under_review')
+  AND COALESCE(pp.is_banned,false)=false
   AND public.can_use_feature(ur.user_id,'notifications')
 ON CONFLICT DO NOTHING;
 
