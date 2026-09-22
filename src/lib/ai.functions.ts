@@ -2415,6 +2415,28 @@ export const setPreferredProjectVersion = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    leftId: z.string().uuid(),
+    rightId: z.string().uuid(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.leftId === data.rightId) throw new Error("Select two different versions.");
+
+    const { data: project, error: projectError } = await context.supabase
+      .from("prompt_projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found.");
+
+    return { projectId: data.projectId, leftId: data.leftId, rightId: data.rightId };
+  });
+
 export const getPromptRevisionBase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({
