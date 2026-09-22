@@ -57,7 +57,7 @@ function ReportDetail({
   });
 
   const content = (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-6">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[110] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6">
       <div role="dialog" aria-modal="true" aria-labelledby="report-detail-title" className="glass-strong max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <header className="flex items-start justify-between gap-4">
           <div>
