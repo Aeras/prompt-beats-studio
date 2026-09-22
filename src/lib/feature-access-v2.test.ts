@@ -190,7 +190,7 @@ describe("Feature Access V2 — 15 features", () => {
     expect(tracks).toContain("listMyTracks");
   });
 
-  test("Sharing gates creation/update/analytics but preserves existing resolution and revocation", async () => {
+  test("Sharing gates management, creation, update, analytics and revocation while preserving public token resolution", async () => {
     const sql = await source(mutationMigration);
     expect(functionBlock(sql, "create_track_share_link")).toContain("sharing_public_links");
     expect(functionBlock(sql, "update_track_share_link")).toContain("sharing_public_links");
@@ -198,18 +198,18 @@ describe("Feature Access V2 — 15 features", () => {
     expect(sql).not.toContain("CREATE OR REPLACE FUNCTION public.revoke_track_share_link");
 
     const server = await source("src/lib/track-sharing.functions.ts");
-    expect(server).toContain('requireFeatureAccess(context.supabase, "sharing_public_links")');
-    const revokeAt = server.indexOf("export const revokeTrackShareLink");
-    const nextExport = server.indexOf("export const", revokeAt + 20);
-    const revokeBlock = server.slice(revokeAt, nextExport === -1 ? server.length : nextExport);
-    expect(revokeBlock).not.toContain("requireFeatureAccess");
+    for (const name of ["listMyShareManagement", "revokeTrackShareLink"]) {
+      const start = server.indexOf(`export const ${name}`);
+      const next = server.indexOf("export const", start + 20);
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "sharing_public_links")');
+    }
 
     const management = await source("src/components/promptbeats/SharedLinksPanel.tsx");
-    expect(management).toContain("revokeTrackShareLink");
-    expect(management).toContain("sharingAccess.allowed");
+    expect(management).toContain("enabled: sharingAccess.allowed");
+    expect(management).toContain("if (!sharingAccess.allowed) return null");
   });
 
-  test("Playlists mutations are gated while list/get reads stay available", async () => {
+  test("Playlists reads and mutations are gated and the dependent Library surface does not query when unavailable", async () => {
     const server = await source("src/lib/playlists.functions.ts");
     for (const name of ["createPlaylist","updatePlaylist","deletePlaylist","addTrackToPlaylist","removeTrackFromPlaylist","reorderPlaylistTracks"]) {
       const start = server.indexOf(`export const ${name}`);
@@ -219,36 +219,42 @@ describe("Feature Access V2 — 15 features", () => {
     for (const name of ["listPlaylists","getPlaylist"]) {
       const start = server.indexOf(`export const ${name}`);
       const next = server.indexOf("export const", start + 20);
-      expect(server.slice(start, next === -1 ? server.length : next)).not.toContain('requireFeatureAccess(context.supabase, "playlists")');
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "playlists")');
     }
     const ui = await source("src/components/promptbeats/PlaylistLibraryPanel.tsx");
     expect(ui).toContain('useFeatureAccess("playlists")');
-    expect(ui).toContain("canManage");
+    expect(ui).toContain("enabled: featureAccess.allowed");
+    expect(ui).toContain("if (!featureAccess.allowed) return null");
   });
 
-  test("Favorites mutations are gated while existing favorite reads stay available", async () => {
+  test("Favorites reads and mutations are gated while stored rows are preserved", async () => {
     const server = await source("src/lib/playlists.functions.ts");
     const toggleStart = server.indexOf("export const toggleFavorite");
     const toggleEnd = server.indexOf("export const", toggleStart + 20);
     expect(server.slice(toggleStart, toggleEnd)).toContain('requireFeatureAccess(context.supabase, "favorites")');
 
-    const readStart = server.indexOf("export const listFavoriteTrackIds");
-    const readEnd = server.indexOf("export const", readStart + 20);
-    expect(server.slice(readStart, readEnd)).not.toContain('requireFeatureAccess(context.supabase, "favorites")');
+    for (const name of ["listFavoriteTrackIds", "listFavoriteTracks"]) {
+      const readStart = server.indexOf(`export const ${name}`);
+      const readEnd = server.indexOf("export const", readStart + 20);
+      expect(server.slice(readStart, readEnd === -1 ? server.length : readEnd)).toContain('requireFeatureAccess(context.supabase, "favorites")');
+    }
 
     const sql = await source(mutationMigration);
     expect(sql).toContain("current_user_can_use_feature('favorites')");
-    expect(sql).not.toContain('DROP POLICY IF EXISTS "Users can view their own favorites"');
   });
 
-  test("Likes mutations are gated while historical count display remains available", async () => {
+  test("Likes actions and liked-track Library reads disappear when unavailable while stored rows are preserved", async () => {
     const sql = await source(mutationMigration);
     expect(sql).toContain("current_user_can_use_feature('likes')");
     expect(sql).not.toContain("DELETE FROM public.likes");
     const button = await source("src/components/promptbeats/LikeButton.tsx");
     expect(button).toContain('useFeatureAccess("likes")');
-    expect(button).toContain("!featureAccess.allowed");
-    expect(button).toContain("count > 0");
+    expect(button).toContain("if (!featureAccess.allowed) return null");
+    expect(button).toContain("enabled && featureAccess.allowed");
+
+    const tracks = await source("src/lib/tracks.functions.ts");
+    const likedStart = tracks.indexOf("export const listLikedTracks");
+    expect(tracks.slice(likedStart)).toContain('requireFeatureAccess(context.supabase, "likes")');
   });
 
   test("new mutations do not delete historical user data or auto-revoke share links", async () => {
@@ -257,6 +263,41 @@ describe("Feature Access V2 — 15 features", () => {
       expect(sql).not.toMatch(new RegExp(`DELETE FROM public\\.${table}\\b`, "i"));
     }
     expect(sql).not.toContain("revoked_at=now()");
+  });
+
+  test("Library feature-owned tabs, Analyzer results and prompt actions follow effective Feature Access with safe fallback", async () => {
+    const library = await source("src/routes/library.tsx");
+    for (const key of ["playlists", "sharing_public_links", "favorites", "likes", "song_analyzer"]) {
+      expect(library).toContain(`useFeatureAccess("${key}")`);
+    }
+    expect(library).toContain("availableTabs");
+    expect(library).toContain('if (!availableTabs.includes(tab)) setTab("tracks")');
+    expect(library).toContain('promptView === "analyses" && !analyzerAccess.allowed');
+    expect(library).toContain("enabled: Boolean(user && analyzerAccess.allowed)");
+    expect(library).toContain("enabled: Boolean(user && likesAccess.allowed)");
+    expect(library).toContain("enabled: Boolean(user && favoritesAccess.allowed)");
+    expect(library).toContain("showAnalyses={analyzerAccess.allowed}");
+    expect(library).toContain('lyricsWorkspaceAccess.allowed');
+    expect(library).toContain('generatorAccess.allowed');
+
+    const analyzer = await source("src/lib/song-analyzer.functions.ts");
+    for (const name of ["listSongAnalyses", "updateSongAnalysisOrganization", "deleteSongAnalysis"]) {
+      const start = analyzer.indexOf(`export const ${name}`);
+      const next = analyzer.indexOf("export const", start + 20);
+      expect(analyzer.slice(start, next === -1 ? analyzer.length : next)).toContain('requireFeatureAccess(context.supabase, "song_analyzer")');
+    }
+  });
+
+  test("Feature-owned navigation entries disappear when the main feature is unavailable", async () => {
+    const sidebar = await source("src/components/promptbeats/Sidebar.tsx");
+    expect(sidebar).toContain('useFeatureAccess("ai_generator")');
+    expect(sidebar).toContain('item.id !== "studio" || generatorAccess.allowed');
+    expect(sidebar).toContain('item.id !== "musicLab" || musicLabAccess.allowed');
+    expect(sidebar).toContain('item.id !== "songAnalyzer" || analyzerAccess.allowed');
+
+    const shell = await source("src/components/promptbeats/AppShell.tsx");
+    expect(shell).toContain('useFeatureAccess("ai_generator")');
+    expect(shell).toContain('tab.id !== "studio" || generatorAccess.allowed');
   });
 
   test("existing four feature integrations remain present", async () => {
