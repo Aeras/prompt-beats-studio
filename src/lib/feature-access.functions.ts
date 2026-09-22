@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const FEATURE_KEYS = ["ai_generator", "quality_check", "ai_music_lab", "song_analyzer", "lyrics_workspace", "smart_presets", "export_center", "track_uploads", "sharing_public_links", "playlists", "favorites", "likes", "follow_creators", "notifications"] as const;
+export const FEATURE_KEYS = ["ai_generator", "quality_check", "ai_music_lab", "song_analyzer", "lyrics_workspace", "smart_presets", "song_setup_assistant", "export_center", "track_uploads", "sharing_public_links", "playlists", "favorites", "likes", "follow_creators", "notifications"] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type FeatureAccessMode = "disabled" | "admins_only" | "selected_users" | "everyone";
 
