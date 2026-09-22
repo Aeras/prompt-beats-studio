@@ -103,8 +103,10 @@ export const listContentReports = createServerFn({ method: "POST" })
     scope: z.enum(["open","under_review","resolved","all"]).default("open"),
   }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await withReportRpcTimeout((signal) =>
-      (context.supabase as any).rpc("list_content_reports", {
+      (supabaseAdmin as any).rpc("list_content_reports_for_actor", {
+        _actor: context.userId,
         _scope: data.scope,
       }).abortSignal(signal),
     );
@@ -116,8 +118,10 @@ export const getContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ reportId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await withReportRpcTimeout((signal) =>
-      (context.supabase as any).rpc("get_content_report", {
+      (supabaseAdmin as any).rpc("get_content_report_for_actor", {
+        _actor: context.userId,
         _report_id: data.reportId,
       }).abortSignal(signal),
     );
