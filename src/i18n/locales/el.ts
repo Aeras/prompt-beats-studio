@@ -158,6 +158,7 @@ export const el: Record<TranslationKey, string> = {
   "lyricsWorkspace.unsavedConfirm": "Υπάρχουν μη αποθηκευμένες αλλαγές στίχων. Θέλεις να φύγεις και να τις απορρίψεις;",
   "lyricsWorkspace.rateLimited": "Έφτασες το όριο χρήσης AI. Δοκίμασε ξανά αργότερα.",
   "lyricsWorkspace.otherJobActive": "Υπάρχει ήδη άλλη ενέργεια AI σε εξέλιξη. Περίμενε να ολοκληρωθεί.",
+  "lyricsWorkspace.languageRequired": "Αυτή η αποθηκευμένη έκδοση δεν έχει στοιχεία γλώσσας. Επίλεξε ή επανάφερε τη γλώσσα του τραγουδιού πριν χρησιμοποιήσεις την AI επεξεργασία ενότητας.",
   "lyricsWorkspace.aiFailed": "Η επεξεργασία της ενότητας απέτυχε. Δοκίμασε ξανά.",
   "lyricsWorkspace.aiInvalid": "Το AI επέστρεψε μη έγκυρη επεξεργασία ενότητας.",
   "lyricsWorkspace.sectionChanged": "Η επιλεγμένη ενότητα άλλαξε πριν εφαρμοστεί η πρόταση.",

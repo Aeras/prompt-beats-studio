@@ -12,6 +12,7 @@ import {
 import { saveLyricsWorkspaceVersion } from "@/lib/lyrics-workspace.functions";
 import {
   LYRICS_SECTION_ACTIONS,
+  resolveLyricsWorkspaceLanguage,
   type LyricsSectionAction,
   type LyricsSectionEditOutput,
 } from "@/lib/lyrics-workspace.shared";
@@ -101,6 +102,7 @@ export function LyricsWorkspace({
   const generatorAccess = modelAccess.data?.generator;
   const modelOptions = generatorAccess?.modelOptions ?? [];
   const [model, setModel] = useState(song.generatorInputSnapshot?.generationModel ?? "");
+  const workspaceLanguage = resolveLyricsWorkspaceLanguage(song.language, song.generatorInputSnapshot);
 
   useEffect(() => {
     if (!model && generatorAccess?.defaultModel) setModel(generatorAccess.defaultModel);
@@ -226,6 +228,10 @@ export function LyricsWorkspace({
       setAiError(t("lyricsWorkspace.customRequired"));
       return;
     }
+    if (!workspaceLanguage) {
+      setAiError(t("lyricsWorkspace.languageRequired"));
+      return;
+    }
     setAiError(null);
     setProposal(null);
     try {
@@ -243,7 +249,7 @@ export function LyricsWorkspace({
           theme: song.theme,
           genre: song.genre,
           mood: song.mood,
-          language: song.language,
+          language: workspaceLanguage,
           targetPlatform: song.targetPlatform,
           generatorInputSnapshot: song.generatorInputSnapshot,
           projectId: projectId ?? null,
@@ -388,7 +394,7 @@ export function LyricsWorkspace({
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">{t("lyricsWorkspace.title")}</p>
           <h2 className="mt-1 truncate font-display text-xl font-bold">{song.title || t("library.untitledPrompt")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {[projectName, currentBaseVersion ? `V${currentBaseVersion}` : null, song.language].filter(Boolean).join(" · ")}
+            {[projectName, currentBaseVersion ? `V${currentBaseVersion}` : null, workspaceLanguage].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

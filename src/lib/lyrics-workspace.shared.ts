@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
-import { generatorInputSnapshotSchema } from "@/lib/generator-revision.shared";
+import { generatorInputSnapshotSchema, type GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
+import { CUSTOM_LANGUAGE_VALUE, resolveSongLanguage } from "@/catalog/song-languages";
 
 export const LYRICS_SECTION_ACTIONS = [
   "rewrite",
@@ -16,6 +17,20 @@ export const LYRICS_SECTION_ACTIONS = [
 
 export const lyricsSectionActionSchema = z.enum(LYRICS_SECTION_ACTIONS);
 export type LyricsSectionAction = z.infer<typeof lyricsSectionActionSchema>;
+
+export function resolveLyricsWorkspaceLanguage(
+  storedLanguage: string | null | undefined,
+  snapshot: Pick<GeneratorInputSnapshot, "language" | "languageVariant" | "customLanguage"> | null | undefined,
+): string {
+  const stored = storedLanguage?.trim() ?? "";
+  if (stored) return stored;
+  if (!snapshot) return "";
+
+  const snapshotLanguage = snapshot.language.trim();
+  if (!snapshotLanguage) return "";
+  if (snapshotLanguage === CUSTOM_LANGUAGE_VALUE) return snapshot.customLanguage.trim();
+  return resolveSongLanguage(snapshotLanguage, snapshot.languageVariant).trim();
+}
 
 export const lyricsSectionEditRequestSchema = z.object({
   idempotencyKey: z.string().uuid(),

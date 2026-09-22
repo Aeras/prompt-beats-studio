@@ -156,6 +156,7 @@ export const en = {
   "lyricsWorkspace.unsavedConfirm": "You have unsaved lyric changes. Leave the workspace and discard them?",
   "lyricsWorkspace.rateLimited": "AI usage limit reached. Try again later.",
   "lyricsWorkspace.otherJobActive": "Another AI action is already in progress. Wait for it to finish.",
+  "lyricsWorkspace.languageRequired": "This saved version has no language metadata. Select or restore the song language before using AI section editing.",
   "lyricsWorkspace.aiFailed": "The section edit failed. Please try again.",
   "lyricsWorkspace.aiInvalid": "The AI returned an invalid section edit.",
   "lyricsWorkspace.sectionChanged": "The selected section changed before the proposal was applied.",
