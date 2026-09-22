@@ -46,6 +46,17 @@ describe("Visual Arrangement Batch 3 UI", () => {
     expect(generate).toContain("setShowArrangementAdvanced((value) => !value)");
   });
 
+  test("simple Song Structure shows selected neon chips above choices with ID-safe remove controls", async () => {
+    const generate = await source("src/routes/generate.tsx");
+
+    expect(generate).toContain("removeSimpleStructureSection");
+    expect(generate).toContain("removeArrangementSection(arrangement, sectionId)");
+    expect(generate).toContain('border-accent/50 bg-accent/15');
+    expect(generate).toContain("section.sectionId");
+    expect(generate).toContain('generator.removeStructure');
+    expect(generate).toContain("×");
+  });
+
   test("mobile section editor keeps explicit Move Up and Move Down controls", async () => {
     const editor = await source("src/components/promptbeats/ArrangementSectionEditor.tsx");
 
