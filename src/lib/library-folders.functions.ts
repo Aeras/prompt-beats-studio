@@ -97,7 +97,7 @@ export const listLibraryFolderContents = createServerFn({ method: "POST" })
 
     let promptsQuery = context.supabase
       .from("saved_prompts")
-      .select("id, custom_name, title, folder_id, duplicated_from_prompt_id, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select("id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
       .eq("user_id", context.userId)
       .is("project_id", null)
       .order("updated_at", { ascending: false });
