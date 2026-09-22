@@ -623,7 +623,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                         <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language === "el" ? "Φάκελος" : "Folder"}</span></span>
                       </button>
                       <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => setFolderPicker({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => renameFolder(folder)} title={language === "el" ? "Μετονομασία" : "Rename"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => removeFolder(folder)} title={language === "el" ? "Διαγραφή" : "Delete"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
@@ -643,7 +643,8 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       </button>
                       <div className="flex shrink-0 gap-1">
                         <ExportControl kind="project" id={project.id} name={project.name} />
-                        <button type="button" onClick={() => setFolderPicker({ kind: "project", id: project.id, name: project.name, currentFolderId })} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => startDuplicateProject(project as PromptProject)} title={language === "el" ? "Δημιουργία αντιγράφου Project" : "Duplicate Project"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Copy className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "project", id: project.id, name: project.name, currentFolderId })} title={language === "el" ? "Μετακίνηση σε φάκελο" : "Move to folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
                         <button onClick={() => renameProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => removeProject(project as PromptProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
@@ -661,11 +662,13 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       projects={projects}
                       listMode={promptDisplayMode === "list"}
                       onMoveToFolder={() => setFolderPicker({
+                        operation: "move",
                         kind: "prompt",
                         id: prompt.id,
                         name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
                         currentFolderId,
                       })}
+                      onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
                     />
                   ))}
                 </div>
