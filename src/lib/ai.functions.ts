@@ -2369,12 +2369,28 @@ export const listProjectVersionHistory = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
 
+    const versionIds = (rows ?? []).map((row) => row.id);
+    const linkedCounts = new Map<string, number>();
+    if (versionIds.length > 0) {
+      const { data: links, error: linksError } = await (context.supabase as any)
+        .from("project_version_tracks")
+        .select("version_prompt_id")
+        .eq("project_id", data.projectId)
+        .eq("user_id", context.userId)
+        .in("version_prompt_id", versionIds);
+      if (linksError) throw new Error(linksError.message);
+      for (const link of links ?? []) {
+        linkedCounts.set(link.version_prompt_id, (linkedCounts.get(link.version_prompt_id) ?? 0) + 1);
+      }
+    }
+
     return {
       project,
       versions: (rows ?? []).map((row) => {
         const parsed = versionChangeMetadataSchema.safeParse(row.version_change_metadata);
         return {
           ...row,
+          linked_track_count: linkedCounts.get(row.id) ?? 0,
           version_change_metadata: parsed.success ? parsed.data : null,
         };
       }),
