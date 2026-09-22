@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput } from "lucide-react";
@@ -319,6 +319,17 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   }>(null);
   const [desktopDnD, setDesktopDnD] = useState(false);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "root">(null);
+  const touchDragRef = useRef<null | {
+    item: { kind: "folder" | "project" | "prompt"; id: string; currentFolderId: string | null };
+    pointerId: number;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+    targetFolderId: string | null;
+    targetPath: string;
+  }>(null);
+  const suppressTouchClickRef = useRef(false);
+  const [touchDraggingKey, setTouchDraggingKey] = useState<string | null>(null);
   const [actionSheetItem, setActionSheetItem] = useState<null | {
     kind: "folder" | "project" | "prompt";
     id: string;
@@ -347,19 +358,19 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const folderContents = useQuery({
     queryKey: ["library", "folder-contents", currentFolderId],
     queryFn: () => listLibraryFolderContents({ data: { folderId: currentFolderId } }),
-    enabled: view === "all" && !q,
+    enabled: (view === "all" || view === "projects") && !q && !openProjectId,
   });
 
   const folderBreadcrumbs = useQuery({
     queryKey: ["library", "folder-breadcrumbs", currentFolderId],
     queryFn: () => getLibraryFolderBreadcrumbs({ data: { folderId: currentFolderId! } }),
-    enabled: view === "all" && Boolean(currentFolderId),
+    enabled: (view === "all" || view === "projects") && !openProjectId && Boolean(currentFolderId),
   });
 
   const folderSearch = useQuery({
     queryKey: ["library", "folder-scope-search", currentFolderId, q],
     queryFn: () => searchLibraryScope({ data: { folderId: currentFolderId, query: q } }),
-    enabled: view === "all" && q.length > 0,
+    enabled: (view === "all" || view === "projects") && !openProjectId && q.length > 0,
   });
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
@@ -369,6 +380,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const filteredAnalyses = visibleAnalyses.filter(matchesAnalysis);
   const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || visibleAnalyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
+  const folderSearchResults = (folderSearch.data?.results ?? []).filter((result) => view === "all" || result.item_type !== "prompt");
 
   const refresh = async () => {
     await Promise.all([
@@ -432,7 +444,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     if (!name) return;
     setBusy(true);
     try {
-      await createPromptProject({ data: { name, folderId: view === "all" ? currentFolderId : null } });
+      await createPromptProject({ data: { name, folderId: view === "analyses" ? null : currentFolderId } });
       await refresh();
     } finally {
       setBusy(false);
@@ -457,6 +469,76 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     setUndoMove({ kind, id, previousFolderId });
     flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`, true);
   };
+
+  const touchDragHandlers = (item: { kind: "folder" | "project" | "prompt"; id: string; currentFolderId: string | null }) => ({
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      if (event.pointerType === "mouse" || busy) return;
+      touchDragRef.current = {
+        item,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        dragging: false,
+        targetFolderId: item.currentFolderId,
+        targetPath: "",
+      };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+      const state = touchDragRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      if (!state.dragging && Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > 12) {
+        state.dragging = true;
+        suppressTouchClickRef.current = true;
+        setTouchDraggingKey(`${item.kind}:${item.id}`);
+      }
+      if (!state.dragging) return;
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-library-folder-drop-id]");
+      if (!target) {
+        state.targetFolderId = item.currentFolderId;
+        state.targetPath = "";
+        setDragOverFolderId(null);
+        return;
+      }
+      const rawId = target.dataset.libraryFolderDropId ?? "";
+      const targetFolderId = rawId === "root" ? null : rawId || item.currentFolderId;
+      state.targetFolderId = targetFolderId;
+      state.targetPath = target.dataset.libraryFolderDropPath || (rawId === "root" ? (language === "el" ? "Αρχική" : "Root") : "");
+      setDragOverFolderId(rawId === "root" ? "root" : targetFolderId);
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+      const state = touchDragRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      touchDragRef.current = null;
+      setTouchDraggingKey(null);
+      setDragOverFolderId(null);
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+      if (!state.dragging) return;
+      const destinationChanged = state.targetFolderId !== state.item.currentFolderId;
+      const invalidSelfTarget = state.item.kind === "folder" && state.targetFolderId === state.item.id;
+      if (destinationChanged && !invalidSelfTarget && state.targetPath) {
+        setBusy(true);
+        void performMove(state.item.kind, state.item.id, state.item.currentFolderId, state.targetFolderId, state.targetPath)
+          .catch((error) => window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed.")))
+          .finally(() => setBusy(false));
+      }
+      window.setTimeout(() => { suppressTouchClickRef.current = false; }, 0);
+    },
+    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => {
+      const state = touchDragRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      touchDragRef.current = null;
+      setTouchDraggingKey(null);
+      setDragOverFolderId(null);
+      suppressTouchClickRef.current = false;
+    },
+    onClickCapture: (event: ReactPointerEvent<HTMLElement> | any) => {
+      if (!suppressTouchClickRef.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressTouchClickRef.current = false;
+    },
+  });
 
   const moveFolderItem = async (destinationFolderId: string | null, path: string) => {
     if (!folderPicker) return;
@@ -648,18 +730,20 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           <button type="button" aria-pressed={promptDisplayMode === "list"} onClick={() => setPromptDisplayMode("list")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "list" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Λίστα" : "List"}</button>
         </div>}
         <div className="flex shrink-0 gap-2">
-          {view === "all" && <button disabled={busy} onClick={createFolder} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:border-accent/40 hover:text-accent disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέος Φάκελος" : "New Folder"}</button>}
+          {view !== "analyses" && <button disabled={busy} onClick={createFolder} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:border-accent/40 hover:text-accent disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέος Φάκελος" : "New Folder"}</button>}
           <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
         </div>
       </div>
 
       {folderMessage && <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent"><span>{folderMessage}</span>{undoMove && <button type="button" onClick={undoLastMove} disabled={busy} className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold hover:bg-accent/10 disabled:opacity-50">{language === "el" ? "Αναίρεση" : "Undo"}</button>}</div>}
 
-      {view === "all" ? (
+      {(view === "all" || (view === "projects" && !openProject)) ? (
         <div className="space-y-4">
           <div className="glass flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl px-3 py-2 text-xs [scrollbar-width:none]">
             <button
               type="button"
+              data-library-folder-drop-id="root"
+              data-library-folder-drop-path={language === "el" ? "Αρχική" : "Root"}
               onClick={() => { setCurrentFolderId(null); onSearchChange(""); }}
               onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId("root"); }}
               onDragLeave={() => setDragOverFolderId(null)}
@@ -673,6 +757,8 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                 <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
                 <button
                   type="button"
+                  data-library-folder-drop-id={item.id}
+                  data-library-folder-drop-path={(folderBreadcrumbs.data?.breadcrumbs ?? []).slice(0, (folderBreadcrumbs.data?.breadcrumbs ?? []).findIndex((crumb) => crumb.id === item.id) + 1).map((crumb) => crumb.name).join(" / ")}
                   onClick={() => { setCurrentFolderId(item.id); onSearchChange(""); }}
                   onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(item.id); }}
                   onDragLeave={() => setDragOverFolderId(null)}
@@ -686,9 +772,9 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           {q ? (
             folderSearch.isLoading ? (
               <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{language === "el" ? "Αναζήτηση..." : "Searching..."}</div>
-            ) : (folderSearch.data?.results ?? []).length ? (
+            ) : folderSearchResults.length ? (
               <div className="space-y-2">
-                {(folderSearch.data?.results ?? []).map((result) => (
+                {folderSearchResults.map((result) => (
                   <button
                     key={`${result.item_type}:${result.item_id}`}
                     type="button"
@@ -732,13 +818,16 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                   {(folderContents.data?.folders ?? []).map((folder) => (
                     <article
                       key={folder.id}
+                      data-library-folder-drop-id={folder.id}
+                      data-library-folder-drop-path={[...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / ")}
+                      {...touchDragHandlers({ kind: "folder", id: folder.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "folder", id: folder.id, currentFolderId })}
                       onDragEnd={() => setDragOverFolderId(null)}
                       onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(folder.id); }}
                       onDragLeave={() => setDragOverFolderId(null)}
                       onDrop={(event) => void dropIntoFolder(event, folder.id, [...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / "))}
-                      className={cn("glass flex items-center gap-2 rounded-2xl p-3 transition-colors", dragOverFolderId === folder.id && "border-accent/60 bg-accent/[0.08]")}
+                      className={cn("glass flex items-center gap-2 rounded-2xl p-3 transition-colors touch-pan-y", dragOverFolderId === folder.id && "border-accent/60 bg-accent/[0.08]", touchDraggingKey === `folder:${folder.id}` && "opacity-70")}
                     >
                       <LibraryLongPressButton
                         onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }}
@@ -764,10 +853,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                     const promptCount = prompts.filter((prompt) => prompt.project_id === project.id).length;
                     return <article
                       key={project.id}
+                      {...touchDragHandlers({ kind: "project", id: project.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "project", id: project.id, currentFolderId })}
                       onDragEnd={() => setDragOverFolderId(null)}
-                      className="glass flex items-center gap-3 rounded-2xl p-4"
+                      className={cn("glass flex items-center gap-3 rounded-2xl p-4 touch-pan-y", touchDraggingKey === `project:${project.id}` && "opacity-70")}
                     >
                       <LibraryLongPressButton
                         onClick={() => { setOpenProjectId(project.id); onSearchChange(""); onViewChange("projects"); }}
@@ -789,11 +879,12 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                 </div>
               )}
 
-              {(folderContents.data?.prompts ?? []).length > 0 && (
+              {view === "all" && (folderContents.data?.prompts ?? []).length > 0 && (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {(folderContents.data?.prompts ?? []).map((prompt) => (
                     <div
                       key={prompt.id}
+                      {...touchDragHandlers({ kind: "prompt", id: prompt.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "prompt", id: prompt.id, currentFolderId })}
                       onDragEnd={() => setDragOverFolderId(null)}
@@ -822,7 +913,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                 </div>
               )}
 
-              {(folderContents.data?.folders ?? []).length === 0 && (folderContents.data?.projects ?? []).length === 0 && (folderContents.data?.prompts ?? []).length === 0 && (
+              {(folderContents.data?.folders ?? []).length === 0 && (folderContents.data?.projects ?? []).length === 0 && (view === "projects" || (folderContents.data?.prompts ?? []).length === 0) && (
                 <div className="glass rounded-2xl p-8 text-center">
                   <Folder className="mx-auto h-8 w-8 text-accent/70" />
                   <p className="mt-3 text-sm font-semibold">{language === "el" ? "Αυτός ο φάκελος είναι κενός." : "This folder is empty."}</p>
@@ -882,20 +973,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
 
               {items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}
             </section>;
-          })() : <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {visibleProjects.map((project) => {
-                const promptCount = prompts.filter((p) => p.project_id === project.id).length;
-                const analysisCount = visibleAnalyses.filter((a) => a.project_id === project.id).length;
-                const count = promptCount + analysisCount;
-                return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
-                  <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span><span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{count} items{analysisCount ? ` · ${analysisCount} analysis` : ""}</span>{project.creation_notes.trim() && <span className="mt-1 block truncate text-[11px] text-accent/80">{project.creation_notes}</span>}</span></button>
-                  <div className="flex shrink-0 gap-1"><ExportControl kind="project" id={project.id} name={project.name} /><button onClick={() => renameProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(project)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
-                </article>;
-              })}
-            </div>
-          </>}
-          {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
+          })()}
         </div>
       )}
 
