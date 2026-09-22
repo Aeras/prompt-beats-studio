@@ -131,15 +131,37 @@
     transform 120ms ease,
     background-color 120ms ease,
     border-color 120ms ease,
-    box-shadow 120ms ease;
+    box-shadow 120ms ease,
+    filter 120ms ease;
   -webkit-tap-highlight-color: transparent;
 
   &:active {
     transform: scale(0.96);
+    filter: brightness(1.08);
     background: color-mix(in oklab, var(--accent) 10%, transparent);
     border-color: color-mix(in oklab, var(--accent) 60%, transparent);
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 16%, transparent);
   }
+}
+
+/* Platform-wide tactile feedback contract.
+   Every real button gets an immediate pressed state so taps never feel ignored.
+   Transparent/backdrop-only controls may opt out with data-pb-no-press="true". */
+button:not(:disabled):not([data-pb-no-press="true"]),
+[role="button"]:not([aria-disabled="true"]):not([data-pb-no-press="true"]) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+button:not(:disabled):not([data-pb-no-press="true"]):active,
+[role="button"]:not([aria-disabled="true"]):not([data-pb-no-press="true"]):active {
+  transform: scale(0.96);
+  filter: brightness(1.08);
 }
 
 @utility aurora {
