@@ -20,6 +20,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
+import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -240,7 +241,7 @@ type SavedPrompt = {
   mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
   created_at: string; updated_at: string;
 };
-type PromptProject = { id: string; name: string; creation_notes: string; created_at: string; updated_at: string };
+type PromptProject = { id: string; name: string; creation_notes: string; preferred_prompt_id: string | null; created_at: string; updated_at: string };
 type SongAnalysisItem = {
   id: string; name: string; project_id: string | null; model: string; created_at: string;
   generator_ready: {
@@ -266,6 +267,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   const [busy, setBusy] = useState(false);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  const [projectVersionsOpen, setProjectVersionsOpen] = useState(false);
   const q = search.trim().toLowerCase();
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
@@ -274,6 +276,10 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
   const filteredAnalyses = analyses.filter(matchesAnalysis);
   const visibleProjects = projects.filter((project) => !q || project.name.toLowerCase().includes(q) || project.creation_notes.toLowerCase().includes(q) || prompts.some((p) => p.project_id === project.id && matches(p)) || analyses.some((a) => a.project_id === project.id && matchesAnalysis(a)));
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
+
+  useEffect(() => {
+    setProjectVersionsOpen(false);
+  }, [openProjectId]);
 
   const refresh = async () => {
     await Promise.all([
@@ -330,12 +336,61 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, view, onVi
               <div className="glass rounded-2xl p-4">
                 <button type="button" onClick={() => { setOpenProjectId(null); onSearchChange(""); }} className="mb-3 text-xs font-semibold text-accent">← Projects</button>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0"><div className="flex items-center gap-2"><Folder className="h-5 w-5 text-accent" /><h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2></div><p className="mt-1 text-[11px] text-muted-foreground">{analysisItems.length} analyses · {prompts.filter((p) => p.project_id === openProject.id).length} prompts</p></div>
-                  <div className="flex gap-2"><ExportControl kind="project" id={openProject.id} name={openProject.name} /><button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button><button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Folder className="h-5 w-5 text-accent" />
+                      <h2 className="truncate font-display text-lg font-bold">{openProject.name}</h2>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {items.length} {language === "el" ? "εκδόσεις" : "versions"} · {analysisItems.length} analyses
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <ExportControl kind="project" id={openProject.id} name={openProject.name} />
+                    <button onClick={() => renameProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-4 w-4" /></button>
+                    <button onClick={() => removeProject(openProject)} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </div>
-                <ProjectCreationNotes project={openProject} />
               </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}{items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}{items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}</div>
+
+              <ProjectVersionHistory projectId={openProject.id} projectName={openProject.name} />
+
+              <ProjectCreationNotes project={openProject} />
+
+              <section className="glass overflow-hidden rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setProjectVersionsOpen((value) => !value)}
+                  aria-expanded={projectVersionsOpen}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{language === "el" ? "Εκδόσεις Project / Prompts" : "Project Versions / Prompts"}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {language === "el" ? "Άνοιξε τα πλήρη αποθηκευμένα prompt cards μόνο όταν τα χρειάζεσαι." : "Open the full saved prompt cards only when you need them."}
+                    </span>
+                  </span>
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">{items.length}</span>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", projectVersionsOpen && "rotate-180")} />
+                </button>
+                {projectVersionsOpen && (
+                  <div className="grid grid-cols-1 gap-3 border-t border-white/10 p-3 lg:grid-cols-2">
+                    {items.map((prompt) => <SavedPromptCard key={prompt.id} prompt={prompt} projects={projects} listMode={promptDisplayMode === "list"} />)}
+                    {items.length === 0 && <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν εκδόσεις ακόμη." : "No versions yet."}</p>}
+                  </div>
+                )}
+              </section>
+
+              {analysisItems.length > 0 && (
+                <section className="space-y-2">
+                  <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Analyses</h3>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    {analysisItems.map((analysis) => <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />)}
+                  </div>
+                </section>
+              )}
+
+              {items.length === 0 && analysisItems.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν items σε αυτό το project." : "No items in this project."}</p>}
             </section>;
           })() : <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
