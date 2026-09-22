@@ -16,6 +16,7 @@ type Props = {
   confirmLabel: string;
   initialFolderId?: string | null;
   excludedFolderIds?: string[];
+  disabledDestinationFolderId?: string | null;
   onClose: () => void;
   onSelect: (folderId: string | null, path: string) => void;
 };
@@ -27,6 +28,7 @@ export function LibraryFolderPicker({
   confirmLabel,
   initialFolderId = null,
   excludedFolderIds = [],
+  disabledDestinationFolderId,
   onClose,
   onSelect,
 }: Props) {
@@ -59,6 +61,8 @@ export function LibraryFolderPicker({
   });
 
   const excluded = useMemo(() => new Set(excludedFolderIds), [excludedFolderIds]);
+  const destinationDisabled = (folderId: string | null) =>
+    disabledDestinationFolderId !== undefined && folderId === disabledDestinationFolderId;
   const childFolders = (contents.data?.folders ?? []).filter((folder) => !excluded.has(folder.id));
   const searchFolders = (search.data?.folders ?? []).filter((folder) => !excluded.has(folder.id));
 
@@ -128,8 +132,9 @@ export function LibraryFolderPicker({
                   <button
                     key={folder.id}
                     type="button"
+                    disabled={destinationDisabled(folder.id)}
                     onClick={() => onSelect(folder.id, folder.path)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-left hover:border-accent/40"
+                    className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-left hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Folder className="h-5 w-5 shrink-0 text-accent" />
                     <span className="min-w-0">
@@ -150,10 +155,10 @@ export function LibraryFolderPicker({
             <div className="space-y-2">
               <button
                 type="button"
-                disabled={currentFolderId === null}
+                disabled={destinationDisabled(null)}
                 onClick={() => onSelect(null, el ? "Αρχική" : "Root")}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border p-3 text-left",
+                  "flex w-full items-center gap-3 rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-40",
                   currentFolderId === null
                     ? "border-accent/30 bg-accent/[0.06] text-accent"
                     : "border-white/10 bg-black/20 hover:border-accent/40",
@@ -179,8 +184,9 @@ export function LibraryFolderPicker({
                   </button>
                   <button
                     type="button"
+                    disabled={destinationDisabled(folder.id)}
                     onClick={() => onSelect(folder.id, [...breadcrumbItems.map((item) => item.name), folder.name].join(" / "))}
-                    className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5"
+                    className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {confirmLabel}
                   </button>
@@ -200,8 +206,9 @@ export function LibraryFolderPicker({
           <div className="border-t border-white/10 p-4">
             <button
               type="button"
+              disabled={destinationDisabled(currentFolderId)}
               onClick={() => onSelect(currentFolderId, currentPath)}
-              className="w-full rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground"
+              className="w-full rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
             >
               {confirmLabel}: {currentPath}
             </button>
