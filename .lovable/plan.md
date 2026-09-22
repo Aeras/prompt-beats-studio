@@ -1,27 +1,26 @@
-# Diagnosis: preview cannot see the backend secret key
+# Edit Lyrics error page — diagnosis status and next step
 
-## Findings (facts only, no values read or printed)
+## What I verified this round (read-only, no changes)
 
-1. **Secret exists.** `EXTERNAL_SUPABASE_SECRET_KEY` is present in the project's stored secrets, alongside `EXTERNAL_SUPABASE_URL` and `EXTERNAL_SUPABASE_PUBLISHABLE_KEY`. Nothing was deleted.
-2. **Not injected into the running preview server.** The live preview process (started 08:49:20 UTC today, PID 187) carries only 44 environment entries and **none** of them are Supabase-related — no `EXTERNAL_SUPABASE_*`, no `SUPABASE_*`, no `VITE_SUPABASE_*`.
-3. **`SUPABASE_SERVICE_ROLE_KEY` is also absent** from that process, so both the primary name and the fallback name are missing — which is exactly the error text.
-4. **`EXTERNAL_SUPABASE_URL` and `EXTERNAL_SUPABASE_PUBLISHABLE_KEY`** are present in the sandbox environment but likewise **absent from the running preview process**.
-5. **Binding.** Every Supabase URL visible in the sandbox environment (external, fallback and client-side) points to the same project ref `qwlksrcsovbncmretjdt`. The tracked `.env` also references that ref. No second ref appears anywhere.
-6. **Why it stopped.** The secrets were verified earlier against the sandbox environment. The preview server process was then restarted at 08:49:20 and came up **without** the secret set inherited — it was spawned before/outside the injection, so it has an environment snapshot that predates the secrets being bound. Environment variables are fixed at process start; a running process cannot pick up new ones, and hot reload (visible in the log at 08:51:57) only reloads code, not environment.
-7. **Category.** This is a **preview runtime issue** (stale process environment), not a missing secret, not a broken backend binding, and not a code problem. The log confirms the sequence: before 08:51:57 the error named only `SUPABASE_SERVICE_ROLE_KEY`; after the code hot-reloaded it names both — same underlying cause.
+1. **The lyrics editor does not crash on your real data.** I rendered the `LyricsWorkspace` component in isolation, outside the browser, feeding it the actual saved prompt (`d00a1486…`, project `c17fb37a…`, 2030 characters of lyrics, valid input snapshot) pulled live from the PromptBeats database. It rendered successfully (24,883 characters of output, no exception).
+2. **The live site is not running older code.** I downloaded the published generator bundle from promptbeats.app and it contains the current lyrics-mode logic, the same base-version request, and the same saved-prompt handling as the synced source. Not a stale deploy.
+3. **No hook-order fault.** The lyrics branch returns early at `generate.tsx:1362`; no React hook is declared after that point in the page, so the classic "rendered fewer hooks" crash is ruled out.
+4. **Every risky operation inside the editor's start-up is already wrapped in error handling**, including the background job recovery and the stored job id read.
+5. **No recorded errors.** Browser console snapshot: empty. Runtime error telemetry: empty. Server logs for the period: no related entries.
+6. **Reproduction in preview is still blocked.** The project runs on the external PromptBeats database, so no signed-in preview session can be created on my side; an automated run lands on the sign-in page and the lyrics screen never mounts.
 
-## Minimal fix
+## Honest conclusion
 
-Restart the preview server process so it starts with the current secret set. No dashboard action, no secret change, no binding change, no migration, no code edit.
+With the data, the code, and the published bundle all checking out, I cannot name the exact exception without seeing it once. Anything more specific from me would be a guess presented as a diagnosis, which is worse than no answer.
 
-## Production vs preview
+## Fastest way to close this (choose one)
 
-Yes, they differ. Published deployments receive secrets at deploy time as part of the build, so the live site is unaffected by this stale preview process. The problem is confined to the currently running preview server.
+**Option A — you paste the error (no changes, 1 minute).**
+On promptbeats.app, open the browser console (F12 → Console), click Edit Lyrics, and paste the red error line plus the first five stack lines. Also say whether the error page appears instantly or after a brief spinner: instantly means the crash happens while drawing the screen; after a spinner means it happens once the saved version has been fetched. Either answer plus the stack pins the exact line, and I will then propose the minimal fix.
 
-## Explicitly not proposed
+**Option B — temporary instrumentation (requires your approval to change code).**
+Add a small error boundary around the lyrics screen only, which shows the real exception message and stack on screen instead of the generic error page, and logs it. Nothing else changes; it can stay permanently as a better failure message, or be removed once the cause is known.
 
-No hardcoded secrets, no client-side exposure, no new backend, no data migration.
+## Why Revise works and Edit Lyrics does not
 
-## Next step (needs your approval)
-
-Restart the preview server, then confirm the error is gone in the server log and the feed loads.
+Both buttons open the same page and both fetch the base version through the same server request, so the backend and the data are not the difference. The only thing unique to Edit Lyrics is that it mounts the lyrics editing screen. That narrows the fault to that screen mounting in a real browser — the one place I cannot yet observe.
