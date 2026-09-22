@@ -8,6 +8,7 @@ import {
   searchLibraryFolders,
 } from "@/lib/library-folders.functions";
 import { cn } from "@/lib/utils";
+import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
 
 type Props = {
   open: boolean;
@@ -97,10 +98,9 @@ export function LibraryFolderPicker({
           <label className="relative block">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={el ? "Αναζήτηση φακέλου..." : "Search folders..."}
+              placeholder={el ? "Αναζήτηση φακέλου (προαιρετικό)..." : "Search folders (optional)..."}
               className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-accent/50"
             />
           </label>
@@ -136,7 +136,7 @@ export function LibraryFolderPicker({
                     onClick={() => onSelect(folder.id, folder.path)}
                     className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-left hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <Folder className="h-5 w-5 shrink-0 text-accent" />
+                    <PromptBeatsFolderIcon className="h-8 w-9 shrink-0" />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{folder.name}</span>
                       <span className="block truncate text-[11px] text-muted-foreground">{folder.path}</span>
@@ -153,6 +153,7 @@ export function LibraryFolderPicker({
             <Loading language={language} />
           ) : (
             <div className="space-y-2">
+              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{el ? "Φάκελοι σε αυτή τη θέση" : "Folders in this location"}</p>
               <button
                 type="button"
                 disabled={destinationDisabled(null)}
@@ -178,7 +179,7 @@ export function LibraryFolderPicker({
                     onClick={() => setCurrentFolderId(folder.id)}
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 text-left hover:text-accent"
                   >
-                    <Folder className="h-5 w-5 shrink-0 text-accent" />
+                    <PromptBeatsFolderIcon className="h-9 w-10 shrink-0" />
                     <span className="truncate text-sm font-semibold">{folder.name}</span>
                     <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
                   </button>
@@ -202,8 +203,11 @@ export function LibraryFolderPicker({
           )}
         </div>
 
-        {!query.trim() && currentFolderId && (
+        {!query.trim() && (
           <div className="border-t border-white/10 p-4">
+            <p className="mb-2 truncate text-[11px] text-muted-foreground">
+              {el ? "Τρέχουσα θέση:" : "Current location:"} {currentPath}
+            </p>
             <button
               type="button"
               disabled={destinationDisabled(currentFolderId)}
