@@ -41,7 +41,7 @@ BEGIN
   )
   SELECT DISTINCT
     ur.user_id,
-    NULL,
+    NULL::uuid,
     'new_report',
     NEW.id,
     'new_report:' || NEW.id::text || ':' || ur.user_id::text
@@ -74,7 +74,7 @@ INSERT INTO public.notifications(
 )
 SELECT DISTINCT
   ur.user_id,
-  NULL,
+  NULL::uuid,
   'new_report',
   r.id,
   'new_report:' || r.id::text || ':' || ur.user_id::text,
