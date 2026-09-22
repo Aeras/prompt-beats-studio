@@ -147,7 +147,7 @@ export function TrackOwnerActions({ track, compact = false, menuMode = false, in
   const buttonClass = "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " + (compact ? "h-7 w-7" : "h-8 w-8");
 
   const editModal = editing && typeof document !== "undefined" && createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-track-title">
+    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[100] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-track-title">
       <div className="glass-strong max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-7">
         <header className="flex items-center justify-between"><h2 id="edit-track-title" className="font-display text-lg font-bold">{t("owner.editTitle")}</h2><button aria-label={t("common.close")} onClick={() => setEditing(false)} className="text-muted-foreground"><X className="h-5 w-5" /></button></header>
         <div className="mt-5 space-y-4">
