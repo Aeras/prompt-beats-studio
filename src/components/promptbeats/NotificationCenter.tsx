@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/drawer";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useModeration } from "@/hooks/useModeration";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
@@ -65,7 +66,7 @@ function BellButton({ unread }: { unread: number }) {
   );
 }
 
-function NotificationPanel({ onClose }: { onClose: () => void }) {
+function NotificationPanel({ onClose, preferencesEnabled }: { onClose: () => void; preferencesEnabled: boolean }) {
   const { language } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -80,6 +81,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
   const preferences = useQuery({
     queryKey: ["notification-preferences"],
     queryFn: () => getNotificationPreferences(),
+    enabled: preferencesEnabled,
   });
   const items = notifications.data?.pages.flatMap((page) => page.notifications) ?? [];
 
@@ -143,14 +145,14 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
           <p className="text-[11px] text-muted-foreground">{language === "el" ? "Πρόσφατη δραστηριότητα" : "Recent activity"}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button
+          {preferencesEnabled && <button
             type="button"
             onClick={() => setShowPreferences((value) => !value)}
             aria-label={language === "el" ? "Προτιμήσεις ειδοποιήσεων" : "Notification preferences"}
             className={cn("grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-muted-foreground hover:text-accent", showPreferences && "border-accent/40 text-accent")}
           >
             <Settings2 className="h-4 w-4" />
-          </button>
+          </button>}
           <button
             type="button"
             disabled={markAll.isPending}
@@ -163,7 +165,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {showPreferences && (
+      {preferencesEnabled && showPreferences && (
         <div className="space-y-3 border-b border-white/10 bg-black/20 px-4 py-3">
           <p className="text-xs font-semibold text-accent">{language === "el" ? "Προτιμήσεις" : "Preferences"}</p>
           {([
@@ -265,20 +267,22 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
 export function NotificationCenter() {
   const { user } = useAuth();
   const featureAccess = useFeatureAccess("notifications");
+  const moderation = useModeration();
   const { language } = useI18n();
   const queryClient = useQueryClient();
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const notificationAccess = featureAccess.allowed || moderation.canViewUsers;
   const unread = useQuery({
     queryKey: ["notification-unread-count", user?.id ?? "anon"],
-    enabled: Boolean(user) && featureAccess.allowed,
+    enabled: Boolean(user) && notificationAccess,
     queryFn: () => getUnreadNotificationCount(),
     refetchInterval: 60_000,
     refetchOnWindowFocus: "always",
     staleTime: 20_000,
   });
-  if (!user || !featureAccess.allowed) return null;
+  if (!user || !notificationAccess) return null;
   const count = unread.data?.count ?? 0;
 
   const opened = () => {
@@ -305,7 +309,7 @@ export function NotificationCenter() {
               sideOffset={8}
               className="glass-strong z-50 w-[390px] overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50"
             >
-              <NotificationPanel onClose={() => setDesktopOpen(false)} />
+              <NotificationPanel onClose={() => setDesktopOpen(false)} preferencesEnabled={featureAccess.allowed} />
             </PopoverPrimitive.Content>
           </PopoverPrimitive.Portal>
         </PopoverPrimitive.Root>
@@ -327,7 +331,7 @@ export function NotificationCenter() {
                 <X className="h-4 w-4" />
               </button>
             </DrawerClose>
-            <NotificationPanel onClose={() => setMobileOpen(false)} />
+            <NotificationPanel onClose={() => setMobileOpen(false)} preferencesEnabled={featureAccess.allowed} />
           </DrawerContent>
         </Drawer>
       </div>
