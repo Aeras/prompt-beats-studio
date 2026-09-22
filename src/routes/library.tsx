@@ -307,7 +307,33 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const [busy, setBusy] = useState(false);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [folderMessage, setFolderMessage] = useState("");
+  const [folderPicker, setFolderPicker] = useState<null | {
+    kind: "folder" | "project" | "prompt";
+    id: string;
+    name: string;
+    currentFolderId: string | null;
+  }>(null);
   const q = search.trim().toLowerCase();
+
+  const folderContents = useQuery({
+    queryKey: ["library", "folder-contents", currentFolderId],
+    queryFn: () => listLibraryFolderContents({ data: { folderId: currentFolderId } }),
+    enabled: view === "all" && !q,
+  });
+
+  const folderBreadcrumbs = useQuery({
+    queryKey: ["library", "folder-breadcrumbs", currentFolderId],
+    queryFn: () => getLibraryFolderBreadcrumbs({ data: { folderId: currentFolderId! } }),
+    enabled: view === "all" && Boolean(currentFolderId),
+  });
+
+  const folderSearch = useQuery({
+    queryKey: ["library", "folder-scope-search", currentFolderId, q],
+    queryFn: () => searchLibraryScope({ data: { folderId: currentFolderId, query: q } }),
+    enabled: view === "all" && q.length > 0,
+  });
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "";
   const matches = (p: SavedPrompt) => !q || [p.custom_name, p.title, projectName(p.project_id), p.theme, p.genre, p.mood, p.tags, p.lyrics, p.note].some((v) => v?.toLowerCase().includes(q));
   const matchesAnalysis = (a: SongAnalysisItem) => !q || [a.name, projectName(a.project_id), a.model, a.generator_ready.musicStyle, a.generator_ready.mood, a.generator_ready.productionStyle, ...a.generator_ready.instruments].some((v) => v?.toLowerCase().includes(q));
@@ -321,13 +347,90 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
       queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-contents"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-scope-search"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-picker"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-breadcrumbs"], exact: false }),
       ...(showAnalyses ? [queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false })] : []),
     ]);
   };
+
+  const flashFolderMessage = (message: string) => {
+    setFolderMessage(message);
+    window.setTimeout(() => setFolderMessage(""), 2600);
+  };
+
+  const createFolder = async () => {
+    const name = window.prompt(language === "el" ? "Όνομα φακέλου" : "Folder name")?.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await createLibraryFolder({ data: { name, parentFolderId: currentFolderId } });
+      await refresh();
+      flashFolderMessage(language === "el" ? "Ο φάκελος δημιουργήθηκε." : "Folder created.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const renameFolder = async (folder: { id: string; name: string }) => {
+    const name = window.prompt(language === "el" ? "Νέο όνομα φακέλου" : "New folder name", folder.name)?.trim();
+    if (!name || name === folder.name) return;
+    setBusy(true);
+    try {
+      await renameLibraryFolder({ data: { folderId: folder.id, name } });
+      await refresh();
+      flashFolderMessage(language === "el" ? "Ο φάκελος μετονομάστηκε." : "Folder renamed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeFolder = async (folder: { id: string; name: string }) => {
+    if (!window.confirm(language === "el" ? `Να διαγραφεί ο κενός φάκελος «${folder.name}»;` : `Delete the empty folder “${folder.name}”?`)) return;
+    setBusy(true);
+    try {
+      await deleteLibraryFolder({ data: { folderId: folder.id } });
+      await refresh();
+      flashFolderMessage(language === "el" ? "Ο φάκελος διαγράφηκε." : "Folder deleted.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Ο φάκελος δεν μπορεί να διαγραφεί." : "Folder could not be deleted."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const createProject = async () => {
     const name = window.prompt(language === "el" ? "Όνομα project" : "Project name")?.trim();
     if (!name) return;
-    setBusy(true); try { await createPromptProject({ data: { name } }); await refresh(); } finally { setBusy(false); }
+    setBusy(true);
+    try {
+      await createPromptProject({ data: { name, folderId: view === "all" ? currentFolderId : null } });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const moveFolderItem = async (destinationFolderId: string | null, path: string) => {
+    if (!folderPicker) return;
+    setBusy(true);
+    try {
+      if (folderPicker.kind === "folder") {
+        await moveLibraryFolder({ data: { folderId: folderPicker.id, destinationFolderId } });
+      } else if (folderPicker.kind === "project") {
+        await movePromptProjectToFolder({ data: { projectId: folderPicker.id, destinationFolderId } });
+      } else {
+        await moveStandalonePromptToFolder({ data: { promptId: folderPicker.id, destinationFolderId } });
+      }
+      await refresh();
+      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`);
+      setFolderPicker(null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed."));
+    } finally {
+      setBusy(false);
+    }
   };
   const renameProject = async (project: PromptProject) => {
     const name = window.prompt(language === "el" ? "Νέο όνομα project" : "New project name", project.name)?.trim();
