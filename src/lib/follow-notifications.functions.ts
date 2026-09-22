@@ -41,6 +41,17 @@ export type NotificationItem = {
 
 const PAGE_SIZE = 20;
 
+async function requireNotificationAccess(supabase: any) {
+  const [feature, moderation] = await Promise.all([
+    supabase.rpc("current_user_can_use_feature", { _feature_key: "notifications" }),
+    supabase.rpc("has_moderation_capability", { _capability: "can_view_users" }),
+  ]);
+  if (feature.error) throw new Error(feature.error.message);
+  if (moderation.error) throw new Error(moderation.error.message);
+  if (feature.data !== true && moderation.data !== true) throw new Error("Not allowed");
+}
+
+
 function toProfile(profile: any): FollowProfile | null {
   if (!profile?.id || !profile?.handle) return null;
   return {
@@ -161,7 +172,7 @@ export const listCreatorFollowProfiles = createServerFn({ method: "POST" })
 export const getUnreadNotificationCount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireFeatureAccess(context.supabase, "notifications");
+    await requireNotificationAccess(context.supabase);
     const { count, error } = await (context.supabase as any)
       .from("notifications")
       .select("id", { count: "exact", head: true })
@@ -174,7 +185,7 @@ export const listNotifications = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => notificationPageInput.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "notifications");
+    await requireNotificationAccess(context.supabase);
     const from = data.page * PAGE_SIZE;
     const to = from + PAGE_SIZE;
     const { data: rows, error } = await (context.supabase as any)
@@ -238,7 +249,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => notificationIdInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "notifications");
+    await requireNotificationAccess(context.supabase);
     const { error } = await (context.supabase as any)
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -251,7 +262,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
 export const markAllNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireFeatureAccess(context.supabase, "notifications");
+    await requireNotificationAccess(context.supabase);
     const { error } = await (context.supabase as any)
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
