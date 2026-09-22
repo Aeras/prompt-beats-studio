@@ -16,7 +16,7 @@ type Props = {
   confirmLabel: string;
   initialFolderId?: string | null;
   excludedFolderIds?: string[];
-  disabledDestinationFolderId?: string | null;
+  disabledDestinationFolderId?: string | null | undefined;
   onClose: () => void;
   onSelect: (folderId: string | null, path: string) => void;
 };
