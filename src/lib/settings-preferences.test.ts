@@ -42,6 +42,7 @@ describe("Settings and track source preferences", () => {
       "src/routes/trending.tsx",
       "src/components/promptbeats/ArtistProfileView.tsx",
       "src/routes/library.tsx",
+      "src/components/promptbeats/PlaylistLibraryPanel.tsx",
     ]) {
       const code = await source(path);
       expect(code).toContain("useTrackSourcePreference");
