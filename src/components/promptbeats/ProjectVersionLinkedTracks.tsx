@@ -1,4 +1,5 @@
 import { useDeferredValue, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Link2, Loader2, Music2, Pause, Play, Search, Star, Unlink, X } from "lucide-react";
@@ -18,6 +19,13 @@ type Props = {
   projectId: string;
   versionId: string;
   language: string;
+};
+
+type SelectorAnchor = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 };
 
 function formatDuration(seconds: number | null | undefined) {
@@ -59,7 +67,8 @@ function TrackSelector({
   language,
   onClose,
   onLinked,
-}: Props & { onClose: () => void; onLinked: () => Promise<void> }) {
+  anchor,
+}: Props & { onClose: () => void; onLinked: () => Promise<void>; anchor: SelectorAnchor }) {
   const el = language === "el";
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -105,9 +114,38 @@ function TrackSelector({
     }
   };
 
-  return (
-    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[120] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-5">
-      <section className="glass-strong flex max-h-[calc(100dvh-var(--pb-mobile-nav-offset)-0.5rem)] w-full max-w-2xl flex-col rounded-t-3xl border border-white/10 sm:max-h-[86vh] sm:rounded-3xl" role="dialog" aria-modal="true" aria-label={el ? "Σύνδεση audio αποτελεσμάτων" : "Link audio results"}>
+  if (typeof document === "undefined" || typeof window === "undefined") return null;
+
+  const viewportPadding = 12;
+  const mobileSafeBottom = window.innerWidth < 640 ? 64 : 12;
+  const availableBelow = Math.max(0, window.innerHeight - mobileSafeBottom - anchor.bottom - viewportPadding);
+  const availableAbove = Math.max(0, anchor.top - viewportPadding);
+  const openBelow = availableBelow >= Math.min(360, availableAbove);
+  const width = Math.min(640, window.innerWidth - viewportPadding * 2);
+  const left = Math.max(
+    viewportPadding,
+    Math.min(anchor.left, window.innerWidth - width - viewportPadding),
+  );
+  const maxHeight = Math.max(220, Math.min(640, openBelow ? availableBelow : availableAbove));
+  const panelStyle = openBelow
+    ? { left, top: Math.min(anchor.bottom + 8, window.innerHeight - mobileSafeBottom - 220), width, maxHeight }
+    : { left, bottom: Math.max(mobileSafeBottom, window.innerHeight - anchor.top + 8), width, maxHeight };
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        aria-label={el ? "Κλείσιμο επιλογής Track" : "Close Track selector"}
+        onClick={onClose}
+        className="fixed inset-0 z-[119] cursor-default bg-black/35 backdrop-blur-[2px]"
+      />
+      <section
+        className="glass-strong fixed z-[120] flex flex-col overflow-hidden rounded-2xl border border-white/10 shadow-2xl"
+        style={panelStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-label={el ? "Σύνδεση audio αποτελεσμάτων" : "Link audio results"}
+      >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">{el ? "Audio αποτελέσματα" : "Audio Results"}</p>
@@ -171,7 +209,8 @@ function TrackSelector({
           </button>
         </div>
       </section>
-    </div>
+    </>,
+    document.body,
   );
 }
 
@@ -179,7 +218,7 @@ export function ProjectVersionLinkedTracks({ projectId, versionId, language }: P
   const el = language === "el";
   const queryClient = useQueryClient();
   const { current, playing, play, playbackError } = usePlayer();
-  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorAnchor, setSelectorAnchor] = useState<SelectorAnchor | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -237,7 +276,14 @@ export function ProjectVersionLinkedTracks({ projectId, versionId, language }: P
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">{el ? "Συνδεδεμένα Audio Αποτελέσματα" : "Linked Audio Results"}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">{el ? "Reference στα υπάρχοντα uploaded tracks σου — χωρίς αντιγραφή αρχείου." : "References to your existing uploaded tracks — no audio copy."}</p>
         </div>
-        <button type="button" onClick={() => setSelectorOpen(true)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-accent/30 px-3 text-xs font-semibold text-accent hover:bg-accent/5">
+        <button
+          type="button"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            setSelectorAnchor({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
+          }}
+          className="pb-action-press inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-accent/30 px-3 text-xs font-semibold text-accent hover:bg-accent/5"
+        >
           <Link2 className="h-3.5 w-3.5" />{el ? "Σύνδεση Track" : "Link Track"}
         </button>
       </div>
@@ -297,7 +343,7 @@ export function ProjectVersionLinkedTracks({ projectId, versionId, language }: P
 
       {actionError && <p className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 p-2.5 text-xs text-red-300">{actionError}</p>}
 
-      {selectorOpen && <TrackSelector projectId={projectId} versionId={versionId} language={language} onClose={() => setSelectorOpen(false)} onLinked={refresh} />}
+      {selectorAnchor && <TrackSelector projectId={projectId} versionId={versionId} language={language} anchor={selectorAnchor} onClose={() => setSelectorAnchor(null)} onLinked={refresh} />}
     </section>
   );
 }
