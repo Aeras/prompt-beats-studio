@@ -181,7 +181,13 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
           <DonationMethods userId={profile.id} />
 
           <section className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-display text-lg font-semibold">{t("profile.discography")}</h2><div className="flex flex-wrap items-center gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div></div>
+            <div>
+              <h2 className="font-display text-lg font-semibold">{t("profile.discography")}</h2>
+              <div className="mt-3 flex w-full items-center justify-between gap-3">
+                <TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} />
+                <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+              </div>
+            </div>
             {visibleTracks.length === 0 && <p className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">{t("profile.noPublished")}</p>}
             <div className={trackGridClassName(gridMode)}>
               {visibleTracks.map((track) => {
