@@ -325,6 +325,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     name: string;
     currentFolderId: string | null;
   }>(null);
+  const [mobileActions, setMobileActions] = useState<null | {
+    kind: "folder" | "project" | "prompt";
+    id: string;
+    name: string;
+  }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
     operation: "move" | "duplicate";
     kind: "folder" | "project" | "prompt";
