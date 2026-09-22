@@ -217,7 +217,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         }
       `}</style>
 
-      <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
+      <nav data-pb-mobile-nav="true" className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
         <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
           {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map((tab) => {
             const item = NAV.find((n) => n.id === tab.id)!;
