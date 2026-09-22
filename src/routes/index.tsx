@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -37,12 +38,15 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [genre, setGenre] = useState("All");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
 
   const { data } = useQuery({ queryKey: ["tracks", "published"], queryFn: () => listPublishedTracks() });
   const { data: creatorData, isLoading: creatorsLoading, error: creatorsError } = useQuery({
@@ -74,7 +78,8 @@ function Index() {
     staffBadge: track.staff_badge,
   }));
 
-  const list = uploaded.filter(
+  const sourceFiltered = filterByTrackSource(uploaded, trackSource);
+  const list = sourceFiltered.filter(
     (track) =>
       (genre === "All" || track.genre === genre) &&
       (category === "creators" ||
@@ -106,7 +111,7 @@ function Index() {
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
         <div className="flex items-start justify-between gap-3">
           <div><h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("discover.titleLead")}</span>{" "}{t("discover.titleTail")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("discover.trackCount", { count: uploaded.length })}</p></div>
-          {category !== "creators" && <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />}
+          {category !== "creators" && <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>}
         </div>
         <div className={`mt-5 ${category === "creators" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : trackGridClassName(gridMode)}`}>
           {category === "creators" ? (creatorData?.creators ?? []).map((creator) => <CreatorCard key={creator.id} creator={creator} />) : list.map((track) => <TrackCard key={track.id} track={track} isPlaying={playing && current?.id === track.id} onPlay={onPlay} viewMode={gridMode} />)}
