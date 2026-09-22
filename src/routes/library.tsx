@@ -652,6 +652,23 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           {!loading && visibleProjects.length === 0 && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Δεν υπάρχουν projects ακόμη." : "No projects yet."}</p>}
         </div>
       )}
+
+      <LibraryFolderPicker
+        open={Boolean(folderPicker)}
+        language={language}
+        title={
+          folderPicker?.kind === "folder"
+            ? (language === "el" ? "Μετακίνηση φακέλου" : "Move Folder")
+            : folderPicker?.kind === "project"
+              ? (language === "el" ? "Μετακίνηση Project" : "Move Project")
+              : (language === "el" ? "Μετακίνηση Prompt" : "Move Prompt")
+        }
+        confirmLabel={language === "el" ? "Μετακίνηση εδώ" : "Move here"}
+        initialFolderId={folderPicker?.currentFolderId ?? currentFolderId}
+        excludedFolderIds={folderPicker?.kind === "folder" ? [folderPicker.id] : []}
+        onClose={() => setFolderPicker(null)}
+        onSelect={moveFolderItem}
+      />
     </div>
   );
 }
