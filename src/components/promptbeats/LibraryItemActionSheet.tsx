@@ -126,21 +126,3 @@ export function LibraryItemActionSheet({
     </div>
   );
 }
-
-
-export function MobileLongPressSurface({
-  onLongPress,
-  className,
-  children,
-}: {
-  onLongPress: () => void;
-  className?: string;
-  children: ReactNode;
-}) {
-  const handlers = useLibraryLongPress(onLongPress);
-  return (
-    <div className={className} {...handlers}>
-      {children}
-    </div>
-  );
-}
