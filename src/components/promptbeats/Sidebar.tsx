@@ -56,20 +56,12 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
       </nav>
 
       {!isBanned && <button onClick={onSubmit} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"><Plus className="h-4 w-4" />{t("nav.submitTrack")}</button>}
-      <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
-        >
-          <Settings className="h-[18px] w-[18px] shrink-0" />
-          <span>{language === "el" ? "Ρυθμίσεις" : "Settings"}</span>
-        </button>
-
       <div className="mt-auto">
         {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
           <img src={getUserAvatarUrl(profile?.avatar_url)} alt={t("onboarding.avatarPreview")} width={40} height={40} loading="lazy" className="h-10 w-10 shrink-0 rounded-full ring-2 ring-primary/60" />
           <div className="min-w-0 flex-1">{profile?.handle ? <Link to="/$handle" params={{ handle: `@${profile.handle}` }} className="truncate text-sm font-medium hover:text-accent">@{profile.handle}</Link> : <p className="truncate text-sm font-medium">{t("nav.you")}</p>}<p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("nav.signedIn")}</p></div>
-          <button aria-label={t("nav.signOut")} onClick={signOut} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><LogOut className="h-4 w-4" /></button>
+          <button type="button" aria-label={language === "el" ? "Ρυθμίσεις" : "Settings"} title={language === "el" ? "Ρυθμίσεις" : "Settings"} onClick={() => setSettingsOpen(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/5 hover:text-accent"><Settings className="h-4 w-4" /></button>
+          <button aria-label={t("nav.signOut")} onClick={signOut} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"><LogOut className="h-4 w-4" /></button>
         </div> : <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10"><LogIn className="h-4 w-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t("nav.signIn")}</p><p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p></div></Link>}
       </div>
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
