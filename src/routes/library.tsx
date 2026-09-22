@@ -453,8 +453,13 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
           <button type="button" aria-pressed={promptDisplayMode === "expanded"} onClick={() => setPromptDisplayMode("expanded")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "expanded" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Κάρτες" : "Cards"}</button>
           <button type="button" aria-pressed={promptDisplayMode === "list"} onClick={() => setPromptDisplayMode("list")} className={cn("rounded-lg border p-2 text-xs", promptDisplayMode === "list" ? "border-accent/50 text-accent" : "border-white/10 text-muted-foreground")}>{language === "el" ? "Λίστα" : "List"}</button>
         </div>}
-        <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
+        <div className="flex shrink-0 gap-2">
+          {view === "all" && <button disabled={busy} onClick={createFolder} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:border-accent/40 hover:text-accent disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέος Φάκελος" : "New Folder"}</button>}
+          <button disabled={busy} onClick={createProject} className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-accent hover:bg-primary/15 disabled:opacity-50"><FolderPlus className="h-4 w-4" />{language === "el" ? "Νέο Project" : "New Project"}</button>
+        </div>
       </div>
+
+      {folderMessage && <div className="rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent">{folderMessage}</div>}
 
       {view === "all" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
