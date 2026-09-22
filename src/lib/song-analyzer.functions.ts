@@ -932,6 +932,8 @@ Return only the requested structured JSON.
       model: args.model,
       contents: prompt,
       config: {
+        abortSignal: AbortSignal.timeout(5 * 60 * 1000),
+        httpOptions: { timeout: 5 * 60 * 1000 },
         tools: [{ googleSearch: {} }],
         responseFormat: {
           text: { mimeType: "application/json", schema: EXTERNAL_VALIDATION_RESPONSE_FORMAT },
