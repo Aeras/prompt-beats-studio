@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { workspaceSaveInputSchema } from "@/lib/lyrics-workspace.shared";
+import { buildLyricsWorkspaceVersionMetadata } from "@/lib/project-version-history.shared";
 
 const saveResultSchema = z.object({
   id: z.string().uuid(),
@@ -23,7 +24,7 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
     // service-role RPC path is reached.
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
-      .select("id")
+      .select("id, lyrics")
       .eq("id", data.projectId)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -40,6 +41,12 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
     if (baseError) throw new Error(baseError.message);
     if (!base) throw new Error("Base version not found.");
 
+    const versionChangeMetadata = buildLyricsWorkspaceVersionMetadata({
+      beforeLyrics: base.lyrics,
+      afterLyrics: data.lyrics,
+      versionLabel: data.versionLabel,
+    });
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: raw, error } = await supabaseAdmin.rpc("create_prompt_lyrics_workspace_version", {
       _user_id: context.userId,
@@ -47,6 +54,7 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
       _parent_prompt_id: data.basePromptId,
       _lyrics: data.lyrics,
       _version_label: data.versionLabel,
+      _version_change_metadata: versionChangeMetadata,
     });
     if (error) throw new Error("The edited lyrics could not be saved as a new version.");
 
