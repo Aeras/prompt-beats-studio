@@ -83,6 +83,7 @@ import {
   arrangementToSongBlueprint,
   arrangementToSongStructure,
   normalizeSongArrangement,
+  removeArrangementSection,
 } from "@/lib/song-arrangement.shared";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { buildPresetBlueprint, resolveSmartPreset, type SmartPreset } from "@/catalog/smart-presets";
@@ -972,6 +973,10 @@ function GeneratePage() {
     commitArrangement(appendArrangementSection(arrangement, sectionType));
   };
 
+  const removeSimpleStructureSection = (sectionId: string) => {
+    commitArrangement(removeArrangementSection(arrangement, sectionId));
+  };
+
 
   const applySmartPreset = (preset: SmartPreset) => {
     const resolved = resolveSmartPreset(preset, presetCulturalStyleId);
@@ -1581,7 +1586,39 @@ function GeneratePage() {
                 </div>
 
                 {showStructureTags && (
-                  <div className="mb-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                  <div className="mb-3 space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                    {arrangement.length > 0 && (
+                      <div
+                        role="list"
+                        aria-label={t("generator.songStructure")}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {arrangement.map((section) => {
+                          const sameTypeCount = arrangement.filter((item) => item.sectionType === section.sectionType).length;
+                          const label = sameTypeCount > 1
+                            ? `${structureLabel(section.sectionType)} ${section.occurrence}`
+                            : structureLabel(section.sectionType);
+                          return (
+                            <span
+                              key={section.sectionId}
+                              role="listitem"
+                              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 pl-3 pr-1.5 text-xs font-medium text-accent shadow-[0_0_12px_color-mix(in_oklab,var(--accent)_12%,transparent)]"
+                            >
+                              <span>{label}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeSimpleStructureSection(section.sectionId)}
+                                aria-label={t("generator.removeStructure", { name: label, position: section.structureIndex + 1 })}
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none text-accent/70 transition-colors hover:bg-accent/10 hover:text-accent"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div role="group" aria-label={t("generator.songStructure")} className="flex flex-wrap gap-2">
                       {STRUCTURE_TAGS.map((sectionType) => (
                         <button
@@ -1595,16 +1632,6 @@ function GeneratePage() {
                         </button>
                       ))}
                     </div>
-                    {arrangement.length > 0 && (
-                      <p className="text-[10px] leading-5 text-muted-foreground">
-                        {arrangement.map((section) => {
-                          const count = arrangement.filter((item) => item.sectionType === section.sectionType).length;
-                          return count > 1
-                            ? `${structureLabel(section.sectionType)} ${section.occurrence}`
-                            : structureLabel(section.sectionType);
-                        }).join(" → ")}
-                      </p>
-                    )}
                   </div>
                 )}
 
