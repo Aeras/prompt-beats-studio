@@ -152,7 +152,7 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const { preference: defaultTrackSource } = useTrackSourcePreference();
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
-  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, profile?.id]);
   const visibleTracks = filterByTrackSource(tracks, trackSource);
   const compact = gridMode === "compact";
   const missingLabel = notFoundLabel ?? t("profile.notFound");
