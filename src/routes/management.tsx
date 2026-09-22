@@ -345,7 +345,12 @@ function ManagementPage() {
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const header = <div><h1 className="font-display text-lg font-bold md:text-2xl">{isAdmin ? t("management.adminTitle") : t("management.staffTitle")}</h1><p className="text-[11px] text-muted-foreground md:text-xs">{isAdmin ? t("management.adminSubtitle") : t("management.staffSubtitle")}</p></div>;
 
-  useEffect(() => { if (!loading) setSection(isAdmin ? "overview" : "users"); }, [loading, isAdmin]);
+  useEffect(() => {
+    if (loading) return;
+    if (initialReportId) setSection("reports");
+    else if (initialUserId) setSection("users");
+    else setSection(isAdmin ? "overview" : "users");
+  }, [loading, isAdmin, initialUserId, initialReportId]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const userId = params.get("userId");
