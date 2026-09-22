@@ -123,7 +123,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
     const ui = await source("src/routes/management.tsx");
     expect(ui).toContain('["reports", t("management.reports"), Flag]');
     expect(ui).toContain(': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]');
-    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} />');
+    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />');
     expect(ui).toContain('isSuperAdmin && section === "features"');
   });
 
