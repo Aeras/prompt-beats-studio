@@ -20,7 +20,11 @@ export function SharedLinksPanel() {
   const [copied, setCopied] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const data = useQuery({ queryKey: ["library", "shared-links"], queryFn: () => listMyShareManagement() });
+  const data = useQuery({
+    queryKey: ["library", "shared-links"],
+    queryFn: () => listMyShareManagement(),
+    enabled: sharingAccess.allowed,
+  });
 
   const copy = async (token: string) => {
     const url = window.location.origin + "/share/" + token;
@@ -43,6 +47,8 @@ export function SharedLinksPanel() {
       setUpdating(null);
     }
   };
+
+  if (!sharingAccess.allowed) return null;
 
   if (data.isLoading) return <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{language === "el" ? "Φόρτωση κοινοποιήσεων..." : "Loading shares..."}</p>;
   const tracks = (data.data?.tracks ?? [])

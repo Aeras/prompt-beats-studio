@@ -1178,6 +1178,7 @@ export const saveSongAnalysisToProject = saveSongAnalysis;
 export const listSongAnalyses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "song_analyzer");
     const supabase = context.supabase as any;
     const { data, error } = await supabase
       .from("song_analyses")
@@ -1198,6 +1199,7 @@ export const updateSongAnalysisOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => updateAnalysisInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "song_analyzer");
     const supabase = context.supabase as any;
     if (data.projectId !== undefined) {
       await assertOwnedProject(supabase, context.userId, data.projectId);
@@ -1219,6 +1221,7 @@ export const deleteSongAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "song_analyzer");
     const supabase = context.supabase as any;
     const { error } = await supabase.from("song_analyses").delete().eq("id", data.id).eq("user_id", context.userId);
     if (error) throw new Error(error.message);

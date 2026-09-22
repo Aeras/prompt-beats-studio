@@ -88,6 +88,7 @@ async function assertPlaylistEligibleTrack(supabase: any, userId: string, trackI
 export const listPlaylists = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     const { data: playlists, error } = await (context.supabase as any)
       .from("playlists")
       .select("id, name, cover_url, is_public, created_at, updated_at")
@@ -139,6 +140,7 @@ export const getPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => playlistIdSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "playlists");
     const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     const { data: items, error } = await (context.supabase as any)
       .from("playlist_tracks")
@@ -292,6 +294,7 @@ export const reorderPlaylistTracks = createServerFn({ method: "POST" })
 export const listFavoriteTrackIds = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "favorites");
     const { data, error } = await (context.supabase as any)
       .from("favorites")
       .select("track_id")
@@ -304,6 +307,7 @@ export const listFavoriteTrackIds = createServerFn({ method: "GET" })
 export const listFavoriteTracks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireFeatureAccess(context.supabase, "favorites");
     const { data: favorites, error } = await (context.supabase as any)
       .from("favorites")
       .select("track_id, created_at")

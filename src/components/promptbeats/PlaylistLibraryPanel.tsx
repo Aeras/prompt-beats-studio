@@ -201,6 +201,11 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setViewModeState(readPlaylistViewMode()), []);
+  useEffect(() => {
+    if (featureAccess.allowed) return;
+    setSelectedPlaylistId(null);
+    setCreating(false);
+  }, [featureAccess.allowed]);
   const setViewMode = (mode: PlaylistViewMode) => {
     setViewModeState(mode);
     try { window.localStorage.setItem(PLAYLIST_VIEW_KEY, mode); } catch { /* local preference only */ }
@@ -239,8 +244,11 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
   const playlists = useQuery({
     queryKey: ["library", "playlists", userId],
     queryFn: () => listPlaylists(),
+    enabled: featureAccess.allowed,
   });
   const rows = (playlists.data?.playlists ?? []) as PlaylistSummary[];
+
+  if (!featureAccess.allowed) return null;
 
   const submit = async () => {
     if (!canManage) return;

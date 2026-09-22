@@ -62,6 +62,8 @@ export function ShareTrackButton({
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ startY: number; lastY: number; lastTime: number } | null>(null);
 
+  if (!sharingAccess.allowed) return null;
+
   const title = trackTitle?.trim() || (language === "el" ? "Τραγούδι στο PromptBeats" : "Song on PromptBeats");
   const shareText = language === "el" ? `Άκουσε το «${title}» στο PromptBeats` : `Listen to “${title}” on PromptBeats`;
 
