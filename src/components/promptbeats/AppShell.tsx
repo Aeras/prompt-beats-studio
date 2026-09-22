@@ -157,7 +157,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       <div
         data-studio-layout={active === "studio" ? "true" : undefined}
         className={cn(
-          "relative z-10 pb-[calc(64px+env(safe-area-inset-bottom))] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
+          "relative z-10 pb-[var(--pb-mobile-nav-offset)] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
           desktopSidebarOpen ? "lg:pl-[270px]" : "lg:pl-5",
         )}
       >
@@ -217,7 +217,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         }
       `}</style>
 
-      <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
+      <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
         <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
           {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map((tab) => {
             const item = NAV.find((n) => n.id === tab.id)!;
@@ -227,11 +227,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
                 key={tab.id}
                 to={NAV_PATHS[tab.id]}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2.5 text-[10px]",
+                  "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px]",
                   isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                <item.icon className={cn("h-5 w-5", isActive && "drop-shadow-[0_0_8px_var(--neon)]")} />
+                <item.icon className={cn("h-[18px] w-[18px]", isActive && "drop-shadow-[0_0_8px_var(--neon)]")} />
                 {t(tab.labelKey)}
               </Link>
             );
