@@ -2581,6 +2581,16 @@ export type Database = {
           path: string
         }[]
       }
+      search_library_scope: {
+        Args: { _folder_id: string; _query: string }
+        Returns: {
+          folder_id: string
+          item_id: string
+          item_type: string
+          name: string
+          path: string
+        }[]
+      }
       send_moderation_case_message: {
         Args: { _body: string; _case_id: string; _message_type: string }
         Returns: string

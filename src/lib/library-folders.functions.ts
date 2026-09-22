@@ -39,6 +39,10 @@ const listFolderInput = z.object({
 const searchFolderInput = z.object({
   query: z.string().trim().max(120).default(""),
 });
+const searchScopeInput = z.object({
+  folderId: nullableFolderIdSchema,
+  query: z.string().trim().min(1).max(200),
+});
 
 async function requireOwnedFolder(
   supabase: any,
@@ -97,7 +101,7 @@ export const listLibraryFolderContents = createServerFn({ method: "POST" })
 
     let promptsQuery = context.supabase
       .from("saved_prompts")
-      .select("id, custom_name, title, folder_id, duplicated_from_prompt_id, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select("id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
       .eq("user_id", context.userId)
       .is("project_id", null)
       .order("updated_at", { ascending: false });
@@ -316,4 +320,20 @@ export const searchLibraryFolders = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { folders: folders ?? [] };
+  });
+
+
+export const searchLibraryScope = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => searchScopeInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const folderId = data.folderId ?? null;
+    await requireOwnedFolder(context.supabase, context.userId, folderId);
+
+    const { data: results, error } = await context.supabase.rpc("search_library_scope", {
+      _folder_id: folderId,
+      _query: data.query,
+    });
+    if (error) throw new Error(error.message);
+    return { results: results ?? [] };
   });
