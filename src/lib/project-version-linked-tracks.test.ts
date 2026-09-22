@@ -123,6 +123,9 @@ describe("linked audio results per Project version", () => {
 
     expect(ui).toContain("new Set");
     expect(ui).toContain("Search by title");
+    expect(ui).toContain("useDeferredValue");
+    expect(ui).toContain('queryKey: ["project-version-linkable-tracks", projectId, versionId, deferredQuery]');
+    expect(ui).toContain("search: deferredQuery");
     expect(ui).toContain("linkProjectVersionTracks");
     expect(ui).not.toContain('type="file"');
   });
