@@ -30,6 +30,7 @@ const NAV_TO: Record<NavId, string> = { discover: "/", trending: "/trending", st
 export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; onNavigate: () => void; onSubmit: () => void }) {
   const { user, profile } = useAuth();
   const { isBanned, canViewUsers } = useModeration();
+  const generatorAccess = useFeatureAccess("ai_generator");
   const musicLabAccess = useFeatureAccess("ai_music_lab");
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const { t, language } = useI18n();
@@ -46,7 +47,12 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.filter((item) => (item.id !== "musicLab" || musicLabAccess.allowed) && (item.id !== "songAnalyzer" || analyzerAccess.allowed) && (!STAFF_ONLY.includes(item.id) || canViewUsers)).map((item) => {
+        {NAV.filter((item) =>
+          (item.id !== "studio" || generatorAccess.allowed)
+          && (item.id !== "musicLab" || musicLabAccess.allowed)
+          && (item.id !== "songAnalyzer" || analyzerAccess.allowed)
+          && (!STAFF_ONLY.includes(item.id) || canViewUsers)
+        ).map((item) => {
           const isActive = active === item.id;
           return <Link key={item.id} to={NAV_TO[item.id]} onClick={onNavigate} className={cn("group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all", isActive ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>
             <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-all", isActive ? "text-primary drop-shadow-[0_0_8px_var(--neon)]" : "group-hover:text-accent")} />
