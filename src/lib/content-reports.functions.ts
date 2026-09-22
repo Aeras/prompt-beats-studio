@@ -76,7 +76,7 @@ async function loadReportsForStaff(userId: string, scope: ReportScope) {
   if (!roleRow) throw new Error("Not allowed");
 
   let reportsQuery = (supabaseAdmin.from("content_reports") as any)
-    .select("id,target_type,target_id,target_owner_id,target_title,category,details,supporting_url,status,created_at,reviewed_at,reviewed_by,resolution,moderator_notes")
+    .select("id,reporter_user_id,target_type,target_id,target_owner_id,target_title,category,details,supporting_url,status,created_at,reviewed_at,reviewed_by,resolution,moderator_notes")
     .order("created_at", { ascending: false });
   if (scope === "open") reportsQuery = reportsQuery.eq("status", "open");
   else if (scope === "under_review") reportsQuery = reportsQuery.eq("status", "under_review");
