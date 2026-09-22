@@ -1,4 +1,5 @@
-import { AudioLines, BarChart3, Compass, Flame, Library, LogIn, LogOut, Plus, Sparkles, ScanSearch } from "lucide-react";
+import { useState } from "react";
+import { AudioLines, BarChart3, Compass, Flame, Library, LogIn, LogOut, Plus, Sparkles, ScanSearch, Settings } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { SettingsPanel } from "@/components/promptbeats/SettingsPanel";
 
 export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
@@ -34,6 +36,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
   const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const signOut = async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); navigate({ to: "/auth", replace: true }); };
 
   return (
@@ -55,6 +58,16 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
 
       {!isBanned && <button onClick={onSubmit} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"><Plus className="h-4 w-4" />{t("nav.submitTrack")}</button>}
       {!user && <LanguageSelector />}
+      {user && (
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
+        >
+          <Settings className="h-[18px] w-[18px] shrink-0" />
+          <span>{t("language.label") === "Language" ? "Settings" : "Ρυθμίσεις"}</span>
+        </button>
+      )}
 
       <div className="mt-auto">
         {user ? <div className="glass flex items-center gap-3 rounded-2xl p-3">
@@ -63,6 +76,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
           <button aria-label={t("nav.signOut")} onClick={signOut} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><LogOut className="h-4 w-4" /></button>
         </div> : <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10"><LogIn className="h-4 w-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t("nav.signIn")}</p><p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p></div></Link>}
       </div>
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
