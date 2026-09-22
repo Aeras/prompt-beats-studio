@@ -1,77 +1,27 @@
-# Build failure diagnosis and minimal fix plan
+# Diagnosis: preview cannot see the backend secret key
 
-## Summary
+## Findings (facts only, no values read or printed)
 
-The type check currently reports **149 errors across 46 files**. Exactly **one** is a real
-code defect that genuinely breaks the build; the remaining 148 are long-standing strict
-type-checking complaints that existed before the Supabase reconnect. **No error is caused
-by the reconnect, and no database change or migration is needed to make the build pass.**
+1. **Secret exists.** `EXTERNAL_SUPABASE_SECRET_KEY` is present in the project's stored secrets, alongside `EXTERNAL_SUPABASE_URL` and `EXTERNAL_SUPABASE_PUBLISHABLE_KEY`. Nothing was deleted.
+2. **Not injected into the running preview server.** The live preview process (started 08:49:20 UTC today, PID 187) carries only 44 environment entries and **none** of them are Supabase-related — no `EXTERNAL_SUPABASE_*`, no `SUPABASE_*`, no `VITE_SUPABASE_*`.
+3. **`SUPABASE_SERVICE_ROLE_KEY` is also absent** from that process, so both the primary name and the fallback name are missing — which is exactly the error text.
+4. **`EXTERNAL_SUPABASE_URL` and `EXTERNAL_SUPABASE_PUBLISHABLE_KEY`** are present in the sandbox environment but likewise **absent from the running preview process**.
+5. **Binding.** Every Supabase URL visible in the sandbox environment (external, fallback and client-side) points to the same project ref `qwlksrcsovbncmretjdt`. The tracked `.env` also references that ref. No second ref appears anywhere.
+6. **Why it stopped.** The secrets were verified earlier against the sandbox environment. The preview server process was then restarted at 08:49:20 and came up **without** the secret set inherited — it was spawned before/outside the injection, so it has an environment snapshot that predates the secrets being bound. Environment variables are fixed at process start; a running process cannot pick up new ones, and hot reload (visible in the log at 08:51:57) only reloads code, not environment.
+7. **Category.** This is a **preview runtime issue** (stale process environment), not a missing secret, not a broken backend binding, and not a code problem. The log confirms the sequence: before 08:51:57 the error named only `SUPABASE_SERVICE_ROLE_KEY`; after the code hot-reloaded it names both — same underlying cause.
 
-## 1. The real blocker
+## Minimal fix
 
-`src/lib/ai.functions.ts` line 1664 — `Cannot find name 'tagsLabel'` (TS2304).
+Restart the preview server process so it starts with the current secret set. No dashboard action, no secret change, no binding change, no migration, no code edit.
 
-A singability line was added to the quality-check prompt text inside `buildQualityPrompt`,
-but the `tagsLabel` variable it uses only exists in `src/lib/quality-check-core.server.ts`
-(line 576). In this file the value is not defined, so the code cannot compile and would also
-throw at runtime whenever a quality check runs.
+## Production vs preview
 
-Minimal fix: inside `buildQualityPrompt`, define the same label before the template string
-(`const tagsLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Suno Style Prompt";`)
-and change nothing else. Wording of the prompt stays exactly as written.
+Yes, they differ. Published deployments receive secrets at deploy time as part of the build, so the live site is unaffected by this stale preview process. The problem is confined to the currently running preview server.
 
-## 2. Everything else (pre-existing, not from the reconnect)
+## Explicitly not proposed
 
-Grouped by cause, with the minimal fix for each group:
+No hardcoded secrets, no client-side exposure, no new backend, no data migration.
 
-- **Test files (28 errors)** — `bun:test` / `Bun` unknown: the test runner's types are not in
-  `tsconfig.json`. Minimal fix: add `"bun"` (with `@types/bun`) to `types`, or exclude
-  `*.test.ts` from the type-check project. No source change.
-- **Moderation case thread (48 errors in `ModerationCaseThread.tsx`, root cause 1 error in
-  `src/lib/moderation-cases.functions.ts` line 169)** — the server function returns
-  `payload: Record<string, unknown>`, which TanStack rejects as non-serialisable, so the
-  component receives `{}` and every property access fails. Minimal fix: type `payload` as
-  `Json`/`Record<string, Json>` in `ModerationCaseEvent`; the 48 component errors disappear
-  with it. (The four `['reason']` index-signature errors in that file are separate and
-  fixed by bracket access.)
-- **Generator job payload shape (`generation-jobs.functions.ts`, `LyricsWorkspace.tsx`,
-  `ai.functions.ts` 2183)** — the `lyrics_section_edit` job variant is missing from the
-  union that describes job input. Minimal fix: include the section-edit variant in that
-  union type.
-- **`exactOptionalPropertyTypes` mismatches (`admin.functions.ts`, `ai-provider.server.ts`,
-  `ai.functions.ts` 937, `TrackCard.tsx`, `stripe.server.ts`, upload/webhook routes)** —
-  `undefined`/`null` passed where the target property is optional-but-not-undefined.
-  Minimal fix: add `| undefined` to the target property types, or omit the key when absent.
-- **Index-signature access (`quality-check-core.server.ts`, `ai-provider-registry.server.ts`,
-  `song-analyzer.functions.ts`, `ModerationCaseThread.tsx`)** — use `obj['key']` instead of
-  `obj.key`.
-- **Possibly-undefined array/object access (`song-analyzer-dsp.ts`, `AiModelsPanel.tsx`,
-  `TrackContentOverlay.tsx`, `song-analyzer-essentia.ts`)** — add a guard or non-null access
-  after a length check.
-- **`essentia.js` untyped module (7 errors)** — add a one-line `declare module` shim.
-- **Smaller one-offs** — `ExternalTrackEmbed.tsx` effect returning a boolean (wrap the
-  cleanup in braces), `audio-duration.ts` `string | File`, `content-reports.browser.ts`
-  `unknown` response typing, `export-center` document union, `readonly` enum tuples in
-  `ai.functions.ts` 38 and `song-setup-assistant.functions.ts` 20.
+## Next step (needs your approval)
 
-## 3. Reconnect impact
-
-The reconnect commit touched only three files: `src/integrations/supabase/client.ts`,
-`src/integrations/supabase/types.ts` (one new table plus one new column) and
-`supabase/config.toml`. None of them produce a type error.
-
-One thing worth flagging, separate from the build: the regenerated `client.ts` replaced the
-previous env-based client and dropped the preview auth storage helper, hardcoding the
-project URL and the publishable key (public values, safe to ship). If preview sign-in
-behaves differently from before, that file is the reason — not a build problem.
-
-## 4. Database
-
-No migration is required for the build. The only outstanding database item is the
-previously prepared download-permission function update, which is unrelated to these errors.
-
-## Proposed scope
-
-Recommended first step: fix only item 1 (`tagsLabel`), which restores a compiling build.
-Items in section 2 can be cleaned up afterwards in one pass if you want a fully green
-type check.
+Restart the preview server, then confirm the error is gone in the server log and the feed loads.
