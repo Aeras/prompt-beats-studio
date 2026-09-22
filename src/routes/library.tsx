@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput } from "lucide-react";
@@ -505,7 +505,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   };
 
   const startDrag = (
-    event: React.DragEvent,
+    event: DragEvent,
     item: { kind: "folder" | "project" | "prompt"; id: string; currentFolderId: string | null },
   ) => {
     if (!desktopDnD) return;
@@ -514,7 +514,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   };
 
   const dropIntoFolder = async (
-    event: React.DragEvent,
+    event: DragEvent,
     destinationFolderId: string | null,
     path: string,
   ) => {
