@@ -126,6 +126,22 @@
   box-shadow: var(--glow-electric);
 }
 
+@utility pb-action-press {
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    transform: scale(0.96);
+    background: color-mix(in oklab, var(--accent) 10%, transparent);
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 16%, transparent);
+  }
+}
+
 @utility aurora {
   position: relative;
   &::before {
