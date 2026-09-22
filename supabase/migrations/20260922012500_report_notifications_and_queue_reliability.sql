@@ -194,7 +194,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS \$\$
 DECLARE
   v_admin_level boolean;
   v_result jsonb;
@@ -264,7 +264,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$;
+\$\$;
 
 CREATE OR REPLACE FUNCTION public.get_content_report_for_actor(
   _actor uuid,
@@ -275,7 +275,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS \$\$
 DECLARE
   v_admin_level boolean;
   v_result jsonb;
@@ -326,7 +326,7 @@ BEGIN
   IF v_result IS NULL THEN RAISE EXCEPTION 'report not found'; END IF;
   RETURN v_result;
 END;
-$;
+\$\$;
 
 REVOKE ALL ON FUNCTION public.list_content_reports_for_actor(uuid,text) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.get_content_report_for_actor(uuid,uuid) FROM PUBLIC,anon,authenticated;
