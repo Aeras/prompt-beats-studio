@@ -117,7 +117,7 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
-function buildSongBlueprintPrompt(
+export function buildSongBlueprintPrompt(
   blueprintInput: z.infer<typeof songBlueprintSchema>,
   promptLabel: string,
 ) {
