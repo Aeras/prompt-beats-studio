@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Link2, Loader2, Music2, Pause, Play, Search, Star, Unlink, X } from "lucide-react";
@@ -65,16 +65,14 @@ function TrackSelector({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const deferredQuery = useDeferredValue(query.trim());
 
   const available = useQuery({
-    queryKey: ["project-version-linkable-tracks", projectId, versionId],
-    queryFn: () => listLinkableProjectTracks({ data: { projectId, versionId, search: "" } }),
+    queryKey: ["project-version-linkable-tracks", projectId, versionId, deferredQuery],
+    queryFn: () => listLinkableProjectTracks({ data: { projectId, versionId, search: deferredQuery } }),
   });
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase();
-    return (available.data?.tracks ?? []).filter((track) => !q || track.title.toLocaleLowerCase().includes(q));
-  }, [available.data?.tracks, query]);
+  const rows = available.data?.tracks ?? [];
 
   const toggle = (id: string, linked: boolean) => {
     if (linked) return;
@@ -283,7 +281,7 @@ export function ProjectVersionLinkedTracks({ projectId, versionId, language }: P
                 {!track.unavailable && <Link to="/track/$id" params={{ id: track.track_id }} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/10 px-2.5 text-[10px] text-muted-foreground hover:text-accent">
                   <ExternalLink className="h-3 w-3" />{el ? "Άνοιγμα" : "Open Track"}
                 </Link>}
-                <button type="button" disabled={Boolean(busyKey)} onClick={() => setPrimary(track.is_primary ? null : track.track_id)} className={cn("inline-flex min-h-9 items-center gap-1 rounded-lg border px-2.5 text-[10px] font-semibold disabled:opacity-40", track.is_primary ? "border-amber-400/25 text-amber-300" : "border-white/10 text-muted-foreground hover:text-amber-300")}>
+                <button type="button" disabled={Boolean(busyKey) || track.unavailable} onClick={() => setPrimary(track.is_primary ? null : track.track_id)} className={cn("inline-flex min-h-9 items-center gap-1 rounded-lg border px-2.5 text-[10px] font-semibold disabled:opacity-40", track.is_primary ? "border-amber-400/25 text-amber-300" : "border-white/10 text-muted-foreground hover:text-amber-300")}>
                   {busyKey === `primary:${track.track_id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className={cn("h-3 w-3", track.is_primary && "fill-current")} />}
                   {track.is_primary ? (el ? "Αφαίρεση Primary" : "Clear Primary") : (el ? "Ως Κύριο" : "Set Primary")}
                 </button>
