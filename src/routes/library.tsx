@@ -23,7 +23,8 @@ import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
 import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
-import { LibraryItemActionSheet, LibraryLongPressButton, useLibraryLongPress } from "@/components/promptbeats/LibraryItemActionSheet";
+import { LibraryItemActionSheet, LibraryLongPressButton, useLibraryLongPress, type LibraryActionMenuAnchor } from "@/components/promptbeats/LibraryItemActionSheet";
+import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -335,6 +336,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     id: string;
     name: string;
     currentFolderId: string | null;
+    anchor: LibraryActionMenuAnchor;
   }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
     operation: "move" | "duplicate";
@@ -708,6 +710,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     }
   };
 
+  const openActionMenu = (
+    item: { kind: "folder" | "project" | "prompt"; id: string; name: string; currentFolderId: string | null },
+    anchor: LibraryActionMenuAnchor,
+  ) => setActionSheetItem({ ...item, anchor });
+
   const actionFolder = actionSheetItem?.kind === "folder"
     ? (folderContents.data?.folders ?? []).find((item) => item.id === actionSheetItem.id) ?? null
     : null;
@@ -828,7 +835,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       onDragLeave={() => setDragOverFolderId(null)}
                       onDrop={(event) => void dropIntoFolder(event, folder.id, [...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / "))}
                       className={cn(
-                        "group relative flex min-w-0 flex-col items-center rounded-2xl px-1.5 pb-2 pt-1 text-center transition-all touch-pan-y",
+                        "group relative flex min-w-0 flex-col items-center rounded-2xl px-1.5 pb-2 pt-1 text-center transition-all touch-pan-y md:cursor-grab md:active:cursor-grabbing",
                         "hover:bg-white/[0.035] focus-within:bg-white/[0.035]",
                         dragOverFolderId === folder.id && "bg-accent/[0.09] ring-1 ring-accent/55",
                         touchDraggingKey === `folder:${folder.id}` && "opacity-70",
@@ -836,12 +843,12 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                     >
                       <LibraryLongPressButton
                         onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }}
-                        onLongPress={() => setActionSheetItem({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })}
+                        onLongPress={(point) => openActionMenu({ kind: "folder", id: folder.id, name: folder.name, currentFolderId }, point)}
                         className="flex w-full min-w-0 flex-col items-center text-center outline-none"
                       >
                         <span className="relative grid h-[66px] w-[78px] place-items-center rounded-2xl transition-transform duration-150 group-hover:-translate-y-0.5">
                           <span className="absolute inset-x-2 bottom-1 h-9 rounded-2xl bg-accent/10 blur-xl" aria-hidden="true" />
-                          <Folder className="relative h-[58px] w-[58px] fill-accent/[0.10] text-accent drop-shadow-[0_0_12px_hsl(var(--accent)/0.16)]" strokeWidth={1.55} />
+                          <PromptBeatsFolderIcon className="relative h-[62px] w-[72px] drop-shadow-[0_0_14px_hsl(var(--accent)/0.22)]" />
                           {folder.has_subfolders && (
                             <span className="absolute bottom-1.5 right-2.5 h-2 w-2 rounded-full border border-background bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.55)]" aria-label={language === "el" ? "Περιέχει υποφακέλους" : "Contains subfolders"} />
                           )}
@@ -857,7 +864,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setActionSheetItem({ kind: "folder", id: folder.id, name: folder.name, currentFolderId });
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          openActionMenu(
+                            { kind: "folder", id: folder.id, name: folder.name, currentFolderId },
+                            { x: rect.right - 8, y: rect.bottom + 6 },
+                          );
                         }}
                         aria-label={language === "el" ? `Επιλογές φακέλου ${folder.name}` : `Folder options for ${folder.name}`}
                         title={language === "el" ? "Επιλογές φακέλου" : "Folder options"}
@@ -880,11 +891,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "project", id: project.id, currentFolderId })}
                       onDragEnd={() => setDragOverFolderId(null)}
-                      className={cn("glass flex items-center gap-3 rounded-2xl p-4 touch-pan-y", touchDraggingKey === `project:${project.id}` && "opacity-70")}
+                      className={cn("glass flex items-center gap-3 rounded-2xl p-4 touch-pan-y md:cursor-grab md:active:cursor-grabbing", touchDraggingKey === `project:${project.id}` && "opacity-70")}
                     >
                       <LibraryLongPressButton
                         onClick={() => { setOpenProjectId(project.id); onSearchChange(""); onViewChange("projects"); }}
-                        onLongPress={() => setActionSheetItem({ kind: "project", id: project.id, name: project.name, currentFolderId })}
+                        onLongPress={(point) => openActionMenu({ kind: "project", id: project.id, name: project.name, currentFolderId }, point)}
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span>
@@ -892,10 +903,21 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       </LibraryLongPressButton>
                       <div className="flex shrink-0 gap-1">
                         <ExportControl kind="project" id={project.id} name={project.name} />
-                        <button type="button" onClick={() => startDuplicateProject(project as PromptProject)} aria-label={language === "el" ? "Δημιουργία αντιγράφου Project" : "Duplicate Project"} title={language === "el" ? "Δημιουργία αντιγράφου Project" : "Duplicate Project"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Copy className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "project", id: project.id, name: project.name, currentFolderId })} aria-label={language === "el" ? "Μετακίνηση Project σε φάκελο" : "Move Project to folder"} title={language === "el" ? "Μετακίνηση Project σε φάκελο" : "Move Project to folder"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => renameProject(project as PromptProject)} aria-label={language === "el" ? "Μετονομασία Project" : "Rename Project"} title={language === "el" ? "Μετονομασία Project" : "Rename Project"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => removeProject(project as PromptProject)} aria-label={language === "el" ? "Διαγραφή Project" : "Delete Project"} title={language === "el" ? "Διαγραφή Project" : "Delete Project"} className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            openActionMenu(
+                              { kind: "project", id: project.id, name: project.name, currentFolderId },
+                              { x: rect.right - 8, y: rect.bottom + 6 },
+                            );
+                          }}
+                          aria-label={language === "el" ? `Επιλογές Project ${project.name}` : `Project options for ${project.name}`}
+                          title={language === "el" ? "Επιλογές Project" : "Project options"}
+                          className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:border-accent/35 hover:text-accent"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
                       </div>
                     </article>;
                   })}
@@ -924,12 +946,12 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                           currentFolderId,
                         })}
                         onDuplicate={() => startDuplicatePrompt(prompt as SavedPrompt)}
-                        onLongPress={() => setActionSheetItem({
+                        onLongPress={(point) => openActionMenu({
                           kind: "prompt",
                           id: prompt.id,
                           name: prompt.custom_name || prompt.title || prompt.theme || (language === "el" ? "Prompt" : "Prompt"),
                           currentFolderId,
-                        })}
+                        }, point)}
                       />
                     </div>
                   ))}
@@ -1004,6 +1026,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         open={Boolean(actionSheetItem)}
         language={language}
         title={actionSheetItem?.name ?? ""}
+        anchor={actionSheetItem?.anchor ?? null}
         canDuplicate={actionSheetItem?.kind === "project" || actionSheetItem?.kind === "prompt"}
         onMove={() => {
           if (!actionSheetItem) return;
@@ -1256,7 +1279,7 @@ function SongAnalysisCard({ analysis, projects }: { analysis: SongAnalysisItem; 
   );
 }
 
-function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder, onDuplicate, onLongPress }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void; onDuplicate?: () => void; onLongPress?: () => void }) {
+function SavedPromptCard({ prompt, projects, compact = false, listMode = false, onMoveToFolder, onDuplicate, onLongPress }: { prompt: SavedPrompt; projects: PromptProject[]; compact?: boolean; listMode?: boolean; onMoveToFolder?: () => void; onDuplicate?: () => void; onLongPress?: (point: LibraryActionMenuAnchor) => void }) {
   const { t, language } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
   const lyricsWorkspaceAccess = useFeatureAccess("lyrics_workspace");
@@ -1266,7 +1289,7 @@ function SavedPromptCard({ prompt, projects, compact = false, listMode = false, 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
-  const longPress = useLibraryLongPress(() => onLongPress?.(), !onLongPress);
+  const longPress = useLibraryLongPress((point) => onLongPress?.(point), !onLongPress);
   const displayVersionLabel = prompt.source_generation_job_id && prompt.revision_request
     ? null
     : prompt.version_label;
