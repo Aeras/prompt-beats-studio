@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type MouseEvent, type PointerEvent } from "react";
 import { Copy, FolderInput, Pencil, Trash2, X } from "lucide-react";
 
 type PointerPoint = { x: number; y: number };
@@ -17,7 +17,7 @@ export function useLibraryLongPress(onLongPress: () => void, disabled = false) {
   };
 
   return {
-    onPointerDown: (event: React.PointerEvent) => {
+    onPointerDown: (event: PointerEvent) => {
       if (disabled || event.pointerType === "mouse") return;
       firedRef.current = false;
       startRef.current = { x: event.clientX, y: event.clientY };
@@ -28,14 +28,14 @@ export function useLibraryLongPress(onLongPress: () => void, disabled = false) {
         clear();
       }, 550);
     },
-    onPointerMove: (event: React.PointerEvent) => {
+    onPointerMove: (event: PointerEvent) => {
       const start = startRef.current;
       if (!start) return;
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) clear();
     },
     onPointerUp: clear,
     onPointerCancel: clear,
-    onClickCapture: (event: React.MouseEvent) => {
+    onClickCapture: (event: MouseEvent) => {
       if (!firedRef.current) return;
       event.preventDefault();
       event.stopPropagation();
