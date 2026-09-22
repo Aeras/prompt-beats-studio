@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, Wand2, FilePenLine } from "lucide-react";
+import { Library as LibraryIcon, Copy, Check, Trash2, Loader2, Search, FolderPlus, Folder, Pencil, FolderX, ChevronDown, ChevronRight, Home, Wand2, FilePenLine, FolderInput } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
@@ -22,6 +22,18 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
+import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
+import {
+  createLibraryFolder,
+  deleteLibraryFolder,
+  getLibraryFolderBreadcrumbs,
+  listLibraryFolderContents,
+  moveLibraryFolder,
+  movePromptProjectToFolder,
+  moveStandalonePromptToFolder,
+  renameLibraryFolder,
+  searchLibraryScope,
+} from "@/lib/library-folders.functions";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -261,6 +273,7 @@ function Section({ tracks, empty, playing, currentId, onPlay, gridMode }: { trac
 
 type SavedPrompt = {
   id: string; title: string | null; custom_name: string | null; project_id: string | null;
+  folder_id: string | null; duplicated_from_prompt_id: string | null;
   version_number: number | null; version_label: string | null; generator_input_snapshot: unknown | null;
   parent_prompt_id: string | null; revision_request: string | null; source_generation_job_id: string | null;
   version_change_metadata: unknown | null; version_user_note: string | null;
@@ -268,7 +281,7 @@ type SavedPrompt = {
   mood: string | null; language: string | null; tags: string | null; lyrics: string | null; note: string | null;
   created_at: string; updated_at: string;
 };
-type PromptProject = { id: string; name: string; creation_notes: string; preferred_prompt_id: string | null; created_at: string; updated_at: string };
+type PromptProject = { id: string; name: string; creation_notes: string; preferred_prompt_id: string | null; folder_id: string | null; duplicated_from_project_id: string | null; created_at: string; updated_at: string };
 type SongAnalysisItem = {
   id: string; name: string; project_id: string | null; model: string; created_at: string;
   generator_ready: {
