@@ -22,7 +22,7 @@ type PlayerState = {
   position: number;
   duration: number;
   volume: number;
-  play: (track: Track, queue?: Track[]) => void;
+  play: (track: Track, queue?: Track[], options?: { countPlay?: boolean }) => void;
   toggle: () => void;
   next: () => void;
   prev: () => void;
@@ -35,6 +35,7 @@ type PlayerState = {
   cycleRepeat: () => void;
   playerMode: PlayerMode;
   setPlayerMode: (mode: PlayerMode) => void;
+  playbackError: string | null;
 };
 
 type PlaybackCycle = {
@@ -42,6 +43,7 @@ type PlaybackCycle = {
   listenedSeconds: number;
   lastTime: number;
   endedHandled: boolean;
+  countPlay: boolean;
 };
 
 const PlayerContext = createContext<PlayerState | null>(null);
@@ -64,13 +66,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
   const [playerMode, setPlayerMode] = useState<PlayerMode>("fixed");
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
   const playbackCycleRef = useRef<PlaybackCycle | null>(null);
   const nativeInstanceId = "promptbeats-native-player";
 
-  const beginPlaybackCycle = useCallback((trackId: string) => {
-    playbackCycleRef.current = { trackId, listenedSeconds: 0, lastTime: 0, endedHandled: false };
+  const beginPlaybackCycle = useCallback((trackId: string, countPlay = true) => {
+    playbackCycleRef.current = { trackId, listenedSeconds: 0, lastTime: 0, endedHandled: false, countPlay };
   }, []);
 
   const countCompletedPlay = useCallback(() => {
@@ -78,6 +81,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const el = audioRef.current;
     if (!cycle || cycle.endedHandled || !el) return;
     cycle.endedHandled = true;
+    if (!cycle.countPlay) return;
 
     const trackDuration = Number.isFinite(el.duration) ? el.duration : 0;
     const minimumSeconds = Math.min(30, trackDuration * 0.7);
@@ -156,6 +160,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setPlaying(true);
     };
     const onPause = () => setPlaying(false);
+    const onError = () => {
+      setPlaying(false);
+      setPlaybackError("Playback failed.");
+    };
 
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("timeupdate", onProgress);
@@ -163,6 +171,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     el.addEventListener("ended", onEnd);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
+    el.addEventListener("error", onError);
     return () => {
       el.pause();
       el.removeEventListener("timeupdate", onTime);
@@ -171,6 +180,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       el.removeEventListener("ended", onEnd);
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
+      el.removeEventListener("error", onError);
       audioRef.current = null;
       setAudioElement(null);
     };
@@ -181,38 +191,51 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (id !== nativeInstanceId) audioRef.current?.pause();
   }), []);
 
-  const start = useCallback((track: Track) => {
+  const start = useCallback((track: Track, countPlay = true) => {
     const el = audioRef.current;
-    if (!el || !track.audioUrl) return;
-    beginPlaybackCycle(track.id);
+    if (!el || !track.audioUrl) {
+      setPlaybackError("Playback failed.");
+      return;
+    }
+    setPlaybackError(null);
+    beginPlaybackCycle(track.id, countPlay);
     activateMedia({ id: nativeInstanceId, kind: "native" });
     setCurrent(track);
     setPosition(0);
     el.src = track.audioUrl;
-    void el.play().catch(() => setPlaying(false));
+    void el.play().catch(() => {
+      setPlaying(false);
+      setPlaybackError("Playback failed.");
+    });
   }, [beginPlaybackCycle]);
 
   const play = useCallback(
-    (track: Track, nextQueue?: Track[]) => {
+    (track: Track, nextQueue?: Track[], options?: { countPlay?: boolean }) => {
       if (nextQueue) {
         setQueue(nextQueue.filter((t) => Boolean(t.audioUrl)));
         historyRef.current = [];
         playedRef.current = new Set([track.id]);
       }
       const el = audioRef.current;
+      const countPlay = options?.countPlay !== false;
       if (current && current.id === track.id && el) {
+        if (playbackCycleRef.current?.trackId === track.id) playbackCycleRef.current.countPlay = countPlay;
         if (el.paused) {
           if (el.ended || playbackCycleRef.current?.endedHandled) {
             el.currentTime = 0;
-            beginPlaybackCycle(track.id);
+            beginPlaybackCycle(track.id, countPlay);
           }
           activateMedia({ id: nativeInstanceId, kind: "native" });
-          void el.play().catch(() => setPlaying(false));
+          setPlaybackError(null);
+          void el.play().catch(() => {
+            setPlaying(false);
+            setPlaybackError("Playback failed.");
+          });
         }
         else el.pause();
         return;
       }
-      start(track);
+      start(track, countPlay);
     },
     [current, start, beginPlaybackCycle],
   );
@@ -361,8 +384,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       cycleRepeat,
       playerMode,
       setPlayerMode,
+      playbackError,
     }),
-    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat, playerMode],
+    [current, playing, position, duration, volume, play, toggle, step, seek, setVolume, audioElement, shuffle, repeat, toggleShuffle, cycleRepeat, playerMode, playbackError],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
