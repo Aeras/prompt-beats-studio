@@ -82,9 +82,14 @@ function valueStatus(before: string, after: string): Exclude<VersionDiffStatus, 
   return "changed";
 }
 
-function arrayValues(selected: string[] | undefined, custom: string | undefined) {
+function arrayValues(
+  selected: string[] | undefined,
+  custom: string | undefined,
+  fallback = "",
+) {
   const values = [...(selected ?? []), ...(custom?.trim() ? [custom.trim()] : [])];
-  return [...new Set(values.map(compact).filter(Boolean))];
+  const normalized = [...new Set(values.map(compact).filter(Boolean))];
+  return normalized.length ? normalized : (fallback.trim() ? [compact(fallback)] : []);
 }
 
 function arrayField(
@@ -148,14 +153,14 @@ export function diffVersionFields(
     arrayField(
       "musicStyle",
       "Music Style",
-      arrayValues(left?.selectedMusicStyles, left?.customMusicStyle ?? before.genre),
-      arrayValues(right?.selectedMusicStyles, right?.customMusicStyle ?? after.genre),
+      arrayValues(left?.selectedMusicStyles, left?.customMusicStyle, before.genre),
+      arrayValues(right?.selectedMusicStyles, right?.customMusicStyle, after.genre),
     ),
     arrayField(
       "mood",
       "Mood",
-      arrayValues(left?.selectedMoods, left?.customMood ?? before.mood),
-      arrayValues(right?.selectedMoods, right?.customMood ?? after.mood),
+      arrayValues(left?.selectedMoods, left?.customMood, before.mood),
+      arrayValues(right?.selectedMoods, right?.customMood, after.mood),
     ),
     arrayField(
       "instruments",
