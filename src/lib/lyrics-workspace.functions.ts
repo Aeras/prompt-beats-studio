@@ -24,7 +24,7 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
     // service-role RPC path is reached.
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
-      .select("id, lyrics")
+      .select("id")
       .eq("id", data.projectId)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -33,7 +33,7 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
 
     const { data: base, error: baseError } = await context.supabase
       .from("saved_prompts")
-      .select("id")
+      .select("id, lyrics")
       .eq("id", data.basePromptId)
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
