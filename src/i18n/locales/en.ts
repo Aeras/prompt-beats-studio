@@ -205,6 +205,7 @@ export const en = {
   "generator.blueprint.appliedAllChorus": "Applied to all Chorus",
   "generator.blueprint.clearSection": "Clear",
   "generator.arrangement.title": "Visual Arrangement",
+  "generator.arrangement.advanced": "Advanced",
   "generator.arrangement.hint": "Shape section order, Blueprint direction and energy. Drag sections on desktop or use Move Up / Move Down.",
   "generator.arrangement.add": "Add section",
   "generator.arrangement.empty": "Add a section to start building the arrangement.",
