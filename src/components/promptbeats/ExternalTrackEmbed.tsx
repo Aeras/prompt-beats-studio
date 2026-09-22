@@ -2,25 +2,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { registerExternalIframe } from "@/lib/media-coordinator";
 import { getTrackEmbedUrl, getTrackProviderUrl } from "@/lib/track-sources";
 import { useI18n } from "@/i18n";
+import { useExternalMediaConsent } from "@/lib/external-media-consent";
 
 const UDIO_WIDTH = 700;
 const UDIO_HEIGHT = 228;
-const EXTERNAL_MEDIA_CONSENT_KEY = "promptbeats:external-media-consent";
-let externalMediaConsent = false;
-const consentListeners = new Set<(enabled: boolean) => void>();
-const nearViewportListeners = new Map<Element, () => void>();
-let nearViewportObserver: IntersectionObserver | null = null;
-
-function readExternalMediaConsent() {
-  if (typeof window === "undefined") return false;
-  externalMediaConsent = window.localStorage.getItem(EXTERNAL_MEDIA_CONSENT_KEY) === "enabled";
-  return externalMediaConsent;
-}
-function setExternalMediaConsent() {
-  externalMediaConsent = true;
-  window.localStorage.setItem(EXTERNAL_MEDIA_CONSENT_KEY, "enabled");
-  consentListeners.forEach((listener) => listener(true));
-}
 function observeNearViewport(element: Element, onVisible: () => void) {
   if (typeof IntersectionObserver === "undefined") { onVisible(); return () => undefined; }
   if (!nearViewportObserver) {
@@ -38,12 +23,6 @@ function observeNearViewport(element: Element, onVisible: () => void) {
   nearViewportObserver.observe(element);
   return () => { nearViewportListeners.delete(element); nearViewportObserver?.unobserve(element); };
 }
-function useExternalMediaConsent() {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => { setEnabled(readExternalMediaConsent()); consentListeners.add(setEnabled); return () => consentListeners.delete(setEnabled); }, []);
-  return { enabled, allow: setExternalMediaConsent };
-}
-
 export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = false }: { sourceType: string | null | undefined; sourceId: string | null | undefined; title: string; compact?: boolean }) {
   const { t } = useI18n();
   const embedUrl = getTrackEmbedUrl(sourceType, sourceId);
@@ -61,7 +40,15 @@ export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = fals
 
   const reset = useCallback(() => { if (iframeRef.current) iframeRef.current.src = "about:blank"; setResetKey((key) => key + 1); }, []);
   useEffect(() => { const iframe = iframeRef.current; if (!iframe || !embedUrl || !shouldMount) return; return registerExternalIframe(instanceId, { iframe, sourceType: sourceType ?? "", reset }); }, [embedUrl, instanceId, reset, resetKey, shouldMount, sourceType]);
-  useEffect(() => { if (!externalMediaAllowed || !embedUrl || shouldMount || !containerRef.current) return; return observeNearViewport(containerRef.current, () => setShouldMount(true)); }, [embedUrl, externalMediaAllowed, shouldMount]);
+  useEffect(() => {
+    if (!externalMediaAllowed) {
+      if (iframeRef.current) iframeRef.current.src = "about:blank";
+      setShouldMount(false);
+      return;
+    }
+    if (!embedUrl || shouldMount || !containerRef.current) return;
+    return observeNearViewport(containerRef.current, () => setShouldMount(true));
+  }, [embedUrl, externalMediaAllowed, shouldMount]);
   useEffect(() => { if (!isUdio || !containerRef.current) return; const observer = new ResizeObserver(([entry]) => setContainerWidth(entry?.contentRect.width ?? 0)); observer.observe(containerRef.current); return () => observer.disconnect(); }, [isUdio]);
 
   if (!embedUrl) return null;
@@ -74,8 +61,15 @@ export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = fals
       {showIframe ? (
         <iframe ref={iframeRef} key={resetKey} src={embedUrl} title={title} className={isUdio ? "absolute bottom-0 left-0 block border-0" : "block h-full w-full border-0"} style={isUdio ? { width: UDIO_WIDTH, height: UDIO_HEIGHT, transform: `scale(${udioScale})`, transformOrigin: "bottom left" } : undefined} allow="encrypted-media; fullscreen; picture-in-picture" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black/40 px-4 text-center">
-          {!externalMediaAllowed ? <><p className="text-xs text-muted-foreground">{t("external.notice")}</p><button type="button" onClick={allowExternalMedia} className="rounded-full border border-accent/50 bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/25">{t("external.allow")}</button></> : <p className="text-xs text-muted-foreground">{t("external.loading")}</p>}
+        <div className={compact ? "flex h-full w-full flex-col items-center justify-center gap-1.5 bg-black/45 px-2 text-center" : "flex h-full w-full flex-col items-center justify-center gap-3 bg-black/40 px-4 text-center"}>
+          {!externalMediaAllowed ? <>
+            <p className={compact ? "max-w-[92%] text-[9px] leading-tight text-muted-foreground" : "text-xs text-muted-foreground"}>
+              {compact ? (providerName ? `${providerName} · ${t("external.notice")}` : t("external.notice")) : t("external.notice")}
+            </p>
+            <button type="button" onClick={allowExternalMedia} className={compact ? "rounded-full border border-accent/50 bg-accent/15 px-2 py-1 text-[9px] font-semibold leading-none text-accent transition-colors hover:bg-accent/25" : "rounded-full border border-accent/50 bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/25"}>
+              {t("external.allow")}
+            </button>
+          </> : <p className={compact ? "text-[9px] text-muted-foreground" : "text-xs text-muted-foreground"}>{t("external.loading")}</p>}
         </div>
       )}
       {providerUrl && providerName && (
@@ -84,8 +78,8 @@ export function ExternalTrackEmbed({ sourceType, sourceId, title, compact = fals
           target="_blank"
           rel="noopener noreferrer"
           className={
-            isUdio && compact
-              ? "absolute right-1 top-1 z-20 whitespace-nowrap rounded-full border border-white/15 bg-black/80 px-1.5 py-0.5 text-[9px] font-medium leading-tight text-white/90 shadow-sm backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent"
+            compact
+              ? "absolute right-1 top-1 z-20 max-w-[70%] truncate whitespace-nowrap rounded-full border border-white/15 bg-black/80 px-1.5 py-0.5 text-[8px] font-medium leading-tight text-white/90 shadow-sm backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent"
               : "absolute right-2 top-2 z-10 whitespace-nowrap rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-accent"
           }
         >
