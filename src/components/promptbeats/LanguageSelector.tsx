@@ -7,7 +7,7 @@ export function LanguageSelector({ compact = false, className }: { compact?: boo
   const { language, setLanguage, t } = useI18n();
   const { user } = useAuth();
 
-  // Signed-in users manage their persistent language preference in Edit Profile.
+  // Signed-in users manage their persistent language preference in Settings.
   // Compact selectors are kept only for guests on standalone pages.
   if (user && compact) return null;
 
