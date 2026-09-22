@@ -1,10 +1,21 @@
 import { z } from "zod";
 
 export const songBlueprintSectionSchema = z.object({
+  // Legacy snapshots do not have sectionId/energy. They stay optional at the
+  // persisted-input boundary; normalized arrangement runtime state makes both
+  // fields explicit before any identity-sensitive operation.
+  sectionId: z.string().trim().min(1).max(120).optional(),
   structureIndex: z.number().int().min(0).max(39),
   sectionType: z.string().trim().min(1).max(80),
   occurrence: z.number().int().positive().max(40),
   instruction: z.string().max(800).default(""),
+  energy: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ]).nullable().optional(),
 });
 
 export const songBlueprintSchema = z.array(songBlueprintSectionSchema).max(40).default([]);
@@ -26,10 +37,12 @@ export function buildSongBlueprint(
         item.sectionType === sectionType,
     );
     return {
+      ...(existing?.sectionId ? { sectionId: existing.sectionId } : {}),
       structureIndex,
       sectionType,
       occurrence,
       instruction: existing?.instruction ?? "",
+      ...(existing?.energy !== undefined ? { energy: existing.energy } : {}),
     };
   });
 }
