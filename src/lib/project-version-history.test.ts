@@ -20,6 +20,13 @@ const baseSnapshot = generatorInputSnapshotSchema.parse({
 });
 
 describe("Project Version History metadata", () => {
+  test("Lyrics Workspace server reads baseline lyrics from saved_prompts, not prompt_projects", async () => {
+    const source = await Bun.file(new URL("./lyrics-workspace.functions.ts", import.meta.url)).text();
+    expect(source).toContain('.from("prompt_projects")\n      .select("id")');
+    expect(source).toContain('.from("saved_prompts")\n      .select("id, lyrics")');
+    expect(source).not.toContain('.from("prompt_projects")\n      .select("id, lyrics")');
+  });
+
   test("V1 metadata is canonical initial version metadata", () => {
     expect(buildInitialVersionMetadata()).toEqual({
       schemaVersion: 1,
