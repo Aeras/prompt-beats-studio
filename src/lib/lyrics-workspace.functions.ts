@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { workspaceSaveInputSchema } from "@/lib/lyrics-workspace.shared";
 
 const saveResultSchema = z.object({
@@ -16,6 +17,8 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => workspaceSaveInputSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "lyrics_workspace");
+
     // Explicit ownership checks make crafted workspace URLs fail before the
     // service-role RPC path is reached.
     const { data: project, error: projectError } = await context.supabase
