@@ -98,8 +98,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => setupInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
-    const { data: isAdmin, error: roleError } = await context.supabase.rpc("current_user_is_admin_level");
-    if (roleError || isAdmin !== true) throw new Error("Not allowed");
+    await requireFeatureAccess(context.supabase, "song_setup_assistant");
 
     const musicStyles = values(ADVANCED_MUSIC_STYLES);
     const moods = values(ADVANCED_MOODS);
