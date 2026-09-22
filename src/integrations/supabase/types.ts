@@ -659,6 +659,41 @@ export type Database = {
         }
         Relationships: []
       }
+      library_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -1239,6 +1274,8 @@ export type Database = {
         Row: {
           created_at: string
           creation_notes: string
+          duplicated_from_project_id: string | null
+          folder_id: string | null
           id: string
           name: string
           preferred_prompt_id: string | null
@@ -1248,6 +1285,8 @@ export type Database = {
         Insert: {
           created_at?: string
           creation_notes?: string
+          duplicated_from_project_id?: string | null
+          folder_id?: string | null
           id?: string
           name: string
           preferred_prompt_id?: string | null
@@ -1257,6 +1296,8 @@ export type Database = {
         Update: {
           created_at?: string
           creation_notes?: string
+          duplicated_from_project_id?: string | null
+          folder_id?: string | null
           id?: string
           name?: string
           preferred_prompt_id?: string | null
@@ -1264,6 +1305,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "prompt_projects_duplicated_from_project_id_fkey"
+            columns: ["duplicated_from_project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_projects_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "prompt_projects_preferred_prompt_id_fkey"
             columns: ["preferred_prompt_id"]
@@ -1337,6 +1392,8 @@ export type Database = {
         Row: {
           created_at: string
           custom_name: string | null
+          duplicated_from_prompt_id: string | null
+          folder_id: string | null
           generator_input_snapshot: Json | null
           genre: string
           id: string
@@ -1361,6 +1418,8 @@ export type Database = {
         Insert: {
           created_at?: string
           custom_name?: string | null
+          duplicated_from_prompt_id?: string | null
+          folder_id?: string | null
           generator_input_snapshot?: Json | null
           genre?: string
           id?: string
@@ -1385,6 +1444,8 @@ export type Database = {
         Update: {
           created_at?: string
           custom_name?: string | null
+          duplicated_from_prompt_id?: string | null
+          folder_id?: string | null
           generator_input_snapshot?: Json | null
           genre?: string
           id?: string
@@ -1407,6 +1468,20 @@ export type Database = {
           version_user_note?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_prompts_duplicated_from_prompt_id_fkey"
+            columns: ["duplicated_from_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_prompts_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_prompts_parent_prompt_id_fkey"
             columns: ["parent_prompt_id"]
@@ -2495,6 +2570,16 @@ export type Database = {
       revoke_track_share_link: {
         Args: { _share_id: string }
         Returns: undefined
+      }
+      search_library_folders: {
+        Args: { _query: string }
+        Returns: {
+          depth: number
+          id: string
+          name: string
+          parent_folder_id: string
+          path: string
+        }[]
       }
       send_moderation_case_message: {
         Args: { _body: string; _case_id: string; _message_type: string }
