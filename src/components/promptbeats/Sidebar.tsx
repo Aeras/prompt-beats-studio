@@ -33,7 +33,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
   const { isBanned, canViewUsers } = useModeration();
   const musicLabAccess = useFeatureAccess("ai_music_lab");
   const analyzerAccess = useFeatureAccess("song_analyzer");
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -65,7 +65,7 @@ export function SidebarNav({ active, onNavigate, onSubmit }: { active: NavId; on
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
         >
           <Settings className="h-[18px] w-[18px] shrink-0" />
-          <span>{t("language.label") === "Language" ? "Settings" : "Ρυθμίσεις"}</span>
+          <span>{language === "el" ? "Ρυθμίσεις" : "Settings"}</span>
         </button>
       )}
 
