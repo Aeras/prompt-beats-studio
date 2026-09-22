@@ -554,7 +554,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         </div>
       </div>
 
-      {folderMessage && <div className="rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent">{folderMessage}</div>}
+      {folderMessage && <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-accent"><span>{folderMessage}</span>{undoMove && <button type="button" onClick={undoLastMove} disabled={busy} className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold hover:bg-accent/10 disabled:opacity-50">{language === "el" ? "Αναίρεση" : "Undo"}</button>}</div>}
 
       {view === "all" ? (
         <div className="space-y-4">
@@ -755,15 +755,23 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         open={Boolean(folderPicker)}
         language={language}
         title={
-          folderPicker?.kind === "folder"
-            ? (language === "el" ? "Μετακίνηση φακέλου" : "Move Folder")
-            : folderPicker?.kind === "project"
-              ? (language === "el" ? "Μετακίνηση Project" : "Move Project")
-              : (language === "el" ? "Μετακίνηση Prompt" : "Move Prompt")
+          folderPicker?.operation === "duplicate"
+            ? folderPicker.kind === "project"
+              ? (language === "el" ? "Αντιγραφή Project σε..." : "Duplicate Project to...")
+              : (language === "el" ? "Αντιγραφή Prompt σε..." : "Duplicate Prompt to...")
+            : folderPicker?.kind === "folder"
+              ? (language === "el" ? "Μετακίνηση φακέλου" : "Move Folder")
+              : folderPicker?.kind === "project"
+                ? (language === "el" ? "Μετακίνηση Project" : "Move Project")
+                : (language === "el" ? "Μετακίνηση Prompt" : "Move Prompt")
         }
-        confirmLabel={language === "el" ? "Μετακίνηση εδώ" : "Move here"}
+        confirmLabel={
+          folderPicker?.operation === "duplicate"
+            ? (language === "el" ? "Αντιγραφή εδώ" : "Duplicate here")
+            : (language === "el" ? "Μετακίνηση εδώ" : "Move here")
+        }
         initialFolderId={folderPicker?.currentFolderId ?? currentFolderId}
-        excludedFolderIds={folderPicker?.kind === "folder" ? [folderPicker.id] : []}
+        excludedFolderIds={folderPicker?.operation === "move" && folderPicker?.kind === "folder" ? [folderPicker.id] : []}
         onClose={() => setFolderPicker(null)}
         onSelect={moveFolderItem}
       />
