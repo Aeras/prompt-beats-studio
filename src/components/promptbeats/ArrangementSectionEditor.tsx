@@ -11,6 +11,14 @@ import {
 } from "@/lib/song-arrangement.shared";
 import { cn } from "@/lib/utils";
 
+const ENERGY_LABEL_KEYS = {
+  1: "generator.arrangement.energy1",
+  2: "generator.arrangement.energy2",
+  3: "generator.arrangement.energy3",
+  4: "generator.arrangement.energy4",
+  5: "generator.arrangement.energy5",
+} as const;
+
 type Props = {
   sections: ArrangementSection[];
   sectionId: string;
@@ -129,7 +137,7 @@ export function ArrangementSectionEditor({
         <p className="mt-2 text-[10px] text-muted-foreground">
           {section.energy == null
             ? t("generator.arrangement.energyUnset")
-            : t(`generator.arrangement.energy${section.energy}` as never)}
+            : t(ENERGY_LABEL_KEYS[section.energy])}
         </p>
       </div>
 
