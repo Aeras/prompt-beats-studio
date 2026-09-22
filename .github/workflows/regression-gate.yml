@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -63,6 +66,9 @@ jobs:
 
       - name: External Supabase cutover tests
         run: bun test src/lib/supabase-cutover.test.ts
+
+      - name: September 22 audit hardening tests
+        run: bun test src/lib/audit-hardening-20260922.test.ts
 
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts

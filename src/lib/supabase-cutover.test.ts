@@ -6,27 +6,20 @@ async function source(path: string) {
 }
 
 describe("External Supabase cutover", () => {
-  test("runtime Supabase clients prefer the external project on the server", async () => {
-    const [middleware, adminClient, publicClient, browserClient] = await Promise.all([
+  test("runtime Supabase server clients share one external-first configuration contract", async () => {
+    const [config, middleware, adminClient, publicClient] = await Promise.all([
+      source("src/integrations/supabase/config.server.ts"),
       source("src/integrations/supabase/auth-middleware.ts"),
       source("src/integrations/supabase/client.server.ts"),
       source("src/lib/supabase-public.server.ts"),
-      source("src/integrations/supabase/client.ts"),
     ]);
 
-    expect(middleware).toContain("EXTERNAL_SUPABASE_URL");
-    expect(middleware).toContain("EXTERNAL_SUPABASE_PUBLISHABLE_KEY");
-    expect(adminClient).toContain("EXTERNAL_SUPABASE_URL");
-    expect(adminClient).toContain("EXTERNAL_SUPABASE_SECRET_KEY");
-    expect(publicClient).toContain("EXTERNAL_SUPABASE_URL");
-    expect(publicClient).toContain("EXTERNAL_SUPABASE_PUBLISHABLE_KEY");
-    expect(browserClient).toContain("EXTERNAL_SUPABASE_URL");
-    expect(browserClient).toContain("EXTERNAL_SUPABASE_PUBLISHABLE_KEY");
-
-    expect(middleware.indexOf("EXTERNAL_SUPABASE_URL")).toBeLessThan(middleware.indexOf("process.env['SUPABASE_URL']"));
-    expect(middleware.indexOf("EXTERNAL_SUPABASE_PUBLISHABLE_KEY")).toBeLessThan(middleware.indexOf("process.env['SUPABASE_PUBLISHABLE_KEY']"));
-    expect(adminClient.indexOf("EXTERNAL_SUPABASE_URL")).toBeLessThan(adminClient.indexOf("process.env['SUPABASE_URL']"));
-    expect(publicClient.indexOf('EXTERNAL_SUPABASE_URL')).toBeLessThan(publicClient.indexOf('process.env["SUPABASE_URL"]'));
+    expect(config).toContain('process.env["EXTERNAL_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]');
+    expect(config).toContain('process.env["EXTERNAL_SUPABASE_PUBLISHABLE_KEY"]');
+    expect(config).toContain('process.env["EXTERNAL_SUPABASE_SECRET_KEY"]');
+    expect(middleware).toContain("getServerSupabasePublicConfig");
+    expect(adminClient).toContain("getServerSupabaseAdminConfig");
+    expect(publicClient).toContain("getServerSupabasePublicConfig");
   });
 
   test("tracked browser environment points to the external PromptBeats Supabase project", async () => {

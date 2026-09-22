@@ -60,7 +60,7 @@ describe("Feature Access V2 — 15 features", () => {
 
   test("Song Setup Assistant is seeded independently as admins_only", async () => {
     const sql = await source(songSetupMigration);
-    expect(sql).toContain("('song_setup_assistant'");
+    expect(sql).toMatch(/VALUES\s*\(\s*'song_setup_assistant'/m);
     expect(sql).toContain("'Song Setup Assistant'");
     expect(sql).toContain("'admins_only'");
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");

@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 const contactInput = z.object({
@@ -9,23 +11,35 @@ const contactInput = z.object({
   website: z.string().max(200).optional().default(""),
 });
 
-const WINDOW_MS = 30 * 60 * 1000;
-const MAX_SENDS_PER_WINDOW = 3;
-const attempts = new Map<string, { count: number; resetAt: number }>();
+function sha256(value: string) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
 
-function consumeRateLimit(email: string) {
-  const key = email.trim().toLowerCase();
-  const now = Date.now();
-  const current = attempts.get(key);
-  if (!current || current.resetAt <= now) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return;
+function requestNetworkFingerprint(request: Request | undefined, emailHash: string) {
+  if (!request) return sha256(`contact:no-request:${emailHash}`);
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+  const candidate =
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    forwarded;
+  if (!candidate || candidate.length > 128) {
+    return sha256(`contact:no-network:${emailHash}`);
   }
-  if (current.count >= MAX_SENDS_PER_WINDOW) {
-    throw new Error("Too many contact requests. Please try again later.");
-  }
-  current.count += 1;
-  attempts.set(key, current);
+  const day = new Date().toISOString().slice(0, 10);
+  return sha256(`contact:${day}:${candidate}`);
+}
+
+async function requireContactAdmission(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const emailHash = sha256(normalizedEmail);
+  const networkHash = requestNetworkFingerprint(getRequest(), emailHash);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await (supabaseAdmin as any).rpc("admit_contact_request", {
+    _email_hash: emailHash,
+    _network_hash: networkHash,
+  });
+  if (error) throw new Error("Contact message could not be sent. Please try again.");
+  if (data !== true) throw new Error("Too many contact requests. Please try again later.");
 }
 
 export const sendContactForm = createServerFn({ method: "POST" })
@@ -34,7 +48,7 @@ export const sendContactForm = createServerFn({ method: "POST" })
     // Honeypot: bots commonly fill hidden website fields. Return success without sending.
     if (data.website.trim()) return { sent: true };
 
-    consumeRateLimit(data.email);
+    await requireContactAdmission(data.email);
 
     try {
       const { sendContactEmailViaSmtp } = await import("@/lib/contact-email.server");

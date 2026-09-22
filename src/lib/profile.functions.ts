@@ -99,6 +99,7 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
       .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
+      .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(100);
     return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
@@ -122,6 +123,7 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
       .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
+      .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(100);
     return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
@@ -146,6 +148,7 @@ export const getPublicProfile = createServerFn({ method: "GET" })
       .select("id, title, genre, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, contains_explicit_lyrics, duration_seconds, is_published, created_at")
       .eq("user_id", profile.id)
       .eq("is_published", true)
+      .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(50);
     return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };

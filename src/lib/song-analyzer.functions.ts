@@ -931,6 +931,8 @@ Return only the requested structured JSON.
       model: args.model,
       contents: prompt,
       config: {
+        abortSignal: AbortSignal.timeout(5 * 60 * 1000),
+        httpOptions: { timeout: 5 * 60 * 1000 },
         tools: [{ googleSearch: {} }],
         responseFormat: {
           text: { mimeType: "application/json", schema: EXTERNAL_VALIDATION_RESPONSE_FORMAT },
@@ -1019,6 +1021,8 @@ export const analyzeSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => analyzeInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAnalyzerAccess(context);
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "song_analyzer");
 
     const bytes = Buffer.from(data.audioBase64, "base64");
     if (!bytes.length || bytes.byteLength > SONG_ANALYZER_MAX_FILE_BYTES) {

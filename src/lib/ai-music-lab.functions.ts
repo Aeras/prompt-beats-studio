@@ -47,6 +47,8 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab");
 
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Gemini API is not configured");
@@ -65,6 +67,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
       "https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent",
       {
         method: "POST",
+        signal: AbortSignal.timeout(5 * 60 * 1000),
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,

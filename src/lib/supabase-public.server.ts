@@ -1,18 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
+import { getServerSupabasePublicConfig } from "@/integrations/supabase/config.server";
 
 /** Publishable-key client for public (anon) reads and token verification on the server. */
 export function createPublicServerClient(accessToken?: string) {
-  const url = process.env["EXTERNAL_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
-  const key =
-    process.env["EXTERNAL_SUPABASE_PUBLISHABLE_KEY"] ??
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ??
-    process.env["SUPABASE_ANON_KEY"];
-
-  if (!url || !key) {
-    throw new Error("Missing Supabase server environment configuration.");
-  }
+  const { url, publishableKey: key } = getServerSupabasePublicConfig();
 
   return createClient<Database>(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },

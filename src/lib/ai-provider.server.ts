@@ -61,6 +61,18 @@ export type ModelResult = {
 
 export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
+function providerRequestTimeoutMs(call: ModelCall) {
+  if (call.reasoningEffort === "high" || call.reasoningEffort === "xhigh" || call.reasoningEffort === "max") {
+    return 7 * 60 * 1000;
+  }
+  if (call.reasoningEffort === "medium") return 6 * 60 * 1000;
+  return 5 * 60 * 1000;
+}
+
+function providerRequestSignal(call: ModelCall) {
+  return AbortSignal.timeout(providerRequestTimeoutMs(call));
+}
+
 export function providerOf(model: string) {
   return AI_MODELS.find((m) => m.id === model)?.provider ?? "gemini";
 }
@@ -105,6 +117,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   const startedAt = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    signal: providerRequestSignal(call),
     headers: {
       "content-type": "application/json",
       "x-api-key": apiKey,
@@ -299,6 +312,8 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     contents: call.prompt,
     config: {
       systemInstruction: call.system,
+      abortSignal: providerRequestSignal(call),
+      httpOptions: { timeout: providerRequestTimeoutMs(call) },
       // Gemini structured JSON output; Zod still validates the parsed result.
       responseMimeType: "application/json",
       ...(call.schema ? { responseSchema: call.schema as never } : {}),
@@ -350,6 +365,7 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   const send = () =>
     fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
+      signal: providerRequestSignal(call),
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
@@ -427,6 +443,7 @@ async function callOpenAiCompatible(
 ): Promise<ModelResult> {
   const res = await fetch(endpoint, {
     method: "POST",
+    signal: providerRequestSignal(call),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`,
@@ -589,6 +606,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
 
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
+    signal: providerRequestSignal(call),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`,

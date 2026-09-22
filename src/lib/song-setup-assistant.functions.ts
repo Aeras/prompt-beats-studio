@@ -99,6 +99,8 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant");
 
     const musicStyles = values(ADVANCED_MUSIC_STYLES);
     const moods = values(ADVANCED_MOODS);
