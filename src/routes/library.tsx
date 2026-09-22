@@ -624,7 +624,14 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       {view === "all" ? (
         <div className="space-y-4">
           <div className="glass flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl px-3 py-2 text-xs [scrollbar-width:none]">
-            <button type="button" onClick={() => { setCurrentFolderId(null); onSearchChange(""); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">
+            <button
+              type="button"
+              onClick={() => { setCurrentFolderId(null); onSearchChange(""); }}
+              onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId("root"); }}
+              onDragLeave={() => setDragOverFolderId(null)}
+              onDrop={(event) => void dropIntoFolder(event, null, language === "el" ? "Αρχική" : "Root")}
+              className={cn("inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent", dragOverFolderId === "root" && "bg-accent/10 text-accent")}
+            >
               <Home className="h-3.5 w-3.5" />{language === "el" ? "Αρχική" : "Root"}
             </button>
             {(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => (
@@ -682,11 +689,24 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
               {(folderContents.data?.folders ?? []).length > 0 && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {(folderContents.data?.folders ?? []).map((folder) => (
-                    <article key={folder.id} className="glass flex items-center gap-2 rounded-2xl p-3">
-                      <button type="button" onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <article
+                      key={folder.id}
+                      draggable={desktopDnD}
+                      onDragStart={(event) => startDrag(event, { kind: "folder", id: folder.id, currentFolderId })}
+                      onDragEnd={() => setDragOverFolderId(null)}
+                      onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(folder.id); }}
+                      onDragLeave={() => setDragOverFolderId(null)}
+                      onDrop={(event) => void dropIntoFolder(event, folder.id, [...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / "))}
+                      className={cn("glass flex items-center gap-2 rounded-2xl p-3 transition-colors", dragOverFolderId === folder.id && "border-accent/60 bg-accent/[0.08]")}
+                    >
+                      <LibraryLongPressButton
+                        onClick={() => { setCurrentFolderId(folder.id); onSearchChange(""); }}
+                        onLongPress={() => setActionSheetItem({ kind: "folder", id: folder.id, name: folder.name, currentFolderId })}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/[0.07]"><Folder className="h-5 w-5 text-accent" /></span>
                         <span className="min-w-0"><span className="block truncate font-display text-sm font-bold">{folder.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language === "el" ? "Φάκελος" : "Folder"}</span></span>
-                      </button>
+                      </LibraryLongPressButton>
                       <div className="flex shrink-0 gap-1">
                         <button type="button" onClick={() => setFolderPicker({ operation: "move", kind: "folder", id: folder.id, name: folder.name, currentFolderId })} title={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><FolderInput className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => renameFolder(folder)} title={language === "el" ? "Μετονομασία" : "Rename"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Pencil className="h-3.5 w-3.5" /></button>
@@ -701,11 +721,21 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {(folderContents.data?.projects ?? []).map((project) => {
                     const promptCount = prompts.filter((prompt) => prompt.project_id === project.id).length;
-                    return <article key={project.id} className="glass flex items-center gap-3 rounded-2xl p-4">
-                      <button type="button" onClick={() => { setOpenProjectId(project.id); onSearchChange(""); onViewChange("projects"); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    return <article
+                      key={project.id}
+                      draggable={desktopDnD}
+                      onDragStart={(event) => startDrag(event, { kind: "project", id: project.id, currentFolderId })}
+                      onDragEnd={() => setDragOverFolderId(null)}
+                      className="glass flex items-center gap-3 rounded-2xl p-4"
+                    >
+                      <LibraryLongPressButton
+                        onClick={() => { setOpenProjectId(project.id); onSearchChange(""); onViewChange("projects"); }}
+                        onLongPress={() => setActionSheetItem({ kind: "project", id: project.id, name: project.name, currentFolderId })}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10"><Folder className="h-5 w-5 text-accent" /></span>
                         <span className="min-w-0"><span className="block truncate font-display font-bold">{project.name}</span><span className="mt-1 block text-[11px] text-muted-foreground">{promptCount} {language === "el" ? "εκδόσεις" : "versions"}</span>{project.creation_notes.trim() && <span className="mt-1 block truncate text-[11px] text-accent/80">{project.creation_notes}</span>}</span>
-                      </button>
+                      </LibraryLongPressButton>
                       <div className="flex shrink-0 gap-1">
                         <ExportControl kind="project" id={project.id} name={project.name} />
                         <button type="button" onClick={() => startDuplicateProject(project as PromptProject)} title={language === "el" ? "Δημιουργία αντιγράφου Project" : "Duplicate Project"} className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"><Copy className="h-3.5 w-3.5" /></button>
