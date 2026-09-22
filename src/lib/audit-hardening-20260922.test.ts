@@ -101,6 +101,19 @@ describe("September 22 production audit hardening", () => {
     expect(analyzer).toContain("httpOptions: { timeout: 5 * 60 * 1000 }");
   });
 
+  test("default AI models must remain enabled for all users", async () => {
+    const admin = await source("src/lib/ai-model-admin.functions.ts");
+    const panel = await source("src/components/promptbeats/AiModelsPanel.tsx");
+
+    expect(admin).toContain('data.accessPolicy !== "all_users"');
+    expect(admin).toContain('model.access_policy !== "all_users"');
+    expect(admin).toContain("A default AI model must be available to all users.");
+    expect(panel).toContain('m.accessPolicy === "all_users"');
+    expect(panel).toContain("handleAccessPolicyChange");
+    expect(panel).toContain("defaultAccessProtectionGenerator");
+    expect(panel).toContain("defaultAccessProtectionQuality");
+  });
+
   test("RLS event helper loses browser-facing EXECUTE grants", async () => {
     const migration = await source("supabase/migrations/20260922115500_harden_rls_auto_enable_grants.sql");
     expect(migration).toContain("REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated");
