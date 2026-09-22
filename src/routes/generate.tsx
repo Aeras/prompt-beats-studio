@@ -514,6 +514,7 @@ function GeneratePage() {
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
   const musicLabFeature = useFeatureAccess("ai_music_lab");
+  const songSetupFeature = useFeatureAccess("song_setup_assistant");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
@@ -1422,7 +1423,7 @@ function GeneratePage() {
                   const active = mode.key === "revision" ? revisionMode : !revisionMode && advanced === (mode.key === "advanced");
                   return <button key={mode.key} type="button" aria-pressed={active} onClick={() => changeGeneratorMode(mode.key)} className={active ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon" : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"}>{mode.label}</button>;
                 })}
-                {advanced && !revisionMode && hasAdminInputBypass && (
+                {advanced && !revisionMode && songSetupFeature.allowed && (
                   <button
                     type="button"
                     onClick={() => setSongSetupAssistantOpen(true)}
@@ -1658,7 +1659,7 @@ function GeneratePage() {
         </div>, document.body,
       )}
 
-      {hasAdminInputBypass && (
+      {songSetupFeature.allowed && (
         <SongSetupAssistantModal
           open={songSetupAssistantOpen}
           onOpenChange={setSongSetupAssistantOpen}
