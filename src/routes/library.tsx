@@ -317,6 +317,14 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     id: string;
     previousFolderId: string | null;
   }>(null);
+  const [desktopDnD, setDesktopDnD] = useState(false);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "root">(null);
+  const [actionSheetItem, setActionSheetItem] = useState<null | {
+    kind: "folder" | "project";
+    id: string;
+    name: string;
+    currentFolderId: string | null;
+  }>(null);
   const [folderPicker, setFolderPicker] = useState<null | {
     operation: "move" | "duplicate";
     kind: "folder" | "project" | "prompt";
@@ -326,6 +334,15 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     currentFolderId: string | null;
   }>(null);
   const q = search.trim().toLowerCase();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const sync = () => setDesktopDnD(media.matches);
+    sync();
+    media.addEventListener?.("change", sync);
+    return () => media.removeEventListener?.("change", sync);
+  }, []);
 
   const folderContents = useQuery({
     queryKey: ["library", "folder-contents", currentFolderId],
@@ -422,6 +439,25 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     }
   };
 
+  const performMove = async (
+    kind: "folder" | "project" | "prompt",
+    id: string,
+    previousFolderId: string | null,
+    destinationFolderId: string | null,
+    path: string,
+  ) => {
+    if (kind === "folder") {
+      await moveLibraryFolder({ data: { folderId: id, destinationFolderId } });
+    } else if (kind === "project") {
+      await movePromptProjectToFolder({ data: { projectId: id, destinationFolderId } });
+    } else {
+      await moveStandalonePromptToFolder({ data: { promptId: id, destinationFolderId } });
+    }
+    await refresh();
+    setUndoMove({ kind, id, previousFolderId });
+    flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`, true);
+  };
+
   const moveFolderItem = async (destinationFolderId: string | null, path: string) => {
     if (!folderPicker) return;
     setBusy(true);
@@ -453,23 +489,51 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
         return;
       }
 
-      if (folderPicker.kind === "folder") {
-        await moveLibraryFolder({ data: { folderId: folderPicker.id, destinationFolderId } });
-      } else if (folderPicker.kind === "project") {
-        await movePromptProjectToFolder({ data: { projectId: folderPicker.id, destinationFolderId } });
-      } else {
-        await moveStandalonePromptToFolder({ data: { promptId: folderPicker.id, destinationFolderId } });
-      }
-      await refresh();
-      setUndoMove({
-        kind: folderPicker.kind,
-        id: folderPicker.id,
-        previousFolderId: folderPicker.currentFolderId,
-      });
-      flashFolderMessage(language === "el" ? `Μετακινήθηκε σε ${path}.` : `Moved to ${path}.`, true);
+      await performMove(
+        folderPicker.kind,
+        folderPicker.id,
+        folderPicker.currentFolderId,
+        destinationFolderId,
+        path,
+      );
       setFolderPicker(null);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : (language === "el" ? "Η ενέργεια απέτυχε." : "Action failed."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startDrag = (
+    event: React.DragEvent,
+    item: { kind: "folder" | "project" | "prompt"; id: string; currentFolderId: string | null },
+  ) => {
+    if (!desktopDnD) return;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-promptbeats-library-item", JSON.stringify(item));
+  };
+
+  const dropIntoFolder = async (
+    event: React.DragEvent,
+    destinationFolderId: string | null,
+    path: string,
+  ) => {
+    if (!desktopDnD || busy) return;
+    event.preventDefault();
+    setDragOverFolderId(null);
+    const raw = event.dataTransfer.getData("application/x-promptbeats-library-item");
+    if (!raw) return;
+    try {
+      const item = JSON.parse(raw) as {
+        kind: "folder" | "project" | "prompt";
+        id: string;
+        currentFolderId: string | null;
+      };
+      if (item.currentFolderId === destinationFolderId) return;
+      setBusy(true);
+      await performMove(item.kind, item.id, item.currentFolderId, destinationFolderId, path);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed."));
     } finally {
       setBusy(false);
     }
