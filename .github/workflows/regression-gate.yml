@@ -43,6 +43,9 @@ jobs:
       - name: Song Arrangement prompt tests
         run: bun test src/lib/song-arrangement-prompt.test.ts
 
+      - name: Project Version History tests
+        run: bun test src/lib/project-version-history.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
