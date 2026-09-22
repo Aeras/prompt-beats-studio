@@ -26,6 +26,8 @@ import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicke
 import {
   createLibraryFolder,
   deleteLibraryFolder,
+  duplicatePromptProjectToFolder,
+  duplicateStandalonePromptToFolder,
   getLibraryFolderBreadcrumbs,
   listLibraryFolderContents,
   moveLibraryFolder,
@@ -310,9 +312,11 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderMessage, setFolderMessage] = useState("");
   const [folderPicker, setFolderPicker] = useState<null | {
+    operation: "move" | "duplicate";
     kind: "folder" | "project" | "prompt";
     id: string;
     name: string;
+    newName?: string;
     currentFolderId: string | null;
   }>(null);
   const q = search.trim().toLowerCase();
