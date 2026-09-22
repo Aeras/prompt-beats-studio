@@ -259,7 +259,7 @@ export function ProjectVersionLinkedTracks({ projectId, versionId, language }: P
               <button
                 type="button"
                 disabled={track.unavailable || !track.audio_url}
-                onClick={() => play(playerTrack, undefined, { countPlay: false })}
+                onClick={() => play(playerTrack, [playerTrack], { countPlay: false })}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 text-accent disabled:cursor-not-allowed disabled:opacity-35"
                 aria-label={track.unavailable ? (el ? "Το track δεν είναι διαθέσιμο" : "Track unavailable") : isPlaying ? (el ? `Παύση ${track.title}` : `Pause ${track.title}`) : (el ? `Αναπαραγωγή ${track.title}` : `Play ${track.title}`)}
               >
