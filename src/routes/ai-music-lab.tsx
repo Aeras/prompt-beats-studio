@@ -291,7 +291,7 @@ function AiMusicLabPage() {
       </main>
 
       {saveOpen && generated && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[9999] flex h-[100dvh] items-end justify-center overflow-hidden bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="save-lyria-track-title">
+        <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[9999] flex items-end justify-center overflow-hidden bg-black/75 p-0 backdrop-blur-sm sm:inset-0 sm:h-[100dvh] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="save-lyria-track-title">
           <div className="glass-strong max-h-[calc(100dvh-0.5rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-h-[92dvh] sm:rounded-3xl sm:p-7">
             <header className="sticky top-0 z-10 -mx-2 -mt-2 flex items-start justify-between gap-3 rounded-2xl bg-[#0a0a0c]/95 px-2 py-2 backdrop-blur"><div><h2 id="save-lyria-track-title" className="font-display text-lg font-bold">{copy.savePromptBeats}</h2><p className="mt-1 text-xs text-muted-foreground">{copy.saveHint}</p></div><button onClick={() => setSaveOpen(false)} aria-label={copy.close} className="shrink-0 text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button></header>
             <div className="mt-5 space-y-4">
