@@ -595,6 +595,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
     if (!desktopDnD) return;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("application/x-promptbeats-library-item", JSON.stringify(item));
+    setTouchDraggingKey(`${item.kind}:${item.id}`);
   };
 
   const dropIntoFolder = async (
@@ -620,6 +621,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
       window.alert(error instanceof Error ? error.message : (language === "el" ? "Η μετακίνηση απέτυχε." : "Move failed."));
     } finally {
       setBusy(false);
+      setTouchDraggingKey(null);
     }
   };
 
@@ -713,7 +715,12 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
   const openActionMenu = (
     item: { kind: "folder" | "project" | "prompt"; id: string; name: string; currentFolderId: string | null },
     anchor: LibraryActionMenuAnchor,
-  ) => setActionSheetItem({ ...item, anchor });
+  ) => {
+    touchDragRef.current = null;
+    setTouchDraggingKey(null);
+    setDragOverFolderId(null);
+    setActionSheetItem({ ...item, anchor });
+  };
 
   const actionFolder = actionSheetItem?.kind === "folder"
     ? (folderContents.data?.folders ?? []).find((item) => item.id === actionSheetItem.id) ?? null
@@ -830,14 +837,15 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       {...touchDragHandlers({ kind: "folder", id: folder.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "folder", id: folder.id, currentFolderId })}
-                      onDragEnd={() => setDragOverFolderId(null)}
+                      onDragEnd={() => { setDragOverFolderId(null); setTouchDraggingKey(null); }}
                       onDragOver={(event) => { if (!desktopDnD) return; event.preventDefault(); setDragOverFolderId(folder.id); }}
                       onDragLeave={() => setDragOverFolderId(null)}
                       onDrop={(event) => void dropIntoFolder(event, folder.id, [...(folderBreadcrumbs.data?.breadcrumbs ?? []).map((item) => item.name), folder.name].join(" / "))}
                       className={cn(
                         "group relative flex min-w-0 flex-col items-center rounded-2xl px-1.5 pb-2 pt-1 text-center transition-all touch-pan-y md:cursor-grab md:active:cursor-grabbing",
                         "hover:bg-white/[0.035] focus-within:bg-white/[0.035]",
-                        dragOverFolderId === folder.id && "bg-accent/[0.09] ring-1 ring-accent/55",
+                        touchDraggingKey && touchDraggingKey !== `folder:${folder.id}` && "bg-accent/[0.035] ring-1 ring-accent/15",
+                        dragOverFolderId === folder.id && "scale-[1.03] bg-accent/[0.11] ring-2 ring-accent/60",
                         touchDraggingKey === `folder:${folder.id}` && "opacity-70",
                       )}
                     >
@@ -890,7 +898,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       {...touchDragHandlers({ kind: "project", id: project.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "project", id: project.id, currentFolderId })}
-                      onDragEnd={() => setDragOverFolderId(null)}
+                      onDragEnd={() => { setDragOverFolderId(null); setTouchDraggingKey(null); }}
                       className={cn("glass flex items-center gap-3 rounded-2xl p-4 touch-pan-y md:cursor-grab md:active:cursor-grabbing", touchDraggingKey === `project:${project.id}` && "opacity-70")}
                     >
                       <LibraryLongPressButton
@@ -932,7 +940,7 @@ function PromptProjectLibrary({ prompts, projects, analyses, loading, showAnalys
                       {...touchDragHandlers({ kind: "prompt", id: prompt.id, currentFolderId })}
                       draggable={desktopDnD}
                       onDragStart={(event) => startDrag(event, { kind: "prompt", id: prompt.id, currentFolderId })}
-                      onDragEnd={() => setDragOverFolderId(null)}
+                      onDragEnd={() => { setDragOverFolderId(null); setTouchDraggingKey(null); }}
                     >
                       <SavedPromptCard
                         prompt={prompt as SavedPrompt}
