@@ -87,14 +87,44 @@ export function buildInitialVersionMetadata(): VersionChangeMetadata {
   };
 }
 
-export function buildGeneratorVersionMetadata(): VersionChangeMetadata {
+export function buildGeneratorVersionMetadata(input?: {
+  title?: string | null;
+  baseSnapshot?: GeneratorInputSnapshot | null;
+  desiredSnapshot?: GeneratorInputSnapshot | null;
+  beforeLyrics?: string | null;
+  afterLyrics?: string | null;
+}): VersionChangeMetadata {
+  const changedFields =
+    input?.baseSnapshot && input.desiredSnapshot
+      ? diffGeneratorSnapshots(input.baseSnapshot, input.desiredSnapshot)
+      : [];
+  const changedSections =
+    input?.beforeLyrics != null && input?.afterLyrics != null
+      ? diffLyricsSections(input.beforeLyrics, input.afterLyrics)
+      : [];
+  if (changedSections.length && !changedFields.includes("lyrics")) changedFields.push("lyrics");
+  const labels = changedSections.map((section) => section.sectionLabel);
+  const summaryParts: string[] = [];
+  if (labels.length) summaryParts.push(`${sentenceList(labels.slice(0, 4))} changed`);
+  if (changedFields.filter((field) => field !== "lyrics").length) {
+    summaryParts.push(
+      `${sentenceList(
+        changedFields
+          .filter((field) => field !== "lyrics")
+          .slice(0, 4)
+          .map((field) => field.replace(/([a-z])([A-Z])/g, "$1 $2")),
+      )} updated`,
+    );
+  }
   return {
     schemaVersion: 1,
     source: "advanced_generator",
-    title: "Generator version",
-    summary: "A new version was saved from the AI Generator.",
-    changedFields: [],
-    changedSections: [],
+    title: (input?.title?.trim() || "Generator version").slice(0, 160),
+    summary: (summaryParts.length
+      ? `${summaryParts.join("; ")}.`
+      : "A new version was saved from the AI Generator.").slice(0, 600),
+    changedFields,
+    changedSections,
     userRequest: null,
   };
 }
