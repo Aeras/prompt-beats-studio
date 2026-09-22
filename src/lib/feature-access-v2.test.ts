@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
 const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
 const songSetupMigration = "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
+const dependentSurfaceMigration = "supabase/migrations/20260922184500_feature_access_dependent_surface_rls.sql";
 
 const CANONICAL_KEYS = [
   "ai_generator",
@@ -255,6 +256,22 @@ describe("Feature Access V2 — 15 features", () => {
     const tracks = await source("src/lib/tracks.functions.ts");
     const likedStart = tracks.indexOf("export const listLikedTracks");
     expect(tracks.slice(likedStart)).toContain('requireFeatureAccess(context.supabase, "likes")');
+  });
+
+  test("Feature-owned stored data becomes unreadable through direct RLS access while access is unavailable", async () => {
+    const sql = await source(dependentSurfaceMigration);
+    for (const [table, feature] of [
+      ["playlists", "playlists"],
+      ["playlist_tracks", "playlists"],
+      ["favorites", "favorites"],
+      ["likes", "likes"],
+      ["track_share_links", "sharing_public_links"],
+      ["song_analyses", "song_analyzer"],
+    ] as const) {
+      expect(sql).toContain(`ON public.${table}`);
+      expect(sql).toContain(`current_user_can_use_feature('${feature}')`);
+    }
+    expect(sql).not.toMatch(/DELETE\s+FROM\s+public\./i);
   });
 
   test("new mutations do not delete historical user data or auto-revoke share links", async () => {
