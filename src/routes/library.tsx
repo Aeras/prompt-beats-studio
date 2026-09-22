@@ -91,8 +91,6 @@ export const Route = createFileRoute("/library")({
 });
 
 const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
-const TRACK_VISIBILITY_FILTERS = ["all", "public", "private"] as const;
-
 function LibraryPage() {
   const { t, language } = useI18n();
   const { user, profile, loading } = useAuth();
@@ -101,7 +99,6 @@ function LibraryPage() {
   const { preference: defaultTrackSource } = useTrackSourcePreference();
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
-  const [trackVisibility, setTrackVisibility] = useState<(typeof TRACK_VISIBILITY_FILTERS)[number]>("all");
   const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
   useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
@@ -117,12 +114,12 @@ function LibraryPage() {
   const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const favoriteTracks = (favorites.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
-  const publicTrackCount = myTracks.filter((track: Track) => track.isPublished).length;
-  const privateTrackCount = myTracks.length - publicTrackCount;
   const sourceFilteredMyTracks = filterByTrackSource(myTracks, trackSource);
-  const filteredMyTracks = sourceFilteredMyTracks.filter((track: Track) => trackVisibility === "all" || (trackVisibility === "public" ? track.isPublished : !track.isPublished));
+  const filteredMyTracks = sourceFilteredMyTracks;
   const filteredLikedTracks = filterByTrackSource(likedTracks, trackSource);
   const filteredFavoriteTracks = filterByTrackSource(favoriteTracks, trackSource);
+  const uploadTrackCount = filterByTrackSource(myTracks, "uploads").length;
+  const externalTrackCount = filterByTrackSource(myTracks, "external").length;
 
   const tabLabel = (value: (typeof TABS)[number]) => {
     if (value === "tracks") return t("library.myTracks");
@@ -132,7 +129,6 @@ function LibraryPage() {
     if (value === "favorites") return language === "el" ? "Τα Αγαπημένα μου" : "My Favorites";
     return t("library.likedTracks");
   };
-  const visibilityLabel = (value: (typeof TRACK_VISIBILITY_FILTERS)[number]) => value === "all" ? t("library.all") : value === "public" ? t("library.public") : t("library.private");
 
   const header = <div className="flex items-center gap-2"><LibraryIcon className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">{t("library.title")}</span></div>;
 
@@ -150,7 +146,7 @@ function LibraryPage() {
     );
   }
 
-  const emptyMyTracks = trackVisibility === "all" ? t("library.noTracks") : t("library.noVisibilityTracks", { visibility: visibilityLabel(trackVisibility).toLowerCase() });
+  const emptyMyTracks = t("library.noTracks");
 
   return (
     <AppShell header={header}>
@@ -163,14 +159,28 @@ function LibraryPage() {
 
         {tab === "tracks" && (
           <>
-            <div className="mt-3 flex items-center gap-2">
-              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-                {TRACK_VISIBILITY_FILTERS.map((filter) => {
-                  const count = filter === "all" ? myTracks.length : filter === "public" ? publicTrackCount : privateTrackCount;
-                  return <button key={filter} onClick={() => setTrackVisibility(filter)} aria-pressed={trackVisibility === filter} className={cn("shrink-0 rounded-full border px-3 py-1 text-xs transition-all", trackVisibility === filter ? "border-accent/50 bg-accent/15 font-semibold text-accent" : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent")}>{visibilityLabel(filter)} ({count})</button>;
-                })}
+            <div className="mt-3 flex w-full items-center justify-between gap-3">
+              <div className="inline-flex rounded-full border border-white/10 bg-black/20 p-1" role="group" aria-label={language === "el" ? "Πηγή τραγουδιών" : "Track source"}>
+                {([
+                  ["all", language === "el" ? `Όλα (${myTracks.length})` : `All (${myTracks.length})`],
+                  ["uploads", `Uploads (${uploadTrackCount})`],
+                  ["external", `External (${externalTrackCount})`],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={trackSource === value}
+                    onClick={() => setTrackSource(value)}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
+                      trackSource === value ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              <div className="flex shrink-0 items-center gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" /></div>
+              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
             </div>
             <Section empty={emptyMyTracks} tracks={filteredMyTracks} playing={playing} currentId={current?.id} onPlay={(track) => play(track, myTracks)} gridMode={gridMode} />
           </>
