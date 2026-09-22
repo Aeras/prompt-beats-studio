@@ -261,6 +261,18 @@ describe("Library folders foundation", () => {
     expect(library).toContain("Περιέχει υποφακέλους");
   });
 
+  test("folder actions keep explicit accessible labels and touch-sized targets", async () => {
+    const library = await source("src/routes/library.tsx");
+    const sheet = await source("src/components/promptbeats/LibraryItemActionSheet.tsx");
+
+    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση φακέλου" : "Move folder"}');
+    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση Project σε φάκελο" : "Move Project to folder"}');
+    expect(library).toContain('aria-label={language === "el" ? "Μετακίνηση Prompt σε φάκελο" : "Move Prompt to folder"}');
+    expect(library).toContain("min-h-10 min-w-10");
+    expect(sheet).toContain('role="dialog"');
+    expect(sheet).toContain('aria-modal="true"');
+  });
+
   test("touch drag shares the same Move operation and does not steal the stationary long-press gesture", async () => {
     const library = await source("src/routes/library.tsx");
 
