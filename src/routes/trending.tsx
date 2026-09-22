@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Flame } from "lucide-react";
@@ -9,6 +10,7 @@ import { usePlayer } from "@/lib/player";
 import { listTrendingTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
+import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -30,12 +32,15 @@ export const Route = createFileRoute("/trending")({
 });
 
 function TrendingPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
   const { data, isLoading } = useQuery({ queryKey: ["tracks", "trending"], queryFn: () => listTrendingTracks() });
 
-  const list: Track[] = (data?.tracks ?? []).map((track) => ({
+  const allTracks: Track[] = (data?.tracks ?? []).map((track) => ({
     id: track.id,
     userId: track.user_id,
     title: track.title,
@@ -56,6 +61,7 @@ function TrendingPage() {
     containsExplicitLyrics: track.contains_explicit_lyrics === true,
     staffBadge: track.staff_badge,
   }));
+  const list = filterByTrackSource(allTracks, trackSource);
 
   return (
     <AppShell header={<div className="flex items-center gap-2"><Flame className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">{t("trending.title")}</span></div>}>
@@ -65,7 +71,7 @@ function TrendingPage() {
             <h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("trending.title")}</span></h1>
             <p className="mt-1 text-sm text-muted-foreground">{t("trending.subtitle")}</p>
           </div>
-          <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
         </div>
         <div className={`mt-5 ${trackGridClassName(gridMode)}`}>
           {list.map((track) => <TrackCard key={track.id} track={track} isPlaying={playing && current?.id === track.id} onPlay={(item) => play(item, list)} viewMode={gridMode} />)}
