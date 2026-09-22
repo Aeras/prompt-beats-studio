@@ -539,11 +539,11 @@ function PlaylistDetail({ playlistId, userId, canManage, onBack }: { playlistId:
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.2em] text-accent">{copy.private}</p>
             <h2 className="mt-1 break-words font-display text-2xl font-bold sm:text-3xl">{detail.data?.playlist.name ?? ""}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{ordered.length} {copy.tracks} · {totalDuration(durationSeconds, language)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{visibleOrdered.length} {copy.tracks} · {totalDuration(durationSeconds, language)}</p>
           </div>
 
           <div className="flex flex-nowrap items-center gap-2">
-            {ordered.length > 0 && <button onClick={() => { const first = ordered[0]; if (first) play(first, ordered); }} title={copy.play} aria-label={copy.play} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon sm:inline-flex sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4"><Play className="h-4 w-4" /><span className="hidden sm:inline">{copy.play}</span></button>}
+            {visibleOrdered.length > 0 && <button onClick={() => { const first = visibleOrdered[0]; if (first) play(first, visibleOrdered); }} title={copy.play} aria-label={copy.play} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon sm:inline-flex sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4"><Play className="h-4 w-4" /><span className="hidden sm:inline">{copy.play}</span></button>}
             <button onClick={toggleShuffle} aria-pressed={shuffle} title={shuffle ? copy.shuffleOn : copy.shuffleOff} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full border sm:rounded-xl", shuffle ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground")}><Shuffle className="h-4 w-4" /></button>
             <button onClick={cycleRepeat} aria-pressed={repeat !== "off"} title={repeatLabel} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full border sm:rounded-xl", repeat !== "off" ? "border-accent/60 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground")}>{repeat === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}</button>
             {canManage && <button onClick={() => { setEditing(true); setName(detail.data?.playlist.name ?? ""); setCoverFile(null); setRemoveCover(false); }} title={copy.edit} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-muted-foreground hover:text-accent sm:rounded-xl"><Pencil className="h-4 w-4" /></button>}
