@@ -39,6 +39,10 @@ const listFolderInput = z.object({
 const searchFolderInput = z.object({
   query: z.string().trim().max(120).default(""),
 });
+const searchScopeInput = z.object({
+  folderId: nullableFolderIdSchema,
+  query: z.string().trim().min(1).max(200),
+});
 
 async function requireOwnedFolder(
   supabase: any,
@@ -316,4 +320,20 @@ export const searchLibraryFolders = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { folders: folders ?? [] };
+  });
+
+
+export const searchLibraryScope = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => searchScopeInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const folderId = data.folderId ?? null;
+    await requireOwnedFolder(context.supabase, context.userId, folderId);
+
+    const { data: results, error } = await context.supabase.rpc("search_library_scope", {
+      _folder_id: folderId,
+      _query: data.query,
+    });
+    if (error) throw new Error(error.message);
+    return { results: results ?? [] };
   });
