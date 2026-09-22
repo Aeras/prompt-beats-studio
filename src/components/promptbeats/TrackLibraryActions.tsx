@@ -88,7 +88,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   const favoriteIds = useQuery({
     queryKey: ["library", "favorite-ids", user?.id],
     queryFn: () => listFavoriteTrackIds(),
-    enabled: Boolean(user),
+    enabled: Boolean(user && favoritesAccess.allowed),
     staleTime: 20_000,
   });
   const favoriteSet = useMemo(() => new Set(favoriteIds.data?.trackIds ?? []), [favoriteIds.data?.trackIds]);
@@ -97,7 +97,7 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   const playlists = useQuery({
     queryKey: ["library", "playlists", user?.id],
     queryFn: () => listPlaylists(),
-    enabled: Boolean(user && playlistOpen),
+    enabled: Boolean(user && playlistsAccess.allowed && playlistOpen),
   });
 
   if (!user) return null;
@@ -233,9 +233,9 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content sideOffset={6} align="end" className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl">
-            <DropdownMenu.Item disabled={!favoritesAccess.allowed} onSelect={() => void favorite()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40">
+            {favoritesAccess.allowed && <DropdownMenu.Item onSelect={() => void favorite()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10">
               <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-current text-accent" : ""}`} /> {isFavorite ? copy.removeFavorite : copy.addFavorite}
-            </DropdownMenu.Item>
+            </DropdownMenu.Item>}
             {canPlaylist && <DropdownMenu.Item onSelect={() => setPlaylistOpen(true)} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><ListPlus className="h-4 w-4" /> {copy.playlist}</DropdownMenu.Item>}
             {canDownload && <DropdownMenu.Item onSelect={() => void download()} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"><Download className="h-4 w-4" /> {copy.download}</DropdownMenu.Item>}
             {ownerActions}
@@ -249,9 +249,9 @@ export function TrackLibraryActions({ track, compact = false, ownerActions = nul
   const iconClass = "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50";
   return <>
     <div className="flex shrink-0 items-center gap-1.5">
-      <button onClick={() => void favorite()} disabled={!favoritesAccess.allowed || busy === "favorite"} aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite} title={isFavorite ? copy.removeFavorite : copy.addFavorite} className={iconClass}>
+      {favoritesAccess.allowed && <button onClick={() => void favorite()} disabled={busy === "favorite"} aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite} title={isFavorite ? copy.removeFavorite : copy.addFavorite} className={iconClass}>
         {busy === "favorite" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bookmark className={`h-3.5 w-3.5 ${isFavorite ? "fill-current text-accent" : ""}`} />}
-      </button>
+      </button>}
       {canPlaylist && <button onClick={() => setPlaylistOpen(true)} aria-label={copy.playlist} title={copy.playlist} className={iconClass}><ListPlus className="h-3.5 w-3.5" /></button>}
       {canDownload && <button onClick={() => void download()} disabled={busy === "download"} aria-label={copy.download} title={copy.download} className={iconClass}>{busy === "download" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}</button>}
     </div>
