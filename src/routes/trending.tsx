@@ -66,12 +66,13 @@ function TrendingPage() {
   return (
     <AppShell header={<div className="flex items-center gap-2"><Flame className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">{t("trending.title")}</span></div>}>
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("trending.title")}</span></h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("trending.subtitle")}</p>
+        <div>
+          <h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("trending.title")}</span></h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("trending.subtitle")}</p>
+          <div className="mt-3 flex w-full items-center justify-between gap-3">
+            <TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} />
+            <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} /><TrackGridModeToggle mode={gridMode} onChange={setGridMode} /></div>
         </div>
         <div className={`mt-5 ${trackGridClassName(gridMode)}`}>
           {list.map((track) => <TrackCard key={track.id} track={track} isPlaying={playing && current?.id === track.id} onPlay={(item) => play(item, list)} viewMode={gridMode} />)}
