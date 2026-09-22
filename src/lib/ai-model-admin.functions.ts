@@ -141,15 +141,29 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
       readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
     ]);
 
+    const isGeneratorDefault = row.provider_model_id === generatorDefault;
+    const isQualityDefault = row.provider_model_id === qualityDefault;
     const disablingGenerator =
-      row.provider_model_id === generatorDefault &&
+      isGeneratorDefault &&
       (data.status !== "enabled" || !data.generatorEnabled || !row.generator_compatible);
     const disablingQuality =
-      row.provider_model_id === qualityDefault &&
+      isQualityDefault &&
       (data.status !== "enabled" || !data.qualityCheckEnabled || !row.quality_check_compatible);
+    const restrictingDefaultAccess =
+      (isGeneratorDefault || isQualityDefault) &&
+      data.accessPolicy !== "all_users";
 
     if (disablingGenerator) throw new Error("Select another Generator default before disabling this model.");
     if (disablingQuality) throw new Error("Select another Quality Check default before disabling this model.");
+    if (restrictingDefaultAccess) {
+      const usedBy =
+        isGeneratorDefault && isQualityDefault
+          ? "Generator and Quality Check"
+          : isGeneratorDefault
+            ? "Generator"
+            : "Quality Check";
+      throw new Error(`A model used as the ${usedBy} default must remain available to all users. Select another default first.`);
+    }
 
     if (data.pricingStatus === "verified" && (data.inputPricePerMillion == null || data.outputPricePerMillion == null)) {
       throw new Error("Verified pricing requires both input and output prices.");
@@ -216,7 +230,7 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabaseAdmin
       .from("ai_models" as never)
-      .select("id,provider_model_id,status,generator_compatible,generator_enabled,quality_check_compatible,quality_check_enabled")
+      .select("id,provider_model_id,status,access_policy,generator_compatible,generator_enabled,quality_check_compatible,quality_check_enabled")
       .eq("provider_model_id", data.model)
       .maybeSingle();
     if (error || !row) throw new Error("AI model not found.");
@@ -226,6 +240,9 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
       ? model.status === "enabled" && model.generator_compatible === true && model.generator_enabled === true
       : model.status === "enabled" && model.quality_check_compatible === true && model.quality_check_enabled === true;
     if (!valid) throw new Error("That model is not eligible for this default.");
+    if (model.access_policy !== "all_users") {
+      throw new Error("A default AI model must be available to all users.");
+    }
 
     const key = data.operation === "generator"
       ? "ai_generator_default_model"
