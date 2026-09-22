@@ -112,6 +112,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         _parent_prompt_id: revision.basePromptId,
         _revision_request: revision.revisionRequest,
         _generator_input_snapshot: revision.desiredSnapshot,
+        _version_change_metadata: versionChangeMetadata,
         _title: out.result.title,
         _tags: out.result.tags,
         _lyrics: out.result.lyrics,
