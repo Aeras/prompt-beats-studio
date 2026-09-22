@@ -2438,7 +2438,8 @@ export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
       .from("saved_prompts")
       .select("id, version_number, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
       .eq("project_id", data.projectId)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .in("id", [data.leftId, data.rightId]);
     if (error) throw new Error(error.message);
 
     const selected = (rows ?? []).filter((row) => row.id === data.leftId || row.id === data.rightId);
