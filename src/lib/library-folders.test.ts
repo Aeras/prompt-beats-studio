@@ -18,14 +18,17 @@ describe("Library folders foundation", () => {
     expect(sql).toContain("CHECK (project_id IS NULL OR folder_id IS NULL)");
   });
 
-  test("caps nesting at five levels and prevents circular hierarchy", async () => {
-    const sql = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+  test("caps nesting at five levels for the whole moved subtree and prevents circular hierarchy", async () => {
+    const foundation = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
+    const hardening = await source("supabase/migrations/20260922210500_library_folder_integrity_hardening.sql");
 
-    expect(sql).toContain("validate_library_folder_hierarchy");
-    expect(sql).toContain("Folder nesting cannot exceed 5 levels");
-    expect(sql).toContain("A folder cannot be moved into itself");
-    expect(sql).toContain("A folder cannot be moved into one of its descendants");
-    expect(sql).toContain("id = NEW.id");
+    expect(foundation).toContain("A folder cannot be moved into itself");
+    expect(foundation).toContain("A folder cannot be moved into one of its descendants");
+    expect(hardening).toContain("validate_library_folder_hierarchy");
+    expect(hardening).toContain("v_subtree_height");
+    expect(hardening).toContain("v_node_depth + v_subtree_height - 1 > 5");
+    expect(hardening).toContain("Folder nesting cannot exceed 5 levels");
+    expect(hardening).toContain("bool_or(id = NEW.id)");
   });
 
   test("folder ownership is enforced in RLS and destination triggers", async () => {
@@ -147,18 +150,20 @@ describe("Library folders foundation", () => {
     expect(library).toContain('folderId: view === "analyses" ? null : currentFolderId');
   });
 
-  test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+  test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph in two passes", async () => {
+    const base = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const hardening = await source("supabase/migrations/20260922210500_library_folder_integrity_hardening.sql");
 
-    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder");
-    expect(sql).toContain("FOR v_source_prompt IN");
-    expect(sql).toContain("ORDER BY version_number ASC");
-    expect(sql).toContain("v_id_map");
-    expect(sql).toContain("v_new_parent_id");
-    expect(sql).toContain("duplicated_from_project_id");
-    expect(sql).toContain("duplicated_from_prompt_id");
-    expect(sql).toContain("preferred_prompt_id = NULLIF");
-    expect(sql).toContain("source_generation_job_id");
+    expect(base).toContain("duplicated_from_project_id");
+    expect(base).toContain("duplicated_from_prompt_id");
+    expect(base).toContain("source_generation_job_id");
+    expect(hardening).toContain("CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder");
+    expect(hardening).toContain("Pass 1");
+    expect(hardening).toContain("Pass 2");
+    expect(hardening).toContain("v_id_map");
+    expect(hardening).toContain("SET parent_prompt_id = v_new_parent_id");
+    expect(hardening).toContain("Project version graph contains an external or missing parent reference");
+    expect(hardening).toContain("Preferred Project version could not be mapped");
   });
 
   test("Duplicate standalone Prompt produces an independent copy in the selected folder", async () => {
