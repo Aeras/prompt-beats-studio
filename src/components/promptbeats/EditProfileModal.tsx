@@ -11,6 +11,7 @@ import { updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { DonationSettingsEditor } from "@/components/promptbeats/DonationSettingsEditor";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
+import { AVATAR_ACCEPT, validateAvatarFile } from "@/lib/avatar-upload";
 
 type EditableProfile = {
   id: string;
@@ -95,7 +96,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     try {
       let avatarUrl = profile.avatar_url;
       if (avatarFile) {
-        const ext = avatarFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const ext = validateAvatarFile(avatarFile);
         const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
         const avatarBucket = supabase.storage.from("avatars");
         const { error: uploadError } = await avatarBucket.upload(filePath, avatarFile, { upsert: true, contentType: avatarFile.type });
@@ -171,7 +172,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                       <img src={avatarPreview ?? getUserAvatarUrl(profile.avatar_url)} alt={t("editProfile.avatarPreview")} width={88} height={88} className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-primary/60 sm:h-24 sm:w-24" />
                       <div className="min-w-0">
                         <p className="mb-2 text-xs font-medium text-foreground">{t("editProfile.avatar")}</p>
-                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Upload className="h-4 w-4" />{avatarFile ? avatarFile.name.slice(0, 28) : t("editProfile.uploadAvatar")}<input type="file" accept="image/*" className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} /></label>
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"><Upload className="h-4 w-4" />{avatarFile ? avatarFile.name.slice(0, 28) : t("editProfile.uploadAvatar")}<input type="file" accept={AVATAR_ACCEPT} className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} /></label>
                       </div>
                     </div>
                     <label className="block space-y-2"><span className="text-xs font-medium text-foreground">{t("editProfile.displayName")}</span><input value={name} onChange={(e) => setName(e.target.value.slice(0, 60))} placeholder={t("editProfile.displayName")} className={inputClass} /></label>
