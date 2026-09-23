@@ -5,7 +5,10 @@ import {
   analyzeLyricsDeterministic,
   approximateSyllables,
   detectLyricsLanguage,
+  extractLyricsReviewTags,
   lyricsReviewLanguageFromCanonical,
+  lyricsReviewTagsPreserved,
+  stripLyricsReviewTags,
 } from "@/lib/lyrics-review.shared";
 
 describe("Lyrics Review deterministic core", () => {
@@ -51,6 +54,11 @@ describe("Lyrics Review deterministic core", () => {
     expect(result.confidence).toBe("low");
   });
 
+  test("language detection ignores every square-bracket tag, including inline tags", () => {
+    const lyrics = "[Русский текст fake]\n[Verse] I walk through the [Громкий русский fake] night with your heart and this feeling will always stay";
+    expect(detectLyricsLanguage(lyrics).code).toBe("en");
+  });
+
   test("Greek syllables use a language-specific approximate heuristic", () => {
     expect(approximateSyllables("αγάπη", "el")).toBeGreaterThanOrEqual(3);
   });
@@ -61,6 +69,10 @@ describe("Lyrics Review deterministic core", () => {
 
   test("English syllables remain approximate rather than a claimed phonetic score", () => {
     expect(approximateSyllables("forever", "en")).toBeGreaterThanOrEqual(2);
+  });
+
+  test("square-bracket content never contributes to syllable metrics", () => {
+    expect(approximateSyllables("αγάπη [πολύ μεγάλη ψεύτικη φράση]", "el")).toBe(approximateSyllables("αγάπη", "el"));
   });
 
   test("section parser keeps line metrics attached to the correct song section", () => {
@@ -79,9 +91,25 @@ describe("Lyrics Review deterministic core", () => {
     expect(analysis).not.toHaveProperty("score");
   });
 
+  test("tag-only lines are excluded and inline tags contribute zero words and characters", () => {
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse]\n[Soft female vocal, intimate]\nI walk [whispered backing vocal] alone\nI walk home [drums enter]",
+      "en",
+    );
+    expect(analysis.overview.lineCount).toBe(2);
+    expect(analysis.overview.wordCount).toBe(6);
+    expect(analysis.sections[0]?.lines[0]?.text).toBe("I walk   alone".replace(/\s+/g, " "));
+    expect(analysis.sections[0]?.lines[0]?.characters).toBe("I walk   alone".replace(/\s+/g, " ").length);
+  });
+
   test("repeated phrases are detected deterministically", () => {
     const analysis = analyzeLyricsDeterministic("[Chorus]\nstay with me tonight\nstay with me tonight\nstay with me forever", "en");
     expect(analysis.overview.repeatedPhrases.some((item) => item.value.includes("stay with"))).toBe(true);
+  });
+
+  test("repetition analysis ignores repeated words inside tags", () => {
+    const analysis = analyzeLyricsDeterministic("[Verse]\nI see light [echo echo echo echo]\nYou see stars [echo echo echo echo]\nWe see dawn [echo echo echo echo]", "en");
+    expect(analysis.overview.repeatedWords.some((item) => item.value === "echo")).toBe(false);
   });
 
   test("rhyme output is an ending clue group, not a fake percentage", () => {
@@ -92,9 +120,29 @@ describe("Lyrics Review deterministic core", () => {
     expect(JSON.stringify(groups)).not.toContain("score");
   });
 
+  test("rhyme ending ignores a trailing square-bracket production tag", () => {
+    const analysis = analyzeLyricsDeterministic("[Verse]\nI wait in the night [drums enter]\nYou hold me tight [guitar swell]", "en");
+    expect(analysis.sections[0]?.rhymeGroups.length).toBeGreaterThan(0);
+  });
+
   test("large within-section length deviation is flagged as an observation", () => {
     const analysis = analyzeLyricsDeterministic("[Verse]\nShort line\nAnother short line\nThis is an extremely long lyric line with many extra words that clearly changes the rhythmic density of this section", "en");
     expect(analysis.overview.outlierLineCount).toBeGreaterThan(0);
+  });
+
+  test("square-bracket helper removes metadata without touching the stored lyric source", () => {
+    const original = "Hello [whisper] world\n[guitar solo]";
+    expect(stripLyricsReviewTags(original)).not.toContain("whisper");
+    expect(stripLyricsReviewTags(original)).not.toContain("guitar solo");
+    expect(original).toContain("[whisper]");
+  });
+
+  test("protected tag comparison requires exact tag text and order", () => {
+    const original = "[Verse]\nHello [whisper] world\n[guitar solo]";
+    expect(extractLyricsReviewTags(original)).toEqual(["[Verse]", "[whisper]", "[guitar solo]"]);
+    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [whisper]\n[guitar solo]")).toBe(true);
+    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [Whisper]\n[guitar solo]")).toBe(false);
+    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line\n[guitar solo]")).toBe(false);
   });
 
   test("instant analysis has no provider or network dependency", async () => {
