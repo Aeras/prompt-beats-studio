@@ -76,6 +76,7 @@ export const lyricsSectionContextSchema = z.object({
 
 export const lyricsSectionEditJobSchema = z.object({
   operation: z.literal("lyrics_section_edit"),
+  feature: z.enum(["lyrics_workspace", "lyrics_review"]).default("lyrics_workspace"),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   sectionEdit: lyricsSectionContextSchema,
 });
