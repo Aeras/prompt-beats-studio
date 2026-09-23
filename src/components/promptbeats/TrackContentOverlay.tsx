@@ -20,8 +20,8 @@ export function TrackContentOverlay({
   content: string;
   anchorRect: AnchorRect | null;
   onClose: () => void;
-  onCopy?: () => void;
-  copied?: boolean;
+  onCopy?: (() => void) | undefined;
+  copied?: boolean | undefined;
   returnFocusElement: HTMLElement | null;
 }) {
   const { t } = useI18n();
@@ -58,7 +58,7 @@ export function TrackContentOverlay({
         ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
         : (currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
       event.preventDefault();
-      focusable[nextIndex].focus();
+      focusable[nextIndex]?.focus();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
