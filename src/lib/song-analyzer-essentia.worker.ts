@@ -34,7 +34,7 @@ function toArray(value: any): number[] {
   }
 }
 
-function compactTicks(values: number[], max = 128) {
+function compactTicks(values: number[], max = 128): number[] {
   if (values.length <= max) return values;
   const out: number[] = [];
   for (let i = 0; i < max; i += 1) {
@@ -43,7 +43,7 @@ function compactTicks(values: number[], max = 128) {
   return out;
 }
 
-function ensureEssentia() {
+function ensureEssentia(): any {
   if (essentia) return essentia;
   essentia = new Essentia(EssentiaWASM);
   return essentia;
@@ -60,10 +60,10 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
     const signal = es.arrayToVector(pcm);
 
     const rhythm = es.RhythmExtractor2013(signal, 208, "multifeature", 40);
-    const ticks = compactTicks(toArray(rhythm.ticks)).map((value) => Number(value.toFixed(4)));
-    const estimates = toArray(rhythm.estimates).filter((value) => Number.isFinite(value) && value > 0);
-    const intervals = toArray(rhythm.bpmIntervals).filter((value) => Number.isFinite(value) && value > 0);
-    const localBpms = intervals.map((interval) => 60 / interval).filter((value) => value >= 20 && value <= 300);
+    const ticks = compactTicks(toArray(rhythm.ticks)).map((value: number) => Number(value.toFixed(4)));
+    const estimates = toArray(rhythm.estimates).filter((value: number) => Number.isFinite(value) && value > 0);
+    const intervals = toArray(rhythm.bpmIntervals).filter((value: number) => Number.isFinite(value) && value > 0);
+    const localBpms = intervals.map((interval: number) => 60 / interval).filter((value: number) => value >= 20 && value <= 300);
     const localMean = mean(localBpms);
     const localStd = std(localBpms, localMean);
     const stabilityScore = localBpms.length >= 2 && localMean > 0
@@ -75,7 +75,7 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
     const primaryBpm = Number.isFinite(Number(rhythm.bpm)) ? Number(Number(rhythm.bpm).toFixed(2)) : null;
 
     const onset = es.OnsetRate(signal);
-    const onsetTimes = compactTicks(toArray(onset.onsets)).map((value) => Number(value.toFixed(4)));
+    const onsetTimes = compactTicks(toArray(onset.onsets)).map((value: number) => Number(value.toFixed(4)));
     const onsetRate = Number.isFinite(Number(onset.onsetRate)) ? Number(Number(onset.onsetRate).toFixed(4)) : null;
 
     const key = es.KeyExtractor(signal);
@@ -102,7 +102,7 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
         stable: stabilityScore == null ? null : stabilityScore >= 0.65,
         stabilityScore: stabilityScore == null ? null : Number(stabilityScore.toFixed(4)),
         ambiguous: confidence == null ? null : confidence < 0.58 || (stabilityScore != null && stabilityScore < 0.65),
-        estimates: estimates.slice(0, 24).map((value) => Number(value.toFixed(2))),
+        estimates: estimates.slice(0, 24).map((value: number) => Number(value.toFixed(2))),
         notes: [
           primaryBpm != null ? `Essentia RhythmExtractor2013 primary estimate: ${primaryBpm} BPM.` : "No Essentia primary BPM estimate.",
           localBpms.length ? `Beat-interval tempo mean: ${localMean.toFixed(2)} BPM; std: ${localStd.toFixed(2)}.` : "",
