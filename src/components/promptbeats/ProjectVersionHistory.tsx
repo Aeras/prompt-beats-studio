@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronDown, GitCompareArrows, Loader2, NotebookPen, Star, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -15,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProjectVersionCompare } from "@/components/promptbeats/ProjectVersionCompare";
 import { ProjectVersionLinkedTracks } from "@/components/promptbeats/ProjectVersionLinkedTracks";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 type Props = {
   projectId: string;
@@ -26,6 +28,7 @@ function sourceLabel(source: VersionChangeMetadata["source"], language: string) 
   const el = language === "el";
   if (source === "initial_generation") return el ? "Αρχική δημιουργία" : "Initial generation";
   if (source === "lyrics_workspace") return "Lyrics Workspace";
+  if (source === "lyrics_review") return "Lyrics Review";
   if (source === "project_revision") return "Project Revision";
   if (source === "advanced_generator") return "AI Generator";
   return el ? "Χειροκίνητη επεξεργασία" : "Manual edit";
@@ -34,6 +37,7 @@ function sourceLabel(source: VersionChangeMetadata["source"], language: string) 
 export function ProjectVersionHistory({ projectId, projectName, language }: Props) {
   const el = language === "el";
   const queryClient = useQueryClient();
+  const lyricsReviewFeature = useFeatureAccess("lyrics_review");
   const [expanded, setExpanded] = useState(true);
   const [noteEditingId, setNoteEditingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -107,20 +111,31 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
   return (
     <div className="space-y-4">
       <section className="glass rounded-2xl border border-accent/20 p-4">
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          aria-expanded={expanded}
-          className="flex w-full items-center justify-between gap-3 text-left"
-        >
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">{el ? "Ιστορικό εκδόσεων" : "Version History"}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {el ? "Η δημιουργική πορεία του project, έκδοση προς έκδοση." : "The creative journey of this project, version by version."}
-            </p>
-          </div>
-          <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+          >
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">{el ? "Ιστορικό εκδόσεων" : "Version History"}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {el ? "Η δημιουργική πορεία του project, έκδοση προς έκδοση." : "The creative journey of this project, version by version."}
+              </p>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          </button>
+          {lyricsReviewFeature.allowed && versions.length > 0 && (
+            <Link
+              to="/lyrics-review"
+              search={{ source: "project", project: projectId }}
+              className="shrink-0 rounded-xl border border-accent/30 px-3 py-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/5"
+            >
+              Lyrics Review
+            </Link>
+          )}
+        </div>
 
         {expanded && (
           <div className="mt-4">
