@@ -14,6 +14,7 @@ export const FEATURE_KEYS = [
   "song_setup_assistant",
   "inspiration_wall",
   "story_map",
+  "song_universe",
   "export_center",
   "track_uploads",
   "sharing_public_links",
