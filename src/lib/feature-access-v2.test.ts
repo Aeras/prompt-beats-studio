@@ -22,6 +22,7 @@ const CANONICAL_KEYS = [
   "smart_presets",
   "song_setup_assistant",
   "inspiration_wall",
+  "story_map",
   "export_center",
   "track_uploads",
   "sharing_public_links",
@@ -44,14 +45,14 @@ function functionBlock(sql: string, name: string) {
   return sql.slice(start, next === -1 ? sql.length : next);
 }
 
-describe("Feature Access V2 — 18 features", () => {
-  test("canonical TypeScript registry contains exactly 18 unique feature keys", async () => {
+describe("Feature Access V2 — 19 features", () => {
+  test("canonical TypeScript registry contains exactly 19 unique feature keys", async () => {
     const code = await source("src/lib/feature-access.functions.ts");
     const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
     expect(match).not.toBeNull();
     const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
     expect(keys).toEqual(CANONICAL_KEYS);
-    expect(new Set(keys).size).toBe(18);
+    expect(new Set(keys).size).toBe(19);
     expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
   });
 
@@ -61,6 +62,7 @@ describe("Feature Access V2 — 18 features", () => {
       "smart_presets",
       "song_setup_assistant",
       "inspiration_wall",
+      "story_map",
       "lyrics_review",
       "private_review_links",
       "export_center",
