@@ -79,6 +79,9 @@ jobs:
       - name: Inspiration Wall Phase 4 tests
         run: bun test src/lib/inspiration-wall-phase4.test.ts
 
+      - name: Story Map tests
+        run: bun test src/lib/story-map.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
