@@ -1,0 +1,39 @@
+src/components/promptbeats/SongUniverseInspirationPanel.tsx(24,52): error TS7006: Parameter 'wall' implicitly has an 'any' type.
+src/components/promptbeats/SongUniverseInspirationPanel.tsx(25,55): error TS7006: Parameter 'wall' implicitly has an 'any' type.
+src/components/promptbeats/SongUniverseInspirationPanel.tsx(54,24): error TS7006: Parameter 'wall' implicitly has an 'any' type.
+src/components/promptbeats/SongUniverseInspirationPanel.tsx(90,42): error TS7006: Parameter 'wall' implicitly has an 'any' type.
+src/lib/song-universe.functions.ts(160,43): error TS4111: Property 'title' comes from an index signature, so it must be accessed with ['title'].
+src/lib/song-universe.functions.ts(161,49): error TS4111: Property 'description' comes from an index signature, so it must be accessed with ['description'].
+src/lib/song-universe.functions.ts(162,50): error TS4111: Property 'universe_type' comes from an index signature, so it must be accessed with ['universe_type'].
+src/lib/song-universe.functions.ts(163,44): error TS4111: Property 'status' comes from an index signature, so it must be accessed with ['status'].
+src/lib/song-universe.functions.ts(164,51): error TS4111: Property 'creative_bible' comes from an index signature, so it must be accessed with ['creative_bible'].
+src/lib/song-universe.functions.ts(165,54): error TS4111: Property 'initial_direction' comes from an index signature, so it must be accessed with ['initial_direction'].
+src/lib/song-universe.functions.ts(233,12): error TS2345: Argument of type '({ data, context }: ServerFnCtx<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ......' is not assignable to parameter of type 'ServerFn<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ...; }; Update: { ...; }; ...'.
+  Type 'Promise<{ project: SongUniverseProjectRecord; }>' is not assignable to type 'Promise<ValidateSerializableMapped<{ project: SongUniverseProjectRecord; }, RegisteredSerializableInput<Register>>>'.
+    Type '{ project: SongUniverseProjectRecord; }' is not assignable to type 'ValidateSerializableMapped<{ project: SongUniverseProjectRecord; }, RegisteredSerializableInput<Register>>'.
+      The types of 'project.contextSnapshot' are incompatible between these types.
+        Type 'Record<string, unknown>' is not assignable to type 'ValidateSerializableMapped<Record<string, unknown>, RegisteredSerializableInput<Register>>'.
+          'string' index signatures are incompatible.
+            Type 'unknown' is not assignable to type 'SerializationError<"Type may not be serializable">'.
+src/lib/song-universe.functions.ts(316,12): error TS2345: Argument of type '({ data, context }: ServerFnCtx<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ......' is not assignable to parameter of type 'ServerFn<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ...; }; Update: { ...; }; ...'.
+  Type 'Promise<{ project: SongUniverseProjectRecord; }>' is not assignable to type 'Promise<ValidateSerializableMapped<{ project: SongUniverseProjectRecord; }, RegisteredSerializableInput<Register>>>'.
+    Type '{ project: SongUniverseProjectRecord; }' is not assignable to type 'ValidateSerializableMapped<{ project: SongUniverseProjectRecord; }, RegisteredSerializableInput<Register>>'.
+      The types of 'project.contextSnapshot' are incompatible between these types.
+        Type 'Record<string, unknown>' is not assignable to type 'ValidateSerializableMapped<Record<string, unknown>, RegisteredSerializableInput<Register>>'.
+          'string' index signatures are incompatible.
+            Type 'unknown' is not assignable to type 'SerializationError<"Type may not be serializable">'.
+src/lib/song-universe.functions.ts(321,50): error TS4111: Property 'universe_role' comes from an index signature, so it must be accessed with ['universe_role'].
+src/lib/song-universe.functions.ts(322,51): error TS4111: Property 'project_status' comes from an index signature, so it must be accessed with ['project_status'].
+src/lib/song-universe.functions.ts(324,15): error TS4111: Property 'intentional_outlier' comes from an index signature, so it must be accessed with ['intentional_outlier'].
+src/lib/song-universe.shared.ts(134,14): error TS2322: Type 'ZodObject<{ summary: ZodDefault<ZodString>; strongContinuity: ZodDefault<ZodArray<ZodString, "many">>; possibleRepetition: ZodDefault<...>; ... 4 more ...; opportunities: ZodDefault<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' is not assignable to type 'ZodType<SongUniverseAnalysis, ZodTypeDef, SongUniverseAnalysis>'.
+  The types of '_input.summary' are incompatible between these types.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/routes/song-universe.tsx(88,14): error TS2551: Property 'loading' does not exist on type '{ isLoading: boolean; isError: boolean; allowed: boolean; refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<NoInfer<{ featureKey: "playlists" | "favorites" | "likes" | ... 16 more ... | "follow_creators"; allowed: boolean; }>, Error>>; }'. Did you mean 'isLoading'?
+src/routes/song-universe.tsx(263,31): error TS7006: Parameter 'project' implicitly has an 'any' type.
+src/routes/song-universe.tsx(275,50): error TS7006: Parameter 'project' implicitly has an 'any' type.
+src/routes/song-universe.tsx(504,37): error TS7006: Parameter 'project' implicitly has an 'any' type.
+src/routes/song-universe.tsx(526,26): error TS7006: Parameter 'project' implicitly has an 'any' type.
+src/routes/song-universe.tsx(526,35): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/routes/song-universe.tsx(800,28): error TS7006: Parameter 'project' implicitly has an 'any' type.
+tsc_exit=2
