@@ -56,16 +56,8 @@ jobs:
           s = s.replace('  id: Exclude<NavId, "musicLab" | "songAnalyzer" | "lyricsReview" | "management">;', '  id: Exclude<NavId, "musicLab" | "songAnalyzer" | "lyricsReview" | "inspirationWall" | "management">;')
           s = s.replace('  if (pathname.startsWith("/lyrics-review")) return "lyricsReview";\n', '  if (pathname.startsWith("/lyrics-review")) return "lyricsReview";\n  if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";\n')
           p.write_text(s)
-
-          p = Path('.github/workflows/regression-gate.yml')
-          s = p.read_text()
-          needle = '      - name: Inspiration Wall Phase 1 tests\n        run: bun test src/lib/inspiration-wall.test.ts\n'
-          replacement = needle + '\n      - name: Inspiration Wall Phase 2 tests\n        run: bun test src/lib/inspiration-wall-phase2.test.ts\n'
-          if 'Inspiration Wall Phase 2 tests' not in s:
-              s = s.replace(needle, replacement)
-          p.write_text(s)
           PY
-          bunx prettier --write src/components/promptbeats/Sidebar.tsx src/components/promptbeats/AppShell.tsx src/routes/inspiration-wall.tsx src/lib/inspiration-wall-image.ts src/lib/inspiration-wall-phase2.test.ts .github/workflows/regression-gate.yml
+          bunx prettier --write src/components/promptbeats/Sidebar.tsx src/components/promptbeats/AppShell.tsx src/routes/inspiration-wall.tsx src/lib/inspiration-wall-image.ts src/lib/inspiration-wall-phase2.test.ts
       - name: Phase 2 tests
         run: bun test src/lib/inspiration-wall.test.ts src/lib/inspiration-wall-phase2.test.ts src/lib/feature-access-v2.test.ts
       - name: Lint
@@ -79,7 +71,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/components/promptbeats/Sidebar.tsx src/components/promptbeats/AppShell.tsx src/routes/inspiration-wall.tsx src/lib/inspiration-wall-image.ts src/lib/inspiration-wall-phase2.test.ts .github/workflows/regression-gate.yml
+          git add src/components/promptbeats/Sidebar.tsx src/components/promptbeats/AppShell.tsx src/routes/inspiration-wall.tsx src/lib/inspiration-wall-image.ts src/lib/inspiration-wall-phase2.test.ts
           if git diff --cached --quiet; then
             echo "No integration changes required."
             exit 0
