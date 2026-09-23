@@ -27,141 +27,113 @@ jobs:
           from pathlib import Path
           p = Path('src/lib/song-universe-ai.functions.ts')
           s = p.read_text()
+
           def once(old, new, label):
               global s
               if old not in s:
                   raise SystemExit(f'missing anchor: {label}')
               s = s.replace(old, new, 1)
 
-          once(
-          '''const projectFitSchema = z.object({
-            strongMatches: z.array(z.string().trim().max(1000)).max(20).default([]),
-            differences: z.array(z.string().trim().max(1000)).max(20).default([]),
-            interpretation: z.string().trim().max(3000).default(""),
-          });''',
-          '''const projectFitSchema = z.object({
-            strongMatches: z.array(z.string().trim().max(1000)).max(20).default([]),
-            differences: z.array(z.string().trim().max(1000)).max(20).default([]),
-            interpretation: z.string().trim().max(3000).default(""),
-          });
-          type SongUniverseProjectFit = z.infer<typeof projectFitSchema>;''',
-          'project fit type')
+          once('const projectFitSchema = z.object({\n  strongMatches:', 'const projectFitSchema = z.object({\n  strongMatches:', 'project fit schema')
+          anchor = '});\n\nconst CREATIVE_BIBLE_SYSTEM'
+          if 'type SongUniverseProjectFit' not in s:
+              if anchor not in s:
+                  raise SystemExit('missing anchor: project fit type insertion')
+              s = s.replace(anchor, '});\ntype SongUniverseProjectFit = z.infer<typeof projectFitSchema>;\n\nconst CREATIVE_BIBLE_SYSTEM', 1)
 
-          # Normalize exact-optional model inputs.
           s = s.replace('requestedModel: data.model,', 'requestedModel: data.model ?? null,')
 
-          # Explicit generic types prevent server-function serialization from widening to unknown.
-          once('''const result = await runStructured({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CREATIVE_BIBLE_SYSTEM,''',
-          '''const result = await runStructured<SongUniverseCreativeBible>({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CREATIVE_BIBLE_SYSTEM,''', 'generate generic')
-          once('''const result = await runStructured({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CREATIVE_BIBLE_SYSTEM,''',
-          '''const result = await runStructured<SongUniverseCreativeBible>({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CREATIVE_BIBLE_SYSTEM,''', 'refine generic')
-          once('''const result = await runStructured({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CONTINUITY_SYSTEM,''',
-          '''const result = await runStructured<SongUniverseAnalysis>({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: CONTINUITY_SYSTEM,''', 'continuity generic')
+          # Four structured calls occur in order: generate, refine, continuity, project fit.
+          needle = 'runStructured({'
+          positions = []
+          start = 0
+          while True:
+              i = s.find(needle, start)
+              if i < 0: break
+              positions.append(i)
+              start = i + len(needle)
+          if len(positions) < 4:
+              raise SystemExit(f'expected at least 4 runStructured calls, found {len(positions)}')
+          replacements = [
+              'runStructured<SongUniverseCreativeBible>({',
+              'runStructured<SongUniverseCreativeBible>({',
+              'runStructured<SongUniverseAnalysis>({',
+              'runStructured<SongUniverseProjectFit>({',
+          ]
+          offset = 0
+          for pos, replacement in zip(positions[:4], replacements):
+              pos += offset
+              s = s[:pos] + replacement + s[pos + len(needle):]
+              offset += len(replacement) - len(needle)
 
-          # Public server-function response shape must match the existing UI contract.
-          s = s.replace('''    return result;
-            });
+          # Generate and refine endpoints: expose creativeBible, not internal value.
+          before = '    return result;\n  });\n\nconst refineBibleInput'
+          after = '''    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
+  });
 
-          const refineBibleInput''', '''    return {
-              creativeBible: result.value,
-              model: result.model,
-              provider: result.provider,
-              modelLabel: result.modelLabel,
-            };
-            });
+const refineBibleInput'''
+          once(before, after, 'generate response')
+          before = '    return result;\n  });\n\nconst continuityInput'
+          after = '''    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
+  });
 
-          const refineBibleInput''', 1)
-          # second Creative Bible handler
-          marker = '''    return result;
-            });
+const continuityInput'''
+          once(before, after, 'refine response')
 
-          const continuityInput'''
-          if marker not in s:
-              raise SystemExit('missing anchor: refine response')
-          s = s.replace(marker, '''    return {
-              creativeBible: result.value,
-              model: result.model,
-              provider: result.provider,
-              modelLabel: result.modelLabel,
-            };
-            });
+          once('await context.supabase.from("song_universe_ai_analyses").insert({', 'await (context.supabase as any).from("song_universe_ai_analyses").insert({', 'analysis insert typing')
+          before = '    return result;\n  });\n\nconst projectFitInput'
+          after = '''    return {
+      analysis: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
+  });
 
-          const continuityInput''', 1)
+const projectFitInput'''
+          once(before, after, 'continuity response')
 
-          s = s.replace('''    await context.supabase.from("song_universe_ai_analyses").insert({''', '''    await (context.supabase as any).from("song_universe_ai_analyses").insert({''', 1)
-          marker = '''    return result;
-            });
+          # Project fit now has typed result; replace direct return with named result and public fit key.
+          once('    return runStructured<SongUniverseProjectFit>({', '    const result = await runStructured<SongUniverseProjectFit>({', 'fit await')
+          fit_tail = '''      operation: "universe_project_fit",
+    });
+  });
 
-          const projectFitInput'''
-          if marker not in s:
-              raise SystemExit('missing anchor: continuity response')
-          s = s.replace(marker, '''    return {
-              analysis: result.value,
-              model: result.model,
-              provider: result.provider,
-              modelLabel: result.modelLabel,
-            };
-            });
+export const getLatestSongUniverseContinuity'''
+          fit_new = '''      operation: "universe_project_fit",
+    });
+    return {
+      fit: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
+  });
 
-          const projectFitInput''', 1)
+export const getLatestSongUniverseContinuity'''
+          once(fit_tail, fit_new, 'fit response')
 
-          old = '''    return runStructured({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: FIT_SYSTEM,
-              prompt: `Creative Bible:\\n${JSON.stringify(universe.creative_bible)}\\n\\nProject:\\n${JSON.stringify(project)}\\n\\nReturn neutral matches, differences and an interpretation of useful contrast.`,
-              schema: FIT_RESPONSE_SCHEMA,
-              parse: (value) => projectFitSchema.parse(value),
-              operation: "universe_project_fit",
-            });'''
-          new = '''    const result = await runStructured<SongUniverseProjectFit>({
-              userId: context.userId,
-              requestedModel: data.model ?? null,
-              system: FIT_SYSTEM,
-              prompt: `Creative Bible:\\n${JSON.stringify(universe.creative_bible)}\\n\\nProject:\\n${JSON.stringify(project)}\\n\\nReturn neutral matches, differences and an interpretation of useful contrast.`,
-              schema: FIT_RESPONSE_SCHEMA,
-              parse: (value) => projectFitSchema.parse(value),
-              operation: "universe_project_fit",
-            });
-            return {
-              fit: result.value,
-              model: result.model,
-              provider: result.provider,
-              modelLabel: result.modelLabel,
-            };'''
-          once(old, new, 'project fit response')
-
-          once('''    const { data: row, error } = await context.supabase
-              .from("song_universe_ai_analyses")''', '''    const { data: row, error } = await (context.supabase as any)
-              .from("song_universe_ai_analyses")''', 'latest typed table bridge')
+          once('const { data: row, error } = await context.supabase\n      .from("song_universe_ai_analyses")', 'const { data: row, error } = await (context.supabase as any)\n      .from("song_universe_ai_analyses")', 'latest analysis typing')
           once('''    if (error) throw new Error(error.message);
-            return { analysis: row ?? null };
-            });''', '''    if (error) throw new Error(error.message);
-            if (!row) return { analysis: null, model: null, createdAt: null };
-            return {
-              analysis: songUniverseAnalysisSchema.parse(row.result),
-              model: typeof row.model === "string" ? row.model : null,
-              createdAt: typeof row.created_at === "string" ? row.created_at : null,
-            };
-            });''', 'latest analysis contract')
+    return { analysis: row ?? null };
+  });''', '''    if (error) throw new Error(error.message);
+    if (!row) return { analysis: null, model: null, createdAt: null };
+    return {
+      analysis: songUniverseAnalysisSchema.parse(row.result),
+      model: typeof row.model === "string" ? row.model : null,
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    };
+  });''', 'latest analysis response')
 
           p.write_text(s)
           PY
