@@ -41,3 +41,4 @@ jobs:
             git commit -m 'Apply Story Map integration v6'
             git push origin story-map-step1
           fi
+# trigger: 2026-09-23
