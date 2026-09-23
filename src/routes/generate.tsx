@@ -209,6 +209,42 @@ function translatedOption(
   return item?.labelKey ? t(item.labelKey) : value;
 }
 
+function localizeAiError(
+  error: unknown,
+  fallbackKey: "generator.failed" | "quality.unavailable",
+  t: (key: AppTranslationKey, values?: Record<string, string | number>) => string,
+) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("ai provider is temporarily unavailable") ||
+    normalized.includes("ai service is not configured")
+  ) {
+    return t("generator.error.providerUnavailable");
+  }
+  if (normalized.includes("ai model registry is temporarily unavailable")) {
+    return t("generator.error.registryUnavailable");
+  }
+  if (normalized.includes("account is no longer available")) {
+    return t("generator.error.accountUnavailable");
+  }
+  if (normalized.includes("account is not allowed to use ai services")) {
+    return t("generator.error.aiNotAllowed");
+  }
+  if (
+    normalized.includes("ai response was incomplete") ||
+    normalized.includes("ai returned an incomplete or invalid response")
+  ) {
+    return t("generator.error.invalidResponse");
+  }
+  if (normalized.includes("quality check unavailable")) {
+    return t("quality.unavailable");
+  }
+
+  return t(fallbackKey);
+}
+
 function mergeValues(selected: string[], custom: string) {
   const out: string[] = [];
   for (const v of [...selected, ...custom.split(",")]) {
@@ -688,7 +724,7 @@ function QualityPanel({
       {!checking && (
         <div className="mt-4 space-y-3">
           {!featureAvailable && (
-            <p className="text-xs text-muted-foreground">Quality Check is currently unavailable.</p>
+            <p className="text-xs text-muted-foreground">{t("quality.featureUnavailable")}</p>
           )}
           {featureAvailable && modelAccessLoading && (
             <p className="text-xs text-muted-foreground">{t("quality.loadingModels")}</p>
@@ -1146,11 +1182,11 @@ function GeneratePage() {
         setBpm("Auto");
         setCustomBpm("");
       }
-      setStatus("Song Analyzer fields loaded. Review or edit them before generating.");
+      setStatus(t("generator.songAnalyzerLoaded"));
     } catch {
-      setStatus("Could not load Song Analyzer fields.");
+      setStatus(t("generator.songAnalyzerLoadFailed"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const data = revisionBase.data;
@@ -1307,7 +1343,7 @@ function GeneratePage() {
       return;
     }
     if (job.status === "failed") {
-      setStatus(job.error ?? t("generator.failed"));
+      setStatus(localizeAiError(job.error, "generator.failed", t));
       setBusy(false);
       setGenerationResultModel(null);
       setJobId(null);
@@ -1382,7 +1418,7 @@ function GeneratePage() {
       return;
     }
     if (job.status === "failed") {
-      setCheckError(job.error ?? t("quality.unavailable"));
+      setCheckError(localizeAiError(job.error, "quality.unavailable", t));
       setChecking(false);
       setQualityActionId(null);
       rememberQualityJob(null);
@@ -1737,7 +1773,7 @@ function GeneratePage() {
 
   const generate = async () => {
     if (!generatorFeature.allowed) {
-      setStatus("AI Generator is currently unavailable.");
+      setStatus(t("generator.featureUnavailable"));
       return;
     }
     if (busy || jobId || checking || qualityActionId) return;
@@ -1836,14 +1872,14 @@ ${narrativePlan.beats
       } catch {
         /* still offline */
       }
-      setStatus(err instanceof Error ? err.message : t("generator.failed"));
+      setStatus(localizeAiError(err, "generator.failed", t));
       setBusy(false);
     }
   };
 
   const runCheck = async () => {
     if (!qualityFeature.allowed) {
-      setCheckError("Quality Check is currently unavailable.");
+      setCheckError(t("quality.featureUnavailable"));
       return;
     }
     if (checking || qualityActionId) return;
@@ -1893,7 +1929,7 @@ ${narrativePlan.beats
         }
       }
       setChecking(false);
-      setCheckError(err instanceof Error ? err.message : t("quality.unavailable"));
+      setCheckError(localizeAiError(err, "quality.unavailable", t));
     }
   };
 
@@ -2288,7 +2324,7 @@ ${narrativePlan.beats
         >
           <div className="px-4 py-6 md:px-8">
             <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 p-5 text-sm text-muted-foreground">
-              Lyrics Workspace is currently unavailable.
+              {t("lyricsWorkspace.featureUnavailable")}
             </div>
           </div>
         </AppShell>
@@ -2456,7 +2492,7 @@ ${narrativePlan.beats
                     className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    Song Setup Assistant
+                    {t("generator.songSetupAssistant")}
                   </button>
                 )}
               </div>
@@ -3061,11 +3097,11 @@ ${narrativePlan.beats
                       className="mt-0.5"
                     />
                     <span>
-                      <span className="block text-sm font-semibold">Story-driven lyrics</span>
+                      <span className="block text-sm font-semibold">
+                        {t("generator.storyDrivenLyrics")}
+                      </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {appLanguage === "el"
-                          ? "Χτίζει πρώτα αφηγηματική ή συναισθηματική εξέλιξη ώστε οι στίχοι να προχωρούν αντί να επαναλαμβάνουν την ίδια ιδέα."
-                          : "Builds narrative or emotional progression first, so the lyrics develop instead of repeating the same idea."}
+                        {t("generator.storyDrivenLyricsDescription")}
                       </span>
                     </span>
                   </label>
@@ -3208,7 +3244,7 @@ ${narrativePlan.beats
                               setStatus(
                                 cause instanceof Error
                                   ? cause.message
-                                  : "Could not save Story Map.",
+                                  : t("generator.storyMapSaveFailed"),
                               );
                             }
                           })()
