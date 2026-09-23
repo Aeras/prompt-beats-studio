@@ -31,6 +31,7 @@ jobs:
               '''    expect(library).toContain(\"setOpenProjectId(null); onViewChange(item);\");''': '''    expect(library).toMatch(\n      /setOpenProjectId\\(null\\);\\s*onViewChange\\(item\\);/,\n    );''',
               '''    expect(library).toContain(\n      'disabledDestinationFolderId={folderPicker?.operation === \"move\" ? folderPicker.currentFolderId : undefined}',\n    );''': '''    expect(library).toMatch(\n      /disabledDestinationFolderId=\\{\\s*folderPicker\\?\\.operation === \"move\"\\s*\\?\\s*folderPicker\\.currentFolderId\\s*:\\s*undefined\\s*\\}/,\n    );''',
               '''    expect(library).toContain(\"document.elementFromPoint\");''': '''    expect(library).toMatch(/document\\s*\\.\\s*elementFromPoint/);''',
+              '''    expect(library).toContain(\"performMove(state.item.kind\");''': '''    expect(library).toMatch(/performMove\\(\\s*state\\.item\\.kind/);''',
           }
           changed = False
           for old, new in replacements.items():
