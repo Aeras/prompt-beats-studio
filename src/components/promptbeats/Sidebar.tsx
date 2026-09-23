@@ -8,6 +8,7 @@ import {
   Lightbulb,
   LogIn,
   LogOut,
+  MapPinned,
   Plus,
   Sparkles,
   ScanSearch,
@@ -35,6 +36,7 @@ export const NAV = [
   { id: "songAnalyzer", labelKey: null, icon: ScanSearch },
   { id: "lyricsReview", labelKey: null, icon: TextSearch },
   { id: "inspirationWall", labelKey: null, icon: Lightbulb },
+  { id: "storyMap", labelKey: null, icon: MapPinned },
   { id: "library", labelKey: "nav.library", icon: Library },
   { id: "management", labelKey: "nav.management", icon: BarChart3 },
 ] as const satisfies ReadonlyArray<{
@@ -53,6 +55,7 @@ const NAV_TO: Record<NavId, string> = {
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
   inspirationWall: "/inspiration-wall",
+  storyMap: "/story-map",
   library: "/library",
   management: "/management",
 };
@@ -73,6 +76,7 @@ export function SidebarNav({
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const lyricsReviewAccess = useFeatureAccess("lyrics_review");
   const inspirationWallAccess = useFeatureAccess("inspiration_wall");
+  const storyMapAccess = useFeatureAccess("story_map");
   const { t, language } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -108,6 +112,7 @@ export function SidebarNav({
             (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
             (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
             (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
+            (item.id !== "storyMap" || storyMapAccess.allowed) &&
             (!STAFF_ONLY.includes(item.id) || canViewUsers),
         ).map((item) => {
           const isActive = active === item.id;
@@ -120,7 +125,9 @@ export function SidebarNav({
                   ? "Lyrics Review"
                   : item.id === "inspirationWall"
                     ? "Inspiration Wall"
-                    : item.id;
+                    : item.id === "storyMap"
+                      ? "Story Map"
+                      : item.id;
           return (
             <Link
               key={item.id}
