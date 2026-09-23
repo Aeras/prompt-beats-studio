@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquareReply } from "lucide-react";
+import { FileText, Loader2, MessageSquareReply, Music2 } from "lucide-react";
 
 import {
   addPrivateReviewComment,
@@ -33,6 +33,7 @@ function PrivateReviewPage() {
   const [pin, setPin] = useState("");
   const [comment, setComment] = useState("");
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
+  const [songPanel, setSongPanel] = useState<"prompt" | "lyrics" | null>(null);
 
   useEffect(() => {
     try {
@@ -102,6 +103,8 @@ function PrivateReviewPage() {
   if (!data) return <ScreenMessage text={el ? "Δεν ήταν δυνατή η φόρτωση του review." : "The review could not be loaded."} />;
 
   const readOnly = data.state !== "active";
+  const isSongReview = data.sourceType === "track";
+  const effectiveSongPanel = songPanel ?? (data.includePrompt ? "prompt" : data.includeLyrics ? "lyrics" : null);
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-8 sm:py-10">
@@ -111,7 +114,7 @@ function PrivateReviewPage() {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">Private Review</p>
               <h1 className="mt-1 font-display text-2xl font-bold sm:text-3xl">{data.snapshot.title || data.snapshot.projectName}</h1>
-              <p className="mt-1 text-xs text-muted-foreground">{data.snapshot.projectName} · {data.snapshot.versionLabel || `V${data.snapshot.versionNumber ?? "?"}`}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{isSongReview ? (el ? "Song Review" : "Song Review") : `${data.snapshot.projectName} · ${data.snapshot.versionLabel || `V${data.snapshot.versionNumber ?? "?"}`}`}</p>
             </div>
             <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] text-muted-foreground">{data.commentVisibility === "shared" ? (el ? "Κοινό review" : "Shared review") : (el ? "Ιδιωτικό feedback" : "Private feedback")}</span>
           </div>
@@ -119,40 +122,35 @@ function PrivateReviewPage() {
           {readOnly && <p className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{data.state === "expired" ? (el ? "Το review έχει λήξει και είναι μόνο για ανάγνωση." : "This review has expired and is read-only.") : (el ? "Ο δημιουργός έκλεισε το review. Είναι μόνο για ανάγνωση." : "The creator closed this review. It is read-only.")}</p>}
         </section>
 
-        {data.audio && <section className="glass rounded-2xl p-5"><h2 className="font-display text-lg font-semibold">{data.audio.title}</h2>{data.audio.coverUrl && <img src={data.audio.coverUrl} alt="" className="mt-3 h-28 w-28 rounded-xl object-cover" />}<audio controls src={data.audio.audioUrl} className="mt-4 w-full" /></section>}
+        {data.audio && <section className="glass rounded-2xl p-5"><div className="flex items-center gap-2"><Music2 className="h-4 w-4 text-accent" /><h2 className="font-display text-lg font-semibold">{data.audio.title}</h2></div>{data.audio.coverUrl && <img src={data.audio.coverUrl} alt="" className="mt-3 h-28 w-28 rounded-xl object-cover" />}<audio controls src={data.audio.audioUrl} className="mt-4 w-full" /></section>}
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          {data.snapshot.tags && <section className="glass rounded-2xl p-5"><h2 className="font-display text-lg font-semibold">Music Style</h2><pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-6 text-muted-foreground">{data.snapshot.tags}</pre></section>}
-          {data.snapshot.note && <section className="glass rounded-2xl p-5"><h2 className="font-display text-lg font-semibold">{el ? "Producer's Note" : "Producer's Note"}</h2><pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-6 text-muted-foreground">{data.snapshot.note}</pre></section>}
-        </div>
-
-        <section className="glass rounded-2xl p-5">
-          <h2 className="font-display text-xl font-semibold">Lyrics</h2>
-          <pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-7 text-muted-foreground">{data.snapshot.lyrics}</pre>
-        </section>
+        {isSongReview ? (
+          (data.includePrompt || data.includeLyrics) && <section className="glass rounded-2xl p-5">
+            <div className="flex flex-wrap gap-2">
+              {data.includePrompt && <button type="button" onClick={() => setSongPanel("prompt")} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${effectiveSongPanel === "prompt" ? "border-accent/50 bg-accent/10 text-accent" : "border-white/10 text-muted-foreground"}`}><FileText className="h-4 w-4" />Prompt</button>}
+              {data.includeLyrics && <button type="button" onClick={() => setSongPanel("lyrics")} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${effectiveSongPanel === "lyrics" ? "border-accent/50 bg-accent/10 text-accent" : "border-white/10 text-muted-foreground"}`}><FileText className="h-4 w-4" />Lyrics</button>}
+            </div>
+            {effectiveSongPanel === "prompt" && data.includePrompt && <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4"><h2 className="font-display text-lg font-semibold">Prompt</h2><pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-muted-foreground">{data.snapshot.prompt}</pre></div>}
+            {effectiveSongPanel === "lyrics" && data.includeLyrics && <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4"><h2 className="font-display text-lg font-semibold">Lyrics</h2><pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-7 text-muted-foreground">{data.snapshot.lyrics}</pre></div>}
+          </section>
+        ) : (
+          <>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {data.snapshot.tags && <section className="glass rounded-2xl p-5"><h2 className="font-display text-lg font-semibold">Music Style</h2><pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-6 text-muted-foreground">{data.snapshot.tags}</pre></section>}
+              {data.snapshot.note && <section className="glass rounded-2xl p-5"><h2 className="font-display text-lg font-semibold">Producer&apos;s Note</h2><pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-6 text-muted-foreground">{data.snapshot.note}</pre></section>}
+            </div>
+            {data.snapshot.lyrics && <section className="glass rounded-2xl p-5"><h2 className="font-display text-xl font-semibold">Lyrics</h2><pre className="mt-3 whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-7 text-muted-foreground">{data.snapshot.lyrics}</pre></section>}
+          </>
+        )}
 
         <section className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between gap-3"><h2 className="font-display text-xl font-semibold">{el ? "Σχόλια" : "Comments"}</h2><span className="text-[10px] text-muted-foreground">{data.comments.length}</span></div>
           <div className="mt-4 space-y-2">
-            {rootComments.map((item) => (
-              <div key={item.id} className="rounded-xl border border-white/10 p-3">
-                <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">{item.authorName}</p><p className="text-[9px] text-muted-foreground">{new Date(item.createdAt).toLocaleString(el ? "el-GR" : "en-GB")}</p></div>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.body}</p>
-                {!readOnly && <button type="button" onClick={() => { setReplyParentId(item.id); setComment(""); }} className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"><MessageSquareReply className="h-3 w-3" />{el ? "Απάντηση" : "Reply"}</button>}
-              </div>
-            ))}
+            {rootComments.map((item) => <div key={item.id} className="rounded-xl border border-white/10 p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">{item.authorName}</p><p className="text-[9px] text-muted-foreground">{new Date(item.createdAt).toLocaleString(el ? "el-GR" : "en-GB")}</p></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.body}</p>{!readOnly && <button type="button" onClick={() => { setReplyParentId(item.id); setComment(""); }} className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"><MessageSquareReply className="h-3 w-3" />{el ? "Απάντηση" : "Reply"}</button>}</div>)}
             {rootComments.length === 0 && <p className="rounded-xl border border-dashed border-white/10 p-5 text-center text-xs text-muted-foreground">{el ? "Δεν υπάρχουν σχόλια ακόμη." : "No comments yet."}</p>}
           </div>
 
-          {!readOnly && <div className="mt-4 rounded-xl border border-accent/15 p-3">
-            {replyParentId && <p className="mb-2 text-[10px] text-accent">{el ? "Απάντηση σε υπάρχον σχόλιο" : "Replying to a comment"}</p>}
-            <textarea value={comment} onChange={(e) => setComment(e.target.value.slice(0,2000))} rows={3} maxLength={2000} className="w-full resize-y rounded-lg border border-white/10 bg-black/30 p-3 text-sm" placeholder={el ? "Γράψε το feedback σου..." : "Write your feedback..."} />
-            {post.error && <p className="mt-2 text-xs text-red-400">{post.error instanceof Error ? post.error.message : "Error"}</p>}
-            <div className="mt-2 flex justify-end gap-2">
-              {replyParentId && <button type="button" onClick={() => { setReplyParentId(null); setComment(""); }} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs">{el ? "Ακύρωση reply" : "Cancel reply"}</button>}
-              <button type="button" disabled={!comment.trim() || post.isPending} onClick={() => post.mutate()} className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-semibold text-accent disabled:opacity-40">{post.isPending ? "…" : (el ? "Αποστολή" : "Send")}</button>
-            </div>
-          </div>}
+          {!readOnly && <div className="mt-4 rounded-xl border border-accent/15 p-3">{replyParentId && <p className="mb-2 text-[10px] text-accent">{el ? "Απάντηση σε υπάρχον σχόλιο" : "Replying to a comment"}</p>}<textarea value={comment} onChange={(e) => setComment(e.target.value.slice(0,2000))} rows={3} maxLength={2000} className="w-full resize-y rounded-lg border border-white/10 bg-black/30 p-3 text-sm" placeholder={el ? "Γράψε το feedback σου..." : "Write your feedback..."} />{post.error && <p className="mt-2 text-xs text-red-400">{post.error instanceof Error ? post.error.message : "Error"}</p>}<div className="mt-2 flex justify-end gap-2">{replyParentId && <button type="button" onClick={() => { setReplyParentId(null); setComment(""); }} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs">{el ? "Ακύρωση reply" : "Cancel reply"}</button>}<button type="button" disabled={!comment.trim() || post.isPending} onClick={() => post.mutate()} className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-semibold text-accent disabled:opacity-40">{post.isPending ? "…" : (el ? "Αποστολή" : "Send")}</button></div></div>}
         </section>
       </div>
     </div>
