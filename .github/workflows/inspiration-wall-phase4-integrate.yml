@@ -22,7 +22,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Integrate Phase 4
-        run: python3 scripts/inspiration-wall-phase4-integrate.py
+        run: |
+          python3 scripts/inspiration-wall-phase4-integrate.py
+          python3 scripts/inspiration-wall-phase4-lint-fix.py
       - name: Format
         run: bunx prettier --write src/components/promptbeats/InspirationWallDirectionPanel.tsx src/components/promptbeats/SongSetupAssistantModal.tsx src/routes/generate.tsx src/lib/inspiration-wall.functions.ts src/lib/inspiration-wall-song-setup.shared.ts src/lib/inspiration-wall-phase4.test.ts
       - name: Inspiration Wall tests
