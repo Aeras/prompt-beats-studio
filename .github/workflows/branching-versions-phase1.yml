@@ -28,6 +28,7 @@ jobs:
         run: |
           python .github/scripts/branching_versions_phase1.py
           python .github/scripts/branching_versions_phase1_tests.py
+          python .github/scripts/branching_versions_phase1_types.py
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
