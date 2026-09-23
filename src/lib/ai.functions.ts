@@ -148,14 +148,14 @@ BLUEPRINT EXECUTION RULES
 - Treat every listed instruction and energy target as authoritative for that exact section occurrence only.
 - Energy is a relative creative intensity / dynamics target from 1 (very low) to 5 (peak). It is NOT a BPM value, loudness measurement, mastering target or objective score.
 - Realize energy through musically appropriate dynamics, density, instrumentation, vocal intensity, rhythmic drive, register, layering and production contrast while preserving the requested genre and song coherence.
-- Repeated sections remain independent. Do NOT copy one occurrence\'s direction or energy target to another occurrence unless that other occurrence is also explicitly listed with the same value.
+- Repeated sections remain independent. Do NOT copy one occurrence's direction or energy target to another occurrence unless that other occurrence is also explicitly listed with the same value.
 - Translate each natural-language Blueprint instruction into one or, only when genuinely necessary, two concise square-bracketed production/performance directions inside that exact lyric section.
 - Put the direction immediately after the matching structural header or at the most musically appropriate point inside that section.
 - Blueprint instructions are production/performance direction, never sung lyric content.
 - Keep square-bracket directions short, concrete, generator-useful and restrained.
 - Do not flood the lyrics with redundant tags or restate global Music Style / Production Style information in every section.
 - Preserve global characteristics in the ${promptLabel}; use the Blueprint only for section-specific changes, entrances, exits, dynamics, instrumentation, vocal treatment or transitions.
-- Do not expose the user\'s raw Blueprint instruction text verbatim when a concise production direction communicates it better.
+- Do not expose the user's raw Blueprint instruction text verbatim when a concise production direction communicates it better.
 `;
 }
 function buildPrompt(d: z.infer<typeof generateInput>) {
@@ -2062,8 +2062,8 @@ export async function runLyricsSectionEdit(
   let parsedJson: unknown;
   try {
     const cleaned = generated.text
-      .replace(/^\`\`\`(?:json)?/i, "")
-      .replace(/\`\`\`$/, "")
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/, "")
       .trim();
     parsedJson = JSON.parse(cleaned);
   } catch {

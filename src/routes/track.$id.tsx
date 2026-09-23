@@ -107,9 +107,11 @@ function TrackPage() {
     privateReviewAccess.allowed,
   );
 
+  const trackId = track?.id;
+  const trackPlays = track?.plays;
   useEffect(() => {
-    if (track) setPlayCount(track.plays ?? 0);
-  }, [track?.id, track?.plays]);
+    if (trackId) setPlayCount(trackPlays ?? 0);
+  }, [trackId, trackPlays]);
 
   useEffect(() => {
     const onPlayCounted = (event: Event) => {

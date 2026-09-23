@@ -13,7 +13,11 @@ export function getSafeExternalUrl(
   platform?: SupportedSocialPlatform,
 ): string | null {
   if (typeof value !== "string" || value.length === 0 || value !== value.trim()) return null;
-  if (/\s|[\u0000-\u001f\u007f]/.test(value) || value.includes("\\")) return null;
+  const hasControlCharacter = Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+  if (/\s/.test(value) || hasControlCharacter || value.includes("\\")) return null;
   if (value.startsWith("/")) return null;
 
   let parsed: URL;

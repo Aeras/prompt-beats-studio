@@ -295,7 +295,7 @@ export function diffArrangement(
 }
 
 function tokenize(text: string) {
-  return text.match(/\s+|[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*|[^\s\p{L}\p{N}]+/gu) ?? [];
+  return text.match(/\s+|[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*|[^\s\p{L}\p{N}]+/gu) ?? [];
 }
 
 function tokenEquals(a: string, b: string) {

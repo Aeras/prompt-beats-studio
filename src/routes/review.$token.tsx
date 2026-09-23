@@ -62,7 +62,9 @@ function PrivateReviewPage() {
     onSuccess: (result) => {
       try {
         window.localStorage.setItem(storageKey, result.reviewer_key);
-      } catch {}
+      } catch {
+        // Private review credentials remain in memory when storage is unavailable.
+      }
       setReviewerKey(result.reviewer_key);
     },
   });

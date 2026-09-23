@@ -55,7 +55,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
     queryFn: () => listProjectVersionHistory({ data: { projectId } }),
   });
 
-  const versions = history.data?.versions ?? [];
+  const versions = useMemo(() => history.data?.versions ?? [], [history.data?.versions]);
   const preferredId = history.data?.project.preferred_prompt_id ?? null;
 
   const selectedOpen = useQuery({

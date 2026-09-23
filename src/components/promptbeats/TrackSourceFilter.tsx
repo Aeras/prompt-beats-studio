@@ -32,7 +32,9 @@ function writeLocalPreference(value: TrackSourcePreference) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(LOCAL_KEY, value);
-  } catch {}
+  } catch {
+    // Preference persistence is best-effort; the in-memory state still updates.
+  }
   window.dispatchEvent(new CustomEvent<TrackSourcePreference>(EVENT_KEY, { detail: value }));
 }
 
@@ -43,11 +45,9 @@ export function useTrackSourcePreference() {
   const [preference, setPreferenceState] = useState<TrackSourcePreference>(initial);
 
   useEffect(() => {
-    const next = isPreference(user?.user_metadata?.[ACCOUNT_KEY])
-      ? (user!.user_metadata[ACCOUNT_KEY] as TrackSourcePreference)
-      : readLocalPreference();
+    const next = isPreference(accountValue) ? accountValue : readLocalPreference();
     setPreferenceState(next);
-  }, [user?.id, user?.user_metadata?.[ACCOUNT_KEY]]);
+  }, [accountValue, user?.id]);
 
   useEffect(() => {
     const sync = (event: Event) => {

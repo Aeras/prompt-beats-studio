@@ -171,9 +171,11 @@ export function ModerationCaseThread({
     enabled: Boolean(item?.permissions.can_reassign),
   });
 
+  const assignedTo = item?.assigned_to;
+  const updatedAt = item?.updated_at;
   useEffect(() => {
-    if (!item) return;
-    setAssigneeId(item.assigned_to ?? "");
+    if (!updatedAt) return;
+    setAssigneeId(assignedTo ?? "");
     void markModerationCaseRead({ data: { caseId } })
       .then(() => {
         void qc.invalidateQueries({ queryKey: ["moderation-case-unread-count"] });
@@ -181,7 +183,7 @@ export function ModerationCaseThread({
         void qc.invalidateQueries({ queryKey: ["content-reports"] });
       })
       .catch(() => undefined);
-  }, [caseId, item?.updated_at]);
+  }, [assignedTo, caseId, qc, updatedAt]);
 
   const timeline = useMemo(() => {
     if (!item) return [];

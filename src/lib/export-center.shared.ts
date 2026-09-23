@@ -378,9 +378,11 @@ export function serializeExportDocument(document: ExportDocument, format: Export
 }
 
 export function sanitizeExportFilename(value: string, fallback = "PromptBeats Export") {
-  const cleaned = value
-    .normalize("NFC")
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
+  const normalized = Array.from(value.normalize("NFC"), (character) =>
+    character.charCodeAt(0) <= 0x1f ? "_" : character,
+  ).join("");
+  const cleaned = normalized
+    .replace(/[<>:"/\\|?*]/g, "_")
     .replace(/\s+/g, " ")
     .replace(/[. ]+$/g, "")
     .trim()

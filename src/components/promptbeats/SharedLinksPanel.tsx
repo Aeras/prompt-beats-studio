@@ -37,7 +37,9 @@ export function SharedLinksPanel() {
       await navigator.clipboard.writeText(url);
       setCopied(token);
       window.setTimeout(() => setCopied(null), 1500);
-    } catch {}
+    } catch {
+      // Clipboard access can be unavailable; keep the share link unchanged.
+    }
   };
 
   const revoke = async (id: string) => {

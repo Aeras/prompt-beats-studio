@@ -168,7 +168,9 @@ self.onmessage = (
 
     try {
       signal.delete?.();
-    } catch {}
+    } catch {
+      // Some Essentia vector wrappers do not expose a usable delete method.
+    }
     (self as any).postMessage({ id, ok: true, result });
   } catch (error) {
     (self as any).postMessage({

@@ -2100,7 +2100,9 @@ function SongAnalysisCard({
       await navigator.clipboard.writeText(fullText);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      // Clipboard access is best-effort in restricted browser contexts.
+    }
   };
   const send = () => {
     if (typeof window === "undefined") return;
@@ -2301,7 +2303,9 @@ function SavedPromptCard({
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch {}
+    } catch {
+      // Clipboard access is best-effort in restricted browser contexts.
+    }
   };
   const rename = async () => {
     const name = window
