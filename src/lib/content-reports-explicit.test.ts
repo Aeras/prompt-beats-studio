@@ -147,11 +147,11 @@ describe("Reports System + Explicit Lyrics V1", () => {
   test("Reports tab is visible to moderator level and above, while Feature Access stays Super Admin-only", async () => {
     const ui = await source("src/routes/management.tsx");
     expect(ui).toContain('["reports", t("management.reports"), Flag]');
-    expect(ui).toContain(
-      ': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]',
+    expect(ui).toMatch(
+      /:\s*\[\s*\["users",\s*t\("management\.users"\),\s*Users\],\s*\["reports",\s*t\("management\.reports"\),\s*Flag\],?\s*\]/,
     );
-    expect(ui).toContain(
-      'section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />',
+    expect(ui).toMatch(
+      /section === "reports"\s*&&\s*\(\s*<ReportsManagementPanel\s+isAdmin=\{isAdmin\}\s+initialReportId=\{initialReportId\}\s*\/>\s*\)/,
     );
     expect(ui).toContain('isSuperAdmin && section === "features"');
   });
@@ -178,7 +178,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
 
   test("Management UI only renders Reporter column for Admin-level users", async () => {
     const ui = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
-    expect(ui).toContain("{isAdmin && <th");
+    expect(ui).toMatch(/\{isAdmin\s*&&\s*\(\s*<th/);
     expect(ui).toContain('t("management.reportReporter")');
     expect(ui).toContain("{isAdmin ? (");
     expect(ui).toContain("management.reportNoReporterIdentity");
