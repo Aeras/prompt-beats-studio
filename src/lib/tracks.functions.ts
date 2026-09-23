@@ -131,9 +131,8 @@ export const incrementTrackPlay = createServerFn({ method: "POST" })
 
 export const listPublishedTracks = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const supabase = createPublicServerClient();
-  const { data, error } = await (supabaseAdmin.from("tracks") as any)
+  const { data, error } = await (supabase.from("tracks") as any)
     .select(TRACK_COLUMNS)
     .eq("is_published", true)
     .eq("moderation_status", "active")
