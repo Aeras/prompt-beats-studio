@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
 
 async function source(path: string) {
-  return Bun.file(path).text();
+  return readFile(path, "utf8");
 }
 
 describe("Step 7 AI usage and admission hardening", () => {
