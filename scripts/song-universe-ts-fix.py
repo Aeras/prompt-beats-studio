@@ -63,12 +63,14 @@ p = Path("src/routes/song-universe.tsx")
 s = p.read_text()
 s = s.replace("if (access.loading)", "if (access.isLoading)")
 if "type UniverseProject =" not in s:
-    anchor = 'const sectionLabels: Record<(typeof SONG_UNIVERSE_BIBLE_SECTIONS)[number], { en: string; el: string }> = {'
+    anchor = "export const Route = createFileRoute(\"/song-universe\")({ component: SongUniversePage });\n\n"
     alias = '''type UniverseProject = Awaited<ReturnType<typeof getSongUniverse>>["projects"][number];
 type UniverseProjectOption = { id: string; name: string; updatedAt: string; linked: boolean };
 
 '''
-    s = s.replace(anchor, alias + anchor, 1)
+    if anchor not in s:
+        raise SystemExit("missing Song Universe route alias anchor")
+    s = s.replace(anchor, anchor + alias, 1)
 s = s.replace(".filter((project) => !project.linked)", ".filter((project: UniverseProjectOption) => !project.linked)")
 s = s.replace("availableProjects.map((project) =>", "availableProjects.map((project: UniverseProjectOption) =>")
 s = s.replace("projects.map((project, index) =>", "projects.map((project: UniverseProject, index: number) =>")
