@@ -1,0 +1,49 @@
+name: Reports Test Diagnostic
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-reports-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Make Reports UI checks formatting-robust
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/content-reports-explicit.test.ts')
+          text = path.read_text()
+          replacements = {
+              '''    expect(ui).toContain(\n      ': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]',\n    );''': '''    expect(ui).toMatch(\n      /:\\s*\\[\\s*\\["users",\\s*t\\("management\\.users"\\),\\s*Users\\],\\s*\\["reports",\\s*t\\("management\\.reports"\\),\\s*Flag\\],?\\s*\\]/,\n    );''',
+              '''    expect(ui).toContain(\n      'section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />',\n    );''': '''    expect(ui).toMatch(\n      /section === "reports"\\s*&&\\s*\\(\\s*<ReportsManagementPanel\\s+isAdmin=\\{isAdmin\\}\\s+initialReportId=\\{initialReportId\\}\\s*\\/>\\s*\\)/,\n    );''',
+              '''    expect(ui).toContain("{isAdmin && <th");''': '''    expect(ui).toMatch(/\\{isAdmin\\s*&&\\s*\\(\\s*<th/);''',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected Reports assertion pattern not found: {old.splitlines()[0]}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Reports and Explicit Lyrics tests
+        run: bun test src/lib/content-reports-explicit.test.ts
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/content-reports-explicit.test.ts
+          git commit -m "Make Reports UI tests formatting-robust"
+          git push origin HEAD:main
