@@ -127,6 +127,9 @@ jobs:
       - name: September 22 audit hardening tests
         run: bun test src/lib/audit-hardening-20260922.test.ts
 
+      - name: Step 7 AI usage and admission tests
+        run: bun test src/lib/ai-usage-admission-step7.test.ts
+
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts
 
