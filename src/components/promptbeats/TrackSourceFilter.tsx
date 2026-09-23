@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import type { Track } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
 export type TrackSourcePreference = "all" | "uploads" | "external";
 
-type TrackSourceLike = {
-  sourceType?: string | null | undefined;
+type TrackSourceLike = Track & {
   source_type?: string | null | undefined;
 };
 
@@ -67,14 +67,10 @@ export function useTrackSourcePreference() {
   return { preference, setPreference };
 }
 
-export function filterByTrackSource<T>(
-  tracks: T[],
-  preference: TrackSourcePreference,
-): T[];
 export function filterByTrackSource(
-  tracks: unknown[],
+  tracks: Track[],
   preference: TrackSourcePreference,
-): unknown[] {
+): Track[] {
   if (preference === "all") return tracks;
   return tracks.filter((track) => {
     const sourceTrack = track as TrackSourceLike;
