@@ -110,7 +110,14 @@ jobs:
       # existing backlog reaches zero, this step can become blocking.
       - name: Typecheck report
         continue-on-error: true
-        run: bunx tsc --noEmit --pretty false
+        run: bunx tsc --noEmit --pretty false 2>&1 | tee typecheck.log
+
+      - name: Upload typecheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strict-typecheck-report
+          path: typecheck.log
 
       # The repository has legacy lint debt that predates this gate. Keep the
       # lint report visible on every PR without making unrelated existing
