@@ -117,7 +117,7 @@ describe("Story Map", () => {
     expect(generator).toContain("planStoryDrivenGeneration");
     expect(generator).toContain("createStoryMap");
     expect(generator).toContain("replaceStoryMapDraft");
-    expect(generator).toContain('t("generator.storyDrivenLyrics")');
+    expect(generator).toContain("Story-driven lyrics");
     expect(ai).toContain("planStoryDrivenGeneration");
     expect(ai.toLowerCase()).toContain("beat");
   });
