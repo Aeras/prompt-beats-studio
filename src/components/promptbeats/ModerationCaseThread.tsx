@@ -33,23 +33,29 @@ const messageTypeLabel = (type: CaseMessageType, el: boolean) => ({
   general: el ? "Γενικό μήνυμα υπόθεσης" : "General Case Message",
 }[type]);
 
-const outcomeLabel = (outcome: string | null | undefined, el: boolean) => ({
-  action_taken: el ? "Παράβαση — ελήφθη ενέργεια" : "Violation — action taken",
-  no_violation: el ? "Δεν διαπιστώθηκε παράβαση" : "No violation found",
-  dismissed_abuse: el ? "Απόρριψη αναφοράς / κατάχρηση" : "Report dismissed / abuse",
-}[outcome ?? ""] ?? outcome ?? "—");
+const outcomeLabel = (outcome: string | null | undefined, el: boolean) => {
+  const labels: Record<string, string> = {
+    action_taken: el ? "Παράβαση — ελήφθη ενέργεια" : "Violation — action taken",
+    no_violation: el ? "Δεν διαπιστώθηκε παράβαση" : "No violation found",
+    dismissed_abuse: el ? "Απόρριψη αναφοράς / κατάχρηση" : "Report dismissed / abuse",
+  };
+  return labels[outcome ?? ""] ?? outcome ?? "—";
+};
 
-const statusLabel = (status: string, el: boolean) => ({
-  open: el ? "Ανοιχτή" : "Open",
-  awaiting_creator_response: el ? "Αναμονή απάντησης δημιουργού" : "Awaiting creator response",
-  under_review: el ? "Υπό εξέταση" : "Under review",
-  awaiting_admin_decision: el ? "Αναμονή έγκρισης Admin" : "Awaiting Admin approval",
-  decision_issued: el ? "Αρχική απόφαση εκδόθηκε" : "Initial decision issued",
-  appeal_submitted: el ? "Υποβλήθηκε ένσταση" : "Appeal submitted",
-  appeal_under_admin_review: el ? "Ένσταση υπό επανεξέταση Admin" : "Appeal under Admin review",
-  pending_super_admin_approval: el ? "Αναμονή τελικής έγκρισης Super Admin" : "Pending Super Admin final approval",
-  final_closed: el ? "Οριστικά κλειστή" : "Final closed",
-}[status] ?? status);
+const statusLabel = (status: string, el: boolean) => {
+  const labels: Record<string, string> = {
+    open: el ? "Ανοιχτή" : "Open",
+    awaiting_creator_response: el ? "Αναμονή απάντησης δημιουργού" : "Awaiting creator response",
+    under_review: el ? "Υπό εξέταση" : "Under review",
+    awaiting_admin_decision: el ? "Αναμονή έγκρισης Admin" : "Awaiting Admin approval",
+    decision_issued: el ? "Αρχική απόφαση εκδόθηκε" : "Initial decision issued",
+    appeal_submitted: el ? "Υποβλήθηκε ένσταση" : "Appeal submitted",
+    appeal_under_admin_review: el ? "Ένσταση υπό επανεξέταση Admin" : "Appeal under Admin review",
+    pending_super_admin_approval: el ? "Αναμονή τελικής έγκρισης Super Admin" : "Pending Super Admin final approval",
+    final_closed: el ? "Οριστικά κλειστή" : "Final closed",
+  };
+  return labels[status] ?? status;
+};
 
 function caseError(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -57,9 +63,9 @@ function caseError(error: unknown, fallback: string) {
 
 function EventCard({ event, el }: { event: ModerationCaseDetail["events"][number]; el: boolean }) {
   const payload = event.payload ?? {};
-  const reason = typeof payload.reason === "string" ? payload.reason : null;
-  const actionSummary = typeof payload.action_summary === "string" ? payload.action_summary : null;
-  const outcome = typeof payload.outcome === "string" ? payload.outcome : null;
+  const reason = typeof payload["reason"] === "string" ? payload["reason"] : null;
+  const actionSummary = typeof payload["action_summary"] === "string" ? payload["action_summary"] : null;
+  const outcome = typeof payload["outcome"] === "string" ? payload["outcome"] : null;
   const labels: Record<string,string> = {
     case_opened: el ? "Η υπόθεση άνοιξε." : "Case opened.",
     case_assigned: el ? "Η υπόθεση ανατέθηκε σε διαχειριστή." : "Case assigned to a reviewer.",
@@ -98,8 +104,8 @@ export function ModerationCaseThread({
   onChanged,
 }: {
   caseId: string;
-  staffView?: boolean;
-  onChanged?: () => void;
+  staffView?: boolean | undefined;
+  onChanged?: (() => void) | undefined;
 }) {
   const { language } = useI18n();
   const el = language === "el";
@@ -120,7 +126,7 @@ export function ModerationCaseThread({
     queryFn: () => getModerationCase({ data: { caseId } }),
     refetchInterval: 10_000,
   });
-  const item = detail.data;
+  const item = detail.data as ModerationCaseDetail | undefined;
   const effectiveStaffView = staffView || item?.permissions.is_staff === true;
   const assignees = useQuery({
     queryKey: ["moderation-case-assignees"],
@@ -169,7 +175,13 @@ export function ModerationCaseThread({
     onError: (e) => toast.error(caseError(e, el ? "Δεν προστέθηκε η σημείωση." : "Could not add note.")),
   });
   const propose = useMutation({
-    mutationFn: () => proposeInitialCaseDecision({ data: { caseId, outcome, reason, actionSummary: actionSummary || undefined, appealEligible } }),
+    mutationFn: () => proposeInitialCaseDecision({ data: {
+      caseId,
+      outcome,
+      reason,
+      ...(actionSummary ? { actionSummary } : {}),
+      appealEligible,
+    } }),
     onSuccess: async () => { setReason(""); setActionSummary(""); await refresh(); toast.success(el ? "Η απόφαση στάλθηκε για έγκριση." : "Decision sent for approval."); },
     onError: (e) => toast.error(caseError(e, el ? "Δεν αποθηκεύτηκε η πρόταση." : "Could not save proposal.")),
   });
@@ -184,7 +196,12 @@ export function ModerationCaseThread({
     onError: (e) => toast.error(caseError(e, el ? "Δεν υποβλήθηκε η ένσταση." : "Could not submit appeal.")),
   });
   const appealProposal = useMutation({
-    mutationFn: () => proposeModerationCaseAppealDecision({ data: { caseId, outcome, reason, actionSummary: actionSummary || undefined } }),
+    mutationFn: () => proposeModerationCaseAppealDecision({ data: {
+      caseId,
+      outcome,
+      reason,
+      ...(actionSummary ? { actionSummary } : {}),
+    } }),
     onSuccess: async () => { setReason(""); setActionSummary(""); await refresh(); toast.success(el ? "Η πρόταση ένστασης στάλθηκε στον Super Admin." : "Appeal proposal sent to Super Admin."); },
     onError: (e) => toast.error(caseError(e, el ? "Δεν αποθηκεύτηκε η πρόταση." : "Could not save appeal proposal.")),
   });
@@ -192,9 +209,11 @@ export function ModerationCaseThread({
     mutationFn: (action: "approve"|"override"|"return") => finalizeModerationCaseAppeal({ data: {
       caseId,
       action,
-      overrideOutcome: action === "override" ? outcome : undefined,
-      overrideReason: action === "override" ? reason : undefined,
-      overrideActionSummary: action === "override" ? actionSummary || undefined : undefined,
+      ...(action === "override" ? {
+        overrideOutcome: outcome,
+        overrideReason: reason,
+        ...(actionSummary ? { overrideActionSummary: actionSummary } : {}),
+      } : {}),
     } }),
     onSuccess: async () => { setReason(""); setActionSummary(""); setOverrideMode(false); await refresh(); toast.success(el ? "Η τελική ενέργεια καταχωρήθηκε." : "Final action saved."); },
     onError: (e) => toast.error(caseError(e, el ? "Δεν ολοκληρώθηκε η ενέργεια." : "Could not complete action.")),
