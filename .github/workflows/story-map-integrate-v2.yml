@@ -1,0 +1,51 @@
+name: Story Map integrate v2
+
+on:
+  push:
+    branches: [story-map-step1]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.event.head_commit.message != 'Apply Story Map integration patches'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: story-map-step1
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Correct integration anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/story-map-integrate.py')
+          s = p.read_text()
+          old = "button_anchor = '''            <button\n              onClick={generate}'''"
+          new = "button_anchor = '''                <button\n                  onClick={generate}'''"
+          if old not in s:
+              raise SystemExit('story-driven anchor source not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Apply integration patches
+        run: python3 scripts/story-map-integrate.py
+      - name: Generate route tree and format
+        run: |
+          bun run build >/tmp/story-map-build.log 2>&1 || { cat /tmp/story-map-build.log; exit 1; }
+          bunx prettier --write src/components/promptbeats/AppShell.tsx src/components/promptbeats/LyricsWorkspace.tsx src/components/promptbeats/StoryMapLyricsPanel.tsx src/routes/story-map.tsx src/routes/generate.tsx src/lib/story-map.shared.ts src/lib/story-map.functions.ts src/lib/story-map-ai.functions.ts src/lib/story-map-workspace.functions.ts src/routeTree.gen.ts
+      - name: Verify lint and types
+        run: |
+          bun run lint
+          bunx tsc --noEmit --pretty false
+      - name: Commit integration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          if ! git diff --cached --quiet; then
+            git commit -m 'Apply Story Map integration patches'
+            git push origin story-map-step1
+          fi
