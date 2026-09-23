@@ -16,6 +16,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
       - name: Update canonical feature count
         run: |
           python3 - <<'PY'
