@@ -70,6 +70,9 @@ jobs:
       - name: Inspiration Wall Phase 1 tests
         run: bun test src/lib/inspiration-wall.test.ts
 
+      - name: Inspiration Wall Phase 2 tests
+        run: bun test src/lib/inspiration-wall-phase2.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
