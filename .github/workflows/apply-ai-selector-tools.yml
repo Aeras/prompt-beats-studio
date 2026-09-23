@@ -1,0 +1,99 @@
+name: Apply AI selectors to remaining tools
+
+on:
+  push:
+    branches: [ai-model-selector-policy]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply conditional AI selectors to tools'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai-model-selector-policy
+          fetch-depth: 0
+      - name: Patch Inspiration Wall and Song Universe
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Inspiration Wall server: requested model + capability-aware fallback.
+          p=Path('src/lib/inspiration-wall-ai.functions.ts'); s=p.read_text()
+          s=s.replace('async function resolveMultimodalModel(userId: string) {\n  const access = await getEffectiveModelAccess(userId, "ai_tools");\n  const defaultOption = access.modelOptions.find((option) => option.id === access.defaultModel);\n  if (defaultOption?.provider === "gemini") return defaultOption;\n  const firstGemini = access.modelOptions.find((option) => option.provider === "gemini");\n  if (firstGemini) return firstGemini;\n  throw new Error("No multimodal AI model is available for this account.");\n}',
+          'async function resolveMultimodalModel(userId: string, requestedModel?: string) {\n  const access = await getEffectiveModelAccess(userId, "ai_tools");\n  const candidates = access.modelOptions.filter((option) => option.provider === "gemini");\n  const requested = requestedModel\n    ? candidates.find((option) => option.id === requestedModel)\n    : null;\n  if (requested) return requested;\n  const defaultOption = candidates.find((option) => option.id === access.defaultModel);\n  if (defaultOption) return defaultOption;\n  const firstGemini = candidates[0];\n  if (firstGemini) return firstGemini;\n  throw new Error("No multimodal AI model is available for this account.");\n}',1)
+          s=s.replace('.inputValidator((input: unknown) => z.object({ wallId: wallIdSchema }).parse(input))',
+          '.inputValidator((input: unknown) =>\n    z.object({ wallId: wallIdSchema, model: z.string().trim().min(1).max(240).optional() }).parse(input),\n  )',1)
+          s=s.replace('const selected = await resolveMultimodalModel(context.userId);','const selected = await resolveMultimodalModel(context.userId, data.model);',1)
+          p.write_text(s)
+
+          # Inspiration Wall UI: only multimodal-eligible options are offered.
+          p=Path('src/components/promptbeats/InspirationWallDirectionPanel.tsx'); s=p.read_text()
+          if 'useAiModelSelection' not in s:
+            anchor='import { useI18n } from "@/i18n";'
+            if anchor not in s: raise SystemExit('wall i18n import missing')
+            s=s.replace(anchor,anchor+'\nimport { useAiModelSelection } from "@/hooks/useAiModelSelection";',1)
+          func='export function InspirationWallDirectionPanel('
+          idx=s.find(func)
+          if idx<0: raise SystemExit('wall panel missing')
+          body=s.find('{\n',idx)
+          if body<0: raise SystemExit('wall body missing')
+          # Find language line within body.
+          lang='  const { language } = useI18n();'
+          if lang not in s[body:]: raise SystemExit('wall language line missing')
+          s=s.replace(lang,lang+'\n  const aiModel = useAiModelSelection("aiTools", (option) => option.provider === "gemini");',1)
+          old='extractInspirationWallCreativeDirection({ data: { wallId } })'
+          new='extractInspirationWallCreativeDirection({\n        data: {\n          wallId,\n          ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}),\n        },\n      })'
+          if old not in s: raise SystemExit('wall extract call missing')
+          s=s.replace(old,new,1)
+          # Insert selector before extraction action; target unique Extract button text context.
+          target='{extracting ? ('
+          pos=s.find(target)
+          if pos<0: raise SystemExit('wall extracting button marker missing')
+          # Find nearest button start before target.
+          bpos=s.rfind('<button',0,pos)
+          if bpos<0: raise SystemExit('wall extract button start missing')
+          selector='''{aiModel.showSelector && (\n            <select\n              aria-label={language === "el" ? "Μοντέλο AI" : "AI model"}\n              value={aiModel.selectedModel}\n              onChange={(event) => aiModel.setSelectedModel(event.target.value)}\n              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"\n            >\n              {aiModel.options.map((option) => (\n                <option key={option.id} value={option.id}>{option.label}</option>\n              ))}\n            </select>\n          )}\n          '''
+          s=s[:bpos]+selector+s[bpos:]
+          # first disabled on extraction button
+          after=s[bpos+len(selector):]
+          after=after.replace('disabled={extracting}','disabled={extracting || aiModel.unavailable}',1)
+          s=s[:bpos+len(selector)]+after
+          p.write_text(s)
+
+          # Song Universe UI: one shared AI Tools selector for all deliberate AI actions.
+          p=Path('src/routes/song-universe.tsx'); s=p.read_text()
+          if 'useAiModelSelection' not in s:
+            anchor='import { useFeatureAccess } from "@/hooks/useFeatureAccess";'
+            if anchor not in s: raise SystemExit('universe feature import missing')
+            s=s.replace(anchor,anchor+'\nimport { useAiModelSelection } from "@/hooks/useAiModelSelection";',1)
+          lang='  const { language } = useI18n();\n  const el = language === "el";'
+          if lang not in s: raise SystemExit('universe language lines missing')
+          s=s.replace(lang,lang+'\n  const aiModel = useAiModelSelection("aiTools");',1)
+          # Add optional model to all four AI request shapes.
+          s=s.replace('data: { universeId },','data: { universeId, ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}) },')
+          s=s.replace('data: { universeId, creativeBible, instruction },','data: { universeId, creativeBible, instruction, ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}) },')
+          s=s.replace('data: { universeId, projectId },','data: { universeId, projectId, ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}) },')
+          # Selector near AI section heading if found.
+          heading='{el ? "AI Continuity" : "AI Continuity"}'
+          h=s.find(heading)
+          if h<0:
+            heading='AI Continuity'
+            h=s.find(heading)
+          if h>=0:
+            # place just after containing heading close, using next newline.
+            line_end=s.find('\n',h)
+            selector='''\n          {aiModel.showSelector && (\n            <select\n              aria-label={el ? "Μοντέλο AI" : "AI model"}\n              value={aiModel.selectedModel}\n              onChange={(event) => aiModel.setSelectedModel(event.target.value)}\n              className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"\n            >\n              {aiModel.options.map((option) => (\n                <option key={option.id} value={option.id}>{option.label}</option>\n              ))}\n            </select>\n          )}'''
+            s=s[:line_end]+selector+s[line_end:]
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/lib/inspiration-wall-ai.functions.ts src/components/promptbeats/InspirationWallDirectionPanel.tsx src/routes/song-universe.tsx
+          git commit -m 'Apply conditional AI selectors to tools' || exit 0
+          git push origin ai-model-selector-policy
