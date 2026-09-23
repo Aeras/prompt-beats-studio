@@ -4,6 +4,7 @@ const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_
 const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
 const songSetupMigration = "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
 const lyricsReviewMigration = "supabase/migrations/20260923043000_add_lyrics_review_feature_access.sql";
+const privateReviewMigration = "supabase/migrations/20260923054500_private_review_links_phase1.sql";
 const dependentSurfaceMigration = "supabase/migrations/20260922182136_feature_access_dependent_surface_rls.sql";
 
 const CANONICAL_KEYS = [
@@ -18,6 +19,7 @@ const CANONICAL_KEYS = [
   "export_center",
   "track_uploads",
   "sharing_public_links",
+  "private_review_links",
   "playlists",
   "favorites",
   "likes",
@@ -36,26 +38,27 @@ function functionBlock(sql: string, name: string) {
   return sql.slice(start, next === -1 ? sql.length : next);
 }
 
-describe("Feature Access V2 — 16 features", () => {
-  test("canonical TypeScript registry contains exactly 16 unique feature keys", async () => {
+describe("Feature Access V2 — 17 features", () => {
+  test("canonical TypeScript registry contains exactly 17 unique feature keys", async () => {
     const code = await source("src/lib/feature-access.functions.ts");
     const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
     expect(match).not.toBeNull();
     const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
     expect(keys).toEqual(CANONICAL_KEYS);
-    expect(new Set(keys).size).toBe(16);
+    expect(new Set(keys).size).toBe(17);
     expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
   });
 
   test("V2 migration keeps its original ten definitions while later features are seeded separately", async () => {
     const sql = await source(registryMigration);
-    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","song_setup_assistant","lyrics_review","export_center","follow_creators","notifications"].includes(key));
-    for (const key of newKeys) {
+    const laterKeys = ["smart_presets","song_setup_assistant","lyrics_review","private_review_links","export_center","follow_creators","notifications"];
+    const originalKeys = CANONICAL_KEYS.filter((key) => !laterKeys.includes(key));
+    for (const key of originalKeys) {
       expect(sql).toContain(`('${key}'`);
       const row = new RegExp(`\\('${key}'[^\\n]+,'everyone'\\)`);
       expect(sql).toMatch(row);
     }
-    for (const existing of ["smart_presets","song_setup_assistant","lyrics_review","export_center","follow_creators","notifications"]) {
+    for (const existing of laterKeys) {
       expect(sql).not.toMatch(new RegExp(`\\('${existing}'[^\\n]+,'everyone'\\)`));
     }
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
@@ -73,6 +76,14 @@ describe("Feature Access V2 — 16 features", () => {
     const sql = await source(lyricsReviewMigration);
     expect(sql).toMatch(/VALUES\s*\(\s*'lyrics_review'/m);
     expect(sql).toContain("'Lyrics Review'");
+    expect(sql).toContain("'admins_only'");
+    expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
+  });
+
+  test("Private Review Links is seeded independently as admins_only", async () => {
+    const sql = await source(privateReviewMigration);
+    expect(sql).toMatch(/VALUES\s*\(\s*'private_review_links'/m);
+    expect(sql).toContain("'Private Review Links'");
     expect(sql).toContain("'admins_only'");
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
   });
