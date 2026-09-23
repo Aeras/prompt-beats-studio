@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 
 import {
@@ -79,11 +79,17 @@ export function SongSetupAssistantModal({
   onOpenChange,
   targetPlatform,
   onApply,
+  prefillDescription = null,
+  prefillSourceLabel = null,
+  prefillKey = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   targetPlatform: AITargetPlatform;
   onApply: (draft: SongSetupDraft) => void;
+  prefillDescription?: string | null;
+  prefillSourceLabel?: string | null;
+  prefillKey?: string | null;
 }) {
   const { language, t } = useI18n();
   const text = copy[language];
@@ -91,6 +97,13 @@ export function SongSetupAssistantModal({
   const [draft, setDraft] = useState<SongSetupDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !prefillKey || !prefillDescription) return;
+    setDescription(prefillDescription.slice(0, 2500));
+    setDraft(null);
+    setError(null);
+  }, [open, prefillDescription, prefillKey]);
 
   const generate = async () => {
     const clean = description.trim();
@@ -134,6 +147,17 @@ export function SongSetupAssistantModal({
         </DialogHeader>
 
         <div className="space-y-3">
+          {prefillSourceLabel && (
+            <div className="rounded-xl border border-accent/20 bg-accent/[0.04] px-3 py-2 text-xs text-muted-foreground">
+              {language === "el" ? "Πηγή" : "Source"}:{" "}
+              <span className="font-medium text-foreground">{prefillSourceLabel}</span>
+              <span className="ml-1">
+                {language === "el"
+                  ? "— μεταφέρθηκαν μόνο τα πεδία Creative Direction που επέλεξες να κρατήσεις."
+                  : "— only the Creative Direction fields you chose to keep were transferred."}
+              </span>
+            </div>
+          )}
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
               <label

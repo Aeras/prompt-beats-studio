@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BrainCircuit, Link2, Loader2, Music2, Sparkles, Unlink } from "lucide-react";
+import { ArrowRight, BrainCircuit, Link2, Loader2, Music2, Sparkles, Unlink } from "lucide-react";
 
 import {
   linkInspirationWallTrack,
@@ -17,6 +18,8 @@ import type {
   InspirationWallTrackLinkRecord,
 } from "@/lib/inspiration-wall.shared";
 import { cn } from "@/lib/utils";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY } from "@/lib/inspiration-wall-song-setup.shared";
 
 type Props = {
   wall: InspirationWallRecord;
@@ -92,8 +95,28 @@ function textToValue(text: string, isArray: boolean) {
     .filter(Boolean);
 }
 
+function collectApprovedDirection(
+  direction: InspirationWallCreativeDirection,
+  kept: Record<FieldKey, boolean>,
+) {
+  const approved: InspirationWallCreativeDirection = {};
+  for (const field of FIELD_META) {
+    if (!kept[field.key]) continue;
+    const value = direction[field.key];
+    if (Array.isArray(value)) {
+      const clean = value.map((item) => item.trim()).filter(Boolean);
+      if (clean.length) (approved as Record<string, unknown>)[field.key] = clean;
+    } else if (typeof value === "string" && value.trim()) {
+      (approved as Record<string, unknown>)[field.key] = value.trim();
+    }
+  }
+  return approved;
+}
+
 export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRefresh }: Props) {
   const el = language === "el";
+  const navigate = useNavigate();
+  const songSetupFeature = useFeatureAccess("song_setup_assistant");
   const [direction, setDirection] = useState<InspirationWallCreativeDirection>(
     wall.creative_direction ?? {},
   );
@@ -105,6 +128,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
   );
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
   const [connectionBusy, setConnectionBusy] = useState(false);
   const [modelLabel, setModelLabel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,16 +180,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
     setSaving(true);
     setError(null);
     try {
-      const approved: InspirationWallCreativeDirection = {};
-      for (const field of FIELD_META) {
-        if (!kept[field.key]) continue;
-        const value = direction[field.key];
-        if (Array.isArray(value)) {
-          (approved as Record<string, unknown>)[field.key] = value.filter(Boolean);
-        } else if (typeof value === "string" && value.trim()) {
-          (approved as Record<string, unknown>)[field.key] = value.trim();
-        }
-      }
+      const approved = collectApprovedDirection(direction, kept);
       await updateInspirationWall({ data: { wallId: wall.id, creativeDirection: approved } });
       await onRefresh();
     } catch (cause) {
@@ -174,6 +189,45 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openSongSetup = async () => {
+    if (!songSetupFeature.allowed || handoffBusy) return;
+    setHandoffBusy(true);
+    setError(null);
+    try {
+      const approved = collectApprovedDirection(direction, kept);
+      if (Object.keys(approved).length === 0) {
+        throw new Error(
+          el
+            ? "Κράτησε τουλάχιστον ένα πεδίο Creative Direction πριν συνεχίσεις."
+            : "Keep at least one Creative Direction field before continuing.",
+        );
+      }
+      await updateInspirationWall({ data: { wallId: wall.id, creativeDirection: approved } });
+      if (typeof window === "undefined") return;
+      window.sessionStorage.setItem(
+        INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY,
+        JSON.stringify({
+          version: 1,
+          wallId: wall.id,
+          wallTitle: wall.title,
+          connectedProjectId: wall.connected_project_id,
+          direction: approved,
+        }),
+      );
+      await navigate({ to: "/generate" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : el
+            ? "Η μεταφορά στο Song Setup απέτυχε."
+            : "Could not open Song Setup.",
+      );
+    } finally {
+      setHandoffBusy(false);
     }
   };
 
@@ -313,15 +367,37 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
           })}
         </div>
 
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          {!songSetupFeature.isLoading && !songSetupFeature.allowed && (
+            <p className="mr-auto text-[10px] text-muted-foreground">
+              {el
+                ? "Το Song Setup Assistant δεν είναι διαθέσιμο για αυτόν τον λογαριασμό."
+                : "Song Setup Assistant is not available for this account."}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => void save()}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent disabled:opacity-50"
+            disabled={saving || handoffBusy}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent disabled:opacity-50"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {el ? "Αποθήκευση Creative Direction" : "Save Creative Direction"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void openSongSetup()}
+            disabled={
+              handoffBusy || saving || songSetupFeature.isLoading || !songSetupFeature.allowed
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {handoffBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowRight className="h-4 w-4" />
+            )}
+            {el ? "Χρήση στο Song Setup" : "Use in Song Setup"}
           </button>
         </div>
       </section>

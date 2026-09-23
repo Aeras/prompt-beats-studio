@@ -76,6 +76,12 @@ import {
   type AITargetPlatform,
 } from "@/lib/ai-target-platforms";
 import type { SongSetupDraft } from "@/lib/song-setup-assistant.functions";
+import {
+  buildInspirationWallSongSetupDescription,
+  INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY,
+  inspirationWallSongSetupHandoffSchema,
+  type InspirationWallSongSetupHandoff,
+} from "@/lib/inspiration-wall-song-setup.shared";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import {
   activeSongBlueprint,
@@ -836,6 +842,13 @@ function GeneratePage() {
   const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
+  const [inspirationWallHandoff, setInspirationWallHandoff] =
+    useState<InspirationWallSongSetupHandoff | null>(null);
+  const [songSetupPrefill, setSongSetupPrefill] = useState<{
+    key: string;
+    description: string;
+    sourceLabel: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -906,6 +919,64 @@ function GeneratePage() {
   const [now, setNow] = useState(Date.now());
   const [jobId, setJobId] = useState<string | null>(null);
   const pendingKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY);
+    try {
+      setInspirationWallHandoff(inspirationWallSongSetupHandoffSchema.parse(JSON.parse(raw)));
+    } catch {
+      setStatus(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η φόρτωση του Inspiration Wall στο Song Setup."
+          : "Could not load the Inspiration Wall handoff into Song Setup.",
+      );
+    }
+  }, [appLanguage]);
+
+  useEffect(() => {
+    if (!inspirationWallHandoff || songSetupFeature.isLoading) return;
+    if (!songSetupFeature.allowed) {
+      setStatus(
+        appLanguage === "el"
+          ? "Το Song Setup Assistant δεν είναι διαθέσιμο για αυτόν τον λογαριασμό."
+          : "Song Setup Assistant is not available for this account.",
+      );
+      setInspirationWallHandoff(null);
+      return;
+    }
+    const description = buildInspirationWallSongSetupDescription(
+      inspirationWallHandoff.direction,
+      appLanguage,
+    );
+    if (!description) {
+      setStatus(
+        appLanguage === "el"
+          ? "Το Inspiration Wall δεν έχει εγκεκριμένο Creative Direction για μεταφορά."
+          : "The Inspiration Wall has no approved Creative Direction to transfer.",
+      );
+      setInspirationWallHandoff(null);
+      return;
+    }
+    setAdvanced(true);
+    if (inspirationWallHandoff.connectedProjectId) {
+      setSaveProjectId(inspirationWallHandoff.connectedProjectId);
+    }
+    setSongSetupPrefill({
+      key: `${inspirationWallHandoff.wallId}:v1`,
+      description,
+      sourceLabel: inspirationWallHandoff.wallTitle,
+    });
+    setSongSetupAssistantOpen(true);
+    setStatus(
+      appLanguage === "el"
+        ? "Το εγκεκριμένο Creative Direction φορτώθηκε στο Song Setup για έλεγχο."
+        : "Approved Creative Direction loaded into Song Setup for review.",
+    );
+    setInspirationWallHandoff(null);
+  }, [appLanguage, inspirationWallHandoff, songSetupFeature.allowed, songSetupFeature.isLoading]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3180,9 +3251,15 @@ function GeneratePage() {
       {songSetupFeature.allowed && (
         <SongSetupAssistantModal
           open={songSetupAssistantOpen}
-          onOpenChange={setSongSetupAssistantOpen}
+          onOpenChange={(nextOpen) => {
+            setSongSetupAssistantOpen(nextOpen);
+            if (!nextOpen) setSongSetupPrefill(null);
+          }}
           targetPlatform={targetPlatform}
           onApply={applySongSetup}
+          prefillDescription={songSetupPrefill?.description ?? null}
+          prefillSourceLabel={songSetupPrefill?.sourceLabel ?? null}
+          prefillKey={songSetupPrefill?.key ?? null}
         />
       )}
     </AppShell>

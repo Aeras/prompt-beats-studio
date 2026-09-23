@@ -101,6 +101,13 @@ function assertOwnedImageKey(imageObjectKey: string | null | undefined, userId: 
   }
 }
 
+async function cleanupInspirationWallImages(supabase: any, keys: Array<string | null | undefined>) {
+  const uniqueKeys = [...new Set(keys.filter((key): key is string => Boolean(key)))];
+  if (uniqueKeys.length === 0) return;
+  const { error } = await supabase.storage.from("inspiration-wall-images").remove(uniqueKeys);
+  if (error) console.warn("Inspiration Wall image cleanup failed:", error.message);
+}
+
 export const listInspirationWalls = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -227,12 +234,21 @@ export const deleteInspirationWall = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "inspiration_wall");
     const supabase = context.supabase as any;
     await requireWallAccess(supabase, data.wallId, context.userId);
+    const { data: imageCards, error: imageCardsError } = await supabase
+      .from("inspiration_wall_cards")
+      .select("image_object_key")
+      .eq("wall_id", data.wallId);
+    if (imageCardsError) throw new Error(imageCardsError.message);
     const { error } = await supabase
       .from("inspiration_walls")
       .delete()
       .eq("id", data.wallId)
       .eq("owner_id", context.userId);
     if (error) throw new Error(error.message);
+    await cleanupInspirationWallImages(
+      supabase,
+      (imageCards ?? []).map((card: { image_object_key: string | null }) => card.image_object_key),
+    );
     return { ok: true };
   });
 
@@ -277,7 +293,7 @@ export const updateInspirationWallCard = createServerFn({ method: "POST" })
 
     const { data: existing, error: existingError } = await supabase
       .from("inspiration_wall_cards")
-      .select("id, wall_id")
+      .select("id, wall_id, image_object_key")
       .eq("id", data.cardId)
       .maybeSingle();
     if (existingError) throw new Error(existingError.message);
@@ -304,6 +320,13 @@ export const updateInspirationWallCard = createServerFn({ method: "POST" })
       )
       .single();
     if (error) throw new Error(error.message);
+    if (
+      data.imageObjectKey !== undefined &&
+      existing.image_object_key &&
+      existing.image_object_key !== data.imageObjectKey
+    ) {
+      await cleanupInspirationWallImages(supabase, [existing.image_object_key]);
+    }
     return { card: card as InspirationWallCardRecord };
   });
 
@@ -315,7 +338,7 @@ export const deleteInspirationWallCard = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     const { data: existing, error: existingError } = await supabase
       .from("inspiration_wall_cards")
-      .select("id, wall_id")
+      .select("id, wall_id, image_object_key")
       .eq("id", data.cardId)
       .maybeSingle();
     if (existingError) throw new Error(existingError.message);
@@ -324,6 +347,7 @@ export const deleteInspirationWallCard = createServerFn({ method: "POST" })
 
     const { error } = await supabase.from("inspiration_wall_cards").delete().eq("id", data.cardId);
     if (error) throw new Error(error.message);
+    await cleanupInspirationWallImages(supabase, [existing.image_object_key]);
     return { ok: true };
   });
 
