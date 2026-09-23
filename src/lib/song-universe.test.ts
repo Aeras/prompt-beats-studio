@@ -79,7 +79,9 @@ describe("Song Universe", () => {
     });
     const context = buildSongUniverseContextText(handoff, "en");
     expect(context).toContain("Bittersweet and nocturnal");
-    expect(context).toContain("Explicit instructions for the current song always override Universe context");
+    expect(context).toContain(
+      "Explicit instructions for the current song always override Universe context",
+    );
   });
 
   test("database is private, one-primary-Universe, ownership validated and delete preserves Projects", async () => {
@@ -141,7 +143,9 @@ describe("Song Universe", () => {
     const ai = await source("src/lib/song-universe-ai.functions.ts");
     const functions = await source("src/lib/song-universe.functions.ts");
     expect(ai).toContain('.from("story_maps")');
-    expect(ai).toContain("summary,progression_type,starting_state,central_change,turning_point,resolution");
+    expect(ai).toContain(
+      "summary,progression_type,starting_state,central_change,turning_point,resolution",
+    );
     expect(functions).not.toContain('.from("saved_prompts").update');
   });
 });
