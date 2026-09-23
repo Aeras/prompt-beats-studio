@@ -1,37 +1,99 @@
 import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+
+import {
+  buildSongUniverseContextText,
+  songUniverseCreativeBibleSchema,
+  songUniverseSongSetupHandoffSchema,
+} from "./song-universe.shared";
 
 async function source(path: string) {
-  return Bun.file(path).text();
+  return readFile(path, "utf8");
 }
 
 describe("Song Universe", () => {
-  test("Creative Bible supports Core, Flexible and Experimental identity without forcing repetition", async () => {
-    const shared = await source("src/lib/song-universe.shared.ts");
-    expect(shared).toContain('"core"');
-    expect(shared).toContain('"flexible"');
-    expect(shared).toContain('"experimental"');
-    expect(shared).toContain('"things_to_avoid"');
-    expect(shared).toContain('"allowed_deviations"');
-    expect(shared).toContain("Shared identity is not identical output");
+  test("Creative Bible supports Core, Flexible and Experimental identity without forcing repetition", () => {
+    const bible = songUniverseCreativeBibleSchema.parse({
+      items: [
+        {
+          id: "mood-1",
+          section: "emotional_palette",
+          content: "Nocturnal and intimate",
+          strength: "core",
+          enabled: true,
+          sortOrder: 0,
+        },
+        {
+          id: "guitar-1",
+          section: "musical_identity",
+          content: "Warm electric guitar",
+          strength: "flexible",
+          enabled: true,
+          sortOrder: 0,
+        },
+        {
+          id: "duet-1",
+          section: "vocal_identity",
+          content: "One optional duet",
+          strength: "experimental",
+          enabled: true,
+          sortOrder: 0,
+        },
+      ],
+    });
+    expect(bible.items.map((item) => item.strength)).toEqual(["core", "flexible", "experimental"]);
   });
 
-  test("Song Setup handoff is structured and explicit Project instructions retain priority", async () => {
-    const shared = await source("src/lib/song-universe.shared.ts");
-    expect(shared).toContain("SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY");
-    expect(shared).toContain("songUniverseSongSetupHandoffSchema");
-    expect(shared).toContain("Explicit instructions for the current song always override Universe context");
+  test("Song Setup handoff is structured and explicit Project instructions retain priority", () => {
+    const handoff = songUniverseSongSetupHandoffSchema.parse({
+      version: 1,
+      universeId: "00000000-0000-4000-8000-000000000001",
+      universeTitle: "Night City",
+      projectId: null,
+      selectedItems: [
+        {
+          id: "mood-1",
+          section: "emotional_palette",
+          content: "Bittersweet and nocturnal",
+          strength: "core",
+          enabled: true,
+          sortOrder: 0,
+        },
+      ],
+      contextSnapshot: {
+        universeId: "00000000-0000-4000-8000-000000000001",
+        universeTitle: "Night City",
+        capturedAt: "2026-09-23T20:00:00.000Z",
+        selectedItemIds: ["mood-1"],
+        inheritedItems: [
+          {
+            id: "mood-1",
+            section: "emotional_palette",
+            content: "Bittersweet and nocturnal",
+            strength: "core",
+            enabled: true,
+            sortOrder: 0,
+          },
+        ],
+      },
+    });
+    const context = buildSongUniverseContextText(handoff, "en");
+    expect(context).toContain("Bittersweet and nocturnal");
+    expect(context).toContain(
+      "Explicit instructions for the current song always override Universe context",
+    );
   });
 
   test("database is private, one-primary-Universe, ownership validated and delete preserves Projects", async () => {
     const migration = await source("supabase/migrations/20260923213000_song_universe_core.sql");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.song_universes");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.song_universe_projects");
-    expect(migration).toContain("UNIQUE(project_id)");
-    expect(migration).toContain("song_universe_validate_project_owner");
-    expect(migration).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(migration).toContain("ALTER TABLE public.song_universes ENABLE ROW LEVEL SECURITY");
     expect(migration).toContain("owner_id = auth.uid()");
-    expect(migration).toContain("ON DELETE CASCADE");
-    expect(migration).not.toContain("DELETE FROM public.prompt_projects");
+    expect(migration).toContain("UNIQUE(project_id)");
+    expect(migration).toContain("Project does not belong to the Song Universe owner.");
+    expect(migration).toContain("REFERENCES public.prompt_projects(id) ON DELETE CASCADE");
+    expect(migration).not.toContain("ALTER TABLE public.prompt_projects");
+    expect(migration).toContain("reorder_song_universe_projects");
+    expect(migration).toContain("DEFERRABLE INITIALLY DEFERRED");
   });
 
   test("Feature Access is registered, defaults to everyone and server functions enforce it", async () => {
