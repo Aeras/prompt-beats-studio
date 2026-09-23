@@ -143,7 +143,8 @@ async function resolveUniverseModel(userId: string, requestedModel?: string | nu
   const requested = requestedModel
     ? access.modelOptions.find((option) => option.id === requestedModel)
     : null;
-  const selected = requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
+  const selected =
+    requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
   if (!selected) throw new Error("No compatible AI model is available for Song Universe.");
   return selected;
 }
@@ -181,7 +182,8 @@ async function runStructured<T>(input: {
     usage = result.usage;
     actualProvider = result.provider;
     actualModel = result.model;
-    if (result.stopReason === "max_tokens") throw new Error("The Song Universe response was incomplete. Please retry.");
+    if (result.stopReason === "max_tokens")
+      throw new Error("The Song Universe response was incomplete. Please retry.");
     const value = input.parse(JSON.parse(cleanJsonText(result.text)));
     success = true;
     return { value, model: result.model, provider: result.provider, modelLabel: selected.label };
@@ -205,7 +207,9 @@ async function admitUniverseAi(supabase: any) {
 async function loadUniverseProjectContext(supabase: any, universeId: string, userId: string) {
   const { data: memberships, error } = await supabase
     .from("song_universe_projects")
-    .select("id,project_id,position,universe_role,project_status,intentional_outlier,prompt_projects!inner(id,name,user_id)")
+    .select(
+      "id,project_id,position,universe_role,project_status,intentional_outlier,prompt_projects!inner(id,name,user_id)",
+    )
     .eq("universe_id", universeId)
     .eq("prompt_projects.user_id", userId)
     .order("position", { ascending: true });
@@ -223,12 +227,15 @@ async function loadUniverseProjectContext(supabase: any, universeId: string, use
 
   const latest = new Map<string, any>();
   for (const version of versions ?? []) {
-    if (version.project_id && !latest.has(version.project_id)) latest.set(version.project_id, version);
+    if (version.project_id && !latest.has(version.project_id))
+      latest.set(version.project_id, version);
   }
 
   const { data: maps, error: mapsError } = await supabase
     .from("story_maps")
-    .select("project_id,summary,progression_type,starting_state,central_change,turning_point,resolution")
+    .select(
+      "project_id,summary,progression_type,starting_state,central_change,turning_point,resolution",
+    )
     .eq("user_id", userId)
     .in("project_id", projectIds);
   if (mapsError) throw new Error(mapsError.message);
@@ -271,14 +278,20 @@ export const generateSongUniverseCreativeBible = createServerFn({ method: "POST"
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
-    const universe = await requireOwnedUniverse(context.supabase as any, data.universeId, context.userId);
+    const universe = await requireOwnedUniverse(
+      context.supabase as any,
+      data.universeId,
+      context.userId,
+    );
     const prompt = [
       `UNIVERSE TITLE: ${universe.title}`,
       universe.description ? `DESCRIPTION: ${universe.description}` : "",
       universe.initial_direction ? `INITIAL CREATIVE DIRECTION: ${universe.initial_direction}` : "",
       `TYPE: ${universe.universe_type}`,
       "Build a concise Creative Bible. Use stable short IDs such as core-concept-1 or motif-1.",
-    ].filter(Boolean).join("\n\n");
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const result = await runStructured<SongUniverseCreativeBible>({
       userId: context.userId,
       requestedModel: data.model ?? null,
@@ -288,18 +301,33 @@ export const generateSongUniverseCreativeBible = createServerFn({ method: "POST"
       parse: (value) => creativeBibleResultSchema.parse(value),
       operation: "universe_creative_bible_generate",
     });
-    return { creativeBible: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 export const refineSongUniverseCreativeBible = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ universeId: idSchema, instruction: z.string().trim().min(3).max(3000), model: optionalModelSchema }).parse(input),
+    z
+      .object({
+        universeId: idSchema,
+        instruction: z.string().trim().min(3).max(3000),
+        model: optionalModelSchema,
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
-    const universe = await requireOwnedUniverse(context.supabase as any, data.universeId, context.userId);
+    const universe = await requireOwnedUniverse(
+      context.supabase as any,
+      data.universeId,
+      context.userId,
+    );
     const current = songUniverseCreativeBibleSchema.parse(universe.creative_bible ?? { items: [] });
     const prompt = `CURRENT CREATIVE BIBLE:\n${JSON.stringify(current)}\n\nUSER REFINEMENT REQUEST:\n${data.instruction}\n\nPreserve valid existing ideas unless the request asks to change them. Return the complete revised Creative Bible.`;
     const result = await runStructured<SongUniverseCreativeBible>({
@@ -311,7 +339,12 @@ export const refineSongUniverseCreativeBible = createServerFn({ method: "POST" }
       parse: (value) => creativeBibleResultSchema.parse(value),
       operation: "universe_creative_bible_refine",
     });
-    return { creativeBible: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
@@ -324,9 +357,12 @@ export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
     await admitUniverseAi(context.supabase);
     const supabase = context.supabase as any;
     const universe = await requireOwnedUniverse(supabase, data.universeId, context.userId);
-    const creativeBible = songUniverseCreativeBibleSchema.parse(universe.creative_bible ?? { items: [] });
+    const creativeBible = songUniverseCreativeBibleSchema.parse(
+      universe.creative_bible ?? { items: [] },
+    );
     const projects = await loadUniverseProjectContext(supabase, data.universeId, context.userId);
-    if (projects.length === 0) throw new Error("Add at least one Project before continuity analysis.");
+    if (projects.length === 0)
+      throw new Error("Add at least one Project before continuity analysis.");
     const prompt = `UNIVERSE:\n${JSON.stringify({ title: universe.title, type: universe.universe_type, creativeBible })}\n\nPROJECTS IN ORDER:\n${JSON.stringify(projects)}\n\nAnalyze continuity and diversity. Treat explicit intentionalOutlier=true as deliberate contrast. Use actual project/lyrics/Story Map evidence only.`;
     const result = await runStructured<SongUniverseAnalysis>({
       userId: context.userId,
@@ -346,7 +382,12 @@ export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
       model: result.model,
     });
     if (error) throw new Error(error.message);
-    return { analysis: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+    return {
+      analysis: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 export const getLatestSongUniverseContinuity = createServerFn({ method: "POST" })
@@ -366,14 +407,20 @@ export const getLatestSongUniverseContinuity = createServerFn({ method: "POST" }
       .maybeSingle();
     if (error) throw new Error(error.message);
     return row
-      ? { analysis: songUniverseAnalysisSchema.parse(row.result), model: row.model as string | null, createdAt: row.created_at as string }
+      ? {
+          analysis: songUniverseAnalysisSchema.parse(row.result),
+          model: row.model as string | null,
+          createdAt: row.created_at as string,
+        }
       : { analysis: null, model: null, createdAt: null };
   });
 
 export const analyzeSongUniverseProjectFit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ universeId: idSchema, projectId: idSchema, model: optionalModelSchema }).parse(input),
+    z
+      .object({ universeId: idSchema, projectId: idSchema, model: optionalModelSchema })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
@@ -407,5 +454,10 @@ export const analyzeSongUniverseProjectFit = createServerFn({ method: "POST" })
       parse: (value) => projectFitSchema.parse(value),
       operation: "universe_project_fit",
     });
-    return { fit: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+    return {
+      fit: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });

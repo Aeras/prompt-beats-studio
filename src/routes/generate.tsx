@@ -94,6 +94,12 @@ import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {
+  buildSongUniverseContextText,
+  SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
+  songUniverseSongSetupHandoffSchema,
+  type SongUniverseSongSetupHandoff,
+} from "@/lib/song-universe.shared";
+import {
   activeSongBlueprint,
   buildSongBlueprint,
   type SongBlueprintSection,
@@ -798,6 +804,7 @@ function GeneratePage() {
   const musicLabFeature = useFeatureAccess("ai_music_lab");
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
   const storyMapFeature = useFeatureAccess("story_map");
+  const songUniverseFeature = useFeatureAccess("song_universe");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
@@ -856,6 +863,8 @@ function GeneratePage() {
   const [inspirationWallHandoff, setInspirationWallHandoff] =
     useState<InspirationWallSongSetupHandoff | null>(null);
   const [storyMapHandoff, setStoryMapHandoff] = useState<StoryMapSongSetupHandoff | null>(null);
+  const [songUniverseHandoff, setSongUniverseHandoff] =
+    useState<SongUniverseSongSetupHandoff | null>(null);
   const [storyDriven, setStoryDriven] = useState(false);
   const [storyDrivenDraft, setStoryDrivenDraft] = useState<StoryMapDraft | null>(null);
   const [storyMapPreviewOpen, setStoryMapPreviewOpen] = useState(false);
@@ -979,6 +988,57 @@ function GeneratePage() {
     );
     setStoryMapHandoff(null);
   }, [appLanguage, songSetupFeature.allowed, songSetupFeature.isLoading, storyMapHandoff]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY);
+    try {
+      setSongUniverseHandoff(songUniverseSongSetupHandoffSchema.parse(JSON.parse(raw)));
+    } catch {
+      setStatus(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η φόρτωση του Song Universe στο Song Setup."
+          : "Could not load the Song Universe handoff into Song Setup.",
+      );
+    }
+  }, [appLanguage]);
+
+  useEffect(() => {
+    if (!songUniverseHandoff || songSetupFeature.isLoading || songUniverseFeature.isLoading) return;
+    if (!songSetupFeature.allowed || !songUniverseFeature.allowed) {
+      setStatus(
+        appLanguage === "el"
+          ? "Το Song Universe ή το Song Setup Assistant δεν είναι διαθέσιμο για αυτόν τον λογαριασμό."
+          : "Song Universe or Song Setup Assistant is not available for this account.",
+      );
+      setSongUniverseHandoff(null);
+      return;
+    }
+    const description = buildSongUniverseContextText(songUniverseHandoff, appLanguage);
+    setAdvanced(true);
+    if (songUniverseHandoff.projectId) setSaveProjectId(songUniverseHandoff.projectId);
+    setSongSetupPrefill({
+      key: `${songUniverseHandoff.universeId}:v1:${songUniverseHandoff.contextSnapshot.capturedAt}`,
+      description,
+      sourceLabel: songUniverseHandoff.universeTitle,
+    });
+    setSongSetupAssistantOpen(true);
+    setStatus(
+      appLanguage === "el"
+        ? `Χρησιμοποιείται Universe Context: ${songUniverseHandoff.universeTitle}`
+        : `Using Universe Context: ${songUniverseHandoff.universeTitle}`,
+    );
+    setSongUniverseHandoff(null);
+  }, [
+    appLanguage,
+    songSetupFeature.allowed,
+    songSetupFeature.isLoading,
+    songUniverseFeature.allowed,
+    songUniverseFeature.isLoading,
+    songUniverseHandoff,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
