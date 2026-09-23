@@ -13,6 +13,7 @@ export const FEATURE_KEYS = [
   "smart_presets",
   "song_setup_assistant",
   "inspiration_wall",
+  "story_map",
   "export_center",
   "track_uploads",
   "sharing_public_links",
