@@ -82,6 +82,9 @@ jobs:
       - name: Story Map tests
         run: bun test src/lib/story-map.test.ts
 
+      - name: Song Universe tests
+        run: bun test src/lib/song-universe.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
