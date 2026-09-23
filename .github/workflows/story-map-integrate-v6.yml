@@ -21,7 +21,9 @@ jobs:
       - name: Fix integration escape
         run: python3 scripts/story-map-integrate-v4-fix.py
       - name: Apply Story Map integration patches
-        run: python3 scripts/story-map-integrate-v4.py
+        run: |
+          python3 scripts/story-map-integrate-v4.py
+          python3 scripts/story-map-ts-fix.py
       - name: Format patched sources before build
         run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/components/promptbeats/LyricsWorkspace.tsx src/components/promptbeats/StoryMapLyricsPanel.tsx src/routes/story-map.tsx src/routes/generate.tsx src/lib/story-map.shared.ts src/lib/story-map.functions.ts src/lib/story-map-ai.functions.ts src/lib/story-map-workspace.functions.ts src/lib/ai-admission.server.ts src/lib/ai-usage.server.ts src/lib/feature-access.functions.ts
       - name: Build and generate route tree
@@ -41,4 +43,4 @@ jobs:
             git commit -m 'Apply Story Map integration v6'
             git push origin story-map-step1
           fi
-# trigger: 2026-09-23
+# trigger: strict-ts-fix
