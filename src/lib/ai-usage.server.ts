@@ -12,7 +12,8 @@ export type AiOperation =
   | "repair"
   | "post_repair_quality_check"
   | "song_setup_assistant"
-  | "song_analysis";
+  | "song_analysis"
+  | "inspiration_wall_extraction";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
