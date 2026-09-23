@@ -144,7 +144,7 @@ export async function discoverProviderModels(
   const apiKey = providerSecret(provider);
   const headers: Record<string, string> = { accept: "application/json" };
   let url = provider.discoveryUrl;
-  if (provider.auth === "bearer") headers.authorization = `Bearer ${apiKey}`;
+  if (provider.auth === "bearer") headers["authorization"] = `Bearer ${apiKey}`;
   if (provider.auth === "x-api-key") {
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = "2023-06-01";
@@ -220,8 +220,8 @@ function validProbeJson(text: string, operation: "generator" | "quality_check"):
     const end = trimmed.lastIndexOf("}");
     if (start < 0 || end < start) return false;
     const value = JSON.parse(trimmed.slice(start, end + 1)) as Record<string, unknown>;
-    if (operation === "generator") return typeof value.title === "string" && typeof value.lyrics === "string";
-    return typeof value.passed === "boolean" && typeof value.score === "number";
+    if (operation === "generator") return typeof value["title"] === "string" && typeof value["lyrics"] === "string";
+    return typeof value["passed"] === "boolean" && typeof value["score"] === "number";
   } catch {
     return false;
   }
