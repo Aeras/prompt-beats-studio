@@ -8,10 +8,12 @@ async function source(path: string) {
 describe("Inspiration Wall Phase 3", () => {
   test("AI extraction is deliberate, admission-controlled, registry-backed and usage-logged", async () => {
     const code = await source("src/lib/inspiration-wall-ai.functions.ts");
+    const capabilities = await source("src/lib/ai-model-capabilities.shared.ts");
     expect(code).toContain('requireFeatureAccess(context.supabase, "inspiration_wall")');
     expect(code).toContain('requireAuxiliaryAiAdmission(context.supabase, "inspiration_wall")');
     expect(code).toContain('getEffectiveModelAccess(userId, "ai_tools")');
-    expect(code).toContain('option.provider === "gemini"');
+    expect(code).toContain("supportsPromptBeatsVisionInput");
+    expect(capabilities).toContain('model.provider === "gemini"');
     expect(code).toContain('operation: "inspiration_wall_extraction"');
     expect(code).not.toContain('const MODEL = "gemini-');
   });

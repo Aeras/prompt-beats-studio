@@ -103,6 +103,7 @@ const projectFitSchema = z.object({
   differences: z.array(z.string().trim().max(1000)).max(20).default([]),
   interpretation: z.string().trim().max(3000).default(""),
 });
+type SongUniverseProjectFit = z.infer<typeof projectFitSchema>;
 
 const CREATIVE_BIBLE_SYSTEM = `You are PromptBeats Song Universe, a multi-song creative continuity planner.
 Create or refine a concise structured Creative Bible for an album, EP, song series, or creative era.
@@ -293,16 +294,21 @@ export const generateSongUniverseCreativeBible = createServerFn({ method: "POST"
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
     const universe = await requireOwnedUniverse(context.supabase, data.universeId, context.userId);
-    const result = await runStructured({
+    const result = await runStructured<SongUniverseCreativeBible>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: CREATIVE_BIBLE_SYSTEM,
       prompt: `Universe title: ${universe.title}\nType: ${universe.universe_type}\nDescription: ${universe.description ?? ""}\nInitial direction: ${universe.initial_direction ?? ""}\nCreate a useful Creative Bible with 6-14 concise items.`,
       schema: CREATIVE_BIBLE_RESPONSE_SCHEMA,
       parse: (value) => creativeBibleResultSchema.parse(value) as SongUniverseCreativeBible,
       operation: "universe_continuity_analysis",
     });
-    return result;
+    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 const refineBibleInput = z.object({
@@ -319,16 +325,21 @@ export const refineSongUniverseCreativeBible = createServerFn({ method: "POST" }
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
     await requireOwnedUniverse(context.supabase, data.universeId, context.userId);
-    const result = await runStructured({
+    const result = await runStructured<SongUniverseCreativeBible>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: CREATIVE_BIBLE_SYSTEM,
       prompt: `Current Creative Bible:\n${JSON.stringify(data.creativeBible)}\n\nUser refinement instruction:\n${data.instruction}\n\nReturn the full revised Creative Bible. Preserve useful existing identity unless the instruction changes it.`,
       schema: CREATIVE_BIBLE_RESPONSE_SCHEMA,
       parse: (value) => creativeBibleResultSchema.parse(value) as SongUniverseCreativeBible,
       operation: "universe_continuity_analysis",
     });
-    return result;
+    return {
+      creativeBible: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 const continuityInput = z.object({ universeId: idSchema, model: optionalModelSchema });
@@ -345,23 +356,28 @@ export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
       data.universeId,
       context.userId,
     );
-    const result = await runStructured({
+    const result = await runStructured<SongUniverseAnalysis>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: CONTINUITY_SYSTEM,
       prompt: `Creative Bible:\n${JSON.stringify(universe.creative_bible)}\n\nProjects:\n${JSON.stringify(projects)}\n\nAnalyze continuity and diversity. Explicitly account for intentionalOutlier=true.`,
       schema: CONTINUITY_RESPONSE_SCHEMA,
       parse: (value) => songUniverseAnalysisSchema.parse(value) as SongUniverseAnalysis,
       operation: "universe_continuity_analysis",
     });
-    await context.supabase.from("song_universe_ai_analyses").insert({
+    await (context.supabase as any).from("song_universe_ai_analyses").insert({
       universe_id: data.universeId,
       owner_id: context.userId,
       analysis_type: "continuity",
       result: result.value,
       model: result.model,
     } as never);
-    return result;
+    return {
+      analysis: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 const projectFitInput = z.object({
@@ -384,15 +400,21 @@ export const analyzeSongUniverseProjectFit = createServerFn({ method: "POST" })
     );
     const project = projects.find((item: any) => item.projectId === data.projectId);
     if (!project) throw new Error("Project is not connected to this Song Universe.");
-    return runStructured({
+    const result = await runStructured<SongUniverseProjectFit>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: FIT_SYSTEM,
       prompt: `Creative Bible:\n${JSON.stringify(universe.creative_bible)}\n\nProject:\n${JSON.stringify(project)}\n\nReturn neutral matches, differences and an interpretation of useful contrast.`,
       schema: FIT_RESPONSE_SCHEMA,
       parse: (value) => projectFitSchema.parse(value),
       operation: "universe_project_fit",
     });
+    return {
+      fit: result.value,
+      model: result.model,
+      provider: result.provider,
+      modelLabel: result.modelLabel,
+    };
   });
 
 export const getLatestSongUniverseContinuity = createServerFn({ method: "POST" })
@@ -401,7 +423,7 @@ export const getLatestSongUniverseContinuity = createServerFn({ method: "POST" }
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
     await requireOwnedUniverse(context.supabase, data.universeId, context.userId);
-    const { data: row, error } = await context.supabase
+    const { data: row, error } = await (context.supabase as any)
       .from("song_universe_ai_analyses")
       .select("id,result,model,created_at")
       .eq("universe_id", data.universeId)
@@ -411,5 +433,10 @@ export const getLatestSongUniverseContinuity = createServerFn({ method: "POST" }
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return { analysis: row ?? null };
+    if (!row) return { analysis: null, model: null, createdAt: null };
+    return {
+      analysis: songUniverseAnalysisSchema.parse(row.result),
+      model: typeof row.model === "string" ? row.model : null,
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    };
   });

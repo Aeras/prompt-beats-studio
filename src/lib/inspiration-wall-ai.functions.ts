@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { recordAiUsage } from "@/lib/ai-usage.server";
+import { supportsPromptBeatsVisionInput } from "@/lib/ai-model-capabilities.shared";
 import { getEffectiveModelAccess } from "@/lib/ai-provider.server";
 import {
   inspirationWallCreativeDirectionSchema,
@@ -116,12 +117,17 @@ async function requireOwnedWall(supabase: any, wallId: string, userId: string) {
   };
 }
 
-async function resolveMultimodalModel(userId: string) {
+async function resolveMultimodalModel(userId: string, requestedModel?: string | null) {
   const access = await getEffectiveModelAccess(userId, "ai_tools");
-  const defaultOption = access.modelOptions.find((option) => option.id === access.defaultModel);
-  if (defaultOption?.provider === "gemini") return defaultOption;
-  const firstGemini = access.modelOptions.find((option) => option.provider === "gemini");
-  if (firstGemini) return firstGemini;
+  const compatibleOptions = access.modelOptions.filter(supportsPromptBeatsVisionInput);
+  const requested = requestedModel
+    ? compatibleOptions.find((option) => option.id === requestedModel)
+    : null;
+  if (requested) return requested;
+  const defaultOption = compatibleOptions.find((option) => option.id === access.defaultModel);
+  if (defaultOption) return defaultOption;
+  const fallback = compatibleOptions[0];
+  if (fallback) return fallback;
   throw new Error("No multimodal AI model is available for this account.");
 }
 
@@ -186,7 +192,11 @@ export const listInspirationWallConnectionOptions = createServerFn({ method: "PO
 
 export const extractInspirationWallCreativeDirection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ wallId: wallIdSchema }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({ wallId: wallIdSchema, model: z.string().trim().max(240).nullable().optional() })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");
     const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
@@ -258,7 +268,7 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
       });
     }
 
-    const selected = await resolveMultimodalModel(context.userId);
+    const selected = await resolveMultimodalModel(context.userId, data.model);
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("The multimodal AI service is not configured.");
 
