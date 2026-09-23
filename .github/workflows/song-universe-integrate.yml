@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   integrate:
-    if: github.event.head_commit.message != 'Apply Song Universe navigation integration'
+    if: github.event.head_commit.message != 'Apply Song Universe integration'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +18,12 @@ jobs:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - name: Apply navigation integration
-        run: python3 scripts/song-universe-nav-integrate.py
+      - name: Apply integrations
+        run: |
+          python3 scripts/song-universe-nav-integrate.py
+          python3 scripts/song-universe-phase2-integrate.py
       - name: Format
-        run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/components/promptbeats/Sidebar.tsx src/routes/song-universe.tsx src/lib/song-universe.shared.ts src/lib/song-universe.functions.ts src/lib/feature-access.functions.ts
+        run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/components/promptbeats/Sidebar.tsx src/routes/song-universe.tsx src/routes/generate.tsx src/lib/song-universe.shared.ts src/lib/song-universe.functions.ts src/lib/song-universe-ai.functions.ts src/lib/feature-access.functions.ts src/lib/ai-admission.server.ts src/lib/ai-usage.server.ts
       - name: Build and generate route tree
         run: bun run build
       - name: Format generated route tree
@@ -32,6 +34,6 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src
           if ! git diff --cached --quiet; then
-            git commit -m 'Apply Song Universe navigation integration'
+            git commit -m 'Apply Song Universe integration'
             git push origin song-universe-step2
           fi
