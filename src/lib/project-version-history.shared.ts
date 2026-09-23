@@ -7,6 +7,7 @@ import { parseLyricsSections } from "@/lib/lyrics-sections";
 export const versionChangeSourceSchema = z.enum([
   "initial_generation",
   "lyrics_workspace",
+  "lyrics_review",
   "project_revision",
   "advanced_generator",
   "manual_edit",
@@ -163,6 +164,36 @@ export function buildLyricsWorkspaceVersionMetadata(input: {
   return versionChangeMetadataSchema.parse({
     schemaVersion: 1,
     source: "lyrics_workspace",
+    title: title.slice(0, 160),
+    summary: summary.slice(0, 600),
+    changedFields: ["lyrics"],
+    changedSections,
+    userRequest: null,
+  });
+}
+
+export function buildLyricsReviewVersionMetadata(input: {
+  beforeLyrics: string;
+  afterLyrics: string;
+  mode: "new_version" | "replace_latest";
+}): VersionChangeMetadata {
+  const changedSections = diffLyricsSections(input.beforeLyrics, input.afterLyrics);
+  const labels = changedSections.map((section) => section.sectionLabel);
+  const sectionSummary = labels.length
+    ? `${sentenceList(labels.slice(0, 4))}${labels.length > 4 ? ` and ${labels.length - 4} more` : ""}`
+    : "Lyrics";
+  const title = input.mode === "replace_latest"
+    ? "Lyrics Review refinement"
+    : labels.length === 1
+      ? `${labels[0]} refined in Lyrics Review`
+      : "Lyrics Review";
+  const summary = input.mode === "replace_latest"
+    ? `${sectionSummary} refined in Lyrics Review without creating a new version.`
+    : `${sectionSummary} refined in Lyrics Review.`;
+
+  return versionChangeMetadataSchema.parse({
+    schemaVersion: 1,
+    source: "lyrics_review",
     title: title.slice(0, 160),
     summary: summary.slice(0, 600),
     changedFields: ["lyrics"],
