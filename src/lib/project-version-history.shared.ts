@@ -48,7 +48,7 @@ export function diffLyricsSections(
   const afterByKey = new Map(after.map((section) => [section.key, section]));
   const keys = [...new Set([...beforeByKey.keys(), ...afterByKey.keys()])];
 
-  return keys.flatMap((key) => {
+  return keys.flatMap<VersionChangeMetadata["changedSections"][number]>((key) => {
     const previous = beforeByKey.get(key);
     const next = afterByKey.get(key);
     if (!previous && next) {

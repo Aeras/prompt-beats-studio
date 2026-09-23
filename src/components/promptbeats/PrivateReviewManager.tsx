@@ -80,7 +80,7 @@ export function PrivateReviewManager({ projectId, projectName = "Private Review"
   });
 
   const createMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async (): Promise<{ token: string }> => {
       const common = {
         creatorMessage,
         commentVisibility: visibility,
@@ -88,14 +88,14 @@ export function PrivateReviewManager({ projectId, projectName = "Private Review"
         pin: pin.trim() || null,
       };
       if (sourceType === "track") {
-        return createPrivateTrackReviewSession({ data: {
+        return await createPrivateTrackReviewSession({ data: {
           trackId: songTrackId,
           ...common,
           includePrompt,
           includeLyrics,
         } });
       }
-      return createPrivateReviewSession({ data: {
+      return await createPrivateReviewSession({ data: {
         projectId: projectId!,
         versionPromptId: versionId,
         ...common,

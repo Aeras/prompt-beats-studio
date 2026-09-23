@@ -157,7 +157,7 @@ function promptHeaderContent(prompt: ExportPromptRecord, projectName: string | n
   ].filter(Boolean).join("\n");
 }
 
-export function buildPromptExportDocument(source: PromptExportSource, locale: ExportLocale): ExportDocument {
+export function buildPromptExportDocument(source: PromptExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "prompt" }> {
   const header = promptHeaderContent(source.prompt, source.project?.name ?? null, locale);
   return {
     schemaVersion: source.schemaVersion,
@@ -173,7 +173,7 @@ export function buildPromptExportDocument(source: PromptExportSource, locale: Ex
   };
 }
 
-export function buildProjectExportDocument(source: ProjectExportSource, locale: ExportLocale): ExportDocument {
+export function buildProjectExportDocument(source: ProjectExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "project" }> {
   const l = labels[locale];
   const index = source.prompts.map((prompt, index) => {
     const version = versionText(prompt, locale);
@@ -209,7 +209,7 @@ export function buildProjectExportDocument(source: ProjectExportSource, locale: 
   };
 }
 
-export function buildProjectSummaryDocument(source: ProjectExportSource, locale: ExportLocale): ExportDocument {
+export function buildProjectSummaryDocument(source: ProjectExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "project-summary" }> {
   const l = labels[locale];
   const promptIndex = source.prompts.map(({ name, versionNumber, versionLabel }) => ({ name, versionNumber, versionLabel }));
   const index = source.prompts.map((prompt, index) => {
@@ -239,7 +239,7 @@ export function buildProjectSummaryDocument(source: ProjectExportSource, locale:
   };
 }
 
-export function buildProjectPromptDocuments(source: ProjectExportSource, locale: ExportLocale): ExportDocument[] {
+export function buildProjectPromptDocuments(source: ProjectExportSource, locale: ExportLocale): Array<Extract<ExportDocument, { exportType: "prompt" }>> {
   return source.prompts.map((prompt) =>
     buildPromptExportDocument({
       schemaVersion: source.schemaVersion,

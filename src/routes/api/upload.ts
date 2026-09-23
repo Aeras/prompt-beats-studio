@@ -88,7 +88,7 @@ function parseMultipartFile(contentType: string, body: Uint8Array): MultipartFil
     if (!nextDelimiter) return null;
     if (disposition?.[1] === "file" && !foundFile) {
       const type = /content-type:\s*([^\r\n]+)/i.exec(headers)?.[1]?.trim() ?? "";
-      foundFile = { name: disposition[2], type, bytes: body.subarray(dataStart, nextDelimiter.position) };
+      foundFile = { name: disposition[2] ?? "", type, bytes: body.subarray(dataStart, nextDelimiter.position) };
     }
     if (nextDelimiter.kind === "final") return foundFile;
     delimiter = nextDelimiter;
@@ -155,7 +155,7 @@ export const Route = createFileRoute("/api/upload")({
           String.fromCharCode(...bytes.slice(8, 12)) === "WAVE";
         const isMp3 = bytes.length >= 3 &&
           ((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) ||
-            (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0));
+            (bytes[0] === 0xff && ((bytes[1] ?? 0) & 0xe0) === 0xe0));
         const extension = parsed.name.split(".").pop()?.toLowerCase();
         if ((extension === "wav" && !isWav) || (extension === "mp3" && !isMp3) || (!isWav && !isMp3)) {
           return new Response(JSON.stringify({ error: "The uploaded file is not a valid MP3 or WAV audio file" }), {
@@ -165,7 +165,8 @@ export const Route = createFileRoute("/api/upload")({
 
         const { buildObjectKey, uploadToR2 } = await import("@/lib/r2.server");
         const key = buildObjectKey(userId, parsed.name);
-        const { url } = await uploadToR2(key, bytes, type || (extension === "wav" ? "audio/wav" : "audio/mpeg"));
+        const uploadBytes = Uint8Array.from(bytes).buffer;
+        const { url } = await uploadToR2(key, uploadBytes, type || (extension === "wav" ? "audio/wav" : "audio/mpeg"));
 
         return Response.json({ key, url });
       },

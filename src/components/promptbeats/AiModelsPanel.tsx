@@ -209,7 +209,7 @@ export function AiModelsPanel() {
       return;
     }
     if (!providers.some((provider) => provider.id === selectedProvider)) {
-      setSelectedProvider(providers[0].id);
+      setSelectedProvider(providers[0]!.id);
     }
   }, [providersQuery.data, selectedProvider]);
 

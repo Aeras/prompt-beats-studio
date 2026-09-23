@@ -360,7 +360,7 @@ export const searchLibraryScope = createServerFn({ method: "POST" })
     await requireOwnedFolder(context.supabase, context.userId, folderId);
 
     const { data: results, error } = await context.supabase.rpc("search_library_scope", {
-      _folder_id: folderId,
+      _folder_id: folderId ?? undefined,
       _query: data.query,
     });
     if (error) throw new Error(error.message);
@@ -385,7 +385,7 @@ export const duplicatePromptProjectToFolder = createServerFn({ method: "POST" })
 
     const { data: duplicated, error } = await context.supabase.rpc("duplicate_prompt_project_to_folder", {
       _project_id: data.projectId,
-      _destination_folder_id: data.destinationFolderId ?? null,
+      _destination_folder_id: data.destinationFolderId ?? undefined,
       _new_name: data.newName,
     });
     if (error) throw new Error(error.message);
@@ -409,7 +409,7 @@ export const duplicateStandalonePromptToFolder = createServerFn({ method: "POST"
 
     const { data: duplicated, error } = await context.supabase.rpc("duplicate_standalone_prompt_to_folder", {
       _prompt_id: data.promptId,
-      _destination_folder_id: data.destinationFolderId ?? null,
+      _destination_folder_id: data.destinationFolderId ?? undefined,
       _new_name: data.newName,
     });
     if (error) throw new Error(error.message);

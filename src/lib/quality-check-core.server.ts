@@ -632,11 +632,11 @@ function canonicalizeQualityReport(report: QualityReport): QualityReport {
 function normalizeQualityScore(raw: unknown): unknown {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    if (typeof obj.score === "number") {
-      const normalized = Math.max(0, Math.min(10, obj.score));
-      if (normalized !== obj.score) {
+    if (typeof obj["score"] === "number") {
+      const normalized = Math.max(0, Math.min(10, obj["score"]));
+      if (normalized !== obj["score"]) {
         console.warn("[ai] quality_check score_normalized", {
-          originalScore: obj.score,
+          originalScore: obj["score"],
           normalizedScore: normalized,
         });
         return { ...obj, score: normalized };
@@ -651,7 +651,9 @@ function valueType(value: unknown): ValueType {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (Array.isArray(value)) return "array";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return typeof value;
+  if (typeof value === "string") return "string";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
   return "object";
 }
 

@@ -151,7 +151,7 @@ function translatedOption(
   t: (key: AppTranslationKey, values?: Record<string, string | number>) => string,
 ) {
   const item = options.find((option) => option.value === value);
-  return item ? t(item.labelKey) : value;
+  return item?.labelKey ? t(item.labelKey) : value;
 }
 
 function mergeValues(selected: string[], custom: string) {
@@ -886,7 +886,7 @@ function GeneratePage() {
     ? t("generator.result.udioPrompt")
     : t("generator.result.stylePrompt");
   const remaining = usage?.remaining ?? HOURLY_LIMIT;
-  const hasAdminInputBypass = usage?.unlimited === true;
+  const hasAdminInputBypass = usage != null && "unlimited" in usage && usage.unlimited === true;
   const minutesLeft = useMemo(() => { if (!usage?.resetAt) return 0; return Math.max(1, Math.ceil((new Date(usage.resetAt).getTime() - now) / 60000)); }, [usage?.resetAt, now]);
   const blocked = remaining <= 0;
 
@@ -1348,6 +1348,7 @@ function GeneratePage() {
       mood: savedWorkspacePrompt.mood ?? "",
       language: savedWorkspacePrompt.language ?? "",
       structure: savedWorkspaceSnapshot?.songStructure.join(" → ") ?? "",
+      songBlueprint: savedWorkspaceSnapshot?.songBlueprint ?? [],
       production: savedWorkspaceSnapshot?.productionStyle ?? "",
       instructions: savedWorkspaceSnapshot?.additionalInstructions ?? "",
       operation: "generate",

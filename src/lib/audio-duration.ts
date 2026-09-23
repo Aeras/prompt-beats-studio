@@ -28,6 +28,6 @@ export async function readAudioDurationSeconds(source: File | string): Promise<n
     }, { once: true });
 
     audio.addEventListener("error", () => finish(() => reject(new Error("Could not read audio duration."))), { once: true });
-    audio.src = objectUrl ?? source;
+    audio.src = source instanceof File ? objectUrl! : source;
   });
 }

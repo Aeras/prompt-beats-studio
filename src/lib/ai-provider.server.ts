@@ -859,10 +859,11 @@ export async function resolveAiModelForUser(
     throw new Error("That AI model is not available for this operation.");
   }
 
+  const reasoningEffort = reasoningForOperation(registryModel, operation);
   return {
     model: registryModel.providerModelId,
     provider: registryModel.provider,
-    reasoningEffort: reasoningForOperation(registryModel, operation),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
   };
 }
 

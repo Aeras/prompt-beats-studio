@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 export const CASE_MESSAGE_TYPES = [
   "request_information",
@@ -44,7 +45,7 @@ export type ModerationCaseEvent = {
   event_type: string;
   actor_role?: string | null;
   creator_visible: boolean;
-  payload: Record<string, unknown>;
+  payload: Json;
   created_at: string;
 };
 

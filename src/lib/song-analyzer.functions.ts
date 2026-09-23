@@ -1205,8 +1205,8 @@ export const updateSongAnalysisOrganization = createServerFn({ method: "POST" })
       await assertOwnedProject(supabase, context.userId, data.projectId);
     }
     const patch: Record<string, unknown> = {};
-    if (data.name !== undefined) patch.name = data.name;
-    if (data.projectId !== undefined) patch.project_id = data.projectId;
+    if (data.name !== undefined) patch["name"] = data.name;
+    if (data.projectId !== undefined) patch["project_id"] = data.projectId;
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabase
       .from("song_analyses")

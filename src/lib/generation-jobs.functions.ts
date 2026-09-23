@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   AI_TARGET_PLATFORMS,
@@ -134,7 +135,7 @@ export type GenerationJob = {
   jobId: string;
   status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   result: z.infer<typeof resultShape> | null;
-  input: GenerationContext | null;
+  input: DurableGenerationJobInput | null;
   error: string | null;
   generationId: string | null;
   provider: string | null;
@@ -260,7 +261,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
 
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: idempotencyKey,
-      _input: payload,
+      _input: payload as Json,
     });
     if (error) throw new Error(`The generation could not be started (${error.message}).`);
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
@@ -351,7 +352,7 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
 
     const { data: raw, error } = await supabase.rpc("start_generation_job", {
       _idempotency_key: data.idempotencyKey,
-      _input: payload,
+      _input: payload as Json,
     });
     if (error) throw new Error(`The section edit could not be started (${error.message}).`);
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {

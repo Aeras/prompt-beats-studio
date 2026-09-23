@@ -41,7 +41,7 @@ const generateInput = z.object({
   mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(40),
   targetPlatform: z
-    .enum(AI_TARGET_PLATFORMS as [AITargetPlatform, ...AITargetPlatform[]])
+    .enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]])
     .default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
@@ -952,7 +952,7 @@ async function activeCaller(
     call: provider.modelCaller(resolved.model, resolved.provider),
     model: resolved.model,
     provider: resolved.provider,
-    reasoningEffort: resolved.reasoningEffort,
+    ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
     schemas: {
       song: provider.SONG_SCHEMA,
       quality: provider.QUALITY_SCHEMA,
@@ -1645,7 +1645,12 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
-function buildQualityPrompt(d: z.infer<typeof generateInput>, r: z.infer<typeof generationOutput>) {
+type QualityPromptInput = Pick<
+  z.infer<typeof generateInput>,
+  "targetPlatform" | "theme" | "genre" | "mood" | "language" | "structure" | "production" | "instructions"
+>;
+
+function buildQualityPrompt(d: QualityPromptInput, r: z.infer<typeof generationOutput>) {
   const tagsLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Suno Style Prompt";
 
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
@@ -1716,9 +1721,9 @@ function qualityResponseValueType(value: unknown): QualityResponseValueType {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (Array.isArray(value)) return "array";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return typeof value;
-  }
+  if (typeof value === "string") return "string";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
   return "object";
 }
 
@@ -1771,7 +1776,7 @@ function qualityResponseShape(value: unknown) {
 async function runQualityCheck(
   call: ModelCaller,
   schema: Record<string, unknown>,
-  d: z.infer<typeof generateInput>,
+  d: QualityPromptInput,
   r: z.infer<typeof generationOutput>,
   sink?: {
     operation: AiOperation;
@@ -2074,6 +2079,7 @@ async function consumeCreation(
 }
 
 const qualityCheckInput = z.object({
+  targetPlatform: generateInput.shape.targetPlatform,
   theme: generateInput.shape.theme,
   genre: generateInput.shape.genre,
   mood: generateInput.shape.mood,
@@ -2142,7 +2148,8 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       context.userId,
     );
     const records: PendingUsage[] = [];
-    const constraints = {
+    const constraints: QualityPromptInput = {
+      targetPlatform: data.targetPlatform,
       theme: data.theme,
       genre: data.genre,
       mood: data.mood,
@@ -2288,7 +2295,7 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
       ? versionNumber === 1
         ? buildInitialVersionMetadata()
         : buildGeneratorVersionMetadata({
-            title: data.version_label,
+            title: data.version_label ?? null,
             baseSnapshot: parentSnapshot,
             desiredSnapshot: data.generator_input_snapshot ?? null,
             beforeLyrics: parentLyrics,
@@ -2304,7 +2311,7 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
         parent_prompt_id: parentPromptId,
         version_change_metadata: versionMetadata as Json | null,
         user_id: context.userId,
-      })
+      } as Database["public"]["Tables"]["saved_prompts"]["Insert"])
       .select("id")
       .single();
     if (error) throw new Error(error.message);

@@ -40,7 +40,7 @@ function mixToMono(buffer: AudioBuffer) {
   const output = new Float32Array(buffer.length);
   for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
     const source = buffer.getChannelData(channel);
-    for (let i = 0; i < source.length; i += 1) output[i] += source[i] / buffer.numberOfChannels;
+    for (let i = 0; i < source.length; i += 1) output[i] = (output[i] ?? 0) + (source[i] ?? 0) / buffer.numberOfChannels;
   }
   return output;
 }
@@ -324,7 +324,7 @@ function spectralSummary(samples: Float32Array, sampleRate: number) {
       if (frequency >= 65 && frequency <= 5000 && magnitude > 0) {
         const midi = 69 + 12 * Math.log2(frequency / 440);
         const pitchClass = ((Math.round(midi) % 12) + 12) % 12;
-        chroma[pitchClass] += magnitude;
+        chroma[pitchClass] = (chroma[pitchClass] ?? 0) + magnitude;
       }
     }
 
