@@ -17,6 +17,7 @@ import {
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
 import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
 import {
@@ -339,6 +340,7 @@ function StoryMapWorkspace({
   onUseInSongSetup: (handoff: StoryMapSongSetupHandoff) => void;
 }) {
   const el = language === "el";
+  const aiModel = useAiModelSelection("aiTools");
   const [busy, setBusy] = useState(false);
   const [metadata, setMetadata] = useState({
     title: storyMap.title,
@@ -407,7 +409,12 @@ function StoryMapWorkspace({
     setBusy(true);
     onError(null);
     try {
-      const result = await buildStoryMapWithAi({ data: { storyMapId: storyMap.id } });
+      const result = await buildStoryMapWithAi({
+        data: {
+          storyMapId: storyMap.id,
+          ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}),
+        },
+      });
       await replaceStoryMapDraft({ data: { storyMapId: storyMap.id, draft: result.draft } });
       await onRefresh();
     } catch (cause) {
@@ -512,10 +519,22 @@ function StoryMapWorkspace({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {aiModel.showSelector && (
+              <select
+                aria-label={el ? "Μοντέλο AI" : "AI model"}
+                value={aiModel.selectedModel}
+                onChange={(event) => aiModel.setSelectedModel(event.target.value)}
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"
+              >
+                {aiModel.options.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            )}
             <button
               type="button"
               onClick={() => void build()}
-              disabled={busy}
+              disabled={busy || aiModel.unavailable}
               className="inline-flex items-center gap-2 rounded-xl border border-accent/50 px-3 py-2 text-sm text-accent disabled:opacity-50"
             >
               <Sparkles className="h-4 w-4" />

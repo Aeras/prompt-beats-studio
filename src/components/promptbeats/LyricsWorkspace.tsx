@@ -418,7 +418,7 @@ export function LyricsWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {modelOptions.length > 0 && (
+          {modelOptions.length > 1 && (
             <select
               aria-label={t("lyricsWorkspace.model")}
               value={model}
