@@ -25,6 +25,7 @@ import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
+import { Route as SongUniverseRouteImport } from './routes/song-universe'
 import { Route as StoryMapRouteImport } from './routes/story-map'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
@@ -119,6 +120,11 @@ const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
   path: '/song-analyzer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SongUniverseRoute = SongUniverseRouteImport.update({
+  id: '/song-universe',
+  path: '/song-universe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoryMapRoute = StoryMapRouteImport.update({
   id: '/story-map',
   path: '/story-map',
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   SongAnalyzerRoute: typeof SongAnalyzerRoute
+  SongUniverseRoute: typeof SongUniverseRoute
   StoryMapRoute: typeof StoryMapRoute
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
@@ -521,6 +534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SongAnalyzerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/song-universe': {
+      id: '/song-universe'
+      path: '/song-universe'
+      fullPath: '/song-universe'
+      preLoaderRoute: typeof SongUniverseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/story-map': {
       id: '/story-map'
       path: '/story-map'
@@ -632,6 +652,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   SongAnalyzerRoute: SongAnalyzerRoute,
+  SongUniverseRoute: SongUniverseRoute,
   StoryMapRoute: StoryMapRoute,
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,

@@ -122,7 +122,11 @@ export type SongUniverseAnalysis = {
   possibleRepetition: string[];
   underusedDirections: string[];
   diversityNotes: string[];
-  motifUsage: Array<{ motif: string; usage: "heavy" | "moderate" | "light" | "unused"; note: string }>;
+  motifUsage: Array<{
+    motif: string;
+    usage: "heavy" | "moderate" | "light" | "unused";
+    note: string;
+  }>;
   intentionalOutliers: string[];
   opportunities: string[];
 };
@@ -190,7 +194,11 @@ export function buildSongUniverseContextText(
     grouped.set(item.section, items);
   }
 
-  const lines = [el ? `ΠΛΑΙΣΙΟ SONG UNIVERSE — ${handoff.universeTitle}` : `SONG UNIVERSE CONTEXT — ${handoff.universeTitle}`];
+  const lines = [
+    el
+      ? `ΠΛΑΙΣΙΟ SONG UNIVERSE — ${handoff.universeTitle}`
+      : `SONG UNIVERSE CONTEXT — ${handoff.universeTitle}`,
+  ];
   for (const section of SONG_UNIVERSE_BIBLE_SECTIONS) {
     const items = grouped.get(section);
     if (!items?.length) continue;

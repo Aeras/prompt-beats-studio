@@ -32,7 +32,10 @@ const updateSchema = z
     creativeBible: songUniverseCreativeBibleSchema.optional(),
     initialDirection: z.string().trim().max(4000).nullable().optional(),
   })
-  .refine((value) => Object.keys(value).some((key) => key !== "universeId"), "No changes supplied.");
+  .refine(
+    (value) => Object.keys(value).some((key) => key !== "universeId"),
+    "No changes supplied.",
+  );
 
 function mapUniverse(row: any): SongUniverseRecord {
   return {
@@ -62,7 +65,8 @@ function mapMembership(row: any): SongUniverseProjectRecord {
     projectStatus: row.project_status,
     intentionalOutlier: row.intentional_outlier === true,
     inheritedTraits: Array.isArray(row.inherited_traits) ? row.inherited_traits : [],
-    contextSnapshot: row.context_snapshot && typeof row.context_snapshot === "object" ? row.context_snapshot : {},
+    contextSnapshot:
+      row.context_snapshot && typeof row.context_snapshot === "object" ? row.context_snapshot : {},
     contextSnapshotAt: row.context_snapshot_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -236,7 +240,8 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
     );
     const selected = new Set(data.inheritedTraits);
     const inheritedItems = creativeBible.items.filter(
-      (item) => item.enabled && (selected.size === 0 ? item.strength === "core" : selected.has(item.id)),
+      (item) =>
+        item.enabled && (selected.size === 0 ? item.strength === "core" : selected.has(item.id)),
     );
     const { count, error: countError } = await supabase
       .from("song_universe_projects")
@@ -264,14 +269,17 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
       })
       .select("*, prompt_projects!inner(id,name)")
       .single();
-    if (error?.code === "23505") throw new Error("This Project already belongs to a Song Universe.");
+    if (error?.code === "23505")
+      throw new Error("This Project already belongs to a Song Universe.");
     if (error) throw new Error(error.message);
     return { project: mapMembership(row) };
   });
 
 export const removeProjectFromSongUniverse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ universeId: idSchema, membershipId: idSchema }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ universeId: idSchema, membershipId: idSchema }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
     const supabase = context.supabase as any;
@@ -312,7 +320,8 @@ export const updateSongUniverseProject = createServerFn({ method: "POST" })
     const changes: Record<string, unknown> = {};
     if (data.universeRole !== undefined) changes.universe_role = data.universeRole;
     if (data.projectStatus !== undefined) changes.project_status = data.projectStatus;
-    if (data.intentionalOutlier !== undefined) changes.intentional_outlier = data.intentionalOutlier;
+    if (data.intentionalOutlier !== undefined)
+      changes.intentional_outlier = data.intentionalOutlier;
     const { data: row, error } = await supabase
       .from("song_universe_projects")
       .update(changes)
