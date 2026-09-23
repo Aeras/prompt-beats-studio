@@ -5,6 +5,11 @@ import { cn } from "@/lib/utils";
 
 export type TrackSourcePreference = "all" | "uploads" | "external";
 
+type TrackSourceLike = {
+  sourceType?: string | null | undefined;
+  source_type?: string | null | undefined;
+};
+
 const ACCOUNT_KEY = "track_source_preference";
 const LOCAL_KEY = "pb:track-source-preference";
 const EVENT_KEY = "promptbeats:track-source-preference";
@@ -62,16 +67,14 @@ export function useTrackSourcePreference() {
   return { preference, setPreference };
 }
 
-export function filterByTrackSource<T extends {
-  sourceType?: string | null | undefined;
-  source_type?: string | null | undefined;
-}>(
+export function filterByTrackSource<T>(
   tracks: T[],
   preference: TrackSourcePreference,
 ): T[] {
   if (preference === "all") return tracks;
   return tracks.filter((track) => {
-    const source = track.sourceType ?? track.source_type ?? "upload";
+    const sourceTrack = track as T & TrackSourceLike;
+    const source = sourceTrack.sourceType ?? sourceTrack.source_type ?? "upload";
     const isUpload = source === "upload" || source == null;
     return preference === "uploads" ? isUpload : !isUpload;
   });
