@@ -1,0 +1,179 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import {
+  PRIVATE_REVIEW_VISIBILITIES,
+  privateReviewLinkInfoSchema,
+  privateReviewOwnerListItemSchema,
+  privateReviewOwnerSessionSchema,
+  privateReviewSessionSchema,
+} from "@/lib/private-review.shared";
+
+const tokenSchema = z.string().trim().min(40).max(100);
+const reviewerKeySchema = z.string().trim().min(40).max(100);
+
+const createInput = z.object({
+  projectId: z.string().uuid(),
+  versionPromptId: z.string().uuid(),
+  creatorMessage: z.string().trim().max(1000).default(""),
+  commentVisibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
+  expiresAt: z.string().datetime(),
+  pin: z.string().min(4).max(20).nullable().optional(),
+  sharedTrackId: z.string().uuid().nullable().optional(),
+});
+
+export const createPrivateReviewSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => createInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { data: raw, error } = await (context.supabase as any).rpc("create_private_review_session", {
+      _project_id: data.projectId,
+      _version_prompt_id: data.versionPromptId,
+      _creator_message: data.creatorMessage,
+      _comment_visibility: data.commentVisibility,
+      _expires_at: data.expiresAt,
+      _pin: data.pin || null,
+      _shared_track_id: data.sharedTrackId || null,
+    });
+    if (error) throw new Error(error.message);
+    return z.object({
+      id: z.string().uuid(),
+      token: z.string(),
+      project_id: z.string().uuid(),
+      version_prompt_id: z.string().uuid(),
+      comment_visibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
+      include_audio: z.boolean(),
+      shared_track_id: z.string().uuid().nullable(),
+      created_at: z.string(),
+      expires_at: z.string(),
+    }).parse(raw);
+  });
+
+export const getPrivateReviewLinkInfo = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ token: tokenSchema }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raw, error } = await (supabaseAdmin as any).rpc("private_review_link_info", { _token: data.token });
+    if (error) throw new Error("The review link could not be checked.");
+    return privateReviewLinkInfoSchema.parse(raw);
+  });
+
+export const joinPrivateReviewSession = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({
+    token: tokenSchema,
+    displayName: z.string().trim().min(1).max(80),
+    pin: z.string().min(4).max(20).nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raw, error } = await (supabaseAdmin as any).rpc("join_private_review_session", {
+      _token: data.token,
+      _display_name: data.displayName,
+      _pin: data.pin || null,
+    });
+    if (error) {
+      if (error.message.includes("invalid pin")) throw new Error("Invalid PIN.");
+      if (error.message.includes("closed")) throw new Error("This review is no longer accepting feedback.");
+      throw new Error("The review could not be opened.");
+    }
+    return z.object({
+      reviewer_id: z.string().uuid(),
+      reviewer_key: z.string(),
+      display_name: z.string(),
+    }).parse(raw);
+  });
+
+export const getPrivateReviewSession = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ token: tokenSchema, reviewerKey: reviewerKeySchema }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raw, error } = await (supabaseAdmin as any).rpc("get_private_review_session", {
+      _token: data.token,
+      _reviewer_key: data.reviewerKey,
+    });
+    if (error) throw new Error("The review session could not be loaded.");
+    if ((raw as any)?.state === "unavailable") return { state: "unavailable" as const };
+    return privateReviewSessionSchema.parse(raw);
+  });
+
+export const addPrivateReviewComment = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({
+    token: tokenSchema,
+    reviewerKey: reviewerKeySchema,
+    body: z.string().trim().min(1).max(2000),
+    parentCommentId: z.string().uuid().nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raw, error } = await (supabaseAdmin as any).rpc("add_private_review_comment", {
+      _token: data.token,
+      _reviewer_key: data.reviewerKey,
+      _body: data.body,
+      _parent_comment_id: data.parentCommentId || null,
+    });
+    if (error) {
+      if (error.message.includes("too many comments")) throw new Error("Too many comments. Please wait a moment and try again.");
+      if (error.message.includes("closed")) throw new Error("This review is read-only now.");
+      throw new Error("The comment could not be posted.");
+    }
+    return z.object({ id: z.string().uuid(), created_at: z.string() }).parse(raw);
+  });
+
+export const listMyPrivateReviewSessions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid().nullable().optional() }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { data: raw, error } = await (context.supabase as any).rpc("list_my_private_review_sessions", {
+      _project_id: data.projectId || null,
+    });
+    if (error) throw new Error(error.message);
+    return z.array(privateReviewOwnerListItemSchema).parse(raw ?? []);
+  });
+
+export const getMyPrivateReviewSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    sessionId: z.string().uuid(),
+    reviewerId: z.string().uuid().nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { data: raw, error } = await (context.supabase as any).rpc("get_my_private_review_session", {
+      _session_id: data.sessionId,
+      _reviewer_id: data.reviewerId || null,
+    });
+    if (error) throw new Error(error.message);
+    return privateReviewOwnerSessionSchema.parse(raw);
+  });
+
+export const closePrivateReviewSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ sessionId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { error } = await (context.supabase as any).rpc("close_private_review_session", { _session_id: data.sessionId });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const addPrivateReviewCreatorReply = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    sessionId: z.string().uuid(),
+    parentCommentId: z.string().uuid(),
+    body: z.string().trim().min(1).max(2000),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { data: raw, error } = await (context.supabase as any).rpc("add_private_review_creator_reply", {
+      _session_id: data.sessionId,
+      _parent_comment_id: data.parentCommentId,
+      _body: data.body,
+    });
+    if (error) throw new Error(error.message);
+    return z.object({ id: z.string().uuid(), created_at: z.string() }).parse(raw);
+  });
