@@ -150,12 +150,11 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.storyMapSaveFailed": "Δεν ήταν δυνατή η αποθήκευση του Story Map.",
   "generator.error.providerUnavailable":
     "Ο πάροχος AI δεν είναι προσωρινά διαθέσιμος. Δοκίμασε ξανά αργότερα.",
-  "generator.error.registryUnavailable":
-    "Το μητρώο μοντέλων AI δεν είναι προσωρινά διαθέσιμο.",
+  "generator.error.registryUnavailable": "Το μητρώο μοντέλων AI δεν είναι προσωρινά διαθέσιμο.",
   "generator.error.accountUnavailable": "Ο λογαριασμός δεν είναι πλέον διαθέσιμος.",
-  "generator.error.aiNotAllowed": "Αυτός ο λογαριασμός δεν επιτρέπεται να χρησιμοποιεί υπηρεσίες AI.",
-  "generator.error.invalidResponse":
-    "Η απόκριση του AI ήταν ελλιπής ή μη έγκυρη. Δοκίμασε ξανά.",
+  "generator.error.aiNotAllowed":
+    "Αυτός ο λογαριασμός δεν επιτρέπεται να χρησιμοποιεί υπηρεσίες AI.",
+  "generator.error.invalidResponse": "Η απόκριση του AI ήταν ελλιπής ή μη έγκυρη. Δοκίμασε ξανά.",
 
   "quality.title": "Έλεγχος ποιότητας",
   "quality.checking": "Γίνεται έλεγχος... συνεχίζει ακόμη κι αν φύγεις από την εφαρμογή.",
