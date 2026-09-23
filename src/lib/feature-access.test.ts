@@ -129,7 +129,7 @@ describe("Feature Access Phase B", () => {
 
   test("Feature Access navigation and panel are Super Admin-only", async () => {
     const ui = await source("src/routes/management.tsx");
-    expect(ui).toContain('isSuperAdmin ? [["features"');
+    expect(ui).toMatch(/\.\.\.\(isSuperAdmin\s*\?\s*\[\s*\[\s*"features"/);
     expect(ui).toContain('isSuperAdmin && section === "features"');
     expect(ui).toContain("<FeatureAccessPanel />");
   });
