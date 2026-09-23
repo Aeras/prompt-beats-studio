@@ -61,6 +61,9 @@ jobs:
       - name: Project Version History UI tests
         run: bun test src/lib/project-version-history-ui.test.ts
 
+      - name: Branching Versions tests
+        run: bun test src/lib/branching-versions.test.ts
+
       - name: Library Folders tests
         run: bun test src/lib/library-folders.test.ts
 
