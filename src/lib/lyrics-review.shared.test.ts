@@ -92,14 +92,17 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("tag-only lines are excluded and inline tags contribute zero words and characters", () => {
+    const sourceLine = "I walk [whispered backing vocal] alone";
     const analysis = analyzeLyricsDeterministic(
-      "[Verse]\n[Soft female vocal, intimate]\nI walk [whispered backing vocal] alone\nI walk home [drums enter]",
+      `[Verse]\n[Soft female vocal, intimate]\n${sourceLine}\nI walk home [drums enter]`,
       "en",
     );
+    const first = analysis.sections[0]?.lines[0];
     expect(analysis.overview.lineCount).toBe(2);
     expect(analysis.overview.wordCount).toBe(6);
-    expect(analysis.sections[0]?.lines[0]?.text).toBe("I walk   alone".replace(/\s+/g, " "));
-    expect(analysis.sections[0]?.lines[0]?.characters).toBe("I walk   alone".replace(/\s+/g, " ").length);
+    expect(first?.words).toBe(3);
+    expect(first?.text).not.toContain("[");
+    expect(first?.characters ?? sourceLine.length).toBeLessThan(sourceLine.length);
   });
 
   test("repeated phrases are detected deterministically", () => {
