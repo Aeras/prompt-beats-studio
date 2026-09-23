@@ -103,6 +103,12 @@ jobs:
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts
 
+      # Lint the committed source tree before the build. The Lovable build plugin can
+      # materialize generated helper files during bundling; those are build artifacts,
+      # not canonical repository source and should not be treated as source-lint debt.
+      - name: Lint
+        run: bun run lint
+
       - name: Build
         run: bun run build
 
@@ -117,10 +123,3 @@ jobs:
         with:
           name: strict-typecheck-report
           path: typecheck.log
-
-      # The repository has legacy lint debt that predates this gate. Keep the
-      # lint report visible on every PR without making unrelated existing
-      # violations block otherwise valid changes. Build and strict typecheck are mandatory.
-      - name: Lint report
-        continue-on-error: true
-        run: bun run lint
