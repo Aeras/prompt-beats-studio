@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
 const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
 const songSetupMigration = "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
+const lyricsReviewMigration = "supabase/migrations/20260923043000_add_lyrics_review_feature_access.sql";
 const dependentSurfaceMigration = "supabase/migrations/20260922182136_feature_access_dependent_surface_rls.sql";
 
 const CANONICAL_KEYS = [
@@ -11,6 +12,7 @@ const CANONICAL_KEYS = [
   "ai_music_lab",
   "song_analyzer",
   "lyrics_workspace",
+  "lyrics_review",
   "smart_presets",
   "song_setup_assistant",
   "export_center",
@@ -34,26 +36,26 @@ function functionBlock(sql: string, name: string) {
   return sql.slice(start, next === -1 ? sql.length : next);
 }
 
-describe("Feature Access V2 — 15 features", () => {
-  test("canonical TypeScript registry contains exactly 15 unique feature keys", async () => {
+describe("Feature Access V2 — 16 features", () => {
+  test("canonical TypeScript registry contains exactly 16 unique feature keys", async () => {
     const code = await source("src/lib/feature-access.functions.ts");
     const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
     expect(match).not.toBeNull();
     const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
     expect(keys).toEqual(CANONICAL_KEYS);
-    expect(new Set(keys).size).toBe(15);
+    expect(new Set(keys).size).toBe(16);
     expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
   });
 
-  test("V2 migration adds only the ten new definitions, all defaulting to everyone", async () => {
+  test("V2 migration keeps its original ten definitions while later features are seeded separately", async () => {
     const sql = await source(registryMigration);
-    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","song_setup_assistant","export_center","follow_creators","notifications"].includes(key));
+    const newKeys = CANONICAL_KEYS.filter((key) => !["smart_presets","song_setup_assistant","lyrics_review","export_center","follow_creators","notifications"].includes(key));
     for (const key of newKeys) {
       expect(sql).toContain(`('${key}'`);
       const row = new RegExp(`\\('${key}'[^\\n]+,'everyone'\\)`);
       expect(sql).toMatch(row);
     }
-    for (const existing of ["smart_presets","export_center","follow_creators","notifications"]) {
+    for (const existing of ["smart_presets","song_setup_assistant","lyrics_review","export_center","follow_creators","notifications"]) {
       expect(sql).not.toMatch(new RegExp(`\\('${existing}'[^\\n]+,'everyone'\\)`));
     }
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
@@ -63,6 +65,14 @@ describe("Feature Access V2 — 15 features", () => {
     const sql = await source(songSetupMigration);
     expect(sql).toMatch(/VALUES\s*\(\s*'song_setup_assistant'/m);
     expect(sql).toContain("'Song Setup Assistant'");
+    expect(sql).toContain("'admins_only'");
+    expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
+  });
+
+  test("Lyrics Review is seeded independently as admins_only", async () => {
+    const sql = await source(lyricsReviewMigration);
+    expect(sql).toMatch(/VALUES\s*\(\s*'lyrics_review'/m);
+    expect(sql).toContain("'Lyrics Review'");
     expect(sql).toContain("'admins_only'");
     expect(sql).toContain("ON CONFLICT(feature_key) DO NOTHING");
   });
@@ -308,13 +318,16 @@ describe("Feature Access V2 — 15 features", () => {
   test("Feature-owned navigation entries disappear when the main feature is unavailable", async () => {
     const sidebar = await source("src/components/promptbeats/Sidebar.tsx");
     expect(sidebar).toContain('useFeatureAccess("ai_generator")');
+    expect(sidebar).toContain('useFeatureAccess("lyrics_review")');
     expect(sidebar).toContain('item.id !== "studio" || generatorAccess.allowed');
     expect(sidebar).toContain('item.id !== "musicLab" || musicLabAccess.allowed');
     expect(sidebar).toContain('item.id !== "songAnalyzer" || analyzerAccess.allowed');
+    expect(sidebar).toContain('item.id !== "lyricsReview" || lyricsReviewAccess.allowed');
 
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     expect(shell).toContain('useFeatureAccess("ai_generator")');
     expect(shell).toContain('tab.id !== "studio" || generatorAccess.allowed');
+    expect(shell).toContain('lyricsReview: "/lyrics-review"');
   });
 
   test("existing four feature integrations remain present", async () => {
