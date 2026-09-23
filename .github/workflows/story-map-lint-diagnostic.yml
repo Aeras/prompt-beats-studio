@@ -1,0 +1,39 @@
+name: Story Map lint diagnostic
+
+on:
+  push:
+    branches: [story-map-step1]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event.head_commit.message != 'Record Story Map lint diagnostic'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: story-map-step1
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Reproduce integration
+        run: |
+          python3 scripts/story-map-integrate-v4-fix.py
+          python3 scripts/story-map-integrate-v4.py
+          bunx prettier --write src/components/promptbeats/AppShell.tsx src/components/promptbeats/LyricsWorkspace.tsx src/components/promptbeats/StoryMapLyricsPanel.tsx src/routes/story-map.tsx src/routes/generate.tsx src/lib/story-map.shared.ts src/lib/story-map.functions.ts src/lib/story-map-ai.functions.ts src/lib/story-map-workspace.functions.ts >/dev/null
+          bun run build >/dev/null 2>&1
+      - name: Record lint output
+        run: |
+          set +e
+          bun run lint > story-map-lint.txt 2>&1
+          echo "lint_exit=$?" >> story-map-lint.txt
+          set -e
+      - name: Commit diagnostic only
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add story-map-lint.txt
+          git commit -m 'Record Story Map lint diagnostic'
+          git push origin story-map-step1
