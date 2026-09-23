@@ -19,9 +19,10 @@ async function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
 
 export const listContentReportsClient = createClientOnlyFn(
   async (scope: ReportScope): Promise<ContentReport[]> => {
-    const { data, error } = await withTimeout(
+    const result: RpcResult<unknown> = await withTimeout<RpcResult<unknown>>(
       (supabase as any).rpc("list_content_reports", { _scope: scope }) as PromiseLike<RpcResult<unknown>>,
     );
+    const { data, error } = result;
     if (error) throw new Error(error.message);
     return (Array.isArray(data) ? data : []) as ContentReport[];
   },
@@ -29,9 +30,10 @@ export const listContentReportsClient = createClientOnlyFn(
 
 export const getContentReportClient = createClientOnlyFn(
   async (reportId: string): Promise<ContentReport> => {
-    const { data, error } = await withTimeout(
+    const result: RpcResult<unknown> = await withTimeout<RpcResult<unknown>>(
       (supabase as any).rpc("get_content_report", { _report_id: reportId }) as PromiseLike<RpcResult<unknown>>,
     );
+    const { data, error } = result;
     if (error) throw new Error(error.message);
     return data as ContentReport;
   },
