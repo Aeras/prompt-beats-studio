@@ -67,6 +67,9 @@ jobs:
       - name: Library Folders tests
         run: bun test src/lib/library-folders.test.ts
 
+      - name: Inspiration Wall Phase 1 tests
+        run: bun test src/lib/inspiration-wall.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
