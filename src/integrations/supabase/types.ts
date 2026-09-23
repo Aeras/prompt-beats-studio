@@ -1183,6 +1183,194 @@ export type Database = {
         }
         Relationships: []
       }
+      private_review_comments: {
+        Row: {
+          author_reviewer_id: string | null
+          author_type: string
+          body: string
+          created_at: string
+          id: string
+          parent_comment_id: string | null
+          session_id: string
+          thread_reviewer_id: string
+        }
+        Insert: {
+          author_reviewer_id?: string | null
+          author_type: string
+          body: string
+          created_at?: string
+          id?: string
+          parent_comment_id?: string | null
+          session_id: string
+          thread_reviewer_id: string
+        }
+        Update: {
+          author_reviewer_id?: string | null
+          author_type?: string
+          body?: string
+          created_at?: string
+          id?: string
+          parent_comment_id?: string | null
+          session_id?: string
+          thread_reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_review_comments_author_reviewer_id_fkey"
+            columns: ["author_reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_reviewers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_comments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_comments_thread_reviewer_id_fkey"
+            columns: ["thread_reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_reviewers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_review_reviewers: {
+        Row: {
+          access_key_hash: string
+          created_at: string
+          display_name: string
+          id: string
+          last_seen_at: string
+          session_id: string
+        }
+        Insert: {
+          access_key_hash: string
+          created_at?: string
+          display_name: string
+          id?: string
+          last_seen_at?: string
+          session_id: string
+        }
+        Update: {
+          access_key_hash?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_seen_at?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_review_reviewers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_review_sessions: {
+        Row: {
+          audio_snapshot: Json | null
+          closed_at: string | null
+          comment_visibility: string
+          created_at: string
+          creator_message: string
+          expires_at: string
+          id: string
+          include_audio: boolean
+          last_opened_at: string | null
+          open_count: number
+          owner_id: string
+          pin_hash: string | null
+          project_id: string
+          project_name: string
+          shared_track_id: string | null
+          snapshot: Json
+          token_hash: string
+          version_label: string | null
+          version_number: number | null
+          version_prompt_id: string | null
+        }
+        Insert: {
+          audio_snapshot?: Json | null
+          closed_at?: string | null
+          comment_visibility: string
+          created_at?: string
+          creator_message?: string
+          expires_at: string
+          id?: string
+          include_audio?: boolean
+          last_opened_at?: string | null
+          open_count?: number
+          owner_id: string
+          pin_hash?: string | null
+          project_id: string
+          project_name: string
+          shared_track_id?: string | null
+          snapshot: Json
+          token_hash: string
+          version_label?: string | null
+          version_number?: number | null
+          version_prompt_id?: string | null
+        }
+        Update: {
+          audio_snapshot?: Json | null
+          closed_at?: string | null
+          comment_visibility?: string
+          created_at?: string
+          creator_message?: string
+          expires_at?: string
+          id?: string
+          include_audio?: boolean
+          last_opened_at?: string | null
+          open_count?: number
+          owner_id?: string
+          pin_hash?: string | null
+          project_id?: string
+          project_name?: string
+          shared_track_id?: string | null
+          snapshot?: Json
+          token_hash?: string
+          version_label?: string | null
+          version_number?: number | null
+          version_prompt_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_review_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_sessions_shared_track_id_fkey"
+            columns: ["shared_track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_sessions_version_prompt_id_fkey"
+            columns: ["version_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "saved_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_private: {
         Row: {
           block_reason_code: string | null
@@ -2225,6 +2413,19 @@ export type Database = {
         Args: { _body: string; _case_id: string }
         Returns: string
       }
+      add_private_review_comment: {
+        Args: {
+          _body: string
+          _parent_comment_id?: string
+          _reviewer_key: string
+          _token: string
+        }
+        Returns: Json
+      }
+      add_private_review_creator_reply: {
+        Args: { _body: string; _parent_comment_id: string; _session_id: string }
+        Returns: Json
+      }
       admin_begin_account_deletion: {
         Args: { _target_user_id: string }
         Returns: string
@@ -2333,6 +2534,10 @@ export type Database = {
         Returns: Json
       }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
+      close_private_review_session: {
+        Args: { _session_id: string }
+        Returns: undefined
+      }
       consume_admin_account_deletion: {
         Args: { _operation_id: string }
         Returns: string
@@ -2345,6 +2550,28 @@ export type Database = {
           _quality_report: Json
         }
         Returns: string
+      }
+      create_private_review_session: {
+        Args: {
+          _comment_visibility?: string
+          _creator_message?: string
+          _expires_at?: string
+          _pin?: string
+          _project_id: string
+          _shared_track_id?: string
+          _version_prompt_id: string
+        }
+        Returns: Json
+      }
+      create_prompt_lyrics_review_version: {
+        Args: {
+          _lyrics: string
+          _parent_prompt_id: string
+          _project_id: string
+          _user_id: string
+          _version_change_metadata: Json
+        }
+        Returns: Json
       }
       create_prompt_lyrics_workspace_version: {
         Args: {
@@ -2478,6 +2705,14 @@ export type Database = {
       get_moderation_case_unread_count: { Args: never; Returns: number }
       get_my_account_status: { Args: never; Returns: Json }
       get_my_moderation_context: { Args: never; Returns: Json }
+      get_my_private_review_session: {
+        Args: { _reviewer_id?: string; _session_id: string }
+        Returns: Json
+      }
+      get_private_review_session: {
+        Args: { _reviewer_key: string; _token: string }
+        Returns: Json
+      }
       get_quality_check_job: { Args: { _action_id: string }; Returns: Json }
       get_track_share_by_token: { Args: { _token: string }; Returns: Json }
       has_moderation_capability: {
@@ -2498,6 +2733,10 @@ export type Database = {
         Args: { _path: string; _prefix: string }
         Returns: boolean
       }
+      join_private_review_session: {
+        Args: { _display_name: string; _pin?: string; _token: string }
+        Returns: Json
+      }
       kick_generation_runner: { Args: { _job_id: string }; Returns: undefined }
       kick_quality_check_runner: {
         Args: { _action_id: string }
@@ -2515,6 +2754,10 @@ export type Database = {
       list_content_reports: { Args: { _scope?: string }; Returns: Json }
       list_moderation_case_assignees: { Args: never; Returns: Json }
       list_my_moderation_cases: { Args: never; Returns: Json }
+      list_my_private_review_sessions: {
+        Args: { _project_id?: string }
+        Returns: Json
+      }
       list_my_share_management: { Args: never; Returns: Json }
       list_trending_tracks: {
         Args: never
@@ -2558,6 +2801,7 @@ export type Database = {
         Args: { _email: string }
         Returns: string
       }
+      private_review_link_info: { Args: { _token: string }; Returns: Json }
       process_stripe_subscription_event: {
         Args: {
           _approved_pro_price_id: string
@@ -2619,6 +2863,16 @@ export type Database = {
       reorder_playlist_tracks: {
         Args: { _playlist_id: string; _track_ids: string[] }
         Returns: undefined
+      }
+      replace_latest_prompt_lyrics_review_version: {
+        Args: {
+          _lyrics: string
+          _project_id: string
+          _user_id: string
+          _version_change_metadata: Json
+          _version_prompt_id: string
+        }
+        Returns: Json
       }
       replace_track_with_audio_cleanup: {
         Args: {
