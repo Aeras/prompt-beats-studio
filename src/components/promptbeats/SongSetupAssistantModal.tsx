@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { generateSongSetup, type SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import { AI_TARGET_PLATFORM_LABEL, type AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n, type AppTranslationKey } from "@/i18n";
@@ -97,6 +98,7 @@ export function SongSetupAssistantModal({
   const [draft, setDraft] = useState<SongSetupDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const aiModel = useAiModelSelection("aiTools");
 
   useEffect(() => {
     if (!open || !prefillKey || !prefillDescription) return;
@@ -107,11 +109,17 @@ export function SongSetupAssistantModal({
 
   const generate = async () => {
     const clean = description.trim();
-    if (clean.length < 10 || busy) return;
+    if (clean.length < 10 || busy || aiModel.unavailable) return;
     setBusy(true);
     setError(null);
     try {
-      const result = await generateSongSetup({ data: { description: clean, targetPlatform } });
+      const result = await generateSongSetup({
+        data: {
+          description: clean,
+          targetPlatform,
+          ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}),
+        },
+      });
       setDraft(result.setup);
     } catch (err) {
       setError(err instanceof Error && language === "en" ? err.message : text.fallbackError);
@@ -166,9 +174,25 @@ export function SongSetupAssistantModal({
               >
                 {text.describe}
               </label>
-              <span className="text-[11px] text-muted-foreground">
-                Gemini 3.8 Flash · {description.length}/2500
-              </span>
+              <div className="flex items-center gap-2">
+                {aiModel.showSelector && (
+                  <select
+                    aria-label={language === "el" ? "Μοντέλο AI" : "AI model"}
+                    value={aiModel.selectedModel}
+                    onChange={(event) => aiModel.setSelectedModel(event.target.value)}
+                    className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-[11px]"
+                  >
+                    {aiModel.options.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span className="text-[11px] text-muted-foreground">
+                  {description.length}/2500
+                </span>
+              </div>
             </div>
             <textarea
               id="song-setup-description"
@@ -185,7 +209,7 @@ export function SongSetupAssistantModal({
             <button
               type="button"
               onClick={generate}
-              disabled={busy || description.trim().length < 10}
+              disabled={busy || description.trim().length < 10 || aiModel.unavailable}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
