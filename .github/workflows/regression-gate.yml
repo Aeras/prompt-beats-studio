@@ -106,6 +106,12 @@ jobs:
       - name: Build
         run: bun run build
 
+      # Keep strict-mode debt visible while it is being paid down. Once the
+      # existing backlog reaches zero, this step can become blocking.
+      - name: Typecheck report
+        continue-on-error: true
+        run: bunx tsc --noEmit --pretty false
+
       # The repository has legacy lint debt that predates this gate. Keep the
       # lint report visible on every PR without making unrelated existing
       # violations block otherwise valid changes. Build remains mandatory.
