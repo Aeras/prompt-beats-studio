@@ -134,6 +134,22 @@ export const enApp = {
   "generator.dismissFailed": "The generation could not be dismissed. Please try again.",
   "generator.clearedRunning":
     "Generator cleared. The generation already started and may still finish in the background.",
+  "generator.featureUnavailable": "AI Generator is currently unavailable.",
+  "generator.songAnalyzerLoaded":
+    "Song Analyzer fields loaded. Review or edit them before generating.",
+  "generator.songAnalyzerLoadFailed": "Could not load Song Analyzer fields.",
+  "generator.songSetupAssistant": "Song Setup Assistant",
+  "generator.storyDrivenLyrics": "Story-driven lyrics",
+  "generator.storyDrivenLyricsDescription":
+    "Builds narrative or emotional progression first, so the lyrics develop instead of repeating the same idea.",
+  "generator.storyMapSaveFailed": "Could not save Story Map.",
+  "generator.error.providerUnavailable":
+    "The AI provider is temporarily unavailable. Please try again later.",
+  "generator.error.registryUnavailable": "AI model registry is temporarily unavailable.",
+  "generator.error.accountUnavailable": "The account is no longer available.",
+  "generator.error.aiNotAllowed": "This account is not allowed to use AI services.",
+  "generator.error.invalidResponse":
+    "The AI returned an incomplete or invalid response. Please try again.",
 
   "quality.title": "Quality Check",
   "quality.checking": "Checking... this keeps running if you leave the app.",
@@ -149,6 +165,7 @@ export const enApp = {
   "quality.checkAgainCost": "Check Again · −1 creation",
   "quality.invalid": "The completed quality check was invalid. Please try again.",
   "quality.unavailable": "Quality check unavailable. Please try again.",
+  "quality.featureUnavailable": "Quality Check is currently unavailable.",
   "quality.checkedWith": "Checked with: {model}",
   "quality.passed": "Passed",
   "quality.yes": "Yes",
@@ -174,6 +191,8 @@ export const enApp = {
   "quality.lyrics": "Lyrics",
   "quality.producerNote": "Producer's note",
   "quality.addMusicStyle": "Add to Music Style: {value}",
+
+  "lyricsWorkspace.featureUnavailable": "Lyrics Workspace is currently unavailable.",
 
   "player.previous": "Previous track",
   "player.next": "Next track",

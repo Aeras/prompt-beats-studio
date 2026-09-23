@@ -209,7 +209,8 @@ describe("Feature Access V2 — 20 features", () => {
     expect(jobs).toContain('requireFeatureAccess(context.supabase, "lyrics_workspace")');
     const route = await source("src/routes/generate.tsx");
     expect(route).toContain('useFeatureAccess("lyrics_workspace")');
-    expect(route).toContain("Lyrics Workspace is currently unavailable.");
+    expect(route).toContain('t("lyricsWorkspace.featureUnavailable")');
+    expect(route).not.toContain(">Lyrics Workspace is currently unavailable.<");
     const trackCard = await source("src/components/promptbeats/TrackCard.tsx");
     expect(trackCard).not.toContain('useFeatureAccess("lyrics_workspace")');
   });

@@ -139,6 +139,23 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.dismissFailed": "Δεν ήταν δυνατή η ακύρωση της δημιουργίας. Δοκίμασε ξανά.",
   "generator.clearedRunning":
     "Ο Generator καθαρίστηκε. Η δημιουργία είχε ήδη ξεκινήσει και μπορεί να ολοκληρωθεί στο παρασκήνιο.",
+  "generator.featureUnavailable": "Το AI Generator δεν είναι διαθέσιμο αυτή τη στιγμή.",
+  "generator.songAnalyzerLoaded":
+    "Τα πεδία του Song Analyzer φορτώθηκαν. Έλεγξέ τα ή επεξεργάσου τα πριν από τη δημιουργία.",
+  "generator.songAnalyzerLoadFailed": "Δεν ήταν δυνατή η φόρτωση των πεδίων του Song Analyzer.",
+  "generator.songSetupAssistant": "Βοηθός ρύθμισης τραγουδιού",
+  "generator.storyDrivenLyrics": "Στίχοι με αφηγηματική εξέλιξη",
+  "generator.storyDrivenLyricsDescription":
+    "Χτίζει πρώτα αφηγηματική ή συναισθηματική εξέλιξη ώστε οι στίχοι να προχωρούν αντί να επαναλαμβάνουν την ίδια ιδέα.",
+  "generator.storyMapSaveFailed": "Δεν ήταν δυνατή η αποθήκευση του Story Map.",
+  "generator.error.providerUnavailable":
+    "Ο πάροχος AI δεν είναι προσωρινά διαθέσιμος. Δοκίμασε ξανά αργότερα.",
+  "generator.error.registryUnavailable":
+    "Το μητρώο μοντέλων AI δεν είναι προσωρινά διαθέσιμο.",
+  "generator.error.accountUnavailable": "Ο λογαριασμός δεν είναι πλέον διαθέσιμος.",
+  "generator.error.aiNotAllowed": "Αυτός ο λογαριασμός δεν επιτρέπεται να χρησιμοποιεί υπηρεσίες AI.",
+  "generator.error.invalidResponse":
+    "Η απόκριση του AI ήταν ελλιπής ή μη έγκυρη. Δοκίμασε ξανά.",
 
   "quality.title": "Έλεγχος ποιότητας",
   "quality.checking": "Γίνεται έλεγχος... συνεχίζει ακόμη κι αν φύγεις από την εφαρμογή.",
@@ -156,6 +173,7 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "quality.checkAgainCost": "Έλεγχος ξανά · −1 δημιουργία",
   "quality.invalid": "Ο ολοκληρωμένος έλεγχος ποιότητας δεν ήταν έγκυρος. Δοκίμασε ξανά.",
   "quality.unavailable": "Ο Έλεγχος ποιότητας δεν είναι διαθέσιμος. Δοκίμασε ξανά.",
+  "quality.featureUnavailable": "Ο Έλεγχος ποιότητας δεν είναι διαθέσιμος αυτή τη στιγμή.",
   "quality.checkedWith": "Ελέγχθηκε με: {model}",
   "quality.passed": "Πέρασε",
   "quality.yes": "Ναι",
@@ -181,6 +199,8 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "quality.lyrics": "Στίχοι",
   "quality.producerNote": "Σημείωση παραγωγού",
   "quality.addMusicStyle": "Προσθήκη στο Μουσικό στυλ: {value}",
+
+  "lyricsWorkspace.featureUnavailable": "Το Lyrics Workspace δεν είναι διαθέσιμο αυτή τη στιγμή.",
 
   "player.previous": "Προηγούμενο τραγούδι",
   "player.next": "Επόμενο τραγούδι",
