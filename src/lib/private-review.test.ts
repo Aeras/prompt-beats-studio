@@ -146,6 +146,6 @@ describe("Private Review Links Phase 1", () => {
     expect(trackRoute).toContain('track.source_type === "upload"');
     expect(trackRoute).toContain("track.user_id === user.id");
     expect(trackRoute).toContain("Private Review");
-    expect(trackRoute).toContain("<PrivateReviewManager initialTrackId={track.id}");
+    expect(trackRoute).toMatch(/<PrivateReviewManager\s+initialTrackId=\{track\.id\}/);
   });
 });
