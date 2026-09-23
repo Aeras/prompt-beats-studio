@@ -85,6 +85,9 @@ jobs:
       - name: Song Universe tests
         run: bun test src/lib/song-universe.test.ts
 
+      - name: AI Tools default architecture tests
+        run: bun test src/lib/ai-tools-default-architecture.test.ts
+
       - name: Smart Presets and language catalog tests
         run: bun test src/catalog/smart-presets.test.ts src/catalog/song-languages.test.ts
 
