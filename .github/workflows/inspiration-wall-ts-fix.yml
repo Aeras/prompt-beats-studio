@@ -1,0 +1,67 @@
+name: Inspiration Wall Strict TypeScript Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/inspiration-wall-ts-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Fix strict index-signature assignments
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/inspiration-wall.functions.ts')
+          s = p.read_text()
+          replacements = {
+            'changes.title =': 'changes["title"] =',
+            'changes.description =': 'changes["description"] =',
+            'changes.selected_theme =': 'changes["selected_theme"] =',
+            'changes.connected_project_id =': 'changes["connected_project_id"] =',
+            'changes.creative_direction =': 'changes["creative_direction"] =',
+            'changes.type =': 'changes["type"] =',
+            'changes.body =': 'changes["body"] =',
+            'changes.color_value =': 'changes["color_value"] =',
+            'changes.image_object_key =': 'changes["image_object_key"] =',
+            'changes.is_pinned =': 'changes["is_pinned"] =',
+            'changes.sort_order =': 'changes["sort_order"] =',
+            'changes.artistic_layout =': 'changes["artistic_layout"] =',
+            'changes.structured_layout =': 'changes["structured_layout"] =',
+          }
+          for old, new in replacements.items():
+            s = s.replace(old, new)
+          p.write_text(s)
+          PY
+      - name: Verify tests
+        run: bun test src/lib/inspiration-wall.test.ts src/lib/feature-access-v2.test.ts
+      - name: Verify lint
+        run: bun run lint
+      - name: Verify strict TypeScript
+        run: bunx tsc --noEmit --pretty false
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/inspiration-wall.functions.ts
+          if git diff --cached --quiet; then
+            echo "No TypeScript changes required."
+            exit 0
+          fi
+          git commit -m "Fix Inspiration Wall strict TypeScript assignments"
+          git push origin HEAD:main
