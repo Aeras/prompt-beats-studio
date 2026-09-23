@@ -17,4 +17,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Library Folders tests
-        run: bun test src/lib/library-folders.test.ts
+        shell: bash
+        run: |
+          set +e
+          bun test src/lib/library-folders.test.ts > /tmp/library-folders.log 2>&1
+          code=$?
+          echo "=== LIBRARY FOLDERS FAILURE SUMMARY ==="
+          grep -E -A10 -B6 'FAIL|fail|error|Error|expect|Expected|Received' /tmp/library-folders.log | tail -n 100 || true
+          echo "=== END SUMMARY ==="
+          exit $code
