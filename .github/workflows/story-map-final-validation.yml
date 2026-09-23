@@ -1,0 +1,27 @@
+name: Story Map final validation
+
+on:
+  push:
+    branches: [story-map-step1]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Story Map tests
+        run: bun test src/lib/story-map.test.ts
+      - name: Lint
+        run: bun run lint
+      - name: Build
+        run: bun run build
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit --pretty false
