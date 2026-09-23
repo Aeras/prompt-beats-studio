@@ -26,7 +26,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
 import { localizedAccountReasonLabel, localizedGenreLabel } from "@/i18n/ui-catalog";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
-import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
+import { TrackSourceFilter, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
 
 type Profile = {
   id: string;
@@ -153,7 +153,11 @@ export function ArtistProfileView({ profile, tracks, isLoading, notFoundLabel }:
   const { preference: defaultTrackSource } = useTrackSourcePreference();
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, profile?.id]);
-  const visibleTracks = filterByTrackSource(tracks, trackSource);
+  const visibleTracks = tracks.filter((track) => {
+    if (trackSource === "all") return true;
+    const isUpload = track.source_type === "upload" || track.source_type == null;
+    return trackSource === "uploads" ? isUpload : !isUpload;
+  });
   const compact = gridMode === "compact";
   const missingLabel = notFoundLabel ?? t("profile.notFound");
 
