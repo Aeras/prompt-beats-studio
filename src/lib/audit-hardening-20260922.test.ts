@@ -45,7 +45,9 @@ describe("September 22 production audit hardening", () => {
 
     expect(
       setup.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant")'),
-    ).toBeLessThan(setup.indexOf("modelCaller(SONG_SETUP_ASSISTANT_MODEL)"));
+    ).toBeLessThan(
+      setup.indexOf('resolveAiModelForUser(context.userId, "ai_tools", data.model)'),
+    );
     expect(
       musicLab.indexOf('requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab")'),
     ).toBeLessThan(musicLab.indexOf('process.env["GEMINI_API_KEY"]'));
