@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
+  songUniverseContextSnapshotSchema,
   songUniverseCreativeBibleSchema,
   songUniverseProjectStatusSchema,
   songUniverseStatusSchema,
@@ -65,8 +66,10 @@ function mapMembership(row: any): SongUniverseProjectRecord {
     projectStatus: row.project_status,
     intentionalOutlier: row.intentional_outlier === true,
     inheritedTraits: Array.isArray(row.inherited_traits) ? row.inherited_traits : [],
-    contextSnapshot:
-      row.context_snapshot && typeof row.context_snapshot === "object" ? row.context_snapshot : {},
+    contextSnapshot: (() => {
+      const parsed = songUniverseContextSnapshotSchema.safeParse(row.context_snapshot);
+      return parsed.success ? parsed.data : null;
+    })(),
     contextSnapshotAt: row.context_snapshot_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -157,12 +160,12 @@ export const updateSongUniverse = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     await requireOwnedUniverse(supabase, data.universeId, context.userId);
     const changes: Record<string, unknown> = {};
-    if (data.title !== undefined) changes.title = data.title;
-    if (data.description !== undefined) changes.description = data.description;
-    if (data.universeType !== undefined) changes.universe_type = data.universeType;
-    if (data.status !== undefined) changes.status = data.status;
-    if (data.creativeBible !== undefined) changes.creative_bible = data.creativeBible;
-    if (data.initialDirection !== undefined) changes.initial_direction = data.initialDirection;
+    if (data.title !== undefined) changes["title"] = data.title;
+    if (data.description !== undefined) changes["description"] = data.description;
+    if (data.universeType !== undefined) changes["universe_type"] = data.universeType;
+    if (data.status !== undefined) changes["status"] = data.status;
+    if (data.creativeBible !== undefined) changes["creative_bible"] = data.creativeBible;
+    if (data.initialDirection !== undefined) changes["initial_direction"] = data.initialDirection;
     const { data: row, error } = await supabase
       .from("song_universes")
       .update(changes)
@@ -318,10 +321,10 @@ export const updateSongUniverseProject = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     await requireOwnedUniverse(supabase, data.universeId, context.userId);
     const changes: Record<string, unknown> = {};
-    if (data.universeRole !== undefined) changes.universe_role = data.universeRole;
-    if (data.projectStatus !== undefined) changes.project_status = data.projectStatus;
+    if (data.universeRole !== undefined) changes["universe_role"] = data.universeRole;
+    if (data.projectStatus !== undefined) changes["project_status"] = data.projectStatus;
     if (data.intentionalOutlier !== undefined)
-      changes.intentional_outlier = data.intentionalOutlier;
+      changes["intentional_outlier"] = data.intentionalOutlier;
     const { data: row, error } = await supabase
       .from("song_universe_projects")
       .update(changes)

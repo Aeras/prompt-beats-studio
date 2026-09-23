@@ -110,7 +110,7 @@ export type SongUniverseProjectRecord = {
   projectStatus: SongUniverseProjectStatus;
   intentionalOutlier: boolean;
   inheritedTraits: string[];
-  contextSnapshot: Record<string, unknown>;
+  contextSnapshot: SongUniverseContextSnapshot | null;
   contextSnapshotAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -131,7 +131,7 @@ export type SongUniverseAnalysis = {
   opportunities: string[];
 };
 
-export const songUniverseAnalysisSchema: z.ZodType<SongUniverseAnalysis> = z.object({
+export const songUniverseAnalysisSchema = z.object({
   summary: z.string().trim().max(3000).default(""),
   strongContinuity: z.array(z.string().trim().max(1000)).max(20).default([]),
   possibleRepetition: z.array(z.string().trim().max(1000)).max(20).default([]),

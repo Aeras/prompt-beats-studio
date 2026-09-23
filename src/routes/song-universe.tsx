@@ -36,6 +36,9 @@ import {
 
 export const Route = createFileRoute("/song-universe")({ component: SongUniversePage });
 
+type UniverseProject = Awaited<ReturnType<typeof getSongUniverse>>["projects"][number];
+type UniverseProjectOption = { id: string; name: string; updatedAt: string; linked: boolean };
+
 const sectionLabels: Record<
   (typeof SONG_UNIVERSE_BIBLE_SECTIONS)[number],
   { en: string; el: string }
@@ -85,7 +88,7 @@ function SongUniversePage() {
     },
   });
 
-  if (access.loading)
+  if (access.isLoading)
     return (
       <AppShell>
         <div className="p-8 text-sm text-muted-foreground">Loading…</div>
@@ -260,7 +263,7 @@ function UniverseEditor({
   const move = (index: number, delta: -1 | 1) => {
     const target = index + delta;
     if (target < 0 || target >= projects.length) return;
-    const ids = projects.map((project) => project.id);
+    const ids = projects.map((project: UniverseProject) => project.id);
     const current = ids[index];
     const swap = ids[target];
     if (!current || !swap) return;
@@ -272,7 +275,8 @@ function UniverseEditor({
   };
 
   const availableProjects = useMemo(
-    () => (options.data?.projects ?? []).filter((project) => !project.linked),
+    () =>
+      (options.data?.projects ?? []).filter((project: UniverseProjectOption) => !project.linked),
     [options.data?.projects],
   );
 
@@ -501,7 +505,7 @@ function UniverseEditor({
             className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
           >
             <option value="">{el ? "Επίλεξε Project…" : "Select Project…"}</option>
-            {availableProjects.map((project) => (
+            {availableProjects.map((project: UniverseProjectOption) => (
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
@@ -523,7 +527,7 @@ function UniverseEditor({
           </button>
         </div>
         <div className="mt-4 space-y-2">
-          {projects.map((project, index) => (
+          {projects.map((project: UniverseProject, index: number) => (
             <div key={project.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 text-center text-xs text-muted-foreground">{index + 1}</div>
@@ -797,7 +801,7 @@ function UniverseAiPanel({
             {el ? "Έλεγχος Project Fit" : "Project Fit"}
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            {projects.map((project) => (
+            {projects.map((project: UniverseProject) => (
               <button
                 key={project.id}
                 disabled={busy !== null}

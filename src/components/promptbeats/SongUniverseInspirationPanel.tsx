@@ -9,6 +9,15 @@ import {
   setSongUniverseInspirationWall,
 } from "@/lib/song-universe-inspiration.functions";
 
+type UniverseWall = {
+  id: string;
+  title: string;
+  description: string | null;
+  universeId: string | null;
+  connectedProjectId: string | null;
+  updatedAt: string;
+};
+
 export function SongUniverseInspirationPanel({ universeId }: { universeId: string }) {
   const { language } = useI18n();
   const el = language === "el";
@@ -21,8 +30,10 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
   });
 
   if (!access.allowed) return null;
-  const linked = (walls.data?.walls ?? []).filter((wall) => wall.universeId === universeId);
-  const available = (walls.data?.walls ?? []).filter((wall) => !wall.universeId);
+  const linked = (walls.data?.walls ?? []).filter(
+    (wall: UniverseWall) => wall.universeId === universeId,
+  );
+  const available = (walls.data?.walls ?? []).filter((wall: UniverseWall) => !wall.universeId);
 
   const refresh = () =>
     qc.invalidateQueries({ queryKey: ["song-universe-inspiration-walls", universeId] });
@@ -51,7 +62,7 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
 
       {linked.length > 0 && (
         <div className="mt-4 space-y-2">
-          {linked.map((wall) => (
+          {linked.map((wall: UniverseWall) => (
             <div
               key={wall.id}
               className="flex items-center gap-3 rounded-xl border border-accent/20 bg-accent/[0.05] p-3"
@@ -87,7 +98,7 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
             {el ? "Διαθέσιμα Walls" : "Available Walls"}
           </div>
           <div className="flex flex-wrap gap-2">
-            {available.slice(0, 12).map((wall) => (
+            {available.slice(0, 12).map((wall: UniverseWall) => (
               <button
                 key={wall.id}
                 type="button"
