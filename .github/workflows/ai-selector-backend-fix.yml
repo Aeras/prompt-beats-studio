@@ -1,0 +1,181 @@
+name: AI selector backend fix
+
+on:
+  push:
+    branches: [ai-model-selector-policy]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Fix Song Universe AI model routing contracts'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai-model-selector-policy
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Patch Song Universe AI contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/song-universe-ai.functions.ts')
+          s = p.read_text()
+          def once(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f'missing anchor: {label}')
+              s = s.replace(old, new, 1)
+
+          once(
+          '''const projectFitSchema = z.object({
+            strongMatches: z.array(z.string().trim().max(1000)).max(20).default([]),
+            differences: z.array(z.string().trim().max(1000)).max(20).default([]),
+            interpretation: z.string().trim().max(3000).default(""),
+          });''',
+          '''const projectFitSchema = z.object({
+            strongMatches: z.array(z.string().trim().max(1000)).max(20).default([]),
+            differences: z.array(z.string().trim().max(1000)).max(20).default([]),
+            interpretation: z.string().trim().max(3000).default(""),
+          });
+          type SongUniverseProjectFit = z.infer<typeof projectFitSchema>;''',
+          'project fit type')
+
+          # Normalize exact-optional model inputs.
+          s = s.replace('requestedModel: data.model,', 'requestedModel: data.model ?? null,')
+
+          # Explicit generic types prevent server-function serialization from widening to unknown.
+          once('''const result = await runStructured({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CREATIVE_BIBLE_SYSTEM,''',
+          '''const result = await runStructured<SongUniverseCreativeBible>({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CREATIVE_BIBLE_SYSTEM,''', 'generate generic')
+          once('''const result = await runStructured({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CREATIVE_BIBLE_SYSTEM,''',
+          '''const result = await runStructured<SongUniverseCreativeBible>({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CREATIVE_BIBLE_SYSTEM,''', 'refine generic')
+          once('''const result = await runStructured({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CONTINUITY_SYSTEM,''',
+          '''const result = await runStructured<SongUniverseAnalysis>({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: CONTINUITY_SYSTEM,''', 'continuity generic')
+
+          # Public server-function response shape must match the existing UI contract.
+          s = s.replace('''    return result;
+            });
+
+          const refineBibleInput''', '''    return {
+              creativeBible: result.value,
+              model: result.model,
+              provider: result.provider,
+              modelLabel: result.modelLabel,
+            };
+            });
+
+          const refineBibleInput''', 1)
+          # second Creative Bible handler
+          marker = '''    return result;
+            });
+
+          const continuityInput'''
+          if marker not in s:
+              raise SystemExit('missing anchor: refine response')
+          s = s.replace(marker, '''    return {
+              creativeBible: result.value,
+              model: result.model,
+              provider: result.provider,
+              modelLabel: result.modelLabel,
+            };
+            });
+
+          const continuityInput''', 1)
+
+          s = s.replace('''    await context.supabase.from("song_universe_ai_analyses").insert({''', '''    await (context.supabase as any).from("song_universe_ai_analyses").insert({''', 1)
+          marker = '''    return result;
+            });
+
+          const projectFitInput'''
+          if marker not in s:
+              raise SystemExit('missing anchor: continuity response')
+          s = s.replace(marker, '''    return {
+              analysis: result.value,
+              model: result.model,
+              provider: result.provider,
+              modelLabel: result.modelLabel,
+            };
+            });
+
+          const projectFitInput''', 1)
+
+          old = '''    return runStructured({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: FIT_SYSTEM,
+              prompt: `Creative Bible:\\n${JSON.stringify(universe.creative_bible)}\\n\\nProject:\\n${JSON.stringify(project)}\\n\\nReturn neutral matches, differences and an interpretation of useful contrast.`,
+              schema: FIT_RESPONSE_SCHEMA,
+              parse: (value) => projectFitSchema.parse(value),
+              operation: "universe_project_fit",
+            });'''
+          new = '''    const result = await runStructured<SongUniverseProjectFit>({
+              userId: context.userId,
+              requestedModel: data.model ?? null,
+              system: FIT_SYSTEM,
+              prompt: `Creative Bible:\\n${JSON.stringify(universe.creative_bible)}\\n\\nProject:\\n${JSON.stringify(project)}\\n\\nReturn neutral matches, differences and an interpretation of useful contrast.`,
+              schema: FIT_RESPONSE_SCHEMA,
+              parse: (value) => projectFitSchema.parse(value),
+              operation: "universe_project_fit",
+            });
+            return {
+              fit: result.value,
+              model: result.model,
+              provider: result.provider,
+              modelLabel: result.modelLabel,
+            };'''
+          once(old, new, 'project fit response')
+
+          once('''    const { data: row, error } = await context.supabase
+              .from("song_universe_ai_analyses")''', '''    const { data: row, error } = await (context.supabase as any)
+              .from("song_universe_ai_analyses")''', 'latest typed table bridge')
+          once('''    if (error) throw new Error(error.message);
+            return { analysis: row ?? null };
+            });''', '''    if (error) throw new Error(error.message);
+            if (!row) return { analysis: null, model: null, createdAt: null };
+            return {
+              analysis: songUniverseAnalysisSchema.parse(row.result),
+              model: typeof row.model === "string" ? row.model : null,
+              createdAt: typeof row.created_at === "string" ? row.created_at : null,
+            };
+            });''', 'latest analysis contract')
+
+          p.write_text(s)
+          PY
+          bunx prettier --write src/lib/song-universe-ai.functions.ts
+      - name: Validate strict TypeScript and tests
+        run: |
+          bun test src/lib/song-universe.test.ts src/lib/ai-model-selector-policy.test.ts
+          bun run lint
+          bun run build
+          bunx tsc --noEmit --pretty false
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/lib/song-universe-ai.functions.ts
+          git commit -m 'Fix Song Universe AI model routing contracts'
+          git push origin ai-model-selector-policy
