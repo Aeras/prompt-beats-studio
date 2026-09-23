@@ -73,6 +73,21 @@ const COMMON_WORDS = new Set([
   "και", "να", "σε", "το", "η", "ο", "μου", "σου", "δεν", "με", "για", "что", "и", "в", "не", "я", "ты", "на", "с", "мне", "тебя",
 ]);
 
+const SQUARE_BRACKET_TAG_PATTERN = /\[[^\]\r\n]*\]/g;
+
+/** Square-bracket content is PromptBeats/Suno/Udio metadata, never sung lyric content. */
+export function stripLyricsReviewTags(text: string) {
+  return text.replace(SQUARE_BRACKET_TAG_PATTERN, " ");
+}
+
+export function extractLyricsReviewTags(text: string) {
+  return text.match(SQUARE_BRACKET_TAG_PATTERN) ?? [];
+}
+
+export function lyricsReviewTagsPreserved(original: string, candidate: string) {
+  return JSON.stringify(extractLyricsReviewTags(original)) === JSON.stringify(extractLyricsReviewTags(candidate));
+}
+
 function stripDiacritics(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -85,14 +100,14 @@ function normalizeWord(value: string) {
 }
 
 function lyricWords(text: string) {
-  return text.match(/[\p{L}\p{N}]+(?:[’'-][\p{L}\p{N}]+)*/gu) ?? [];
+  return stripLyricsReviewTags(text).match(/[\p{L}\p{N}]+(?:[’'-][\p{L}\p{N}]+)*/gu) ?? [];
 }
 
 function lyricalLines(text: string) {
   return text
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !/^\[[^\]]+\]$/.test(line));
+    .map((line) => stripLyricsReviewTags(line).trim())
+    .filter(Boolean);
 }
 
 export function lyricsReviewLanguageFromCanonical(value: string | null | undefined): LyricsReviewLanguageCode | null {
@@ -103,7 +118,7 @@ export function lyricsReviewLanguageFromCanonical(value: string | null | undefin
 }
 
 export function detectLyricsLanguage(text: string): LyricsLanguageDetection {
-  const sample = text.replace(/^\s*\[[^\]]+\]\s*$/gm, " ").slice(0, 12000);
+  const sample = stripLyricsReviewTags(text).slice(0, 12000);
   const letters = sample.match(/\p{L}/gu) ?? [];
   if (!letters.length) return { code: null, confidence: "low" };
 
