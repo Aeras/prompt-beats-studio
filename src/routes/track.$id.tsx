@@ -126,7 +126,6 @@ function TrackPage() {
         {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("common.loading")}</p>}
         {!isLoading && !track && (
           <div className="glass rounded-2xl p-8 text-center">
-            {data?.unavailableReason === "private" && data.privateTitle && <h1 className="font-display text-xl font-bold">{data.privateTitle}</h1>}
             <p className={data?.unavailableReason === "private" ? "mt-3 text-sm text-muted-foreground" : "text-sm text-muted-foreground"}>
               {data?.unavailableReason === "private"
                 ? (language === "el" ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό." : "The creator made this track private.")
