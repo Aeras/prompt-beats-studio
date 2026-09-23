@@ -87,4 +87,15 @@ describe("Inspiration Wall Phase 2 UI", () => {
     expect(code).toContain('artistic ? "overflow-auto sm:min-h-[760px]"');
     expect(code).toContain("min-w-[900px] sm:min-w-full");
   });
+
+  test("uses an in-product New Wall dialog and a compact Add Card fast menu", async () => {
+    const code = await source("src/routes/inspiration-wall.tsx");
+    expect(code).not.toContain("window.prompt(");
+    expect(code).toContain('role="dialog"');
+    expect(code).toContain("newWallDescription");
+    expect(code).toContain("newWallTheme");
+    expect(code).toContain('aria-haspopup="menu"');
+    expect(code).toContain('role="menu"');
+    expect(code).toContain('role="menuitem"');
+  });
 });
