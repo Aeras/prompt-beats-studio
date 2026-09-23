@@ -47,6 +47,7 @@ jobs:
             s = s.replace(old, new)
           p.write_text(s)
           PY
+          bunx prettier --write src/lib/inspiration-wall.functions.ts
       - name: Verify tests
         run: bun test src/lib/inspiration-wall.test.ts src/lib/feature-access-v2.test.ts
       - name: Verify lint
