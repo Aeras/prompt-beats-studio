@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Play, Pause } from "lucide-react";
+import { Check, Copy, MessageSquareText, Play, Pause } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
 import { getPublicTrackById } from "@/lib/tracks.functions";
@@ -13,11 +13,14 @@ import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { TrackModerationControls } from "@/components/promptbeats/TrackModerationControls";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { PrivateReviewManager } from "@/components/promptbeats/PrivateReviewManager";
 import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { ShareTrackButton } from "@/components/promptbeats/ShareTrackButton";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 export const Route = createFileRoute("/track/$id")({
   head: () => ({
@@ -56,12 +59,15 @@ function formatDate(value: string | null) {
 
 function TrackPage() {
   const { t, language } = useI18n();
+  const { user } = useAuth();
+  const privateReviewAccess = useFeatureAccess("private_review_links");
   const { id } = Route.useParams();
   const { data, isLoading } = useQuery({ queryKey: ["public-track", id], queryFn: () => getPublicTrackById({ data: { id } }) });
   const queryClient = useQueryClient();
   const { play, current, playing } = usePlayer();
   const prompt = useCopy();
   const lyrics = useCopy();
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const track = data?.track ?? null;
   const [playCount, setPlayCount] = useState(() => track?.plays ?? 0);
@@ -72,6 +78,7 @@ function TrackPage() {
   const embedUrl = getTrackEmbedUrl(track?.source_type, track?.source_id);
   const canUseNativePlayer = canUseNativeTrackPlayer(track?.source_type);
   const artwork = track?.cover_url ?? (artist ? getUserAvatarUrl(artist.avatar_url) : artFallback);
+  const canOpenSongReview = Boolean(track && user && track.user_id === user.id && track.source_type === "upload" && privateReviewAccess.allowed);
 
   useEffect(() => { if (track) setPlayCount(track.plays ?? 0); }, [track?.id, track?.plays]);
 
@@ -163,6 +170,7 @@ function TrackPage() {
                     {current?.id === track.id && playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     {current?.id === track.id && playing ? t("trackDetail.pause") : t("trackDetail.playTrack")}
                   </button>}
+                  {canOpenSongReview && <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/15"><MessageSquareText className="h-4 w-4" />Private Review</button>}
                   <ShareTrackButton
                     trackId={track.id}
                     ownerId={track.user_id}
@@ -226,6 +234,7 @@ function TrackPage() {
               <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm leading-relaxed text-muted-foreground">{track.lyrics}</pre>
             </section>}
           </div>
+          {reviewOpen && <PrivateReviewManager initialTrackId={track.id} projectName={track.title} language={language} onClose={() => setReviewOpen(false)} />}
         </>}
       </div>
     </div>
