@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, ChevronDown, ChevronUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUniverseInspirationPanel";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import {
@@ -481,6 +482,8 @@ function UniverseEditor({
       </div>
 
       <UniverseAiPanel universe={universe} projects={projects} onRefresh={refresh} />
+
+      <SongUniverseInspirationPanel universeId={universe.id} />
 
       <div className="glass rounded-2xl p-5">
         <h2 className="font-display text-lg font-bold">

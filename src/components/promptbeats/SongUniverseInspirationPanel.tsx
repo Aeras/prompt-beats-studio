@@ -41,7 +41,10 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
               : "Optionally link an Inspiration Wall to the overall creative world. Project Walls remain independent."}
           </p>
         </div>
-        <Link to="/inspiration-wall" className="rounded-xl border border-white/10 px-3 py-2 text-xs text-accent">
+        <Link
+          to="/inspiration-wall"
+          className="rounded-xl border border-white/10 px-3 py-2 text-xs text-accent"
+        >
           {el ? "Άνοιγμα Inspiration Wall" : "Open Inspiration Wall"}
         </Link>
       </div>
@@ -49,10 +52,17 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
       {linked.length > 0 && (
         <div className="mt-4 space-y-2">
           {linked.map((wall) => (
-            <div key={wall.id} className="flex items-center gap-3 rounded-xl border border-accent/20 bg-accent/[0.05] p-3">
+            <div
+              key={wall.id}
+              className="flex items-center gap-3 rounded-xl border border-accent/20 bg-accent/[0.05] p-3"
+            >
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium">{wall.title}</div>
-                {wall.description && <div className="mt-1 truncate text-xs text-muted-foreground">{wall.description}</div>}
+                {wall.description && (
+                  <div className="mt-1 truncate text-xs text-muted-foreground">
+                    {wall.description}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -97,7 +107,9 @@ export function SongUniverseInspirationPanel({ universeId }: { universeId: strin
 
       {!walls.isLoading && linked.length === 0 && available.length === 0 && (
         <p className="mt-4 text-xs text-muted-foreground">
-          {el ? "Δεν υπάρχει διαθέσιμο Inspiration Wall ακόμη." : "No Inspiration Wall is available yet."}
+          {el
+            ? "Δεν υπάρχει διαθέσιμο Inspiration Wall ακόμη."
+            : "No Inspiration Wall is available yet."}
         </p>
       )}
     </div>
