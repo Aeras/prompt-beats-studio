@@ -5,6 +5,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const idsSchema = z.array(z.string().uuid()).min(1).max(50);
 
+type LinkableTrack = {
+  id: string;
+  title: string;
+  duration_seconds: number | null;
+  cover_url: string | null;
+  is_published: boolean;
+  linked: boolean;
+};
+
 async function assertOwnedProjectVersion(
   supabase: any,
   userId: string,
@@ -129,16 +138,16 @@ export const listLinkableProjectTracks = createServerFn({ method: "POST" })
     const { data: tracks, error } = await query;
     if (error) throw new Error(error.message);
 
-    return {
-      tracks: (tracks ?? []).map((track: any) => ({
-        id: track.id,
-        title: track.title,
-        duration_seconds: track.duration_seconds,
-        cover_url: track.cover_url ?? track.art_url ?? null,
-        is_published: track.is_published === true,
-        linked: linkedIds.has(track.id),
-      })),
-    };
+    const result: LinkableTrack[] = (tracks ?? []).map((track: any) => ({
+      id: track.id,
+      title: track.title,
+      duration_seconds: track.duration_seconds,
+      cover_url: track.cover_url ?? track.art_url ?? null,
+      is_published: track.is_published === true,
+      linked: linkedIds.has(track.id),
+    }));
+
+    return { tracks: result };
   });
 
 export const linkProjectVersionTracks = createServerFn({ method: "POST" })
