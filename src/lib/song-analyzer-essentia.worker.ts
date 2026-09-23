@@ -20,11 +20,11 @@ function std(values: number[], center = mean(values)) {
     : 0;
 }
 
-function toArray(value: any) {
-  if (!value) return [] as number[];
+function toArray(value: any): number[] {
+  if (!value) return [];
   if (Array.isArray(value)) return value.map(Number);
   try {
-    return essentia.vectorToArray(value).map(Number);
+    return essentia.vectorToArray(value).map(Number) as number[];
   } catch {
     const out: number[] = [];
     if (typeof value.size === "function" && typeof value.get === "function") {
