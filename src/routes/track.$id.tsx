@@ -70,6 +70,7 @@ function TrackPage() {
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const track = data?.track ?? null;
+  const unavailableReason = data?.unavailableReason ?? null;
   const [playCount, setPlayCount] = useState(() => track?.plays ?? 0);
   const artist = data?.artist ?? null;
   const artistName = artist?.artist_alias || artist?.display_name || artist?.handle || t("discover.creatorFallback");
@@ -126,8 +127,8 @@ function TrackPage() {
         {isLoading && <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("common.loading")}</p>}
         {!isLoading && !track && (
           <div className="glass rounded-2xl p-8 text-center">
-            <p className={data?.unavailableReason === "private" ? "mt-3 text-sm text-muted-foreground" : "text-sm text-muted-foreground"}>
-              {data?.unavailableReason === "private"
+            <p className={unavailableReason === "private" ? "mt-3 text-sm text-muted-foreground" : "text-sm text-muted-foreground"}>
+              {unavailableReason === "private"
                 ? (language === "el" ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό." : "The creator made this track private.")
                 : t("trackDetail.unavailable")}
             </p>
