@@ -1,13 +1,8 @@
 $ eslint .
 
-/home/runner/work/prompt-beats-studio/prompt-beats-studio/src/lib/ai-admission.server.ts
-  2:3  error  Replace `|·"song_setup_assistant"⏎··|·"ai_music_lab"⏎··|·"song_analyzer"⏎··|·"inspiration_wall"⏎·` with `"song_setup_assistant"·|·"ai_music_lab"·|·"song_analyzer"·|·"inspiration_wall"`  prettier/prettier
-
 /home/runner/work/prompt-beats-studio/prompt-beats-studio/src/routes/story-map.tsx
   368:6  warning  React Hook useEffect has missing dependencies: 'storyMap.concept', 'storyMap.desiredEnding', 'storyMap.emotionalDirection', 'storyMap.narrator', 'storyMap.pointOfView', 'storyMap.projectId', 'storyMap.theme', and 'storyMap.title'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
 
-✖ 2 problems (1 error, 1 warning)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
+✖ 1 problem (0 errors, 1 warning)
 
-error: script "lint" exited with code 1
-lint_exit=1
+lint_exit=0
