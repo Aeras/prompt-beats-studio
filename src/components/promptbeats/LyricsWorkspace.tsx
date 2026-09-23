@@ -26,6 +26,7 @@ import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import type { AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { StoryMapLyricsPanel } from "@/components/promptbeats/StoryMapLyricsPanel";
 
 const WORKSPACE_JOB_STORAGE_KEY = "pb:lyrics-workspace-job";
 
@@ -468,6 +469,24 @@ export function LyricsWorkspace({
         </p>
       )}
       {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+
+      <StoryMapLyricsPanel
+        projectId={projectId}
+        projectName={projectName}
+        songTitle={song.title}
+        lyrics={lyrics}
+        structure={sections.map((section) => section.displayLabel).join(" → ")}
+        model={model || null}
+        onPrepareRewrite={(sectionKey, suggestion) => {
+          if (locked.has(sectionKey)) return;
+          setEditingKey(sectionKey);
+          setAction("custom");
+          setCustomInstruction(suggestion);
+          setProposal(null);
+          setProposalChoice(0);
+          setAiError(null);
+        }}
+      />
 
       <div className="space-y-3">
         {sections.map((section) => {
