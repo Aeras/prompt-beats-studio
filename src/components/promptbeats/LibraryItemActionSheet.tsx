@@ -66,9 +66,9 @@ type Props = {
   canRename?: boolean;
   canDelete?: boolean;
   onMove: () => void;
-  onDuplicate?: () => void;
-  onRename?: () => void;
-  onDelete?: () => void;
+  onDuplicate?: (() => void) | undefined;
+  onRename?: (() => void) | undefined;
+  onDelete?: (() => void) | undefined;
   onClose: () => void;
 };
 
