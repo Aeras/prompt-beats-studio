@@ -21,7 +21,9 @@ jobs:
         with:
           bun-version: latest
       - name: Apply targeted strict-type fixes
-        run: python scripts/fix-strict-type-errors.py
+        run: |
+          python scripts/fix-strict-type-errors.py || true
+          python scripts/fix-strict-type-errors-ai.py
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Verify strict TypeScript
