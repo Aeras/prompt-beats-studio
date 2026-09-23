@@ -25,6 +25,19 @@ type Props = {
   onRefresh: () => Promise<void>;
 };
 
+type ConnectionProject = {
+  id: string;
+  name: string;
+};
+
+type ConnectionTrack = {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  isPublished: boolean;
+  durationSeconds: number | null;
+};
+
 type FieldKey = keyof InspirationWallCreativeDirection;
 
 const FIELD_META: Array<{
@@ -36,14 +49,34 @@ const FIELD_META: Array<{
   { key: "coreTheme", en: "Core Theme", el: "Κεντρικό Θέμα", array: false },
   { key: "moodPalette", en: "Emotional / Mood Palette", el: "Συναισθηματική Παλέτα", array: true },
   { key: "visualLanguage", en: "Visual Language", el: "Οπτική Γλώσσα", array: true },
-  { key: "narrativeAngle", en: "Possible Narrative Angle", el: "Πιθανή Αφηγηματική Κατεύθυνση", array: false },
+  {
+    key: "narrativeAngle",
+    en: "Possible Narrative Angle",
+    el: "Πιθανή Αφηγηματική Κατεύθυνση",
+    array: false,
+  },
   { key: "musicalCharacter", en: "Musical Character", el: "Μουσικός Χαρακτήρας", array: false },
   { key: "productionTexture", en: "Production Texture", el: "Υφή Παραγωγής", array: false },
   { key: "vocalPersonality", en: "Vocal Personality", el: "Φωνητική Προσωπικότητα", array: false },
-  { key: "lyricalKeywords", en: "Lyrical Keywords / Motifs", el: "Λυρικές Λέξεις / Μοτίβα", array: true },
+  {
+    key: "lyricalKeywords",
+    en: "Lyrical Keywords / Motifs",
+    el: "Λυρικές Λέξεις / Μοτίβα",
+    array: true,
+  },
   { key: "thingsToAvoid", en: "Things to Avoid", el: "Τι να Αποφευχθεί", array: true },
-  { key: "contradictions", en: "Contradictions / Tensions", el: "Αντιφάσεις / Εντάσεις", array: true },
-  { key: "openQuestions", en: "Open Questions / Uncertainties", el: "Ανοιχτά Ερωτήματα / Αβεβαιότητες", array: true },
+  {
+    key: "contradictions",
+    en: "Contradictions / Tensions",
+    el: "Αντιφάσεις / Εντάσεις",
+    array: true,
+  },
+  {
+    key: "openQuestions",
+    en: "Open Questions / Uncertainties",
+    el: "Ανοιχτά Ερωτήματα / Αβεβαιότητες",
+    array: true,
+  },
 ];
 
 function valueToText(value: unknown) {
@@ -64,8 +97,11 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
   const [direction, setDirection] = useState<InspirationWallCreativeDirection>(
     wall.creative_direction ?? {},
   );
-  const [kept, setKept] = useState<Record<FieldKey, boolean>>(() =>
-    Object.fromEntries(FIELD_META.map((field) => [field.key, wall.creative_direction?.[field.key] !== undefined])) as Record<FieldKey, boolean>,
+  const [kept, setKept] = useState<Record<FieldKey, boolean>>(
+    () =>
+      Object.fromEntries(
+        FIELD_META.map((field) => [field.key, wall.creative_direction?.[field.key] !== undefined]),
+      ) as Record<FieldKey, boolean>,
   );
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -100,12 +136,17 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
       const result = await extractInspirationWallCreativeDirection({ data: { wallId: wall.id } });
       setDirection(result.direction);
       setKept(
-        Object.fromEntries(FIELD_META.map((field) => [field.key, true])) as Record<FieldKey, boolean>,
+        Object.fromEntries(FIELD_META.map((field) => [field.key, true])) as Record<
+          FieldKey,
+          boolean
+        >,
       );
       setModelLabel(result.modelLabel);
       await onRefresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : el ? "Η εξαγωγή απέτυχε." : "Extraction failed.");
+      setError(
+        cause instanceof Error ? cause.message : el ? "Η εξαγωγή απέτυχε." : "Extraction failed.",
+      );
     } finally {
       setExtracting(false);
     }
@@ -128,7 +169,9 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
       await updateInspirationWall({ data: { wallId: wall.id, creativeDirection: approved } });
       await onRefresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : el ? "Η αποθήκευση απέτυχε." : "Save failed.");
+      setError(
+        cause instanceof Error ? cause.message : el ? "Η αποθήκευση απέτυχε." : "Save failed.",
+      );
     } finally {
       setSaving(false);
     }
@@ -168,7 +211,10 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
 
   return (
     <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="glass rounded-3xl p-4 sm:p-5" aria-labelledby={`creative-direction-${wall.id}`}>
+      <section
+        className="glass rounded-3xl p-4 sm:p-5"
+        aria-labelledby={`creative-direction-${wall.id}`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-accent">
@@ -177,7 +223,10 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                 {el ? "Creative Direction" : "Creative Direction"}
               </span>
             </div>
-            <h3 id={`creative-direction-${wall.id}`} className="mt-1 font-display text-lg font-bold">
+            <h3
+              id={`creative-direction-${wall.id}`}
+              className="mt-1 font-display text-lg font-bold"
+            >
               {el ? "Εξαγωγή δημιουργικής κατεύθυνσης" : "Extract creative direction"}
             </h3>
             <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
@@ -197,13 +246,20 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
             disabled={extracting}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {extracting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
             {el ? "Extract Creative Direction" : "Extract Creative Direction"}
           </button>
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+          <p
+            role="alert"
+            className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300"
+          >
             {error}
           </p>
         )}
@@ -216,7 +272,9 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                 key={field.key}
                 className={cn(
                   "rounded-2xl border p-3",
-                  kept[field.key] ? "border-white/10 bg-black/15" : "border-white/5 bg-black/5 opacity-55",
+                  kept[field.key]
+                    ? "border-white/10 bg-black/15"
+                    : "border-white/5 bg-black/5 opacity-55",
                 )}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -246,7 +304,9 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                     }))
                   }
                   className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:cursor-not-allowed"
-                  placeholder={field.array ? (el ? "Ένα στοιχείο ανά γραμμή" : "One item per line") : ""}
+                  placeholder={
+                    field.array ? (el ? "Ένα στοιχείο ανά γραμμή" : "One item per line") : ""
+                  }
                 />
               </div>
             );
@@ -286,7 +346,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
             className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-accent/50"
           >
             <option value="">{el ? "Χωρίς Project" : "No Project"}</option>
-            {(options.data?.projects ?? []).map((project) => (
+            {(options.data?.projects ?? []).map((project: ConnectionProject) => (
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
@@ -317,7 +377,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                 {el ? "Φόρτωση…" : "Loading…"}
               </div>
             )}
-            {(options.data?.tracks ?? []).map((track) => {
+            {(options.data?.tracks ?? []).map((track: ConnectionTrack) => {
               const linked = linkedIds.has(track.id);
               return (
                 <button
@@ -334,7 +394,12 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
                     {track.coverUrl ? (
-                      <img src={track.coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <img
+                        src={track.coverUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
                       <Music2 className="h-4 w-4 text-accent" />
                     )}
@@ -345,13 +410,19 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
                       {track.isPublished ? (el ? "Public" : "Public") : el ? "Private" : "Private"}
                     </span>
                   </span>
-                  {linked ? <Unlink className="h-4 w-4 text-accent" /> : <Link2 className="h-4 w-4 opacity-60" />}
+                  {linked ? (
+                    <Unlink className="h-4 w-4 text-accent" />
+                  ) : (
+                    <Link2 className="h-4 w-4 opacity-60" />
+                  )}
                 </button>
               );
             })}
             {!options.isLoading && (options.data?.tracks ?? []).length === 0 && (
               <p className="p-3 text-center text-xs text-muted-foreground">
-                {el ? "Δεν βρέθηκαν διαθέσιμα uploaded tracks." : "No eligible uploaded tracks found."}
+                {el
+                  ? "Δεν βρέθηκαν διαθέσιμα uploaded tracks."
+                  : "No eligible uploaded tracks found."}
               </p>
             )}
           </div>

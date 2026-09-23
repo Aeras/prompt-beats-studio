@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { InspirationWallDirectionPanel } from "@/components/promptbeats/InspirationWallDirectionPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
@@ -278,6 +279,7 @@ function InspirationWallPage() {
               <WallWorkspace
                 wall={wall.data.wall}
                 cards={wall.data.cards}
+                trackLinks={wall.data.trackLinks}
                 language={language}
                 userId={user!.id}
                 onRefresh={() => refresh(selectedWallId)}
@@ -422,6 +424,7 @@ function InspirationWallPage() {
 function WallWorkspace({
   wall,
   cards,
+  trackLinks,
   language,
   userId,
   onRefresh,
@@ -429,6 +432,7 @@ function WallWorkspace({
 }: {
   wall: Awaited<ReturnType<typeof getInspirationWall>>["wall"];
   cards: InspirationWallCardRecord[];
+  trackLinks: Awaited<ReturnType<typeof getInspirationWall>>["trackLinks"];
   language: "en" | "el";
   userId: string;
   onRefresh: () => Promise<void>;
@@ -590,6 +594,13 @@ function WallWorkspace({
           </div>
         </div>
       </div>
+
+      <InspirationWallDirectionPanel
+        wall={wall}
+        trackLinks={trackLinks}
+        language={language}
+        onRefresh={onRefresh}
+      />
 
       <div
         className={cn(

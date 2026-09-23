@@ -141,7 +141,9 @@ function cardPriority(card: {
 export const listInspirationWallConnectionOptions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ wallId: wallIdSchema, search: z.string().trim().max(120).optional().default("") }).parse(input),
+    z
+      .object({ wallId: wallIdSchema, search: z.string().trim().max(120).optional().default("") })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");
@@ -251,7 +253,9 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
           data: bytes.toString("base64"),
         },
       });
-      parts.push({ text: `Image context for card ${card.id}. Interpret only under the image rules.` });
+      parts.push({
+        text: `Image context for card ${card.id}. Interpret only under the image rules.`,
+      });
     }
 
     const selected = await resolveMultimodalModel(context.userId);
@@ -282,7 +286,9 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
       const payload = (await response.json()) as any;
       usage = normalizedGeminiUsage(payload);
       if (!response.ok) {
-        throw new Error(payload?.error?.message || `Creative Direction extraction failed (${response.status}).`);
+        throw new Error(
+          payload?.error?.message || `Creative Direction extraction failed (${response.status}).`,
+        );
       }
       const candidate = payload?.candidates?.[0];
       const finishReason = candidate?.finishReason ?? null;
