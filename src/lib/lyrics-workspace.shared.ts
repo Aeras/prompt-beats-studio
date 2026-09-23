@@ -34,6 +34,7 @@ export function resolveLyricsWorkspaceLanguage(
 
 export const lyricsSectionEditRequestSchema = z.object({
   idempotencyKey: z.string().uuid(),
+  feature: z.enum(["lyrics_workspace", "lyrics_review"]).default("lyrics_workspace"),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   fullLyrics: z.string().min(1).max(12000),
   sectionKey: z.string().trim().min(1).max(120),
