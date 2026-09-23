@@ -1,0 +1,63 @@
+src/components/promptbeats/StoryMapLyricsPanel.tsx(105,19): error TS18046: 'result' is of type 'unknown'.
+src/lib/story-map-ai.functions.ts(275,55): error TS2379: Argument of type '{ userId: string; requestedModel: string | null | undefined; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: "story_map_genera...' is not assignable to parameter of type '{ userId: string; requestedModel?: string | null; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: AiOperation; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'requestedModel' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/lib/story-map-ai.functions.ts(326,55): error TS2379: Argument of type '{ userId: string; requestedModel: string | null | undefined; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: "story_driven_pla...' is not assignable to parameter of type '{ userId: string; requestedModel?: string | null; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: AiOperation; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'requestedModel' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/lib/story-map-ai.functions.ts(365,55): error TS2379: Argument of type '{ userId: string; requestedModel: string | null | undefined; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: "story_map_from_l...' is not assignable to parameter of type '{ userId: string; requestedModel?: string | null; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { resolution: string; summary: string; progressionType: "emotional" | ... 4 more ... | "minimal"; ... 5 more ...; beats: { ...; }[]; }; operation: AiOperation; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'requestedModel' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/lib/story-map-ai.functions.ts(394,12): error TS2345: Argument of type '({ data, context }: ServerFnCtx<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ......' is not assignable to parameter of type 'ServerFn<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { account_storage_cleanup: { Row: { attempt_count: number; bucket: string | null; ... 7 more ...; storage_kind: string; }; Insert: { ...; }; Update: { ...; }; ...'.
+  Type 'Promise<{ analysis: unknown; model: string; provider: string; modelLabel: string; }>' is not assignable to type 'Promise<ValidateSerializableMapped<{ analysis: unknown; model: string; provider: string; modelLabel: string; }, RegisteredSerializableInput<Register>>>'.
+    Type '{ analysis: unknown; model: string; provider: string; modelLabel: string; }' is not assignable to type 'ValidateSerializableMapped<{ analysis: unknown; model: string; provider: string; modelLabel: string; }, RegisteredSerializableInput<Register>>'.
+      Types of property 'analysis' are incompatible.
+        Type 'unknown' is not assignable to type 'SerializationError<"Type may not be serializable">'.
+src/lib/story-map-ai.functions.ts(429,40): error TS2379: Argument of type '{ userId: string; requestedModel: string | null | undefined; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => { overall: string; observations: { category: "other" | ... 12 more ... | "timeline_confusion"; sectionLabel: string | null; evidence: string; suggestion: string; }[...' is not assignable to parameter of type '{ userId: string; requestedModel?: string | null; system: string; prompt: string; schema: Record<string, unknown>; parse: (value: unknown) => unknown; operation: AiOperation; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'requestedModel' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/lib/story-map.functions.ts(70,13): error TS4111: Property 'id' comes from an index signature, so it must be accessed with ['id'].
+src/lib/story-map.functions.ts(71,19): error TS4111: Property 'position' comes from an index signature, so it must be accessed with ['position'].
+src/lib/story-map.functions.ts(72,16): error TS4111: Property 'title' comes from an index signature, so it must be accessed with ['title'].
+src/lib/story-map.functions.ts(73,22): error TS4111: Property 'what_happens' comes from an index signature, so it must be accessed with ['what_happens'].
+src/lib/story-map.functions.ts(74,18): error TS4111: Property 'emotion' comes from an index signature, so it must be accessed with ['emotion'].
+src/lib/story-map.functions.ts(75,18): error TS4111: Property 'purpose' comes from an index signature, so it must be accessed with ['purpose'].
+src/lib/story-map.functions.ts(76,24): error TS4111: Property 'narrator_state' comes from an index signature, so it must be accessed with ['narrator_state'].
+src/lib/story-map.functions.ts(77,19): error TS4111: Property 'key_image' comes from an index signature, so it must be accessed with ['key_image'].
+src/lib/story-map.functions.ts(78,17): error TS4111: Property 'reveal' comes from an index signature, so it must be accessed with ['reveal'].
+src/lib/story-map.functions.ts(79,26): error TS4111: Property 'change_after_beat' comes from an index signature, so it must be accessed with ['change_after_beat'].
+src/lib/story-map.functions.ts(80,22): error TS4111: Property 'lyric_anchor' comes from an index signature, so it must be accessed with ['lyric_anchor'].
+src/lib/story-map.functions.ts(81,42): error TS4111: Property 'suggested_sections' comes from an index signature, so it must be accessed with ['suggested_sections'].
+src/lib/story-map.functions.ts(81,68): error TS4111: Property 'suggested_sections' comes from an index signature, so it must be accessed with ['suggested_sections'].
+src/lib/story-map.functions.ts(82,20): error TS4111: Property 'is_key_beat' comes from an index signature, so it must be accessed with ['is_key_beat'].
+src/lib/story-map.functions.ts(88,13): error TS4111: Property 'id' comes from an index signature, so it must be accessed with ['id'].
+src/lib/story-map.functions.ts(89,17): error TS4111: Property 'user_id' comes from an index signature, so it must be accessed with ['user_id'].
+src/lib/story-map.functions.ts(90,16): error TS4111: Property 'title' comes from an index signature, so it must be accessed with ['title'].
+src/lib/story-map.functions.ts(91,18): error TS4111: Property 'concept' comes from an index signature, so it must be accessed with ['concept'].
+src/lib/story-map.functions.ts(92,16): error TS4111: Property 'theme' comes from an index signature, so it must be accessed with ['theme'].
+src/lib/story-map.functions.ts(93,29): error TS4111: Property 'emotional_direction' comes from an index signature, so it must be accessed with ['emotional_direction'].
+src/lib/story-map.functions.ts(94,19): error TS4111: Property 'narrator' comes from an index signature, so it must be accessed with ['narrator'].
+src/lib/story-map.functions.ts(95,22): error TS4111: Property 'point_of_view' comes from an index signature, so it must be accessed with ['point_of_view'].
+src/lib/story-map.functions.ts(96,24): error TS4111: Property 'desired_ending' comes from an index signature, so it must be accessed with ['desired_ending'].
+src/lib/story-map.functions.ts(97,26): error TS4111: Property 'progression_type' comes from an index signature, so it must be accessed with ['progression_type'].
+src/lib/story-map.functions.ts(98,18): error TS4111: Property 'summary' comes from an index signature, so it must be accessed with ['summary'].
+src/lib/story-map.functions.ts(99,24): error TS4111: Property 'starting_state' comes from an index signature, so it must be accessed with ['starting_state'].
+src/lib/story-map.functions.ts(100,24): error TS4111: Property 'central_change' comes from an index signature, so it must be accessed with ['central_change'].
+src/lib/story-map.functions.ts(101,23): error TS4111: Property 'turning_point' comes from an index signature, so it must be accessed with ['turning_point'].
+src/lib/story-map.functions.ts(102,21): error TS4111: Property 'resolution' comes from an index signature, so it must be accessed with ['resolution'].
+src/lib/story-map.functions.ts(103,20): error TS4111: Property 'project_id' comes from an index signature, so it must be accessed with ['project_id'].
+src/lib/story-map.functions.ts(104,33): error TS4111: Property 'source_project_version_id' comes from an index signature, so it must be accessed with ['source_project_version_id'].
+src/lib/story-map.functions.ts(105,32): error TS4111: Property 'source_lyrics_updated_at' comes from an index signature, so it must be accessed with ['source_lyrics_updated_at'].
+src/lib/story-map.functions.ts(106,20): error TS4111: Property 'created_at' comes from an index signature, so it must be accessed with ['created_at'].
+src/lib/story-map.functions.ts(107,20): error TS4111: Property 'updated_at' comes from an index signature, so it must be accessed with ['updated_at'].
+src/routes/story-map.tsx(191,55): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/story-map.tsx(459,6): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/story-map.tsx(459,18): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/story-map.tsx(548,53): error TS7006: Parameter 'p' implicitly has an 'any' type.
+tsc_exit=2
