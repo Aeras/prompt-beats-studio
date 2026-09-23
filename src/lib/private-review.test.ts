@@ -131,4 +131,13 @@ describe("Private Review Links Phase 1", () => {
     expect(sql).toContain("moderation_status = 'active'");
     expect(sql).toContain("audio_url IS NOT NULL");
   });
+
+  test("owned uploaded song page exposes direct Private Review entry into the same manager", async () => {
+    const trackRoute = await source("src/routes/track.$id.tsx");
+    expect(trackRoute).toContain('useFeatureAccess("private_review_links")');
+    expect(trackRoute).toContain('track.source_type === "upload"');
+    expect(trackRoute).toContain("track.user_id === user.id");
+    expect(trackRoute).toContain("Private Review");
+    expect(trackRoute).toContain("<PrivateReviewManager initialTrackId={track.id}");
+  });
 });
