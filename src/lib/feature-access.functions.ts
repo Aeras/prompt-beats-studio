@@ -12,6 +12,7 @@ export const FEATURE_KEYS = [
   "lyrics_review",
   "smart_presets",
   "song_setup_assistant",
+  "inspiration_wall",
   "export_center",
   "track_uploads",
   "sharing_public_links",
