@@ -11,8 +11,6 @@ const generatorResultSchema = z.object({
   note: z.string(),
 });
 
-const qualityStateSchema = z.unknown().nullable();
-
 export const lyricsReviewGeneratorHandoffSchema = z.object({
   schemaVersion: z.literal(1),
   id: z.string().uuid(),
@@ -22,9 +20,14 @@ export const lyricsReviewGeneratorHandoffSchema = z.object({
   result: generatorResultSchema,
   authoritativeLanguage: z.string().trim().min(1).max(80),
   generatorState: z.object({
-    quality: qualityStateSchema,
+    quality: z.unknown().nullable(),
+    songContext: z.unknown().nullable(),
     generationId: z.string().uuid().nullable(),
+    generationModel: z.string(),
+    generationModelChosen: z.boolean(),
     generationResultModel: z.string().nullable(),
+    qualityCheckModel: z.string(),
+    qualityCheckModelChosen: z.boolean(),
     qualityCheckResultModel: z.string().nullable(),
     saved: z.boolean(),
     open: z.object({
@@ -33,6 +36,8 @@ export const lyricsReviewGeneratorHandoffSchema = z.object({
       lyrics: z.boolean(),
       note: z.boolean(),
     }),
+    applied: z.record(z.string(), z.boolean()),
+    applyErrors: z.record(z.string(), z.string()),
     revisionMode: z.boolean(),
     revisionProjectId: z.string(),
     revisionBasePromptId: z.string(),
