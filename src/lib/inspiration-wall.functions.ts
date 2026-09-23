@@ -199,12 +199,13 @@ export const updateInspirationWall = createServerFn({ method: "POST" })
     }
 
     const changes: Record<string, unknown> = {};
-    if (data.title !== undefined) changes.title = data.title;
-    if (data.description !== undefined) changes.description = data.description;
-    if (data.selectedTheme !== undefined) changes.selected_theme = data.selectedTheme;
+    if (data.title !== undefined) changes["title"] = data.title;
+    if (data.description !== undefined) changes["description"] = data.description;
+    if (data.selectedTheme !== undefined) changes["selected_theme"] = data.selectedTheme;
     if (data.connectedProjectId !== undefined)
-      changes.connected_project_id = data.connectedProjectId;
-    if (data.creativeDirection !== undefined) changes.creative_direction = data.creativeDirection;
+      changes["connected_project_id"] = data.connectedProjectId;
+    if (data.creativeDirection !== undefined)
+      changes["creative_direction"] = data.creativeDirection;
 
     const { data: wall, error } = await supabase
       .from("inspiration_walls")
@@ -284,15 +285,15 @@ export const updateInspirationWallCard = createServerFn({ method: "POST" })
     await requireWallAccess(supabase, existing.wall_id, context.userId);
 
     const changes: Record<string, unknown> = {};
-    if (data.type !== undefined) changes.type = data.type;
-    if (data.title !== undefined) changes.title = data.title;
-    if (data.body !== undefined) changes.body = data.body;
-    if (data.colorValue !== undefined) changes.color_value = data.colorValue;
-    if (data.imageObjectKey !== undefined) changes.image_object_key = data.imageObjectKey;
-    if (data.isPinned !== undefined) changes.is_pinned = data.isPinned;
-    if (data.sortOrder !== undefined) changes.sort_order = data.sortOrder;
-    if (data.artisticLayout !== undefined) changes.artistic_layout = data.artisticLayout;
-    if (data.structuredLayout !== undefined) changes.structured_layout = data.structuredLayout;
+    if (data.type !== undefined) changes["type"] = data.type;
+    if (data.title !== undefined) changes["title"] = data.title;
+    if (data.body !== undefined) changes["body"] = data.body;
+    if (data.colorValue !== undefined) changes["color_value"] = data.colorValue;
+    if (data.imageObjectKey !== undefined) changes["image_object_key"] = data.imageObjectKey;
+    if (data.isPinned !== undefined) changes["is_pinned"] = data.isPinned;
+    if (data.sortOrder !== undefined) changes["sort_order"] = data.sortOrder;
+    if (data.artisticLayout !== undefined) changes["artistic_layout"] = data.artisticLayout;
+    if (data.structuredLayout !== undefined) changes["structured_layout"] = data.structuredLayout;
 
     const { data: card, error } = await supabase
       .from("inspiration_wall_cards")
