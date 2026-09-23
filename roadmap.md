@@ -15,3 +15,4 @@
 
 - Download-permission migration `supabase/migrations/20260917211800_edit_track_allow_download.sql` not applied — waiting on user approval, and it must run against whichever database the app ends up using.
 - Pre-existing type errors unrelated to this work (missing `bun:test` types for two test files, index-signature property access in `ModerationCaseThread.tsx`, exact-optional prop typing in `TrackCard.tsx`, discriminated-union narrowing in `LyricsWorkspace.tsx`) — offered as a separate cleanup, awaiting the user's word.
+- [x] Fresh strict TS diagnostic at GitHub main e70354d (read-only, report only)
