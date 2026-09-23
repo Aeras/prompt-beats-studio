@@ -1,0 +1,38 @@
+name: Temporary lint cleanup
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint report
+        run: |
+          bun run lint > lint.log 2>&1 || true
+          cat lint.log
+
+      - name: Upload lint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-lint-report
+          path: lint.log
+          retention-days: 1
