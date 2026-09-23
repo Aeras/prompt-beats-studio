@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import Essentia from "essentia.js/dist/essentia.js-core.es.js";
 import { EssentiaWASM } from "essentia.js/dist/essentia-wasm.es.js";
 
