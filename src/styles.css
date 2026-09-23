@@ -4,6 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Pecita";
+  src: url("/fonts/inspiration-wall/pecita/Pecita.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Caveat";
+  src: url("/fonts/inspiration-wall/caveat/Caveat[wght].ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -95,6 +109,14 @@
   }
 }
 
+.iw-artistic-title {
+  font-family: "Pecita", "Caveat", cursive;
+}
+
+.iw-artistic-body {
+  font-family: "Caveat", cursive;
+}
+
 @utility glass {
   background: var(--glass);
   backdrop-filter: blur(18px) saturate(150%);
@@ -173,8 +195,16 @@ button:not(:disabled):not([data-pb-no-press="true"]):active,
     height: 60vh;
     pointer-events: none;
     background:
-      radial-gradient(40% 60% at 20% 0%, color-mix(in oklab, var(--neon) 28%, transparent), transparent 70%),
-      radial-gradient(40% 60% at 80% 10%, color-mix(in oklab, var(--electric) 22%, transparent), transparent 70%);
+      radial-gradient(
+        40% 60% at 20% 0%,
+        color-mix(in oklab, var(--neon) 28%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        40% 60% at 80% 10%,
+        color-mix(in oklab, var(--electric) 22%, transparent),
+        transparent 70%
+      );
     filter: blur(30px);
     z-index: 0;
   }
@@ -211,8 +241,6 @@ iframe[src*="lovable" i] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-
-
 
 /* Mobile bottom-navigation contract: bottom sheets and drawers marked with
    data-pb-bottom-safe always stop above the persistent mobile nav. */

@@ -56,4 +56,35 @@ describe("Inspiration Wall Phase 2 UI", () => {
     );
     expect(mobileTabs).not.toContain('id: "inspirationWall"');
   });
+
+  test("artistic themes self-host canonical Pecita and Caveat fonts with OFL notices", async () => {
+    const styles = await source("src/styles.css");
+    expect(styles).toContain('font-family: "Pecita"');
+    expect(styles).toContain('font-family: "Caveat"');
+    expect(styles).toContain("/fonts/inspiration-wall/pecita/Pecita.otf");
+    expect(styles).toContain("/fonts/inspiration-wall/caveat/Caveat[wght].ttf");
+    const pecitaLicense = await source("public/fonts/inspiration-wall/pecita/OFL.txt");
+    const caveatLicense = await source("public/fonts/inspiration-wall/caveat/OFL.txt");
+    expect(pecitaLicense).toContain("SIL OPEN FONT LICENSE Version 1.1");
+    expect(caveatLicense).toContain("SIL OPEN FONT LICENSE Version 1.1");
+  });
+
+  test("artistic cards expose bounded rotation, size controls and theme-specific fasteners", async () => {
+    const code = await source("src/routes/inspiration-wall.tsx");
+    expect(code).toContain("Math.max(-8, Math.min(8, current + delta))");
+    expect(code).toContain('option value="small"');
+    expect(code).toContain('option value="medium"');
+    expect(code).toContain('option value="large"');
+    expect(code).toContain('theme === "whiteboard"');
+    expect(code).toContain("bg-sky-400");
+    expect(code).toContain("bg-red-700");
+  });
+
+  test("wall metadata is editable with debounced persistence and artistic mobile canvas scrolls", async () => {
+    const code = await source("src/routes/inspiration-wall.tsx");
+    expect(code).toContain("queueWallSave");
+    expect(code).toContain("Optional description");
+    expect(code).toContain('artistic ? "overflow-auto sm:min-h-[760px]"');
+    expect(code).toContain("min-w-[900px] sm:min-w-full");
+  });
 });

@@ -307,7 +307,29 @@ function WallWorkspace({
   onDeleteWall: () => Promise<void>;
 }) {
   const [adding, setAdding] = useState(false);
+  const [wallTitle, setWallTitle] = useState(wall.title);
+  const [wallDescription, setWallDescription] = useState(wall.description ?? "");
+  const wallSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const artistic = wall.selected_theme === "whiteboard" || wall.selected_theme === "corkboard";
+
+  useEffect(() => {
+    setWallTitle(wall.title);
+    setWallDescription(wall.description ?? "");
+  }, [wall.id, wall.title, wall.description]);
+
+  useEffect(
+    () => () => {
+      if (wallSaveTimer.current) clearTimeout(wallSaveTimer.current);
+    },
+    [],
+  );
+
+  const queueWallSave = (changes: { title?: string; description?: string }) => {
+    if (wallSaveTimer.current) clearTimeout(wallSaveTimer.current);
+    wallSaveTimer.current = setTimeout(() => {
+      void updateInspirationWall({ data: { wallId: wall.id, ...changes } });
+    }, 650);
+  };
 
   const changeTheme = async (theme: InspirationWallTheme) => {
     await updateInspirationWall({ data: { wallId: wall.id, selectedTheme: theme } });
@@ -345,11 +367,35 @@ function WallWorkspace({
     <div className="space-y-3">
       <div className="glass rounded-3xl p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate font-display text-xl font-bold sm:text-2xl">{wall.title}</h2>
-            {wall.description && (
-              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{wall.description}</p>
-            )}
+          <div className="min-w-0 flex-1">
+            <label className="sr-only" htmlFor={`wall-title-${wall.id}`}>
+              {language === "el" ? "Τίτλος Wall" : "Wall title"}
+            </label>
+            <input
+              id={`wall-title-${wall.id}`}
+              value={wallTitle}
+              onChange={(event) => {
+                setWallTitle(event.target.value);
+                const nextTitle = event.target.value.trim();
+                if (nextTitle) queueWallSave({ title: nextTitle });
+              }}
+              className="w-full bg-transparent font-display text-xl font-bold outline-none sm:text-2xl"
+              aria-label={language === "el" ? "Τίτλος Wall" : "Wall title"}
+            />
+            <label className="sr-only" htmlFor={`wall-description-${wall.id}`}>
+              {language === "el" ? "Περιγραφή Wall" : "Wall description"}
+            </label>
+            <textarea
+              id={`wall-description-${wall.id}`}
+              value={wallDescription}
+              onChange={(event) => {
+                setWallDescription(event.target.value);
+                queueWallSave({ description: event.target.value });
+              }}
+              rows={2}
+              className="mt-1 w-full max-w-3xl resize-none bg-transparent text-sm text-muted-foreground outline-none placeholder:text-muted-foreground/60"
+              placeholder={language === "el" ? "Προαιρετική περιγραφή…" : "Optional description…"}
+            />
           </div>
           <button
             type="button"
@@ -397,13 +443,13 @@ function WallWorkspace({
 
       <div
         className={cn(
-          "relative min-h-[68vh] overflow-hidden rounded-3xl border border-white/10 p-4 sm:p-6",
+          "relative min-h-[68vh] rounded-3xl border border-white/10 p-4 sm:p-6",
           themeSurface(wall.selected_theme),
-          artistic ? "sm:min-h-[760px]" : "",
+          artistic ? "overflow-auto sm:min-h-[760px]" : "overflow-hidden",
         )}
       >
         {artistic ? (
-          <div className="relative min-h-[720px] w-full touch-none">
+          <div className="relative min-h-[720px] min-w-[900px] sm:min-w-full">
             {cards.map((card) => (
               <WallCard
                 key={card.id}
@@ -474,6 +520,7 @@ function WallCard({
   const [color, setColor] = useState(card.color_value ?? "#7c3aed");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -538,6 +585,7 @@ function WallCard({
   const uploadImage = async (file: File | undefined) => {
     if (!file) return;
     setUploading(true);
+    setCardError(null);
     try {
       const optimized = await optimizeInspirationWallImage(file);
       if (optimized.size > MAX_INSPIRATION_WALL_IMAGE_BYTES) throw new Error("Image exceeds 4 MB.");
@@ -556,6 +604,8 @@ function WallCard({
       if (error) throw error;
       await updateInspirationWallCard({ data: { cardId: card.id, imageObjectKey: objectKey } });
       await onRefresh();
+    } catch (cause) {
+      setCardError(cause instanceof Error ? cause.message : "Could not upload image.");
     } finally {
       setUploading(false);
     }
@@ -594,6 +644,24 @@ function WallCard({
     });
   };
 
+  const changeArtisticLayout = async (
+    changes: Partial<InspirationWallCardRecord["artistic_layout"]>,
+  ) => {
+    await updateInspirationWallCard({
+      data: {
+        cardId: card.id,
+        artisticLayout: { ...card.artistic_layout, ...changes },
+      },
+    });
+    await onRefresh();
+  };
+
+  const rotate = (delta: number) => {
+    const current = card.artistic_layout.rotation ?? 0;
+    const next = Math.max(-8, Math.min(8, current + delta));
+    void changeArtisticLayout({ rotation: next });
+  };
+
   const style = artistic
     ? {
         left: position.x,
@@ -617,7 +685,7 @@ function WallCard({
       className={cn(
         "group rounded-2xl border border-black/10 p-3 shadow-xl",
         artistic
-          ? "absolute cursor-grab active:cursor-grabbing"
+          ? "absolute touch-none cursor-grab active:cursor-grabbing"
           : card.structured_layout.span === "wide" && "sm:col-span-2",
         cardSurface(theme, card.type),
       )}
@@ -628,6 +696,40 @@ function WallCard({
           {CARD_LABELS[card.type][language]}
         </span>
         <div className="ml-auto flex items-center gap-1">
+          {artistic && (
+            <>
+              <button
+                type="button"
+                onClick={() => rotate(-2)}
+                className="grid h-7 min-w-7 place-items-center rounded-lg px-1 text-xs hover:bg-black/10"
+                aria-label={language === "el" ? "Περιστροφή αριστερά" : "Rotate left"}
+              >
+                ↶
+              </button>
+              <button
+                type="button"
+                onClick={() => rotate(2)}
+                className="grid h-7 min-w-7 place-items-center rounded-lg px-1 text-xs hover:bg-black/10"
+                aria-label={language === "el" ? "Περιστροφή δεξιά" : "Rotate right"}
+              >
+                ↷
+              </button>
+              <select
+                value={card.artistic_layout.size ?? "medium"}
+                onChange={(event) =>
+                  void changeArtisticLayout({
+                    size: event.target.value as "small" | "medium" | "large",
+                  })
+                }
+                className="h-7 rounded-lg border border-current/15 bg-transparent px-1 text-[10px]"
+                aria-label={language === "el" ? "Μέγεθος κάρτας" : "Card size"}
+              >
+                <option value="small">S</option>
+                <option value="medium">M</option>
+                <option value="large">L</option>
+              </select>
+            </>
+          )}
           <button
             type="button"
             onClick={() => void togglePin()}
@@ -657,7 +759,10 @@ function WallCard({
           setTitle(event.target.value);
           queueSave({ title: event.target.value });
         }}
-        className="mt-2 w-full bg-transparent font-semibold outline-none placeholder:opacity-50"
+        className={cn(
+          "mt-2 w-full bg-transparent font-semibold outline-none placeholder:opacity-50",
+          artistic && "iw-artistic-title text-lg",
+        )}
         placeholder={language === "el" ? "Τίτλος" : "Title"}
       />
 
@@ -691,6 +796,11 @@ function WallCard({
               onChange={(event) => void uploadImage(event.target.files?.[0])}
             />
           </label>
+          {cardError && (
+            <p role="alert" className="mt-2 text-xs text-red-600">
+              {cardError}
+            </p>
+          )}
         </div>
       )}
 
@@ -715,17 +825,26 @@ function WallCard({
             queueSave({ body: event.target.value });
           }}
           rows={card.type === "word" ? 2 : 5}
-          className="mt-2 w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-50"
+          className={cn(
+            "mt-2 w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-50",
+            artistic && "iw-artistic-body text-base",
+          )}
           placeholder={language === "el" ? "Γράψε την έμπνευσή σου…" : "Capture your inspiration…"}
         />
       )}
 
-      {artistic && (
-        <div
-          className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-zinc-300 shadow-md"
-          aria-hidden="true"
-        />
-      )}
+      {artistic &&
+        (theme === "whiteboard" ? (
+          <div
+            className="pointer-events-none absolute -top-1.5 left-1/2 h-3 w-10 -translate-x-1/2 rounded-md bg-sky-400 shadow-md"
+            aria-hidden="true"
+          />
+        ) : (
+          <div
+            className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-red-700 shadow-md ring-2 ring-red-300/40"
+            aria-hidden="true"
+          />
+        ))}
     </article>
   );
 }
