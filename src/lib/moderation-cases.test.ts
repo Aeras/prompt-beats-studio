@@ -118,7 +118,7 @@ describe("Moderation Cases / Messages / Appeals V1", () => {
       "propose_moderation_case_appeal_decision",
       "finalize_moderation_case_appeal",
     ])
-      expect(fns).toContain(`rpc("${rpc}"`);
+      expect(fns).toMatch(new RegExp(`rpc\\(\\s*"${rpc}"`));
     expect(thread).toContain("PromptBeats Moderation");
     expect(thread).toContain("can_approve_initial");
     expect(thread).toContain("can_finalize_appeal");
