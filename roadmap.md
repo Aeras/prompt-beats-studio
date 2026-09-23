@@ -2,12 +2,12 @@
 
 ## Open
 
-- [ ] Complete the approved EN/EL Generator localization cleanup and focused validation.
 
 - [ ] Decide which database the app should run on. Enabling Cloud created a new, empty backend and made it the project's active one (0 tables, 0 accounts, 0 storage), so the app's real data is not reachable from it. Two ways forward: build on the new Cloud backend (apply the project's migrations there, then bring accounts/tracks/uploads across), or point the app back at the existing PromptBeats database (one settings action by the user, since no tool can re-bind the project's built-in backend). Not started: no schema created in the new backend, no data copied, nothing published.
 
 ## Done
 
+- [x] Completed the EN/EL Generator localization cleanup: translated confirmed leaked messages, localized known AI job failures, and added focused regression coverage.
 - [x] Cloud enabled for this project and connected; the hosted backend responds normally on all planes (auth, database, auth to database) and the preview serves pages with no backend-configuration errors in the server log.
 - [x] Repaired the collateral damage from enabling Cloud: the generated database type definitions had been overwritten with an empty schema (2591 lines to 155), which made every database call fail to compile; restored them byte-for-byte from the previous version, with no runtime, data or schema change.
 - [x] Read-only diagnosis of live promptbeats.app (slow "Checking account status…", app shows signed out, /auth email+password fails with the generic "Sign-in is unavailable" message): served build is current; the published bundle talks to the external PromptBeats project while the server side was bound elsewhere. No changes made at the time.
