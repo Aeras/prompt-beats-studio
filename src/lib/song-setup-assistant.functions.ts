@@ -17,7 +17,7 @@ export const SONG_SETUP_ASSISTANT_MODEL = "gemini-3.8-flash" as const;
 
 const setupInput = z.object({
   description: z.string().trim().min(10).max(2500),
-  targetPlatform: z.enum(AI_TARGET_PLATFORMS as [AITargetPlatform, ...AITargetPlatform[]]),
+  targetPlatform: z.enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]]),
 });
 
 export const songSetupDraftSchema = z.object({
