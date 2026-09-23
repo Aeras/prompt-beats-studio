@@ -364,7 +364,15 @@ export const searchLibraryScope = createServerFn({ method: "POST" })
       _query: data.query,
     });
     if (error) throw new Error(error.message);
-    return { results: results ?? [] };
+    return {
+      results: (results ?? []) as Array<{
+        item_type: "folder" | "project" | "prompt";
+        item_id: string;
+        folder_id: string | null;
+        name: string;
+        path: string;
+      }>,
+    };
   });
 
 
