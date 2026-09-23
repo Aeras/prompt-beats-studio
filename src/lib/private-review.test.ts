@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { privateReviewExpiryDate, privateReviewUrl } from "@/lib/private-review.shared";
+import { PRIVATE_REVIEW_SOURCE_TYPES, privateReviewExpiryDate, privateReviewUrl } from "@/lib/private-review.shared";
 
 const source = (path: string) => Bun.file(path).text();
+const trackSourceMigration = "supabase/migrations/20260923073000_private_review_track_source.sql";
 
 describe("Private Review Links Phase 1", () => {
   test("review URLs carry only an opaque token", () => {
@@ -10,6 +11,7 @@ describe("Private Review Links Phase 1", () => {
     expect(url).toBe("https://promptbeats.app/review/opaque-token");
     expect(url).not.toContain("lyrics=");
     expect(url).not.toContain("project=");
+    expect(url).not.toContain("track=");
   });
 
   test("expiry helper is bounded to seven days", () => {
@@ -41,7 +43,7 @@ describe("Private Review Links Phase 1", () => {
     expect(sql).toContain("RAISE EXCEPTION 'comment thread unavailable'");
   });
 
-  test("audio requires explicit linked-track selection", async () => {
+  test("audio requires explicit linked-track selection for Project reviews", async () => {
     const sql = await source("supabase/migrations/20260923054500_private_review_links_phase1.sql");
     expect(sql).toContain("selected audio is not linked to this version");
     expect(sql).toContain("_shared_track_id IS NOT NULL");
@@ -85,5 +87,48 @@ describe("Private Review Links Phase 1", () => {
     const sql = await source("supabase/migrations/20260923054500_private_review_links_phase1.sql");
     expect(sql).toContain("created_at > now() - interval '1 minute'");
     expect(sql).toContain("IF v_recent >= 10");
+  });
+
+  test("Private Review has one source model for Project Version or Song", async () => {
+    expect(PRIVATE_REVIEW_SOURCE_TYPES).toEqual(["project_version", "track"]);
+    const sql = await source(trackSourceMigration);
+    const manager = await source("src/components/promptbeats/PrivateReviewManager.tsx");
+    expect(sql).toContain("source_type text NOT NULL DEFAULT 'project_version'");
+    expect(sql).toContain("source_type = 'track'");
+    expect(sql).toContain("create_private_track_review_session");
+    expect(manager).toContain('chooseSource("project_version")');
+    expect(manager).toContain('chooseSource("track")');
+    expect(manager).toContain("Prompt / Project Version");
+    expect(manager).toContain("Song");
+  });
+
+  test("Song Review always shares audio and snapshots only explicitly selected Prompt/Lyrics", async () => {
+    const sql = await source(trackSourceMigration);
+    const server = await source("src/lib/private-review.functions.ts");
+    expect(sql).toContain("true, v_track.id, v_audio_snapshot");
+    expect(sql).toContain("CASE WHEN COALESCE(_include_prompt,false)");
+    expect(sql).toContain("CASE WHEN COALESCE(_include_lyrics,false)");
+    expect(server).toContain("createPrivateTrackReviewSession");
+    expect(server).toContain("_include_prompt: data.includePrompt");
+    expect(server).toContain("_include_lyrics: data.includeLyrics");
+  });
+
+  test("Song Review reviewer UI exposes Prompt and Lyrics as permission-controlled tabs", async () => {
+    const route = await source("src/routes/review.$token.tsx");
+    expect(route).toContain('data.sourceType === "track"');
+    expect(route).toContain("data.includePrompt");
+    expect(route).toContain("data.includeLyrics");
+    expect(route).toContain('setSongPanel("prompt")');
+    expect(route).toContain('setSongPanel("lyrics")');
+    expect(route).toContain("data.snapshot.prompt");
+    expect(route).toContain("data.snapshot.lyrics");
+  });
+
+  test("Song source is restricted to an owned active uploaded track", async () => {
+    const sql = await source(trackSourceMigration);
+    expect(sql).toContain("user_id = v_actor");
+    expect(sql).toContain("source_type = 'upload'");
+    expect(sql).toContain("moderation_status = 'active'");
+    expect(sql).toContain("audio_url IS NOT NULL");
   });
 });
