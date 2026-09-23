@@ -29,6 +29,7 @@ jobs:
           python .github/scripts/branching_versions_phase1.py
           python .github/scripts/branching_versions_phase1_tests.py
           python .github/scripts/branching_versions_phase1_types.py
+          git checkout -- .github/workflows/regression-gate.yml
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -47,6 +48,6 @@ jobs:
           fi
           git config user.name "Aeras"
           git config user.email "4737202+Aeras@users.noreply.github.com"
-          git add src/integrations/supabase/types.ts src/lib/ai.functions.ts src/lib/lyrics-review.functions.ts src/routes/lyrics-review.tsx src/components/promptbeats/ProjectVersionHistory.tsx src/lib/branching-versions.test.ts src/lib/lyrics-review-integration.test.ts src/lib/project-version-linked-tracks.test.ts supabase/migrations/20260923150000_branching_versions_phase1.sql .github/workflows/regression-gate.yml
+          git add src/integrations/supabase/types.ts src/lib/ai.functions.ts src/lib/lyrics-review.functions.ts src/routes/lyrics-review.tsx src/components/promptbeats/ProjectVersionHistory.tsx src/lib/branching-versions.test.ts src/lib/lyrics-review-integration.test.ts src/lib/project-version-linked-tracks.test.ts supabase/migrations/20260923150000_branching_versions_phase1.sql
           git commit -m "Add Branching Versions Phase 1"
           git push origin main
