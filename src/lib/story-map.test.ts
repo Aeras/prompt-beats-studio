@@ -61,7 +61,9 @@ describe("Story Map", () => {
       beats: [beat(0, "Hesitation")],
     };
     expect(storyMapSongSetupHandoffSchema.parse(handoff)).toEqual(handoff);
-    expect(() => storyMapSongSetupHandoffSchema.parse({ ...handoff, rawLyrics: "not allowed" })).toThrow();
+    expect(() =>
+      storyMapSongSetupHandoffSchema.parse({ ...handoff, rawLyrics: "not allowed" }),
+    ).toThrow();
   });
 
   test("Song Setup description keeps narrative fields and beat order", () => {
