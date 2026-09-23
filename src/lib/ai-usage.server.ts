@@ -16,7 +16,8 @@ export type AiOperation =
   | "inspiration_wall_extraction"
   | "story_map_generate"
   | "story_map_from_lyrics"
-  | "story_map_analyze_lyrics";
+  | "story_map_analyze_lyrics"
+  | "story_driven_plan";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
