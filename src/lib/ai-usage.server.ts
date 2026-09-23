@@ -100,10 +100,14 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    let { error } = await supabaseAdmin.from("ai_usage_logs" as never).insert(payload as never);
+    let { error } = await supabaseAdmin
+      .from("ai_usage_logs" as never)
+      .insert(payload as never);
     if (error) {
       await wait(150);
-      ({ error } = await supabaseAdmin.from("ai_usage_logs" as never).insert(payload as never));
+      ({ error } = await supabaseAdmin
+        .from("ai_usage_logs" as never)
+        .insert(payload as never));
     }
 
     if (!error) {
@@ -115,10 +119,12 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
       return;
     }
 
-    const { error: outboxError } = await supabaseAdmin.from("ai_usage_outbox" as never).insert({
-      payload,
-      last_error: error.message,
-    } as never);
+    const { error: outboxError } = await supabaseAdmin
+      .from("ai_usage_outbox" as never)
+      .insert({
+        payload,
+        last_error: error.message,
+      } as never);
     if (outboxError) throw outboxError;
 
     console.error("[ai-usage] primary insert failed; queued durable retry", error);
