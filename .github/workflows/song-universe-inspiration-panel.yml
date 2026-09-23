@@ -1,0 +1,33 @@
+name: Song Universe inspiration panel
+
+on:
+  push:
+    branches: [song-universe-step2]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.event.head_commit.message != 'Apply Song Universe Inspiration panel'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: song-universe-step2
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: python3 scripts/song-universe-inspiration-panel.py
+      - run: bunx prettier --write src/routes/song-universe.tsx src/components/promptbeats/SongUniverseInspirationPanel.tsx src/lib/song-universe-inspiration.functions.ts
+      - run: bun run build
+      - run: bunx prettier --write src/routeTree.gen.ts
+      - name: Commit integration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          if ! git diff --cached --quiet; then
+            git commit -m 'Apply Song Universe Inspiration panel'
+            git push origin song-universe-step2
+          fi
