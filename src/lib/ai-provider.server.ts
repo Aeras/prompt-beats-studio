@@ -926,7 +926,12 @@ export async function setActiveModel(model: AiModelId, userId: string) {
   const now = new Date().toISOString();
   const value = { registryId: registryModel.id, model: registryModel.providerModelId };
 
-  for (const key of ["ai_model", "ai_generator_default_model", "ai_quality_check_default_model"]) {
+  for (const key of [
+    "ai_model",
+    "ai_generator_default_model",
+    "ai_quality_check_default_model",
+    "ai_tools_default_model",
+  ]) {
     const { error } = await supabaseAdmin.from("app_settings").upsert(
       {
         key,

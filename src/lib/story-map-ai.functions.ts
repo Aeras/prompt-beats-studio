@@ -181,7 +181,7 @@ async function resolveStoryMapModel(userId: string, requestedModel?: string | nu
   // Story Map is registry-backed now. The dedicated AI Tools default is added in
   // the agreed model-architecture step; until then this resolves through the
   // existing generator-compatible registry without hard-coding a provider/model.
-  const access = await getEffectiveModelAccess(userId, "generator");
+  const access = await getEffectiveModelAccess(userId, "ai_tools");
   const requested = requestedModel
     ? access.modelOptions.find((option) => option.id === requestedModel)
     : null;

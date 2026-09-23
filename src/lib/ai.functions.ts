@@ -2149,9 +2149,10 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
       accessMode: "inherit" as const,
     });
 
-    const [generatorResult, qualityResult] = await Promise.allSettled([
+    const [generatorResult, qualityResult, aiToolsResult] = await Promise.allSettled([
       getEffectiveModelAccess(context.userId, "generator"),
       getEffectiveModelAccess(context.userId, "quality_check"),
+      getEffectiveModelAccess(context.userId, "ai_tools"),
     ]);
 
     if (generatorResult.status === "rejected") {
@@ -2164,6 +2165,7 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
     return {
       generator: generatorResult.status === "fulfilled" ? generatorResult.value : emptyAccess(),
       qualityCheck: qualityResult.status === "fulfilled" ? qualityResult.value : emptyAccess(),
+      aiTools: aiToolsResult.status === "fulfilled" ? aiToolsResult.value : emptyAccess(),
     };
   });
 

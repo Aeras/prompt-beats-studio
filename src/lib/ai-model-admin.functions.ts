@@ -95,20 +95,23 @@ export const getAdminAiModels = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: rows, error }, generatorDefault, qualityDefault] = await Promise.all([
-      supabaseAdmin
-        .from("ai_models" as never)
-        .select("*")
-        .order("provider", { ascending: true })
-        .order("display_name", { ascending: true }),
-      readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
-      readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
-    ]);
+    const [{ data: rows, error }, generatorDefault, qualityDefault, aiToolsDefault] =
+      await Promise.all([
+        supabaseAdmin
+          .from("ai_models" as never)
+          .select("*")
+          .order("provider", { ascending: true })
+          .order("display_name", { ascending: true }),
+        readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
+        readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
+        readDefaultModel(supabaseAdmin, "ai_tools_default_model"),
+      ]);
     if (error) throw new Error(error.message);
     return {
       models: ((rows ?? []) as any[]).map(mapRow),
       generatorDefault,
       qualityDefault,
+      aiToolsDefault,
     };
   });
 
@@ -144,33 +147,41 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
     if (currentError || !current) throw new Error("AI model not found.");
 
     const row = current as any;
-    const [generatorDefault, qualityDefault] = await Promise.all([
+    const [generatorDefault, qualityDefault, aiToolsDefault] = await Promise.all([
       readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
       readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
+      readDefaultModel(supabaseAdmin, "ai_tools_default_model"),
     ]);
 
     const isGeneratorDefault = row.provider_model_id === generatorDefault;
     const isQualityDefault = row.provider_model_id === qualityDefault;
+    const isAiToolsDefault = row.provider_model_id === aiToolsDefault;
     const disablingGenerator =
-      isGeneratorDefault &&
+      (isGeneratorDefault || isAiToolsDefault) &&
       (data.status !== "enabled" || !data.generatorEnabled || !row.generator_compatible);
     const disablingQuality =
       isQualityDefault &&
       (data.status !== "enabled" || !data.qualityCheckEnabled || !row.quality_check_compatible);
     const restrictingDefaultAccess =
-      (isGeneratorDefault || isQualityDefault) && data.accessPolicy !== "all_users";
+      (isGeneratorDefault || isQualityDefault || isAiToolsDefault) &&
+      data.accessPolicy !== "all_users";
 
     if (disablingGenerator)
-      throw new Error("Select another Generator default before disabling this model.");
+      throw new Error(
+        isAiToolsDefault && !isGeneratorDefault
+          ? "Select another AI Tools default before disabling this model."
+          : "Select another Generator default before disabling this model.",
+      );
     if (disablingQuality)
       throw new Error("Select another Quality Check default before disabling this model.");
     if (restrictingDefaultAccess) {
-      const usedBy =
-        isGeneratorDefault && isQualityDefault
-          ? "Generator and Quality Check"
-          : isGeneratorDefault
-            ? "Generator"
-            : "Quality Check";
+      const usedBy = [
+        isGeneratorDefault ? "Generator" : null,
+        isQualityDefault ? "Quality Check" : null,
+        isAiToolsDefault ? "AI Tools" : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
       throw new Error(
         `A model used as the ${usedBy} default must remain available to all users. Select another default first.`,
       );
@@ -233,7 +244,7 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
   });
 
 const defaultInput = z.object({
-  operation: z.enum(["generator", "quality_check"]),
+  operation: z.enum(["generator", "quality_check", "ai_tools"]),
   model: z.string().trim().min(1).max(200),
 });
 
@@ -255,13 +266,13 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
 
     const model = row as any;
     const valid =
-      data.operation === "generator"
+      data.operation === "quality_check"
         ? model.status === "enabled" &&
-          model.generator_compatible === true &&
-          model.generator_enabled === true
-        : model.status === "enabled" &&
           model.quality_check_compatible === true &&
-          model.quality_check_enabled === true;
+          model.quality_check_enabled === true
+        : model.status === "enabled" &&
+          model.generator_compatible === true &&
+          model.generator_enabled === true;
     if (!valid) throw new Error("That model is not eligible for this default.");
     if (model.access_policy !== "all_users") {
       throw new Error("A default AI model must be available to all users.");
@@ -270,7 +281,9 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
     const key =
       data.operation === "generator"
         ? "ai_generator_default_model"
-        : "ai_quality_check_default_model";
+        : data.operation === "quality_check"
+          ? "ai_quality_check_default_model"
+          : "ai_tools_default_model";
 
     const { error: updateError } = await supabaseAdmin.from("app_settings").upsert(
       {

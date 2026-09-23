@@ -13,11 +13,10 @@ import {
 } from "@/catalog/generator-options";
 import { AI_TARGET_PLATFORMS, type AITargetPlatform } from "@/lib/ai-target-platforms";
 
-export const SONG_SETUP_ASSISTANT_MODEL = "gemini-3.8-flash" as const;
-
 const setupInput = z.object({
   description: z.string().trim().min(10).max(2500),
   targetPlatform: z.enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]]),
+  model: z.string().trim().min(1).max(240).optional(),
 });
 
 export const songSetupDraftSchema = z.object({
@@ -128,10 +127,11 @@ Platform-aware guidance: tailor the setup for ${data.targetPlatform === "udio" ?
 
 Build the strongest coherent Advanced Mode setup from the user's intent. Keep Theme strictly about what the song is about, and put all sonic/style information in the appropriate non-Theme fields.`;
 
-    const { modelCaller, providerOf } = await import("@/lib/ai-provider.server");
+    const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
     const { recordAiUsage } = await import("@/lib/ai-usage.server");
-    const caller = modelCaller(SONG_SETUP_ASSISTANT_MODEL);
-    const provider = providerOf(SONG_SETUP_ASSISTANT_MODEL);
+    const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.model);
+    const caller = modelCaller(resolved.model, resolved.provider);
+    const provider = resolved.provider;
 
     let result: Awaited<ReturnType<typeof caller>> | null = null;
     try {
@@ -170,13 +170,13 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
           "The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.",
         );
 
-      return { setup, model: SONG_SETUP_ASSISTANT_MODEL };
+      return { setup, model: result.model };
     } catch (error) {
       if (!result) {
         await recordAiUsage({
           userId: context.userId,
           provider,
-          model: SONG_SETUP_ASSISTANT_MODEL,
+          model: resolved.model,
           operation: "song_setup_assistant",
           usage: null,
           success: false,

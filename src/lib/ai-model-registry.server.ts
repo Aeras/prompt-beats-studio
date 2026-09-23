@@ -7,7 +7,7 @@ import {
 } from "@/lib/ai-models";
 export type RegistryReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
-export type AiModelOperation = "generator" | "quality_check";
+export type AiModelOperation = "generator" | "quality_check" | "ai_tools";
 
 export type RegistryModel = {
   id: string | null;
@@ -86,10 +86,10 @@ function normalizeRow(row: RegistryRow): RegistryModel {
 
 export function isModelEligibleForOperation(model: RegistryModel, operation: AiModelOperation) {
   if (model.status !== "enabled" && model.status !== "testing") return false;
-  if (operation === "generator") {
-    return model.generatorCompatible && model.generatorEnabled;
+  if (operation === "quality_check") {
+    return model.qualityCheckCompatible && model.qualityCheckEnabled;
   }
-  return model.qualityCheckCompatible && model.qualityCheckEnabled;
+  return model.generatorCompatible && model.generatorEnabled;
 }
 
 export function reasoningForOperation(
@@ -97,7 +97,9 @@ export function reasoningForOperation(
   operation: AiModelOperation,
 ): RegistryReasoningEffort | undefined {
   const value =
-    operation === "generator" ? model.generatorReasoningEffort : model.qualityCheckReasoningEffort;
+    operation === "quality_check"
+      ? model.qualityCheckReasoningEffort
+      : model.generatorReasoningEffort;
   return value ?? undefined;
 }
 
@@ -145,8 +147,11 @@ export async function getRegistryModel(modelId: string): Promise<RegistryModel |
   }
 }
 
-const settingKeyFor = (operation: AiModelOperation) =>
-  operation === "generator" ? "ai_generator_default_model" : "ai_quality_check_default_model";
+const settingKeyFor = (operation: AiModelOperation) => {
+  if (operation === "generator") return "ai_generator_default_model";
+  if (operation === "quality_check") return "ai_quality_check_default_model";
+  return "ai_tools_default_model";
+};
 
 export async function getOperationDefaultModel(
   operation: AiModelOperation,

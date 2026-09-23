@@ -3,6 +3,7 @@ export const enAiModels = {
   "aiModels.subtitle": "Manage installed AI models, defaults, access, reasoning, and pricing.",
   "aiModels.generatorDefault": "Generator default",
   "aiModels.qualityDefault": "Quality Check default",
+  "aiModels.aiToolsDefault": "AI Tools default",
   "aiModels.saveDefault": "Save default",
   "aiModels.defaultSaved": "Default model updated",
   "aiModels.defaultSaveError": "Could not update the default model",

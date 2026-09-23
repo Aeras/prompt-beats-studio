@@ -10,7 +10,7 @@ describe("Inspiration Wall Phase 3", () => {
     const code = await source("src/lib/inspiration-wall-ai.functions.ts");
     expect(code).toContain('requireFeatureAccess(context.supabase, "inspiration_wall")');
     expect(code).toContain('requireAuxiliaryAiAdmission(context.supabase, "inspiration_wall")');
-    expect(code).toContain('getEffectiveModelAccess(userId, "generator")');
+    expect(code).toContain('getEffectiveModelAccess(userId, "ai_tools")');
     expect(code).toContain('option.provider === "gemini"');
     expect(code).toContain('operation: "inspiration_wall_extraction"');
     expect(code).not.toContain('const MODEL = "gemini-');

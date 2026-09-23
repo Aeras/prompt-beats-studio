@@ -6,6 +6,7 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
     "Διαχείριση εγκατεστημένων μοντέλων AI, προεπιλογών, πρόσβασης, reasoning και pricing.",
   "aiModels.generatorDefault": "Προεπιλογή Generator",
   "aiModels.qualityDefault": "Προεπιλογή Quality Check",
+  "aiModels.aiToolsDefault": "Προεπιλογή AI Tools",
   "aiModels.saveDefault": "Αποθήκευση προεπιλογής",
   "aiModels.defaultSaved": "Η προεπιλογή μοντέλου ενημερώθηκε",
   "aiModels.defaultSaveError": "Δεν ήταν δυνατή η ενημέρωση της προεπιλογής",

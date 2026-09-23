@@ -399,6 +399,7 @@ export function AiModelsPanel() {
   });
   const [generatorDefault, setGeneratorDefault] = useState("");
   const [qualityDefault, setQualityDefault] = useState("");
+  const [aiToolsDefault, setAiToolsDefault] = useState("");
   const [editing, setEditing] = useState<AdminAiModel | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("");
   const [addedModelIds, setAddedModelIds] = useState<Set<string>>(() => new Set());
@@ -503,10 +504,11 @@ export function AiModelsPanel() {
     if (!data) return;
     setGeneratorDefault(data.generatorDefault ?? "");
     setQualityDefault(data.qualityDefault ?? "");
+    setAiToolsDefault(data.aiToolsDefault ?? "");
   }, [data]);
 
   const setDefault = useMutation({
-    mutationFn: (input: { operation: "generator" | "quality_check"; model: string }) =>
+    mutationFn: (input: { operation: "generator" | "quality_check" | "ai_tools"; model: string }) =>
       setAdminAiModelDefault({ data: input as any }),
     onSuccess: () => {
       toast.success(t("aiModels.defaultSaved"));
@@ -527,6 +529,7 @@ export function AiModelsPanel() {
       ) ?? [],
     [data],
   );
+  const aiToolsOptions = generatorOptions;
   const qualityOptions = useMemo(
     () =>
       data?.models.filter(
@@ -607,7 +610,7 @@ export function AiModelsPanel() {
         <p className="mt-1 text-sm text-muted-foreground">{t("aiModels.subtitle")}</p>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-3">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Cpu className="h-4 w-4 text-primary" />
@@ -628,6 +631,32 @@ export function AiModelsPanel() {
             <button
               disabled={!generatorDefault || setDefault.isPending}
               onClick={() => setDefault.mutate({ operation: "generator", model: generatorDefault })}
+              className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {t("aiModels.saveDefault")}
+            </button>
+          </div>
+        </div>
+        <div className="glass rounded-2xl p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Cpu className="h-4 w-4 text-primary" />
+            {t("aiModels.aiToolsDefault")}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <select
+              value={aiToolsDefault}
+              onChange={(e) => setAiToolsDefault(e.target.value)}
+              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
+            >
+              {aiToolsOptions.map((m) => (
+                <option key={m.id} value={m.providerModelId}>
+                  {m.displayName}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={!aiToolsDefault || setDefault.isPending}
+              onClick={() => setDefault.mutate({ operation: "ai_tools", model: aiToolsDefault })}
               className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
             >
               {t("aiModels.saveDefault")}

@@ -117,7 +117,7 @@ async function requireOwnedWall(supabase: any, wallId: string, userId: string) {
 }
 
 async function resolveMultimodalModel(userId: string) {
-  const access = await getEffectiveModelAccess(userId, "generator");
+  const access = await getEffectiveModelAccess(userId, "ai_tools");
   const defaultOption = access.modelOptions.find((option) => option.id === access.defaultModel);
   if (defaultOption?.provider === "gemini") return defaultOption;
   const firstGemini = access.modelOptions.find((option) => option.provider === "gemini");
