@@ -37,6 +37,29 @@ export const listStoryMapProjectOptions = createServerFn({ method: "GET" })
     };
   });
 
+export const getStoryMapIdForProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: idSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "story_map");
+    const { data: project, error: projectError } = await (context.supabase as any)
+      .from("prompt_projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found.");
+    const { data: map, error } = await (context.supabase as any)
+      .from("story_maps")
+      .select("id")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { storyMapId: map?.id ? String(map.id) : null };
+  });
+
 export const replaceStoryMapDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
