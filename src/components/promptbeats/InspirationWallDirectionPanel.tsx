@@ -19,6 +19,8 @@ import type {
 } from "@/lib/inspiration-wall.shared";
 import { cn } from "@/lib/utils";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useAiModelSelection } from "@/hooks/useAiModelSelection";
+import { supportsPromptBeatsVisionInput } from "@/lib/ai-model-capabilities.shared";
 import { INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY } from "@/lib/inspiration-wall-song-setup.shared";
 
 type Props = {
@@ -117,6 +119,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
   const el = language === "el";
   const navigate = useNavigate();
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
+  const aiModel = useAiModelSelection("aiTools", supportsPromptBeatsVisionInput);
   const [direction, setDirection] = useState<InspirationWallCreativeDirection>(
     wall.creative_direction ?? {},
   );
@@ -157,7 +160,9 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
     setExtracting(true);
     setError(null);
     try {
-      const result = await extractInspirationWallCreativeDirection({ data: { wallId: wall.id } });
+      const result = await extractInspirationWallCreativeDirection({
+        data: { wallId: wall.id, model: aiModel.selectedModel },
+      });
       setDirection(result.direction);
       setKept(
         Object.fromEntries(FIELD_META.map((field) => [field.key, true])) as Record<
@@ -294,20 +299,45 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => void extract()}
-            disabled={extracting}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            {extracting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {aiModel.showSelector && (
+              <select
+                aria-label={el ? "Μοντέλο AI" : "AI model"}
+                value={aiModel.selectedModel}
+                onChange={(event) => aiModel.setSelectedModel(event.target.value)}
+                disabled={extracting}
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"
+              >
+                {aiModel.options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             )}
-            {el ? "Extract Creative Direction" : "Extract Creative Direction"}
-          </button>
+            <button
+              type="button"
+              onClick={() => void extract()}
+              disabled={extracting || aiModel.unavailable || !aiModel.selectedModel}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {extracting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {el ? "Extract Creative Direction" : "Extract Creative Direction"}
+            </button>
+          </div>
         </div>
+
+        {aiModel.unavailable && (
+          <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
+            {el
+              ? "Δεν υπάρχει διαθέσιμο μοντέλο με υποστήριξη εικόνας για αυτόν τον λογαριασμό."
+              : "No image-capable AI model is available for this account."}
+          </p>
+        )}
 
         {error && (
           <p

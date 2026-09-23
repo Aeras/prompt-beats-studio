@@ -60,11 +60,13 @@ function AiModelEditor({
   model,
   generatorDefault,
   qualityDefault,
+  aiToolsDefault,
   onClose,
 }: {
   model: AdminAiModel;
   generatorDefault: string | null;
   qualityDefault: string | null;
+  aiToolsDefault: string | null;
   onClose: () => void;
 }) {
   const { t, language } = useI18n();
@@ -128,14 +130,19 @@ function AiModelEditor({
 
   const isGeneratorDefault = generatorDefault === model.providerModelId;
   const isQualityDefault = qualityDefault === model.providerModelId;
-  const isDefaultModel = isGeneratorDefault || isQualityDefault;
+  const isAiToolsDefault = aiToolsDefault === model.providerModelId;
+  const isDefaultModel = isGeneratorDefault || isQualityDefault || isAiToolsDefault;
   const defaultRisk =
     (isGeneratorDefault && (!generatorEnabled || status !== "enabled")) ||
     (isQualityDefault && (!qualityEnabled || status !== "enabled")) ||
+    (isAiToolsDefault && (!generatorEnabled || status !== "enabled")) ||
     (isDefaultModel && accessPolicy !== "all_users");
 
-  const defaultAccessMessage =
-    isGeneratorDefault && isQualityDefault
+  const defaultAccessMessage = isAiToolsDefault
+    ? language === "el"
+      ? "Το μοντέλο είναι προεπιλογή AI Tools και πρέπει να παραμένει διαθέσιμο σε όλους."
+      : "This model is the AI Tools default and must remain available to all users."
+    : isGeneratorDefault && isQualityDefault
       ? t("aiModels.defaultAccessProtectionBoth")
       : isGeneratorDefault
         ? t("aiModels.defaultAccessProtectionGenerator")
@@ -1103,6 +1110,7 @@ export function AiModelsPanel() {
           model={editing}
           generatorDefault={data.generatorDefault}
           qualityDefault={data.qualityDefault}
+          aiToolsDefault={data.aiToolsDefault}
           onClose={() => setEditing(null)}
         />
       )}

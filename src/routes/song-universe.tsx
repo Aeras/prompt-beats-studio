@@ -6,6 +6,7 @@ import { Archive, ChevronDown, ChevronUp, Loader2, Plus, Sparkles, Trash2 } from
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUniverseInspirationPanel";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
 import {
   analyzeSongUniverseContinuity,
@@ -632,6 +633,7 @@ function UniverseAiPanel({
 }) {
   const { language } = useI18n();
   const el = language === "el";
+  const aiModel = useAiModelSelection("aiTools");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refineInstruction, setRefineInstruction] = useState("");
@@ -674,32 +676,64 @@ function UniverseAiPanel({
               : "AI actions run only when you request them. They never automatically change Projects or Story Maps."}
           </p>
         </div>
-        <button
-          disabled={busy !== null || projects.length === 0}
-          onClick={() =>
-            void run("continuity", async () => {
-              await analyzeSongUniverseContinuity({ data: { universeId: universe.id } });
-              await latest.refetch();
-            })
-          }
-          className="flex items-center gap-2 rounded-xl border border-accent/40 px-4 py-2 text-sm text-accent disabled:opacity-40"
-        >
-          {busy === "continuity" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {aiModel.showSelector && (
+            <select
+              aria-label={el ? "Μοντέλο AI" : "AI model"}
+              value={aiModel.selectedModel}
+              onChange={(event) => aiModel.setSelectedModel(event.target.value)}
+              disabled={busy !== null}
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"
+            >
+              {aiModel.options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           )}
-          {el ? "Ανάλυση συνοχής" : "Analyze Continuity"}
-        </button>
+          <button
+            disabled={
+              busy !== null ||
+              projects.length === 0 ||
+              aiModel.unavailable ||
+              !aiModel.selectedModel
+            }
+            onClick={() =>
+              void run("continuity", async () => {
+                await analyzeSongUniverseContinuity({
+                  data: { universeId: universe.id, model: aiModel.selectedModel },
+                });
+                await latest.refetch();
+              })
+            }
+            className="flex items-center gap-2 rounded-xl border border-accent/40 px-4 py-2 text-sm text-accent disabled:opacity-40"
+          >
+            {busy === "continuity" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {el ? "Ανάλυση συνοχής" : "Analyze Continuity"}
+          </button>
+        </div>
       </div>
+
+      {aiModel.unavailable && (
+        <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
+          {el
+            ? "Δεν υπάρχει διαθέσιμο συμβατό μοντέλο AI για αυτόν τον λογαριασμό."
+            : "No compatible AI model is available for this account."}
+        </p>
+      )}
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <button
-          disabled={busy !== null}
+          disabled={busy !== null || aiModel.unavailable || !aiModel.selectedModel}
           onClick={() =>
             void run("generate-bible", async () => {
               const result = await generateSongUniverseCreativeBible({
-                data: { universeId: universe.id },
+                data: { universeId: universe.id, model: aiModel.selectedModel },
               });
               await applyBible(result.creativeBible);
             })
@@ -727,11 +761,20 @@ function UniverseAiPanel({
             className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm"
           />
           <button
-            disabled={busy !== null || refineInstruction.trim().length < 3}
+            disabled={
+              busy !== null ||
+              refineInstruction.trim().length < 3 ||
+              aiModel.unavailable ||
+              !aiModel.selectedModel
+            }
             onClick={() =>
               void run("refine-bible", async () => {
                 const result = await refineSongUniverseCreativeBible({
-                  data: { universeId: universe.id, instruction: refineInstruction },
+                  data: {
+                    universeId: universe.id,
+                    instruction: refineInstruction,
+                    model: aiModel.selectedModel,
+                  },
                 });
                 await applyBible(result.creativeBible);
                 setRefineInstruction("");
@@ -804,11 +847,15 @@ function UniverseAiPanel({
             {projects.map((project: UniverseProject) => (
               <button
                 key={project.id}
-                disabled={busy !== null}
+                disabled={busy !== null || aiModel.unavailable || !aiModel.selectedModel}
                 onClick={() =>
                   void run(`fit:${project.id}`, async () => {
                     const result = await analyzeSongUniverseProjectFit({
-                      data: { universeId: universe.id, projectId: project.projectId },
+                      data: {
+                        universeId: universe.id,
+                        projectId: project.projectId,
+                        model: aiModel.selectedModel,
+                      },
                     });
                     setFit({ projectName: project.projectName, ...result.fit });
                   })

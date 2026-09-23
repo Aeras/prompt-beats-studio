@@ -43,10 +43,14 @@ describe("AI model selector policy", () => {
     const route = await source("src/routes/song-universe.tsx");
     const server = await source("src/lib/song-universe-ai.functions.ts");
     expect(route.match(/model: aiModel\.selectedModel/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
-    expect(server.match(/requestedModel: data\.model \?\? null/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    expect(
+      server.match(/requestedModel: data\.model \?\? null/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(4);
     expect(server).toContain('getEffectiveModelAccess(userId, "ai_tools")');
     expect(server).toContain("access.modelOptions.find((option) => option.id === requestedModel)");
-    expect(server).toContain("access.modelOptions.find((option) => option.id === access.defaultModel)");
+    expect(server).toContain(
+      "access.modelOptions.find((option) => option.id === access.defaultModel)",
+    );
   });
 
   test("Admin protects all three defaults and exposes AI Tools default", async () => {
