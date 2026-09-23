@@ -189,9 +189,7 @@ export function SongSetupAssistantModal({
                     ))}
                   </select>
                 )}
-                <span className="text-[11px] text-muted-foreground">
-                  {description.length}/2500
-                </span>
+                <span className="text-[11px] text-muted-foreground">{description.length}/2500</span>
               </div>
             </div>
             <textarea

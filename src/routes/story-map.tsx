@@ -527,7 +527,9 @@ function StoryMapWorkspace({
                 className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs"
               >
                 {aiModel.options.map((option) => (
-                  <option key={option.id} value={option.id}>{option.label}</option>
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
             )}
