@@ -22,7 +22,9 @@ describe("Branching Versions Phase 1", () => {
     expect(history).toContain("Continue from this Version");
     expect(history).toContain("Alternate direction");
     expect(history).toContain("branchShape.childCount");
-    expect(history).toContain('search={{ mode: "revision", project: projectId, base: version.id }}');
+    expect(history).toContain(
+      'search={{ mode: "revision", project: projectId, base: version.id }}',
+    );
     expect(history).toContain("`V${version.version_number ?? index + 1}`");
   });
 

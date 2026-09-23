@@ -263,9 +263,7 @@ describe("Library folders foundation", () => {
   test("switching Library tabs clears a previously open Project so the Projects folder browser is reachable", async () => {
     const library = await source("src/routes/library.tsx");
 
-    expect(library).toMatch(
-      /setOpenProjectId\(null\);\s*onViewChange\(item\);/,
-    );
+    expect(library).toMatch(/setOpenProjectId\(null\);\s*onViewChange\(item\);/);
     expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
   });
 
