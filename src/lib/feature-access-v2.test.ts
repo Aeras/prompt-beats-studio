@@ -213,7 +213,7 @@ describe("Feature Access V2 — 17 features", () => {
     const gate = api.indexOf('_feature_key: "track_uploads"');
     const admit = api.indexOf('rpc("admit_track_upload")');
     const bodyRead = api.indexOf("readBoundedBody(request)");
-    const r2Upload = api.indexOf("uploadToR2(key");
+    const r2Upload = api.search(/uploadToR2\(\s*key\s*,/);
     expect(gate).toBeGreaterThan(-1);
     expect(admit).toBeGreaterThan(gate);
     expect(bodyRead).toBeGreaterThan(admit);
