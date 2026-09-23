@@ -22,9 +22,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Integrate Phase 3 UI and gate
-        run: python3 scripts/inspiration-wall-phase3-integrate.py
+        run: |
+          python3 scripts/inspiration-wall-phase3-integrate.py
+          python3 scripts/inspiration-wall-phase3-ts-fix.py
       - name: Format
-        run: bunx prettier --write src/routes/inspiration-wall.tsx src/components/promptbeats/InspirationWallDirectionPanel.tsx src/lib/inspiration-wall-ai.functions.ts src/lib/inspiration-wall-phase3.test.ts .github/workflows/regression-gate.yml
+        run: bunx prettier --write src/routes/inspiration-wall.tsx src/components/promptbeats/InspirationWallDirectionPanel.tsx src/lib/inspiration-wall-ai.functions.ts src/lib/inspiration-wall-phase3.test.ts src/lib/ai-admission.server.ts src/lib/ai-usage.server.ts .github/workflows/regression-gate.yml
       - name: Inspiration Wall tests
         run: bun test src/lib/inspiration-wall.test.ts src/lib/inspiration-wall-phase2.test.ts src/lib/inspiration-wall-phase3.test.ts src/lib/feature-access-v2.test.ts
       - name: Lint
@@ -38,7 +40,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/inspiration-wall.tsx src/components/promptbeats/InspirationWallDirectionPanel.tsx src/lib/inspiration-wall-ai.functions.ts src/lib/inspiration-wall-phase3.test.ts .github/workflows/regression-gate.yml
+          git add src/routes/inspiration-wall.tsx src/components/promptbeats/InspirationWallDirectionPanel.tsx src/lib/inspiration-wall-ai.functions.ts src/lib/inspiration-wall-phase3.test.ts src/lib/ai-admission.server.ts src/lib/ai-usage.server.ts .github/workflows/regression-gate.yml
           if git diff --cached --quiet; then
             echo "No Phase 3 changes required."
             exit 0
