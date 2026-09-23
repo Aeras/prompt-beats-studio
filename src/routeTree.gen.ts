@@ -19,6 +19,7 @@ import { Route as EmailLogoRouteImport } from './routes/email-logo'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LyricsReviewRouteImport } from './routes/lyrics-review'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -27,6 +28,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
+import { Route as ReviewTokenRouteImport } from './routes/review.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
@@ -85,6 +87,11 @@ const LibraryRoute = LibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LyricsReviewRoute = LyricsReviewRouteImport.update({
+  id: '/lyrics-review',
+  path: '/lyrics-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ManagementRoute = ManagementRouteImport.update({
   id: '/management',
   path: '/management',
@@ -123,6 +130,11 @@ const ApiUploadRoute = ApiUploadRouteImport.update({
 const ArtistIdRoute = ArtistIdRouteImport.update({
   id: '/artist/$id',
   path: '/artist/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewTokenRoute = ReviewTokenRouteImport.update({
+  id: '/review/$token',
+  path: '/review/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
@@ -172,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
+  '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
@@ -180,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -199,6 +213,7 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
+  '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
@@ -207,6 +222,7 @@ export interface FileRoutesByTo {
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -227,6 +243,7 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
   '/library': typeof LibraryRoute
+  '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
@@ -235,6 +252,7 @@ export interface FileRoutesById {
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -256,6 +274,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/help'
     | '/library'
+    | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
@@ -264,6 +283,7 @@ export interface FileRouteTypes {
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/review/$token'
     | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
@@ -283,6 +303,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/help'
     | '/library'
+    | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
@@ -291,6 +312,7 @@ export interface FileRouteTypes {
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/review/$token'
     | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
@@ -310,6 +332,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/help'
     | '/library'
+    | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
@@ -318,6 +341,7 @@ export interface FileRouteTypes {
     | '/trending'
     | '/api/upload'
     | '/artist/$id'
+    | '/review/$token'
     | '/share/$token'
     | '/track/$id'
     | '/u/$handle'
@@ -338,6 +362,7 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   HelpRoute: typeof HelpRoute
   LibraryRoute: typeof LibraryRoute
+  LyricsReviewRoute: typeof LyricsReviewRoute
   ManagementRoute: typeof ManagementRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -346,6 +371,7 @@ export interface RootRouteChildren {
   TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
+  ReviewTokenRoute: typeof ReviewTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   TrackIdRoute: typeof TrackIdRoute
   UHandleRoute: typeof UHandleRoute
@@ -427,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lyrics-review': {
+      id: '/lyrics-review'
+      path: '/lyrics-review'
+      fullPath: '/lyrics-review'
+      preLoaderRoute: typeof LyricsReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/management': {
       id: '/management'
       path: '/management'
@@ -481,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/artist/$id'
       fullPath: '/artist/$id'
       preLoaderRoute: typeof ArtistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review/$token': {
+      id: '/review/$token'
+      path: '/review/$token'
+      fullPath: '/review/$token'
+      preLoaderRoute: typeof ReviewTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share/$token': {
@@ -546,6 +586,7 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   HelpRoute: HelpRoute,
   LibraryRoute: LibraryRoute,
+  LyricsReviewRoute: LyricsReviewRoute,
   ManagementRoute: ManagementRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
@@ -554,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
+  ReviewTokenRoute: ReviewTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   TrackIdRoute: TrackIdRoute,
   UHandleRoute: UHandleRoute,

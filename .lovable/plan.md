@@ -1,66 +1,72 @@
-# Build failure diagnosis — Library folders changes
+# Build diagnosis — after the Linked Audio Results work
 
-## Result of running the current build check
+## Status change since the last check
 
-The type/build check stops immediately with a single error:
+The earlier publish blocker in `src/routes/library.tsx` (the unclosed `? :` at line 976) is
+**gone** — the source has since synced and that branch is now well-formed, with the analyses
+list rendering in its own branch at line 981. The bundler's "Crawling result not available"
+was only fallout from that parse error and no longer applies.
 
-```text
-src/routes/library.tsx(976,15): error TS1005: ':' expected.
-```
+The build now fails on type errors instead: **318 errors**, none of them fatal parse errors.
 
-This is a syntax (parse) error, not a type error. Because the file cannot be parsed, the
-compiler aborts there — no other file is reported, and any further errors in this file are
-hidden until this one is fixed.
+## Errors in the files you named
 
-## Exact cause
+### src/components/promptbeats/ProjectVersionLinkedTracks.tsx — 2 errors (new, from this work)
 
-`src/routes/library.tsx` line 933 opens a conditional expression:
+1. **Line 46** — `TS2375`: the object returned by `toPlayerTrack` is not assignable to `Track`
+   under `exactOptionalPropertyTypes`. Cause: `audioUrl: track.audio_url ?? undefined`
+   produces `string | undefined`, while `Track.audioUrl` is declared `audioUrl?: string`
+   (optional, but not allowed to be explicitly `undefined`).
+   *Minimal fix:* omit the key instead of setting it to `undefined` —
+   `...(track.audio_url ? { audioUrl: track.audio_url } : {})`.
 
-```tsx
-{openProject ? (() => {
-   ...
-})()}        // <- line 976: the ternary has no ":" branch
-```
+2. **Line 172** — `TS7006`: `Parameter 'track' implicitly has an 'any' type` in
+   `rows.map((track) => ...)`. Cause: `rows` comes from `listLinkableProjectTracks`, whose
+   handler in `src/lib/project-version-tracks.functions.ts` (lines 121–141) queries through
+   `(supabaseAdmin.from("tracks") as any)` and maps with `(track: any)`, so the whole returned
+   `tracks` array degrades to `any`.
+   *Minimal fix:* give the mapped result an explicit element type in the server function —
+   declare a small `LinkableTrack` type and annotate the mapped array — which types `rows`
+   and removes the implicit `any` at the call site.
 
-The `? ... :` expression started on line 933 is never completed. The parser reaches the end
-of the immediately-invoked function on line 976 and expects `:` followed by the alternative
-branch, finds `}` instead, and fails.
+### ProjectVersionHistory.tsx, ProjectVersionCompare.tsx, src/lib/player.tsx
 
-This is the branch that renders an opened Project (the `view === "analyses"` / non-list case).
-The recent Library folders work rewrote the surrounding block (the folder breadcrumb + folder
-grid branch that starts at line 740) and the alternative branch of this inner ternary was lost.
+**No errors.** These three are clean.
 
-## Minimal fix
+### src/lib/project-version-tracks.functions.ts
 
-One line, in `src/routes/library.tsx` line 976 — close the ternary with an explicit empty
-branch:
+No errors reported directly, but its `as any` query/mapping is the root cause of the
+implicit-any above.
 
-```tsx
-          })() : null}
-```
+### src/routes/library.tsx — 9 errors (pre-existing, unrelated to linked audio)
 
-Nothing else is required to make the build parse. No database change, no migration, and no
-change to `LibraryFolderPicker.tsx`, `library-folders.functions.ts`,
-`library-folders.test.ts`, or `20260922210500_library_folder_integrity_hardening.sql` is
-implicated by this error — those files are never reached by the compiler.
+- Lines 162, 227, 238 (x2), 245 (x2): `Track[]` vs
+  `{ sourceType?: string | null; source_type?: string | null }[]` round-tripping through
+  `filterByTrackSource` — the helper's parameter type loses the `Track` shape, so the filtered
+  result can't go back into `Section`. *Minimal fix:* make `filterByTrackSource` generic
+  (`<T extends { sourceType?: ...; source_type?: ... }>(items: T[]): T[]`).
+- Lines 503, 506: `TS4111` — `target.dataset.libraryFolderDropId` /
+  `...DropPath` must use bracket access: `target.dataset["libraryFolderDropId"]`.
+- Line 1033: `TS2375` — props passed to the action menu include explicitly `undefined`
+  handlers under `exactOptionalPropertyTypes`. *Minimal fix:* widen those prop types with
+  `| undefined`, or omit the keys when unset.
 
-## Follow-up that the fix will expose
+## The rest of the 318
 
-Once the file parses, the type checker will continue through the rest of the project. The
-project already carried a large set of pre-existing strict-mode errors (test-runner types,
-optional/undefined mismatches, index-signature access), so expect those to reappear in the
-report. They are unrelated to the Library folders work, and they are separate from the
-publish blocker above.
+Pre-existing strict-mode debt, unchanged by this feature. Largest clusters:
 
-## One behavioural observation (not a build error)
+- `ModerationCaseThread.tsx` — 49 (all downstream of one server function returning an untyped
+  `payload`; typing that return collapses nearly all of them)
+- `PlaylistLibraryPanel.tsx` — 19
+- `src/routes/index.tsx` — 11
+- `admin.functions.ts` — 8, `song-analyzer-essentia.worker.ts` — 7, `ai.functions.ts` — 6
+- Test files (`*.test.ts`) — `Cannot find module 'bun:test'`; the test runner types are not in
+  the tsconfig `types` list
 
-The analyses list (`filteredAnalyses.map(...)`, line 928) lives inside the branch guarded by
-`view === "all" || (view === "projects" && !openProject)`. In the `analyses` view with no
-project open, the alternative branch currently renders nothing. Closing the ternary with
-`null` keeps that as-is; if the Analyses tab is expected to show the analyses list, that
-branch needs the list rather than `null`. Worth confirming before the fix is applied.
+## Database
 
-## Scope of this task
+No migration or schema change is required for any of these errors.
 
-Diagnosis only — no files, commits, configuration, secrets, database, or deployments were
-changed.
+## Scope
+
+Diagnosis only — no files, commits, configuration, secrets, database, or deployments changed.
