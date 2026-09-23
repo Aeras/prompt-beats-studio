@@ -146,8 +146,6 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
     });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // The new RPCs are already deployed by migration; this cast can be removed
-    // after the next generated Supabase type refresh reaches main.
     const adminRpc = supabaseAdmin as any;
     if (data.mode === "replace_latest") {
       const { data: raw, error } = await adminRpc.rpc("replace_latest_prompt_lyrics_review_version", {
@@ -257,6 +255,7 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
 
     const payload = lyricsSectionEditJobSchema.parse({
       operation: "lyrics_section_edit",
+      feature: data.feature,
       generationModel: data.generationModel ?? null,
       sectionEdit: {
         fullLyrics: data.fullLyrics,
@@ -286,6 +285,7 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
     const returnedPayload = lyricsSectionEditJobSchema.safeParse(parsedRow.data.input_payload);
     if (
       !returnedPayload.success ||
+      returnedPayload.data.feature !== "lyrics_review" ||
       returnedPayload.data.sectionEdit.sectionKey !== payload.sectionEdit.sectionKey ||
       returnedPayload.data.sectionEdit.fullLyrics !== payload.sectionEdit.fullLyrics
     ) {
