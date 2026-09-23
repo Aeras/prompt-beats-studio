@@ -13,7 +13,10 @@ export type AiOperation =
   | "post_repair_quality_check"
   | "song_setup_assistant"
   | "song_analysis"
-  | "inspiration_wall_extraction";
+  | "inspiration_wall_extraction"
+  | "story_map_generate"
+  | "story_map_from_lyrics"
+  | "story_map_analyze_lyrics";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
