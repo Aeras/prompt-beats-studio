@@ -112,13 +112,13 @@ describe("Lyrics Review Phase 1 integration", () => {
     expect(sql).toContain("COALESCE(MAX(version_number), 0) + 1");
   });
 
-  test("Replace Current Version is UI-restricted and server-enforced to the latest version", async () => {
+  test("Replace Current Version is UI-restricted and server-enforced to a branch leaf", async () => {
     const route = await source("src/routes/lyrics-review.tsx");
-    const sql = await source(saveMigration);
-    expect(route).toContain("!selectedProject.isLatest");
+    const sql = await source("supabase/migrations/20260923150000_branching_versions_phase1.sql");
+    expect(route).toContain("!selectedProject.isLeaf");
     expect(route).toContain("Η V${selectedProject.versionNumber");
-    expect(sql).toContain("Only the latest project version can be replaced");
-    expect(sql).toContain("v_latest.id <> _version_prompt_id");
+    expect(sql).toContain("Only a leaf project version can be replaced");
+    expect(sql).toContain("child.parent_prompt_id = _version_prompt_id");
   });
 
   test("Replace latest updates the same row and does not insert an accidental version", async () => {

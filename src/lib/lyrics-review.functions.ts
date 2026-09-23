@@ -31,6 +31,7 @@ const projectVersionRowSchema = z.object({
   lyrics: z.string().nullable(),
   note: z.string().nullable(),
   generator_input_snapshot: z.unknown().nullable(),
+  parent_prompt_id: z.string().uuid().nullable(),
   created_at: z.string(),
 });
 
@@ -87,7 +88,7 @@ export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
     const { data: rawVersions, error: versionsError } = await context.supabase
       .from("saved_prompts")
       .select(
-        "id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot, created_at",
+        "id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot, parent_prompt_id, created_at",
       )
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
@@ -101,7 +102,7 @@ export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
       ? versions.find((version) => version.id === data.versionId)
       : versions.at(-1);
     if (!selected) throw new Error("Selected version not found in this project.");
-    const latest = versions.at(-1)!;
+    const parentIds = new Set(versions.map((version) => version.parent_prompt_id).filter(Boolean));
     const parsedSnapshot = generatorInputSnapshotSchema.safeParse(
       selected.generator_input_snapshot,
     );
@@ -128,7 +129,8 @@ export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
         lyrics: selected.lyrics ?? "",
         note: selected.note ?? "",
         generatorInputSnapshot: parsedSnapshot.success ? parsedSnapshot.data : null,
-        isLatest: selected.id === latest.id,
+        isLatest: selected.id === versions.at(-1)!.id,
+        isLeaf: !parentIds.has(selected.id),
       },
     };
   });
@@ -179,8 +181,8 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
         },
       );
       if (error) {
-        if (error.message.includes("Only the latest project version")) {
-          throw new Error("Only the latest Project version can be replaced.");
+        if (error.message.includes("Only a leaf project version")) {
+          throw new Error("Only the latest version of the selected branch can be replaced.");
         }
         throw new Error("The current version could not be replaced.");
       }

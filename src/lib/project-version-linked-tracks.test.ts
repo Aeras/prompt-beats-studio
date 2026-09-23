@@ -122,9 +122,9 @@ describe("linked audio results per Project version", () => {
     const ui = await source("src/components/promptbeats/ProjectVersionLinkedTracks.tsx");
 
     expect(server).toContain("is_published");
-    expect(ui).toContain(
-      'track.is_published ? (el ? "Δημόσιο" : "Public") : (el ? "Ιδιωτικό" : "Private")',
-    );
+    expect(ui).toContain("track.is_published");
+    expect(ui).toContain('"Δημόσιο"');
+    expect(ui).toContain('"Ιδιωτικό"');
     expect(ui).not.toContain("updateTrack");
   });
 

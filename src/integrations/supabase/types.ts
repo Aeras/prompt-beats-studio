@@ -1643,6 +1643,7 @@ export type Database = {
       };
       saved_prompts: {
         Row: {
+          branch_label: string | null;
           created_at: string;
           custom_name: string | null;
           duplicated_from_prompt_id: string | null;
@@ -1669,6 +1670,7 @@ export type Database = {
           version_user_note: string | null;
         };
         Insert: {
+          branch_label?: string | null;
           created_at?: string;
           custom_name?: string | null;
           duplicated_from_prompt_id?: string | null;
@@ -1695,6 +1697,7 @@ export type Database = {
           version_user_note?: string | null;
         };
         Update: {
+          branch_label?: string | null;
           created_at?: string;
           custom_name?: string | null;
           duplicated_from_prompt_id?: string | null;

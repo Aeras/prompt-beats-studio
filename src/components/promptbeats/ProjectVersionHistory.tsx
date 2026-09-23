@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, GitCompareArrows, Loader2, NotebookPen, Star, X } from "lucide-react";
+import { Check, ChevronDown, GitBranch, GitCompareArrows, Loader2, NotebookPen, Star, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -7,6 +7,7 @@ import {
   getPromptRevisionBase,
   listProjectVersionHistory,
   setPreferredProjectVersion,
+  updateVersionBranchLabel,
   updateVersionUserNote,
 } from "@/lib/ai.functions";
 import {
@@ -49,6 +50,9 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
   const [compareRightId, setCompareRightId] = useState<string>("");
   const [openVersionId, setOpenVersionId] = useState<string | null>(null);
   const [privateReviewOpen, setPrivateReviewOpen] = useState(false);
+  const [branchLabelEditingId, setBranchLabelEditingId] = useState<string | null>(null);
+  const [branchLabelDraft, setBranchLabelDraft] = useState("");
+  const [branchLabelBusy, setBranchLabelBusy] = useState(false);
 
   const history = useQuery({
     queryKey: ["project-version-history", projectId],
@@ -57,6 +61,34 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
 
   const versions = useMemo(() => history.data?.versions ?? [], [history.data?.versions]);
   const preferredId = history.data?.project.preferred_prompt_id ?? null;
+
+
+  const versionById = useMemo(
+    () => new Map(versions.map((version) => [version.id, version])),
+    [versions],
+  );
+  const branchShape = useMemo(() => {
+    const childCount = new Map<string, number>();
+    const depth = new Map<string, number>();
+    for (const version of versions) {
+      if (version.parent_prompt_id) {
+        childCount.set(version.parent_prompt_id, (childCount.get(version.parent_prompt_id) ?? 0) + 1);
+      }
+    }
+    const resolveDepth = (id: string, seen = new Set<string>()): number => {
+      if (depth.has(id)) return depth.get(id)!;
+      if (seen.has(id)) return 0;
+      seen.add(id);
+      const current = versionById.get(id);
+      const value = current?.parent_prompt_id && versionById.has(current.parent_prompt_id)
+        ? Math.min(resolveDepth(current.parent_prompt_id, seen) + 1, 4)
+        : 0;
+      depth.set(id, value);
+      return value;
+    };
+    for (const version of versions) resolveDepth(version.id);
+    return { childCount, depth };
+  }, [versionById, versions]);
 
   const selectedOpen = useQuery({
     queryKey: ["project-version-open", projectId, openVersionId],
@@ -89,6 +121,18 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
       setNoteEditingId(null);
     } finally {
       setSavingNote(false);
+    }
+  };
+
+  const saveBranchLabel = async (versionId: string) => {
+    if (branchLabelBusy) return;
+    setBranchLabelBusy(true);
+    try {
+      await updateVersionBranchLabel({ data: { id: versionId, label: branchLabelDraft } });
+      await queryClient.invalidateQueries({ queryKey: ["project-version-history", projectId] });
+      setBranchLabelEditingId(null);
+    } finally {
+      setBranchLabelBusy(false);
     }
   };
 
@@ -190,10 +234,17 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                 const versionLabel = `V${version.version_number ?? index + 1}`;
                 const chips = metadata ? versionChangeChips(metadata) : [];
                 const isNoteEditing = noteEditingId === version.id;
+                const parent = version.parent_prompt_id ? versionById.get(version.parent_prompt_id) ?? null : null;
+                const parentVersionLabel = parent ? `V${parent.version_number ?? "?"}` : null;
+                const siblingCount = parent ? branchShape.childCount.get(parent.id) ?? 0 : 0;
+                const isAlternateBranch = siblingCount > 1;
+                const branchDepth = branchShape.depth.get(version.id) ?? 0;
+                const isBranchLabelEditing = branchLabelEditingId === version.id;
 
                 return (
                   <article
                     key={version.id}
+                    style={{ marginLeft: `${Math.min(branchDepth, 3) * 12}px` }}
                     className={cn(
                       "rounded-xl border p-3",
                       isPreferred
@@ -229,6 +280,22 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                               🎵 {version.linked_track_count}
                             </span>
                           )}
+                          {parentVersionLabel && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">
+                              <GitBranch className="h-3 w-3" />
+                              {el ? `από ${parentVersionLabel}` : `from ${parentVersionLabel}`}
+                            </span>
+                          )}
+                          {isAlternateBranch && (
+                            <span className="rounded-full border border-accent/25 bg-accent/[0.04] px-2 py-0.5 text-[10px] font-semibold text-accent">
+                              {el ? "Εναλλακτική κατεύθυνση" : "Alternate direction"}
+                            </span>
+                          )}
+                          {version.branch_label && (
+                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-foreground/80">
+                              {version.branch_label}
+                            </span>
+                          )}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
                           {metadata?.summary ??
@@ -259,6 +326,14 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
+                        <Link
+                          to="/generate"
+                          search={{ mode: "revision", project: projectId, base: version.id }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-accent/25 px-2.5 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                          {el ? "Συνέχεια από αυτή" : "Continue from this Version"}
+                        </Link>
                         <button
                           type="button"
                           onClick={() => {
@@ -309,6 +384,17 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                         <button
                           type="button"
                           onClick={() => {
+                            setBranchLabelEditingId(isBranchLabelEditing ? null : version.id);
+                            setBranchLabelDraft(version.branch_label ?? "");
+                          }}
+                          className="rounded-lg border border-white/10 p-1.5 text-muted-foreground hover:text-accent"
+                          aria-label={el ? "Ετικέτα κατεύθυνσης" : "Branch label"}
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
                             setNoteEditingId(isNoteEditing ? null : version.id);
                             setNoteDraft(version.version_user_note ?? "");
                           }}
@@ -319,6 +405,35 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                         </button>
                       </div>
                     </div>
+
+                    {isBranchLabelEditing && (
+                      <div className="mt-3 flex flex-col gap-2 rounded-lg border border-white/10 bg-black/20 p-2.5 sm:flex-row sm:items-center">
+                        <input
+                          value={branchLabelDraft}
+                          onChange={(event) => setBranchLabelDraft(event.target.value.slice(0, 120))}
+                          maxLength={120}
+                          placeholder={el ? "π.χ. Πιο εμπορικό chorus" : "e.g. More commercial chorus"}
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs outline-none focus:border-accent/40"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => saveBranchLabel(version.id)}
+                            disabled={branchLabelBusy}
+                            className="rounded-lg bg-accent px-3 py-2 text-[11px] font-semibold text-accent-foreground disabled:opacity-50"
+                          >
+                            {branchLabelBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : el ? "Αποθήκευση" : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBranchLabelEditingId(null)}
+                            className="rounded-lg border border-white/10 px-3 py-2 text-[11px] text-muted-foreground"
+                          >
+                            {el ? "Άκυρο" : "Cancel"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {metadata?.userRequest && (
                       <details className="mt-3 rounded-lg border border-white/10 bg-black/20 p-2.5">

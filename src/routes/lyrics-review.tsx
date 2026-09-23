@@ -358,7 +358,7 @@ function LyricsReviewPage() {
   const saveProject = async (saveMode: "new_version" | "replace_latest") => {
     if (!search.project || !selectedProject || !dirty || saving) return;
     if (saveMode === "replace_latest") {
-      if (!selectedProject.isLatest) return;
+      if (!selectedProject.isLeaf) return;
       const confirmed = window.confirm(
         el
           ? `Η V${selectedProject.versionNumber ?? "?"} θα αντικατασταθεί με τις νέες αλλαγές. Η προηγούμενη μορφή της δεν θα παραμείνει ως ξεχωριστή version. Συνέχεια;`
@@ -938,9 +938,9 @@ function LyricsReviewPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  disabled={!dirty || saving || !selectedProject.isLatest}
+                  disabled={!dirty || saving || !selectedProject.isLeaf}
                   title={
-                    !selectedProject.isLatest
+                    !selectedProject.isLeaf
                       ? el
                         ? "Μόνο η τελευταία version μπορεί να αντικατασταθεί"
                         : "Only the latest version can be replaced"

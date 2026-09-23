@@ -2401,6 +2401,24 @@ export const listPromptProjectVersions = createServerFn({ method: "POST" })
     return { prompts: prompts ?? [] };
   });
 
+export const updateVersionBranchLabel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), label: z.string().max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const label = data.label.trim() || null;
+    const { data: updated, error } = await (context.supabase.from("saved_prompts") as any)
+      .update({ branch_label: label })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .select("id, project_id, branch_label")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("Version not found.");
+    return { id: updated.id, projectId: updated.project_id, branchLabel: updated.branch_label };
+  });
+
 export const listProjectVersionHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
@@ -2417,7 +2435,7 @@ export const listProjectVersionHistory = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("saved_prompts")
       .select(
-        "id, title, custom_name, version_number, version_label, parent_prompt_id, version_change_metadata, version_user_note, created_at",
+        "id, title, custom_name, version_number, version_label, parent_prompt_id, branch_label, version_change_metadata, version_user_note, created_at",
       )
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
