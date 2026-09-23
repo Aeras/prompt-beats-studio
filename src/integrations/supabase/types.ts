@@ -1290,14 +1290,18 @@ export type Database = {
           expires_at: string
           id: string
           include_audio: boolean
+          include_lyrics: boolean
+          include_prompt: boolean
           last_opened_at: string | null
           open_count: number
           owner_id: string
           pin_hash: string | null
-          project_id: string
+          project_id: string | null
           project_name: string
           shared_track_id: string | null
           snapshot: Json
+          source_track_id: string | null
+          source_type: string
           token_hash: string
           version_label: string | null
           version_number: number | null
@@ -1312,14 +1316,18 @@ export type Database = {
           expires_at: string
           id?: string
           include_audio?: boolean
+          include_lyrics?: boolean
+          include_prompt?: boolean
           last_opened_at?: string | null
           open_count?: number
           owner_id: string
           pin_hash?: string | null
-          project_id: string
+          project_id?: string | null
           project_name: string
           shared_track_id?: string | null
           snapshot: Json
+          source_track_id?: string | null
+          source_type?: string
           token_hash: string
           version_label?: string | null
           version_number?: number | null
@@ -1334,14 +1342,18 @@ export type Database = {
           expires_at?: string
           id?: string
           include_audio?: boolean
+          include_lyrics?: boolean
+          include_prompt?: boolean
           last_opened_at?: string | null
           open_count?: number
           owner_id?: string
           pin_hash?: string | null
-          project_id?: string
+          project_id?: string | null
           project_name?: string
           shared_track_id?: string | null
           snapshot?: Json
+          source_track_id?: string | null
+          source_type?: string
           token_hash?: string
           version_label?: string | null
           version_number?: number | null
@@ -1358,6 +1370,13 @@ export type Database = {
           {
             foreignKeyName: "private_review_sessions_shared_track_id_fkey"
             columns: ["shared_track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_review_sessions_source_track_id_fkey"
+            columns: ["source_track_id"]
             isOneToOne: false
             referencedRelation: "tracks"
             referencedColumns: ["id"]
@@ -2560,6 +2579,18 @@ export type Database = {
           _project_id: string
           _shared_track_id?: string
           _version_prompt_id: string
+        }
+        Returns: Json
+      }
+      create_private_track_review_session: {
+        Args: {
+          _comment_visibility?: string
+          _creator_message?: string
+          _expires_at?: string
+          _include_lyrics?: boolean
+          _include_prompt?: boolean
+          _pin?: string
+          _track_id: string
         }
         Returns: Json
       }
