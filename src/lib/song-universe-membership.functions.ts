@@ -21,7 +21,9 @@ export const getProjectSongUniverseMembership = createServerFn({ method: "POST" 
 
     const { data: row, error } = await (context.supabase as any)
       .from("song_universe_projects")
-      .select("universe_id,universe_role,intentional_outlier,song_universes!inner(id,title,owner_id)")
+      .select(
+        "universe_id,universe_role,intentional_outlier,song_universes!inner(id,title,owner_id)",
+      )
       .eq("project_id", data.projectId)
       .eq("song_universes.owner_id", context.userId)
       .maybeSingle();

@@ -70,6 +70,7 @@ import {
   type TrackSourcePreference,
 } from "@/components/promptbeats/TrackSourceFilter";
 import { ProjectVersionHistory } from "@/components/promptbeats/ProjectVersionHistory";
+import { SongUniverseProjectBadge } from "@/components/promptbeats/SongUniverseProjectBadge";
 import { LibraryFolderPicker } from "@/components/promptbeats/LibraryFolderPicker";
 import {
   LibraryItemActionSheet,
@@ -1687,6 +1688,7 @@ function PromptProjectLibrary({
                             {analysisItems.length} analyses ·{" "}
                             {prompts.filter((p) => p.project_id === openProject.id).length} prompts
                           </p>
+                          <SongUniverseProjectBadge projectId={openProject.id} />
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">
                           <ExportControl
