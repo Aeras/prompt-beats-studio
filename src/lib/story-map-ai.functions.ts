@@ -8,6 +8,7 @@ import { recordAiUsage, type AiOperation } from "@/lib/ai-usage.server";
 import {
   storyMapAnalysisSchema,
   storyMapDraftSchema,
+  type StoryMapAnalysis,
   type StoryMapDraft,
 } from "@/lib/story-map.shared";
 
@@ -184,7 +185,8 @@ async function resolveStoryMapModel(userId: string, requestedModel?: string | nu
   const requested = requestedModel
     ? access.modelOptions.find((option) => option.id === requestedModel)
     : null;
-  const selected = requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
+  const selected =
+    requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
   if (!selected) throw new Error("No compatible AI model is available for Story Map.");
   return selected;
 }
@@ -273,7 +275,7 @@ export const buildStoryMapWithAi = createServerFn({ method: "POST" })
       .join("\n");
     const result = await runStructured<StoryMapDraft>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: BUILD_SYSTEM,
       prompt,
       schema: STORY_MAP_RESPONSE_SCHEMA,
@@ -313,7 +315,9 @@ export const planStoryDrivenGeneration = createServerFn({ method: "POST" })
       `MUSIC STYLE: ${data.genre}`,
       `MOOD: ${data.mood}`,
       `LYRICS LANGUAGE: ${data.language}`,
-      data.structure ? `SONG BLUEPRINT / STRUCTURE (authoritative for section structure): ${data.structure}` : "",
+      data.structure
+        ? `SONG BLUEPRINT / STRUCTURE (authoritative for section structure): ${data.structure}`
+        : "",
       data.production ? `PRODUCTION DIRECTION: ${data.production}` : "",
       data.instructions ? `ADDITIONAL USER INSTRUCTIONS: ${data.instructions}` : "",
       "Create a compact internal Story Map that gives the eventual lyrics meaningful progression while preserving every explicit Generator instruction. Do not write the lyrics yet.",
@@ -322,7 +326,7 @@ export const planStoryDrivenGeneration = createServerFn({ method: "POST" })
       .join("\n\n");
     const result = await runStructured<StoryMapDraft>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: BUILD_SYSTEM,
       prompt,
       schema: STORY_MAP_RESPONSE_SCHEMA,
@@ -361,7 +365,7 @@ export const createStoryMapFromLyrics = createServerFn({ method: "POST" })
       .join("\n\n");
     const result = await runStructured<StoryMapDraft>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: FROM_LYRICS_SYSTEM,
       prompt,
       schema: STORY_MAP_RESPONSE_SCHEMA,
@@ -423,9 +427,9 @@ export const analyzeLyricsWithStoryMap = createServerFn({ method: "POST" })
     ]
       .filter(Boolean)
       .join("\n\n");
-    const result = await runStructured({
+    const result = await runStructured<StoryMapAnalysis>({
       userId: context.userId,
-      requestedModel: data.model,
+      requestedModel: data.model ?? null,
       system: ANALYZE_SYSTEM,
       prompt,
       schema: ANALYSIS_RESPONSE_SCHEMA,

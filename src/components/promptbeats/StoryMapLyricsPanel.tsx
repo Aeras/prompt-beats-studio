@@ -4,15 +4,9 @@ import { Loader2, MapPinned, Sparkles, Wand2 } from "lucide-react";
 
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
-import {
-  analyzeLyricsWithStoryMap,
-  createStoryMapFromLyrics,
-} from "@/lib/story-map-ai.functions";
+import { analyzeLyricsWithStoryMap, createStoryMapFromLyrics } from "@/lib/story-map-ai.functions";
 import { createStoryMap } from "@/lib/story-map.functions";
-import {
-  getStoryMapIdForProject,
-  replaceStoryMapDraft,
-} from "@/lib/story-map-workspace.functions";
+import { getStoryMapIdForProject, replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import type { StoryMapAnalysis } from "@/lib/story-map.shared";
 
 export function StoryMapLyricsPanel({
@@ -50,7 +44,11 @@ export function StoryMapLyricsPanel({
   useEffect(() => setAnalysis(null), [storyMapId, lyrics]);
 
   const sectionCount = useMemo(
-    () => structure.split("→").map((value) => value.trim()).filter(Boolean).length,
+    () =>
+      structure
+        .split("→")
+        .map((value) => value.trim())
+        .filter(Boolean).length,
     [structure],
   );
 
@@ -71,7 +69,10 @@ export function StoryMapLyricsPanel({
       const created = await createStoryMap({
         data: {
           title: `${projectName || songTitle || (el ? "Τραγούδι" : "Song")} — Story Map`,
-          concept: extracted.draft.summary || songTitle || (el ? "Story Map από υπάρχοντες στίχους" : "Story Map from existing lyrics"),
+          concept:
+            extracted.draft.summary ||
+            songTitle ||
+            (el ? "Story Map από υπάρχοντες στίχους" : "Story Map from existing lyrics"),
           projectId,
         },
       });
@@ -81,7 +82,13 @@ export function StoryMapLyricsPanel({
       await queryClient.invalidateQueries({ queryKey: ["story-map-for-project", projectId] });
       await queryClient.invalidateQueries({ queryKey: ["story-maps"] });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : el ? "Αποτυχία δημιουργίας Story Map." : "Could not create Story Map.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : el
+            ? "Αποτυχία δημιουργίας Story Map."
+            : "Could not create Story Map.",
+      );
     } finally {
       setBusy(false);
     }
@@ -97,7 +104,13 @@ export function StoryMapLyricsPanel({
       });
       setAnalysis(result.analysis);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : el ? "Η ανάλυση Story Map απέτυχε." : "Story Map analysis failed.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : el
+            ? "Η ανάλυση Story Map απέτυχε."
+            : "Story Map analysis failed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -142,7 +155,9 @@ export function StoryMapLyricsPanel({
 
       {storyMapId && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {el ? `Συνδεδεμένο Story Map · ${sectionCount} ενότητες ανιχνεύτηκαν` : `Connected Story Map · ${sectionCount} sections detected`}
+          {el
+            ? `Συνδεδεμένο Story Map · ${sectionCount} ενότητες ανιχνεύτηκαν`
+            : `Connected Story Map · ${sectionCount} sections detected`}
         </p>
       )}
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
@@ -153,7 +168,10 @@ export function StoryMapLyricsPanel({
             {analysis.overall}
           </p>
           {analysis.observations.map((item, index) => (
-            <div key={`${item.category}-${index}`} className="rounded-xl border border-white/10 p-3">
+            <div
+              key={`${item.category}-${index}`}
+              className="rounded-xl border border-white/10 p-3"
+            >
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {item.sectionLabel || item.category.replaceAll("_", " ")}
               </p>
@@ -162,7 +180,10 @@ export function StoryMapLyricsPanel({
             </div>
           ))}
           {analysis.sectionSuggestions.map((item, index) => (
-            <div key={`${item.sectionKey}-${index}`} className="rounded-xl border border-white/10 bg-black/15 p-3">
+            <div
+              key={`${item.sectionKey}-${index}`}
+              className="rounded-xl border border-white/10 bg-black/15 p-3"
+            >
               <p className="text-xs font-semibold">{item.sectionLabel}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {el ? "Στόχος Story Map" : "Story Map goal"}: {item.storyGoal}

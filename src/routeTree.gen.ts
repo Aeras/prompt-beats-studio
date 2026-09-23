@@ -18,12 +18,14 @@ import { Route as CopyrightIpRouteImport } from './routes/copyright-ip'
 import { Route as EmailLogoRouteImport } from './routes/email-logo'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as InspirationWallRouteImport } from './routes/inspiration-wall'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LyricsReviewRouteImport } from './routes/lyrics-review'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
+import { Route as StoryMapRouteImport } from './routes/story-map'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
@@ -82,6 +84,11 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InspirationWallRoute = InspirationWallRouteImport.update({
+  id: '/inspiration-wall',
+  path: '/inspiration-wall',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
@@ -110,6 +117,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
   id: '/song-analyzer',
   path: '/song-analyzer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryMapRoute = StoryMapRouteImport.update({
+  id: '/story-map',
+  path: '/story-map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -183,12 +195,14 @@ export interface FileRoutesByFullPath {
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
+  '/inspiration-wall': typeof InspirationWallRoute
   '/library': typeof LibraryRoute
   '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -212,12 +226,14 @@ export interface FileRoutesByTo {
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
+  '/inspiration-wall': typeof InspirationWallRoute
   '/library': typeof LibraryRoute
   '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -242,12 +258,14 @@ export interface FileRoutesById {
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
+  '/inspiration-wall': typeof InspirationWallRoute
   '/library': typeof LibraryRoute
   '/lyrics-review': typeof LyricsReviewRoute
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/api/upload': typeof ApiUploadRoute
@@ -273,12 +291,14 @@ export interface FileRouteTypes {
     | '/email-logo'
     | '/generate'
     | '/help'
+    | '/inspiration-wall'
     | '/library'
     | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/story-map'
     | '/terms'
     | '/trending'
     | '/api/upload'
@@ -302,12 +322,14 @@ export interface FileRouteTypes {
     | '/email-logo'
     | '/generate'
     | '/help'
+    | '/inspiration-wall'
     | '/library'
     | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/story-map'
     | '/terms'
     | '/trending'
     | '/api/upload'
@@ -331,12 +353,14 @@ export interface FileRouteTypes {
     | '/email-logo'
     | '/generate'
     | '/help'
+    | '/inspiration-wall'
     | '/library'
     | '/lyrics-review'
     | '/management'
     | '/onboarding'
     | '/privacy'
     | '/song-analyzer'
+    | '/story-map'
     | '/terms'
     | '/trending'
     | '/api/upload'
@@ -361,12 +385,14 @@ export interface RootRouteChildren {
   EmailLogoRoute: typeof EmailLogoRoute
   GenerateRoute: typeof GenerateRoute
   HelpRoute: typeof HelpRoute
+  InspirationWallRoute: typeof InspirationWallRoute
   LibraryRoute: typeof LibraryRoute
   LyricsReviewRoute: typeof LyricsReviewRoute
   ManagementRoute: typeof ManagementRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   SongAnalyzerRoute: typeof SongAnalyzerRoute
+  StoryMapRoute: typeof StoryMapRoute
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
   ApiUploadRoute: typeof ApiUploadRoute
@@ -446,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inspiration-wall': {
+      id: '/inspiration-wall'
+      path: '/inspiration-wall'
+      fullPath: '/inspiration-wall'
+      preLoaderRoute: typeof InspirationWallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library': {
       id: '/library'
       path: '/library'
@@ -486,6 +519,13 @@ declare module '@tanstack/react-router' {
       path: '/song-analyzer'
       fullPath: '/song-analyzer'
       preLoaderRoute: typeof SongAnalyzerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/story-map': {
+      id: '/story-map'
+      path: '/story-map'
+      fullPath: '/story-map'
+      preLoaderRoute: typeof StoryMapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -585,12 +625,14 @@ const rootRouteChildren: RootRouteChildren = {
   EmailLogoRoute: EmailLogoRoute,
   GenerateRoute: GenerateRoute,
   HelpRoute: HelpRoute,
+  InspirationWallRoute: InspirationWallRoute,
   LibraryRoute: LibraryRoute,
   LyricsReviewRoute: LyricsReviewRoute,
   ManagementRoute: ManagementRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   SongAnalyzerRoute: SongAnalyzerRoute,
+  StoryMapRoute: StoryMapRoute,
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
   ApiUploadRoute: ApiUploadRoute,

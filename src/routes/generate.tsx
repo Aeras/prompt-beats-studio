@@ -84,6 +84,16 @@ import {
 } from "@/lib/inspiration-wall-song-setup.shared";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import {
+  buildStoryMapSongSetupDescription,
+  STORY_MAP_SONG_SETUP_HANDOFF_KEY,
+  storyMapSongSetupHandoffSchema,
+  type StoryMapDraft,
+  type StoryMapSongSetupHandoff,
+} from "@/lib/story-map.shared";
+import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
+import { createStoryMap } from "@/lib/story-map.functions";
+import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
+import {
   activeSongBlueprint,
   buildSongBlueprint,
   type SongBlueprintSection,
@@ -787,6 +797,7 @@ function GeneratePage() {
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
   const musicLabFeature = useFeatureAccess("ai_music_lab");
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
+  const storyMapFeature = useFeatureAccess("story_map");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
@@ -844,6 +855,11 @@ function GeneratePage() {
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
     useState<InspirationWallSongSetupHandoff | null>(null);
+  const [storyMapHandoff, setStoryMapHandoff] = useState<StoryMapSongSetupHandoff | null>(null);
+  const [storyDriven, setStoryDriven] = useState(false);
+  const [storyDrivenDraft, setStoryDrivenDraft] = useState<StoryMapDraft | null>(null);
+  const [storyMapPreviewOpen, setStoryMapPreviewOpen] = useState(false);
+  const [storyMapSaved, setStoryMapSaved] = useState(false);
   const [songSetupPrefill, setSongSetupPrefill] = useState<{
     key: string;
     description: string;
@@ -919,6 +935,50 @@ function GeneratePage() {
   const [now, setNow] = useState(Date.now());
   const [jobId, setJobId] = useState<string | null>(null);
   const pendingKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);
+    try {
+      setStoryMapHandoff(storyMapSongSetupHandoffSchema.parse(JSON.parse(raw)));
+    } catch {
+      setStatus(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η φόρτωση του Story Map στο Song Setup."
+          : "Could not load the Story Map handoff into Song Setup.",
+      );
+    }
+  }, [appLanguage]);
+
+  useEffect(() => {
+    if (!storyMapHandoff || songSetupFeature.isLoading) return;
+    if (!songSetupFeature.allowed) {
+      setStatus(
+        appLanguage === "el"
+          ? "Το Song Setup Assistant δεν είναι διαθέσιμο για αυτόν τον λογαριασμό."
+          : "Song Setup Assistant is not available for this account.",
+      );
+      setStoryMapHandoff(null);
+      return;
+    }
+    const description = buildStoryMapSongSetupDescription(storyMapHandoff, appLanguage);
+    setAdvanced(true);
+    if (storyMapHandoff.projectId) setSaveProjectId(storyMapHandoff.projectId);
+    setSongSetupPrefill({
+      key: `${storyMapHandoff.storyMapId}:v1`,
+      description,
+      sourceLabel: storyMapHandoff.storyMapTitle,
+    });
+    setSongSetupAssistantOpen(true);
+    setStatus(
+      appLanguage === "el"
+        ? "Το Story Map φορτώθηκε στο Song Setup για έλεγχο."
+        : "Story Map loaded into Song Setup for review.",
+    );
+    setStoryMapHandoff(null);
+  }, [appLanguage, songSetupFeature.allowed, songSetupFeature.isLoading, storyMapHandoff]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1629,11 +1689,42 @@ function GeneratePage() {
     setGenerationResultModel(null);
     setQualityCheckResultModel(null);
     setSongContext(null);
+    setStoryDrivenDraft(null);
+    setStoryMapSaved(false);
     setApplied({});
     setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID();
     pendingKey.current = key;
     try {
+      let narrativePlan: StoryMapDraft | null = null;
+      if (storyDriven && storyMapFeature.allowed && !revisionMode) {
+        setStatus(
+          appLanguage === "el" ? "Δημιουργία αφηγηματικής ροής…" : "Building narrative flow…",
+        );
+        const planned = await planStoryDrivenGeneration({
+          data: {
+            theme: theme.trim(),
+            genre: effectiveGenre,
+            mood: effectiveMood,
+            language: effectiveLanguage,
+            structure: structure.join(" → ").slice(0, 600),
+            production: production.trim().slice(0, 1200),
+            instructions: instructions.trim().slice(0, 1200),
+            model: generationModel || null,
+          },
+        });
+        narrativePlan = planned.draft;
+        setStoryDrivenDraft(planned.draft);
+      }
+      const narrativeInstruction = narrativePlan
+        ? `
+
+STORY MAP (narrative/emotional intent only; Blueprint remains authoritative; never print Beat labels):
+${narrativePlan.summary}
+${narrativePlan.beats
+  .map((beat, index) => `${index + 1}. ${beat.title}: ${beat.whatHappens || beat.purpose}`)
+  .join("\n")}`
+        : "";
       const res = await startGenerationJob({
         data: {
           idempotencyKey: key,
@@ -1652,7 +1743,7 @@ function GeneratePage() {
               ? activeSongBlueprint(buildSongBlueprint(structure, songBlueprint))
               : [],
           production: production.trim().slice(0, 2000),
-          instructions: instructions.trim().slice(0, 2000),
+          instructions: `${instructions.trim()}${narrativeInstruction}`.slice(0, 2000),
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
           revision: revisionMode
@@ -2900,6 +2991,26 @@ function GeneratePage() {
                   {t("generator.generationModel", { model: registryModelLabel(generationModel) })}
                 </p>
               )}
+              {storyMapFeature.allowed && !revisionMode && (
+                <div className="mb-3 rounded-2xl border border-accent/20 bg-accent/[0.04] p-3">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={storyDriven}
+                      onChange={(event) => setStoryDriven(event.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">Story-driven lyrics</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {appLanguage === "el"
+                          ? "Χτίζει πρώτα αφηγηματική ή συναισθηματική εξέλιξη ώστε οι στίχοι να προχωρούν αντί να επαναλαμβάνουν την ίδια ιδέα."
+                          : "Builds narrative or emotional progression first, so the lyrics develop instead of repeating the same idea."}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button
                   onClick={generate}
@@ -2988,6 +3099,91 @@ function GeneratePage() {
 
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
+              {storyDrivenDraft && (
+                <div className="glass rounded-2xl p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">Story Map</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {storyDrivenDraft.summary}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStoryMapPreviewOpen((open) => !open)}
+                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-accent"
+                      >
+                        {storyMapPreviewOpen
+                          ? appLanguage === "el"
+                            ? "Κλείσιμο Story Map"
+                            : "Hide Story Map"
+                          : appLanguage === "el"
+                            ? "Προβολή Story Map"
+                            : "View Story Map"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={storyMapSaved}
+                        onClick={() =>
+                          void (async () => {
+                            try {
+                              const created = await createStoryMap({
+                                data: {
+                                  title: `${result.title || theme.trim()} — Story Map`,
+                                  concept: theme.trim(),
+                                  projectId: saveProjectId || null,
+                                },
+                              });
+                              await replaceStoryMapDraft({
+                                data: { storyMapId: created.storyMap.id, draft: storyDrivenDraft },
+                              });
+                              setStoryMapSaved(true);
+                              setStatus(
+                                appLanguage === "el"
+                                  ? "Το Story Map αποθηκεύτηκε."
+                                  : "Story Map saved.",
+                              );
+                            } catch (cause) {
+                              setStatus(
+                                cause instanceof Error
+                                  ? cause.message
+                                  : "Could not save Story Map.",
+                              );
+                            }
+                          })()
+                        }
+                        className="rounded-lg border border-accent/35 px-3 py-1.5 text-xs text-accent disabled:opacity-40"
+                      >
+                        {storyMapSaved
+                          ? appLanguage === "el"
+                            ? "Αποθηκεύτηκε"
+                            : "Saved"
+                          : appLanguage === "el"
+                            ? "Αποθήκευση Story Map"
+                            : "Save Story Map"}
+                      </button>
+                    </div>
+                  </div>
+                  {storyMapPreviewOpen && (
+                    <div className="mt-3 space-y-2">
+                      {storyDrivenDraft.beats.map((beat, index) => (
+                        <div
+                          key={`${beat.title}-${index}`}
+                          className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs"
+                        >
+                          <span className="font-semibold text-accent">
+                            {index + 1}. {beat.title}
+                          </span>
+                          {beat.whatHappens && (
+                            <span className="ml-2 text-muted-foreground">{beat.whatHappens}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {generationResultModel && (
                 <p className="text-xs text-muted-foreground">
                   {t("generator.generatedWith", {

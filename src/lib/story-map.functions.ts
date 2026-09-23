@@ -44,7 +44,10 @@ const updateSchema = z
     sourceProjectVersionId: z.string().uuid().nullable().optional(),
     sourceLyricsUpdatedAt: z.string().datetime().nullable().optional(),
   })
-  .refine((value) => Object.keys(value).some((key) => key !== "storyMapId"), "No changes supplied.");
+  .refine(
+    (value) => Object.keys(value).some((key) => key !== "storyMapId"),
+    "No changes supplied.",
+  );
 
 const beatInputSchema = storyMapBeatSchema.omit({ id: true }).extend({
   storyMapId: idSchema,
@@ -59,8 +62,43 @@ const reorderSchema = z.object({
   beatIds: z.array(idSchema).min(1).max(10),
 });
 
-type StoryMapRow = Record<string, any>;
-type BeatRow = Record<string, any>;
+type StoryMapRow = Record<string, any> & {
+  id: any;
+  user_id: any;
+  title: any;
+  concept: any;
+  theme: any;
+  emotional_direction: any;
+  narrator: any;
+  point_of_view: any;
+  desired_ending: any;
+  progression_type: any;
+  summary: any;
+  starting_state: any;
+  central_change: any;
+  turning_point: any;
+  resolution: any;
+  project_id: any;
+  source_project_version_id: any;
+  source_lyrics_updated_at: any;
+  created_at: any;
+  updated_at: any;
+};
+type BeatRow = Record<string, any> & {
+  id: any;
+  position: any;
+  title: any;
+  what_happens: any;
+  emotion: any;
+  purpose: any;
+  narrator_state: any;
+  key_image: any;
+  reveal: any;
+  change_after_beat: any;
+  lyric_anchor: any;
+  suggested_sections: any;
+  is_key_beat: any;
+};
 
 function mapBeat(row: BeatRow): StoryMapBeat {
   return {
@@ -209,16 +247,25 @@ export const updateStoryMap = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     const supabase = context.supabase as any;
     await requireOwnedStoryMap(supabase, data.storyMapId, context.userId);
-    if (data.projectId !== undefined) await requireOwnedProject(supabase, data.projectId, context.userId);
+    if (data.projectId !== undefined)
+      await requireOwnedProject(supabase, data.projectId, context.userId);
     const changes: Record<string, unknown> = {};
     const pairs: Array<[keyof typeof data, string]> = [
-      ["title", "title"], ["concept", "concept"], ["theme", "theme"],
-      ["emotionalDirection", "emotional_direction"], ["narrator", "narrator"],
-      ["pointOfView", "point_of_view"], ["desiredEnding", "desired_ending"],
-      ["progressionType", "progression_type"], ["summary", "summary"],
-      ["startingState", "starting_state"], ["centralChange", "central_change"],
-      ["turningPoint", "turning_point"], ["resolution", "resolution"],
-      ["projectId", "project_id"], ["sourceProjectVersionId", "source_project_version_id"],
+      ["title", "title"],
+      ["concept", "concept"],
+      ["theme", "theme"],
+      ["emotionalDirection", "emotional_direction"],
+      ["narrator", "narrator"],
+      ["pointOfView", "point_of_view"],
+      ["desiredEnding", "desired_ending"],
+      ["progressionType", "progression_type"],
+      ["summary", "summary"],
+      ["startingState", "starting_state"],
+      ["centralChange", "central_change"],
+      ["turningPoint", "turning_point"],
+      ["resolution", "resolution"],
+      ["projectId", "project_id"],
+      ["sourceProjectVersionId", "source_project_version_id"],
       ["sourceLyricsUpdatedAt", "source_lyrics_updated_at"],
     ];
     for (const [inputKey, dbKey] of pairs) {
@@ -232,11 +279,15 @@ export const updateStoryMap = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) {
-      if (error.code === "23505" && data.projectId) throw new Error("This Project already has a Story Map.");
+      if (error.code === "23505" && data.projectId)
+        throw new Error("This Project already has a Story Map.");
       throw new Error(error.message);
     }
     const { data: beats, error: beatError } = await supabase
-      .from("story_map_beats").select("*").eq("story_map_id", data.storyMapId).order("position");
+      .from("story_map_beats")
+      .select("*")
+      .eq("story_map_id", data.storyMapId)
+      .order("position");
     if (beatError) throw new Error(beatError.message);
     return { storyMap: mapStoryMap(row, beats ?? []) };
   });
@@ -248,7 +299,11 @@ export const deleteStoryMap = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     const supabase = context.supabase as any;
     await requireOwnedStoryMap(supabase, data.storyMapId, context.userId);
-    const { error } = await supabase.from("story_maps").delete().eq("id", data.storyMapId).eq("user_id", context.userId);
+    const { error } = await supabase
+      .from("story_maps")
+      .delete()
+      .eq("id", data.storyMapId)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -261,21 +316,25 @@ export const createStoryBeat = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     await requireOwnedStoryMap(supabase, data.storyMapId, context.userId);
     const { storyMapId, ...beat } = data;
-    const { data: row, error } = await supabase.from("story_map_beats").insert({
-      story_map_id: storyMapId,
-      position: beat.position,
-      title: beat.title,
-      what_happens: beat.whatHappens,
-      emotion: beat.emotion,
-      purpose: beat.purpose,
-      narrator_state: beat.narratorState,
-      key_image: beat.keyImage,
-      reveal: beat.reveal,
-      change_after_beat: beat.changeAfterBeat,
-      lyric_anchor: beat.lyricAnchor,
-      suggested_sections: beat.suggestedSections,
-      is_key_beat: beat.isKeyBeat,
-    }).select("*").single();
+    const { data: row, error } = await supabase
+      .from("story_map_beats")
+      .insert({
+        story_map_id: storyMapId,
+        position: beat.position,
+        title: beat.title,
+        what_happens: beat.whatHappens,
+        emotion: beat.emotion,
+        purpose: beat.purpose,
+        narrator_state: beat.narratorState,
+        key_image: beat.keyImage,
+        reveal: beat.reveal,
+        change_after_beat: beat.changeAfterBeat,
+        lyric_anchor: beat.lyricAnchor,
+        suggested_sections: beat.suggestedSections,
+        is_key_beat: beat.isKeyBeat,
+      })
+      .select("*")
+      .single();
     if (error) throw new Error(error.message);
     return { beat: mapBeat(row) };
   });
@@ -289,15 +348,28 @@ export const updateStoryBeat = createServerFn({ method: "POST" })
     await requireOwnedBeat(supabase, data.beatId, context.userId);
     const changes: Record<string, unknown> = {};
     const keyMap: Record<string, string> = {
-      position: "position", title: "title", whatHappens: "what_happens", emotion: "emotion",
-      purpose: "purpose", narratorState: "narrator_state", keyImage: "key_image", reveal: "reveal",
-      changeAfterBeat: "change_after_beat", lyricAnchor: "lyric_anchor",
-      suggestedSections: "suggested_sections", isKeyBeat: "is_key_beat",
+      position: "position",
+      title: "title",
+      whatHappens: "what_happens",
+      emotion: "emotion",
+      purpose: "purpose",
+      narratorState: "narrator_state",
+      keyImage: "key_image",
+      reveal: "reveal",
+      changeAfterBeat: "change_after_beat",
+      lyricAnchor: "lyric_anchor",
+      suggestedSections: "suggested_sections",
+      isKeyBeat: "is_key_beat",
     };
     for (const [key, dbKey] of Object.entries(keyMap)) {
       if ((data as any)[key] !== undefined) changes[dbKey] = (data as any)[key];
     }
-    const { data: row, error } = await supabase.from("story_map_beats").update(changes).eq("id", data.beatId).select("*").single();
+    const { data: row, error } = await supabase
+      .from("story_map_beats")
+      .update(changes)
+      .eq("id", data.beatId)
+      .select("*")
+      .single();
     if (error) throw new Error(error.message);
     return { beat: mapBeat(row) };
   });
@@ -321,20 +393,10 @@ export const reorderStoryBeats = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     const supabase = context.supabase as any;
     await requireOwnedStoryMap(supabase, data.storyMapId, context.userId);
-    const { data: rows, error } = await supabase.from("story_map_beats").select("id").eq("story_map_id", data.storyMapId);
+    const { error } = await supabase.rpc("reorder_story_map_beats", {
+      _story_map_id: data.storyMapId,
+      _beat_ids: data.beatIds,
+    });
     if (error) throw new Error(error.message);
-    const actualIds = new Set((rows ?? []).map((row: { id: string }) => row.id));
-    if (actualIds.size !== data.beatIds.length || data.beatIds.some((id) => !actualIds.has(id))) {
-      throw new Error("Invalid Story Beat order.");
-    }
-    // Temporary negative positions avoid the unique (story_map_id, position) constraint while reordering.
-    for (let index = 0; index < data.beatIds.length; index += 1) {
-      const { error: tempError } = await supabase.from("story_map_beats").update({ position: -(index + 1) }).eq("id", data.beatIds[index]);
-      if (tempError) throw new Error(tempError.message);
-    }
-    for (let index = 0; index < data.beatIds.length; index += 1) {
-      const { error: finalError } = await supabase.from("story_map_beats").update({ position: index }).eq("id", data.beatIds[index]);
-      if (finalError) throw new Error(finalError.message);
-    }
     return { ok: true };
   });
