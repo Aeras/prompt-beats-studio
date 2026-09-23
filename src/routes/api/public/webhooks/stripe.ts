@@ -68,7 +68,7 @@ export const Route = createFileRoute("/api/public/webhooks/stripe")({
         const { getStripeProPriceId } = await import("@/lib/stripe.server");
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { error } = await supabaseAdmin.rpc("process_stripe_subscription_event", {
+        const { error } = await (supabaseAdmin as any).rpc("process_stripe_subscription_event", {
           _event_id: event.id,
           _event_type: event.type,
           _event_created: event.created,

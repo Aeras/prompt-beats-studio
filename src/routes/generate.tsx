@@ -796,7 +796,8 @@ function GeneratePage() {
         setRevisionBasePromptId(job.input.revision.basePromptId);
         setRevisionRequest(job.input.revision.revisionRequest);
       }
-      setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(job.input); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null);
+      const recoveredSongContext = job.input && job.input.operation !== "lyrics_section_edit" ? job.input : null;
+      setGenerationId(job.generationId); setGenerationResultModel(job.model); setSongContext(recoveredSongContext); setQuality(null); setQualityCheckResultModel(null); setOpen({ title: false, tags: false, lyrics: false, note: false }); setStatus(null); setBusy(false); setJobId(null); rememberJob(null);
       void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       if (completedRevisionMeta) {
         void queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false });

@@ -62,7 +62,9 @@ function caseError(error: unknown, fallback: string) {
 }
 
 function EventCard({ event, el }: { event: ModerationCaseDetail["events"][number]; el: boolean }) {
-  const payload = event.payload ?? {};
+  const payload = event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
+    ? event.payload as Record<string, unknown>
+    : {};
   const reason = typeof payload["reason"] === "string" ? payload["reason"] : null;
   const actionSummary = typeof payload["action_summary"] === "string" ? payload["action_summary"] : null;
   const outcome = typeof payload["outcome"] === "string" ? payload["outcome"] : null;

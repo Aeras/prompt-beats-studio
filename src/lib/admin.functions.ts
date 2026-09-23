@@ -108,9 +108,10 @@ export const setAdminUserBanned = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireCapability(context.supabase, data.banned ? "can_block_users" : "can_unblock_users");
     const { error } = await context.supabase.rpc("admin_set_user_banned", {
-      _target_user_id: data.userId, _banned: data.banned,
-      _reason_code: data.banned ? (data.reasonCode ?? undefined) : undefined,
-      _reason_text: data.banned ? (data.reasonText ?? undefined) : undefined,
+      _target_user_id: data.userId,
+      _banned: data.banned,
+      ...(data.banned && data.reasonCode ? { _reason_code: data.reasonCode } : {}),
+      ...(data.banned && data.reasonText ? { _reason_text: data.reasonText } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.banned };
@@ -178,7 +179,11 @@ export const setModerationStatus = createServerFn({ method: "POST" })
     const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability", { _capability: "can_suspend_moderator" });
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
     if (data.status === "suspended" && !data.reasonText?.trim()) throw new Error("A suspension reason is required.");
-    const { error } = await context.supabase.rpc("admin_set_moderation_status", { _target_user_id: data.userId, _status: data.status, _reason_text: data.reasonText ?? undefined });
+    const { error } = await context.supabase.rpc("admin_set_moderation_status", {
+      _target_user_id: data.userId,
+      _status: data.status,
+      ...(data.reasonText ? { _reason_text: data.reasonText } : {}),
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -383,7 +388,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       const { data: reservedId, error: registrationError } = await context.supabase.rpc("admin_create_registration_block", {
         _email: authUser.user.email ?? "",
         _reason_code: data.registrationReasonCode!,
-        _reason_text: data.registrationReasonText ?? undefined,
+        ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
       });
       if (registrationError || !reservedId) {
         throw new Error(`Could not reserve registration block: ${registrationError?.message ?? "no block id returned"}`);

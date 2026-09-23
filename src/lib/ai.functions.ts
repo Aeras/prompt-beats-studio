@@ -2208,7 +2208,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
         records,
         provider,
         model,
-        reasoningEffort,
+        ...(reasoningEffort ? { reasoningEffort } : {}),
       });
     } catch (err) {
       await supabase.rpc("release_quality_check", {

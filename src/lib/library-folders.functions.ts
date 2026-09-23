@@ -359,8 +359,8 @@ export const searchLibraryScope = createServerFn({ method: "POST" })
     const folderId = data.folderId ?? null;
     await requireOwnedFolder(context.supabase, context.userId, folderId);
 
-    const { data: results, error } = await context.supabase.rpc("search_library_scope", {
-      _folder_id: folderId ?? undefined,
+    const { data: results, error } = await (context.supabase as any).rpc("search_library_scope", {
+      _folder_id: folderId,
       _query: data.query,
     });
     if (error) throw new Error(error.message);
@@ -383,9 +383,9 @@ export const duplicatePromptProjectToFolder = createServerFn({ method: "POST" })
     if (sourceError) throw new Error(sourceError.message);
     if (!source) throw new Error("Project not found.");
 
-    const { data: duplicated, error } = await context.supabase.rpc("duplicate_prompt_project_to_folder", {
+    const { data: duplicated, error } = await (context.supabase as any).rpc("duplicate_prompt_project_to_folder", {
       _project_id: data.projectId,
-      _destination_folder_id: data.destinationFolderId ?? undefined,
+      _destination_folder_id: data.destinationFolderId ?? null,
       _new_name: data.newName,
     });
     if (error) throw new Error(error.message);
@@ -407,9 +407,9 @@ export const duplicateStandalonePromptToFolder = createServerFn({ method: "POST"
     if (sourceError) throw new Error(sourceError.message);
     if (!source || source.project_id) throw new Error("Standalone prompt not found.");
 
-    const { data: duplicated, error } = await context.supabase.rpc("duplicate_standalone_prompt_to_folder", {
+    const { data: duplicated, error } = await (context.supabase as any).rpc("duplicate_standalone_prompt_to_folder", {
       _prompt_id: data.promptId,
-      _destination_folder_id: data.destinationFolderId ?? undefined,
+      _destination_folder_id: data.destinationFolderId ?? null,
       _new_name: data.newName,
     });
     if (error) throw new Error(error.message);
