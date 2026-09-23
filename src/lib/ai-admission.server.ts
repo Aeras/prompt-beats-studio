@@ -1,4 +1,8 @@
-export type AuxiliaryAiOperation = "song_setup_assistant" | "ai_music_lab" | "song_analyzer";
+export type AuxiliaryAiOperation =
+  | "song_setup_assistant"
+  | "ai_music_lab"
+  | "song_analyzer"
+  | "inspiration_wall";
 
 const AUXILIARY_AI_LIMIT_PER_HOUR = 10;
 
