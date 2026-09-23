@@ -248,8 +248,8 @@ describe("Library folders foundation", () => {
   test("Projects view exposes folders, long-press Move/Duplicate and drag/drop instead of a flat Projects list", async () => {
     const library = await source("src/routes/library.tsx");
 
-    expect(library).toContain(
-      'view !== "analyses" && <button disabled={busy} onClick={createFolder}',
+    expect(library).toMatch(
+      /view !== "analyses" && \(\s*<button\s+disabled=\{busy\}\s+onClick=\{createFolder\}/,
     );
     expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
     expect(library).toContain("folderSearchResults");
@@ -263,7 +263,9 @@ describe("Library folders foundation", () => {
   test("switching Library tabs clears a previously open Project so the Projects folder browser is reachable", async () => {
     const library = await source("src/routes/library.tsx");
 
-    expect(library).toContain("setOpenProjectId(null); onViewChange(item);");
+    expect(library).toMatch(
+      /setOpenProjectId\(null\);\s*onViewChange\(item\);/,
+    );
     expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
   });
 
@@ -271,8 +273,8 @@ describe("Library folders foundation", () => {
     const library = await source("src/routes/library.tsx");
     const picker = await source("src/components/promptbeats/LibraryFolderPicker.tsx");
 
-    expect(library).toContain(
-      'disabledDestinationFolderId={folderPicker?.operation === "move" ? folderPicker.currentFolderId : undefined}',
+    expect(library).toMatch(
+      /disabledDestinationFolderId=\{\s*folderPicker\?\.operation === "move"\s*\?\s*folderPicker\.currentFolderId\s*:\s*undefined\s*\}/,
     );
     expect(picker).toContain("disabled={destinationDisabled(null)}");
     expect(picker).toContain("disabled={destinationDisabled(currentFolderId)}");
@@ -309,7 +311,7 @@ describe("Library folders foundation", () => {
     const library = await source("src/routes/library.tsx");
 
     expect(library).toContain("touchDragHandlers");
-    expect(library).toContain("document.elementFromPoint");
+    expect(library).toMatch(/document\s*\.\s*elementFromPoint/);
     expect(library).toContain("data-library-folder-drop-id");
     expect(library).toContain("data-library-folder-drop-path");
     expect(library).toContain('event.pointerType === "mouse"');
@@ -317,7 +319,7 @@ describe("Library folders foundation", () => {
     expect(library).toContain("state.dragging = true");
     expect(library).toContain("event.currentTarget.setPointerCapture?.(event.pointerId)");
     expect(library).toContain("hasPointerCapture");
-    expect(library).toContain("performMove(state.item.kind");
+    expect(library).toMatch(/performMove\(\s*state\.item\.kind/);
     expect(library).toContain("setTouchDraggingKey");
     expect(library).toContain("scale-[1.03]");
     expect(library).toContain("md:cursor-grab");
