@@ -55,20 +55,10 @@ type SortableCardProps = {
   onSelect: () => void;
 };
 
-function SortableArrangementSectionCard({
-  section,
-  label,
-  selected,
-  onSelect,
-}: SortableCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: section.sectionId });
+function SortableArrangementSectionCard({ section, label, selected, onSelect }: SortableCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.sectionId,
+  });
 
   const style: CSSProperties = {
     transform: transform
@@ -80,11 +70,7 @@ function SortableArrangementSectionCard({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="shrink-0 motion-reduce:!transition-none"
-    >
+    <div ref={setNodeRef} style={style} className="shrink-0 motion-reduce:!transition-none">
       <ArrangementSectionCard
         section={section}
         label={label}
@@ -231,21 +217,34 @@ export function VisualSongArrangement({
             {sections.map((section) => {
               const open = section.sectionId === selectedId;
               return (
-                <div key={section.sectionId} className="rounded-xl border border-white/10 bg-black/25">
+                <div
+                  key={section.sectionId}
+                  className="rounded-xl border border-white/10 bg-black/25"
+                >
                   <button
                     type="button"
                     onClick={() => setSelectedId(open ? null : section.sectionId)}
                     aria-expanded={open}
                     className="flex min-h-12 w-full items-center gap-3 px-3 text-left"
                   >
-                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open ? "" : "-rotate-90")} />
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                        open ? "" : "-rotate-90",
+                      )}
+                    />
                     <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                       {sectionLabel(sections, section, labelForSection)}
                     </span>
                     <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">
                       E {section.energy ?? "—"}
                     </span>
-                    {section.instruction.trim() && <span className="h-2 w-2 rounded-full bg-accent" aria-label={t("generator.blueprint.hasInstruction")} />}
+                    {section.instruction.trim() && (
+                      <span
+                        className="h-2 w-2 rounded-full bg-accent"
+                        aria-label={t("generator.blueprint.hasInstruction")}
+                      />
+                    )}
                   </button>
                   {open && (
                     <div className="border-t border-white/10 p-3">
@@ -265,10 +264,7 @@ export function VisualSongArrangement({
             })}
           </div>
 
-          <EnergyTimeline
-            sections={sections}
-            labelForSection={labelForSection}
-          />
+          <EnergyTimeline sections={sections} labelForSection={labelForSection} />
 
           {selectedSection && (
             <div className="hidden md:block">
@@ -298,7 +294,9 @@ export function VisualSongArrangement({
             aria-expanded={advancedOpen}
             className="flex w-full items-center gap-2 py-1 text-left text-[11px] font-medium text-muted-foreground hover:text-foreground"
           >
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", advancedOpen ? "" : "-rotate-90")} />
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", advancedOpen ? "" : "-rotate-90")}
+            />
             {t("generator.arrangement.advancedBlueprint")}
           </button>
           {advancedOpen && <div className="mt-2">{advancedView}</div>}

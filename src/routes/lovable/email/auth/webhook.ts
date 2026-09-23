@@ -5,7 +5,10 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
     handlers: {
       POST: () =>
         Response.json(
-          { error: "Lovable Email has been retired. PromptBeats email is delivered through the Polar55 SMTP configuration." },
+          {
+            error:
+              "Lovable Email has been retired. PromptBeats email is delivered through the Polar55 SMTP configuration.",
+          },
           { status: 410 },
         ),
     },

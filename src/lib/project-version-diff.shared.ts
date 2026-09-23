@@ -82,14 +82,10 @@ function valueStatus(before: string, after: string): Exclude<VersionDiffStatus, 
   return "changed";
 }
 
-function arrayValues(
-  selected: string[] | undefined,
-  custom: string | undefined,
-  fallback = "",
-) {
+function arrayValues(selected: string[] | undefined, custom: string | undefined, fallback = "") {
   const values = [...(selected ?? []), ...(custom?.trim() ? [custom.trim()] : [])];
   const normalized = [...new Set(values.map(compact).filter(Boolean))];
-  return normalized.length ? normalized : (fallback.trim() ? [compact(fallback)] : []);
+  return normalized.length ? normalized : fallback.trim() ? [compact(fallback)] : [];
 }
 
 function arrayField(
@@ -127,7 +123,8 @@ function scalarField(key: string, label: string, before: unknown, after: unknown
 
 function bpmLabel(snapshot: GeneratorInputSnapshot | null) {
   if (!snapshot) return "";
-  if (snapshot.bpmMode === "Custom" && snapshot.customBpm.trim()) return `${snapshot.customBpm.trim()} BPM`;
+  if (snapshot.bpmMode === "Custom" && snapshot.customBpm.trim())
+    return `${snapshot.customBpm.trim()} BPM`;
   if (snapshot.bpmMode.trim()) return snapshot.bpmMode.trim();
   return snapshot.customBpm.trim() ? `${snapshot.customBpm.trim()} BPM` : "";
 }
@@ -170,10 +167,30 @@ export function diffVersionFields(
     ),
     scalarField("bpm", "BPM", bpmLabel(left), bpmLabel(right)),
     scalarField("language", "Language", languageLabel(before), languageLabel(after)),
-    scalarField("productionStyle", "Production Style", left?.productionStyle ?? "", right?.productionStyle ?? ""),
-    scalarField("additionalInstructions", "Additional Instructions", left?.additionalInstructions ?? "", right?.additionalInstructions ?? ""),
-    scalarField("targetPlatform", "Target Platform", left?.targetPlatform ?? "", right?.targetPlatform ?? ""),
-    scalarField("generationModel", "Generation Model", left?.generationModel ?? "", right?.generationModel ?? ""),
+    scalarField(
+      "productionStyle",
+      "Production Style",
+      left?.productionStyle ?? "",
+      right?.productionStyle ?? "",
+    ),
+    scalarField(
+      "additionalInstructions",
+      "Additional Instructions",
+      left?.additionalInstructions ?? "",
+      right?.additionalInstructions ?? "",
+    ),
+    scalarField(
+      "targetPlatform",
+      "Target Platform",
+      left?.targetPlatform ?? "",
+      right?.targetPlatform ?? "",
+    ),
+    scalarField(
+      "generationModel",
+      "Generation Model",
+      left?.generationModel ?? "",
+      right?.generationModel ?? "",
+    ),
     scalarField("stylePrompt", "Generated Style Prompt", before.tags, after.tags),
     scalarField("producerNote", "Producer Note", before.note, after.note),
   ];
@@ -200,7 +217,10 @@ export function diffSongStructure(
   const right = occurrenceKeys(after?.songStructure ?? []);
   const leftMap = new Map(left.map((item, index) => [item.key, { ...item, index }]));
   const rightMap = new Map(right.map((item, index) => [item.key, { ...item, index }]));
-  const orderedKeys = [...left.map((item) => item.key), ...right.map((item) => item.key).filter((key) => !leftMap.has(key))];
+  const orderedKeys = [
+    ...left.map((item) => item.key),
+    ...right.map((item) => item.key).filter((key) => !leftMap.has(key)),
+  ];
 
   return orderedKeys.map((key) => {
     const l = leftMap.get(key);
@@ -221,7 +241,9 @@ export function diffSongStructure(
 
 function blueprintIdentity(section: SongBlueprintSection) {
   const id = section.sectionId?.trim();
-  return id ? `id:${id}` : `legacy:${compact(section.sectionType).toLowerCase()}:${section.occurrence}`;
+  return id
+    ? `id:${id}`
+    : `legacy:${compact(section.sectionType).toLowerCase()}:${section.occurrence}`;
 }
 
 function blueprintLabel(section: SongBlueprintSection) {
@@ -335,7 +357,10 @@ export function diffLyrics(beforeLyrics: string, afterLyrics: string): LyricsSec
   const right = parseLyricsSections(afterLyrics);
   const leftMap = new Map(left.map((section) => [section.key, section]));
   const rightMap = new Map(right.map((section) => [section.key, section]));
-  const keys = [...left.map((section) => section.key), ...right.map((section) => section.key).filter((key) => !leftMap.has(key))];
+  const keys = [
+    ...left.map((section) => section.key),
+    ...right.map((section) => section.key).filter((key) => !leftMap.has(key)),
+  ];
 
   return keys.map((key) => {
     const l = leftMap.get(key);
@@ -353,9 +378,12 @@ export function diffLyrics(beforeLyrics: string, afterLyrics: string): LyricsSec
       status,
       before,
       after,
-      tokens: status === "unchanged"
-        ? (before ? [{ value: before, status: "unchanged" as const }] : [])
-        : diffWords(before, after),
+      tokens:
+        status === "unchanged"
+          ? before
+            ? [{ value: before, status: "unchanged" as const }]
+            : []
+          : diffWords(before, after),
     };
   });
 }
@@ -370,10 +398,10 @@ export function compareProjectVersions(
   const lyrics = diffLyrics(before.lyrics, after.lyrics);
 
   const changeCount =
-    fields.filter((item) => item.status !== "unchanged").length
-    + structure.filter((item) => item.status !== "unchanged").length
-    + arrangement.filter((item) => item.status !== "unchanged").length
-    + lyrics.filter((item) => item.status !== "unchanged").length;
+    fields.filter((item) => item.status !== "unchanged").length +
+    structure.filter((item) => item.status !== "unchanged").length +
+    arrangement.filter((item) => item.status !== "unchanged").length +
+    lyrics.filter((item) => item.status !== "unchanged").length;
 
   return {
     hasChanges: changeCount > 0,

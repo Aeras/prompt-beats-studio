@@ -28,7 +28,12 @@ async function cleanupPlaylistCover(userId: string, url: string | null | undefin
 const TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
-async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrder?: string[], viewerId?: string) {
+async function loadTracksWithHandles(
+  supabase: any,
+  ids: string[],
+  preferredOrder?: string[],
+  viewerId?: string,
+) {
   if (!ids.length) return [];
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: tracks, error } = await supabaseAdmin
@@ -54,8 +59,10 @@ async function loadTracksWithHandles(supabase: any, ids: string[], preferredOrde
   return rows
     .map((track: any) => ({
       ...track,
-      prompt: viewerId === track.user_id || track.prompt_is_public !== false ? (track.prompt ?? "") : "",
-      lyrics: viewerId === track.user_id || track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+      prompt:
+        viewerId === track.user_id || track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+      lyrics:
+        viewerId === track.user_id || track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
       handle: `@${handles.get(track.user_id) ?? "unknown"}`,
     }))
     .sort((a: any, b: any) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
@@ -80,8 +87,10 @@ async function assertPlaylistEligibleTrack(supabase: any, userId: string, trackI
     .eq("id", trackId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!track || (track.is_published !== true && track.user_id !== userId)) throw new Error("Track is unavailable");
-  if (track.source_type !== "upload") throw new Error("Only tracks played by the PromptBeats player can be added to playlists");
+  if (!track || (track.is_published !== true && track.user_id !== userId))
+    throw new Error("Track is unavailable");
+  if (track.source_type !== "upload")
+    throw new Error("Only tracks played by the PromptBeats player can be added to playlists");
   return track;
 }
 
@@ -113,7 +122,9 @@ export const listPlaylists = createServerFn({ method: "GET" })
       : { data: [], error: null };
     if (trackError) throw new Error(trackError.message);
 
-    const trackMap = new Map<string, any>((tracks ?? []).map((track: any): [string, any] => [track.id, track]));
+    const trackMap = new Map<string, any>(
+      (tracks ?? []).map((track: any): [string, any] => [track.id, track]),
+    );
     const itemMap = new Map<string, any[]>();
     for (const item of items ?? []) {
       const list = itemMap.get(item.playlist_id) ?? [];
@@ -124,12 +135,18 @@ export const listPlaylists = createServerFn({ method: "GET" })
     return {
       playlists: playlists.map((playlist: any) => {
         const playlistItems = itemMap.get(playlist.id) ?? [];
-        const latestItem = playlistItems.reduce((latest: any, item: any) => !latest || item.added_at > latest.added_at ? item : latest, null);
+        const latestItem = playlistItems.reduce(
+          (latest: any, item: any) => (!latest || item.added_at > latest.added_at ? item : latest),
+          null,
+        );
         const latestTrack = latestItem ? trackMap.get(latestItem.track_id) : null;
         return {
           ...playlist,
           track_count: playlistItems.length,
-          duration_seconds: playlistItems.reduce((sum: number, item: any) => sum + (trackMap.get(item.track_id)?.duration_seconds ?? 0), 0),
+          duration_seconds: playlistItems.reduce(
+            (sum: number, item: any) => sum + (trackMap.get(item.track_id)?.duration_seconds ?? 0),
+            0,
+          ),
           artwork: playlist.cover_url ?? latestTrack?.cover_url ?? latestTrack?.art_url ?? null,
         };
       }),
@@ -150,28 +167,51 @@ export const getPlaylist = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const orderedIds = (items ?? []).map((item: any) => item.track_id);
-    const tracks = await loadTracksWithHandles(context.supabase, orderedIds, orderedIds, context.userId);
+    const tracks = await loadTracksWithHandles(
+      context.supabase,
+      orderedIds,
+      orderedIds,
+      context.userId,
+    );
     const trackMap = new Map(tracks.map((track: any) => [track.id, track]));
     const orderedTracks = orderedIds.map((id: string) => trackMap.get(id)).filter(Boolean);
 
     return {
       playlist,
       tracks: orderedTracks,
-      duration_seconds: orderedTracks.reduce((sum: number, track: any) => sum + (track.duration_seconds ?? 0), 0),
+      duration_seconds: orderedTracks.reduce(
+        (sum: number, track: any) => sum + (track.duration_seconds ?? 0),
+        0,
+      ),
     };
   });
 
 export const createPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ name: nameSchema, trackId: z.string().uuid().optional(), coverUrl: coverUrlSchema.optional() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        name: nameSchema,
+        trackId: z.string().uuid().optional(),
+        coverUrl: coverUrlSchema.optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
-    if (data.trackId) await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
-    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
+    if (data.trackId)
+      await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
+    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId))
+      throw new Error("Invalid playlist cover");
 
     const { data: playlist, error } = await (context.supabase as any)
       .from("playlists")
-      .insert({ user_id: context.userId, name: data.name, cover_url: data.coverUrl ?? null, is_public: false })
+      .insert({
+        user_id: context.userId,
+        name: data.name,
+        cover_url: data.coverUrl ?? null,
+        is_public: false,
+      })
       .select("id, name, cover_url, is_public, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
@@ -181,7 +221,11 @@ export const createPlaylist = createServerFn({ method: "POST" })
         .from("playlist_tracks")
         .insert({ playlist_id: playlist.id, track_id: data.trackId, position: 0 });
       if (itemError) {
-        await (context.supabase as any).from("playlists").delete().eq("id", playlist.id).eq("user_id", context.userId);
+        await (context.supabase as any)
+          .from("playlists")
+          .delete()
+          .eq("id", playlist.id)
+          .eq("user_id", context.userId);
         await cleanupPlaylistCover(context.userId, data.coverUrl);
         throw new Error(itemError.message);
       }
@@ -192,11 +236,16 @@ export const createPlaylist = createServerFn({ method: "POST" })
 
 export const updatePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), name: nameSchema, coverUrl: coverUrlSchema }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({ playlistId: z.string().uuid(), name: nameSchema, coverUrl: coverUrlSchema })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
     const playlist = await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
-    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId)) throw new Error("Invalid playlist cover");
+    if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId))
+      throw new Error("Invalid playlist cover");
 
     const { error } = await (context.supabase as any)
       .from("playlists")
@@ -206,7 +255,11 @@ export const updatePlaylist = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (playlist.cover_url && playlist.cover_url !== data.coverUrl) {
-      try { await cleanupPlaylistCover(context.userId, playlist.cover_url); } catch { /* best-effort storage cleanup */ }
+      try {
+        await cleanupPlaylistCover(context.userId, playlist.cover_url);
+      } catch {
+        /* best-effort storage cleanup */
+      }
     }
     return { ok: true as const };
   });
@@ -223,13 +276,19 @@ export const deletePlaylist = createServerFn({ method: "POST" })
       .eq("id", data.playlistId)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
-    try { await cleanupPlaylistCover(context.userId, playlist.cover_url); } catch { /* best-effort storage cleanup */ }
+    try {
+      await cleanupPlaylistCover(context.userId, playlist.cover_url);
+    } catch {
+      /* best-effort storage cleanup */
+    }
     return { ok: true as const };
   });
 
 export const addTrackToPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
@@ -253,9 +312,11 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
       .maybeSingle();
     if (lastError) throw new Error(lastError.message);
 
-    const { error } = await (context.supabase as any)
-      .from("playlist_tracks")
-      .insert({ playlist_id: data.playlistId, track_id: data.trackId, position: (last?.position ?? -1) + 1 });
+    const { error } = await (context.supabase as any).from("playlist_tracks").insert({
+      playlist_id: data.playlistId,
+      track_id: data.trackId,
+      position: (last?.position ?? -1) + 1,
+    });
     if (error) {
       if (error.code === "23505") return { status: "exists" as const };
       throw new Error(error.message);
@@ -265,7 +326,9 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
 
 export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
@@ -280,7 +343,9 @@ export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
 
 export const reorderPlaylistTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
     const { error } = await (context.supabase as any).rpc("reorder_playlist_tracks", {
@@ -347,7 +412,8 @@ export const toggleFavorite = createServerFn({ method: "POST" })
       .eq("id", data.trackId)
       .maybeSingle();
     if (trackError) throw new Error(trackError.message);
-    if (!track || (track.is_published !== true && track.user_id !== context.userId)) throw new Error("Track is unavailable");
+    if (!track || (track.is_published !== true && track.user_id !== context.userId))
+      throw new Error("Track is unavailable");
 
     const { error } = await (context.supabase as any)
       .from("favorites")

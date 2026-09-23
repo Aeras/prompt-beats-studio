@@ -102,7 +102,8 @@ export const en = {
   "library.noTracks": "You haven't uploaded any tracks yet.",
   "library.noVisibilityTracks": "No {visibility} tracks yet.",
   "library.noLikes": "No liked tracks yet — tap the heart on any track.",
-  "library.noPrompts": "No saved prompts yet. Generate one in the Studio and hit “Save to my library”.",
+  "library.noPrompts":
+    "No saved prompts yet. Generate one in the Studio and hit “Save to my library”.",
   "library.untitledPrompt": "Untitled prompt",
   "library.copyPrompt": "Copy prompt",
   "library.deletePrompt": "Delete prompt",
@@ -121,11 +122,15 @@ export const en = {
   "generator.revisionBase": "Selected base version",
   "generator.revisionBaseHint": "This saved version is the authoritative base for the revision.",
   "generator.revisionRequest": "What do you want to change?",
-  "generator.revisionRequestPlaceholder": "e.g. Keep both verses exactly unchanged. Rewrite only the chorus to make it more anthemic and memorable.",
+  "generator.revisionRequestPlaceholder":
+    "e.g. Keep both verses exactly unchanged. Rewrite only the chorus to make it more anthemic and memorable.",
   "generator.revisionRequestRequired": "Describe what you want to change.",
-  "generator.revisionLegacySnapshot": "This is a legacy version without a full snapshot. Only real stored data has been loaded.",
-  "generator.revisionCreated": "Version V{version} was created automatically from the selected base version.",
-  "generator.revisionSwitchConfirm": "You have revision text that has not been used. Change the base and discard it?",
+  "generator.revisionLegacySnapshot":
+    "This is a legacy version without a full snapshot. Only real stored data has been loaded.",
+  "generator.revisionCreated":
+    "Version V{version} was created automatically from the selected base version.",
+  "generator.revisionSwitchConfirm":
+    "You have revision text that has not been used. Change the base and discard it?",
   "generator.revisionLoading": "Loading base version…",
   "generator.revisionNoVersions": "This Project has no saved versions.",
   "generator.revisionAutoSaved": "The new version was saved automatically in the same Project.",
@@ -149,14 +154,18 @@ export const en = {
   "lyricsWorkspace.apply": "Apply",
   "lyricsWorkspace.applyAllChoruses": "Apply to all Chorus",
   "lyricsWorkspace.appliedAllChoruses": "Applied to all Chorus sections",
-  "lyricsWorkspace.applyAllChorusesLocked": "Unlock all Chorus sections to apply this change to all of them.",
+  "lyricsWorkspace.applyAllChorusesLocked":
+    "Unlock all Chorus sections to apply this change to all of them.",
   "lyricsWorkspace.unsaved": "Unsaved lyric changes",
   "lyricsWorkspace.noUnsaved": "No unsaved lyric changes",
   "lyricsWorkspace.sectionCount": "{count} sections",
-  "lyricsWorkspace.unsavedConfirm": "You have unsaved lyric changes. Leave the workspace and discard them?",
+  "lyricsWorkspace.unsavedConfirm":
+    "You have unsaved lyric changes. Leave the workspace and discard them?",
   "lyricsWorkspace.rateLimited": "AI usage limit reached. Try again later.",
-  "lyricsWorkspace.otherJobActive": "Another AI action is already in progress. Wait for it to finish.",
-  "lyricsWorkspace.languageRequired": "This saved version has no language metadata. Select or restore the song language before using AI section editing.",
+  "lyricsWorkspace.otherJobActive":
+    "Another AI action is already in progress. Wait for it to finish.",
+  "lyricsWorkspace.languageRequired":
+    "This saved version has no language metadata. Select or restore the song language before using AI section editing.",
   "lyricsWorkspace.aiFailed": "The section edit failed. Please try again.",
   "lyricsWorkspace.aiInvalid": "The AI returned an invalid section edit.",
   "lyricsWorkspace.sectionChanged": "The selected section changed before the proposal was applied.",
@@ -174,7 +183,8 @@ export const en = {
   "lyricsWorkspace.action.custom": "Custom instruction",
   "generator.clear": "Clear",
   "generator.theme": "Theme",
-  "generator.themePlaceholder": "Your theme or topic — e.g. a late-night drive through a neon city after a breakup",
+  "generator.themePlaceholder":
+    "Your theme or topic — e.g. a late-night drive through a neon city after a breakup",
   "generator.musicStyle": "Music Style",
   "generator.selectMusicStyle": "Select Music Style",
   "generator.pickMany": "Pick as many as you like",
@@ -188,7 +198,8 @@ export const en = {
   "generator.customLanguagePlaceholder": "Type your own language",
   "generator.languageVariant": "Variant / Dialect",
   "generator.languageVariantAuto": "Auto / Neutral",
-  "generator.languageVariantHint": "Optional. Refines wording, spelling, idioms and regional phrasing for the lyrics.",
+  "generator.languageVariantHint":
+    "Optional. Refines wording, spelling, idioms and regional phrasing for the lyrics.",
   "generator.bpm": "BPM",
   "generator.chooseOne": "Choose one",
   "generator.customBpm": "Custom BPM (40–260)",
@@ -197,17 +208,20 @@ export const en = {
   "generator.hideTags": "Hide tags",
   "generator.blueprint.title": "Song Blueprint",
   "generator.blueprint.hint": "Add optional direction for individual song sections",
-  "generator.blueprint.description": "Write naturally what should happen in each section. PromptBeats will translate it into concise square-bracketed production directions when generating the song.",
+  "generator.blueprint.description":
+    "Write naturally what should happen in each section. PromptBeats will translate it into concise square-bracketed production directions when generating the song.",
   "generator.blueprint.activeCount": "{count} section instructions",
   "generator.blueprint.hasInstruction": "Section has Blueprint direction",
-  "generator.blueprint.placeholder": "e.g. {section}: strip back the drums, close vocal, then bring the bass in halfway through",
+  "generator.blueprint.placeholder":
+    "e.g. {section}: strip back the drums, close vocal, then bring the bass in halfway through",
   "generator.blueprint.sectionInstruction": "Blueprint instruction for {section}",
   "generator.blueprint.applyAllChorus": "Apply to all Chorus",
   "generator.blueprint.appliedAllChorus": "Applied to all Chorus",
   "generator.blueprint.clearSection": "Clear",
   "generator.arrangement.title": "Visual Arrangement",
   "generator.arrangement.advanced": "Advanced",
-  "generator.arrangement.hint": "Shape section order, Blueprint direction and energy. Drag sections on desktop or use Move Up / Move Down.",
+  "generator.arrangement.hint":
+    "Shape section order, Blueprint direction and energy. Drag sections on desktop or use Move Up / Move Down.",
   "generator.arrangement.add": "Add section",
   "generator.arrangement.empty": "Add a section to start building the arrangement.",
   "generator.arrangement.sectionDetails": "Section details",
@@ -226,7 +240,8 @@ export const en = {
   "generator.arrangement.advancedBlueprint": "Advanced Blueprint / Text View",
   "generator.arrangement.dragHandle": "Drag {section} to reorder",
   "generator.arrangement.energyCurve": "Energy Curve",
-  "generator.arrangement.energyCurveHint": "Relative creative intensity across the song. Unset sections appear as —.",
+  "generator.arrangement.energyCurveHint":
+    "Relative creative intensity across the song. Unset sections appear as —.",
   "generator.arrangement.energySequence": "Energy sequence",
   "generator.arrangement.energyCurveAria": "Song energy curve by section",
   "generator.arrangement.noBlueprint": "No Blueprint direction",
@@ -235,9 +250,11 @@ export const en = {
   "generator.structureHint": "Tap to build the order",
   "generator.clearStructure": "Clear structure",
   "generator.productionStyle": "Production Style",
-  "generator.productionPlaceholder": "Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…",
+  "generator.productionPlaceholder":
+    "Production, arrangement, sonic character, dynamics, texture, groove, vocal treatment…",
   "generator.additionalInstructions": "Additional Instructions",
-  "generator.additionalInstructionsPlaceholder": "e.g. Raspy male vocal, short intro and a bigger final chorus",
+  "generator.additionalInstructionsPlaceholder":
+    "e.g. Raspy male vocal, short intro and a bigger final chorus",
   "generator.aiModel": "AI Model",
   "generator.generateWith": "Generate with:",
   "generator.generationModel": "Generation model: {model}",
@@ -402,13 +419,12 @@ export const en = {
   "generator.structure.solo": "Solo",
   "generator.structure.finalChorus": "Final Chorus",
   "generator.structure.outro": "Outro",
-  "generator.structure.coda": "Coda"
-,
-
+  "generator.structure.coda": "Coda",
   "generator.languageSearch": "Search languages…",
   "generator.languageNoResults": "No matching language",
   "generator.presets.title": "Smart Presets",
-  "generator.presets.description": "Start from a curated musical fingerprint, then edit every field freely.",
+  "generator.presets.description":
+    "Start from a curated musical fingerprint, then edit every field freely.",
   "generator.presets.active": "Applied preset: {preset}",
   "generator.presets.browse": "Browse presets",
   "generator.presets.close": "Close presets",
@@ -422,7 +438,8 @@ export const en = {
   "generator.presets.culturalStyle": "Musical tradition / style",
   "generator.presets.selectCulturalStyle": "Select musical fingerprint",
   "generator.presets.customCulturalStylePlaceholder": "Type a cultural or regional style…",
-  "generator.presets.languageIndependent": "This changes the musical fingerprint only. Lyrics language stays unchanged.",
+  "generator.presets.languageIndependent":
+    "This changes the musical fingerprint only. Lyrics language stays unchanged.",
   "generator.presets.category.all": "All",
   "generator.presets.category.pop": "Pop",
   "generator.presets.category.rock": "Rock",

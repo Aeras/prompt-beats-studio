@@ -62,7 +62,9 @@ export function ArrangementSectionEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">{label}</p>
-          <p className="text-[11px] text-muted-foreground">{t("generator.arrangement.sectionDetails")}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("generator.arrangement.sectionDetails")}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -107,13 +109,25 @@ export function ArrangementSectionEditor({
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {t("generator.arrangement.energy")}
         </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("generator.arrangement.energy")}>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("generator.arrangement.energy")}
+        >
           {([1, 2, 3, 4, 5] as SongEnergyLevel[]).map((energy) => (
             <button
               key={energy}
               type="button"
               aria-pressed={section.energy === energy}
-              onClick={() => onChange(updateArrangementEnergy(sections, section.sectionId, section.energy === energy ? null : energy))}
+              onClick={() =>
+                onChange(
+                  updateArrangementEnergy(
+                    sections,
+                    section.sectionId,
+                    section.energy === energy ? null : energy,
+                  ),
+                )
+              }
               className={cn(
                 "min-h-10 min-w-10 rounded-xl border px-3 text-xs font-semibold transition-colors",
                 section.energy === energy
@@ -147,7 +161,9 @@ export function ArrangementSectionEditor({
         </label>
         <textarea
           value={section.instruction}
-          onChange={(event) => onChange(updateArrangementInstruction(sections, section.sectionId, event.target.value))}
+          onChange={(event) =>
+            onChange(updateArrangementInstruction(sections, section.sectionId, event.target.value))
+          }
           rows={4}
           maxLength={800}
           placeholder={t("generator.blueprint.placeholder", { section: label })}
@@ -155,16 +171,22 @@ export function ArrangementSectionEditor({
           className="w-full resize-y rounded-xl border border-white/10 bg-black/40 p-3 text-sm leading-5 outline-none transition-shadow placeholder:text-muted-foreground focus:border-accent/50"
         />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground">{section.instruction.length}/800</span>
-          {section.sectionType === "Chorus" && regularChorusCount > 1 && section.instruction.trim() && (
-            <button
-              type="button"
-              onClick={() => onChange(applyInstructionToAllRegularChoruses(sections, section.instruction))}
-              className="rounded-lg border border-accent/25 px-2.5 py-1.5 text-[11px] font-medium text-accent"
-            >
-              {t("generator.blueprint.applyAllChorus")}
-            </button>
-          )}
+          <span className="text-[10px] text-muted-foreground">
+            {section.instruction.length}/800
+          </span>
+          {section.sectionType === "Chorus" &&
+            regularChorusCount > 1 &&
+            section.instruction.trim() && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(applyInstructionToAllRegularChoruses(sections, section.instruction))
+                }
+                className="rounded-lg border border-accent/25 px-2.5 py-1.5 text-[11px] font-medium text-accent"
+              >
+                {t("generator.blueprint.applyAllChorus")}
+              </button>
+            )}
         </div>
       </div>
     </div>

@@ -15,16 +15,17 @@ export const sendWelcomeEmail = createServerFn({ method: "POST" })
 
     const [{ data: profile }, { data: priv }] = await Promise.all([
       supabase.from("profiles").select("handle").eq("id", userId).maybeSingle(),
-      supabase.from("profile_private").select("welcome_email_sent_at").eq("user_id", userId).maybeSingle(),
+      supabase
+        .from("profile_private")
+        .select("welcome_email_sent_at")
+        .eq("user_id", userId)
+        .maybeSingle(),
     ]);
 
     if (priv?.welcome_email_sent_at) return { sent: false, reason: "already-sent" };
 
     const { sendWelcomeEmailViaSmtp } = await import("@/lib/welcome-email.server");
-    await sendWelcomeEmailViaSmtp(
-      email,
-      profile?.handle ?? email.split("@")[0]!,
-    );
+    await sendWelcomeEmailViaSmtp(email, profile?.handle ?? email.split("@")[0]!);
 
     await supabase
       .from("profile_private")

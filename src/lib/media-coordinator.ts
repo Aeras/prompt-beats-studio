@@ -85,7 +85,8 @@ export function activateMedia(instance: MediaActivation) {
     }
   } else {
     resetActiveExternal();
-    ignoredFocusedIframe = document.activeElement instanceof HTMLIFrameElement ? document.activeElement : null;
+    ignoredFocusedIframe =
+      document.activeElement instanceof HTMLIFrameElement ? document.activeElement : null;
   }
   window.dispatchEvent(new CustomEvent<MediaActivation>(ACTIVATE_EVENT, { detail: instance }));
 }

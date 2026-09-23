@@ -27,7 +27,8 @@ export const Route = createFileRoute("/help")({
       { title: "Help | PromptBeats" },
       {
         name: "description",
-        content: "PromptBeats user guide for AI Generator, Projects, saved Prompts, Lyrics Workspace, publishing and social features.",
+        content:
+          "PromptBeats user guide for AI Generator, Projects, saved Prompts, Lyrics Workspace, publishing and social features.",
       },
     ],
   }),
@@ -55,8 +56,7 @@ const englishSections: HelpSection[] = [
       "Open Library to manage saved Prompts, Projects, analyses, playlists and your own tracks.",
       "Use the language control to switch the interface between English and Greek.",
     ],
-    note:
-      "Some features are controlled by PromptBeats Feature Access. If a feature is not currently available to your account, it may not appear in the interface.",
+    note: "Some features are controlled by PromptBeats Feature Access. If a feature is not currently available to your account, it may not appear in the interface.",
   },
   {
     id: "generator-basic",
@@ -72,8 +72,7 @@ const englishSections: HelpSection[] = [
       "Press Generate. PromptBeats sends the structured request to the selected AI model and returns the generated song material.",
       "Review the result before saving, revising or using it with an external music-generation platform.",
     ],
-    note:
-      "If you leave the tab, refresh or temporarily lose focus while a generation is running, PromptBeats keeps the active job reference and can recover the result or failure state when you return.",
+    note: "If you leave the tab, refresh or temporarily lose focus while a generation is running, PromptBeats keeps the active job reference and can recover the result or failure state when you return.",
   },
   {
     id: "generator-advanced",
@@ -88,8 +87,7 @@ const englishSections: HelpSection[] = [
       "Choose the target AI music platform when that option is available. PromptBeats adapts the generated instructions to the selected target.",
       "Generate only after reviewing the brief. Advanced mode is designed to give the AI more precise musical context than Basic mode.",
     ],
-    note:
-      "Advanced mode does not require every optional field. Add detail where it helps your idea; avoid filling fields only for the sake of filling them.",
+    note: "Advanced mode does not require every optional field. Add detail where it helps your idea; avoid filling fields only for the sake of filling them.",
   },
   {
     id: "setup-assistant",
@@ -105,8 +103,7 @@ const englishSections: HelpSection[] = [
       "Use Regenerate Setup if you want a different interpretation of the same description.",
       "Press Apply to Advanced to transfer the setup into the Advanced Generator, then review it once more before generating the song.",
     ],
-    note:
-      "The assistant currently accepts a description of up to 2,500 characters and is intended to save setup time, not replace your own creative judgment.",
+    note: "The assistant currently accepts a description of up to 2,500 characters and is intended to save setup time, not replace your own creative judgment.",
   },
   {
     id: "smart-presets",
@@ -135,8 +132,7 @@ const englishSections: HelpSection[] = [
       "Repeated sections can be treated as separate occurrences, so a later Chorus can intentionally grow or change compared with an earlier Chorus.",
       "Where the interface offers Apply to All for a repeated section such as Chorus, use it when the same direction should be copied to every occurrence.",
     ],
-    note:
-      "Blueprint directions are instructions for the musical result. They do not replace the lyrics themselves.",
+    note: "Blueprint directions are instructions for the musical result. They do not replace the lyrics themselves.",
   },
   {
     id: "generator-results",
@@ -165,8 +161,7 @@ const englishSections: HelpSection[] = [
       "Where correction actions are available, use Apply and Undo to compare the proposed change with the original.",
       "Run the check again after meaningful revisions if you want an updated assessment.",
     ],
-    note:
-      "A Passed result is not a guarantee of originality, legal clearance or commercial success. A Failed result does not mean the song is artistically invalid.",
+    note: "A Passed result is not a guarantee of originality, legal clearance or commercial success. A Failed result does not mean the song is artistically invalid.",
   },
   {
     id: "saved-prompts",
@@ -196,8 +191,7 @@ const englishSections: HelpSection[] = [
       "Earlier versions remain available, so you can compare the evolution of the song instead of replacing the old version.",
       "Use the Project view in Library to keep the song's versions and creation history together.",
     ],
-    note:
-      "Version numbering is assigned by the backend for the Project, which prevents two versions from accidentally receiving the same number.",
+    note: "Version numbering is assigned by the backend for the Project, which prevents two versions from accidentally receiving the same number.",
   },
   {
     id: "project-revision",
@@ -230,8 +224,7 @@ const englishSections: HelpSection[] = [
       "Use Undo to revert the last applied AI edit for a section when needed.",
       "When you are satisfied, use Save as New Version. If the source belongs to a Project, the edited lyrics are saved as the next Project version instead of overwriting the previous one.",
     ],
-    note:
-      "Section-level editing is especially useful when a Chorus already works and only one Verse needs to be rewritten.",
+    note: "Section-level editing is especially useful when a Chorus already works and only one Verse needs to be rewritten.",
   },
   {
     id: "export",
@@ -310,8 +303,7 @@ const englishSections: HelpSection[] = [
   {
     id: "sharing",
     title: "18. Sharing and Public Links",
-    intro:
-      "Sharing tools let you provide access to supported content through a link.",
+    intro: "Sharing tools let you provide access to supported content through a link.",
     steps: [
       "Use the available Share / Public Link action for the relevant track or content.",
       "Treat a public or shareable link as something that can be forwarded to other people.",
@@ -330,14 +322,12 @@ const englishSections: HelpSection[] = [
       "After permission has been given, supported embeds can load when they come near the visible area of the page.",
       "You can always use the provider link to open the track directly on the external provider where that link is offered.",
     ],
-    note:
-      "External providers operate under their own terms and privacy practices.",
+    note: "External providers operate under their own terms and privacy practices.",
   },
   {
     id: "profile",
     title: "20. Profile and interface language",
-    intro:
-      "Your public profile represents you as a creator on PromptBeats.",
+    intro: "Your public profile represents you as a creator on PromptBeats.",
     steps: [
       "Edit your profile information from the available profile controls.",
       "Choose your public display information carefully because public profile details can be visible to other users or visitors.",
@@ -393,8 +383,7 @@ const greekSections: HelpSection[] = [
       "Άνοιξε τη Library για Saved Prompts, Projects, analyses, playlists και τα δικά σου tracks.",
       "Χρησιμοποίησε την επιλογή γλώσσας για να αλλάζεις το interface μεταξύ Ελληνικών και Αγγλικών.",
     ],
-    note:
-      "Ορισμένες λειτουργίες ελέγχονται από το Feature Access του PromptBeats. Αν μια λειτουργία δεν είναι διαθέσιμη στον λογαριασμό σου, μπορεί να μην εμφανίζεται στο interface.",
+    note: "Ορισμένες λειτουργίες ελέγχονται από το Feature Access του PromptBeats. Αν μια λειτουργία δεν είναι διαθέσιμη στον λογαριασμό σου, μπορεί να μην εμφανίζεται στο interface.",
   },
   {
     id: "generator-basic",
@@ -410,8 +399,7 @@ const greekSections: HelpSection[] = [
       "Πάτησε Generate. Το PromptBeats στέλνει το οργανωμένο αίτημα στο επιλεγμένο μοντέλο AI και επιστρέφει το δημιουργικό αποτέλεσμα.",
       "Έλεγξε το αποτέλεσμα πριν το αποθηκεύσεις, το αναθεωρήσεις ή το χρησιμοποιήσεις σε εξωτερική πλατφόρμα δημιουργίας μουσικής.",
     ],
-    note:
-      "Αν αλλάξεις καρτέλα, κάνεις refresh ή φύγεις προσωρινά από τη σελίδα όσο εκτελείται generation, το PromptBeats διατηρεί το ενεργό job και μπορεί να επαναφέρει το αποτέλεσμα ή το error όταν επιστρέψεις.",
+    note: "Αν αλλάξεις καρτέλα, κάνεις refresh ή φύγεις προσωρινά από τη σελίδα όσο εκτελείται generation, το PromptBeats διατηρεί το ενεργό job και μπορεί να επαναφέρει το αποτέλεσμα ή το error όταν επιστρέψεις.",
   },
   {
     id: "generator-advanced",
@@ -426,8 +414,7 @@ const greekSections: HelpSection[] = [
       "Επίλεξε target AI music platform όταν η επιλογή είναι διαθέσιμη. Το PromptBeats προσαρμόζει τις οδηγίες στο επιλεγμένο target.",
       "Πριν πατήσεις Generate, έλεγξε συνολικά το brief. Το Advanced υπάρχει για να δίνει στο AI περισσότερο και ακριβέστερο μουσικό context από το Basic.",
     ],
-    note:
-      "Δεν χρειάζεται να συμπληρώσεις υποχρεωτικά κάθε προαιρετικό πεδίο. Πρόσθεσε λεπτομέρεια εκεί όπου βοηθά πραγματικά το τραγούδι.",
+    note: "Δεν χρειάζεται να συμπληρώσεις υποχρεωτικά κάθε προαιρετικό πεδίο. Πρόσθεσε λεπτομέρεια εκεί όπου βοηθά πραγματικά το τραγούδι.",
   },
   {
     id: "setup-assistant",
@@ -443,8 +430,7 @@ const greekSections: HelpSection[] = [
       "Χρησιμοποίησε Νέα δημιουργία αν θέλεις διαφορετική ερμηνεία της ίδιας περιγραφής.",
       "Πάτησε Εφαρμογή στο Προηγμένο για να περάσουν τα πεδία στον Advanced Generator και κάνε έναν τελευταίο έλεγχο πριν από το Generate.",
     ],
-    note:
-      "Η περιγραφή υποστηρίζει σήμερα έως 2.500 χαρακτήρες. Ο βοηθός έχει σκοπό να γλιτώνει χρόνο στο setup, όχι να αντικαθιστά τη δική σου δημιουργική κρίση.",
+    note: "Η περιγραφή υποστηρίζει σήμερα έως 2.500 χαρακτήρες. Ο βοηθός έχει σκοπό να γλιτώνει χρόνο στο setup, όχι να αντικαθιστά τη δική σου δημιουργική κρίση.",
   },
   {
     id: "smart-presets",
@@ -473,8 +459,7 @@ const greekSections: HelpSection[] = [
       "Οι επαναλαμβανόμενες ενότητες μπορούν να αντιμετωπίζονται ως διαφορετικές εμφανίσεις, ώστε π.χ. το δεύτερο Chorus να είναι μεγαλύτερο ή διαφορετικό από το πρώτο.",
       "Όπου υπάρχει Εφαρμογή σε όλα για επαναλαμβανόμενη ενότητα όπως Chorus, χρησιμοποίησέ το όταν θέλεις την ίδια οδηγία σε όλες τις εμφανίσεις.",
     ],
-    note:
-      "Οι Blueprint οδηγίες αφορούν την εκτέλεση και παραγωγή της ενότητας. Δεν αντικαθιστούν τους ίδιους τους στίχους.",
+    note: "Οι Blueprint οδηγίες αφορούν την εκτέλεση και παραγωγή της ενότητας. Δεν αντικαθιστούν τους ίδιους τους στίχους.",
   },
   {
     id: "generator-results",
@@ -503,8 +488,7 @@ const greekSections: HelpSection[] = [
       "Όπου υπάρχουν actions διόρθωσης, χρησιμοποίησε Apply και Undo για να συγκρίνεις την πρόταση με το αρχικό.",
       "Μετά από σημαντικές αλλαγές μπορείς να ξανατρέξεις τον έλεγχο για νέο αποτέλεσμα.",
     ],
-    note:
-      "Το Passed δεν αποτελεί εγγύηση πρωτοτυπίας, νομικής ασφάλειας ή εμπορικής επιτυχίας. Το Failed δεν σημαίνει ότι το τραγούδι είναι καλλιτεχνικά άκυρο.",
+    note: "Το Passed δεν αποτελεί εγγύηση πρωτοτυπίας, νομικής ασφάλειας ή εμπορικής επιτυχίας. Το Failed δεν σημαίνει ότι το τραγούδι είναι καλλιτεχνικά άκυρο.",
   },
   {
     id: "saved-prompts",
@@ -534,8 +518,7 @@ const greekSections: HelpSection[] = [
       "Οι παλιότερες εκδόσεις παραμένουν διαθέσιμες ώστε να συγκρίνεις την εξέλιξη του τραγουδιού αντί να αντικαθίστανται.",
       "Από το Project στη Library μπορείς να κρατάς μαζί τις εκδόσεις και το ιστορικό δημιουργίας.",
     ],
-    note:
-      "Η αρίθμηση γίνεται στο backend ανά Project ώστε δύο εκδόσεις να μην πάρουν κατά λάθος τον ίδιο αριθμό.",
+    note: "Η αρίθμηση γίνεται στο backend ανά Project ώστε δύο εκδόσεις να μην πάρουν κατά λάθος τον ίδιο αριθμό.",
   },
   {
     id: "project-revision",
@@ -568,8 +551,7 @@ const greekSections: HelpSection[] = [
       "Χρησιμοποίησε Undo όταν θέλεις να αναιρέσεις την τελευταία εφαρμοσμένη AI αλλαγή σε μια ενότητα.",
       "Όταν τελειώσεις, πάτησε Αποθήκευση ως νέα έκδοση. Αν το Prompt ανήκει σε Project, οι νέοι στίχοι αποθηκεύονται ως επόμενο Version και δεν γράφουν πάνω στο προηγούμενο.",
     ],
-    note:
-      "Η λογική αυτή είναι ιδιαίτερα χρήσιμη όταν, για παράδειγμα, το Chorus είναι ήδη σωστό αλλά θέλεις να αλλάξεις μόνο ένα Verse.",
+    note: "Η λογική αυτή είναι ιδιαίτερα χρήσιμη όταν, για παράδειγμα, το Chorus είναι ήδη σωστό αλλά θέλεις να αλλάξεις μόνο ένα Verse.",
   },
   {
     id: "export",
@@ -668,14 +650,12 @@ const greekSections: HelpSection[] = [
       "Μετά την άδεια, τα υποστηριζόμενα embeds μπορούν να φορτώνουν όταν πλησιάζουν στην ορατή περιοχή της σελίδας.",
       "Όπου υπάρχει provider link, μπορείς πάντα να ανοίξεις το track απευθείας στη σελίδα του εξωτερικού provider.",
     ],
-    note:
-      "Οι εξωτερικοί providers λειτουργούν με τους δικούς τους όρους και τις δικές τους πρακτικές απορρήτου.",
+    note: "Οι εξωτερικοί providers λειτουργούν με τους δικούς τους όρους και τις δικές τους πρακτικές απορρήτου.",
   },
   {
     id: "profile",
     title: "20. Profile και γλώσσα εφαρμογής",
-    intro:
-      "Το δημόσιο profile σου είναι η παρουσία σου ως creator μέσα στο PromptBeats.",
+    intro: "Το δημόσιο profile σου είναι η παρουσία σου ως creator μέσα στο PromptBeats.",
     steps: [
       "Επεξεργάσου τα στοιχεία του profile από τα διαθέσιμα controls.",
       "Επίλεξε προσεκτικά τι εμφανίζεις δημόσια, γιατί τα public profile στοιχεία μπορεί να είναι ορατά σε άλλους χρήστες ή επισκέπτες.",
@@ -719,10 +699,17 @@ const greekSections: HelpSection[] = [
 ];
 
 const iconForSection = (id: string) => {
-  if (id.includes("generator") || id === "setup-assistant" || id === "smart-presets" || id === "structure-blueprint") return Wand2;
+  if (
+    id.includes("generator") ||
+    id === "setup-assistant" ||
+    id === "smart-presets" ||
+    id === "structure-blueprint"
+  )
+    return Wand2;
   if (id === "quality-check") return CheckCircle2;
   if (id === "saved-prompts") return Save;
-  if (id === "projects" || id === "project-revision" || id === "lyrics-workspace") return FolderOpen;
+  if (id === "projects" || id === "project-revision" || id === "lyrics-workspace")
+    return FolderOpen;
   if (id === "export") return Download;
   if (id === "upload-publish" || id === "track-controls") return Upload;
   if (id === "library-social") return Heart;
@@ -823,7 +810,9 @@ function HelpPage() {
 
                 {section.note && (
                   <div className="mt-5 rounded-2xl border border-accent/20 bg-accent/[0.04] p-4 text-xs leading-5 text-muted-foreground">
-                    <span className="font-semibold text-accent">{el ? "Σημείωση: " : "Note: "}</span>
+                    <span className="font-semibold text-accent">
+                      {el ? "Σημείωση: " : "Note: "}
+                    </span>
                     {section.note}
                   </div>
                 )}

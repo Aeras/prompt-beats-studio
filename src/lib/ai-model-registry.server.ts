@@ -42,9 +42,9 @@ type RegistryRow = {
 function isRegistryNotMigrated(error: unknown) {
   return Boolean(
     error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "42P01",
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "42P01",
   );
 }
 
@@ -92,11 +92,12 @@ export function isModelEligibleForOperation(model: RegistryModel, operation: AiM
   return model.qualityCheckCompatible && model.qualityCheckEnabled;
 }
 
-export function reasoningForOperation(model: RegistryModel, operation: AiModelOperation): RegistryReasoningEffort | undefined {
+export function reasoningForOperation(
+  model: RegistryModel,
+  operation: AiModelOperation,
+): RegistryReasoningEffort | undefined {
   const value =
-    operation === "generator"
-      ? model.generatorReasoningEffort
-      : model.qualityCheckReasoningEffort;
+    operation === "generator" ? model.generatorReasoningEffort : model.qualityCheckReasoningEffort;
   return value ?? undefined;
 }
 
@@ -109,14 +110,13 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
         "id,provider,provider_model_id,display_name,status,access_policy,generator_compatible,generator_enabled,generator_reasoning_effort,quality_check_compatible,quality_check_enabled,quality_check_reasoning_effort",
       );
     if (error) throw error;
-    return ((data ?? []) as unknown as RegistryRow[])
-.map(normalizeRow);
+    return ((data ?? []) as unknown as RegistryRow[]).map(normalizeRow);
   } catch (error) {
     if (isRegistryNotMigrated(error)) {
       console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
-      return AI_MODEL_IDS
-        .map(fallbackModel)
-        .filter((model): model is RegistryModel => model !== null);
+      return AI_MODEL_IDS.map(fallbackModel).filter(
+        (model): model is RegistryModel => model !== null,
+      );
     }
     console.error("[ai-registry] registry lookup failed", error);
     throw new Error("AI model registry is temporarily unavailable.");
@@ -146,11 +146,11 @@ export async function getRegistryModel(modelId: string): Promise<RegistryModel |
 }
 
 const settingKeyFor = (operation: AiModelOperation) =>
-  operation === "generator"
-    ? "ai_generator_default_model"
-    : "ai_quality_check_default_model";
+  operation === "generator" ? "ai_generator_default_model" : "ai_quality_check_default_model";
 
-export async function getOperationDefaultModel(operation: AiModelOperation): Promise<RegistryModel> {
+export async function getOperationDefaultModel(
+  operation: AiModelOperation,
+): Promise<RegistryModel> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin

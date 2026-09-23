@@ -9,13 +9,10 @@ export const songBlueprintSectionSchema = z.object({
   sectionType: z.string().trim().min(1).max(80),
   occurrence: z.number().int().positive().max(40),
   instruction: z.string().max(800).default(""),
-  energy: z.union([
-    z.literal(1),
-    z.literal(2),
-    z.literal(3),
-    z.literal(4),
-    z.literal(5),
-  ]).nullable().optional(),
+  energy: z
+    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
+    .nullable()
+    .optional(),
 });
 
 export const songBlueprintSchema = z.array(songBlueprintSectionSchema).max(40).default([]);
@@ -32,9 +29,7 @@ export function buildSongBlueprint(
     const occurrence = (seen.get(normalized) ?? 0) + 1;
     seen.set(normalized, occurrence);
     const existing = previous.find(
-      (item) =>
-        item.structureIndex === structureIndex &&
-        item.sectionType === sectionType,
+      (item) => item.structureIndex === structureIndex && item.sectionType === sectionType,
     );
     return {
       ...(existing?.sectionId ? { sectionId: existing.sectionId } : {}),
@@ -56,9 +51,7 @@ export function removeBlueprintSection(
     .map((item) => ({
       ...item,
       structureIndex:
-        item.structureIndex > structureIndex
-          ? item.structureIndex - 1
-          : item.structureIndex,
+        item.structureIndex > structureIndex ? item.structureIndex - 1 : item.structureIndex,
     }));
   return buildSongBlueprint(
     next.map((item) => item.sectionType),
@@ -70,10 +63,7 @@ export function appendBlueprintSection(
   blueprint: SongBlueprintSection[],
   sectionType: string,
 ): SongBlueprintSection[] {
-  return buildSongBlueprint(
-    [...blueprint.map((item) => item.sectionType), sectionType],
-    blueprint,
-  );
+  return buildSongBlueprint([...blueprint.map((item) => item.sectionType), sectionType], blueprint);
 }
 
 export function updateBlueprintInstruction(
@@ -93,16 +83,10 @@ export function applyInstructionToAllRegularChoruses(
   instruction: string,
 ): SongBlueprintSection[] {
   return blueprint.map((item) =>
-    item.sectionType === "Chorus"
-      ? { ...item, instruction: instruction.slice(0, 800) }
-      : item,
+    item.sectionType === "Chorus" ? { ...item, instruction: instruction.slice(0, 800) } : item,
   );
 }
 
-export function activeSongBlueprint(
-  blueprint: SongBlueprintSection[],
-): SongBlueprintSection[] {
-  return blueprint.filter(
-    (item) => item.instruction.trim().length > 0 || item.energy != null,
-  );
+export function activeSongBlueprint(blueprint: SongBlueprintSection[]): SongBlueprintSection[] {
+  return blueprint.filter((item) => item.instruction.trim().length > 0 || item.energy != null);
 }

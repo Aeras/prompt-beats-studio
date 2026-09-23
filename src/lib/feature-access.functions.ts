@@ -3,12 +3,30 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const FEATURE_KEYS = ["ai_generator", "quality_check", "ai_music_lab", "song_analyzer", "lyrics_workspace", "lyrics_review", "smart_presets", "song_setup_assistant", "export_center", "track_uploads", "sharing_public_links", "private_review_links", "playlists", "favorites", "likes", "follow_creators", "notifications"] as const;
+export const FEATURE_KEYS = [
+  "ai_generator",
+  "quality_check",
+  "ai_music_lab",
+  "song_analyzer",
+  "lyrics_workspace",
+  "lyrics_review",
+  "smart_presets",
+  "song_setup_assistant",
+  "export_center",
+  "track_uploads",
+  "sharing_public_links",
+  "private_review_links",
+  "playlists",
+  "favorites",
+  "likes",
+  "follow_creators",
+  "notifications",
+] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type FeatureAccessMode = "disabled" | "admins_only" | "selected_users" | "everyone";
 
 const featureKeySchema = z.enum(FEATURE_KEYS);
-const modeSchema = z.enum(["disabled","admins_only","selected_users","everyone"]);
+const modeSchema = z.enum(["disabled", "admins_only", "selected_users", "everyone"]);
 
 export type FeatureAccessPolicy = {
   feature_key: FeatureKey;
@@ -30,7 +48,9 @@ export type FeatureAccessUser = {
 };
 
 export async function requireFeatureAccess(supabase: any, featureKey: FeatureKey) {
-  const { data, error } = await supabase.rpc("current_user_can_use_feature", { _feature_key: featureKey });
+  const { data, error } = await supabase.rpc("current_user_can_use_feature", {
+    _feature_key: featureKey,
+  });
   if (error || data !== true) throw new Error("Feature not available.");
 }
 
@@ -73,9 +93,13 @@ export const listSelectedFeatureUsers = createServerFn({ method: "POST" })
 
 export const searchFeatureAccessUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    search: z.string().trim().max(120).default(""),
-  }).parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        search: z.string().trim().max(120).default(""),
+      })
+      .parse(input ?? {}),
+  )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
     const { data: rows, error } = await context.supabase.rpc("feature_access_search_users", {
@@ -88,10 +112,14 @@ export const searchFeatureAccessUsers = createServerFn({ method: "POST" })
 
 export const setFeatureAccessPolicy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    featureKey: featureKeySchema,
-    accessMode: modeSchema,
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        featureKey: featureKeySchema,
+        accessMode: modeSchema,
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
     const { error } = await context.supabase.rpc("feature_access_set_policy", {
@@ -104,10 +132,14 @@ export const setFeatureAccessPolicy = createServerFn({ method: "POST" })
 
 export const addSelectedFeatureUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    featureKey: featureKeySchema,
-    userId: z.string().uuid(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        featureKey: featureKeySchema,
+        userId: z.string().uuid(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
     const { data: changed, error } = await context.supabase.rpc("feature_access_add_user", {
@@ -120,10 +152,14 @@ export const addSelectedFeatureUser = createServerFn({ method: "POST" })
 
 export const removeSelectedFeatureUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    featureKey: featureKeySchema,
-    userId: z.string().uuid(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        featureKey: featureKeySchema,
+        userId: z.string().uuid(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
     const { data: changed, error } = await context.supabase.rpc("feature_access_remove_user", {

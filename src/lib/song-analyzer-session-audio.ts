@@ -26,16 +26,21 @@ function getSessionId() {
 function openDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error ?? new Error("Could not open Analyzer session storage"));
+    request.onerror = () =>
+      reject(request.error ?? new Error("Could not open Analyzer session storage"));
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "sessionId" });
+      if (!db.objectStoreNames.contains(STORE))
+        db.createObjectStore(STORE, { keyPath: "sessionId" });
     };
     request.onsuccess = () => resolve(request.result);
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>) {
+async function withStore<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+) {
   const db = await openDb();
   try {
     return await new Promise<T>((resolve, reject) => {
@@ -66,7 +71,9 @@ export async function saveAnalyzerSessionAudio(file: File) {
 export async function loadAnalyzerSessionAudio(): Promise<File | null> {
   const sessionId = getSessionId();
   if (!sessionId) return null;
-  const record = await withStore<StoredAudio | undefined>("readonly", (store) => store.get(sessionId));
+  const record = await withStore<StoredAudio | undefined>("readonly", (store) =>
+    store.get(sessionId),
+  );
   if (!record?.blob) return null;
   return new File([record.blob], record.name, {
     type: record.type,
@@ -75,7 +82,8 @@ export async function loadAnalyzerSessionAudio(): Promise<File | null> {
 }
 
 export async function clearAnalyzerSessionAudio() {
-  const sessionId = typeof window === "undefined" ? "" : window.sessionStorage.getItem(SESSION_KEY) ?? "";
+  const sessionId =
+    typeof window === "undefined" ? "" : (window.sessionStorage.getItem(SESSION_KEY) ?? "");
   if (!sessionId) return;
   await withStore("readwrite", (store) => store.delete(sessionId));
 }

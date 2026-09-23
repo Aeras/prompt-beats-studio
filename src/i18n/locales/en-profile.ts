@@ -29,15 +29,18 @@ export const enProfile = {
 
   "donations.loading": "Loading donation settings…",
   "donations.title": "Creator donations",
-  "donations.accessHint": "Choose whether donations are public and manage up to 3 donation methods.",
+  "donations.accessHint":
+    "Choose whether donations are public and manage up to 3 donation methods.",
   "donations.publicEnabled": "Public",
   "donations.methodEnabled": "Enabled",
   "donations.removeMethod": "Remove donation method",
   "donations.customProvider": "Provider / name",
-  "donations.customWarning": "Information entered here may be shown publicly. Do not publish card numbers, CVV, expiry dates, passwords, or other sensitive personal or banking details. Prefer a secure payment link or recognized digital wallet.",
+  "donations.customWarning":
+    "Information entered here may be shown publicly. Do not publish card numbers, CVV, expiry dates, passwords, or other sensitive personal or banking details. Prefer a secure payment link or recognized digital wallet.",
   "donations.customValue": "Donation details, payment URL, username or IBAN",
   "donations.providerUrl": "Secure payment/profile URL",
-  "donations.customAcknowledge": "I understand that information entered here may be displayed publicly. If I enter an IBAN, I explicitly accept that it may be public.",
+  "donations.customAcknowledge":
+    "I understand that information entered here may be displayed publicly. If I enter an IBAN, I explicitly accept that it may be public.",
   "donations.addMethod": "Add donation method",
   "donations.save": "Save donations",
   "donations.saved": "Donation settings saved",
@@ -76,7 +79,7 @@ export const enProfile = {
   "social.instagram": "Instagram",
   "social.tiktok": "TikTok",
   "social.twitter": "X (Twitter)",
-  "social.youtube": "YouTube"
+  "social.youtube": "YouTube",
 } as const;
 
 export type ProfileTranslationKey = keyof typeof enProfile;

@@ -1,5 +1,6 @@
 export async function readAudioDurationSeconds(source: File | string): Promise<number> {
-  if (typeof document === "undefined") throw new Error("Audio duration is only available in the browser.");
+  if (typeof document === "undefined")
+    throw new Error("Audio duration is only available in the browser.");
 
   const objectUrl = source instanceof File ? URL.createObjectURL(source) : null;
   const audio = document.createElement("audio");
@@ -16,18 +17,29 @@ export async function readAudioDurationSeconds(source: File | string): Promise<n
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       callback();
     };
-    const timeout = window.setTimeout(() => finish(() => reject(new Error("Could not read audio duration."))), 12_000);
+    const timeout = window.setTimeout(
+      () => finish(() => reject(new Error("Could not read audio duration."))),
+      12_000,
+    );
 
-    audio.addEventListener("loadedmetadata", () => {
-      const seconds = Math.round(audio.duration);
-      if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 60 * 60) {
-        finish(() => reject(new Error("Could not read a valid audio duration.")));
-        return;
-      }
-      finish(() => resolve(seconds));
-    }, { once: true });
+    audio.addEventListener(
+      "loadedmetadata",
+      () => {
+        const seconds = Math.round(audio.duration);
+        if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 60 * 60) {
+          finish(() => reject(new Error("Could not read a valid audio duration.")));
+          return;
+        }
+        finish(() => resolve(seconds));
+      },
+      { once: true },
+    );
 
-    audio.addEventListener("error", () => finish(() => reject(new Error("Could not read audio duration."))), { once: true });
+    audio.addEventListener(
+      "error",
+      () => finish(() => reject(new Error("Could not read audio duration."))),
+      { once: true },
+    );
     audio.src = source instanceof File ? objectUrl! : source;
   });
 }

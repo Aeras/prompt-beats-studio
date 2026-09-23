@@ -17,7 +17,11 @@ const option = (id: string, value: string, labelKey: TranslationKey): LocalizedG
   labelKey,
 });
 
-const fixedOption = (value: string): LocalizedGeneratorOption => ({ id: value, value, label: value });
+const fixedOption = (value: string): LocalizedGeneratorOption => ({
+  id: value,
+  value,
+  label: value,
+});
 
 export const BASIC_MUSIC_STYLES = [
   option("reggaeton", "Reggaeton", "generator.genre.reggaeton"),
@@ -210,7 +214,27 @@ export const SONG_STRUCTURE_TAGS = [
 
 export const BPM_OPTIONS = [
   option("auto", "Auto", "generator.option.auto"),
-  ...["60", "70", "80", "90", "100", "110", "120", "125", "128", "130", "135", "140", "145", "150", "160", "170", "180", "190", "200"].map(fixedOption),
+  ...[
+    "60",
+    "70",
+    "80",
+    "90",
+    "100",
+    "110",
+    "120",
+    "125",
+    "128",
+    "130",
+    "135",
+    "140",
+    "145",
+    "150",
+    "160",
+    "170",
+    "180",
+    "190",
+    "200",
+  ].map(fixedOption),
   option("custom", "Custom", "common.custom"),
 ] as const;
 
@@ -218,7 +242,7 @@ export function optionLabel(
   optionValue: LocalizedGeneratorOption,
   t: (key: TranslationKey) => string,
 ) {
-  return optionValue.labelKey ? t(optionValue.labelKey) : optionValue.label ?? optionValue.value;
+  return optionValue.labelKey ? t(optionValue.labelKey) : (optionValue.label ?? optionValue.value);
 }
 
 /**

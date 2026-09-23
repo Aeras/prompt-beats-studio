@@ -29,8 +29,12 @@ describe("Follow + Notifications v1 architecture", () => {
 
   test("follow relationships reject self-follow and duplicates", async () => {
     const sql = await migrationSql();
-    expect(sql).toContain("CONSTRAINT user_follows_no_self CHECK (follower_user_id <> followed_user_id)");
-    expect(sql).toContain("CONSTRAINT user_follows_unique UNIQUE (follower_user_id, followed_user_id)");
+    expect(sql).toContain(
+      "CONSTRAINT user_follows_no_self CHECK (follower_user_id <> followed_user_id)",
+    );
+    expect(sql).toContain(
+      "CONSTRAINT user_follows_unique UNIQUE (follower_user_id, followed_user_id)",
+    );
     expect(sql).toContain("v_actor uuid := auth.uid()");
     expect(sql).toContain("ON CONFLICT (follower_user_id, followed_user_id) DO NOTHING");
   });
@@ -62,8 +66,12 @@ describe("Follow + Notifications v1 architecture", () => {
   });
 
   test("report notification migration adds staff-only new_report events and backfills open reports", async () => {
-    const sql = await Bun.file("supabase/migrations/20260921223000_report_notifications_v1.sql").text();
-    expect(sql).toContain("ADD COLUMN IF NOT EXISTS report_id uuid REFERENCES public.content_reports");
+    const sql = await Bun.file(
+      "supabase/migrations/20260921223000_report_notifications_v1.sql",
+    ).text();
+    expect(sql).toContain(
+      "ADD COLUMN IF NOT EXISTS report_id uuid REFERENCES public.content_reports",
+    );
     expect(sql).toContain("CHECK (type IN ('new_track','new_follower','new_report'))");
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.notify_staff_on_content_report()");
     expect(sql).toContain("public.app_role_rank(ur.role::text) >= 2");
@@ -93,14 +101,18 @@ describe("Follow + Notifications v1 architecture", () => {
     const component = await Bun.file("src/components/promptbeats/FollowCreatorControl.tsx").text();
     expect(component).not.toContain("if (!user || summary.isError) return null");
     expect(component).not.toMatch(/summary\.isError[^\n]*return null/);
-    expect(component).toContain('if (!user || !featureAccess.allowed) return null');
+    expect(component).toContain("if (!user || !featureAccess.allowed) return null");
     expect(component).toContain("Ακολουθείς ✓");
     expect(component).toContain("summary.refetch()");
   });
 
   test("Follow and unfollow mutations verify the persisted database relation", async () => {
     const server = await Bun.file("src/lib/follow-notifications.functions.ts").text();
-    expect(server).toContain('if (!summary.isFollowing) throw new Error("Follow could not be verified.")');
-    expect(server).toContain('if (summary.isFollowing) throw new Error("Unfollow could not be verified.")');
+    expect(server).toContain(
+      'if (!summary.isFollowing) throw new Error("Follow could not be verified.")',
+    );
+    expect(server).toContain(
+      'if (summary.isFollowing) throw new Error("Unfollow could not be verified.")',
+    );
   });
 });

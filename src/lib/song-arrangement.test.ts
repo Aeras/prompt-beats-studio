@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import { diffGeneratorSnapshots, generatorInputSnapshotSchema } from "./generator-revision.shared";
-import { activeSongBlueprint, buildSongBlueprint, songBlueprintSchema } from "./song-blueprint.shared";
+import {
+  activeSongBlueprint,
+  buildSongBlueprint,
+  songBlueprintSchema,
+} from "./song-blueprint.shared";
 import {
   applyEnergyToAllRegularChoruses,
   applyInstructionToAllRegularChoruses,
@@ -43,7 +47,13 @@ describe("Song Arrangement data foundation", () => {
       { structureIndex: 0, sectionType: "Verse", occurrence: 1, instruction: "" },
       { structureIndex: 1, sectionType: "Chorus", occurrence: 1, instruction: "first chorus" },
       { structureIndex: 2, sectionType: "Verse", occurrence: 2, instruction: "" },
-      { structureIndex: 3, sectionType: "Chorus", occurrence: 2, instruction: "wide second chorus", energy: 5 },
+      {
+        structureIndex: 3,
+        sectionType: "Chorus",
+        occurrence: 2,
+        instruction: "wide second chorus",
+        energy: 5,
+      },
     ]);
     const arrangement = normalizeSongArrangement(
       ["Verse", "Chorus", "Verse", "Chorus"],
@@ -54,12 +64,7 @@ describe("Song Arrangement data foundation", () => {
     const movedId = arrangement[3]!.sectionId;
     const reordered = moveArrangementSection(arrangement, movedId, 1);
 
-    expect(arrangementToSongStructure(reordered)).toEqual([
-      "Verse",
-      "Chorus",
-      "Chorus",
-      "Verse",
-    ]);
+    expect(arrangementToSongStructure(reordered)).toEqual(["Verse", "Chorus", "Chorus", "Verse"]);
     expect(reordered.map((section) => section.structureIndex)).toEqual([0, 1, 2, 3]);
     expect(reordered.map((section) => [section.sectionType, section.occurrence])).toEqual([
       ["Verse", 1],
@@ -93,7 +98,11 @@ describe("Song Arrangement data foundation", () => {
       idFactory("verse-a", "chorus-a", "verse-b"),
     );
     const reordered = moveArrangementSection(arrangement, "verse-b", 0);
-    const withInstruction = updateArrangementInstruction(reordered, "verse-b", "stripped acoustic opening");
+    const withInstruction = updateArrangementInstruction(
+      reordered,
+      "verse-b",
+      "stripped acoustic opening",
+    );
     const withEnergy = updateArrangementEnergy(withInstruction, "verse-b", 2);
 
     expect(withEnergy[0]).toMatchObject({
@@ -119,11 +128,7 @@ describe("Song Arrangement data foundation", () => {
     arrangement = updateArrangementInstruction(arrangement, "chorus-a", "full band");
     arrangement = updateArrangementEnergy(arrangement, "chorus-a", 4);
 
-    const duplicated = duplicateArrangementSection(
-      arrangement,
-      "chorus-a",
-      idFactory("chorus-b"),
-    );
+    const duplicated = duplicateArrangementSection(arrangement, "chorus-a", idFactory("chorus-b"));
 
     expect(duplicated).toHaveLength(3);
     expect(duplicated[1]).toMatchObject({

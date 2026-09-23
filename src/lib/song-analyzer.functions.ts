@@ -32,17 +32,19 @@ const supportedMimeTypes = [
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
 
-const bpmSchema = z.object({
-  approximate: z.number().min(20).max(300).nullable(),
-  rangeMin: z.number().min(20).max(300).nullable(),
-  rangeMax: z.number().min(20).max(300).nullable(),
-  confidence: confidenceSchema,
-  notes: z.string().trim().max(1000),
-}).superRefine((value, ctx) => {
-  if (value.rangeMin != null && value.rangeMax != null && value.rangeMin > value.rangeMax) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid BPM range" });
-  }
-});
+const bpmSchema = z
+  .object({
+    approximate: z.number().min(20).max(300).nullable(),
+    rangeMin: z.number().min(20).max(300).nullable(),
+    rangeMax: z.number().min(20).max(300).nullable(),
+    confidence: confidenceSchema,
+    notes: z.string().trim().max(1000),
+  })
+  .superRefine((value, ctx) => {
+    if (value.rangeMin != null && value.rangeMax != null && value.rangeMin > value.rangeMax) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid BPM range" });
+    }
+  });
 
 const uncertainObservationSchema = z.object({
   observation: z.string().trim().min(1).max(2000),
@@ -129,11 +131,16 @@ const stageAEvidenceSchema = z.object({
   melodicElements: z.array(evidenceClaimSchema).max(20),
   vocalCharacteristics: z.array(evidenceClaimSchema).max(20),
   arrangementChanges: z.array(evidenceClaimSchema).max(30),
-  songSections: z.array(z.object({
-    label: z.string().trim().min(1).max(120),
-    evidence: z.string().trim().min(1).max(1500),
-    confidence: confidenceSchema,
-  })).min(1).max(30),
+  songSections: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(120),
+        evidence: z.string().trim().min(1).max(1500),
+        confidence: confidenceSchema,
+      }),
+    )
+    .min(1)
+    .max(30),
   energyProgression: z.array(evidenceClaimSchema).max(20),
   productionMixEvidence: z.array(evidenceClaimSchema).max(30),
   uncertaintyNotes: z.array(z.string().trim().min(1).max(2000)).max(30),
@@ -502,7 +509,15 @@ const ANALYZER_RESPONSE_SCHEMA: Record<string, unknown> = {
         productionStyle: { type: "STRING" },
         additionalInstructions: { type: "STRING" },
       },
-      required: ["musicStyle", "mood", "instruments", "bpm", "songStructure", "productionStyle", "additionalInstructions"],
+      required: [
+        "musicStyle",
+        "mood",
+        "instruments",
+        "bpm",
+        "songStructure",
+        "productionStyle",
+        "additionalInstructions",
+      ],
     },
     detailedAnalysis: {
       type: "OBJECT",
@@ -584,31 +599,197 @@ const EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
         harmonicRhythm: { type: "STRING" },
         notes: { type: "STRING" },
       },
-      required: ["gridCandidates","feltTempo","possibleHalfTime","possibleDoubleTime","confidence","kickEvidence","backbeatEvidence","bassPhrasing","vocalPhrasing","harmonicRhythm","notes"],
+      required: [
+        "gridCandidates",
+        "feltTempo",
+        "possibleHalfTime",
+        "possibleDoubleTime",
+        "confidence",
+        "kickEvidence",
+        "backbeatEvidence",
+        "bassPhrasing",
+        "vocalPhrasing",
+        "harmonicRhythm",
+        "notes",
+      ],
     },
-    drumPercussionEvidence: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    bassEvidence: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    harmonicFoundation: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    dominantElements: { type: "ARRAY", items: { type: "OBJECT", properties: {
-      category: { type: "STRING", enum: ["instrument","groove","texture","melodic_figure","other"] },
-      element: { type: "STRING" }, role: { type: "STRING" }, technique: { type: "STRING", nullable: true },
-      prominence: { type: "STRING", enum: ["dominant","major","supporting"] },
-      confidence: { type: "STRING", enum: ["high","medium","low"] }, evidence: { type: "STRING" }
-    }, required: ["category","element","role","technique","prominence","confidence","evidence"] } },
-    instrumentEvidence: { type: "ARRAY", items: { type: "OBJECT", properties: {
-      instrument: { type: "STRING" }, role: { type: "STRING" }, technique: { type: "STRING", nullable: true },
-      timbre: { type: "STRING", nullable: true }, prominence: { type: "STRING", enum: ["dominant","major","supporting"] },
-      confidence: { type: "STRING", enum: ["high","medium","low"] }, evidence: { type: "STRING" }
-    }, required: ["instrument","role","technique","timbre","prominence","confidence","evidence"] } },
-    melodicElements: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    vocalCharacteristics: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    arrangementChanges: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    songSections: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["label","evidence","confidence"] } },
-    energyProgression: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
-    productionMixEvidence: { type: "ARRAY", items: { type: "OBJECT", properties: { claim: { type: "STRING" }, evidence: { type: "STRING" }, confidence: { type: "STRING", enum: ["high","medium","low"] } }, required: ["claim","evidence","confidence"] } },
+    drumPercussionEvidence: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    bassEvidence: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    harmonicFoundation: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    dominantElements: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          category: {
+            type: "STRING",
+            enum: ["instrument", "groove", "texture", "melodic_figure", "other"],
+          },
+          element: { type: "STRING" },
+          role: { type: "STRING" },
+          technique: { type: "STRING", nullable: true },
+          prominence: { type: "STRING", enum: ["dominant", "major", "supporting"] },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+          evidence: { type: "STRING" },
+        },
+        required: [
+          "category",
+          "element",
+          "role",
+          "technique",
+          "prominence",
+          "confidence",
+          "evidence",
+        ],
+      },
+    },
+    instrumentEvidence: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          instrument: { type: "STRING" },
+          role: { type: "STRING" },
+          technique: { type: "STRING", nullable: true },
+          timbre: { type: "STRING", nullable: true },
+          prominence: { type: "STRING", enum: ["dominant", "major", "supporting"] },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+          evidence: { type: "STRING" },
+        },
+        required: [
+          "instrument",
+          "role",
+          "technique",
+          "timbre",
+          "prominence",
+          "confidence",
+          "evidence",
+        ],
+      },
+    },
+    melodicElements: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    vocalCharacteristics: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    arrangementChanges: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    songSections: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          label: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["label", "evidence", "confidence"],
+      },
+    },
+    energyProgression: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
+    productionMixEvidence: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          claim: { type: "STRING" },
+          evidence: { type: "STRING" },
+          confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        },
+        required: ["claim", "evidence", "confidence"],
+      },
+    },
     uncertaintyNotes: { type: "ARRAY", items: { type: "STRING" } },
   },
-  required: ["dominantRhythmicPulse","tempo","drumPercussionEvidence","bassEvidence","harmonicFoundation","dominantElements","instrumentEvidence","melodicElements","vocalCharacteristics","arrangementChanges","songSections","energyProgression","productionMixEvidence","uncertaintyNotes"],
+  required: [
+    "dominantRhythmicPulse",
+    "tempo",
+    "drumPercussionEvidence",
+    "bassEvidence",
+    "harmonicFoundation",
+    "dominantElements",
+    "instrumentEvidence",
+    "melodicElements",
+    "vocalCharacteristics",
+    "arrangementChanges",
+    "songSections",
+    "energyProgression",
+    "productionMixEvidence",
+    "uncertaintyNotes",
+  ],
 };
 
 const externalValidationSchema = z.object({
@@ -646,7 +827,19 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
     discrepancies: { type: "array", items: { type: "string" } },
     notes: { type: "array", items: { type: "string" } },
   },
-  required: ["identityConfirmed","styleAgreement","tempoAgreement","referenceStyles","referenceTempos","instrumentationCredits","keyOrChordReferences","productionOrArrangementNotes","releaseContext","discrepancies","notes"],
+  required: [
+    "identityConfirmed",
+    "styleAgreement",
+    "tempoAgreement",
+    "referenceStyles",
+    "referenceTempos",
+    "instrumentationCredits",
+    "keyOrChordReferences",
+    "productionOrArrangementNotes",
+    "releaseContext",
+    "discrepancies",
+    "notes",
+  ],
 } as const;
 
 async function requireAnalyzerAccess(context: { supabase: any }) {
@@ -682,7 +875,12 @@ function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, s
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    logStage(model, stage, "json_parse_failure", error instanceof Error ? error.message : String(error));
+    logStage(
+      model,
+      stage,
+      "json_parse_failure",
+      error instanceof Error ? error.message : String(error),
+    );
     throw new Error(`Analyzer ${stage} returned invalid JSON`);
   }
 
@@ -722,7 +920,6 @@ async function generateAudioEvidence(args: {
     JSON.stringify(args.stage0Evidence),
   ].join("\n");
 
-
   if (!args.apiKey) throw new Error("Gemini API is not configured");
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
@@ -731,13 +928,15 @@ async function generateAudioEvidence(args: {
       headers: { "Content-Type": "application/json", "x-goog-api-key": args.apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: EVIDENCE_EXTRACTION_SYSTEM_PROMPT }] },
-        contents: [{
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
-            { text: prompt },
-          ],
-        }],
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
+              { text: prompt },
+            ],
+          },
+        ],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: EVIDENCE_RESPONSE_SCHEMA,
@@ -748,12 +947,14 @@ async function generateAudioEvidence(args: {
     },
   );
 
-  const payload = await response.json() as any;
+  const payload = (await response.json()) as any;
   args.onUsage(normalizedUsage(payload));
 
   if (!response.ok) {
     logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
-    throw new Error(payload?.error?.message || `Gemini evidence extraction failed (${response.status})`);
+    throw new Error(
+      payload?.error?.message || `Gemini evidence extraction failed (${response.status})`,
+    );
   }
 
   const candidate = payload?.candidates?.[0];
@@ -763,19 +964,26 @@ async function generateAudioEvidence(args: {
     throw new Error(`Gemini evidence extraction stopped before completion: ${finishReason}`);
   }
 
-  const text = (candidate?.content?.parts ?? []).map((part: any) => typeof part?.text === "string" ? part.text : "").join("").trim();
+  const text = (candidate?.content?.parts ?? [])
+    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
   if (!text) {
     logStage(args.model, stage, "missing_json");
     throw new Error("Gemini evidence extraction returned no JSON");
   }
 
   const evidence = parseStructured(text, stageAEvidenceSchema, args.model, stage);
-  logStage(args.model, stage, "success", { dominantElements: evidence.dominantElements.length, instruments: evidence.instrumentEvidence.length });
+  logStage(args.model, stage, "success", {
+    dominantElements: evidence.dominantElements.length,
+    instruments: evidence.instrumentEvidence.length,
+  });
   return evidence;
 }
 
 function evidenceDerivedInstruments(evidence: StageAEvidence) {
-  const forbidden = /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise|compression|sidechain)\b/i;
+  const forbidden =
+    /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise|compression|sidechain)\b/i;
   const values = evidence.instrumentEvidence
     .filter((item) => !forbidden.test(item.instrument))
     .map((item) => {
@@ -785,15 +993,22 @@ function evidenceDerivedInstruments(evidence: StageAEvidence) {
   return [...new Set(values)].slice(0, 30);
 }
 
-function clampConfidence(finalConfidence: "high" | "medium" | "low", evidenceConfidence: "high" | "medium" | "low") {
+function clampConfidence(
+  finalConfidence: "high" | "medium" | "low",
+  evidenceConfidence: "high" | "medium" | "low",
+) {
   const rank = { low: 0, medium: 1, high: 2 } as const;
   return rank[finalConfidence] <= rank[evidenceConfidence] ? finalConfidence : evidenceConfidence;
 }
 
-function applyEvidenceGate(result: SongAnalysisResult, evidence: StageAEvidence): SongAnalysisResult {
+function applyEvidenceGate(
+  result: SongAnalysisResult,
+  evidence: StageAEvidence,
+): SongAnalysisResult {
   const instruments = evidenceDerivedInstruments(evidence);
   const felt = evidence.tempo.feltTempo;
-  const fallback = result.generatorReady.bpm.approximate ?? evidence.tempo.gridCandidates[0] ?? null;
+  const fallback =
+    result.generatorReady.bpm.approximate ?? evidence.tempo.gridCandidates[0] ?? null;
   const chosenBpm = felt ?? fallback;
 
   return {
@@ -806,13 +1021,22 @@ function applyEvidenceGate(result: SongAnalysisResult, evidence: StageAEvidence)
         approximate: chosenBpm == null ? null : Math.round(chosenBpm),
         rangeMin: null,
         rangeMax: null,
-        confidence: clampConfidence(result.generatorReady.bpm.confidence, evidence.tempo.confidence),
+        confidence: clampConfidence(
+          result.generatorReady.bpm.confidence,
+          evidence.tempo.confidence,
+        ),
         notes: [
           result.generatorReady.bpm.notes,
           evidence.tempo.notes,
-          evidence.tempo.possibleHalfTime != null ? `Possible half-time: ${evidence.tempo.possibleHalfTime} BPM.` : "",
-          evidence.tempo.possibleDoubleTime != null ? `Possible double-time: ${evidence.tempo.possibleDoubleTime} BPM.` : "",
-        ].filter(Boolean).join(" "),
+          evidence.tempo.possibleHalfTime != null
+            ? `Possible half-time: ${evidence.tempo.possibleHalfTime} BPM.`
+            : "",
+          evidence.tempo.possibleDoubleTime != null
+            ? `Possible double-time: ${evidence.tempo.possibleDoubleTime} BPM.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
     },
   };
@@ -834,11 +1058,17 @@ async function generateFinalFromEvidence(args: {
     "\nSTAGE 0 QUANTITATIVE DSP SUPPORTING EVIDENCE:",
     JSON.stringify(args.stage0Evidence),
     "\nStage 0 is supporting evidence only. It cannot authorize any new instrument, groove, production, or genre claim absent from Stage A. Use it only to cross-check tempo, energy/dynamics, tonal uncertainty, and confidence.",
-    args.initialResult ? "\nPREVIOUS STAGE B RESULT TO RECHECK:\n" + JSON.stringify(args.initialResult) : "",
-    args.externalValidation ? "\nOPTIONAL EXTERNAL VALIDATION (secondary context only; cannot introduce new musical claims):\n" + JSON.stringify(args.externalValidation) : "",
+    args.initialResult
+      ? "\nPREVIOUS STAGE B RESULT TO RECHECK:\n" + JSON.stringify(args.initialResult)
+      : "",
+    args.externalValidation
+      ? "\nOPTIONAL EXTERNAL VALIDATION (secondary context only; cannot introduce new musical claims):\n" +
+        JSON.stringify(args.externalValidation)
+      : "",
     "\nProduce the final canonical Analyzer JSON. Every specific musical claim must be grounded in Stage A evidence.",
-  ].filter(Boolean).join("\n");
-
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   if (!args.apiKey) throw new Error("Gemini API is not configured");
   const response = await fetch(
@@ -859,12 +1089,14 @@ async function generateFinalFromEvidence(args: {
     },
   );
 
-  const payload = await response.json() as any;
+  const payload = (await response.json()) as any;
   args.onUsage(normalizedUsage(payload));
 
   if (!response.ok) {
     logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
-    throw new Error(payload?.error?.message || `Gemini final synthesis failed (${response.status})`);
+    throw new Error(
+      payload?.error?.message || `Gemini final synthesis failed (${response.status})`,
+    );
   }
 
   const candidate = payload?.candidates?.[0];
@@ -874,7 +1106,10 @@ async function generateFinalFromEvidence(args: {
     throw new Error(`Gemini final synthesis stopped before completion: ${finishReason}`);
   }
 
-  const text = (candidate?.content?.parts ?? []).map((part: any) => typeof part?.text === "string" ? part.text : "").join("").trim();
+  const text = (candidate?.content?.parts ?? [])
+    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
   if (!text) {
     logStage(args.model, stage, "missing_json");
     throw new Error("Gemini final synthesis returned no JSON");
@@ -949,17 +1184,22 @@ Return only the requested structured JSON.
     }
 
     const validated = parseStructured(text, externalValidationSchema, args.model, stage);
-    const chunks = ((response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) as any[];
+    const chunks = ((response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ??
+      []) as any[];
     const uniqueSources = new Map<string, string>();
     for (const chunk of chunks) {
       const uri = chunk?.web?.uri;
       const title = chunk?.web?.title;
-      if (typeof uri === "string" && uri) uniqueSources.set(uri, typeof title === "string" ? title : uri);
+      if (typeof uri === "string" && uri)
+        uniqueSources.set(uri, typeof title === "string" ? title : uri);
     }
 
     const supportingSourcesCount = uniqueSources.size;
     const used = validated.identityConfirmed && supportingSourcesCount > 0;
-    logStage(args.model, stage, "success", { identityConfirmed: validated.identityConfirmed, supportingSourcesCount });
+    logStage(args.model, stage, "success", {
+      identityConfirmed: validated.identityConfirmed,
+      supportingSourcesCount,
+    });
 
     return {
       validation: {
@@ -979,7 +1219,9 @@ Return only the requested structured JSON.
 const analyzeInput = z.object({
   audioBase64: z.string().min(1).max(21_500_000),
   mimeType: z.enum(supportedMimeTypes),
-  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]).default(DEFAULT_SONG_ANALYZER_MODEL),
+  model: z
+    .enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"])
+    .default(DEFAULT_SONG_ANALYZER_MODEL),
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
   stage0Evidence: stage0DspEvidenceSchema,
@@ -1001,7 +1243,8 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
 async function recordStageUsage(args: {
   userId: string;
   model: string;
-  stage: "evidence_extraction" | "final_synthesis" | "external_validation" | "external_reconciliation";
+  stage:
+    "evidence_extraction" | "final_synthesis" | "external_validation" | "external_reconciliation";
   usage: ReturnType<typeof normalizedUsage>;
   success: boolean;
 }) {
@@ -1050,12 +1293,28 @@ export const analyzeSong = createServerFn({ method: "POST" })
         audioBase64: data.audioBase64,
         mimeType: data.mimeType,
         stage0Evidence,
-        onUsage: (usage) => { evidenceUsage = usage; },
+        onUsage: (usage) => {
+          evidenceUsage = usage;
+        },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: true });
-      logStage(data.model, "evidence_extraction", "timing", { durationMs: Date.now() - stageAStartedAt });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "evidence_extraction",
+        usage: evidenceUsage,
+        success: true,
+      });
+      logStage(data.model, "evidence_extraction", "timing", {
+        durationMs: Date.now() - stageAStartedAt,
+      });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "evidence_extraction", usage: evidenceUsage, success: false });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "evidence_extraction",
+        usage: evidenceUsage,
+        success: false,
+      });
       throw error;
     }
 
@@ -1068,12 +1327,28 @@ export const analyzeSong = createServerFn({ method: "POST" })
         model: data.model,
         evidence,
         stage0Evidence,
-        onUsage: (usage) => { synthesisUsage = usage; },
+        onUsage: (usage) => {
+          synthesisUsage = usage;
+        },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: true });
-      logStage(data.model, "final_synthesis", "timing", { durationMs: Date.now() - stageBStartedAt });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "final_synthesis",
+        usage: synthesisUsage,
+        success: true,
+      });
+      logStage(data.model, "final_synthesis", "timing", {
+        durationMs: Date.now() - stageBStartedAt,
+      });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "final_synthesis", usage: synthesisUsage, success: false });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "final_synthesis",
+        usage: synthesisUsage,
+        success: false,
+      });
       throw error;
     }
 
@@ -1097,9 +1372,21 @@ export const analyzeSong = createServerFn({ method: "POST" })
       });
       external = validationResult.validation;
       externalUsage = validationResult.usage;
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: true });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "external_validation",
+        usage: externalUsage,
+        success: true,
+      });
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_validation", usage: externalUsage, success: false });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "external_validation",
+        usage: externalUsage,
+        success: false,
+      });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
@@ -1118,13 +1405,27 @@ export const analyzeSong = createServerFn({ method: "POST" })
         stage0Evidence,
         initialResult: result,
         externalValidation: external,
-        onUsage: (usage) => { reconciliationUsage = usage; },
+        onUsage: (usage) => {
+          reconciliationUsage = usage;
+        },
       });
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: true });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "external_reconciliation",
+        usage: reconciliationUsage,
+        success: true,
+      });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result: reconciled, model: data.model, stage0Evidence, stageAEvidence: evidence };
     } catch (error) {
-      await recordStageUsage({ userId: context.userId, model: data.model, stage: "external_reconciliation", usage: reconciliationUsage, success: false });
+      await recordStageUsage({
+        userId: context.userId,
+        model: data.model,
+        stage: "external_reconciliation",
+        usage: reconciliationUsage,
+        success: false,
+      });
       logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
       return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
     }
@@ -1137,7 +1438,11 @@ const saveAnalysisInput = z.object({
   result: songAnalysisResultSchema,
 });
 
-async function assertOwnedProject(supabase: any, userId: string, projectId: string | null | undefined) {
+async function assertOwnedProject(
+  supabase: any,
+  userId: string,
+  projectId: string | null | undefined,
+) {
   if (!projectId) return;
   const { data: project, error } = await supabase
     .from("prompt_projects")
@@ -1223,7 +1528,11 @@ export const deleteSongAnalysis = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_analyzer");
     const supabase = context.supabase as any;
-    const { error } = await supabase.from("song_analyses").delete().eq("id", data.id).eq("user_id", context.userId);
+    const { error } = await supabase
+      .from("song_analyses")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });

@@ -2,20 +2,24 @@ export const enSongAnalyzer = {
   "songAnalyzer.title": "AI Song Analyzer",
   "songAnalyzer.admin": "Admin",
   "songAnalyzer.analyzeComplete": "Analyze a complete song",
-  "songAnalyzer.zeroRetention": "The source audio is used only for analysis. PromptBeats never saves it as a Track, Library item, Project asset, URL, object key, or permanent audio blob.",
+  "songAnalyzer.zeroRetention":
+    "The source audio is used only for analysis. PromptBeats never saves it as a Track, Library item, Project asset, URL, object key, or permanent audio blob.",
   "songAnalyzer.chooseAudio": "Choose audio file",
   "songAnalyzer.restoringAudio": "Restoring session audio…",
   "songAnalyzer.fileTypes": "MP3, WAV, M4A/MP4, AAC, OGG or FLAC · max 15 MB",
-  "songAnalyzer.sessionKept": "Kept only in this browser Analyzer session so you can compare multiple models without uploading again.",
+  "songAnalyzer.sessionKept":
+    "Kept only in this browser Analyzer session so you can compare multiple models without uploading again.",
   "songAnalyzer.clearAudio": "Clear audio",
   "songAnalyzer.optionalReference": "Optional external reference validation",
-  "songAnalyzer.optionalReferenceHelp": "If both fields are provided, PromptBeats first completes an independent audio-only analysis, then uses the title and artist only for secondary web-reference validation. Audio remains authoritative.",
+  "songAnalyzer.optionalReferenceHelp":
+    "If both fields are provided, PromptBeats first completes an independent audio-only analysis, then uses the title and artist only for secondary web-reference validation. Audio remains authoritative.",
   "songAnalyzer.trackTitleOptional": "Track Title (optional)",
   "songAnalyzer.artistOptional": "Artist (optional)",
   "songAnalyzer.model": "Analyzer model",
   "songAnalyzer.analyze": "Analyze Song",
   "songAnalyzer.analyzing": "Analyzing audio…",
-  "songAnalyzer.empty": "Upload a song and run the Analyzer to see generator-ready fields and detailed musical analysis.",
+  "songAnalyzer.empty":
+    "Upload a song and run the Analyzer to see generator-ready fields and detailed musical analysis.",
   "songAnalyzer.generatorReady": "Generator-ready fields",
   "songAnalyzer.detailed": "Detailed Song Analysis",
   "songAnalyzer.analyzedWith": "Analyzed with {model}",
@@ -40,7 +44,8 @@ export const enSongAnalyzer = {
   "songAnalyzer.notable": "Notable Characteristics",
   "songAnalyzer.confidenceNotes": "Confidence / Uncertainty Notes",
   "songAnalyzer.saveTitle": "Save Analysis",
-  "songAnalyzer.saveHelp": "Save as a standalone analysis or optionally associate it with a Project. Source audio is never saved.",
+  "songAnalyzer.saveHelp":
+    "Save as a standalone analysis or optionally associate it with a Project. Source audio is never saved.",
   "songAnalyzer.analysisName": "Analysis Name",
   "songAnalyzer.analysisNamePlaceholder": "Song Analysis",
   "songAnalyzer.project": "Project",
@@ -51,7 +56,8 @@ export const enSongAnalyzer = {
   "songAnalyzer.saved": "Saved",
   "songAnalyzer.save": "Save Analysis",
   "songAnalyzer.adminRequired": "Admin access required",
-  "songAnalyzer.adminRequiredBody": "The AI Song Analyzer is currently restricted to administrators and is protected server-side.",
+  "songAnalyzer.adminRequiredBody":
+    "The AI Song Analyzer is currently restricted to administrators and is protected server-side.",
   "songAnalyzer.signIn": "Sign in to continue.",
   "songAnalyzer.signInButton": "Sign in",
   "songAnalyzer.loading": "Loading…",
@@ -59,7 +65,8 @@ export const enSongAnalyzer = {
   "songAnalyzer.fileTooLarge": "The Analyzer accepts audio files up to 15 MB.",
   "songAnalyzer.analysisFailed": "Song analysis failed.",
   "songAnalyzer.saveFailed": "Could not save analysis.",
-  "songAnalyzer.sessionPersistFailed": "The audio is ready for analysis, but this browser could not preserve it across refresh.",
+  "songAnalyzer.sessionPersistFailed":
+    "The audio is ready for analysis, but this browser could not preserve it across refresh.",
   "songAnalyzer.bpmUncertain": "Uncertain",
   "library.promptViewAll": "All Prompts",
   "library.promptViewProjects": "Projects",

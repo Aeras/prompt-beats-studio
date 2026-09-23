@@ -23,10 +23,38 @@ function snapshot(overrides: Record<string, unknown> = {}) {
     customBpm: "82",
     songStructure: ["Verse", "Chorus", "Verse", "Chorus"],
     songBlueprint: [
-      { sectionId: "verse-a", structureIndex: 0, sectionType: "Verse", occurrence: 1, instruction: "", energy: 2 },
-      { sectionId: "chorus-a", structureIndex: 1, sectionType: "Chorus", occurrence: 1, instruction: "wide guitars", energy: 3 },
-      { sectionId: "verse-b", structureIndex: 2, sectionType: "Verse", occurrence: 2, instruction: "", energy: 2 },
-      { sectionId: "chorus-b", structureIndex: 3, sectionType: "Chorus", occurrence: 2, instruction: "bigger drums", energy: 4 },
+      {
+        sectionId: "verse-a",
+        structureIndex: 0,
+        sectionType: "Verse",
+        occurrence: 1,
+        instruction: "",
+        energy: 2,
+      },
+      {
+        sectionId: "chorus-a",
+        structureIndex: 1,
+        sectionType: "Chorus",
+        occurrence: 1,
+        instruction: "wide guitars",
+        energy: 3,
+      },
+      {
+        sectionId: "verse-b",
+        structureIndex: 2,
+        sectionType: "Verse",
+        occurrence: 2,
+        instruction: "",
+        energy: 2,
+      },
+      {
+        sectionId: "chorus-b",
+        structureIndex: 3,
+        sectionType: "Chorus",
+        occurrence: 2,
+        instruction: "bigger drums",
+        energy: 4,
+      },
     ],
     productionStyle: "Warm modern mix",
     additionalInstructions: "Natural phrasing",
@@ -36,7 +64,11 @@ function snapshot(overrides: Record<string, unknown> = {}) {
   });
 }
 
-function version(id: string, versionNumber: number, overrides: Partial<ComparableProjectVersion> = {}): ComparableProjectVersion {
+function version(
+  id: string,
+  versionNumber: number,
+  overrides: Partial<ComparableProjectVersion> = {},
+): ComparableProjectVersion {
   return {
     id,
     versionNumber,
@@ -77,12 +109,24 @@ describe("Project Version semantic diff", () => {
 
   test("song structure is occurrence-aware and reports added plus moved sections", () => {
     const before = snapshot({ songStructure: ["Verse", "Chorus", "Verse", "Chorus"] });
-    const after = snapshot({ songStructure: ["Verse", "Chorus", "Bridge", "Verse", "Chorus", "Final Chorus"] });
+    const after = snapshot({
+      songStructure: ["Verse", "Chorus", "Bridge", "Verse", "Chorus", "Final Chorus"],
+    });
     const result = diffSongStructure(before, after);
 
-    expect(result.find((item) => item.key === "bridge:1")).toMatchObject({ status: "added", afterIndex: 2 });
-    expect(result.find((item) => item.key === "final chorus:1")).toMatchObject({ status: "added", afterIndex: 5 });
-    expect(result.find((item) => item.key === "verse:2")).toMatchObject({ status: "moved", beforeIndex: 2, afterIndex: 3 });
+    expect(result.find((item) => item.key === "bridge:1")).toMatchObject({
+      status: "added",
+      afterIndex: 2,
+    });
+    expect(result.find((item) => item.key === "final chorus:1")).toMatchObject({
+      status: "added",
+      afterIndex: 5,
+    });
+    expect(result.find((item) => item.key === "verse:2")).toMatchObject({
+      status: "moved",
+      beforeIndex: 2,
+      afterIndex: 3,
+    });
   });
 
   test("arrangement diff uses stable sectionId and keeps energy/instruction bound after move", () => {
@@ -90,10 +134,38 @@ describe("Project Version semantic diff", () => {
     const after = snapshot({
       songStructure: ["Verse", "Chorus", "Chorus", "Verse"],
       songBlueprint: [
-        { sectionId: "verse-a", structureIndex: 0, sectionType: "Verse", occurrence: 1, instruction: "", energy: 2 },
-        { sectionId: "chorus-b", structureIndex: 1, sectionType: "Chorus", occurrence: 1, instruction: "stacked harmonies", energy: 5 },
-        { sectionId: "chorus-a", structureIndex: 2, sectionType: "Chorus", occurrence: 2, instruction: "wide guitars", energy: 3 },
-        { sectionId: "verse-b", structureIndex: 3, sectionType: "Verse", occurrence: 2, instruction: "", energy: 2 },
+        {
+          sectionId: "verse-a",
+          structureIndex: 0,
+          sectionType: "Verse",
+          occurrence: 1,
+          instruction: "",
+          energy: 2,
+        },
+        {
+          sectionId: "chorus-b",
+          structureIndex: 1,
+          sectionType: "Chorus",
+          occurrence: 1,
+          instruction: "stacked harmonies",
+          energy: 5,
+        },
+        {
+          sectionId: "chorus-a",
+          structureIndex: 2,
+          sectionType: "Chorus",
+          occurrence: 2,
+          instruction: "wide guitars",
+          energy: 3,
+        },
+        {
+          sectionId: "verse-b",
+          structureIndex: 3,
+          sectionType: "Verse",
+          occurrence: 2,
+          instruction: "",
+          energy: 2,
+        },
       ],
     });
 
@@ -122,7 +194,13 @@ describe("Project Version semantic diff", () => {
     });
     const after = snapshot({
       songBlueprint: [
-        { structureIndex: 0, sectionType: "Chorus", occurrence: 1, instruction: "wider", energy: 4 },
+        {
+          structureIndex: 0,
+          sectionType: "Chorus",
+          occurrence: 1,
+          instruction: "wider",
+          energy: 4,
+        },
       ],
     });
     expect(diffArrangement(before, after)[0]).toMatchObject({
@@ -151,7 +229,9 @@ describe("Project Version semantic diff", () => {
     );
 
     expect(tokens.some((token) => token.status === "removed" && token.value === "μη")).toBe(true);
-    expect(tokens.some((token) => token.status === "removed" && token.value === "γυρίσεις")).toBe(true);
+    expect(tokens.some((token) => token.status === "removed" && token.value === "γυρίσεις")).toBe(
+      true,
+    );
     expect(tokens.some((token) => token.status === "added" && token.value === "ίσως")).toBe(true);
     expect(tokens.some((token) => token.status === "added" && token.value === "βρούμε")).toBe(true);
   });
@@ -172,11 +252,46 @@ describe("Project Version semantic diff", () => {
         customBpm: "90",
         songStructure: ["Verse", "Chorus", "Verse", "Chorus", "Bridge"],
         songBlueprint: [
-          { sectionId: "verse-a", structureIndex: 0, sectionType: "Verse", occurrence: 1, instruction: "", energy: 2 },
-          { sectionId: "chorus-a", structureIndex: 1, sectionType: "Chorus", occurrence: 1, instruction: "wide guitars", energy: 4 },
-          { sectionId: "verse-b", structureIndex: 2, sectionType: "Verse", occurrence: 2, instruction: "", energy: 2 },
-          { sectionId: "chorus-b", structureIndex: 3, sectionType: "Chorus", occurrence: 2, instruction: "bigger drums", energy: 4 },
-          { sectionId: "bridge-a", structureIndex: 4, sectionType: "Bridge", occurrence: 1, instruction: "strip back", energy: 3 },
+          {
+            sectionId: "verse-a",
+            structureIndex: 0,
+            sectionType: "Verse",
+            occurrence: 1,
+            instruction: "",
+            energy: 2,
+          },
+          {
+            sectionId: "chorus-a",
+            structureIndex: 1,
+            sectionType: "Chorus",
+            occurrence: 1,
+            instruction: "wide guitars",
+            energy: 4,
+          },
+          {
+            sectionId: "verse-b",
+            structureIndex: 2,
+            sectionType: "Verse",
+            occurrence: 2,
+            instruction: "",
+            energy: 2,
+          },
+          {
+            sectionId: "chorus-b",
+            structureIndex: 3,
+            sectionType: "Chorus",
+            occurrence: 2,
+            instruction: "bigger drums",
+            energy: 4,
+          },
+          {
+            sectionId: "bridge-a",
+            structureIndex: 4,
+            sectionType: "Bridge",
+            occurrence: 1,
+            instruction: "strip back",
+            energy: 3,
+          },
         ],
       }),
     });

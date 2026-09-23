@@ -68,9 +68,9 @@ describe("Help menu and Contact Us", () => {
     expect(cases).toBeGreaterThan(-1);
     expect(notifications).toBeGreaterThan(cases);
     expect(help).toBeGreaterThan(notifications);
-    expect(shell).toContain('{authenticated && <ModerationCaseCenter />}');
-    expect(shell).toContain('{authenticated && <NotificationCenter />}');
-    expect(shell).not.toContain('{authenticated && <HelpMenu />}');
+    expect(shell).toContain("{authenticated && <ModerationCaseCenter />}");
+    expect(shell).toContain("{authenticated && <NotificationCenter />}");
+    expect(shell).not.toContain("{authenticated && <HelpMenu />}");
   });
 
   test("Contact page has the required fields and controls", async () => {
@@ -95,8 +95,8 @@ describe("Help menu and Contact Us", () => {
     const contact = await source("src/routes/contact.tsx");
     expect(contact).toContain("initializedEmail");
     expect(contact).toContain("initializedAlias");
-    expect(contact).toContain("setEmail((current) => current || user.email || \"\")");
-    expect(contact).toContain('profile?.handle');
+    expect(contact).toContain('setEmail((current) => current || user.email || "")');
+    expect(contact).toContain("profile?.handle");
     expect(contact).toContain('"@" + profile.handle');
     expect(contact).toContain("profile?.artist_alias");
     expect(contact).toContain("profile?.display_name");
@@ -114,7 +114,7 @@ describe("Help menu and Contact Us", () => {
     expect(fn).toContain("requestNetworkFingerprint");
     expect(fn).toContain("website.trim()");
     expect(fn).toContain('await import("@/lib/contact-email.server")');
-    expect(sender).toContain('sendSmtpEmail');
+    expect(sender).toContain("sendSmtpEmail");
     expect(sender).toContain('"support@promptbeats.app"');
     expect(sender).toContain("replyTo: payload.email");
     expect(sender).toContain("escapeHtml");
@@ -122,7 +122,7 @@ describe("Help menu and Contact Us", () => {
     expect(smtp).toContain('"mail.promptbeats.app"');
     expect(smtp).toContain('"no-reply@promptbeats.app"');
     expect(smtp).toContain('"AUTH LOGIN');
-    expect(smtp).toContain('rejectUnauthorized: true');
+    expect(smtp).toContain("rejectUnauthorized: true");
   });
 
   test("all PromptBeats custom transactional email uses Polar55 SMTP, not Lovable Email or Resend", async () => {
@@ -147,7 +147,9 @@ describe("Help menu and Contact Us", () => {
     expect(contact).toContain("sendContactEmailViaSmtp");
     expect(emailFns).toContain("sendWelcomeEmailViaSmtp");
     expect(contactFns).toContain("sendContactEmailViaSmtp");
-    expect(smtp).toContain('fromEmail = process.env["SMTP_FROM_EMAIL"] ?? "no-reply@promptbeats.app"');
+    expect(smtp).toContain(
+      'fromEmail = process.env["SMTP_FROM_EMAIL"] ?? "no-reply@promptbeats.app"',
+    );
     expect(webhook).toContain("Lovable Email has been retired");
     expect(preview).toContain("Lovable Email has been retired");
     expect(webhook).not.toContain("@lovable.dev/email-js");

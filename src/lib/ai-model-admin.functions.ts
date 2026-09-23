@@ -58,10 +58,14 @@ const mapRow = (row: any): AdminAiModel => ({
   qualityCheckCompatible: row.quality_check_compatible,
   qualityCheckEnabled: row.quality_check_enabled,
   qualityCheckReasoningEffort: row.quality_check_reasoning_effort,
-  inputPricePerMillion: row.input_price_per_million == null ? null : Number(row.input_price_per_million),
-  outputPricePerMillion: row.output_price_per_million == null ? null : Number(row.output_price_per_million),
-  cachedInputPricePerMillion: row.cached_input_price_per_million == null ? null : Number(row.cached_input_price_per_million),
-  cacheWritePricePerMillion: row.cache_write_price_per_million == null ? null : Number(row.cache_write_price_per_million),
+  inputPricePerMillion:
+    row.input_price_per_million == null ? null : Number(row.input_price_per_million),
+  outputPricePerMillion:
+    row.output_price_per_million == null ? null : Number(row.output_price_per_million),
+  cachedInputPricePerMillion:
+    row.cached_input_price_per_million == null ? null : Number(row.cached_input_price_per_million),
+  cacheWritePricePerMillion:
+    row.cache_write_price_per_million == null ? null : Number(row.cache_write_price_per_million),
   pricingCurrency: row.pricing_currency,
   pricingStatus: row.pricing_status,
   pricingUpdatedAt: row.pricing_updated_at,
@@ -78,7 +82,11 @@ const mapRow = (row: any): AdminAiModel => ({
 });
 
 async function readDefaultModel(supabaseAdmin: any, key: string) {
-  const { data } = await supabaseAdmin.from("app_settings").select("value").eq("key", key).maybeSingle();
+  const { data } = await supabaseAdmin
+    .from("app_settings")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
   return (data as { value?: { model?: string } } | null)?.value?.model ?? null;
 }
 
@@ -150,11 +158,12 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
       isQualityDefault &&
       (data.status !== "enabled" || !data.qualityCheckEnabled || !row.quality_check_compatible);
     const restrictingDefaultAccess =
-      (isGeneratorDefault || isQualityDefault) &&
-      data.accessPolicy !== "all_users";
+      (isGeneratorDefault || isQualityDefault) && data.accessPolicy !== "all_users";
 
-    if (disablingGenerator) throw new Error("Select another Generator default before disabling this model.");
-    if (disablingQuality) throw new Error("Select another Quality Check default before disabling this model.");
+    if (disablingGenerator)
+      throw new Error("Select another Generator default before disabling this model.");
+    if (disablingQuality)
+      throw new Error("Select another Quality Check default before disabling this model.");
     if (restrictingDefaultAccess) {
       const usedBy =
         isGeneratorDefault && isQualityDefault
@@ -162,18 +171,25 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
           : isGeneratorDefault
             ? "Generator"
             : "Quality Check";
-      throw new Error(`A model used as the ${usedBy} default must remain available to all users. Select another default first.`);
+      throw new Error(
+        `A model used as the ${usedBy} default must remain available to all users. Select another default first.`,
+      );
     }
 
-    if (data.pricingStatus === "verified" && (data.inputPricePerMillion == null || data.outputPricePerMillion == null)) {
+    if (
+      data.pricingStatus === "verified" &&
+      (data.inputPricePerMillion == null || data.outputPricePerMillion == null)
+    ) {
       throw new Error("Verified pricing requires both input and output prices.");
     }
 
     const pricingChanged =
       Number(row.input_price_per_million ?? NaN) !== Number(data.inputPricePerMillion ?? NaN) ||
       Number(row.output_price_per_million ?? NaN) !== Number(data.outputPricePerMillion ?? NaN) ||
-      Number(row.cached_input_price_per_million ?? NaN) !== Number(data.cachedInputPricePerMillion ?? NaN) ||
-      Number(row.cache_write_price_per_million ?? NaN) !== Number(data.cacheWritePricePerMillion ?? NaN) ||
+      Number(row.cached_input_price_per_million ?? NaN) !==
+        Number(data.cachedInputPricePerMillion ?? NaN) ||
+      Number(row.cache_write_price_per_million ?? NaN) !==
+        Number(data.cacheWritePricePerMillion ?? NaN) ||
       row.pricing_status !== data.pricingStatus;
 
     const { error } = await supabaseAdmin
@@ -230,30 +246,41 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabaseAdmin
       .from("ai_models" as never)
-      .select("id,provider_model_id,status,access_policy,generator_compatible,generator_enabled,quality_check_compatible,quality_check_enabled")
+      .select(
+        "id,provider_model_id,status,access_policy,generator_compatible,generator_enabled,quality_check_compatible,quality_check_enabled",
+      )
       .eq("provider_model_id", data.model)
       .maybeSingle();
     if (error || !row) throw new Error("AI model not found.");
 
     const model = row as any;
-    const valid = data.operation === "generator"
-      ? model.status === "enabled" && model.generator_compatible === true && model.generator_enabled === true
-      : model.status === "enabled" && model.quality_check_compatible === true && model.quality_check_enabled === true;
+    const valid =
+      data.operation === "generator"
+        ? model.status === "enabled" &&
+          model.generator_compatible === true &&
+          model.generator_enabled === true
+        : model.status === "enabled" &&
+          model.quality_check_compatible === true &&
+          model.quality_check_enabled === true;
     if (!valid) throw new Error("That model is not eligible for this default.");
     if (model.access_policy !== "all_users") {
       throw new Error("A default AI model must be available to all users.");
     }
 
-    const key = data.operation === "generator"
-      ? "ai_generator_default_model"
-      : "ai_quality_check_default_model";
+    const key =
+      data.operation === "generator"
+        ? "ai_generator_default_model"
+        : "ai_quality_check_default_model";
 
-    const { error: updateError } = await supabaseAdmin.from("app_settings").upsert({
-      key,
-      value: { registryId: model.id, model: model.provider_model_id },
-      updated_at: new Date().toISOString(),
-      updated_by: context.userId,
-    } as never, { onConflict: "key" });
+    const { error: updateError } = await supabaseAdmin.from("app_settings").upsert(
+      {
+        key,
+        value: { registryId: model.id, model: model.provider_model_id },
+        updated_at: new Date().toISOString(),
+        updated_by: context.userId,
+      } as never,
+      { onConflict: "key" },
+    );
     if (updateError) throw new Error(updateError.message);
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
@@ -266,7 +293,6 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
 
     return { ok: true, model: model.provider_model_id };
   });
-
 
 const providerIdSchema = z.enum([
   "openai",
@@ -324,7 +350,6 @@ export const checkAiProviderModels = createServerFn({ method: "POST" })
     );
   });
 
-
 const compatibilityInput = z.object({
   providerId: providerIdSchema,
   modelIds: z.array(z.string().trim().min(1).max(240)).min(1).max(100),
@@ -348,10 +373,13 @@ export const runAiProviderCompatibilityTests = createServerFn({ method: "POST" }
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const installed = await readInstalledForDiscovery(supabaseAdmin);
-    const { discoverProviderModels, testProviderModelsCompatibility } = await import("@/lib/ai-provider-registry.server");
+    const { discoverProviderModels, testProviderModelsCompatibility } =
+      await import("@/lib/ai-provider-registry.server");
     const discovery = await discoverProviderModels(data.providerId, installed);
     const requested = new Set(data.modelIds);
-    const candidates = discovery.models.filter((model) => requested.has(model.id) && !model.installed && !model.deprecated);
+    const candidates = discovery.models.filter(
+      (model) => requested.has(model.id) && !model.installed && !model.deprecated,
+    );
     if (!candidates.length) throw new Error("No testable candidate models were found.");
     return {
       provider: discovery.provider,
@@ -382,12 +410,12 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
     if (existing) throw new Error("A model with this provider model ID is already installed.");
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
-    const {
-      discoverProviderModels,
-      testSingleProviderModelCompatibility,
-    } = await import("@/lib/ai-provider-registry.server");
+    const { discoverProviderModels, testSingleProviderModelCompatibility } =
+      await import("@/lib/ai-provider-registry.server");
     const discovery = await discoverProviderModels(data.providerId, installed);
-    const candidate = discovery.models.find((model) => model.id === data.modelId && !model.installed && !model.deprecated);
+    const candidate = discovery.models.find(
+      (model) => model.id === data.modelId && !model.installed && !model.deprecated,
+    );
     if (!candidate) throw new Error("This model is no longer available as a candidate.");
 
     // Re-check the selected model server-side before installation so Add never
@@ -432,7 +460,8 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
       } as never)
       .select("id,provider_model_id")
       .single();
-    if (insertError || !inserted) throw new Error(insertError?.message ?? "Could not add AI model.");
+    if (insertError || !inserted)
+      throw new Error(insertError?.message ?? "Could not add AI model.");
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
       admin_user_id: context.userId,
@@ -456,7 +485,6 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
     };
   });
 
-
 const healthModelInput = z.object({
   id: z.string().uuid(),
 });
@@ -472,7 +500,10 @@ async function withHealthProbeTimeout<T>(promise: Promise<T>): Promise<T> {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error("runtime_probe_timeout")), HEALTH_PROBE_TIMEOUT_MS);
+        timeout = setTimeout(
+          () => reject(new Error("runtime_probe_timeout")),
+          HEALTH_PROBE_TIMEOUT_MS,
+        );
       }),
     ]);
   } finally {
@@ -486,16 +517,21 @@ function hadConsecutiveFailure(model: any): boolean {
   return new Date(model.last_failure_at).getTime() > new Date(model.last_success_at).getTime();
 }
 
-async function runInstalledModelRuntimeProbe(model: any): Promise<{ ok: true } | { ok: false; errorCode: string }> {
+async function runInstalledModelRuntimeProbe(
+  model: any,
+): Promise<{ ok: true } | { ok: false; errorCode: string }> {
   try {
     const { modelCaller } = await import("@/lib/ai-provider.server");
     const call = modelCaller(String(model.provider_model_id), String(model.provider));
-    const result = await withHealthProbeTimeout(call({
-      system: "You are a PromptBeats health check. Return only a tiny JSON object.",
-      prompt: 'Return exactly {"ok":true}.',
-      maxTokens: 64,
-      reasoningEffort: model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
-    }));
+    const result = await withHealthProbeTimeout(
+      call({
+        system: "You are a PromptBeats health check. Return only a tiny JSON object.",
+        prompt: 'Return exactly {"ok":true}.',
+        maxTokens: 64,
+        reasoningEffort:
+          model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
+      }),
+    );
     if (result.stopReason !== "end_turn") {
       return { ok: false, errorCode: "incomplete_runtime_response" };
     }
@@ -580,13 +616,16 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
 
     if (!providerId.success) {
-      await supabaseAdmin.from("ai_models" as never).update({
-        last_checked_at: now,
-        last_failure_at: now,
-        last_error_code: "unsupported_provider",
-        health_status: "degraded",
-        updated_at: now,
-      } as never).eq("id", data.id);
+      await supabaseAdmin
+        .from("ai_models" as never)
+        .update({
+          last_checked_at: now,
+          last_failure_at: now,
+          last_error_code: "unsupported_provider",
+          health_status: "degraded",
+          updated_at: now,
+        } as never)
+        .eq("id", data.id);
       return { ok: true, healthStatus: "degraded" as const, listed: null };
     }
 
@@ -598,23 +637,25 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
       const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
       const discovery = await discoverProviderModels(providerId.data, installed);
       discoveryAvailable = true;
-      discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
+      discovered =
+        discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
     } catch (error) {
       console.warn("[admin] provider discovery unavailable during model health check", error);
     }
 
     const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
 
-    await supabaseAdmin.from("ai_models" as never).update({
-      ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
-      last_checked_at: now,
-      ...(health.success
-        ? { last_success_at: now }
-        : { last_failure_at: now }),
-      last_error_code: health.errorCode,
-      health_status: health.healthStatus,
-      updated_at: now,
-    } as never).eq("id", data.id);
+    await supabaseAdmin
+      .from("ai_models" as never)
+      .update({
+        ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+        last_checked_at: now,
+        ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
+        last_error_code: health.errorCode,
+        health_status: health.healthStatus,
+        updated_at: now,
+      } as never)
+      .eq("id", data.id);
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
       admin_user_id: context.userId,
@@ -657,7 +698,8 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
     if (error) throw new Error("Could not read installed provider models.");
 
     const providerModels = (rows ?? []) as any[];
-    if (!providerModels.length) return { ok: true, checked: 0, healthy: 0, degraded: 0, failing: 0 };
+    if (!providerModels.length)
+      return { ok: true, checked: 0, healthy: 0, degraded: 0, failing: 0 };
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
     const now = new Date().toISOString();
@@ -679,25 +721,29 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
 
     for (let start = 0; start < providerModels.length; start += PROVIDER_HEALTH_CONCURRENCY) {
       const batch = providerModels.slice(start, start + PROVIDER_HEALTH_CONCURRENCY);
-      const results = await Promise.all(batch.map(async (model) => {
-        const discovered = discoveryAvailable
-          ? discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ?? null
-          : null;
-        const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
+      const results = await Promise.all(
+        batch.map(async (model) => {
+          const discovered = discoveryAvailable
+            ? (discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ??
+              null)
+            : null;
+          const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
 
-        await supabaseAdmin.from("ai_models" as never).update({
-          ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
-          last_checked_at: now,
-          ...(health.success
-            ? { last_success_at: now }
-            : { last_failure_at: now }),
-          last_error_code: health.errorCode,
-          health_status: health.healthStatus,
-          updated_at: now,
-        } as never).eq("id", model.id);
+          await supabaseAdmin
+            .from("ai_models" as never)
+            .update({
+              ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+              last_checked_at: now,
+              ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
+              last_error_code: health.errorCode,
+              health_status: health.healthStatus,
+              updated_at: now,
+            } as never)
+            .eq("id", model.id);
 
-        return health.healthStatus;
-      }));
+          return health.healthStatus;
+        }),
+      );
 
       for (const healthStatus of results) {
         if (healthStatus === "healthy") healthy += 1;

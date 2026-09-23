@@ -18,21 +18,26 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "auth.createOne": "Δημιούργησε λογαριασμό",
   "auth.backFeed": "Επιστροφή στη ροή",
   "auth.registrationComplete": "Η εγγραφή ολοκληρώθηκε!",
-  "auth.verifyEmail": "Έλεγξε το email σου και πάτησε τον σύνδεσμο επιβεβαίωσης για να ενεργοποιήσεις τον λογαριασμό σου.",
+  "auth.verifyEmail":
+    "Έλεγξε το email σου και πάτησε τον σύνδεσμο επιβεβαίωσης για να ενεργοποιήσεις τον λογαριασμό σου.",
   "auth.sentLink": "Στείλαμε τον σύνδεσμο στο {email}",
   "auth.backSignIn": "Επιστροφή στη σύνδεση",
   "auth.displayTaken": "Αυτό το εμφανιζόμενο όνομα χρησιμοποιείται ήδη",
   "auth.usernameTaken": "Αυτό το όνομα χρήστη χρησιμοποιείται ήδη",
-  "auth.usernameHelp": "Μόνο γράμματα και αριθμοί, 3-30 χαρακτήρες. Η σελίδα σου θα είναι promptbeats.app/@{username}",
-  "auth.usernameFormat": "Το όνομα χρήστη πρέπει να έχει 3-30 γράμματα ή αριθμούς, χωρίς κενά ή σύμβολα.",
+  "auth.usernameHelp":
+    "Μόνο γράμματα και αριθμοί, 3-30 χαρακτήρες. Η σελίδα σου θα είναι promptbeats.app/@{username}",
+  "auth.usernameFormat":
+    "Το όνομα χρήστη πρέπει να έχει 3-30 γράμματα ή αριθμούς, χωρίς κενά ή σύμβολα.",
   "auth.displayRequired": "Συμπλήρωσε εμφανιζόμενο όνομα.",
   "auth.usernameAlreadyTaken": "Αυτό το όνομα χρήστη χρησιμοποιείται ήδη. Δοκίμασε άλλο.",
   "auth.displayAlreadyTaken": "Αυτό το εμφανιζόμενο όνομα χρησιμοποιείται ήδη. Δοκίμασε άλλο.",
-  "auth.invalidCredentials": "Το email ή ο κωδικός πρόσβασης είναι λανθασμένα. Έλεγξε τα στοιχεία σου και δοκίμασε ξανά. Αν δεν έχεις λογαριασμό, μπορείς να δημιουργήσεις έναν.",
+  "auth.invalidCredentials":
+    "Το email ή ο κωδικός πρόσβασης είναι λανθασμένα. Έλεγξε τα στοιχεία σου και δοκίμασε ξανά. Αν δεν έχεις λογαριασμό, μπορείς να δημιουργήσεις έναν.",
   "auth.signinUnavailable": "Η σύνδεση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά.",
   "auth.googleFailed": "Η σύνδεση με Google απέτυχε. Δοκίμασε ξανά.",
   "auth.somethingWrong": "Κάτι πήγε στραβά",
-  "auth.registrationBlocked": "Η εγγραφή με αυτή τη διεύθυνση email δεν επιτρέπεται. Αν πιστεύεις ότι ο περιορισμός εφαρμόστηκε κατά λάθος ή χρειάζεσαι βοήθεια, επικοινώνησε στο support@promptbeats.app.",
+  "auth.registrationBlocked":
+    "Η εγγραφή με αυτή τη διεύθυνση email δεν επιτρέπεται. Αν πιστεύεις ότι ο περιορισμός εφαρμόστηκε κατά λάθος ή χρειάζεσαι βοήθεια, επικοινώνησε στο support@promptbeats.app.",
   "auth.legalPrefix": "Έχω διαβάσει και αποδέχομαι τους",
   "auth.termsLink": "Όρους Χρήσης",
   "auth.legalMiddle": "και έχω ενημερωθεί για την",
@@ -75,7 +80,8 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "studio.trackTitle": "Τίτλος τραγουδιού",
   "studio.selectGenre": "Επίλεξε μουσικό είδος",
   "studio.customGenre": "Προσαρμοσμένο μουσικό είδος",
-  "studio.promptPlaceholder": "Το AI prompt που χρησιμοποιήθηκε για τη δημιουργία αυτού του τραγουδιού",
+  "studio.promptPlaceholder":
+    "Το AI prompt που χρησιμοποιήθηκε για τη δημιουργία αυτού του τραγουδιού",
   "studio.lyricsPlaceholder": "Στίχοι (προαιρετικό) — οι αλλαγές γραμμής διατηρούνται",
   "studio.addTrack": "Προσθήκη άλλου τραγουδιού",
   "studio.uploadAll": "Ανέβασμα όλων",
@@ -89,7 +95,8 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "studio.providerRequired": "Κάθε τραγούδι από {provider} χρειάζεται έγκυρο σύνδεσμο.",
   "studio.titleRequired": "Κάθε τραγούδι χρειάζεται τίτλο.",
   "studio.genreRequired": "Επίλεξε μουσικό είδος για κάθε τραγούδι.",
-  "studio.customGenreRequired": "Κάθε προσαρμοσμένο μουσικό είδος χρειάζεται όνομα έως 60 χαρακτήρες.",
+  "studio.customGenreRequired":
+    "Κάθε προσαρμοσμένο μουσικό είδος χρειάζεται όνομα έως 60 χαρακτήρες.",
   "studio.publishing": "Δημοσίευση {current}/{total}…",
   "studio.published": "Δημοσιεύτηκαν {count} τραγούδι(α)!",
 
@@ -108,7 +115,8 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.loadingModels": "Φόρτωση διαθέσιμων μοντέλων…",
   "generator.noModel": "Δεν υπάρχει διαθέσιμο μοντέλο AI για δημιουργία αυτή τη στιγμή.",
   "generator.clearTitle": "Εκκαθάριση Generator;",
-  "generator.clearBody": "Θα διαγραφούν τα τρέχοντα πεδία και τα αποτελέσματα που δημιουργήθηκαν. Αυτή η ενέργεια δεν αναιρείται.",
+  "generator.clearBody":
+    "Θα διαγραφούν τα τρέχοντα πεδία και τα αποτελέσματα που δημιουργήθηκαν. Αυτή η ενέργεια δεν αναιρείται.",
   "generator.confirmClear": "Επιβεβαίωση εκκαθάρισης",
   "generator.clearing": "Εκκαθάριση…",
   "generator.starting": "Έναρξη δημιουργίας…",
@@ -118,8 +126,10 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.bpmError": "Το BPM πρέπει να είναι ακέραιος αριθμός από 40 έως 260.",
   "generator.themeTooLong": "Το θέμα έχει {count} χαρακτήρες — το όριο είναι {limit}.",
   "generator.musicStyleTooLong": "Το Μουσικό Στυλ έχει {count} χαρακτήρες — το όριο είναι {limit}.",
-  "generator.moodTooLong": "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι {limit}. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
-  "generator.instrumentsTooLong": "Η επιλογή μουσικών οργάνων έχει {count} χαρακτήρες — το όριο είναι {limit}.",
+  "generator.moodTooLong":
+    "Η επιλογή διάθεσης έχει {count} χαρακτήρες — το όριο είναι {limit}. Αφαίρεσε μία διάθεση ή σύντμησε το προσαρμοσμένο κείμενο.",
+  "generator.instrumentsTooLong":
+    "Η επιλογή μουσικών οργάνων έχει {count} χαρακτήρες — το όριο είναι {limit}.",
   "generator.selectionTooLong": "Έχουν επιλεγεί πάρα πολλά μουσικά στυλ / όργανα. Αφαίρεσε μερικά.",
 
   "generator.customMoodBasic": "Γράψε τη δική σου διάθεση / vibe",
@@ -127,7 +137,8 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.selectMood": "Επίλεξε διάθεση / vibe (π.χ. Ενεργητικό, Chill...)",
   "generator.removeStructure": "Αφαίρεση {name} από τη θέση {position}",
   "generator.dismissFailed": "Δεν ήταν δυνατή η ακύρωση της δημιουργίας. Δοκίμασε ξανά.",
-  "generator.clearedRunning": "Ο Generator καθαρίστηκε. Η δημιουργία είχε ήδη ξεκινήσει και μπορεί να ολοκληρωθεί στο παρασκήνιο.",
+  "generator.clearedRunning":
+    "Ο Generator καθαρίστηκε. Η δημιουργία είχε ήδη ξεκινήσει και μπορεί να ολοκληρωθεί στο παρασκήνιο.",
 
   "quality.title": "Έλεγχος ποιότητας",
   "quality.checking": "Γίνεται έλεγχος... συνεχίζει ακόμη κι αν φύγεις από την εφαρμογή.",
@@ -135,8 +146,10 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "quality.noModel": "Δεν υπάρχει διαθέσιμο μοντέλο AI για Έλεγχο ποιότητας αυτή τη στιγμή.",
   "quality.checkWith": "Έλεγχος με:",
   "quality.model": "Μοντέλο Ελέγχου ποιότητας",
-  "quality.confirmFirst": "Ο Έλεγχος ποιότητας θα χρησιμοποιήσει 1 δημιουργία από το διαθέσιμο υπόλοιπό σου.",
-  "quality.confirmAgain": "Αυτός ο έλεγχος θα χρησιμοποιήσει 1 επιπλέον δημιουργία από το διαθέσιμο υπόλοιπό σου.",
+  "quality.confirmFirst":
+    "Ο Έλεγχος ποιότητας θα χρησιμοποιήσει 1 δημιουργία από το διαθέσιμο υπόλοιπό σου.",
+  "quality.confirmAgain":
+    "Αυτός ο έλεγχος θα χρησιμοποιήσει 1 επιπλέον δημιουργία από το διαθέσιμο υπόλοιπό σου.",
   "quality.check": "Έλεγχος",
   "quality.checkAgain": "Έλεγχος ξανά",
   "quality.checkCost": "Έλεγχος -1 δημιουργία",
@@ -215,5 +228,5 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "management.status": "Κατάσταση",
   "management.actions": "Ενέργειες",
   "management.save": "Αποθήκευση",
-  "management.cancel": "Ακύρωση"
+  "management.cancel": "Ακύρωση",
 };

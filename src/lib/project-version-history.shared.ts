@@ -52,25 +52,31 @@ export function diffLyricsSections(
     const previous = beforeByKey.get(key);
     const next = afterByKey.get(key);
     if (!previous && next) {
-      return [{
-        sectionKey: key,
-        sectionLabel: next.displayLabel,
-        changeType: "added" as const,
-      }];
+      return [
+        {
+          sectionKey: key,
+          sectionLabel: next.displayLabel,
+          changeType: "added" as const,
+        },
+      ];
     }
     if (previous && !next) {
-      return [{
-        sectionKey: key,
-        sectionLabel: previous.displayLabel,
-        changeType: "removed" as const,
-      }];
+      return [
+        {
+          sectionKey: key,
+          sectionLabel: previous.displayLabel,
+          changeType: "removed" as const,
+        },
+      ];
     }
     if (previous && next && previous.content !== next.content) {
-      return [{
-        sectionKey: key,
-        sectionLabel: next.displayLabel,
-        changeType: "changed" as const,
-      }];
+      return [
+        {
+          sectionKey: key,
+          sectionLabel: next.displayLabel,
+          changeType: "changed" as const,
+        },
+      ];
     }
     return [];
   });
@@ -123,7 +129,8 @@ export function buildGeneratorVersionMetadata(input?: {
     title: (input?.title?.trim() || "Generator version").slice(0, 160),
     summary: (summaryParts.length
       ? `${summaryParts.join("; ")}.`
-      : "A new version was saved from the AI Generator.").slice(0, 600),
+      : "A new version was saved from the AI Generator."
+    ).slice(0, 600),
     changedFields,
     changedSections,
     userRequest: null,
@@ -141,9 +148,10 @@ export function buildManualVersionMetadata(input: {
     ...generated,
     source: "manual_edit",
     title: "Added to project",
-    summary: generated.changedFields.length || generated.changedSections.length
-      ? generated.summary
-      : "A saved prompt was added to this project as a new version.",
+    summary:
+      generated.changedFields.length || generated.changedSections.length
+        ? generated.summary
+        : "A saved prompt was added to this project as a new version.",
     userRequest: null,
   });
 }
@@ -155,8 +163,9 @@ export function buildLyricsWorkspaceVersionMetadata(input: {
 }): VersionChangeMetadata {
   const changedSections = diffLyricsSections(input.beforeLyrics, input.afterLyrics);
   const labels = changedSections.map((section) => section.sectionLabel);
-  const title = input.versionLabel?.trim()
-    || (labels.length === 1 ? `${labels[0]} revised` : `${labels.length || 1} lyric sections revised`);
+  const title =
+    input.versionLabel?.trim() ||
+    (labels.length === 1 ? `${labels[0]} revised` : `${labels.length || 1} lyric sections revised`);
   const summary = labels.length
     ? `${sentenceList(labels.slice(0, 4))}${labels.length > 4 ? ` and ${labels.length - 4} more` : ""} changed in Lyrics Workspace.`
     : "Lyrics were edited in Lyrics Workspace.";
@@ -182,14 +191,16 @@ export function buildLyricsReviewVersionMetadata(input: {
   const sectionSummary = labels.length
     ? `${sentenceList(labels.slice(0, 4))}${labels.length > 4 ? ` and ${labels.length - 4} more` : ""}`
     : "Lyrics";
-  const title = input.mode === "replace_latest"
-    ? "Lyrics Review refinement"
-    : labels.length === 1
-      ? `${labels[0]} refined in Lyrics Review`
-      : "Lyrics Review";
-  const summary = input.mode === "replace_latest"
-    ? `${sectionSummary} refined in Lyrics Review without creating a new version.`
-    : `${sectionSummary} refined in Lyrics Review.`;
+  const title =
+    input.mode === "replace_latest"
+      ? "Lyrics Review refinement"
+      : labels.length === 1
+        ? `${labels[0]} refined in Lyrics Review`
+        : "Lyrics Review";
+  const summary =
+    input.mode === "replace_latest"
+      ? `${sectionSummary} refined in Lyrics Review without creating a new version.`
+      : `${sectionSummary} refined in Lyrics Review.`;
 
   return versionChangeMetadataSchema.parse({
     schemaVersion: 1,
@@ -224,17 +235,24 @@ export function buildProjectRevisionVersionMetadata(input: {
 
   const parts: string[] = [];
   if (labels.length) {
-    parts.push(`${sentenceList(labels.slice(0, 4))}${labels.length > 4 ? ` and ${labels.length - 4} more` : ""} changed`);
+    parts.push(
+      `${sentenceList(labels.slice(0, 4))}${labels.length > 4 ? ` and ${labels.length - 4} more` : ""} changed`,
+    );
   }
   if (fieldLabels.length) {
-    parts.push(`${sentenceList(fieldLabels.slice(0, 4))}${fieldLabels.length > 4 ? ` and ${fieldLabels.length - 4} more` : ""} updated`);
+    parts.push(
+      `${sentenceList(fieldLabels.slice(0, 4))}${fieldLabels.length > 4 ? ` and ${fieldLabels.length - 4} more` : ""} updated`,
+    );
   }
 
   return versionChangeMetadataSchema.parse({
     schemaVersion: 1,
     source: "project_revision",
     title: title.slice(0, 160),
-    summary: (parts.length ? `${parts.join("; ")}.` : "A project revision created this version.").slice(0, 600),
+    summary: (parts.length
+      ? `${parts.join("; ")}.`
+      : "A project revision created this version."
+    ).slice(0, 600),
     changedFields,
     changedSections,
     userRequest: input.revisionRequest.trim() || null,
@@ -246,8 +264,14 @@ export function versionChangeChips(metadata: VersionChangeMetadata): string[] {
   if (metadata.changedFields.includes("lyrics")) chips.push("Lyrics");
   if (metadata.changedFields.includes("songStructure")) chips.push("Structure");
   if (metadata.changedFields.includes("songBlueprint")) chips.push("Arrangement");
-  if (metadata.changedSections.some((section) => section.sectionLabel.toLowerCase().includes("chorus"))) {
-    const chorus = metadata.changedSections.find((section) => section.sectionLabel.toLowerCase().includes("chorus"));
+  if (
+    metadata.changedSections.some((section) =>
+      section.sectionLabel.toLowerCase().includes("chorus"),
+    )
+  ) {
+    const chorus = metadata.changedSections.find((section) =>
+      section.sectionLabel.toLowerCase().includes("chorus"),
+    );
     if (chorus) chips.push(chorus.sectionLabel);
   }
   for (const field of metadata.changedFields) {

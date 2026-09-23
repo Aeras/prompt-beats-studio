@@ -12,10 +12,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
-import {
-  AI_TARGET_PLATFORMS,
-  DEFAULT_AI_TARGET_PLATFORM,
-} from "@/lib/ai-target-platforms";
+import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
 import {
   diffGeneratorSnapshots,
   generatorInputSnapshotSchema,
@@ -45,27 +42,29 @@ const jobInput = z.object({
   production: z.string().trim().max(2000).default(""),
   instructions: z.string().trim().max(2000).default(""),
   operation: z.enum(["generate", "revision"]).default("generate"),
-  revision: z.object({
-    projectId: z.string().uuid(),
-    basePromptId: z.string().uuid(),
-    revisionRequest: z.string().trim().min(1).max(3000),
-    desiredSnapshot: generatorInputSnapshotSchema,
-  }).nullish(),
+  revision: z
+    .object({
+      projectId: z.string().uuid(),
+      basePromptId: z.string().uuid(),
+      revisionRequest: z.string().trim().min(1).max(3000),
+      desiredSnapshot: generatorInputSnapshotSchema,
+    })
+    .nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
 
-function assertGenerationInputLimits(
-  input: z.infer<typeof jobInput>,
-  isAdmin: boolean,
-) {
+function assertGenerationInputLimits(input: z.infer<typeof jobInput>, isAdmin: boolean) {
   if (isAdmin) return;
   if (input.advanced || input.operation === "revision") {
     const musicStyleLimit = input.operation === "revision" ? 500 : 150;
     if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
-    if (!input.baseMusicStyle || input.baseMusicStyle.length > musicStyleLimit) throw new Error(`Music Style must be ${musicStyleLimit} characters or fewer.`);
-    if (input.genre.length > 500) throw new Error("The composed music direction must be 500 characters or fewer.");
+    if (!input.baseMusicStyle || input.baseMusicStyle.length > musicStyleLimit)
+      throw new Error(`Music Style must be ${musicStyleLimit} characters or fewer.`);
+    if (input.genre.length > 500)
+      throw new Error("The composed music direction must be 500 characters or fewer.");
     if (input.mood.length > 120) throw new Error("Mood must be 120 characters or fewer.");
-    if (input.instruments.length > 200) throw new Error("Instruments must be 200 characters or fewer.");
+    if (input.instruments.length > 200)
+      throw new Error("Instruments must be 200 characters or fewer.");
     return;
   }
   if (input.theme.length > 300) throw new Error("Theme must be 300 characters or fewer.");
@@ -210,7 +209,9 @@ export const startGenerationJob = createServerFn({ method: "POST" })
 
       const { data: basePrompt, error: baseError } = await supabase
         .from("saved_prompts")
-        .select("id, project_id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
+        .select(
+          "id, project_id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot",
+        )
         .eq("id", clientRevision.basePromptId)
         .eq("project_id", clientRevision.projectId)
         .eq("user_id", context.userId)
@@ -307,7 +308,9 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
 
       const { data: basePrompt, error: baseError } = await supabase
         .from("saved_prompts")
-        .select("id, project_id, title, tags, note, theme, genre, mood, language, generator_input_snapshot")
+        .select(
+          "id, project_id, title, tags, note, theme, genre, mood, language, generator_input_snapshot",
+        )
         .eq("id", data.basePromptId)
         .eq("project_id", data.projectId)
         .eq("user_id", context.userId)

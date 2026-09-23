@@ -59,7 +59,11 @@ export function ArrangementSectionCard({
           {section.instruction.trim() || t("generator.arrangement.noBlueprint")}
         </p>
         <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span>{section.instruction.trim() ? t("generator.arrangement.blueprintSet") : t("generator.arrangement.blueprintUnset")}</span>
+          <span>
+            {section.instruction.trim()
+              ? t("generator.arrangement.blueprintSet")
+              : t("generator.arrangement.blueprintUnset")}
+          </span>
         </div>
       </button>
     </div>

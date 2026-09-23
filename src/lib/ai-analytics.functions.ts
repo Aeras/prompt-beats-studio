@@ -79,8 +79,7 @@ function accumulate(map: Map<string, Breakdown>, key: string, r: UsageRow) {
   map.set(key, b);
 }
 
-const sorted = (m: Map<string, Breakdown>) =>
-  [...m.values()].sort((a, b) => b.costUsd - a.costUsd);
+const sorted = (m: Map<string, Breakdown>) => [...m.values()].sort((a, b) => b.costUsd - a.costUsd);
 
 export const getAiAnalytics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -128,8 +127,7 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
         costUsd: acc.costUsd + b.costUsd,
         unknownCostRequests: acc.unknownCostRequests + b.unknownCostRequests,
         pendingPricingRequests: acc.pendingPricingRequests + b.pendingPricingRequests,
-        usageUnavailableRequests:
-          acc.usageUnavailableRequests + b.usageUnavailableRequests,
+        usageUnavailableRequests: acc.usageUnavailableRequests + b.usageUnavailableRequests,
         failures: acc.failures + b.failures,
       }),
       {
@@ -155,9 +153,7 @@ export const getAiAnalytics = createServerFn({ method: "POST" })
       (sum, generation) => sum + generation.costUsd,
       0,
     );
-    const avgCostPerSong = completeCostSongs
-      ? completeCostTotal / completeCostSongs
-      : 0;
+    const avgCostPerSong = completeCostSongs ? completeCostTotal / completeCostSongs : 0;
     const avgTokensPerSong = songs ? totals.totalTokens / songs : 0;
     const dailyAvgCost = totals.costUsd / data.days;
 

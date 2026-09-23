@@ -16,7 +16,9 @@ function sqlFunction(sql: string, name: string) {
 describe("Reports System + Explicit Lyrics V1", () => {
   test("adds additive Explicit metadata with safe default", async () => {
     const sql = await source(migration);
-    expect(sql).toContain("ADD COLUMN IF NOT EXISTS contains_explicit_lyrics boolean NOT NULL DEFAULT false");
+    expect(sql).toContain(
+      "ADD COLUMN IF NOT EXISTS contains_explicit_lyrics boolean NOT NULL DEFAULT false",
+    );
     expect(sql).not.toMatch(/UPDATE\s+public\.tracks\s+SET\s+contains_explicit_lyrics/i);
   });
 
@@ -32,12 +34,25 @@ describe("Reports System + Explicit Lyrics V1", () => {
   test("report categories and statuses match the canonical contract", async () => {
     const sql = await source(migration);
     for (const category of [
-      "copyright_ip","hate_discrimination","harassment_threats","sexual_inappropriate",
-      "impersonation","privacy_personal_info","illegal_content","spam_platform_abuse","other",
-    ]) expect(sql).toContain(`'${category}'`);
+      "copyright_ip",
+      "hate_discrimination",
+      "harassment_threats",
+      "sexual_inappropriate",
+      "impersonation",
+      "privacy_personal_info",
+      "illegal_content",
+      "spam_platform_abuse",
+      "other",
+    ])
+      expect(sql).toContain(`'${category}'`);
     for (const status of [
-      "open","under_review","resolved_action_taken","resolved_no_violation","dismissed_abuse",
-    ]) expect(sql).toContain(`'${status}'`);
+      "open",
+      "under_review",
+      "resolved_action_taken",
+      "resolved_no_violation",
+      "dismissed_abuse",
+    ])
+      expect(sql).toContain(`'${status}'`);
   });
 
   test("submission is authenticated, account-state checked, validates public target, and prevents self-report", async () => {
@@ -73,7 +88,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
 
   test("report queue and detail require canonical moderator capability", async () => {
     const sql = await source(migration);
-    for (const name of ["list_content_reports","get_content_report","review_content_report"]) {
+    for (const name of ["list_content_reports", "get_content_report", "review_content_report"]) {
       const block = sqlFunction(sql, name);
       expect(block).toContain("has_moderation_capability('can_view_users')");
     }
@@ -81,14 +96,22 @@ describe("Reports System + Explicit Lyrics V1", () => {
 
   test("reporter identity is server-filtered to Admin level and omitted for Moderator/Senior Moderator", async () => {
     const sql = await source(migration);
-    for (const name of ["list_content_reports","get_content_report"]) {
+    for (const name of ["list_content_reports", "get_content_report"]) {
       const block = sqlFunction(sql, name);
       expect(block).toContain("v_admin_level:=public.current_user_is_admin_level()");
-      expect(block).toContain("'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END");
-      expect(block).toContain("'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END");
-      expect(block).toContain("'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END");
+      expect(block).toContain(
+        "'reporter_user_id',CASE WHEN v_admin_level THEN r.reporter_user_id ELSE NULL END",
+      );
+      expect(block).toContain(
+        "'reporter_email',CASE WHEN v_admin_level THEN reporter.email ELSE NULL END",
+      );
+      expect(block).toContain(
+        "'reporter_handle',CASE WHEN v_admin_level THEN reporter_profile.handle ELSE NULL END",
+      );
       expect(block).toContain("jsonb_strip_nulls");
-      expect(block).toContain("JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level");
+      expect(block).toContain(
+        "JOIN auth.users reporter ON reporter.id=r.reporter_user_id AND v_admin_level",
+      );
     }
   });
 
@@ -115,15 +138,21 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(sql).toContain("reporter_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL");
     expect(sql).toContain("target_owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL");
     expect(sql).toContain("target_title text NOT NULL");
-    expect(sql.match(/LEFT JOIN public\.tracks t ON t\.id=r\.target_id/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(
+      sql.match(/LEFT JOIN public\.tracks t ON t\.id=r\.target_id/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
     expect(sql.match(/COALESCE\(t\.title,r\.target_title\)/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   test("Reports tab is visible to moderator level and above, while Feature Access stays Super Admin-only", async () => {
     const ui = await source("src/routes/management.tsx");
     expect(ui).toContain('["reports", t("management.reports"), Flag]');
-    expect(ui).toContain(': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]');
-    expect(ui).toContain('section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />');
+    expect(ui).toContain(
+      ': [["users", t("management.users"), Users], ["reports", t("management.reports"), Flag]]',
+    );
+    expect(ui).toContain(
+      'section === "reports" && <ReportsManagementPanel isAdmin={isAdmin} initialReportId={initialReportId} />',
+    );
     expect(ui).toContain('isSuperAdmin && section === "features"');
   });
 
@@ -133,8 +162,8 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(server).toContain("requireSupabaseAuth");
     expect(server).toContain('rpc("list_content_reports"');
     expect(server).toContain('rpc("get_content_report"');
-    expect(ui).toContain('listContentReports({ data: { scope } })');
-    expect(ui).toContain('getContentReport({ data: { reportId } })');
+    expect(ui).toContain("listContentReports({ data: { scope } })");
+    expect(ui).toContain("getContentReport({ data: { reportId } })");
   });
 
   test("report notifications deep-link directly into the requested moderation report", async () => {
@@ -149,10 +178,10 @@ describe("Reports System + Explicit Lyrics V1", () => {
 
   test("Management UI only renders Reporter column for Admin-level users", async () => {
     const ui = await source("src/components/promptbeats/ReportsManagementPanel.tsx");
-    expect(ui).toContain('{isAdmin && <th');
+    expect(ui).toContain("{isAdmin && <th");
     expect(ui).toContain('t("management.reportReporter")');
-    expect(ui).toContain('{isAdmin ? (');
-    expect(ui).toContain('management.reportNoReporterIdentity');
+    expect(ui).toContain("{isAdmin ? (");
+    expect(ui).toContain("management.reportNoReporterIdentity");
   });
 
   test("report detail reuses canonical track moderation controls instead of duplicate moderation actions", async () => {
@@ -177,7 +206,7 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(card).toContain("<PromptContentIcon");
     expect(card).toContain("<LyricsContentIcon");
     expect(card).toContain("<ReportTrackControl");
-    expect(card).toContain('justify-between');
+    expect(card).toContain("justify-between");
   });
 
   test("Explicit value persists through canonical create/update contracts", async () => {
@@ -190,7 +219,9 @@ describe("Reports System + Explicit Lyrics V1", () => {
   test("all current track creation/edit paths expose and persist Explicit declaration", async () => {
     const studio = await source("src/components/promptbeats/StudioModal.tsx");
     expect(studio).toContain("containsExplicitLyrics");
-    expect(studio.match(/contains_explicit_lyrics: r\.containsExplicitLyrics/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(
+      studio.match(/contains_explicit_lyrics: r\.containsExplicitLyrics/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
     expect(studio).toContain('t("explicit.label")');
 
     const owner = await source("src/components/promptbeats/TrackOwnerActions.tsx");

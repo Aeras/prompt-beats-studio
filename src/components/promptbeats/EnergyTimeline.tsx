@@ -60,7 +60,10 @@ export function EnergyTimeline({ sections, labelForSection }: Props) {
             {t("generator.arrangement.energyCurveHint")}
           </p>
         </div>
-        <div className="text-[10px] text-muted-foreground" aria-label={t("generator.arrangement.energySequence")}>
+        <div
+          className="text-[10px] text-muted-foreground"
+          aria-label={t("generator.arrangement.energySequence")}
+        >
           {sections.map((section) => section.energy ?? "—").join(" / ")}
         </div>
       </div>
@@ -86,11 +89,7 @@ export function EnergyTimeline({ sections, labelForSection }: Props) {
                     className="stroke-white/10"
                     vectorEffect="non-scaling-stroke"
                   />
-                  <text
-                    x="0"
-                    y={y - 2}
-                    className="fill-muted-foreground text-[3px]"
-                  >
+                  <text x="0" y={y - 2} className="fill-muted-foreground text-[3px]">
                     {energy}
                   </text>
                 </g>
@@ -134,15 +133,16 @@ export function EnergyTimeline({ sections, labelForSection }: Props) {
             )}
           </svg>
 
-          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}>
+          <div
+            className="grid gap-1"
+            style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}
+          >
             {sections.map((section) => (
               <div key={section.sectionId} className="min-w-0 text-center">
                 <p className="truncate text-[9px] text-muted-foreground">
                   {displayLabel(sections, section, labelForSection)}
                 </p>
-                <p className="text-[10px] font-semibold text-foreground">
-                  {section.energy ?? "—"}
-                </p>
+                <p className="text-[10px] font-semibold text-foreground">{section.energy ?? "—"}</p>
               </div>
             ))}
           </div>

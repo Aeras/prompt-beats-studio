@@ -63,9 +63,12 @@ export const enAiModels = {
   "aiModels.inputShort": "input",
   "aiModels.outputShort": "output",
   "aiModels.defaultProtection": "Choose another default model before disabling this one.",
-  "aiModels.defaultAccessProtectionGenerator": "This model is the AI Generator default and must remain available to all users. Select another Generator default first.",
-  "aiModels.defaultAccessProtectionQuality": "This model is the Quality Check default and must remain available to all users. Select another Quality Check default first.",
-  "aiModels.defaultAccessProtectionBoth": "This model is the default for both AI Generator and Quality Check and must remain available to all users. Select other defaults first.",
+  "aiModels.defaultAccessProtectionGenerator":
+    "This model is the AI Generator default and must remain available to all users. Select another Generator default first.",
+  "aiModels.defaultAccessProtectionQuality":
+    "This model is the Quality Check default and must remain available to all users. Select another Quality Check default first.",
+  "aiModels.defaultAccessProtectionBoth":
+    "This model is the default for both AI Generator and Quality Check and must remain available to all users. Select other defaults first.",
   "aiModels.manualPricingHint": "Prices are entered manually in USD per 1,000,000 tokens.",
   "aiModels.advancedPricing": "Advanced pricing",
   "aiModels.preview": "Preview",
@@ -84,7 +87,8 @@ export const enAiModels = {
   "aiModels.alreadyInstalled": "Already installed",
   "aiModels.providerDeprecated": "Deprecated",
   "aiModels.contextWindow": "Context",
-  "aiModels.noDiscoveredModels": "No compatible text-generation models were returned by this provider.",
+  "aiModels.noDiscoveredModels":
+    "No compatible text-generation models were returned by this provider.",
   "aiModels.phase4Notice": "Adding new models will be enabled in Phase 4 after Compatibility Test.",
   "aiModels.discoverySummary": "Discovery summary",
   "aiModels.returnedCount": "Returned",
@@ -96,7 +100,8 @@ export const enAiModels = {
   "aiModels.compatibilityError": "Compatibility test could not be completed.",
   "aiModels.noTestableCandidates": "There are no new candidate models to test.",
   "aiModels.compatibleModels": "Models available to add",
-  "aiModels.compatibilitySummary": "{compatible} compatible · {unsupported} unsupported · {inconclusive} inconclusive",
+  "aiModels.compatibilitySummary":
+    "{compatible} compatible · {unsupported} unsupported · {inconclusive} inconclusive",
   "aiModels.noCompatibleModels": "No models passed the PromptBeats compatibility test.",
   "aiModels.compatibility": "Compatibility",
   "aiModels.generatorOnly": "Generator only",
@@ -119,15 +124,19 @@ export const enAiModels = {
   "aiModels.recheckProvider": "Recheck provider",
   "aiModels.recheckingProvider": "Rechecking provider…",
   "aiModels.healthRechecked": "Health check complete: {status}",
-  "aiModels.providerHealthRechecked": "Provider health check completed for {checked} installed models",
+  "aiModels.providerHealthRechecked":
+    "Provider health check completed for {checked} installed models",
   "aiModels.healthCheckError": "Health check could not be completed.",
   "aiModels.defaultAttentionTitle": "A default model requires attention",
-  "aiModels.generatorDefaultAttention": "The Generator default is stale, degraded, failing, or deprecated. Review its health before changing it.",
-  "aiModels.qualityDefaultAttention": "The Quality Check default is stale, degraded, failing, or deprecated. Review its health before changing it.",
+  "aiModels.generatorDefaultAttention":
+    "The Generator default is stale, degraded, failing, or deprecated. Review its health before changing it.",
+  "aiModels.qualityDefaultAttention":
+    "The Quality Check default is stale, degraded, failing, or deprecated. Review its health before changing it.",
   "aiModels.compatibilityProgress": "Testing {completed}/{total}…",
   "aiModels.stopCompatibility": "Stop",
-  "aiModels.compatibilityStopped": "Test stopped after {completed}/{total} models. Partial results are shown.",
-  "aiModels.defaultNotEligible": "This model cannot be used as the selected default."
+  "aiModels.compatibilityStopped":
+    "Test stopped after {completed}/{total} models. Partial results are shown.",
+  "aiModels.defaultNotEligible": "This model cannot be used as the selected default.",
 } as const;
 
 export type AiModelsTranslationKey = keyof typeof enAiModels;

@@ -91,13 +91,20 @@ function AuthPage() {
 
   const signupBlocked =
     mode === "signup" &&
-    (handleTaken || aliasTaken || checking || Boolean(handleFormatError) || !alias.trim() || !cleanHandleValue || !legalAccepted);
+    (handleTaken ||
+      aliasTaken ||
+      checking ||
+      Boolean(handleFormatError) ||
+      !alias.trim() ||
+      !cleanHandleValue ||
+      !legalAccepted);
 
   useEffect(() => {
     let active = true;
     const recoveryInUrl =
       typeof window !== "undefined" &&
-      (new URLSearchParams(window.location.search).get("reset") === "1" || window.location.hash.includes("type=recovery"));
+      (new URLSearchParams(window.location.search).get("reset") === "1" ||
+        window.location.hash.includes("type=recovery"));
 
     if (recoveryInUrl) setResetStage("update");
 
@@ -224,7 +231,11 @@ function AuthPage() {
       setResetStage("done");
     } catch (err) {
       const text = err instanceof Error ? err.message.toLowerCase() : "";
-      setMessage(text.includes("session") || text.includes("expired") ? t("auth.resetLinkInvalid") : t("auth.passwordUpdateFailed"));
+      setMessage(
+        text.includes("session") || text.includes("expired")
+          ? t("auth.resetLinkInvalid")
+          : t("auth.passwordUpdateFailed"),
+      );
     } finally {
       setBusy(false);
     }
@@ -265,14 +276,24 @@ function AuthPage() {
       <div className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
         <div className="glass-strong w-full max-w-md rounded-3xl p-6 sm:p-8">
           <div className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="PromptBeats logo" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl glow-neon" />
+            <img
+              src={logoAsset.url}
+              alt="PromptBeats logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 rounded-xl glow-neon"
+            />
             <div className="min-w-0">
               <h1 className="font-display text-xl font-bold tracking-tight">
                 {resetStage === "update" ? t("auth.choosePasswordTitle") : t("auth.resetTitle")}
               </h1>
               {resetStage !== "sent" && (
                 <p className="text-xs text-muted-foreground">
-                  {resetStage === "update" ? t("auth.choosePasswordSubtitle") : resetStage === "done" ? t("auth.passwordUpdated") : t("auth.resetSubtitle")}
+                  {resetStage === "update"
+                    ? t("auth.choosePasswordSubtitle")
+                    : resetStage === "done"
+                      ? t("auth.passwordUpdated")
+                      : t("auth.resetSubtitle")}
                 </p>
               )}
             </div>
@@ -289,20 +310,52 @@ function AuthPage() {
                 aria-label={t("auth.email")}
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
               />
-              <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}{t("auth.sendResetLink")}
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                {t("auth.sendResetLink")}
               </button>
             </form>
           )}
 
-          {resetStage === "sent" && <p className="mt-6 text-center text-sm leading-relaxed text-muted-foreground">{t("auth.resetEmailSent")}</p>}
+          {resetStage === "sent" && (
+            <p className="mt-6 text-center text-sm leading-relaxed text-muted-foreground">
+              {t("auth.resetEmailSent")}
+            </p>
+          )}
 
           {resetStage === "update" && (
             <form onSubmit={updatePassword} className="mt-6 space-y-3">
-              <input type="password" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("auth.newPassword")} aria-label={t("auth.newPassword")} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60" />
-              <input type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t("auth.confirmPassword")} aria-label={t("auth.confirmPassword")} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60" />
-              <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60">
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}{t("auth.updatePassword")}
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t("auth.newPassword")}
+                aria-label={t("auth.newPassword")}
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60"
+              />
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t("auth.confirmPassword")}
+                aria-label={t("auth.confirmPassword")}
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60"
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-60"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                {t("auth.updatePassword")}
               </button>
             </form>
           )}
@@ -310,7 +363,13 @@ function AuthPage() {
           {message && <p className="mt-4 text-center text-xs text-accent">{message}</p>}
 
           {(resetStage === "request" || resetStage === "sent" || resetStage === "done") && (
-            <button type="button" onClick={returnToSignIn} className="mt-5 w-full text-center text-xs text-primary hover:underline">{t("auth.backToSignIn")}</button>
+            <button
+              type="button"
+              onClick={returnToSignIn}
+              className="mt-5 w-full text-center text-xs text-primary hover:underline"
+            >
+              {t("auth.backToSignIn")}
+            </button>
           )}
         </div>
       </div>
@@ -324,11 +383,13 @@ function AuthPage() {
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-neon glow-neon">
             <MailCheck className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="mt-5 font-display text-2xl font-bold tracking-tight">{t("auth.registrationComplete")}</h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t("auth.verifyEmail")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t("auth.sentLink", { email })}
+          <h1 className="mt-5 font-display text-2xl font-bold tracking-tight">
+            {t("auth.registrationComplete")}
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {t("auth.verifyEmail")}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("auth.sentLink", { email })}</p>
           <div className="mt-6 flex flex-col gap-2">
             <button
               onClick={() => {
@@ -379,7 +440,8 @@ function AuthPage() {
         </button>
 
         <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-          <span className="h-px flex-1 bg-white/10" /> {t("auth.or")} <span className="h-px flex-1 bg-white/10" />
+          <span className="h-px flex-1 bg-white/10" /> {t("auth.or")}{" "}
+          <span className="h-px flex-1 bg-white/10" />
         </div>
 
         <form onSubmit={submit} className="space-y-3">
@@ -408,7 +470,9 @@ function AuthPage() {
                 aria-label={t("auth.username")}
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
               />
-              {handleFormatError && <p className="px-1 text-[11px] text-destructive">{handleFormatError}</p>}
+              {handleFormatError && (
+                <p className="px-1 text-[11px] text-destructive">{handleFormatError}</p>
+              )}
               {handleTaken && !handleFormatError && (
                 <p className="px-1 text-[11px] text-destructive">{t("auth.usernameTaken")}</p>
               )}
@@ -447,11 +511,19 @@ function AuthPage() {
               />
               <span>
                 {t("auth.legalPrefix")}{" "}
-                <Link to="/terms" target="_blank" className="text-primary underline underline-offset-2 hover:text-accent">
+                <Link
+                  to="/terms"
+                  target="_blank"
+                  className="text-primary underline underline-offset-2 hover:text-accent"
+                >
                   {t("auth.termsLink")}
                 </Link>{" "}
                 {t("auth.legalMiddle")}{" "}
-                <Link to="/privacy" target="_blank" className="text-primary underline underline-offset-2 hover:text-accent">
+                <Link
+                  to="/privacy"
+                  target="_blank"
+                  className="text-primary underline underline-offset-2 hover:text-accent"
+                >
                   {t("auth.privacyLink")}
                 </Link>
                 {t("auth.legalSuffix")}
@@ -460,7 +532,14 @@ function AuthPage() {
           )}
           {mode === "signin" && (
             <div className="flex justify-end px-1">
-              <button type="button" onClick={() => { setMessage(null); setResetStage("request"); }} className="text-xs text-primary hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  setMessage(null);
+                  setResetStage("request");
+                }}
+                className="text-xs text-primary hover:underline"
+              >
                 {t("auth.forgotPassword")}
               </button>
             </div>
@@ -480,9 +559,14 @@ function AuthPage() {
             {message === blockedRegistrationMessage ? (
               <>
                 {blockedRegistrationMessage.replace("support@promptbeats.app.", "")}
-                <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">support@promptbeats.app</a>.
+                <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">
+                  support@promptbeats.app
+                </a>
+                .
               </>
-            ) : message}
+            ) : (
+              message
+            )}
           </p>
         )}
 
@@ -500,7 +584,9 @@ function AuthPage() {
           </button>
         </p>
         <p className="mt-3 text-center text-xs">
-          <Link to="/" className="text-muted-foreground hover:text-foreground">{t("auth.backFeed")}</Link>
+          <Link to="/" className="text-muted-foreground hover:text-foreground">
+            {t("auth.backFeed")}
+          </Link>
         </p>
       </div>
     </div>

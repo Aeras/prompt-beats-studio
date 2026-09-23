@@ -5,14 +5,15 @@ async function source(path: string) {
 }
 
 const saveMigration = "supabase/migrations/20260923044500_lyrics_review_project_save.sql";
-const admissionMigration = "supabase/migrations/20260923050000_lyrics_review_generation_admission.sql";
+const admissionMigration =
+  "supabase/migrations/20260923050000_lyrics_review_generation_admission.sql";
 
 describe("Lyrics Review Phase 1 integration", () => {
   test("Project context is owner-scoped and selected version is constrained to its Project", async () => {
     const server = await source("src/lib/lyrics-review.functions.ts");
     expect(server).toContain('.eq("user_id", context.userId)');
     expect(server).toContain('.eq("project_id", data.projectId)');
-    expect(server).toContain('versions.find((version) => version.id === data.versionId)');
+    expect(server).toContain("versions.find((version) => version.id === data.versionId)");
   });
 
   test("Project version selector is populated only from the selected Project query", async () => {
@@ -45,7 +46,9 @@ describe("Lyrics Review Phase 1 integration", () => {
     const route = await source("src/routes/lyrics-review.tsx");
     expect(route).toContain("lyricsReviewLanguageFromCanonical(data.selected.language)");
     expect(route).toContain("lyricsReviewLanguageFromCanonical(handoff.authoritativeLanguage)");
-    expect(route).toContain("if (mode !== \"standalone\" || manualLanguage || !lyrics.trim()) return");
+    expect(route).toContain(
+      'if (mode !== "standalone" || manualLanguage || !lyrics.trim()) return',
+    );
   });
 
   test("instant analysis is deterministic and does not require an AI request", async () => {
@@ -62,14 +65,16 @@ describe("Lyrics Review Phase 1 integration", () => {
     const server = await source("src/lib/lyrics-review.functions.ts");
     expect(route).toContain("startDeepReview(section.key)");
     expect(server).toContain('requireFeatureAccess(context.supabase, "lyrics_review")');
-    expect(server).toContain('getModelForUser(context.userId, data.generationModel ?? undefined, "generator")');
+    expect(server).toContain(
+      'getModelForUser(context.userId, data.generationModel ?? undefined, "generator")',
+    );
     expect(server).toContain("sectionKey: selected.key");
   });
 
   test("durable AI admission recognizes Lyrics Review independently from Lyrics Workspace", async () => {
     const sql = await source(admissionMigration);
     const server = await source("src/lib/lyrics-review.functions.ts");
-    expect(server).toContain('feature: data.feature');
+    expect(server).toContain("feature: data.feature");
     expect(server).toContain('returnedPayload.data.feature !== "lyrics_review"');
     expect(sql).toContain("_input->>'feature'");
     expect(sql).toContain("THEN 'lyrics_review'");
@@ -80,7 +85,7 @@ describe("Lyrics Review Phase 1 integration", () => {
     const route = await source("src/routes/lyrics-review.tsx");
     expect(route).toContain("setAiError");
     expect(route).toContain("Keep deterministic analysis and current lyric edits intact");
-    expect(route).not.toContain("setLyrics(\"\")");
+    expect(route).not.toContain('setLyrics("")');
   });
 
   test("AI proposal is previewed before Apply and supports one-step Undo", async () => {
@@ -149,7 +154,24 @@ describe("Lyrics Review Phase 1 integration", () => {
 
   test("Generator handoff contract preserves result, snapshot, AI state and revision context", async () => {
     const handoff = await source("src/lib/lyrics-review-handoff.shared.ts");
-    for (const key of ["snapshot", "result", "quality", "songContext", "generationId", "generationModel", "qualityCheckModel", "saved", "open", "applied", "applyErrors", "revisionMode", "revisionProjectId", "revisionBasePromptId", "revisionRequest", "revisionMeta"]) {
+    for (const key of [
+      "snapshot",
+      "result",
+      "quality",
+      "songContext",
+      "generationId",
+      "generationModel",
+      "qualityCheckModel",
+      "saved",
+      "open",
+      "applied",
+      "applyErrors",
+      "revisionMode",
+      "revisionProjectId",
+      "revisionBasePromptId",
+      "revisionRequest",
+      "revisionMeta",
+    ]) {
       expect(handoff).toContain(key);
     }
   });

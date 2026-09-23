@@ -147,7 +147,9 @@ export const listCreatorFollowProfiles = createServerFn({ method: "POST" })
     const ids = pageRows.map((row: any) => row[idColumn]).filter(Boolean);
     if (!ids.length) return { profiles: [] as FollowProfile[], hasMore: false };
 
-    const { data: profiles, error: profilesError } = await (supabaseAdmin.from("public_profiles") as any)
+    const { data: profiles, error: profilesError } = await (
+      supabaseAdmin.from("public_profiles") as any
+    )
       .select("id, handle, display_name, artist_alias, avatar_url, staff_badge")
       .in("id", ids);
     if (profilesError) throw new Error(profilesError.message);
@@ -207,14 +209,17 @@ export const listNotifications = createServerFn({ method: "POST" })
         .in("id", trackIds);
       if (trackError) throw new Error(trackError.message);
       for (const track of tracks ?? []) {
-        if (track.is_published === true && track.moderation_status === "active") trackMap.set(track.id, track);
+        if (track.is_published === true && track.moderation_status === "active")
+          trackMap.set(track.id, track);
       }
     }
 
     const reportMap = new Map<string, any>();
     if (reportIds.length) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: reports, error: reportError } = await (supabaseAdmin.from("content_reports") as any)
+      const { data: reports, error: reportError } = await (
+        supabaseAdmin.from("content_reports") as any
+      )
         .select("id, target_title")
         .in("id", reportIds);
       if (reportError) throw new Error(reportError.message);
@@ -228,9 +233,11 @@ export const listNotifications = createServerFn({ method: "POST" })
       const reportRow = row.report_id ? reportMap.get(row.report_id) : null;
       const report = reportRow ? { id: reportRow.id, title: reportRow.target_title } : null;
       const targetAvailable =
-        row.type === "new_track" ? Boolean(track) :
-        row.type === "new_report" ? Boolean(report) :
-        Boolean(actor);
+        row.type === "new_track"
+          ? Boolean(track)
+          : row.type === "new_report"
+            ? Boolean(report)
+            : Boolean(actor);
       return {
         id: row.id,
         type: row.type,
@@ -293,13 +300,14 @@ export const updateNotificationPreferences = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => preferencesInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "notifications");
-    const { error } = await (context.supabase as any)
-      .from("notification_preferences")
-      .upsert({
+    const { error } = await (context.supabase as any).from("notification_preferences").upsert(
+      {
         user_id: context.userId,
         new_track_enabled: data.newTrackEnabled,
         new_follower_enabled: data.newFollowerEnabled,
-      }, { onConflict: "user_id" });
+      },
+      { onConflict: "user_id" },
+    );
     if (error) throw new Error(error.message);
     return { ...data };
   });

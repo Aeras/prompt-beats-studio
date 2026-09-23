@@ -56,4 +56,12 @@ export const UPLOAD_GENRES = [
 /** Feed filters intentionally omit Custom because custom values are stored verbatim. */
 export const GENRES = ["All", ...UPLOAD_GENRES.filter((genre) => genre !== "Custom")];
 
-export const STUDIO_TAGS = ["[Intro]", "[Verse]", "[Pre]", "[Chorus]", "[Drop]", "[Bridge]", "[Outro]"];
+export const STUDIO_TAGS = [
+  "[Intro]",
+  "[Verse]",
+  "[Pre]",
+  "[Chorus]",
+  "[Drop]",
+  "[Bridge]",
+  "[Outro]",
+];

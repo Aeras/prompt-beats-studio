@@ -62,7 +62,9 @@ function protectedTagInstruction(selectedContent: string, userInstruction: strin
     "- Ignore square-bracket content completely when judging or improving meter, syllables, rhyme, wording, repetition, cadence, language, or singability.",
     "- Existing square-bracket tags are READ-ONLY: do not add, remove, rename, rewrite, translate, reorder, or otherwise alter them.",
     "- Preserve every existing square-bracket tag exactly as written in the selected section.",
-    protectedTags.length ? `- Protected tags in exact order: ${JSON.stringify(protectedTags)}` : "- The selected section contains no protected square-bracket tags; do not invent any.",
+    protectedTags.length
+      ? `- Protected tags in exact order: ${JSON.stringify(protectedTags)}`
+      : "- The selected section contains no protected square-bracket tags; do not invent any.",
   ].join("\n");
   return userInstruction.trim() ? `${userInstruction.trim()}\n\n${contract}` : contract;
 }
@@ -84,7 +86,9 @@ export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
 
     const { data: rawVersions, error: versionsError } = await context.supabase
       .from("saved_prompts")
-      .select("id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot, created_at")
+      .select(
+        "id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot, created_at",
+      )
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
       .order("version_number", { ascending: true })
@@ -98,7 +102,9 @@ export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
       : versions.at(-1);
     if (!selected) throw new Error("Selected version not found in this project.");
     const latest = versions.at(-1)!;
-    const parsedSnapshot = generatorInputSnapshotSchema.safeParse(selected.generator_input_snapshot);
+    const parsedSnapshot = generatorInputSnapshotSchema.safeParse(
+      selected.generator_input_snapshot,
+    );
 
     return {
       project: { id: project.id, name: project.name },
@@ -162,13 +168,16 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const adminRpc = supabaseAdmin as any;
     if (data.mode === "replace_latest") {
-      const { data: raw, error } = await adminRpc.rpc("replace_latest_prompt_lyrics_review_version", {
-        _user_id: context.userId,
-        _project_id: data.projectId,
-        _version_prompt_id: data.basePromptId,
-        _lyrics: data.lyrics,
-        _version_change_metadata: versionChangeMetadata,
-      });
+      const { data: raw, error } = await adminRpc.rpc(
+        "replace_latest_prompt_lyrics_review_version",
+        {
+          _user_id: context.userId,
+          _project_id: data.projectId,
+          _version_prompt_id: data.basePromptId,
+          _lyrics: data.lyrics,
+          _version_change_metadata: versionChangeMetadata,
+        },
+      );
       if (error) {
         if (error.message.includes("Only the latest project version")) {
           throw new Error("Only the latest Project version can be replaced.");
@@ -195,7 +204,8 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
     });
     if (error) throw new Error("The Lyrics Review changes could not be saved as a new version.");
     const parsed = saveResultSchema.safeParse(raw);
-    if (!parsed.success) throw new Error("The Lyrics Review changes could not be saved as a new version.");
+    if (!parsed.success)
+      throw new Error("The Lyrics Review changes could not be saved as a new version.");
     return {
       savedPromptId: parsed.data.id,
       projectId: parsed.data.project_id,
@@ -241,7 +251,9 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
 
       const { data: basePrompt, error: baseError } = await supabase
         .from("saved_prompts")
-        .select("id, project_id, title, tags, note, theme, genre, mood, language, generator_input_snapshot")
+        .select(
+          "id, project_id, title, tags, note, theme, genre, mood, language, generator_input_snapshot",
+        )
         .eq("id", data.basePromptId)
         .eq("project_id", data.projectId)
         .eq("user_id", context.userId)
@@ -289,12 +301,16 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
       _idempotency_key: data.idempotencyKey,
       _input: payload,
     });
-    if (error) throw new Error(`The Lyrics Review request could not be started (${error.message}).`);
+    if (error)
+      throw new Error(`The Lyrics Review request could not be started (${error.message}).`);
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
       return { rateLimited: true as const, jobId: null };
     }
 
-    const parsedRow = z.object({ id: z.string().uuid(), input_payload: z.unknown() }).passthrough().safeParse(raw);
+    const parsedRow = z
+      .object({ id: z.string().uuid(), input_payload: z.unknown() })
+      .passthrough()
+      .safeParse(raw);
     if (!parsedRow.success) throw new Error("The Lyrics Review request could not be started.");
     const returnedPayload = lyricsSectionEditJobSchema.safeParse(parsedRow.data.input_payload);
     if (

@@ -41,5 +41,5 @@ export const elCatalog: Record<CatalogTranslationKey, string> = {
   "reason.track.other": "Άλλο",
 
   "management.users": "Χρήστες",
-  "management.active": "Ενεργοί"
+  "management.active": "Ενεργοί",
 };

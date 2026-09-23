@@ -10,7 +10,9 @@ describe("platform button press feedback", () => {
     const styles = await source("src/styles.css");
 
     expect(styles).toContain('button:not(:disabled):not([data-pb-no-press="true"])');
-    expect(styles).toContain('[role="button"]:not([aria-disabled="true"]):not([data-pb-no-press="true"])');
+    expect(styles).toContain(
+      '[role="button"]:not([aria-disabled="true"]):not([data-pb-no-press="true"])',
+    );
     expect(styles).toContain("transform: scale(0.96)");
     expect(styles).toContain("filter: brightness(1.08)");
     expect(styles).toContain("-webkit-tap-highlight-color: transparent");

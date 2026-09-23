@@ -76,7 +76,7 @@ export const enExtra = {
   "moderation.restoreTrack": "Restore track",
   "moderation.reason": "Reason",
   "moderation.confirm": "Confirm",
-  "moderation.cancel": "Cancel"
+  "moderation.cancel": "Cancel",
 } as const;
 
 export type ExtraTranslationKey = keyof typeof enExtra;

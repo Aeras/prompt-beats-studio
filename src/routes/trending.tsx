@@ -4,13 +4,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Flame } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
-import { TrackGridModeToggle, trackGridClassName, useTrackGridMode } from "@/components/promptbeats/TrackGridView";
+import {
+  TrackGridModeToggle,
+  trackGridClassName,
+  useTrackGridMode,
+} from "@/components/promptbeats/TrackGridView";
 import type { Track } from "@/lib/tracks";
 import { usePlayer } from "@/lib/player";
 import { listTrendingTracks } from "@/lib/tracks.functions";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
-import { TrackSourceFilter, filterByTrackSource, useTrackSourcePreference, type TrackSourcePreference } from "@/components/promptbeats/TrackSourceFilter";
+import {
+  TrackSourceFilter,
+  filterByTrackSource,
+  useTrackSourcePreference,
+  type TrackSourcePreference,
+} from "@/components/promptbeats/TrackSourceFilter";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -21,9 +30,15 @@ export const Route = createFileRoute("/trending")({
   head: () => ({
     meta: [
       { title: "Trending AI Tracks — PromptBeats" },
-      { name: "description", content: "The most liked and most played AI-generated tracks on PromptBeats right now." },
+      {
+        name: "description",
+        content: "The most liked and most played AI-generated tracks on PromptBeats right now.",
+      },
       { property: "og:title", content: "Trending AI Tracks — PromptBeats" },
-      { property: "og:description", content: "See which AI music prompts and tracks the community is loving today." },
+      {
+        property: "og:description",
+        content: "See which AI music prompts and tracks the community is loving today.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -38,7 +53,10 @@ function TrendingPage() {
   const { preference: defaultTrackSource } = useTrackSourcePreference();
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
-  const { data, isLoading } = useQuery({ queryKey: ["tracks", "trending"], queryFn: () => listTrendingTracks() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["tracks", "trending"],
+    queryFn: () => listTrendingTracks(),
+  });
 
   const allTracks: Track[] = (data?.tracks ?? []).map((track) => ({
     id: track.id,
@@ -64,10 +82,19 @@ function TrendingPage() {
   const list = filterByTrackSource(allTracks, trackSource);
 
   return (
-    <AppShell header={<div className="flex items-center gap-2"><Flame className="h-5 w-5 text-accent" /><span className="font-display text-lg font-bold">{t("trending.title")}</span></div>}>
+    <AppShell
+      header={
+        <div className="flex items-center gap-2">
+          <Flame className="h-5 w-5 text-accent" />
+          <span className="font-display text-lg font-bold">{t("trending.title")}</span>
+        </div>
+      }
+    >
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
         <div>
-          <h1 className="font-display text-2xl font-bold md:text-3xl"><span className="text-gradient-neon">{t("trending.title")}</span></h1>
+          <h1 className="font-display text-2xl font-bold md:text-3xl">
+            <span className="text-gradient-neon">{t("trending.title")}</span>
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("trending.subtitle")}</p>
           <div className="mt-3 flex w-full items-center justify-between gap-3">
             <TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} />
@@ -75,9 +102,21 @@ function TrendingPage() {
           </div>
         </div>
         <div className={`mt-5 ${trackGridClassName(gridMode)}`}>
-          {list.map((track) => <TrackCard key={track.id} track={track} isPlaying={playing && current?.id === track.id} onPlay={(item) => play(item, list)} viewMode={gridMode} />)}
+          {list.map((track) => (
+            <TrackCard
+              key={track.id}
+              track={track}
+              isPlaying={playing && current?.id === track.id}
+              onPlay={(item) => play(item, list)}
+              viewMode={gridMode}
+            />
+          ))}
         </div>
-        {!isLoading && list.length === 0 && <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">{t("trending.empty")}</p>}
+        {!isLoading && list.length === 0 && (
+          <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+            {t("trending.empty")}
+          </p>
+        )}
       </main>
     </AppShell>
   );

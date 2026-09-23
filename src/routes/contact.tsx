@@ -49,7 +49,7 @@ function ContactPage() {
         ? "@" + profile.handle
         : profile?.artist_alias
           ? profile.artist_alias
-          : profile?.display_name ?? "";
+          : (profile?.display_name ?? "");
 
       if (preferredAlias) {
         initializedAlias.current = true;
@@ -80,7 +80,9 @@ function ContactPage() {
           website,
         },
       });
-      toast.success(el ? "Το μήνυμά σας στάλθηκε στο PromptBeats." : "Your message was sent to PromptBeats.");
+      toast.success(
+        el ? "Το μήνυμά σας στάλθηκε στο PromptBeats." : "Your message was sent to PromptBeats.",
+      );
       setSubject("");
       setMessage("");
       setWebsite("");
@@ -89,8 +91,12 @@ function ContactPage() {
       const rateLimited = raw.toLowerCase().includes("too many");
       toast.error(
         rateLimited
-          ? (el ? "Έχουν σταλεί πολλά αιτήματα. Δοκιμάστε ξανά αργότερα." : "Too many requests. Please try again later.")
-          : (el ? "Δεν ήταν δυνατή η αποστολή. Δοκιμάστε ξανά." : "Could not send your message. Please try again."),
+          ? el
+            ? "Έχουν σταλεί πολλά αιτήματα. Δοκιμάστε ξανά αργότερα."
+            : "Too many requests. Please try again later."
+          : el
+            ? "Δεν ήταν δυνατή η αποστολή. Δοκιμάστε ξανά."
+            : "Could not send your message. Please try again.",
       );
     } finally {
       setSending(false);
@@ -117,7 +123,9 @@ function ContactPage() {
               </span>
               <div>
                 <h2 className="font-display text-xl font-bold">
-                  {el ? "Επικοινωνήστε με την ομάδα του PromptBeats" : "Contact the PromptBeats team"}
+                  {el
+                    ? "Επικοινωνήστε με την ομάδα του PromptBeats"
+                    : "Contact the PromptBeats team"}
                 </h2>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                   {el
@@ -183,10 +191,15 @@ function ContactPage() {
                 onChange={(event) => setMessage(event.target.value)}
                 className="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-black/30 p-3 text-sm leading-relaxed text-foreground outline-none transition-shadow focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_18%,transparent)]"
               />
-              <span className="mt-1 block text-right text-[10px] text-muted-foreground">{message.length}/5000</span>
+              <span className="mt-1 block text-right text-[10px] text-muted-foreground">
+                {message.length}/5000
+              </span>
             </label>
 
-            <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+            <div
+              className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
+              aria-hidden="true"
+            >
               <label>
                 Website
                 <input
@@ -221,7 +234,11 @@ function ContactPage() {
                   disabled={sending}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-50"
                 >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                   {el ? "Αποστολή" : "Send"}
                 </button>
               </div>

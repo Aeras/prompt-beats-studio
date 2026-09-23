@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  AI_TARGET_PLATFORMS,
-  DEFAULT_AI_TARGET_PLATFORM,
-} from "@/lib/ai-target-platforms";
+import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
 
 export const durableQualityCheckInput = z.object({
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),

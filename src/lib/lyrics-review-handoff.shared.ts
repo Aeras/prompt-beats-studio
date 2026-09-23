@@ -42,12 +42,14 @@ export const lyricsReviewGeneratorHandoffSchema = z.object({
     revisionProjectId: z.string(),
     revisionBasePromptId: z.string(),
     revisionRequest: z.string(),
-    revisionMeta: z.object({
-      savedPromptId: z.string().uuid(),
-      projectId: z.string().uuid(),
-      versionNumber: z.number().int().positive(),
-      parentPromptId: z.string().uuid(),
-    }).nullable(),
+    revisionMeta: z
+      .object({
+        savedPromptId: z.string().uuid(),
+        projectId: z.string().uuid(),
+        versionNumber: z.number().int().positive(),
+        parentPromptId: z.string().uuid(),
+      })
+      .nullable(),
   }),
   returnMode: z.enum(["pending", "apply", "discard"]).default("pending"),
   reviewedLyrics: z.string().max(12000).nullable().default(null),

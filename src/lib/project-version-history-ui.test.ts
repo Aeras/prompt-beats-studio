@@ -23,7 +23,7 @@ describe("Project Version History UI", () => {
     expect(history).toContain("updateVersionUserNote");
     expect(history).toContain("setPreferredProjectVersion");
     expect(history).toContain("getPromptRevisionBase");
-    expect(history).toContain("setCompareRightId(\"\")");
+    expect(history).toContain('setCompareRightId("")');
     expect(history).toContain("Previous version");
     expect(history).toContain("versionChangeChips");
   });
@@ -55,9 +55,15 @@ describe("Project Version History UI", () => {
   });
 
   test("migration history is checked into GitHub source of truth", async () => {
-    const foundation = await source("supabase/migrations/20260922162948_project_version_history_foundation.sql");
-    const writers = await source("supabase/migrations/20260922163129_project_version_history_writers.sql");
-    const preferredIndex = await source("supabase/migrations/20260922173938_project_version_history_preferred_index.sql");
+    const foundation = await source(
+      "supabase/migrations/20260922162948_project_version_history_foundation.sql",
+    );
+    const writers = await source(
+      "supabase/migrations/20260922163129_project_version_history_writers.sql",
+    );
+    const preferredIndex = await source(
+      "supabase/migrations/20260922173938_project_version_history_preferred_index.sql",
+    );
 
     expect(foundation).toContain("version_change_metadata");
     expect(foundation).toContain("version_user_note");

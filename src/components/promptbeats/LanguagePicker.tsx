@@ -61,7 +61,9 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
         className="flex h-11 w-full items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 text-left text-sm outline-none transition-shadow hover:border-white/20 focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
       >
         <span className={value ? "text-foreground" : "text-muted-foreground"}>{displayValue}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (
@@ -79,7 +81,11 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
               />
             </div>
           </div>
-          <div role="listbox" aria-label={ariaLabel ?? t("generator.language")} className="max-h-64 overflow-y-auto p-1">
+          <div
+            role="listbox"
+            aria-label={ariaLabel ?? t("generator.language")}
+            className="max-h-64 overflow-y-auto p-1"
+          >
             {filtered.map((item) => {
               const active = item.value === value;
               return (
@@ -97,19 +103,24 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
                 >
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {(() => {
-                    const secondary = appLanguage === "el"
-                      ? item.englishLabel
-                      : (greek.find((entry) => entry.code === item.code)?.label ?? "");
-                    return secondary && secondary !== item.label
-                      ? <span className="shrink-0 text-[11px] text-muted-foreground">{secondary}</span>
-                      : null;
+                    const secondary =
+                      appLanguage === "el"
+                        ? item.englishLabel
+                        : (greek.find((entry) => entry.code === item.code)?.label ?? "");
+                    return secondary && secondary !== item.label ? (
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {secondary}
+                      </span>
+                    ) : null;
                   })()}
                   {active && <Check className="h-4 w-4 shrink-0 text-accent" />}
                 </button>
               );
             })}
             {filtered.length === 0 && (
-              <p className="px-3 py-4 text-center text-xs text-muted-foreground">{t("generator.languageNoResults")}</p>
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                {t("generator.languageNoResults")}
+              </p>
             )}
             <div className="my-1 border-t border-white/10" />
             <button

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 }
 
 /** Stripe webhook receiver — backend groundwork, no UI attached yet. */
@@ -14,7 +14,11 @@ export const Route = createFileRoute("/api/public/webhooks/stripe")({
 
         const { verifyStripeSignature } = await import("@/lib/stripe.server");
         if (!secret) return new Response("Webhook secret not configured", { status: 503 });
-        const ok = await verifyStripeSignature(body, request.headers.get("stripe-signature"), secret);
+        const ok = await verifyStripeSignature(
+          body,
+          request.headers.get("stripe-signature"),
+          secret,
+        );
         if (!ok) return new Response("Invalid signature", { status: 401 });
 
         let event: {
@@ -40,11 +44,13 @@ export const Route = createFileRoute("/api/public/webhooks/stripe")({
 
         // Unsupported event types are deliberately acknowledged without
         // touching billing state so Stripe does not retry them indefinitely.
-        if (![
-          "customer.subscription.created",
-          "customer.subscription.updated",
-          "customer.subscription.deleted",
-        ].includes(event.type)) {
+        if (
+          ![
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+          ].includes(event.type)
+        ) {
           return new Response("ok");
         }
 

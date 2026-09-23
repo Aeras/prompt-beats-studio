@@ -12,8 +12,8 @@ export const CASE_MESSAGE_TYPES = [
   "general",
 ] as const;
 
-export const CASE_OUTCOMES = ["action_taken","no_violation","dismissed_abuse"] as const;
-export const CASE_FINAL_ACTIONS = ["approve","override","return"] as const;
+export const CASE_OUTCOMES = ["action_taken", "no_violation", "dismissed_abuse"] as const;
+export const CASE_FINAL_ACTIONS = ["approve", "override", "return"] as const;
 
 export type CaseMessageType = (typeof CASE_MESSAGE_TYPES)[number];
 export type CaseOutcome = (typeof CASE_OUTCOMES)[number];
@@ -140,18 +140,30 @@ const reassignSchema = z.object({
   caseId: z.string().uuid(),
   assigneeId: z.string().uuid().nullable(),
 });
-const finalSchema = z.object({
-  caseId: z.string().uuid(),
-  action: z.enum(CASE_FINAL_ACTIONS),
-  overrideOutcome: z.enum(CASE_OUTCOMES).optional(),
-  overrideReason: z.string().trim().max(2000).optional(),
-  overrideActionSummary: z.string().trim().max(2000).optional(),
-}).superRefine((value, ctx) => {
-  if (value.action === "override") {
-    if (!value.overrideOutcome) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["overrideOutcome"], message: "Outcome is required." });
-    if (!value.overrideReason?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["overrideReason"], message: "Reason is required." });
-  }
-});
+const finalSchema = z
+  .object({
+    caseId: z.string().uuid(),
+    action: z.enum(CASE_FINAL_ACTIONS),
+    overrideOutcome: z.enum(CASE_OUTCOMES).optional(),
+    overrideReason: z.string().trim().max(2000).optional(),
+    overrideActionSummary: z.string().trim().max(2000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.action === "override") {
+      if (!value.overrideOutcome)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["overrideOutcome"],
+          message: "Outcome is required.",
+        });
+      if (!value.overrideReason?.trim())
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["overrideReason"],
+          message: "Reason is required.",
+        });
+    }
+  });
 
 export const takeModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -195,7 +207,9 @@ export const markModerationCaseRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("mark_moderation_case_read", { _case_id: data.caseId });
+    const { error } = await (context.supabase as any).rpc("mark_moderation_case_read", {
+      _case_id: data.caseId,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -204,11 +218,14 @@ export const sendModerationCaseMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => messageSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: id, error } = await (context.supabase as any).rpc("send_moderation_case_message", {
-      _case_id: data.caseId,
-      _message_type: data.messageType,
-      _body: data.body,
-    });
+    const { data: id, error } = await (context.supabase as any).rpc(
+      "send_moderation_case_message",
+      {
+        _case_id: data.caseId,
+        _message_type: data.messageType,
+        _body: data.body,
+      },
+    );
     if (error) throw new Error(error.message);
     return { id: String(id) };
   });
@@ -256,7 +273,9 @@ export const approveInitialCaseDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("approve_initial_case_decision", { _case_id: data.caseId });
+    const { error } = await (context.supabase as any).rpc("approve_initial_case_decision", {
+      _case_id: data.caseId,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -265,10 +284,13 @@ export const submitModerationCaseAppeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => appealSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: id, error } = await (context.supabase as any).rpc("submit_moderation_case_appeal", {
-      _case_id: data.caseId,
-      _statement: data.statement,
-    });
+    const { data: id, error } = await (context.supabase as any).rpc(
+      "submit_moderation_case_appeal",
+      {
+        _case_id: data.caseId,
+        _statement: data.statement,
+      },
+    );
     if (error) throw new Error(error.message);
     return { id: String(id) };
   });
@@ -277,12 +299,15 @@ export const proposeModerationCaseAppealDecision = createServerFn({ method: "POS
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decisionSchema.omit({ appealEligible: true }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("propose_moderation_case_appeal_decision", {
-      _case_id: data.caseId,
-      _outcome: data.outcome,
-      _reason: data.reason,
-      _action_summary: data.actionSummary?.trim() || null,
-    });
+    const { error } = await (context.supabase as any).rpc(
+      "propose_moderation_case_appeal_decision",
+      {
+        _case_id: data.caseId,
+        _outcome: data.outcome,
+        _reason: data.reason,
+        _action_summary: data.actionSummary?.trim() || null,
+      },
+    );
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -306,11 +331,12 @@ export const reopenModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("reopen_moderation_case", { _case_id: data.caseId });
+    const { error } = await (context.supabase as any).rpc("reopen_moderation_case", {
+      _case_id: data.caseId,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
 
 export type ModerationCaseAssignee = { user_id: string; role: string; label: string };
 

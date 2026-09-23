@@ -21,7 +21,7 @@ describe("Visual Arrangement Batch 3 UI", () => {
     const card = await source("src/components/promptbeats/ArrangementSectionCard.tsx");
 
     expect(card).toContain("dragHandleProps");
-    expect(card).toContain('generator.arrangement.dragHandle');
+    expect(card).toContain("generator.arrangement.dragHandle");
     expect(card).toContain("GripVertical");
     expect(card).toContain("touch-none");
   });
@@ -30,7 +30,7 @@ describe("Visual Arrangement Batch 3 UI", () => {
     const timeline = await source("src/components/promptbeats/EnergyTimeline.tsx");
 
     expect(timeline).toContain("<polyline");
-    expect(timeline).toContain('generator.arrangement.energySequence');
+    expect(timeline).toContain("generator.arrangement.energySequence");
     expect(timeline).toContain('section.energy ?? "—"');
     expect(timeline).toContain('role="img"');
   });
@@ -41,7 +41,7 @@ describe("Visual Arrangement Batch 3 UI", () => {
     expect(generate).toContain("showStructureTags");
     expect(generate).toContain("showArrangementAdvanced");
     expect(generate).toContain("addSimpleStructureSection");
-    expect(generate).toContain('generator.arrangement.advanced');
+    expect(generate).toContain("generator.arrangement.advanced");
     expect(generate).toContain("setShowStructureTags((value) => !value)");
     expect(generate).toContain("setShowArrangementAdvanced((value) => !value)");
   });
@@ -51,17 +51,17 @@ describe("Visual Arrangement Batch 3 UI", () => {
 
     expect(generate).toContain("removeSimpleStructureSection");
     expect(generate).toContain("removeArrangementSection(arrangement, sectionId)");
-    expect(generate).toContain('border-accent/50 bg-accent/15');
+    expect(generate).toContain("border-accent/50 bg-accent/15");
     expect(generate).toContain("section.sectionId");
-    expect(generate).toContain('generator.removeStructure');
+    expect(generate).toContain("generator.removeStructure");
     expect(generate).toContain("×");
   });
 
   test("mobile section editor keeps explicit Move Up and Move Down controls", async () => {
     const editor = await source("src/components/promptbeats/ArrangementSectionEditor.tsx");
 
-    expect(editor).toContain('generator.arrangement.moveUp');
-    expect(editor).toContain('generator.arrangement.moveDown');
+    expect(editor).toContain("generator.arrangement.moveUp");
+    expect(editor).toContain("generator.arrangement.moveDown");
     expect(editor).toContain("onMove(section.sectionId, index - 1)");
     expect(editor).toContain("onMove(section.sectionId, index + 1)");
   });

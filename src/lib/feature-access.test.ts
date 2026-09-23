@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 const phaseB = "supabase/migrations/20260921070000_feature_access_phase_b.sql";
-const followEnforcement = "supabase/migrations/20260921070100_feature_access_follow_notifications.sql";
+const followEnforcement =
+  "supabase/migrations/20260921070100_feature_access_follow_notifications.sql";
 
 async function source(path: string) {
   return Bun.file(path).text();
@@ -10,7 +11,7 @@ async function source(path: string) {
 describe("Feature Access Phase B", () => {
   test("registry seeds only approved production features and preserves current availability", async () => {
     const sql = await source(phaseB);
-    for (const key of ["smart_presets","export_center","follow_creators","notifications"]) {
+    for (const key of ["smart_presets", "export_center", "follow_creators", "notifications"]) {
       expect(sql).toContain(`('${key}'`);
     }
     expect(sql.match(/'everyone'/g)?.length ?? 0).toBeGreaterThanOrEqual(5);
@@ -25,8 +26,12 @@ describe("Feature Access Phase B", () => {
 
   test("policy and allowlist tables are not client-writable", async () => {
     const sql = await source(phaseB);
-    expect(sql).toContain("REVOKE ALL ON public.feature_access_policies FROM PUBLIC, anon, authenticated");
-    expect(sql).toContain("REVOKE ALL ON public.feature_access_users FROM PUBLIC, anon, authenticated");
+    expect(sql).toContain(
+      "REVOKE ALL ON public.feature_access_policies FROM PUBLIC, anon, authenticated",
+    );
+    expect(sql).toContain(
+      "REVOKE ALL ON public.feature_access_users FROM PUBLIC, anon, authenticated",
+    );
     expect(sql).toContain("GRANT ALL ON public.feature_access_policies TO service_role");
     expect(sql).toContain("GRANT ALL ON public.feature_access_users TO service_role");
   });
@@ -99,7 +104,9 @@ describe("Feature Access Phase B", () => {
 
   test("server functions protect Export, Follow and Notifications", async () => {
     const exportFns = await source("src/lib/export-center.functions.ts");
-    expect(exportFns.match(/requireFeatureAccess\(context\.supabase, "export_center"\)/g)?.length).toBe(2);
+    expect(
+      exportFns.match(/requireFeatureAccess\(context\.supabase, "export_center"\)/g)?.length,
+    ).toBe(2);
 
     const socialFns = await source("src/lib/follow-notifications.functions.ts");
     expect(socialFns).toContain('requireFeatureAccess(context.supabase, "follow_creators")');

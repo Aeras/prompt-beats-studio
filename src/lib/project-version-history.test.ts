@@ -22,7 +22,9 @@ const baseSnapshot = generatorInputSnapshotSchema.parse({
 
 describe("Project Version History metadata", () => {
   test("Lyrics Workspace server reads baseline lyrics from saved_prompts, not prompt_projects", async () => {
-    const source = await Bun.file(new URL("./lyrics-workspace.functions.ts", import.meta.url)).text();
+    const source = await Bun.file(
+      new URL("./lyrics-workspace.functions.ts", import.meta.url),
+    ).text();
     expect(source).toContain('.from("prompt_projects")\n      .select("id")');
     expect(source).toContain('.from("saved_prompts")\n      .select("id, lyrics")');
     expect(source).not.toContain('.from("prompt_projects")\n      .select("id, lyrics")');
@@ -58,10 +60,7 @@ describe("Project Version History metadata", () => {
   });
 
   test("section diff detects added and removed sections", () => {
-    expect(diffLyricsSections(
-      "[Verse]\nA\n\n[Chorus]\nB",
-      "[Verse]\nA\n\n[Bridge]\nC",
-    )).toEqual([
+    expect(diffLyricsSections("[Verse]\nA\n\n[Chorus]\nB", "[Verse]\nA\n\n[Bridge]\nC")).toEqual([
       { sectionKey: "chorus:1", sectionLabel: "Chorus", changeType: "removed" },
       { sectionKey: "bridge:1", sectionLabel: "Bridge", changeType: "added" },
     ]);
@@ -84,16 +83,15 @@ describe("Project Version History metadata", () => {
 
     expect(metadata.source).toBe("project_revision");
     expect(metadata.userRequest).toBe("Add a bridge and make the style more rock.");
-    expect(metadata.changedFields).toEqual(expect.arrayContaining([
-      "customMusicStyle",
-      "customBpm",
-      "songStructure",
-      "lyrics",
-    ]));
-    expect(metadata.changedSections).toEqual(expect.arrayContaining([
-      { sectionKey: "chorus:1", sectionLabel: "Chorus", changeType: "changed" },
-      { sectionKey: "bridge:1", sectionLabel: "Bridge", changeType: "added" },
-    ]));
+    expect(metadata.changedFields).toEqual(
+      expect.arrayContaining(["customMusicStyle", "customBpm", "songStructure", "lyrics"]),
+    );
+    expect(metadata.changedSections).toEqual(
+      expect.arrayContaining([
+        { sectionKey: "chorus:1", sectionLabel: "Chorus", changeType: "changed" },
+        { sectionKey: "bridge:1", sectionLabel: "Bridge", changeType: "added" },
+      ]),
+    );
   });
 
   test("Generator metadata uses actual snapshot differences for later direct saves", () => {
@@ -156,15 +154,17 @@ describe("Project Version History metadata", () => {
   });
 
   test("metadata schema rejects unbounded provenance payloads", () => {
-    expect(versionChangeMetadataSchema.safeParse({
-      schemaVersion: 1,
-      source: "project_revision",
-      title: "x".repeat(161),
-      summary: "Summary",
-      changedFields: [],
-      changedSections: [],
-      userRequest: null,
-    }).success).toBe(false);
+    expect(
+      versionChangeMetadataSchema.safeParse({
+        schemaVersion: 1,
+        source: "project_revision",
+        title: "x".repeat(161),
+        summary: "Summary",
+        changedFields: [],
+        changedSections: [],
+        userRequest: null,
+      }).success,
+    ).toBe(false);
   });
 });
 

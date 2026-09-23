@@ -41,9 +41,7 @@ export type QualityCheckJob = {
 
 function toJob(raw: unknown): QualityCheckJob {
   const parsed = rawJobSchema.parse(raw);
-  const quality = parsed.qualityReport
-    ? qualityReportSchema.safeParse(parsed.qualityReport)
-    : null;
+  const quality = parsed.qualityReport ? qualityReportSchema.safeParse(parsed.qualityReport) : null;
   return {
     actionId: parsed.actionId,
     status: parsed.status,
@@ -73,15 +71,16 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
     await getModelForUser(context.userId, data.qualityCheckModel ?? undefined, "quality_check");
 
     const { idempotencyKey, ...payload } = data;
-    const { data: raw, error } = await (context.supabase as any).rpc(
-      "start_quality_check_job",
-      {
-        _idempotency_key: idempotencyKey,
-        _input: payload,
-      },
-    );
+    const { data: raw, error } = await (context.supabase as any).rpc("start_quality_check_job", {
+      _idempotency_key: idempotencyKey,
+      _input: payload,
+    });
     if (error) throw new Error("The quality check could not be started. Please try again.");
-    if (raw && typeof raw === "object" && (raw as { rate_limited?: unknown }).rate_limited === true) {
+    if (
+      raw &&
+      typeof raw === "object" &&
+      (raw as { rate_limited?: unknown }).rate_limited === true
+    ) {
       return { rateLimited: true as const, job: null };
     }
     return { rateLimited: false as const, job: toJob(raw) };

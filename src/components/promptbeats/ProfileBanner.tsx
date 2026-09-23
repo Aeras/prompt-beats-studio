@@ -19,9 +19,17 @@ export function ProfileBanner() {
       <UserRoundPen className="h-4 w-4 shrink-0 text-accent" />
       <p className="min-w-0 flex-1 text-muted-foreground">
         {t("banner.completeProfile")}{" "}
-        <Link to="/onboarding" className="text-primary hover:underline">[{t("banner.editProfile")}]</Link>
+        <Link to="/onboarding" className="text-primary hover:underline">
+          [{t("banner.editProfile")}]
+        </Link>
       </p>
-      <button aria-label={t("banner.dismiss")} onClick={() => setDismissed(true)} className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"><X className="h-4 w-4" /></button>
+      <button
+        aria-label={t("banner.dismiss")}
+        onClick={() => setDismissed(true)}
+        className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }

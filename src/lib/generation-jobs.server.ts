@@ -13,17 +13,16 @@
  *   never reached the provider are safely reaped.
  * - Only the service-role client (server-only) writes job state.
  */
-import {
-  durableAiJobInput,
-  runLyricsSectionEdit,
-  runSongGeneration,
-} from "@/lib/ai.functions";
+import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/lib/ai.functions";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
 
-type AdminClient = { from: (t: string) => any; rpc: (fn: string, args?: Record<string, unknown>) => any };
+type AdminClient = {
+  from: (t: string) => any;
+  rpc: (fn: string, args?: Record<string, unknown>) => any;
+};
 
 async function admin(): Promise<AdminClient> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -73,7 +72,8 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       .is("provider_started_at", null)
       .select("id")
       .maybeSingle();
-    if (markerError || !marked) throw new Error("The generation could not be started. Please try again.");
+    if (markerError || !marked)
+      throw new Error("The generation could not be started. Please try again.");
 
     if (input.operation === "lyrics_section_edit") {
       const out = await runLyricsSectionEdit(input, job.user_id, job.generation_id);

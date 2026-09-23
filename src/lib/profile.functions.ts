@@ -63,12 +63,18 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const patch: Record<string, any> = { profile_completed: data.profile_completed };
     if (data.artist_alias !== undefined) {
-      patch['artist_alias'] = data.artist_alias;
-      if (data.artist_alias) patch['display_name'] = data.artist_alias;
+      patch["artist_alias"] = data.artist_alias;
+      if (data.artist_alias) patch["display_name"] = data.artist_alias;
     }
-    if (data.bio !== undefined) patch['bio'] = data.bio;
-    if (data.avatar_url !== undefined) patch['avatar_url'] = data.avatar_url;
-    for (const key of ["website_url", "instagram_url", "tiktok_url", "youtube_url", "x_url"] as const) {
+    if (data.bio !== undefined) patch["bio"] = data.bio;
+    if (data.avatar_url !== undefined) patch["avatar_url"] = data.avatar_url;
+    for (const key of [
+      "website_url",
+      "instagram_url",
+      "tiktok_url",
+      "youtube_url",
+      "x_url",
+    ] as const) {
       patch[key] = data[key] ?? null;
     }
 
@@ -96,18 +102,29 @@ export const getPublicArtistById = createServerFn({ method: "GET" })
     if (!profile?.id) return { profile: null, tracks: [] };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tracks } = await (supabaseAdmin.from("tracks") as any)
-      .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
+      .select(
+        "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at",
+      )
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
+    return {
+      profile: { ...profile, id: profile.id, handle: profile.handle ?? "" },
+      tracks: (tracks ?? []).map((track: any) => ({
+        ...track,
+        prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+        lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+      })),
+    };
   });
 
 /** Public artist page data by vanity handle, including track prompts. */
 export const getPublicArtistByHandle = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ handle: z.string().trim().min(1).max(60) }).parse(input),
+  )
   .handler(async ({ data }) => {
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();
@@ -120,19 +137,29 @@ export const getPublicArtistByHandle = createServerFn({ method: "GET" })
     if (!profile?.id) return { profile: null, tracks: [] };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tracks } = await (supabaseAdmin.from("tracks") as any)
-      .select("id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at")
+      .select(
+        "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, duration_seconds, is_published, created_at",
+      )
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(100);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
+    return {
+      profile: { ...profile, id: profile.id, handle: profile.handle ?? "" },
+      tracks: (tracks ?? []).map((track: any) => ({
+        ...track,
+        prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+        lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+      })),
+    };
   });
-
 
 /** Public creator page data by handle (no auth required). */
 export const getPublicProfile = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ handle: z.string().trim().min(1).max(60) }).parse(input),
+  )
   .handler(async ({ data }) => {
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();
@@ -145,13 +172,22 @@ export const getPublicProfile = createServerFn({ method: "GET" })
     if (!profile?.id) return { profile: null, tracks: [] };
     const { data: tracks } = await supabase
       .from("tracks")
-      .select("id, title, genre, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, contains_explicit_lyrics, duration_seconds, is_published, created_at")
+      .select(
+        "id, title, genre, audio_url, audio_type, source_type, source_url, source_id, art_url, cover_url, created_with, allow_download, contains_explicit_lyrics, duration_seconds, is_published, created_at",
+      )
       .eq("user_id", profile.id)
       .eq("is_published", true)
       .eq("moderation_status", "active")
       .order("created_at", { ascending: false })
       .limit(50);
-    return { profile: { ...profile, id: profile.id, handle: profile.handle ?? "" }, tracks: (tracks ?? []).map((track: any) => ({ ...track, prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "", lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "" })) };
+    return {
+      profile: { ...profile, id: profile.id, handle: profile.handle ?? "" },
+      tracks: (tracks ?? []).map((track: any) => ({
+        ...track,
+        prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "",
+        lyrics: track.lyrics_is_public !== false ? (track.lyrics ?? "") : "",
+      })),
+    };
   });
 
 /** Public creator search: returns only the safe identity projection. */
@@ -175,7 +211,8 @@ export const searchPublicCreators = createServerFn({ method: "GET" })
 
     const creators = new Map<string, PublicCreatorSearchResult>();
     for (const profile of [...(nameResult.data ?? []), ...(handleResult.data ?? [])]) {
-      if (profile.id && profile.handle) creators.set(profile.id, { ...profile, id: profile.id, handle: profile.handle });
+      if (profile.id && profile.handle)
+        creators.set(profile.id, { ...profile, id: profile.id, handle: profile.handle });
     }
     return { creators: [...creators.values()].slice(0, 25) };
   });
@@ -200,7 +237,11 @@ export const checkSignupAvailability = createServerFn({ method: "GET" })
     let displayNameTaken = false;
 
     if (handle.length >= 3) {
-      const { data: row } = await supabase.from("public_profiles").select("id").eq("handle", handle).maybeSingle();
+      const { data: row } = await supabase
+        .from("public_profiles")
+        .select("id")
+        .eq("handle", handle)
+        .maybeSingle();
       handleTaken = Boolean(row);
     }
     if (displayName.length >= 2) {

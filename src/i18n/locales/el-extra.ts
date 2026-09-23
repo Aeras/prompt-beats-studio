@@ -49,13 +49,15 @@ export const elExtra: Record<ExtraTranslationKey, string> = {
   "profile.notFound": "Αυτό το προφίλ δεν είναι διαθέσιμο.",
 
   "editProfile.title": "Επεξεργασία προφίλ",
-  "editProfile.settingsHint": "Διαχειρίσου το δημόσιο προφίλ δημιουργού και τις προτιμήσεις του λογαριασμού σου.",
+  "editProfile.settingsHint":
+    "Διαχειρίσου το δημόσιο προφίλ δημιουργού και τις προτιμήσεις του λογαριασμού σου.",
   "editProfile.profileSection": "Προφίλ",
   "editProfile.profileSectionHint": "Η δημόσια ταυτότητά σου στο PromptBeats.",
   "editProfile.socialSection": "Social links",
   "editProfile.socialSectionHint": "Βοήθησε τους ακροατές να σε βρίσκουν και στα άλλα κανάλια σου.",
   "editProfile.supportSection": "Υποστήριξη / Δωρεές",
-  "editProfile.supportSectionHint": "Διαχειρίσου τους τρόπους υποστήριξης που εμφανίζονται στο προφίλ δημιουργού.",
+  "editProfile.supportSectionHint":
+    "Διαχειρίσου τους τρόπους υποστήριξης που εμφανίζονται στο προφίλ δημιουργού.",
   "editProfile.saveChanges": "Αποθήκευση αλλαγών",
   "editProfile.displayName": "Εμφανιζόμενο όνομα",
   "editProfile.artistAlias": "Καλλιτεχνικό όνομα",
@@ -78,5 +80,5 @@ export const elExtra: Record<ExtraTranslationKey, string> = {
   "moderation.restoreTrack": "Επαναφορά τραγουδιού",
   "moderation.reason": "Αιτία",
   "moderation.confirm": "Επιβεβαίωση",
-  "moderation.cancel": "Ακύρωση"
+  "moderation.cancel": "Ακύρωση",
 };

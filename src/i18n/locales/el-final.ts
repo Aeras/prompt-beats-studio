@@ -1,7 +1,8 @@
 import type { FinalTranslationKey } from "@/i18n/locales/en-final";
 
 export const elFinal: Record<FinalTranslationKey, string> = {
-  "banner.completeProfile": "Ολοκλήρωσε το προφίλ καλλιτέχνη σου για να προσαρμόσεις τη δημόσια σελίδα δημιουργού",
+  "banner.completeProfile":
+    "Ολοκλήρωσε το προφίλ καλλιτέχνη σου για να προσαρμόσεις τη δημόσια σελίδα δημιουργού",
   "banner.editProfile": "Επεξεργασία προφίλ",
   "banner.dismiss": "Απόκρυψη",
 
@@ -10,11 +11,13 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "external.loading": "Ο εξωτερικός player θα φορτωθεί όταν πλησιάσει στην οθόνη…",
   "external.openIn": "Άνοιγμα στο {provider}",
 
-  "moderation.trackUnavailable": "Δεν ήταν δυνατή η φόρτωση των εργαλείων moderation του τραγουδιού.",
+  "moderation.trackUnavailable":
+    "Δεν ήταν δυνατή η φόρτωση των εργαλείων moderation του τραγουδιού.",
   "moderation.staffTitle": "Moderation τραγουδιού",
   "moderation.lockedReview": "Κλειδωμένο για έλεγχο",
   "moderation.active": "Ενεργό",
-  "moderation.hiddenReview": "Το τραγούδι είναι κρυφό από τη δημόσια ανακάλυψη όσο βρίσκεται υπό έλεγχο.",
+  "moderation.hiddenReview":
+    "Το τραγούδι είναι κρυφό από τη δημόσια ανακάλυψη όσο βρίσκεται υπό έλεγχο.",
   "moderation.inspect": "Έλεγχος περιεχομένου τραγουδιού",
   "moderation.noPrompt": "Δεν έχει δοθεί Prompt.",
   "moderation.unlockTrack": "Ξεκλείδωμα τραγουδιού",
@@ -23,8 +26,10 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "moderation.lockTitle": "Κλείδωμα τραγουδιού για έλεγχο;",
   "moderation.unlockTitle": "Ξεκλείδωμα αυτού του τραγουδιού;",
   "moderation.deleteTitle": "Οριστική διαγραφή αυτού του τραγουδιού;",
-  "moderation.lockBody": "Το τραγούδι θα κρυφτεί από τη δημόσια ανακάλυψη μέχρι να το ξεκλειδώσει το προσωπικό.",
-  "moderation.unlockBody": "Το τραγούδι θα γίνει ξανά διαθέσιμο χωρίς να αλλάξει η ρύθμιση ορατότητας του δημιουργού.",
+  "moderation.lockBody":
+    "Το τραγούδι θα κρυφτεί από τη δημόσια ανακάλυψη μέχρι να το ξεκλειδώσει το προσωπικό.",
+  "moderation.unlockBody":
+    "Το τραγούδι θα γίνει ξανά διαθέσιμο χωρίς να αλλάξει η ρύθμιση ορατότητας του δημιουργού.",
   "moderation.deleteBody": "Η ενέργεια δεν αναιρείται και διαγράφει την εγγραφή του τραγουδιού.",
   "moderation.confirmLock": "Επιβεβαίωση κλειδώματος",
   "moderation.confirmUnlock": "Επιβεβαίωση ξεκλειδώματος",
@@ -39,7 +44,8 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.staffTitle": "PromptBeats Trust & Safety",
   "management.adminSubtitle": "Ασφαλής διαχείριση και στατιστικά πλατφόρμας",
   "management.staffSubtitle": "Περιορισμένος χώρος moderation",
-  "management.restricted": "Αυτή η περιοχή είναι διαθέσιμη μόνο σε εξουσιοδοτημένο προσωπικό Trust & Safety.",
+  "management.restricted":
+    "Αυτή η περιοχή είναι διαθέσιμη μόνο σε εξουσιοδοτημένο προσωπικό Trust & Safety.",
   "management.backFeed": "Επιστροφή στη ροή",
   "management.controlPanel": "Πίνακας ελέγχου",
   "management.backApp": "Επιστροφή στην εφαρμογή",
@@ -63,10 +69,12 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "report.detailsRequired": "Για την επιλογή Άλλο απαιτείται μια σύντομη εξήγηση.",
   "report.supportingUrl": "Υποστηρικτικό link / αναφορά (προαιρετικό)",
   "report.invalidUrl": "Βάλε έγκυρο σύνδεσμο http/https.",
-  "report.legalNotice": "Η αναφορά μέσα στην εφαρμογή είναι διαδικασία moderation. Μια επίσημη αναφορά πνευματικών δικαιωμάτων ή παράνομου περιεχομένου μπορεί να απαιτεί ξεχωριστή νομική διαδικασία.",
+  "report.legalNotice":
+    "Η αναφορά μέσα στην εφαρμογή είναι διαδικασία moderation. Μια επίσημη αναφορά πνευματικών δικαιωμάτων ή παράνομου περιεχομένου μπορεί να απαιτεί ξεχωριστή νομική διαδικασία.",
   "report.continue": "Συνέχεια",
   "report.confirmTitle": "Υποβολή αναφοράς;",
-  "report.confirmBody": "Η αναφορά σου θα σταλεί στην ομάδα moderation του PromptBeats για έλεγχο. Η υποβολή αναφοράς δεν αφαιρεί αυτόματα το περιεχόμενο.",
+  "report.confirmBody":
+    "Η αναφορά σου θα σταλεί στην ομάδα moderation του PromptBeats για έλεγχο. Η υποβολή αναφοράς δεν αφαιρεί αυτόματα το περιεχόμενο.",
   "report.submit": "Υποβολή αναφοράς",
   "report.receivedTitle": "Η αναφορά παραλήφθηκε",
   "report.receivedBody": "Ευχαριστούμε. Η αναφορά υποβλήθηκε για έλεγχο.",
@@ -83,7 +91,8 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "report.category.spam_platform_abuse": "Spam / Κατάχρηση πλατφόρμας",
   "report.category.other": "Άλλο",
   "explicit.label": "Περιέχει ακατάλληλη γλώσσα / έντονες εκφράσεις",
-  "explicit.helper": "Επίλεξέ το αν οι στίχοι περιέχουν έντονες βρισιές, ρητές σεξουαλικές εκφράσεις ή άλλη γλώσσα που μπορεί να μην είναι κατάλληλη για όλους τους ακροατές.",
+  "explicit.helper":
+    "Επίλεξέ το αν οι στίχοι περιέχουν έντονες βρισιές, ρητές σεξουαλικές εκφράσεις ή άλλη γλώσσα που μπορεί να μην είναι κατάλληλη για όλους τους ακροατές.",
   "explicit.tooltip": "Περιέχει ακατάλληλη γλώσσα / έντονες εκφράσεις",
   "management.reports": "Αναφορές",
   "management.reportsSubtitle": "Αναφορές περιεχομένου και moderation review",
@@ -109,13 +118,15 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.reportReviewSaved": "Το review της αναφοράς αποθηκεύτηκε",
   "management.reportReviewError": "Δεν ήταν δυνατή η ενημέρωση της αναφοράς",
   "management.reportOpenTrack": "Άνοιγμα τραγουδιού",
-  "management.reportNoReporterIdentity": "Η ταυτότητα του reporter είναι διαθέσιμη μόνο σε Admin και πάνω.",
+  "management.reportNoReporterIdentity":
+    "Η ταυτότητα του reporter είναι διαθέσιμη μόνο σε Admin και πάνω.",
   "management.reportStatus.open": "Ανοιχτή",
   "management.reportStatus.under_review": "Υπό εξέταση",
   "management.reportStatus.resolved_action_taken": "Επιλύθηκε — έγινε ενέργεια",
   "management.reportStatus.resolved_no_violation": "Επιλύθηκε — χωρίς παράβαση",
   "management.reportStatus.dismissed_abuse": "Απορρίφθηκε — καταχρηστική αναφορά",
-  "management.featureAccessDescription": "Διαχείριση πρόσβασης στις διαθέσιμες λειτουργίες της πλατφόρμας.",
+  "management.featureAccessDescription":
+    "Διαχείριση πρόσβασης στις διαθέσιμες λειτουργίες της πλατφόρμας.",
   "management.featureLoading": "Φόρτωση Feature Access…",
   "management.featureLoadError": "Δεν ήταν δυνατή η φόρτωση του Feature Access.",
   "management.featurePolicySaved": "Η πολιτική πρόσβασης αποθηκεύτηκε",
@@ -196,7 +207,8 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.seniorModerator": "Senior Trusted Safety Moderator",
   "management.suspendedSuffix": "Σε αναστολή",
   "management.saveRole": "Αποθήκευση ρόλου",
-  "management.protectedRole": "Αυτός ο ρόλος είναι προστατευμένος και μπορεί να αλλάξει μόνο από Super Admin.",
+  "management.protectedRole":
+    "Αυτός ο ρόλος είναι προστατευμένος και μπορεί να αλλάξει μόνο από Super Admin.",
   "management.selfRoleProtected": "Δεν μπορείς να αλλάξεις τον δικό σου ρόλο.",
   "management.confirmHighRoleChange": "Επιβεβαίωση αλλαγής προνομιακού ρόλου",
   "management.suspendModeration": "Αναστολή moderation",
@@ -204,7 +216,8 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.suspensionReason": "Γράψε αιτία αναστολής",
   "management.aiModelAccess": "Πρόσβαση σε μοντέλα AI",
   "management.creatorDonations": "Δωρεές δημιουργών",
-  "management.donationsGlobalHint": "Καθολική δυνατότητα. Κάθε χρήστης αποφασίζει ξεχωριστά αν θα εμφανίζει δημόσια τις μεθόδους δωρεάς του.",
+  "management.donationsGlobalHint":
+    "Καθολική δυνατότητα. Κάθε χρήστης αποφασίζει ξεχωριστά αν θα εμφανίζει δημόσια τις μεθόδους δωρεάς του.",
   "management.donationsLoading": "Φόρτωση ρυθμίσεων δωρεών…",
   "management.donationsLoadError": "Δεν ήταν δυνατή η φόρτωση των ρυθμίσεων δωρεών.",
   "management.donationsGlobalSaved": "Η καθολική ρύθμιση δωρεών αποθηκεύτηκε",
@@ -222,9 +235,11 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.unblockAccount": "Άρση αποκλεισμού λογαριασμού",
   "management.blockAccount": "Αποκλεισμός λογαριασμού",
   "management.dangerZone": "Επικίνδυνη ζώνη",
-  "management.dangerBody": "Η οριστική διαγραφή αφαιρεί τον λογαριασμό auth, τα δεδομένα της εφαρμογής και τα αρχεία του χρήστη. Δεν αναιρείται.",
+  "management.dangerBody":
+    "Η οριστική διαγραφή αφαιρεί τον λογαριασμό auth, τα δεδομένα της εφαρμογής και τα αρχεία του χρήστη. Δεν αναιρείται.",
   "management.typeEmail": "Γράψε το email του χρήστη",
-  "management.blockReregistration": "Διαγραφή λογαριασμού και αποκλεισμός νέας εγγραφής με αυτό το email",
+  "management.blockReregistration":
+    "Διαγραφή λογαριασμού και αποκλεισμός νέας εγγραφής με αυτό το email",
   "management.registrationBlockReason": "Αιτία αποκλεισμού εγγραφής",
   "management.deleting": "Διαγραφή…",
   "management.permanentlyDelete": "Οριστική διαγραφή",
@@ -255,7 +270,8 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.registrationAllowed": "Η εγγραφή επιτρέπεται ξανά",
   "management.removeBlockError": "Δεν ήταν δυνατή η αφαίρεση του αποκλεισμού εγγραφής",
   "management.allowTitle": "Να επιτρέπεται ξανά η εγγραφή;",
-  "management.allowBody": "Να επιτρέπεται ξανά σε αυτή τη διεύθυνση email να εγγραφεί στο PromptBeats;",
+  "management.allowBody":
+    "Να επιτρέπεται ξανά σε αυτή τη διεύθυνση email να εγγραφεί στο PromptBeats;",
   "management.updating": "Ενημέρωση…",
-  "management.allowRegistration": "Να επιτρέπεται η εγγραφή"
+  "management.allowRegistration": "Να επιτρέπεται η εγγραφή",
 };

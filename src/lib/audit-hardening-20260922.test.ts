@@ -29,7 +29,9 @@ describe("September 22 production audit hardening", () => {
 
   test("private public lookup and share-token paths do not reveal track titles", async () => {
     const tracks = await source("src/lib/tracks.functions.ts");
-    const shareSql = await source("supabase/migrations/20260922115000_private_track_title_privacy.sql");
+    const shareSql = await source(
+      "supabase/migrations/20260922115000_private_track_title_privacy.sql",
+    );
     expect(tracks).not.toContain("privateTitle: track.title");
     expect(shareSql).toContain("RETURN jsonb_build_object('state','private')");
     expect(shareSql).not.toContain("'state','private','track_id'");
@@ -41,12 +43,15 @@ describe("September 22 production audit hardening", () => {
     const analyzer = await source("src/lib/song-analyzer.functions.ts");
     const migration = await source("supabase/migrations/20260922113000_auxiliary_ai_admission.sql");
 
-    expect(setup.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant")'))
-      .toBeLessThan(setup.indexOf('modelCaller(SONG_SETUP_ASSISTANT_MODEL)'));
-    expect(musicLab.indexOf('requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab")'))
-      .toBeLessThan(musicLab.indexOf('process.env["GEMINI_API_KEY"]'));
-    expect(analyzer.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_analyzer")'))
-      .toBeLessThan(analyzer.indexOf('process.env["GEMINI_API_KEY"]'));
+    expect(
+      setup.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant")'),
+    ).toBeLessThan(setup.indexOf("modelCaller(SONG_SETUP_ASSISTANT_MODEL)"));
+    expect(
+      musicLab.indexOf('requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab")'),
+    ).toBeLessThan(musicLab.indexOf('process.env["GEMINI_API_KEY"]'));
+    expect(
+      analyzer.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_analyzer")'),
+    ).toBeLessThan(analyzer.indexOf('process.env["GEMINI_API_KEY"]'));
     expect(migration).toContain("pg_advisory_xact_lock");
     expect(migration).toContain("v_used >= _limit_per_hour");
   });
@@ -81,7 +86,9 @@ describe("September 22 production audit hardening", () => {
 
   test("avatar contract and bucket enforce JPEG/PNG/WebP at 5 MB", async () => {
     const helper = await source("src/lib/avatar-upload.ts");
-    const migration = await source("supabase/migrations/20260922120000_avatar_bucket_mime_hardening.sql");
+    const migration = await source(
+      "supabase/migrations/20260922120000_avatar_bucket_mime_hardening.sql",
+    );
     expect(helper).toContain('"image/jpeg"');
     expect(helper).toContain('"image/png"');
     expect(helper).toContain('"image/webp"');
@@ -115,16 +122,30 @@ describe("September 22 production audit hardening", () => {
   });
 
   test("prompt projects and song analyses expose only owner CRUD to authenticated", async () => {
-    const migration = await source("supabase/migrations/20260922151500_restore_project_analysis_table_crud_grants.sql");
+    const migration = await source(
+      "supabase/migrations/20260922151500_restore_project_analysis_table_crud_grants.sql",
+    );
 
-    expect(migration).toContain("REVOKE ALL ON TABLE public.prompt_projects FROM anon, authenticated, service_role");
-    expect(migration).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.prompt_projects TO authenticated, service_role");
-    expect(migration).toContain("REVOKE ALL ON TABLE public.song_analyses FROM anon, authenticated, service_role");
-    expect(migration).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.song_analyses TO authenticated, service_role");
+    expect(migration).toContain(
+      "REVOKE ALL ON TABLE public.prompt_projects FROM anon, authenticated, service_role",
+    );
+    expect(migration).toContain(
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.prompt_projects TO authenticated, service_role",
+    );
+    expect(migration).toContain(
+      "REVOKE ALL ON TABLE public.song_analyses FROM anon, authenticated, service_role",
+    );
+    expect(migration).toContain(
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.song_analyses TO authenticated, service_role",
+    );
   });
 
   test("RLS event helper loses browser-facing EXECUTE grants", async () => {
-    const migration = await source("supabase/migrations/20260922115500_harden_rls_auto_enable_grants.sql");
-    expect(migration).toContain("REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated");
+    const migration = await source(
+      "supabase/migrations/20260922115500_harden_rls_auto_enable_grants.sql",
+    );
+    expect(migration).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",
+    );
   });
 });

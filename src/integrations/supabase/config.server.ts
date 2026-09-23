@@ -8,9 +8,7 @@ export function getServerSupabasePublicConfig() {
   if (!url || !publishableKey) {
     const missing = [
       ...(!url ? ["EXTERNAL_SUPABASE_URL or SUPABASE_URL"] : []),
-      ...(!publishableKey
-        ? ["EXTERNAL_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY"]
-        : []),
+      ...(!publishableKey ? ["EXTERNAL_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     throw new Error(`Missing Supabase environment variable(s): ${missing.join(", ")}.`);
   }
@@ -21,8 +19,7 @@ export function getServerSupabasePublicConfig() {
 export function getServerSupabaseAdminConfig() {
   const { url } = getServerSupabasePublicConfig();
   const secretKey =
-    process.env["EXTERNAL_SUPABASE_SECRET_KEY"] ??
-    process.env["SUPABASE_SERVICE_ROLE_KEY"];
+    process.env["EXTERNAL_SUPABASE_SECRET_KEY"] ?? process.env["SUPABASE_SERVICE_ROLE_KEY"];
 
   if (!secretKey) {
     throw new Error(

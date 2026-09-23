@@ -13,12 +13,48 @@ export type LyricsReviewLanguage = {
 };
 
 export const LYRICS_REVIEW_LANGUAGES: readonly LyricsReviewLanguage[] = [
-  { code: "el", canonical: "Greek", label: { en: "Greek", el: "Ελληνικά" }, syllables: "good", rhyme: "ending_clues" },
-  { code: "en", canonical: "English", label: { en: "English", el: "Αγγλικά" }, syllables: "approximate", rhyme: "ending_clues" },
-  { code: "es", canonical: "Spanish", label: { en: "Spanish", el: "Ισπανικά" }, syllables: "good", rhyme: "ending_clues" },
-  { code: "it", canonical: "Italian", label: { en: "Italian", el: "Ιταλικά" }, syllables: "good", rhyme: "ending_clues" },
-  { code: "pt", canonical: "Portuguese", label: { en: "Portuguese", el: "Πορτογαλικά" }, syllables: "approximate", rhyme: "ending_clues" },
-  { code: "ru", canonical: "Russian", label: { en: "Russian", el: "Ρωσικά" }, syllables: "good", rhyme: "ending_clues" },
+  {
+    code: "el",
+    canonical: "Greek",
+    label: { en: "Greek", el: "Ελληνικά" },
+    syllables: "good",
+    rhyme: "ending_clues",
+  },
+  {
+    code: "en",
+    canonical: "English",
+    label: { en: "English", el: "Αγγλικά" },
+    syllables: "approximate",
+    rhyme: "ending_clues",
+  },
+  {
+    code: "es",
+    canonical: "Spanish",
+    label: { en: "Spanish", el: "Ισπανικά" },
+    syllables: "good",
+    rhyme: "ending_clues",
+  },
+  {
+    code: "it",
+    canonical: "Italian",
+    label: { en: "Italian", el: "Ιταλικά" },
+    syllables: "good",
+    rhyme: "ending_clues",
+  },
+  {
+    code: "pt",
+    canonical: "Portuguese",
+    label: { en: "Portuguese", el: "Πορτογαλικά" },
+    syllables: "approximate",
+    rhyme: "ending_clues",
+  },
+  {
+    code: "ru",
+    canonical: "Russian",
+    label: { en: "Russian", el: "Ρωσικά" },
+    syllables: "good",
+    rhyme: "ending_clues",
+  },
 ] as const;
 
 export type LyricsLanguageDetection = {
@@ -59,10 +95,94 @@ export type LyricsReviewAnalysis = {
 };
 
 const STOP_WORDS: Record<Exclude<LyricsReviewLanguageCode, "el" | "ru">, Set<string>> = {
-  en: new Set(["the", "and", "you", "i", "to", "of", "in", "my", "your", "me", "we", "is", "it", "that", "for", "on", "with", "this", "but", "not"]),
-  es: new Set(["el", "la", "los", "las", "y", "que", "de", "en", "mi", "tu", "yo", "me", "te", "un", "una", "por", "con", "no", "es", "como"]),
-  it: new Set(["il", "la", "lo", "gli", "le", "e", "che", "di", "in", "mi", "tu", "io", "un", "una", "per", "con", "non", "è", "come", "nel"]),
-  pt: new Set(["o", "a", "os", "as", "e", "que", "de", "em", "meu", "minha", "eu", "me", "um", "uma", "por", "com", "não", "é", "como", "pra"]),
+  en: new Set([
+    "the",
+    "and",
+    "you",
+    "i",
+    "to",
+    "of",
+    "in",
+    "my",
+    "your",
+    "me",
+    "we",
+    "is",
+    "it",
+    "that",
+    "for",
+    "on",
+    "with",
+    "this",
+    "but",
+    "not",
+  ]),
+  es: new Set([
+    "el",
+    "la",
+    "los",
+    "las",
+    "y",
+    "que",
+    "de",
+    "en",
+    "mi",
+    "tu",
+    "yo",
+    "me",
+    "te",
+    "un",
+    "una",
+    "por",
+    "con",
+    "no",
+    "es",
+    "como",
+  ]),
+  it: new Set([
+    "il",
+    "la",
+    "lo",
+    "gli",
+    "le",
+    "e",
+    "che",
+    "di",
+    "in",
+    "mi",
+    "tu",
+    "io",
+    "un",
+    "una",
+    "per",
+    "con",
+    "non",
+    "è",
+    "come",
+    "nel",
+  ]),
+  pt: new Set([
+    "o",
+    "a",
+    "os",
+    "as",
+    "e",
+    "que",
+    "de",
+    "em",
+    "meu",
+    "minha",
+    "eu",
+    "me",
+    "um",
+    "uma",
+    "por",
+    "com",
+    "não",
+    "é",
+    "como",
+    "pra",
+  ]),
 };
 
 const COMMON_WORDS = new Set([
@@ -70,7 +190,27 @@ const COMMON_WORDS = new Set([
   ...STOP_WORDS.es,
   ...STOP_WORDS.it,
   ...STOP_WORDS.pt,
-  "και", "να", "σε", "το", "η", "ο", "μου", "σου", "δεν", "με", "για", "что", "и", "в", "не", "я", "ты", "на", "с", "мне", "тебя",
+  "και",
+  "να",
+  "σε",
+  "το",
+  "η",
+  "ο",
+  "μου",
+  "σου",
+  "δεν",
+  "με",
+  "για",
+  "что",
+  "и",
+  "в",
+  "не",
+  "я",
+  "ты",
+  "на",
+  "с",
+  "мне",
+  "тебя",
 ]);
 
 const SQUARE_BRACKET_TAG_PATTERN = /\[[^\]\r\n]*\]/g;
@@ -85,7 +225,10 @@ export function extractLyricsReviewTags(text: string) {
 }
 
 export function lyricsReviewTagsPreserved(original: string, candidate: string) {
-  return JSON.stringify(extractLyricsReviewTags(original)) === JSON.stringify(extractLyricsReviewTags(candidate));
+  return (
+    JSON.stringify(extractLyricsReviewTags(original)) ===
+    JSON.stringify(extractLyricsReviewTags(candidate))
+  );
 }
 
 function stripDiacritics(value: string) {
@@ -110,10 +253,16 @@ function lyricalLines(text: string) {
     .filter(Boolean);
 }
 
-export function lyricsReviewLanguageFromCanonical(value: string | null | undefined): LyricsReviewLanguageCode | null {
+export function lyricsReviewLanguageFromCanonical(
+  value: string | null | undefined,
+): LyricsReviewLanguageCode | null {
   const normalized = (value ?? "").trim().toLocaleLowerCase();
   if (!normalized) return null;
-  const match = LYRICS_REVIEW_LANGUAGES.find((item) => normalized === item.canonical.toLocaleLowerCase() || normalized.startsWith(`${item.canonical.toLocaleLowerCase()} (`));
+  const match = LYRICS_REVIEW_LANGUAGES.find(
+    (item) =>
+      normalized === item.canonical.toLocaleLowerCase() ||
+      normalized.startsWith(`${item.canonical.toLocaleLowerCase()} (`),
+  );
   return match?.code ?? null;
 }
 
@@ -147,11 +296,14 @@ export function detectLyricsLanguage(text: string): LyricsLanguageDetection {
   if (/\b(não|você|coração|noite|sempre|sem)\b/u.test(raw)) scores.pt += 3;
   if (/\b(the|this|that|with|without|heart|night|always)\b/u.test(raw)) scores.en += 3;
 
-  const ranked = (Object.entries(scores) as Array<[keyof typeof scores, number]>).sort((a, b) => b[1] - a[1]);
+  const ranked = (Object.entries(scores) as Array<[keyof typeof scores, number]>).sort(
+    (a, b) => b[1] - a[1],
+  );
   const [best, second] = ranked;
   if (!best || best[1] <= 0) return { code: "en", confidence: "low" };
   const margin = best[1] - (second?.[1] ?? 0);
-  const confidence: LyricsReviewDetectionConfidence = best[1] >= 8 && margin >= 3 ? "high" : best[1] >= 4 && margin >= 1 ? "medium" : "low";
+  const confidence: LyricsReviewDetectionConfidence =
+    best[1] >= 8 && margin >= 3 ? "high" : best[1] >= 4 && margin >= 1 ? "medium" : "low";
   return { code: best[0], confidence };
 }
 
@@ -191,7 +343,10 @@ function countRussianSyllables(word: string) {
   return Math.max(1, (w.match(/[аеёиоуыэюя]/g) ?? []).length);
 }
 
-export function approximateSyllables(text: string, language: LyricsReviewLanguageCode): number | null {
+export function approximateSyllables(
+  text: string,
+  language: LyricsReviewLanguageCode,
+): number | null {
   const words = lyricWords(text);
   if (!words.length) return null;
   const total = words.reduce((sum, word) => {
@@ -263,7 +418,10 @@ function repetitionStats(lines: string[]) {
   return { repeatedWords, repeatedPhrases };
 }
 
-export function analyzeLyricsDeterministic(lyrics: string, language: LyricsReviewLanguageCode): LyricsReviewAnalysis {
+export function analyzeLyricsDeterministic(
+  lyrics: string,
+  language: LyricsReviewLanguageCode,
+): LyricsReviewAnalysis {
   const parsed = parseLyricsSections(lyrics);
   const sectionMetrics = parsed.map((section) => {
     const lines = lyricalLines(section.content);
@@ -274,10 +432,15 @@ export function analyzeLyricsDeterministic(lyrics: string, language: LyricsRevie
     const metrics: LyricsReviewLineMetric[] = lines.map((line, index) => {
       const words = lineWords[index] ?? 0;
       const approximate = syllables[index] || null;
-      const longByWords = wordMedian >= 2 && words >= wordMedian + Math.max(3, Math.ceil(wordMedian * 0.45));
-      const shortByWords = wordMedian >= 5 && words <= Math.max(1, wordMedian - Math.max(3, Math.ceil(wordMedian * 0.45)));
-      const longBySyllables = approximate != null && syllableMedian >= 4 && approximate >= syllableMedian + 5;
-      const shortBySyllables = approximate != null && syllableMedian >= 8 && approximate <= syllableMedian - 5;
+      const longByWords =
+        wordMedian >= 2 && words >= wordMedian + Math.max(3, Math.ceil(wordMedian * 0.45));
+      const shortByWords =
+        wordMedian >= 5 &&
+        words <= Math.max(1, wordMedian - Math.max(3, Math.ceil(wordMedian * 0.45)));
+      const longBySyllables =
+        approximate != null && syllableMedian >= 4 && approximate >= syllableMedian + 5;
+      const shortBySyllables =
+        approximate != null && syllableMedian >= 8 && approximate <= syllableMedian - 5;
       const flags: LyricsReviewLineMetric["flags"] = [];
       if (longByWords || longBySyllables) flags.push("long_line");
       else if (shortByWords || shortBySyllables) flags.push("short_line");
@@ -321,10 +484,16 @@ export function analyzeLyricsDeterministic(lyrics: string, language: LyricsRevie
     overview: {
       sectionCount: sectionMetrics.length,
       lineCount: sectionMetrics.reduce((sum, section) => sum + section.lines.length, 0),
-      wordCount: sectionMetrics.reduce((sum, section) => sum + section.lines.reduce((lineSum, line) => lineSum + line.words, 0), 0),
+      wordCount: sectionMetrics.reduce(
+        (sum, section) => sum + section.lines.reduce((lineSum, line) => lineSum + line.words, 0),
+        0,
+      ),
       repeatedWords: repeats.repeatedWords,
       repeatedPhrases: repeats.repeatedPhrases,
-      outlierLineCount: sectionMetrics.reduce((sum, section) => sum + section.lines.filter((line) => line.flags.length > 0).length, 0),
+      outlierLineCount: sectionMetrics.reduce(
+        (sum, section) => sum + section.lines.filter((line) => line.flags.length > 0).length,
+        0,
+      ),
     },
   };
 }

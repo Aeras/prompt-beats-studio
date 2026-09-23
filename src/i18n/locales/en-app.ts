@@ -16,21 +16,25 @@ export const enApp = {
   "auth.createOne": "Create one",
   "auth.backFeed": "Back to the feed",
   "auth.registrationComplete": "Registration complete!",
-  "auth.verifyEmail": "Please check your email and click the verification link to activate your account.",
+  "auth.verifyEmail":
+    "Please check your email and click the verification link to activate your account.",
   "auth.sentLink": "We sent the link to {email}",
   "auth.backSignIn": "Back to sign in",
   "auth.displayTaken": "This display name is already taken",
   "auth.usernameTaken": "This username is already taken",
-  "auth.usernameHelp": "Letters and numbers only, 3-30 characters. Your page will be promptbeats.app/@{username}",
+  "auth.usernameHelp":
+    "Letters and numbers only, 3-30 characters. Your page will be promptbeats.app/@{username}",
   "auth.usernameFormat": "Username must be 3-30 letters or numbers, with no spaces or symbols.",
   "auth.displayRequired": "Please enter a display name.",
   "auth.usernameAlreadyTaken": "That username is already taken. Try another one.",
   "auth.displayAlreadyTaken": "That display name is already taken. Try another one.",
-  "auth.invalidCredentials": "Email or password is incorrect. Check your details and try again. If you don’t have an account, you can create one.",
+  "auth.invalidCredentials":
+    "Email or password is incorrect. Check your details and try again. If you don’t have an account, you can create one.",
   "auth.signinUnavailable": "Unable to sign in right now. Please try again.",
   "auth.googleFailed": "Google sign-in failed. Try again.",
   "auth.somethingWrong": "Something went wrong",
-  "auth.registrationBlocked": "Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.",
+  "auth.registrationBlocked":
+    "Registration with this email address is not allowed. If you believe this restriction was applied by mistake or need assistance, contact support@promptbeats.app.",
   "auth.legalPrefix": "I have read and agree to the",
   "auth.termsLink": "Terms of Use",
   "auth.legalMiddle": "and acknowledge the",
@@ -106,7 +110,8 @@ export const enApp = {
   "generator.loadingModels": "Loading available models…",
   "generator.noModel": "No AI model is currently available for generation.",
   "generator.clearTitle": "Clear Generator?",
-  "generator.clearBody": "This will clear your current inputs and generated results. This action cannot be undone.",
+  "generator.clearBody":
+    "This will clear your current inputs and generated results. This action cannot be undone.",
   "generator.confirmClear": "Confirm Clear",
   "generator.clearing": "Clearing…",
   "generator.starting": "Starting generation…",
@@ -116,8 +121,10 @@ export const enApp = {
   "generator.bpmError": "BPM must be a whole number between 40 and 260.",
   "generator.themeTooLong": "Your theme is {count} characters — the limit is {limit}.",
   "generator.musicStyleTooLong": "Your Music Style is {count} characters — the limit is {limit}.",
-  "generator.moodTooLong": "Your mood selection is {count} characters — the limit is {limit}. Please remove a mood or shorten the custom mood.",
-  "generator.instrumentsTooLong": "Your instruments selection is {count} characters — the limit is {limit}.",
+  "generator.moodTooLong":
+    "Your mood selection is {count} characters — the limit is {limit}. Please remove a mood or shorten the custom mood.",
+  "generator.instrumentsTooLong":
+    "Your instruments selection is {count} characters — the limit is {limit}.",
   "generator.selectionTooLong": "Too many styles / instruments selected. Please remove a few.",
 
   "generator.customMoodBasic": "Type your own mood / vibe",
@@ -125,7 +132,8 @@ export const enApp = {
   "generator.selectMood": "Select Mood / Vibe (e.g., Energetic, Chill...)",
   "generator.removeStructure": "Remove {name} at position {position}",
   "generator.dismissFailed": "The generation could not be dismissed. Please try again.",
-  "generator.clearedRunning": "Generator cleared. The generation already started and may still finish in the background.",
+  "generator.clearedRunning":
+    "Generator cleared. The generation already started and may still finish in the background.",
 
   "quality.title": "Quality Check",
   "quality.checking": "Checking... this keeps running if you leave the app.",
@@ -213,7 +221,7 @@ export const enApp = {
   "management.status": "Status",
   "management.actions": "Actions",
   "management.save": "Save",
-  "management.cancel": "Cancel"
+  "management.cancel": "Cancel",
 } as const;
 
 export type AppUiTranslationKey = keyof typeof enApp;

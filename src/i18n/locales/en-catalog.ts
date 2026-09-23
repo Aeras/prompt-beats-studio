@@ -39,7 +39,7 @@ export const enCatalog = {
   "reason.track.other": "Other",
 
   "management.users": "Users",
-  "management.active": "Active"
+  "management.active": "Active",
 } as const;
 
 export type CatalogTranslationKey = keyof typeof enCatalog;

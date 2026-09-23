@@ -19,7 +19,14 @@ type Props = {
   onApply: (preset: SmartPreset) => void;
 };
 
-const categories: SmartPresetCategory[] = ["pop", "rock", "electronic", "hiphop", "acoustic", "global"];
+const categories: SmartPresetCategory[] = [
+  "pop",
+  "rock",
+  "electronic",
+  "hiphop",
+  "acoustic",
+  "global",
+];
 
 export function SmartPresetsPanel({
   activePresetId,
@@ -49,9 +56,12 @@ export function SmartPresetsPanel({
     setCulturalRegionId(style?.region ?? "");
   }, [culturalStyleId]);
 
-  useEffect(() => () => {
-    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
+    },
+    [],
+  );
 
   const applyPresetWithFeedback = (preset: SmartPreset) => {
     onApply(preset);
@@ -72,7 +82,7 @@ export function SmartPresetsPanel({
     const regionId = value as CulturalRegionId;
     setCulturalRegionId(regionId);
     const firstStyle = CULTURAL_STYLES.find((style) => style.region === regionId);
-    onCulturalStyleChange(firstStyle?.id === "custom" ? "custom:" : firstStyle?.id ?? "");
+    onCulturalStyleChange(firstStyle?.id === "custom" ? "custom:" : (firstStyle?.id ?? ""));
   };
 
   const filtered = useMemo(() => {
@@ -89,7 +99,9 @@ export function SmartPresetsPanel({
         ...(preset.searchTerms ?? []),
         ...preset.musicStyles,
         ...preset.moods,
-      ].join(" ").toLocaleLowerCase();
+      ]
+        .join(" ")
+        .toLocaleLowerCase();
       return searchable.includes(q);
     });
   }, [category, query]);
@@ -104,7 +116,9 @@ export function SmartPresetsPanel({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 shrink-0 text-accent" />
-            <h3 className="font-display text-sm font-semibold text-foreground">{t("generator.presets.title")}</h3>
+            <h3 className="font-display text-sm font-semibold text-foreground">
+              {t("generator.presets.title")}
+            </h3>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{t("generator.presets.description")}</p>
           {activePreset && (
@@ -145,7 +159,11 @@ export function SmartPresetsPanel({
             <button
               type="button"
               onClick={() => setCategory("all")}
-              className={category === "all" ? "shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary-foreground" : "shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground"}
+              className={
+                category === "all"
+                  ? "shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                  : "shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground"
+              }
             >
               {t("generator.presets.category.all")}
             </button>
@@ -154,7 +172,11 @@ export function SmartPresetsPanel({
                 key={item}
                 type="button"
                 onClick={() => setCategory(item)}
-                className={category === item ? "shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary-foreground" : "shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground"}
+                className={
+                  category === item
+                    ? "shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                    : "shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground"
+                }
               >
                 {t(`generator.presets.category.${item}`)}
               </button>
@@ -165,12 +187,25 @@ export function SmartPresetsPanel({
             {filtered.map((preset) => {
               const active = preset.id === activePresetId;
               return (
-                <div key={preset.id} className={active ? "rounded-xl border border-accent/60 bg-accent/10 p-3" : "rounded-xl border border-white/10 bg-black/25 p-3"}>
+                <div
+                  key={preset.id}
+                  className={
+                    active
+                      ? "rounded-xl border border-accent/60 bg-accent/10 p-3"
+                      : "rounded-xl border border-white/10 bg-black/25 p-3"
+                  }
+                >
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-semibold text-foreground">{preset.name[language]}</h4>
-                      <p className="mt-1 text-xs text-muted-foreground">{preset.description[language]}</p>
-                      <p className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground/80">{preset.fingerprint}</p>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {preset.name[language]}
+                      </h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {preset.description[language]}
+                      </p>
+                      <p className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                        {preset.fingerprint}
+                      </p>
                     </div>
                     {active && <Check className="h-4 w-4 shrink-0 text-accent" />}
                   </div>
@@ -178,21 +213,29 @@ export function SmartPresetsPanel({
                   {preset.cultural && (
                     <div className="mt-3 space-y-2">
                       <label className="block">
-                        <span className="mb-1 block text-[11px] text-muted-foreground">{t("generator.presets.culturalRegion")}</span>
+                        <span className="mb-1 block text-[11px] text-muted-foreground">
+                          {t("generator.presets.culturalRegion")}
+                        </span>
                         <select
                           value={culturalRegionId}
                           onChange={(event) => changeCulturalRegion(event.target.value)}
                           className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-xs outline-none focus:border-primary/60"
                         >
-                          <option value="" disabled className="bg-[#0a0a0c]">{t("generator.presets.selectCulturalRegion")}</option>
+                          <option value="" disabled className="bg-[#0a0a0c]">
+                            {t("generator.presets.selectCulturalRegion")}
+                          </option>
                           {CULTURAL_REGIONS.map((region) => (
-                            <option key={region.id} value={region.id} className="bg-[#0a0a0c]">{region.name[language]}</option>
+                            <option key={region.id} value={region.id} className="bg-[#0a0a0c]">
+                              {region.name[language]}
+                            </option>
                           ))}
                         </select>
                       </label>
 
                       <label className="block">
-                        <span className="mb-1 block text-[11px] text-muted-foreground">{t("generator.presets.culturalStyle")}</span>
+                        <span className="mb-1 block text-[11px] text-muted-foreground">
+                          {t("generator.presets.culturalStyle")}
+                        </span>
                         <select
                           value={selectedStyleId}
                           disabled={!culturalRegionId}
@@ -202,9 +245,13 @@ export function SmartPresetsPanel({
                           }}
                           className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:opacity-50 focus:border-primary/60"
                         >
-                          <option value="" disabled className="bg-[#0a0a0c]">{t("generator.presets.selectCulturalStyle")}</option>
+                          <option value="" disabled className="bg-[#0a0a0c]">
+                            {t("generator.presets.selectCulturalStyle")}
+                          </option>
                           {regionalStyles.map((style) => (
-                            <option key={style.id} value={style.id} className="bg-[#0a0a0c]">{style.name[language]}</option>
+                            <option key={style.id} value={style.id} className="bg-[#0a0a0c]">
+                              {style.name[language]}
+                            </option>
                           ))}
                         </select>
                       </label>
@@ -212,7 +259,9 @@ export function SmartPresetsPanel({
                       {selectedStyleId === "custom" && (
                         <input
                           value={customCulturalStyle}
-                          onChange={(event) => onCulturalStyleChange(`custom:${event.target.value.slice(0, 60)}`)}
+                          onChange={(event) =>
+                            onCulturalStyleChange(`custom:${event.target.value.slice(0, 60)}`)
+                          }
                           maxLength={60}
                           placeholder={t("generator.presets.customCulturalStylePlaceholder")}
                           aria-label={t("generator.presets.customCulturalStylePlaceholder")}
@@ -220,7 +269,9 @@ export function SmartPresetsPanel({
                         />
                       )}
 
-                      <p className="text-[10px] text-muted-foreground">{t("generator.presets.languageIndependent")}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("generator.presets.languageIndependent")}
+                      </p>
                     </div>
                   )}
 
@@ -231,7 +282,7 @@ export function SmartPresetsPanel({
                       preset.cultural &&
                       (!culturalRegionId ||
                         !selectedStyleId ||
-                        (selectedStyleId === "custom" && !customCulturalStyle.trim()))
+                        (selectedStyleId === "custom" && !customCulturalStyle.trim())),
                     )}
                     className={
                       appliedPresetId === preset.id
@@ -256,7 +307,9 @@ export function SmartPresetsPanel({
           </div>
 
           {filtered.length === 0 && (
-            <p className="py-5 text-center text-xs text-muted-foreground">{t("generator.presets.noResults")}</p>
+            <p className="py-5 text-center text-xs text-muted-foreground">
+              {t("generator.presets.noResults")}
+            </p>
           )}
         </div>
       )}

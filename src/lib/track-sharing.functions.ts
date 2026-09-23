@@ -33,11 +33,15 @@ export const createTrackShareLink = createServerFn({ method: "POST" })
 
 export const updateTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    shareId: z.string().uuid(),
-    includePrompt: z.boolean(),
-    includeLyrics: z.boolean(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        shareId: z.string().uuid(),
+        includePrompt: z.boolean(),
+        includeLyrics: z.boolean(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { error } = await (context.supabase as any).rpc("update_track_share_link", {

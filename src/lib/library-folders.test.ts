@@ -19,8 +19,12 @@ describe("Library folders foundation", () => {
   });
 
   test("caps nesting at five levels for the whole moved subtree and prevents circular hierarchy", async () => {
-    const foundation = await source("supabase/migrations/20260922184000_library_folders_foundation.sql");
-    const hardening = await source("supabase/migrations/20260922210500_library_folder_integrity_hardening.sql");
+    const foundation = await source(
+      "supabase/migrations/20260922184000_library_folders_foundation.sql",
+    );
+    const hardening = await source(
+      "supabase/migrations/20260922210500_library_folder_integrity_hardening.sql",
+    );
 
     expect(foundation).toContain("A folder cannot be moved into itself");
     expect(foundation).toContain("A folder cannot be moved into one of its descendants");
@@ -106,7 +110,7 @@ describe("Library folders foundation", () => {
     expect(picker).toContain("listLibraryFolderContents");
     expect(picker).toContain("getLibraryFolderBreadcrumbs");
     expect(picker).toContain("searchLibraryFolders");
-    expect(picker).toContain('Root');
+    expect(picker).toContain("Root");
     expect(picker).toContain("onSelect(null");
     expect(picker).toContain("breadcrumbItems.map");
     expect(picker).toContain("disabledDestinationFolderId");
@@ -118,7 +122,9 @@ describe("Library folders foundation", () => {
 
   test("Saved Prompts and Projects views share the current-folder file manager with recursive scoped search", async () => {
     const library = await source("src/routes/library.tsx");
-    const searchMigration = await source("supabase/migrations/20260922192000_library_folder_recursive_search.sql");
+    const searchMigration = await source(
+      "supabase/migrations/20260922192000_library_folder_recursive_search.sql",
+    );
 
     expect(library).toContain("listLibraryFolderContents");
     expect(library).toContain("searchLibraryScope");
@@ -154,23 +160,33 @@ describe("Library folders foundation", () => {
   });
 
   test("Duplicate Project is transactional, copies all versions and rebuilds the internal parent graph in two passes", async () => {
-    const base = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
-    const hardening = await source("supabase/migrations/20260922210500_library_folder_integrity_hardening.sql");
+    const base = await source(
+      "supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql",
+    );
+    const hardening = await source(
+      "supabase/migrations/20260922210500_library_folder_integrity_hardening.sql",
+    );
 
     expect(base).toContain("duplicated_from_project_id");
     expect(base).toContain("duplicated_from_prompt_id");
     expect(base).toContain("source_generation_job_id");
-    expect(hardening).toContain("CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder");
+    expect(hardening).toContain(
+      "CREATE OR REPLACE FUNCTION public.duplicate_prompt_project_to_folder",
+    );
     expect(hardening).toContain("Pass 1");
     expect(hardening).toContain("Pass 2");
     expect(hardening).toContain("v_id_map");
     expect(hardening).toContain("SET parent_prompt_id = v_new_parent_id");
-    expect(hardening).toContain("Project version graph contains an external or missing parent reference");
+    expect(hardening).toContain(
+      "Project version graph contains an external or missing parent reference",
+    );
     expect(hardening).toContain("Preferred Project version could not be mapped");
   });
 
   test("Duplicate standalone Prompt produces an independent copy in the selected folder", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const sql = await source(
+      "supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql",
+    );
     const server = await source("src/lib/library-folders.functions.ts");
 
     expect(sql).toContain("duplicate_standalone_prompt_to_folder");
@@ -181,7 +197,9 @@ describe("Library folders foundation", () => {
   });
 
   test("Duplicate does not copy audio or track records", async () => {
-    const sql = await source("supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql");
+    const sql = await source(
+      "supabase/migrations/20260922193000_library_folder_transactional_duplicate.sql",
+    );
 
     expect(sql).not.toContain("INSERT INTO public.tracks");
     expect(sql).not.toContain("audio_url");
@@ -217,7 +235,7 @@ describe("Library folders foundation", () => {
   test("desktop drag/drop moves Folder, Project or standalone Prompt to Folder or Root", async () => {
     const library = await source("src/routes/library.tsx");
 
-    expect(library).toContain('application/x-promptbeats-library-item');
+    expect(library).toContain("application/x-promptbeats-library-item");
     expect(library).toContain("startDrag");
     expect(library).toContain("dropIntoFolder");
     expect(library).toContain('kind: "folder"');
@@ -230,14 +248,16 @@ describe("Library folders foundation", () => {
   test("Projects view exposes folders, long-press Move/Duplicate and drag/drop instead of a flat Projects list", async () => {
     const library = await source("src/routes/library.tsx");
 
-    expect(library).toContain('view !== "analyses" && <button disabled={busy} onClick={createFolder}');
+    expect(library).toContain(
+      'view !== "analyses" && <button disabled={busy} onClick={createFolder}',
+    );
     expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');
-    expect(library).toContain('folderSearchResults');
+    expect(library).toContain("folderSearchResults");
     expect(library).toContain('view === "all" || result.item_type !== "prompt"');
-    expect(library).toContain('LibraryLongPressButton');
-    expect(library).toContain('startDuplicateProject');
+    expect(library).toContain("LibraryLongPressButton");
+    expect(library).toContain("startDuplicateProject");
     expect(library).toContain('operation: "move"');
-    expect(library).toContain('draggable={desktopDnD}');
+    expect(library).toContain("draggable={desktopDnD}");
   });
 
   test("switching Library tabs clears a previously open Project so the Projects folder browser is reachable", async () => {
@@ -251,10 +271,12 @@ describe("Library folders foundation", () => {
     const library = await source("src/routes/library.tsx");
     const picker = await source("src/components/promptbeats/LibraryFolderPicker.tsx");
 
-    expect(library).toContain('disabledDestinationFolderId={folderPicker?.operation === "move" ? folderPicker.currentFolderId : undefined}');
-    expect(picker).toContain('disabled={destinationDisabled(null)}');
-    expect(picker).toContain('disabled={destinationDisabled(currentFolderId)}');
-    expect(picker).not.toContain('disabled={currentFolderId === null}');
+    expect(library).toContain(
+      'disabledDestinationFolderId={folderPicker?.operation === "move" ? folderPicker.currentFolderId : undefined}',
+    );
+    expect(picker).toContain("disabled={destinationDisabled(null)}");
+    expect(picker).toContain("disabled={destinationDisabled(currentFolderId)}");
+    expect(picker).not.toContain("disabled={currentFolderId === null}");
   });
 
   test("folder cards indicate when a folder contains subfolders", async () => {
@@ -280,7 +302,7 @@ describe("Library folders foundation", () => {
     expect(icon).toContain("pb-folder-fill");
     expect(menu).toContain('role="menu"');
     expect(menu).toContain('role="menuitem"');
-    expect(menu).not.toContain('items-end bg-black/70');
+    expect(menu).not.toContain("items-end bg-black/70");
   });
 
   test("touch drag shares the same Move operation and does not steal the stationary long-press gesture", async () => {

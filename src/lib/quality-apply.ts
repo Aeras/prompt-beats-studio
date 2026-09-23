@@ -118,8 +118,7 @@ function sectionRange(
   const idx = Math.max(1, occurrenceIndex ?? 1) - 1;
   const block = matches[idx];
   if (!block) return null;
-  const offset = (index: number) =>
-    lines.slice(0, index).reduce((n, l) => n + l.length + 1, 0);
+  const offset = (index: number) => lines.slice(0, index).reduce((n, l) => n + l.length + 1, 0);
   return { from: offset(block.start), to: Math.min(lyrics.length, offset(block.end)) };
 }
 
@@ -133,10 +132,7 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function normalizedPattern(needle: string): RegExp | null {
   const core = needle.trim().replace(/[\s.,!?;:…]+$/u, "");
   if (!core) return null;
-  const source = core
-    .split(/\s+/)
-    .map(escapeRe)
-    .join("[ \\t]*\\r?\\n?[ \\t]*");
+  const source = core.split(/\s+/).map(escapeRe).join("[ \\t]*\\r?\\n?[ \\t]*");
   return new RegExp(source + "[ \\t]*[.,!?;:…]*", "gu");
 }
 
@@ -179,16 +175,18 @@ function replaceOccurrence(
   }
   // When a section scope is resolved, occurrenceIndex selects the section;
   // within that section the target line is normally unique.
-  const index = scope
-    ? matches.length === 1
-      ? 0
-      : Math.max(1, occurrenceIndex) - 1
-    : 0;
+  const index = scope ? (matches.length === 1 ? 0 : Math.max(1, occurrenceIndex) - 1) : 0;
   if (!scope && matches.length !== 1) {
-    return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
+    return {
+      ok: false,
+      error: "The intended occurrence could not be identified — nothing was changed.",
+    };
   }
   if (index >= matches.length) {
-    return { ok: false, error: "The intended occurrence could not be identified — nothing was changed." };
+    return {
+      ok: false,
+      error: "The intended occurrence could not be identified — nothing was changed.",
+    };
   }
   const hit = matches[index]!;
   return {
@@ -214,7 +212,10 @@ export function applyFieldCorrection(current: string, c: FieldCorrection): Apply
     return { ok: false, error: "The current text no longer matches — nothing was changed." };
   }
   const hit = matches[0]!;
-  return { ok: true, text: current.slice(0, hit.start) + c.replacementText + current.slice(hit.end) };
+  return {
+    ok: true,
+    text: current.slice(0, hit.start) + c.replacementText + current.slice(hit.end),
+  };
 }
 
 export function undoFieldCorrection(current: string, c: FieldCorrection): ApplyResult {
@@ -236,7 +237,13 @@ export function applyLyricCorrection(lyrics: string, c: LyricCorrection): ApplyR
   const scope = c.sectionLabel ? sectionRange(lyrics, c.sectionLabel, c.occurrenceIndex) : null;
   // Section unknown: document-wide fallback is allowed only when the target
   // text occurs exactly once in the whole lyrics (enforced in replaceOccurrence).
-  return replaceOccurrence(lyrics, c.originalText, c.replacementText, c.occurrenceIndex ?? 1, scope);
+  return replaceOccurrence(
+    lyrics,
+    c.originalText,
+    c.replacementText,
+    c.occurrenceIndex ?? 1,
+    scope,
+  );
 }
 
 /** Undo of a lyric correction: the same targeted swap, reversed. */
@@ -271,7 +278,14 @@ export function removeFromMusicStyle(tags: string, addition: string): ApplyResul
   const add = addition.trim();
   const withComma = `, ${add}`;
   if (tags.includes(withComma)) return { ok: true, text: tags.replace(withComma, "") };
-  if (tags.includes(add)) return { ok: true, text: tags.replace(add, "").replace(/^[,\s]+/, "").trimEnd() };
+  if (tags.includes(add))
+    return {
+      ok: true,
+      text: tags
+        .replace(add, "")
+        .replace(/^[,\s]+/, "")
+        .trimEnd(),
+    };
   return { ok: false, error: "The Music Style text has changed — nothing was undone." };
 }
 
@@ -294,10 +308,15 @@ function resolveSection(
 ): { ok: true; headerIndex: number } | { ok: false; error: string } {
   const wanted = cleanLabel(step.sectionLabel);
   const exact = blocks.filter((b) => cleanLabel(b.label) === wanted);
-  const matches = exact.length ? exact : blocks.filter((b) => cleanLabel(b.label).startsWith(wanted));
+  const matches = exact.length
+    ? exact
+    : blocks.filter((b) => cleanLabel(b.label).startsWith(wanted));
 
   if (matches.length === 0) {
-    return { ok: false, error: `Section "${step.sectionLabel}" could not be matched — nothing was changed.` };
+    return {
+      ok: false,
+      error: `Section "${step.sectionLabel}" could not be matched — nothing was changed.`,
+    };
   }
   if (matches.length === 1) return { ok: true, headerIndex: matches[0]!.start };
 
@@ -357,7 +376,7 @@ export function undoVocalArrangement(lyrics: string, plan: VocalInsertion[]): Ap
     const at = found.headerIndex + 1;
     if (lines[at]?.trim() === step.tag.trim()) remove.add(at);
   }
-  if (!remove.size) return { ok: false, error: "The inserted vocal tags were not found — nothing was undone." };
+  if (!remove.size)
+    return { ok: false, error: "The inserted vocal tags were not found — nothing was undone." };
   return { ok: true, text: lines.filter((_, i) => !remove.has(i)).join("\n") };
 }
-

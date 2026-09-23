@@ -72,10 +72,15 @@ export function LibraryFolderPicker({
   const breadcrumbItems = breadcrumbs.data?.breadcrumbs ?? [];
   const currentPath = currentFolderId
     ? breadcrumbItems.map((item) => item.name).join(" / ")
-    : el ? "Αρχική" : "Root";
+    : el
+      ? "Αρχική"
+      : "Root";
 
   return (
-    <div data-pb-bottom-safe="true" className="fixed inset-x-0 top-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-4">
+    <div
+      data-pb-bottom-safe="true"
+      className="fixed inset-x-0 top-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-4"
+    >
       <section
         role="dialog"
         aria-modal="true"
@@ -86,10 +91,17 @@ export function LibraryFolderPicker({
           <div>
             <h2 className="font-display text-lg font-bold">{title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {el ? "Διάλεξε φάκελο προορισμού ή την Αρχική." : "Choose a destination folder or Root."}
+              {el
+                ? "Διάλεξε φάκελο προορισμού ή την Αρχική."
+                : "Choose a destination folder or Root."}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 p-2 text-muted-foreground hover:text-foreground" aria-label={el ? "Κλείσιμο" : "Close"}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/10 p-2 text-muted-foreground hover:text-foreground"
+            aria-label={el ? "Κλείσιμο" : "Close"}
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -100,20 +112,31 @@ export function LibraryFolderPicker({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={el ? "Αναζήτηση φακέλου (προαιρετικό)..." : "Search folders (optional)..."}
+              placeholder={
+                el ? "Αναζήτηση φακέλου (προαιρετικό)..." : "Search folders (optional)..."
+              }
               className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-accent/50"
             />
           </label>
 
           {!query.trim() && (
             <div className="flex min-w-0 items-center gap-1 overflow-x-auto pb-1 text-xs [scrollbar-width:none]">
-              <button type="button" onClick={() => setCurrentFolderId(null)} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">
-                <Home className="h-3.5 w-3.5" />{el ? "Αρχική" : "Root"}
+              <button
+                type="button"
+                onClick={() => setCurrentFolderId(null)}
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent"
+              >
+                <Home className="h-3.5 w-3.5" />
+                {el ? "Αρχική" : "Root"}
               </button>
               {breadcrumbItems.map((item) => (
                 <span key={item.id} className="inline-flex shrink-0 items-center">
                   <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
-                  <button type="button" onClick={() => setCurrentFolderId(item.id)} className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentFolderId(item.id)}
+                    className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-white/5 hover:text-accent"
+                  >
                     {item.name}
                   </button>
                 </span>
@@ -139,7 +162,9 @@ export function LibraryFolderPicker({
                     <PromptBeatsFolderIcon className="h-8 w-9 shrink-0" />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{folder.name}</span>
-                      <span className="block truncate text-[11px] text-muted-foreground">{folder.path}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {folder.path}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -153,7 +178,9 @@ export function LibraryFolderPicker({
             <Loading language={language} />
           ) : (
             <div className="space-y-2">
-              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{el ? "Φάκελοι σε αυτή τη θέση" : "Folders in this location"}</p>
+              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {el ? "Φάκελοι σε αυτή τη θέση" : "Folders in this location"}
+              </p>
               <button
                 type="button"
                 disabled={destinationDisabled(null)}
@@ -168,12 +195,17 @@ export function LibraryFolderPicker({
                 <Home className="h-5 w-5 shrink-0" />
                 <span>
                   <span className="block text-sm font-semibold">{el ? "Αρχική" : "Root"}</span>
-                  <span className="block text-[11px] text-muted-foreground">{el ? "Εκτός φακέλων" : "Outside folders"}</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {el ? "Εκτός φακέλων" : "Outside folders"}
+                  </span>
                 </span>
               </button>
 
               {childFolders.map((folder) => (
-                <div key={folder.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                <div
+                  key={folder.id}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2"
+                >
                   <button
                     type="button"
                     onClick={() => setCurrentFolderId(folder.id)}
@@ -186,7 +218,12 @@ export function LibraryFolderPicker({
                   <button
                     type="button"
                     disabled={destinationDisabled(folder.id)}
-                    onClick={() => onSelect(folder.id, [...breadcrumbItems.map((item) => item.name), folder.name].join(" / "))}
+                    onClick={() =>
+                      onSelect(
+                        folder.id,
+                        [...breadcrumbItems.map((item) => item.name), folder.name].join(" / "),
+                      )
+                    }
                     className="shrink-0 rounded-lg border border-accent/30 px-2.5 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {confirmLabel}

@@ -570,8 +570,8 @@ function buildQualityPrompt(data: DurableQualityCheckInput) {
   const d = data;
   const r = data.result;
   const targetPlatform =
-    ((d as DurableQualityCheckInput & { targetPlatform?: AITargetPlatform }).targetPlatform ??
-      DEFAULT_AI_TARGET_PLATFORM);
+    (d as DurableQualityCheckInput & { targetPlatform?: AITargetPlatform }).targetPlatform ??
+    DEFAULT_AI_TARGET_PLATFORM;
   const platformLabel = AI_TARGET_PLATFORM_LABEL[targetPlatform];
   const tagsLabel = targetPlatform === "udio" ? "Udio Prompt" : "Suno Style Prompt";
   return `Evaluate the CURRENT editable song below against the ORIGINAL generation brief. The output shown is exactly what the user sees right now, including manual edits and previously applied corrections — analyse this text only, never an earlier version.
@@ -658,7 +658,13 @@ function valueType(value: unknown): ValueType {
 }
 
 function responseShape(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) return undefined;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  )
+    return undefined;
   const record = value as Record<string, unknown>;
   const topLevelKeys = Object.keys(record);
   return {
@@ -701,7 +707,10 @@ export async function runDurableQualityCheck(
     });
   } catch (err) {
     records.push({ operation: "quality_check", provider, model, usage: null, success: false });
-    console.error(`[ai] quality_check failed model=${model}`, err instanceof Error ? err.message : err);
+    console.error(
+      `[ai] quality_check failed model=${model}`,
+      err instanceof Error ? err.message : err,
+    );
     return { quality: null, provider, model, records };
   }
 
@@ -726,7 +735,10 @@ export async function runDurableQualityCheck(
     return { quality: null, provider: actualProvider, model: actualModel, records };
   }
 
-  const cleaned = result.text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const cleaned = result.text
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end <= start) {

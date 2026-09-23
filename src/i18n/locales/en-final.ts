@@ -12,7 +12,8 @@ export const enFinal = {
   "moderation.staffTitle": "Staff track moderation",
   "moderation.lockedReview": "Locked for review",
   "moderation.active": "Active",
-  "moderation.hiddenReview": "This track is hidden from normal public discovery while it is under review.",
+  "moderation.hiddenReview":
+    "This track is hidden from normal public discovery while it is under review.",
   "moderation.inspect": "Inspect track content",
   "moderation.noPrompt": "No prompt provided.",
   "moderation.unlockTrack": "Unlock track",
@@ -21,8 +22,10 @@ export const enFinal = {
   "moderation.lockTitle": "Lock track for review?",
   "moderation.unlockTitle": "Unlock this track?",
   "moderation.deleteTitle": "Delete this track permanently?",
-  "moderation.lockBody": "The track will be hidden from normal public discovery until staff unlocks it.",
-  "moderation.unlockBody": "The track will become available again without changing the creator's visibility setting.",
+  "moderation.lockBody":
+    "The track will be hidden from normal public discovery until staff unlocks it.",
+  "moderation.unlockBody":
+    "The track will become available again without changing the creator's visibility setting.",
   "moderation.deleteBody": "This cannot be undone and removes the track record.",
   "moderation.confirmLock": "Confirm lock",
   "moderation.confirmUnlock": "Confirm unlock",
@@ -61,10 +64,12 @@ export const enFinal = {
   "report.detailsRequired": "Please add a short explanation for Other.",
   "report.supportingUrl": "Supporting link / reference (optional)",
   "report.invalidUrl": "Enter a valid http/https link.",
-  "report.legalNotice": "This in-app report is a moderation report. A formal copyright or illegal-content notice may require a separate legal process.",
+  "report.legalNotice":
+    "This in-app report is a moderation report. A formal copyright or illegal-content notice may require a separate legal process.",
   "report.continue": "Continue",
   "report.confirmTitle": "Submit report?",
-  "report.confirmBody": "Your report will be sent to the PromptBeats moderation team for review. Reporting content does not automatically remove it.",
+  "report.confirmBody":
+    "Your report will be sent to the PromptBeats moderation team for review. Reporting content does not automatically remove it.",
   "report.submit": "Submit Report",
   "report.receivedTitle": "Report received",
   "report.receivedBody": "Thank you. The report has been submitted for review.",
@@ -81,7 +86,8 @@ export const enFinal = {
   "report.category.spam_platform_abuse": "Spam / Platform Abuse",
   "report.category.other": "Other",
   "explicit.label": "Contains explicit lyrics / strong language",
-  "explicit.helper": "Select this if the lyrics contain strong profanity, explicit sexual language, or other language that may not be suitable for all listeners.",
+  "explicit.helper":
+    "Select this if the lyrics contain strong profanity, explicit sexual language, or other language that may not be suitable for all listeners.",
   "explicit.tooltip": "Contains explicit lyrics / strong language",
   "management.reports": "Reports",
   "management.reportsSubtitle": "Content reports and moderation review",
@@ -107,13 +113,15 @@ export const enFinal = {
   "management.reportReviewSaved": "Report review saved",
   "management.reportReviewError": "Could not update report review",
   "management.reportOpenTrack": "Open track",
-  "management.reportNoReporterIdentity": "Reporter identity is restricted to Admin level and above.",
+  "management.reportNoReporterIdentity":
+    "Reporter identity is restricted to Admin level and above.",
   "management.reportStatus.open": "Open",
   "management.reportStatus.under_review": "Under review",
   "management.reportStatus.resolved_action_taken": "Resolved — action taken",
   "management.reportStatus.resolved_no_violation": "Resolved — no violation",
   "management.reportStatus.dismissed_abuse": "Dismissed — abusive report",
-  "management.featureAccessDescription": "Control the rollout of production features. Selected users means only explicitly allow-listed users can use the feature.",
+  "management.featureAccessDescription":
+    "Control the rollout of production features. Selected users means only explicitly allow-listed users can use the feature.",
   "management.featureLoading": "Loading feature access…",
   "management.featureLoadError": "Could not load Feature Access.",
   "management.featurePolicySaved": "Feature access policy saved",
@@ -202,7 +210,8 @@ export const enFinal = {
   "management.suspensionReason": "Enter a suspension reason",
   "management.aiModelAccess": "AI model access",
   "management.creatorDonations": "Creator donations",
-  "management.donationsGlobalHint": "Global capability. Users still choose whether to make their own donation methods public.",
+  "management.donationsGlobalHint":
+    "Global capability. Users still choose whether to make their own donation methods public.",
   "management.donationsLoading": "Loading donation settings…",
   "management.donationsLoadError": "Could not load creator donation settings.",
   "management.donationsGlobalSaved": "Global creator donation setting saved",
@@ -220,7 +229,8 @@ export const enFinal = {
   "management.unblockAccount": "Unblock account",
   "management.blockAccount": "Block account",
   "management.dangerZone": "Danger zone",
-  "management.dangerBody": "Permanent deletion removes the auth account, application data, and owned files. This cannot be undone.",
+  "management.dangerBody":
+    "Permanent deletion removes the auth account, application data, and owned files. This cannot be undone.",
   "management.typeEmail": "Type the user's email",
   "management.blockReregistration": "Delete account and block re-registration with this email",
   "management.registrationBlockReason": "Registration-block reason",
@@ -255,7 +265,7 @@ export const enFinal = {
   "management.allowTitle": "Allow registration again?",
   "management.allowBody": "Allow this email address to register with PromptBeats again?",
   "management.updating": "Updating…",
-  "management.allowRegistration": "Allow registration"
+  "management.allowRegistration": "Allow registration",
 } as const;
 
 export type FinalTranslationKey = keyof typeof enFinal;

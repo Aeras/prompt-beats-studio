@@ -54,7 +54,9 @@ export function useLikes(trackId: string, enabled = true) {
           .eq("user_id", userId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("likes").insert({ track_id: trackId, user_id: userId });
+        const { error } = await supabase
+          .from("likes")
+          .insert({ track_id: trackId, user_id: userId });
         if (error) throw error;
       }
     },

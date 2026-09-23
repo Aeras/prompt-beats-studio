@@ -4,20 +4,24 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.title": "AI Song Analyzer",
   "songAnalyzer.admin": "Admin",
   "songAnalyzer.analyzeComplete": "Ανάλυση ολοκληρωμένου τραγουδιού",
-  "songAnalyzer.zeroRetention": "Το source audio χρησιμοποιείται μόνο για την ανάλυση. Το PromptBeats δεν το αποθηκεύει ποτέ ως Track, στοιχείο Library, asset Project, URL, object key ή μόνιμο audio blob.",
+  "songAnalyzer.zeroRetention":
+    "Το source audio χρησιμοποιείται μόνο για την ανάλυση. Το PromptBeats δεν το αποθηκεύει ποτέ ως Track, στοιχείο Library, asset Project, URL, object key ή μόνιμο audio blob.",
   "songAnalyzer.chooseAudio": "Επιλογή αρχείου ήχου",
   "songAnalyzer.restoringAudio": "Επαναφορά audio της συνεδρίας…",
   "songAnalyzer.fileTypes": "MP3, WAV, M4A/MP4, AAC, OGG ή FLAC · έως 15 MB",
-  "songAnalyzer.sessionKept": "Διατηρείται μόνο σε αυτή τη browser session του Analyzer ώστε να συγκρίνεις πολλά μοντέλα χωρίς νέο upload.",
+  "songAnalyzer.sessionKept":
+    "Διατηρείται μόνο σε αυτή τη browser session του Analyzer ώστε να συγκρίνεις πολλά μοντέλα χωρίς νέο upload.",
   "songAnalyzer.clearAudio": "Καθαρισμός audio",
   "songAnalyzer.optionalReference": "Προαιρετική εξωτερική επαλήθευση",
-  "songAnalyzer.optionalReferenceHelp": "Αν συμπληρωθούν και τα δύο πεδία, το PromptBeats ολοκληρώνει πρώτα ανεξάρτητη audio-only ανάλυση και μετά χρησιμοποιεί τίτλο και καλλιτέχνη μόνο για δευτερεύουσα επαλήθευση μέσω web references. Το audio παραμένει authoritative.",
+  "songAnalyzer.optionalReferenceHelp":
+    "Αν συμπληρωθούν και τα δύο πεδία, το PromptBeats ολοκληρώνει πρώτα ανεξάρτητη audio-only ανάλυση και μετά χρησιμοποιεί τίτλο και καλλιτέχνη μόνο για δευτερεύουσα επαλήθευση μέσω web references. Το audio παραμένει authoritative.",
   "songAnalyzer.trackTitleOptional": "Τίτλος Τραγουδιού (προαιρετικό)",
   "songAnalyzer.artistOptional": "Καλλιτέχνης (προαιρετικό)",
   "songAnalyzer.model": "Μοντέλο Analyzer",
   "songAnalyzer.analyze": "Ανάλυση Τραγουδιού",
   "songAnalyzer.analyzing": "Ανάλυση audio…",
-  "songAnalyzer.empty": "Ανέβασε ένα τραγούδι και τρέξε τον Analyzer για generator-ready πεδία και λεπτομερή μουσική ανάλυση.",
+  "songAnalyzer.empty":
+    "Ανέβασε ένα τραγούδι και τρέξε τον Analyzer για generator-ready πεδία και λεπτομερή μουσική ανάλυση.",
   "songAnalyzer.generatorReady": "Generator-ready πεδία",
   "songAnalyzer.detailed": "Λεπτομερής Ανάλυση Τραγουδιού",
   "songAnalyzer.analyzedWith": "Ανάλυση με {model}",
@@ -42,7 +46,8 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.notable": "Αξιοσημείωτα Χαρακτηριστικά",
   "songAnalyzer.confidenceNotes": "Confidence / Uncertainty Notes",
   "songAnalyzer.saveTitle": "Αποθήκευση Ανάλυσης",
-  "songAnalyzer.saveHelp": "Αποθήκευσε standalone ή σύνδεσε προαιρετικά την ανάλυση με Project. Το source audio δεν αποθηκεύεται ποτέ.",
+  "songAnalyzer.saveHelp":
+    "Αποθήκευσε standalone ή σύνδεσε προαιρετικά την ανάλυση με Project. Το source audio δεν αποθηκεύεται ποτέ.",
   "songAnalyzer.analysisName": "Όνομα Ανάλυσης",
   "songAnalyzer.analysisNamePlaceholder": "Ανάλυση Τραγουδιού",
   "songAnalyzer.project": "Project",
@@ -53,7 +58,8 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.saved": "Αποθηκεύτηκε",
   "songAnalyzer.save": "Αποθήκευση Ανάλυσης",
   "songAnalyzer.adminRequired": "Απαιτείται πρόσβαση Admin",
-  "songAnalyzer.adminRequiredBody": "Το AI Song Analyzer είναι προς το παρόν διαθέσιμο μόνο σε administrators και προστατεύεται server-side.",
+  "songAnalyzer.adminRequiredBody":
+    "Το AI Song Analyzer είναι προς το παρόν διαθέσιμο μόνο σε administrators και προστατεύεται server-side.",
   "songAnalyzer.signIn": "Συνδέσου για να συνεχίσεις.",
   "songAnalyzer.signInButton": "Σύνδεση",
   "songAnalyzer.loading": "Φόρτωση…",
@@ -61,7 +67,8 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.fileTooLarge": "Ο Analyzer δέχεται αρχεία ήχου έως 15 MB.",
   "songAnalyzer.analysisFailed": "Η ανάλυση του τραγουδιού απέτυχε.",
   "songAnalyzer.saveFailed": "Δεν ήταν δυνατή η αποθήκευση της ανάλυσης.",
-  "songAnalyzer.sessionPersistFailed": "Το audio είναι έτοιμο για ανάλυση, αλλά ο browser δεν μπόρεσε να το διατηρήσει μετά από refresh.",
+  "songAnalyzer.sessionPersistFailed":
+    "Το audio είναι έτοιμο για ανάλυση, αλλά ο browser δεν μπόρεσε να το διατηρήσει μετά από refresh.",
   "songAnalyzer.bpmUncertain": "Αβέβαιο",
   "library.promptViewAll": "Όλα τα Prompts",
   "library.promptViewProjects": "Projects",

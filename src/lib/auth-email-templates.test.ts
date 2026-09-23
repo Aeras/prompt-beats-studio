@@ -29,7 +29,13 @@ describe("Supabase Auth branded email templates", () => {
   });
 
   test("link-based auth templates preserve Supabase confirmation URLs", async () => {
-    for (const name of ["confirmation.html", "recovery.html", "magic-link.html", "invite.html", "email-change.html"]) {
+    for (const name of [
+      "confirmation.html",
+      "recovery.html",
+      "magic-link.html",
+      "invite.html",
+      "email-change.html",
+    ]) {
       const html = await source(`supabase/email-templates/${name}`);
       expect(html).toContain("{{ .ConfirmationURL }}");
     }

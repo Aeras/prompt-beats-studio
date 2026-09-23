@@ -97,7 +97,9 @@ function validateMethod(input: z.infer<typeof methodInputSchema>) {
       throw new Error("Custom donation methods require a provider/name.");
     }
     if (looksLikeIban(value) && !input.privacyAcknowledged) {
-      throw new Error("Confirm that you understand an IBAN entered here may be displayed publicly.");
+      throw new Error(
+        "Confirm that you understand an IBAN entered here may be displayed publicly.",
+      );
     }
     return;
   }
@@ -156,8 +158,7 @@ async function readUserDonationState(supabaseAdmin: any, userId: string) {
   const adminOverride = settings?.admin_override ?? "inherit";
   const userEnabled = settings?.user_enabled ?? false;
   const effectiveAccess =
-    adminOverride === "enabled" ||
-    (adminOverride === "inherit" && globalEnabled);
+    adminOverride === "enabled" || (adminOverride === "inherit" && globalEnabled);
 
   return { globalEnabled, adminOverride, userEnabled, effectiveAccess };
 }
@@ -169,15 +170,17 @@ async function readMethods(supabaseAdmin: any, userId: string): Promise<Donation
     .eq("user_id", userId)
     .order("sort_order", { ascending: true });
   if (error) throw new Error("Could not read donation methods.");
-  return ((data ?? []) as unknown as Array<{
-    id: string;
-    provider: DonationProvider;
-    custom_label: string | null;
-    value: string;
-    is_enabled: boolean;
-    sort_order: number;
-    privacy_acknowledged: boolean;
-  }>).map((row) => ({
+  return (
+    (data ?? []) as unknown as Array<{
+      id: string;
+      provider: DonationProvider;
+      custom_label: string | null;
+      value: string;
+      is_enabled: boolean;
+      sort_order: number;
+      privacy_acknowledged: boolean;
+    }>
+  ).map((row) => ({
     id: row.id,
     provider: row.provider,
     customLabel: row.custom_label,
@@ -205,11 +208,13 @@ export const saveMyDonationSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const state = await readUserDonationState(supabaseAdmin, context.userId);
-    if (!state.effectiveAccess) throw new Error("Creator donations are not enabled for this account.");
+    if (!state.effectiveAccess)
+      throw new Error("Creator donations are not enabled for this account.");
 
     const sortOrders = new Set<number>();
     for (const method of data.methods) {
-      if (sortOrders.has(method.sortOrder)) throw new Error("Donation method order must be unique.");
+      if (sortOrders.has(method.sortOrder))
+        throw new Error("Donation method order must be unique.");
       sortOrders.add(method.sortOrder);
       validateMethod(method);
     }
@@ -220,11 +225,14 @@ export const saveMyDonationSettings = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { error: settingsError } = await supabaseAdmin
       .from("user_donation_settings" as never)
-      .upsert({
-        user_id: context.userId,
-        user_enabled: data.userEnabled,
-        updated_at: now,
-      } as never, { onConflict: "user_id" });
+      .upsert(
+        {
+          user_id: context.userId,
+          user_enabled: data.userEnabled,
+          updated_at: now,
+        } as never,
+        { onConflict: "user_id" },
+      );
     if (settingsError) throw new Error("Could not save donation preferences.");
 
     if (data.methods.length > 0) {
@@ -267,7 +275,11 @@ export const saveMyDonationSettings = createServerFn({ method: "POST" })
       if (deleteError) throw new Error("Could not remove donation methods.");
     }
 
-    return { ok: true, ...(await readUserDonationState(supabaseAdmin, context.userId)), methods: await readMethods(supabaseAdmin, context.userId) };
+    return {
+      ok: true,
+      ...(await readUserDonationState(supabaseAdmin, context.userId)),
+      methods: await readMethods(supabaseAdmin, context.userId),
+    };
   });
 
 export const getPublicDonationMethods = createServerFn({ method: "GET" })
@@ -277,7 +289,9 @@ export const getPublicDonationMethods = createServerFn({ method: "GET" })
     const state = await readUserDonationState(supabaseAdmin, data.userId);
     if (!state.effectiveAccess || !state.userEnabled) return { methods: [] as DonationMethod[] };
 
-    const methods = (await readMethods(supabaseAdmin, data.userId)).filter((method) => method.isEnabled);
+    const methods = (await readMethods(supabaseAdmin, data.userId)).filter(
+      (method) => method.isEnabled,
+    );
     return { methods };
   });
 
@@ -312,10 +326,14 @@ export const getAdminUserDonationAccess = createServerFn({ method: "POST" })
 
 export const setAdminUserDonationAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    userId: z.string().uuid(),
-    override: overrideSchema,
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        override: overrideSchema,
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_set_creator_donation_access", {

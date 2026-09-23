@@ -43,13 +43,20 @@ async function assertOwnedProjectVersion(
 export const listProjectVersionLinkedTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      versionId: z.string().uuid(),
-    }).parse(input),
+    z
+      .object({
+        projectId: z.string().uuid(),
+        versionId: z.string().uuid(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await assertOwnedProjectVersion(context.supabase, context.userId, data.projectId, data.versionId);
+    await assertOwnedProjectVersion(
+      context.supabase,
+      context.userId,
+      data.projectId,
+      data.versionId,
+    );
 
     const { data: links, error: linksError } = await (context.supabase as any)
       .from("project_version_tracks")
@@ -61,13 +68,19 @@ export const listProjectVersionLinkedTracks = createServerFn({ method: "POST" })
       .order("id", { ascending: true });
     if (linksError) throw new Error(linksError.message);
 
-    const rows = (links ?? []) as Array<{ track_id: string; is_primary: boolean; created_at: string }>;
+    const rows = (links ?? []) as Array<{
+      track_id: string;
+      is_primary: boolean;
+      created_at: string;
+    }>;
     if (rows.length === 0) return { tracks: [] };
 
     const ids = rows.map((row) => row.track_id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tracks, error: tracksError } = await (supabaseAdmin.from("tracks") as any)
-      .select("id, user_id, title, audio_url, audio_type, source_type, art_url, cover_url, duration_seconds, is_published, moderation_status, created_at")
+      .select(
+        "id, user_id, title, audio_url, audio_type, source_type, art_url, cover_url, duration_seconds, is_published, moderation_status, created_at",
+      )
       .eq("user_id", context.userId)
       .in("id", ids);
     if (tracksError) throw new Error(tracksError.message);
@@ -76,11 +89,11 @@ export const listProjectVersionLinkedTracks = createServerFn({ method: "POST" })
     const result = rows.map((link) => {
       const track = byId.get(link.track_id);
       const available = Boolean(
-        track
-        && track.user_id === context.userId
-        && track.source_type === "upload"
-        && track.moderation_status === "active"
-        && track.audio_url,
+        track &&
+        track.user_id === context.userId &&
+        track.source_type === "upload" &&
+        track.moderation_status === "active" &&
+        track.audio_url,
       );
       return {
         relation_created_at: link.created_at,
@@ -107,14 +120,21 @@ export const listProjectVersionLinkedTracks = createServerFn({ method: "POST" })
 export const listLinkableProjectTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      versionId: z.string().uuid(),
-      search: z.string().trim().max(120).optional().default(""),
-    }).parse(input),
+    z
+      .object({
+        projectId: z.string().uuid(),
+        versionId: z.string().uuid(),
+        search: z.string().trim().max(120).optional().default(""),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await assertOwnedProjectVersion(context.supabase, context.userId, data.projectId, data.versionId);
+    await assertOwnedProjectVersion(
+      context.supabase,
+      context.userId,
+      data.projectId,
+      data.versionId,
+    );
 
     const { data: links, error: linksError } = await (context.supabase as any)
       .from("project_version_tracks")
@@ -153,18 +173,23 @@ export const listLinkableProjectTracks = createServerFn({ method: "POST" })
 export const linkProjectVersionTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      versionId: z.string().uuid(),
-      trackIds: idsSchema,
-    }).parse(input),
+    z
+      .object({
+        projectId: z.string().uuid(),
+        versionId: z.string().uuid(),
+        trackIds: idsSchema,
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await (context.supabase.rpc as any)("link_project_version_tracks", {
-      _project_id: data.projectId,
-      _version_prompt_id: data.versionId,
-      _track_ids: data.trackIds,
-    });
+    const { data: result, error } = await (context.supabase.rpc as any)(
+      "link_project_version_tracks",
+      {
+        _project_id: data.projectId,
+        _version_prompt_id: data.versionId,
+        _track_ids: data.trackIds,
+      },
+    );
     if (error) throw new Error(error.message);
     return result as { ok: boolean; linked_count: number };
   });
@@ -172,18 +197,23 @@ export const linkProjectVersionTracks = createServerFn({ method: "POST" })
 export const unlinkProjectVersionTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      versionId: z.string().uuid(),
-      trackId: z.string().uuid(),
-    }).parse(input),
+    z
+      .object({
+        projectId: z.string().uuid(),
+        versionId: z.string().uuid(),
+        trackId: z.string().uuid(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await (context.supabase.rpc as any)("unlink_project_version_track", {
-      _project_id: data.projectId,
-      _version_prompt_id: data.versionId,
-      _track_id: data.trackId,
-    });
+    const { data: result, error } = await (context.supabase.rpc as any)(
+      "unlink_project_version_track",
+      {
+        _project_id: data.projectId,
+        _version_prompt_id: data.versionId,
+        _track_id: data.trackId,
+      },
+    );
     if (error) throw new Error(error.message);
     return result as { ok: boolean };
   });
@@ -191,18 +221,23 @@ export const unlinkProjectVersionTrack = createServerFn({ method: "POST" })
 export const setPrimaryProjectVersionTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      versionId: z.string().uuid(),
-      trackId: z.string().uuid().nullable(),
-    }).parse(input),
+    z
+      .object({
+        projectId: z.string().uuid(),
+        versionId: z.string().uuid(),
+        trackId: z.string().uuid().nullable(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await (context.supabase.rpc as any)("set_primary_project_version_track", {
-      _project_id: data.projectId,
-      _version_prompt_id: data.versionId,
-      _track_id: data.trackId,
-    });
+    const { data: result, error } = await (context.supabase.rpc as any)(
+      "set_primary_project_version_track",
+      {
+        _project_id: data.projectId,
+        _version_prompt_id: data.versionId,
+        _track_id: data.trackId,
+      },
+    );
     if (error) throw new Error(error.message);
     return result as { ok: boolean; primary_track_id: string | null };
   });

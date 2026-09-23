@@ -20,10 +20,7 @@ const defaultSectionIdFactory: SectionIdFactory = () => {
   return `section-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 };
 
-function nextUniqueSectionId(
-  usedIds: Set<string>,
-  idFactory: SectionIdFactory,
-): string {
+function nextUniqueSectionId(usedIds: Set<string>, idFactory: SectionIdFactory): string {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const candidate = idFactory().trim();
     if (candidate && !usedIds.has(candidate)) {
@@ -58,9 +55,7 @@ export function normalizeSongArrangement(
   const usedIds = new Set<string>();
   const normalized = structure.slice(0, 40).map((sectionType, structureIndex) => {
     const stored = storedBlueprint.find(
-      (item) =>
-        item.structureIndex === structureIndex &&
-        item.sectionType === sectionType,
+      (item) => item.structureIndex === structureIndex && item.sectionType === sectionType,
     );
     const storedId = stored?.sectionId?.trim();
     let sectionId: string;
@@ -84,15 +79,11 @@ export function normalizeSongArrangement(
   return recalculateArrangementMetadata(normalized);
 }
 
-export function arrangementToSongStructure(
-  sections: ArrangementSection[],
-): string[] {
+export function arrangementToSongStructure(sections: ArrangementSection[]): string[] {
   return sections.map((section) => section.sectionType);
 }
 
-export function arrangementToSongBlueprint(
-  sections: ArrangementSection[],
-): SongBlueprintSection[] {
+export function arrangementToSongBlueprint(sections: ArrangementSection[]): SongBlueprintSection[] {
   return recalculateArrangementMetadata(sections).map((section) => ({
     sectionId: section.sectionId,
     structureIndex: section.structureIndex,
@@ -194,9 +185,7 @@ export function updateArrangementEnergy(
   energy: SongEnergyLevel | null,
 ): ArrangementSection[] {
   return sections.map((section) =>
-    section.sectionId === sectionId
-      ? { ...section, energy }
-      : section,
+    section.sectionId === sectionId ? { ...section, energy } : section,
   );
 }
 
@@ -216,8 +205,6 @@ export function applyEnergyToAllRegularChoruses(
   energy: SongEnergyLevel | null,
 ): ArrangementSection[] {
   return sections.map((section) =>
-    section.sectionType === "Chorus"
-      ? { ...section, energy }
-      : section,
+    section.sectionType === "Chorus" ? { ...section, energy } : section,
   );
 }

@@ -66,8 +66,6 @@ export function diffGeneratorSnapshots(
   if (!base) return [];
   const keys = Object.keys(desired) as Array<keyof GeneratorInputSnapshot>;
   return keys.filter(
-    (key) =>
-      key !== "generatorMode" &&
-      JSON.stringify(base[key]) !== JSON.stringify(desired[key]),
+    (key) => key !== "generatorMode" && JSON.stringify(base[key]) !== JSON.stringify(desired[key]),
   );
 }

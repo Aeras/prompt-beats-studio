@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { PRIVATE_REVIEW_SOURCE_TYPES, privateReviewExpiryDate, privateReviewUrl } from "@/lib/private-review.shared";
+import {
+  PRIVATE_REVIEW_SOURCE_TYPES,
+  privateReviewExpiryDate,
+  privateReviewUrl,
+} from "@/lib/private-review.shared";
 
 const source = (path: string) => Bun.file(path).text();
 const trackSourceMigration = "supabase/migrations/20260923073000_private_review_track_source.sql";
@@ -34,7 +38,9 @@ describe("Private Review Links Phase 1", () => {
     const sql = await source("supabase/migrations/20260923054500_private_review_links_phase1.sql");
     expect(sql).toContain("comment_visibility IN ('shared','private')");
     expect(sql).not.toContain("update_private_review_visibility");
-    expect(sql).toContain("v_session.comment_visibility = 'shared' OR c.thread_reviewer_id = v_reviewer.id");
+    expect(sql).toContain(
+      "v_session.comment_visibility = 'shared' OR c.thread_reviewer_id = v_reviewer.id",
+    );
   });
 
   test("private mode prevents a reviewer from entering another reviewer's thread", async () => {
@@ -72,7 +78,9 @@ describe("Private Review Links Phase 1", () => {
     expect(route).toContain('createFileRoute("/review/$token")');
     expect(server).toContain("getPrivateReviewLinkInfo");
     expect(server).toContain("joinPrivateReviewSession");
-    expect(server).not.toContain("export const joinPrivateReviewSession = createServerFn({ method: \"POST\" })\n  .middleware([requireSupabaseAuth])");
+    expect(server).not.toContain(
+      'export const joinPrivateReviewSession = createServerFn({ method: "POST" })\n  .middleware([requireSupabaseAuth])',
+    );
   });
 
   test("feature is independently controlled and Project Version History exposes the entry point", async () => {

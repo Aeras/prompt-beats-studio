@@ -44,13 +44,16 @@ export async function verifyStripeSignature(
   const signatures = header
     .split(",")
     .map((part) => part.trim().split("=", 2))
-    .flatMap(([key, value]) => key === "v1" && value ? [value] : []);
+    .flatMap(([key, value]) => (key === "v1" && value ? [value] : []));
   if (!timestamp || signatures.length === 0 || !/^\d+$/.test(timestamp)) return false;
 
   // Stripe recommends rejecting old signed payloads so a captured valid event
   // cannot be replayed indefinitely. Five minutes allows normal delivery skew.
   const timestampSeconds = Number(timestamp);
-  if (!Number.isSafeInteger(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 300) {
+  if (
+    !Number.isSafeInteger(timestampSeconds) ||
+    Math.abs(Date.now() / 1000 - timestampSeconds) > 300
+  ) {
     return false;
   }
 
@@ -71,7 +74,8 @@ export async function verifyStripeSignature(
   return signatures.some((signature) => {
     if (expected.length !== signature.length) return false;
     let diff = 0;
-    for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+    for (let i = 0; i < expected.length; i++)
+      diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
     return diff === 0;
   });
 }

@@ -10,12 +10,26 @@ export function PromptBeatsFolderIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="pb-folder-shell" x1="9" y1="10" x2="88" y2="71" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="pb-folder-shell"
+          x1="9"
+          y1="10"
+          x2="88"
+          y2="71"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#16D9FF" />
           <stop offset="0.48" stopColor="#2576FF" />
           <stop offset="1" stopColor="#D93BFF" />
         </linearGradient>
-        <linearGradient id="pb-folder-fill" x1="18" y1="19" x2="78" y2="70" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="pb-folder-fill"
+          x1="18"
+          y1="19"
+          x2="78"
+          y2="70"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#0CB7E8" stopOpacity="0.46" />
           <stop offset="0.5" stopColor="#2757D8" stopOpacity="0.55" />
           <stop offset="1" stopColor="#9D2BEF" stopOpacity="0.45" />
@@ -52,7 +66,12 @@ export function PromptBeatsFolderIcon({ className }: { className?: string }) {
         opacity=".55"
       />
 
-      <g stroke="url(#pb-folder-shell)" strokeWidth="3.2" strokeLinecap="round" filter="url(#pb-folder-glow)">
+      <g
+        stroke="url(#pb-folder-shell)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        filter="url(#pb-folder-glow)"
+      >
         <path d="M28 51v4" />
         <path d="M34 47v12" />
         <path d="M40 43v20" />

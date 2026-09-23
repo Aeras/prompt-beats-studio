@@ -7,18 +7,26 @@ async function source(path: string) {
 
 describe("linked audio results per Project version", () => {
   test("relation schema references existing Project, version and Track records without copying audio", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.project_version_tracks");
-    expect(sql).toContain("project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE");
-    expect(sql).toContain("version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE");
+    expect(sql).toContain(
+      "project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE",
+    );
+    expect(sql).toContain(
+      "version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE",
+    );
     expect(sql).toContain("track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE");
     expect(sql).not.toContain("audio_url text");
     expect(sql).not.toContain("audio_key text");
   });
 
   test("same Track cannot be linked twice to the same version and a version has at most one Primary Result", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("UNIQUE (version_prompt_id, track_id)");
     expect(sql).toContain("uq_project_version_tracks_one_primary");
@@ -26,7 +34,9 @@ describe("linked audio results per Project version", () => {
   });
 
   test("relation validation binds user, Project, version and uploaded Track ownership server-side", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("validate_project_version_track_relation");
     expect(sql).toContain("sp.project_id = NEW.project_id");
@@ -36,16 +46,24 @@ describe("linked audio results per Project version", () => {
   });
 
   test("authenticated users may only read their own relation rows and cannot mutate the table directly", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("ALTER TABLE public.project_version_tracks ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("auth.uid() = user_id");
-    expect(sql).toContain("REVOKE ALL ON TABLE public.project_version_tracks FROM PUBLIC, anon, authenticated");
-    expect(sql).toContain("GRANT SELECT ON TABLE public.project_version_tracks TO authenticated, service_role");
+    expect(sql).toContain(
+      "REVOKE ALL ON TABLE public.project_version_tracks FROM PUBLIC, anon, authenticated",
+    );
+    expect(sql).toContain(
+      "GRANT SELECT ON TABLE public.project_version_tracks TO authenticated, service_role",
+    );
   });
 
   test("Link accepts multiple owned active uploaded tracks and rejects existing links", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("link_project_version_tracks");
     expect(sql).toContain("t.source_type = 'upload'");
@@ -55,15 +73,22 @@ describe("linked audio results per Project version", () => {
   });
 
   test("Unlink deletes only the relation", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
-    const block = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.unlink_project_version_track"), sql.indexOf("CREATE OR REPLACE FUNCTION public.set_primary_project_version_track"));
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
+    const block = sql.slice(
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.unlink_project_version_track"),
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.set_primary_project_version_track"),
+    );
 
     expect(block).toContain("DELETE FROM public.project_version_tracks");
     expect(block).not.toContain("DELETE FROM public.tracks");
   });
 
   test("Set Primary is serialized and clears the previous Primary before setting the new one", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("pg_advisory_xact_lock");
     expect(sql).toContain("SET is_primary = false");
@@ -71,7 +96,9 @@ describe("linked audio results per Project version", () => {
   });
 
   test("Project duplication copies references to the same Track IDs and preserves Primary state", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("copy_project_version_track_links_on_duplicate");
     expect(sql).toContain("NEW.duplicated_from_prompt_id");
@@ -95,7 +122,9 @@ describe("linked audio results per Project version", () => {
     const ui = await source("src/components/promptbeats/ProjectVersionLinkedTracks.tsx");
 
     expect(server).toContain("is_published");
-    expect(ui).toContain('track.is_published ? (el ? "Δημόσιο" : "Public") : (el ? "Ιδιωτικό" : "Private")');
+    expect(ui).toContain(
+      'track.is_published ? (el ? "Δημόσιο" : "Public") : (el ? "Ιδιωτικό" : "Private")',
+    );
     expect(ui).not.toContain("updateTrack");
   });
 
@@ -124,7 +153,9 @@ describe("linked audio results per Project version", () => {
     expect(ui).toContain("new Set");
     expect(ui).toContain("Search by title");
     expect(ui).toContain("useDeferredValue");
-    expect(ui).toContain('queryKey: ["project-version-linkable-tracks", projectId, versionId, deferredQuery]');
+    expect(ui).toContain(
+      'queryKey: ["project-version-linkable-tracks", projectId, versionId, deferredQuery]',
+    );
     expect(ui).toContain("search: deferredQuery");
     expect(ui).toContain("linkProjectVersionTracks");
     expect(ui).not.toContain('type="file"');
@@ -200,28 +231,40 @@ describe("linked audio results per Project version", () => {
   });
 
   test("same Track may be referenced by different versions because uniqueness is version-scoped", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("UNIQUE (version_prompt_id, track_id)");
     expect(sql).not.toContain("UNIQUE (track_id)");
   });
 
   test("Project delete removes only relation rows through cascade and never deletes Tracks", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
-    expect(sql).toContain("project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE");
+    expect(sql).toContain(
+      "project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE",
+    );
     expect(sql).not.toContain("DELETE FROM public.tracks WHERE project_id");
   });
 
   test("Version delete removes its relation rows through cascade and leaves Tracks untouched", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
-    expect(sql).toContain("version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE");
+    expect(sql).toContain(
+      "version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE",
+    );
     expect(sql).not.toContain("DELETE FROM public.tracks WHERE version_prompt_id");
   });
 
   test("Track delete safely removes relation rows through cascade", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE");
   });
@@ -236,7 +279,9 @@ describe("linked audio results per Project version", () => {
 
   test("selector excludes external Suno, Udio and legacy-link Tracks server-side", async () => {
     const server = await source("src/lib/project-version-tracks.functions.ts");
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(server).toContain('.eq("source_type", "upload")');
     expect(sql).toContain("t.source_type = 'upload'");
@@ -268,13 +313,17 @@ describe("linked audio results per Project version", () => {
   });
 
   test("RLS auth lookup uses init-plan safe select wrapper", async () => {
-    const sql = await source("supabase/migrations/20260923011000_project_version_tracks_rls_perf.sql");
+    const sql = await source(
+      "supabase/migrations/20260923011000_project_version_tracks_rls_perf.sql",
+    );
 
     expect(sql).toContain("(select auth.uid()) = user_id");
   });
 
   test("existing Projects remain valid because linked audio is represented only by optional relation rows", async () => {
-    const sql = await source("supabase/migrations/20260923003000_project_version_linked_tracks.sql");
+    const sql = await source(
+      "supabase/migrations/20260923003000_project_version_linked_tracks.sql",
+    );
 
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.project_version_tracks");
     expect(sql).not.toContain("ALTER TABLE public.saved_prompts\n  ALTER COLUMN");

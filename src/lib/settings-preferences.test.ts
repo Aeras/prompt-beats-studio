@@ -26,16 +26,16 @@ describe("Settings and track source preferences", () => {
     expect(consent).toContain("setExternalMediaConsent(enabled: boolean)");
 
     const embed = await source("src/components/promptbeats/ExternalTrackEmbed.tsx");
-    expect(embed).toContain('useExternalMediaConsent');
+    expect(embed).toContain("useExternalMediaConsent");
     expect(embed).toContain('"External player blocked"');
     expect(embed).toContain('"Εξωτερικό player μπλοκαρισμένο"');
   });
 
   test("Track source preference is account-persistent while page filters remain local state", async () => {
     const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
-    expect(filter).toContain('track_source_preference');
-    expect(filter).toContain('supabase.auth.updateUser');
-    expect(filter).toContain('filterByTrackSource');
+    expect(filter).toContain("track_source_preference");
+    expect(filter).toContain("supabase.auth.updateUser");
+    expect(filter).toContain("filterByTrackSource");
 
     for (const path of [
       "src/routes/index.tsx",

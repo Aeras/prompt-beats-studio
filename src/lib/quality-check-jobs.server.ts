@@ -5,10 +5,7 @@
  * database-owned runner used for durable song generation, so mobile
  * backgrounding, refreshes and lost browser connections cannot cancel a QC.
  */
-import {
-  flushDurableQualityUsage,
-  runDurableQualityCheck,
-} from "@/lib/quality-check-core.server";
+import { flushDurableQualityUsage, runDurableQualityCheck } from "@/lib/quality-check-core.server";
 import { durableQualityCheckInput } from "@/lib/quality-check-job-schema";
 
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
@@ -26,7 +23,8 @@ async function admin(): Promise<AdminClient> {
 
 function safeFailureMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "";
-  if (raw.includes("not allowed to use AI services")) return "This account is not allowed to use AI services.";
+  if (raw.includes("not allowed to use AI services"))
+    return "This account is not allowed to use AI services.";
   if (raw.includes("account is no longer available")) return "The account is no longer available.";
   return "Quality check unavailable. Please try again.";
 }
@@ -148,11 +146,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
 
     if (!out.quality) {
       try {
-        await flushDurableQualityUsage(
-          action.user_id,
-          payload.generationId ?? null,
-          out.records,
-        );
+        await flushDurableQualityUsage(action.user_id, payload.generationId ?? null, out.records);
       } catch (usageError) {
         console.error("[quality-job] usage logging failed", actionId, usageError);
       }

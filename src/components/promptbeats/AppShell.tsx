@@ -29,7 +29,10 @@ const MOBILE_TABS = [
   { id: "trending", labelKey: "nav.trending" },
   { id: "studio", labelKey: "nav.studioShort" },
   { id: "library", labelKey: "nav.libraryShort" },
-] as const satisfies ReadonlyArray<{ id: Exclude<NavId, "musicLab" | "songAnalyzer" | "lyricsReview" | "management">; labelKey: TranslationKey }>;
+] as const satisfies ReadonlyArray<{
+  id: Exclude<NavId, "musicLab" | "songAnalyzer" | "lyricsReview" | "management">;
+  labelKey: TranslationKey;
+}>;
 
 const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
 
@@ -52,7 +55,14 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const active = useActiveNav();
   const { t } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
-  const { isLocked, isInvalid, reason, loading: lockLoading, error: lockError, authenticated } = useAccountLock();
+  const {
+    isLocked,
+    isInvalid,
+    reason,
+    loading: lockLoading,
+    error: lockError,
+    authenticated,
+  } = useAccountLock();
 
   useEffect(() => {
     if (!isInvalid) return;
@@ -79,7 +89,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const toggleDesktopSidebar = () => {
     setDesktopSidebarOpen((open) => {
       const next = !open;
-      if (typeof window !== "undefined") window.localStorage.setItem(DESKTOP_SIDEBAR_STORAGE_KEY, String(next));
+      if (typeof window !== "undefined")
+        window.localStorage.setItem(DESKTOP_SIDEBAR_STORAGE_KEY, String(next));
       return next;
     });
   };
@@ -130,7 +141,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         </button>
       </div>
 
-      <div className={cn("fixed inset-0 z-50 lg:hidden", drawer ? "pointer-events-auto" : "pointer-events-none")}>
+      <div
+        className={cn(
+          "fixed inset-0 z-50 lg:hidden",
+          drawer ? "pointer-events-auto" : "pointer-events-none",
+        )}
+      >
         <div
           onClick={() => setDrawer(false)}
           className={cn(
@@ -173,7 +189,14 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className={cn("min-w-0 flex-1", authenticated ? "pr-40 md:pr-44" : "pr-14 md:pr-16")}>{header}</div>
+              <div
+                className={cn(
+                  "min-w-0 flex-1",
+                  authenticated ? "pr-40 md:pr-44" : "pr-14 md:pr-16",
+                )}
+              >
+                {header}
+              </div>
             </div>
             <div className="absolute right-4 top-3 z-10 flex items-center gap-2 md:right-8 md:top-4">
               {authenticated && <ModerationCaseCenter />}
@@ -219,25 +242,35 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         }
       `}</style>
 
-      <nav data-pb-mobile-nav="true" className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden">
+      <nav
+        data-pb-mobile-nav="true"
+        className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden"
+      >
         <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
-          {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map((tab) => {
-            const item = NAV.find((n) => n.id === tab.id)!;
-            const isActive = active === tab.id;
-            return (
-              <Link
-                key={tab.id}
-                to={NAV_PATHS[tab.id]}
-                className={cn(
-                  "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px]",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <item.icon className={cn("h-[18px] w-[18px]", isActive && "drop-shadow-[0_0_8px_var(--neon)]")} />
-                {t(tab.labelKey)}
-              </Link>
-            );
-          })}
+          {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map(
+            (tab) => {
+              const item = NAV.find((n) => n.id === tab.id)!;
+              const isActive = active === tab.id;
+              return (
+                <Link
+                  key={tab.id}
+                  to={NAV_PATHS[tab.id]}
+                  className={cn(
+                    "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px]",
+                    isActive ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-[18px] w-[18px]",
+                      isActive && "drop-shadow-[0_0_8px_var(--neon)]",
+                    )}
+                  />
+                  {t(tab.labelKey)}
+                </Link>
+              );
+            },
+          )}
         </div>
       </nav>
 
@@ -262,14 +295,21 @@ function AccountLockedScreen({ reason }: { reason: string | null }) {
         <p className="mt-3 text-sm text-muted-foreground">{t("shell.accountLockedBody")}</p>
         {reason && (
           <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground">
-            <span className="text-muted-foreground">{t("shell.reason")} </span>{reason}
+            <span className="text-muted-foreground">{t("shell.reason")} </span>
+            {reason}
           </p>
         )}
         <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-          {t("shell.accountHelp")}<br />
-          <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">support@promptbeats.app</a>
+          {t("shell.accountHelp")}
+          <br />
+          <a href="mailto:support@promptbeats.app" className="text-primary hover:underline">
+            support@promptbeats.app
+          </a>
         </p>
-        <button onClick={signOut} className="mt-7 inline-flex items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon">
+        <button
+          onClick={signOut}
+          className="mt-7 inline-flex items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon"
+        >
           {t("shell.logOut")}
         </button>
       </div>
@@ -279,15 +319,39 @@ function AccountLockedScreen({ reason }: { reason: string | null }) {
 
 function AccountStatusLoading() {
   const { t } = useI18n();
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><p className="text-sm text-muted-foreground">{t("shell.checkingAccount")}</p></main>;
+  return (
+    <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4">
+      <p className="text-sm text-muted-foreground">{t("shell.checkingAccount")}</p>
+    </main>
+  );
 }
 
 function AccountStatusUnavailable() {
   const { t } = useI18n();
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">{t("shell.accountUnavailable")}</h1><p className="mt-3 text-sm text-muted-foreground">{t("shell.accountUnavailableBody")}</p><button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground">{t("common.retry")}</button></div></main>;
+  return (
+    <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4">
+      <div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center">
+        <h1 className="font-display text-2xl font-bold">{t("shell.accountUnavailable")}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">{t("shell.accountUnavailableBody")}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-6 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground"
+        >
+          {t("common.retry")}
+        </button>
+      </div>
+    </main>
+  );
 }
 
 function AccountSessionExpired() {
   const { t } = useI18n();
-  return <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4"><div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center"><h1 className="font-display text-2xl font-bold">{t("shell.sessionEnded")}</h1><p className="mt-3 text-sm text-muted-foreground">{t("shell.sessionEndedBody")}</p></div></main>;
+  return (
+    <main className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4">
+      <div className="glass-strong w-full max-w-md rounded-3xl p-7 text-center">
+        <h1 className="font-display text-2xl font-bold">{t("shell.sessionEnded")}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">{t("shell.sessionEndedBody")}</p>
+      </div>
+    </main>
+  );
 }

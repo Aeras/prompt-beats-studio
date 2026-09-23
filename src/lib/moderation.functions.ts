@@ -11,8 +11,9 @@ export const ACCOUNT_BLOCK_REASONS = [
   { code: "security_concern", label: "Security concern" },
   { code: "other", label: "Other" },
 ] as const;
-const accountBlockReasonCode = z.enum(ACCOUNT_BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]]);
-
+const accountBlockReasonCode = z.enum(
+  ACCOUNT_BLOCK_REASONS.map((reason) => reason.code) as [string, ...string[]],
+);
 
 export type ModerationRole = "super_admin" | "admin" | "senior_moderator" | "moderator" | "user";
 export type ModerationStatus = "active" | "suspended";
@@ -47,9 +48,15 @@ export const getUserBanStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability" as never, { _capability: "can_block_users" } as never);
+    const { data: allowed, error: capabilityError } = await context.supabase.rpc(
+      "has_moderation_capability" as never,
+      { _capability: "can_block_users" } as never,
+    );
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
-    const { data: targetAllowed, error: targetError } = await context.supabase.rpc("can_moderate_target" as never, { _target_user_id: data.userId } as never);
+    const { data: targetAllowed, error: targetError } = await context.supabase.rpc(
+      "can_moderate_target" as never,
+      { _target_user_id: data.userId } as never,
+    );
     if (targetError || targetAllowed !== true) throw new Error("Not allowed");
     const { data: priv } = await context.supabase
       .from("profile_private")
@@ -63,23 +70,31 @@ export const getUserBanStatus = createServerFn({ method: "GET" })
 export const setUserBanned = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      userId: z.string().uuid(),
-      banned: z.boolean(),
-      reasonCode: accountBlockReasonCode.nullish(),
-      reasonText: z.string().trim().max(500).nullish(),
-    }).parse(input),
+    z
+      .object({
+        userId: z.string().uuid(),
+        banned: z.boolean(),
+        reasonCode: accountBlockReasonCode.nullish(),
+        reasonText: z.string().trim().max(500).nullish(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability" as never, { _capability: data.banned ? "can_block_users" : "can_unblock_users" } as never);
+    const { data: allowed, error: capabilityError } = await context.supabase.rpc(
+      "has_moderation_capability" as never,
+      { _capability: data.banned ? "can_block_users" : "can_unblock_users" } as never,
+    );
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
 
-    const { error } = await context.supabase.rpc("admin_set_user_banned" as never, {
-      _target_user_id: data.userId,
-      _banned: data.banned,
-      _reason_code: data.banned ? data.reasonCode : null,
-      _reason_text: data.banned ? data.reasonText : null,
-    } as never);
+    const { error } = await context.supabase.rpc(
+      "admin_set_user_banned" as never,
+      {
+        _target_user_id: data.userId,
+        _banned: data.banned,
+        _reason_code: data.banned ? data.reasonCode : null,
+        _reason_text: data.banned ? data.reasonText : null,
+      } as never,
+    );
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.banned };
   });

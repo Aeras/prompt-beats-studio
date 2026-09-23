@@ -16,7 +16,9 @@ function broadcast(enabled: boolean) {
   externalMediaConsent = enabled;
   consentListeners.forEach((listener) => listener(enabled));
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent<boolean>(EXTERNAL_MEDIA_CONSENT_EVENT, { detail: enabled }));
+    window.dispatchEvent(
+      new CustomEvent<boolean>(EXTERNAL_MEDIA_CONSENT_EVENT, { detail: enabled }),
+    );
   }
 }
 

@@ -24,14 +24,10 @@ export const Route = createFileRoute("/api/public/jobs/run")({
           : await authenticateCronRequest(request);
         if (denied) return denied;
 
-        const { executeGenerationJob, reapStaleJobs, pendingJobIds } = await import(
-          "@/lib/generation-jobs.server"
-        );
-        const {
-          executeQualityCheckJob,
-          reapStaleQualityChecks,
-          recoverableQualityActionIds,
-        } = await import("@/lib/quality-check-jobs.server");
+        const { executeGenerationJob, reapStaleJobs, pendingJobIds } =
+          await import("@/lib/generation-jobs.server");
+        const { executeQualityCheckJob, reapStaleQualityChecks, recoverableQualityActionIds } =
+          await import("@/lib/quality-check-jobs.server");
 
         let jobId: string | null = null;
         let qualityActionId: string | null = null;

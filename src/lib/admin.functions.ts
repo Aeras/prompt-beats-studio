@@ -22,7 +22,9 @@ async function requireAdmin(supabase: any) {
 }
 
 async function requireCapability(supabase: any, capability: string) {
-  const { data, error } = await supabase.rpc("has_moderation_capability", { _capability: capability });
+  const { data, error } = await supabase.rpc("has_moderation_capability", {
+    _capability: capability,
+  });
   if (error || data !== true) throw new Error("Not allowed");
 }
 
@@ -33,7 +35,13 @@ export type AdminOverview = {
   aiRequests: number;
   failedRequests: number;
   estimatedCostUsd: number;
-  recentUsers: { id: string; handle: string; displayName: string | null; createdAt: string; blocked: boolean }[];
+  recentUsers: {
+    id: string;
+    handle: string;
+    displayName: string | null;
+    createdAt: string;
+    blocked: boolean;
+  }[];
 };
 
 export type AdminUser = {
@@ -68,17 +76,24 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 
 export const listAdminUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    search: z.string().trim().max(120).default(""),
-    status: z.enum(["all", "active", "blocked"]).default("all"),
-    page: z.number().int().min(0).default(0),
-    pageSize: z.number().int().min(1).max(50).default(25),
-  }).parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        search: z.string().trim().max(120).default(""),
+        status: z.enum(["all", "active", "blocked"]).default("all"),
+        page: z.number().int().min(0).default(0),
+        pageSize: z.number().int().min(1).max(50).default(25),
+      })
+      .parse(input ?? {}),
+  )
   .handler(async ({ data, context }) => {
     await requireCapability(context.supabase, "can_view_users");
     const search = data.search.replace(/^@+/, "");
     const { data: result, error } = await context.supabase.rpc("admin_list_users", {
-      _search: search, _status: data.status, _limit: data.pageSize, _offset: data.page * data.pageSize,
+      _search: search,
+      _status: data.status,
+      _limit: data.pageSize,
+      _offset: data.page * data.pageSize,
     });
     if (error) throw new Error(error.message);
     return result as unknown as { total: number; users: AdminUser[] };
@@ -99,14 +114,21 @@ export const getAdminUserDetail = createServerFn({ method: "POST" })
 
 export const setAdminUserBanned = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    userId: adminUserId,
-    banned: z.boolean(),
-    reasonCode: blockReasonCode.nullish(),
-    reasonText: z.string().trim().max(500).nullish(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: adminUserId,
+        banned: z.boolean(),
+        reasonCode: blockReasonCode.nullish(),
+        reasonText: z.string().trim().max(500).nullish(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
-    await requireCapability(context.supabase, data.banned ? "can_block_users" : "can_unblock_users");
+    await requireCapability(
+      context.supabase,
+      data.banned ? "can_block_users" : "can_unblock_users",
+    );
     const { error } = await context.supabase.rpc("admin_set_user_banned", {
       _target_user_id: data.userId,
       _banned: data.banned,
@@ -119,11 +141,15 @@ export const setAdminUserBanned = createServerFn({ method: "POST" })
 
 export const setAdminModelAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    userId: adminUserId,
-    mode: accessMode,
-    models: z.array(z.string().trim().min(1).max(240)).max(100).default([]),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: adminUserId,
+        mode: accessMode,
+        models: z.array(z.string().trim().min(1).max(240)).max(100).default([]),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
 
@@ -136,8 +162,18 @@ export const setAdminModelAccess = createServerFn({ method: "POST" })
       if (registryError) throw new Error("Could not verify AI model access.");
 
       const assignable = new Set(
-        ((registryRows ?? []) as unknown as Array<{ provider_model_id: string; status: string; access_policy: string }>)
-          .filter((row) => (row.status === "enabled" || row.status === "testing") && row.access_policy !== "admin_only")
+        (
+          (registryRows ?? []) as unknown as Array<{
+            provider_model_id: string;
+            status: string;
+            access_policy: string;
+          }>
+        )
+          .filter(
+            (row) =>
+              (row.status === "enabled" || row.status === "testing") &&
+              row.access_policy !== "admin_only",
+          )
           .map((row) => row.provider_model_id),
       );
       if (data.models.some((model) => !assignable.has(model))) {
@@ -164,21 +200,43 @@ const deleteInput = z.object({
 
 export const setAdminUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: adminUserId, role: z.enum(["user", "moderator", "senior_moderator", "admin", "super_admin"]) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: adminUserId,
+        role: z.enum(["user", "moderator", "senior_moderator", "admin", "super_admin"]),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
-    const { error } = await context.supabase.rpc("admin_set_user_role", { _target_user_id: data.userId, _role: data.role });
+    const { error } = await context.supabase.rpc("admin_set_user_role", {
+      _target_user_id: data.userId,
+      _role: data.role,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const setModerationStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: adminUserId, status: z.enum(["active", "suspended"]), reasonText: z.string().trim().max(500).nullish() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: adminUserId,
+        status: z.enum(["active", "suspended"]),
+        reasonText: z.string().trim().max(500).nullish(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { data: allowed, error: capabilityError } = await context.supabase.rpc("has_moderation_capability", { _capability: "can_suspend_moderator" });
+    const { data: allowed, error: capabilityError } = await context.supabase.rpc(
+      "has_moderation_capability",
+      { _capability: "can_suspend_moderator" },
+    );
     if (capabilityError || allowed !== true) throw new Error("Not allowed");
-    if (data.status === "suspended" && !data.reasonText?.trim()) throw new Error("A suspension reason is required.");
+    if (data.status === "suspended" && !data.reasonText?.trim())
+      throw new Error("A suspension reason is required.");
     const { error } = await context.supabase.rpc("admin_set_moderation_status", {
       _target_user_id: data.userId,
       _status: data.status,
@@ -219,7 +277,9 @@ async function listOwnedStoragePaths(bucket: string, ownerId: string): Promise<s
       throw new Error(`${bucket} cleanup encountered an invalid nested path`);
     }
     for (let offset = 0; ; offset += 1000) {
-      const { data, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit: 1000, offset });
+      const { data, error } = await supabaseAdmin.storage
+        .from(bucket)
+        .list(prefix, { limit: 1000, offset });
       if (error) throw new Error(`${bucket} cleanup listing failed: ${error.message}`);
       for (const item of data ?? []) {
         const objectPath = `${prefix}/${item.name}`;
@@ -238,7 +298,11 @@ async function listOwnedStoragePaths(bucket: string, ownerId: string): Promise<s
   }
   return paths;
 }
-async function coverIsReferencedByAnotherTrack(supabaseAdmin: any, coverPath: string, ownerId: string): Promise<boolean> {
+async function coverIsReferencedByAnotherTrack(
+  supabaseAdmin: any,
+  coverPath: string,
+  ownerId: string,
+): Promise<boolean> {
   const escapedPath = coverPath.replace(/([\\%_])/g, "\\$1");
   const { data: rawRefs, error: rawError } = await supabaseAdmin
     .from("tracks")
@@ -299,7 +363,10 @@ async function processAccountStorageCleanup(supabaseAdmin: any, ownerId: string)
       if (row.storage_kind === "r2") {
         if (!isSafeOwnedAudioKey(row.object_path, ownerId)) {
           console.error("[admin] refusing unsafe queued account audio cleanup");
-          await supabaseAdmin.from("account_storage_cleanup").update({ status: "complete", last_error: "unsafe path skipped" }).eq("id", row.id);
+          await supabaseAdmin
+            .from("account_storage_cleanup")
+            .update({ status: "complete", last_error: "unsafe path skipped" })
+            .eq("id", row.id);
           continue;
         }
         const { deleteOwnedR2Object } = await import("@/lib/r2.server");
@@ -307,22 +374,35 @@ async function processAccountStorageCleanup(supabaseAdmin: any, ownerId: string)
       } else if (row.bucket === "track-covers") {
         if (!isSafeOwnedCoverPath(row.object_path, ownerId)) {
           console.error("[admin] refusing unsafe queued account cover cleanup");
-          await supabaseAdmin.from("account_storage_cleanup").update({ status: "complete", last_error: "unsafe path skipped" }).eq("id", row.id);
+          await supabaseAdmin
+            .from("account_storage_cleanup")
+            .update({ status: "complete", last_error: "unsafe path skipped" })
+            .eq("id", row.id);
           continue;
         }
         if (await coverIsReferencedByAnotherTrack(supabaseAdmin, row.object_path, ownerId)) {
-          await supabaseAdmin.from("account_storage_cleanup").update({ status: "complete", last_error: "shared cover preserved" }).eq("id", row.id);
+          await supabaseAdmin
+            .from("account_storage_cleanup")
+            .update({ status: "complete", last_error: "shared cover preserved" })
+            .eq("id", row.id);
           continue;
         }
-        const { error: removeError } = await supabaseAdmin.storage.from(row.bucket).remove([row.object_path]);
+        const { error: removeError } = await supabaseAdmin.storage
+          .from(row.bucket)
+          .remove([row.object_path]);
         if (removeError) throw new Error(removeError.message);
       } else if (row.bucket === "avatars") {
         if (!isSafeOwnedCoverPath(row.object_path, ownerId)) {
           console.error("[admin] refusing unsafe queued account avatar cleanup");
-          await supabaseAdmin.from("account_storage_cleanup").update({ status: "complete", last_error: "unsafe path skipped" }).eq("id", row.id);
+          await supabaseAdmin
+            .from("account_storage_cleanup")
+            .update({ status: "complete", last_error: "unsafe path skipped" })
+            .eq("id", row.id);
           continue;
         }
-        const { error: removeError } = await supabaseAdmin.storage.from(row.bucket).remove([row.object_path]);
+        const { error: removeError } = await supabaseAdmin.storage
+          .from(row.bucket)
+          .remove([row.object_path]);
         if (removeError) throw new Error(removeError.message);
       }
 
@@ -337,7 +417,10 @@ async function processAccountStorageCleanup(supabaseAdmin: any, ownerId: string)
       console.error("[admin] account storage cleanup remains pending", error);
       await supabaseAdmin
         .from("account_storage_cleanup")
-        .update({ last_error: error instanceof Error ? error.message : "storage cleanup failed", attempt_count: row.attempt_count + 1 })
+        .update({
+          last_error: error instanceof Error ? error.message : "storage cleanup failed",
+          attempt_count: row.attempt_count + 1,
+        })
         .eq("id", row.id)
         .eq("status", "pending");
     }
@@ -349,18 +432,33 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => deleteInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
-    if (data.userId === context.userId) throw new Error("You cannot delete your own admin account.");
+    if (data.userId === context.userId)
+      throw new Error("You cannot delete your own admin account.");
 
-    const { data: operationId, error: authorizationError } = await context.supabase.rpc("admin_begin_account_deletion", { _target_user_id: data.userId });
-    if (authorizationError || typeof operationId !== "string") throw new Error(authorizationError?.message ?? "Could not authorize account deletion");
+    const { data: operationId, error: authorizationError } = await context.supabase.rpc(
+      "admin_begin_account_deletion",
+      { _target_user_id: data.userId },
+    );
+    if (authorizationError || typeof operationId !== "string")
+      throw new Error(authorizationError?.message ?? "Could not authorize account deletion");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authorizedTargetId, error: consumeError } = await context.supabase.rpc("consume_admin_account_deletion", { _operation_id: operationId });
-    if (consumeError || typeof authorizedTargetId !== "string") throw new Error(consumeError?.message ?? "Account deletion authorization expired");
+    const { data: authorizedTargetId, error: consumeError } = await context.supabase.rpc(
+      "consume_admin_account_deletion",
+      { _operation_id: operationId },
+    );
+    if (consumeError || typeof authorizedTargetId !== "string")
+      throw new Error(consumeError?.message ?? "Account deletion authorization expired");
     const targetUserId = authorizedTargetId;
-    const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+    const { data: authUser, error: userError } =
+      await supabaseAdmin.auth.admin.getUserById(targetUserId);
     if (userError || !authUser.user) throw new Error("User not found");
-    const { data: targetAdmin } = await supabaseAdmin.from("user_roles").select("user_id").eq("user_id", targetUserId).in("role", ["admin", "super_admin"]).maybeSingle();
+    const { data: targetAdmin } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", targetUserId)
+      .in("role", ["admin", "super_admin"])
+      .maybeSingle();
     if (targetAdmin) throw new Error("Admin accounts cannot be deleted from this dashboard.");
     if ((authUser.user.email ?? "").toLowerCase() !== data.confirmationEmail.toLowerCase()) {
       throw new Error("The confirmation email does not match this account.");
@@ -368,7 +466,11 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     if (data.blockRegistration && !data.registrationReasonCode) {
       throw new Error("A registration-block reason is required.");
     }
-    if (data.blockRegistration && data.registrationReasonCode === "other" && !data.registrationReasonText?.trim()) {
+    if (
+      data.blockRegistration &&
+      data.registrationReasonCode === "other" &&
+      !data.registrationReasonText?.trim()
+    ) {
       throw new Error("A custom registration-block reason is required.");
     }
 
@@ -385,43 +487,70 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     // Reserve the email before external cleanup/Auth deletion so no new
     // account can be created in the gap. Release it on every known failure.
     if (data.blockRegistration) {
-      const { data: reservedId, error: registrationError } = await context.supabase.rpc("admin_create_registration_block", {
-        _email: authUser.user.email ?? "",
-        _reason_code: data.registrationReasonCode!,
-        ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
-      });
+      const { data: reservedId, error: registrationError } = await context.supabase.rpc(
+        "admin_create_registration_block",
+        {
+          _email: authUser.user.email ?? "",
+          _reason_code: data.registrationReasonCode!,
+          ...(data.registrationReasonText ? { _reason_text: data.registrationReasonText } : {}),
+        },
+      );
       if (registrationError || !reservedId) {
-        throw new Error(`Could not reserve registration block: ${registrationError?.message ?? "no block id returned"}`);
+        throw new Error(
+          `Could not reserve registration block: ${registrationError?.message ?? "no block id returned"}`,
+        );
       }
       registrationBlockId = reservedId as unknown as string;
     }
 
     const { data: tracks, error: tracksError } = await supabaseAdmin
-      .from("tracks").select("audio_key, cover_url").eq("user_id", targetUserId);
+      .from("tracks")
+      .select("audio_key, cover_url")
+      .eq("user_id", targetUserId);
     if (tracksError) {
-      try { await releaseRegistrationBlock(); } catch (releaseError) {
-        throw new Error(`Could not inspect user files: ${tracksError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`);
+      try {
+        await releaseRegistrationBlock();
+      } catch (releaseError) {
+        throw new Error(
+          `Could not inspect user files: ${tracksError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`,
+        );
       }
       throw new Error(`Could not inspect user files: ${tracksError.message}`);
     }
 
     let storageCleanupPending = 0;
     try {
-      await queueAccountStorageCleanup(supabaseAdmin, targetUserId, (tracks ?? []) as Array<{ audio_key: string | null; cover_url: string | null }>);
+      await queueAccountStorageCleanup(
+        supabaseAdmin,
+        targetUserId,
+        (tracks ?? []) as Array<{ audio_key: string | null; cover_url: string | null }>,
+      );
       storageCleanupPending = await processAccountStorageCleanup(supabaseAdmin, targetUserId);
     } catch (error) {
-      try { await releaseRegistrationBlock(); } catch (releaseError) {
-        throw new Error(`${error instanceof Error ? error.message : "User file cleanup could not be prepared."} ${releaseError instanceof Error ? releaseError.message : "Registration block release failed."}`);
+      try {
+        await releaseRegistrationBlock();
+      } catch (releaseError) {
+        throw new Error(
+          `${error instanceof Error ? error.message : "User file cleanup could not be prepared."} ${releaseError instanceof Error ? releaseError.message : "Registration block release failed."}`,
+        );
       }
-      throw new Error(error instanceof Error ? error.message : "User file cleanup could not be prepared.");
+      throw new Error(
+        error instanceof Error ? error.message : "User file cleanup could not be prepared.",
+      );
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
     if (deleteError) {
-      try { await releaseRegistrationBlock(); } catch (releaseError) {
-        throw new Error(`Account files were cleaned, but authentication deletion failed: ${deleteError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`);
+      try {
+        await releaseRegistrationBlock();
+      } catch (releaseError) {
+        throw new Error(
+          `Account files were cleaned, but authentication deletion failed: ${deleteError.message}; ${releaseError instanceof Error ? releaseError.message : "registration block release failed"}`,
+        );
       }
-      throw new Error(`Account files were cleaned, but authentication deletion failed: ${deleteError.message}`);
+      throw new Error(
+        `Account files were cleaned, but authentication deletion failed: ${deleteError.message}`,
+      );
     }
 
     const registrationBlocked = Boolean(registrationBlockId);
@@ -431,9 +560,17 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
         admin_user_id: context.userId,
         target_user_id: null,
         action: "BLOCK_REGISTRATION",
-        details: { registration_block_id: registrationBlockId, reason_code: data.registrationReasonCode, has_custom_reason: data.registrationReasonCode === "other" },
+        details: {
+          registration_block_id: registrationBlockId,
+          reason_code: data.registrationReasonCode,
+          has_custom_reason: data.registrationReasonCode === "other",
+        },
       });
-      if (registrationAuditError) console.error("[admin] deletion succeeded but registration audit logging failed", registrationAuditError.message);
+      if (registrationAuditError)
+        console.error(
+          "[admin] deletion succeeded but registration audit logging failed",
+          registrationAuditError.message,
+        );
     }
 
     // The account is already deleted at this point. Audit failure must be
@@ -442,7 +579,11 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       admin_user_id: context.userId,
       target_user_id: null,
       action: "DELETE_USER",
-      details: { file_count: (tracks ?? []).length, storage_cleanup_pending: storageCleanupPending, registration_blocked: registrationBlocked },
+      details: {
+        file_count: (tracks ?? []).length,
+        storage_cleanup_pending: storageCleanupPending,
+        registration_blocked: registrationBlocked,
+      },
     });
     if (auditError) {
       console.error("[admin] deletion succeeded but audit logging failed", auditError.message);
@@ -464,7 +605,10 @@ export const retryAccountStorageCleanup = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error || !row) throw new Error("Cleanup record not found");
     if ((row as AccountCleanupRow).status !== "pending") return { ok: true, alreadyComplete: true };
-    const pending = await processAccountStorageCleanup(supabaseAdmin, (row as AccountCleanupRow).owner_id);
+    const pending = await processAccountStorageCleanup(
+      supabaseAdmin,
+      (row as AccountCleanupRow).owner_id,
+    );
     return { ok: pending === 0, pending };
   });
 export type RegistrationBlock = {
@@ -477,15 +621,21 @@ export type RegistrationBlock = {
 
 export const listAdminRegistrationBlocks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    search: z.string().trim().max(120).default(""),
-    page: z.number().int().min(0).default(0),
-    pageSize: z.number().int().min(1).max(50).default(25),
-  }).parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        search: z.string().trim().max(120).default(""),
+        page: z.number().int().min(0).default(0),
+        pageSize: z.number().int().min(1).max(50).default(25),
+      })
+      .parse(input ?? {}),
+  )
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { data: result, error } = await context.supabase.rpc("admin_list_registration_blocks", {
-      _search: data.search, _limit: data.pageSize, _offset: data.page * data.pageSize,
+      _search: data.search,
+      _limit: data.pageSize,
+      _offset: data.page * data.pageSize,
     });
     if (error) throw new Error(error.message);
     return result as unknown as { total: number; blocks: RegistrationBlock[] };

@@ -60,7 +60,8 @@ export const sendContactForm = createServerFn({ method: "POST" })
       });
       return { sent: true };
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith("Too many contact requests")) throw error;
+      if (error instanceof Error && error.message.startsWith("Too many contact requests"))
+        throw error;
       console.error("[contact] email delivery failed", error);
       throw new Error("Contact message could not be sent. Please try again.");
     }

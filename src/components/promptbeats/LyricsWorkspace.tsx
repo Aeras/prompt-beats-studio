@@ -85,7 +85,9 @@ export function LyricsWorkspace({
   const [currentBasePromptId, setCurrentBasePromptId] = useState(basePromptId);
   const [currentBaseVersion, setCurrentBaseVersion] = useState(baseVersionNumber);
   const [savedVersion, setSavedVersion] = useState<{ id: string; versionNumber: number } | null>(
-    basePromptId && baseVersionNumber ? { id: basePromptId, versionNumber: baseVersionNumber } : null,
+    basePromptId && baseVersionNumber
+      ? { id: basePromptId, versionNumber: baseVersionNumber }
+      : null,
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -102,7 +104,10 @@ export function LyricsWorkspace({
   const generatorAccess = modelAccess.data?.generator;
   const modelOptions = generatorAccess?.modelOptions ?? [];
   const [model, setModel] = useState(song.generatorInputSnapshot?.generationModel ?? "");
-  const workspaceLanguage = resolveLyricsWorkspaceLanguage(song.language, song.generatorInputSnapshot);
+  const workspaceLanguage = resolveLyricsWorkspaceLanguage(
+    song.language,
+    song.generatorInputSnapshot,
+  );
 
   useEffect(() => {
     if (!model && generatorAccess?.defaultModel) setModel(generatorAccess.defaultModel);
@@ -186,7 +191,11 @@ export function LyricsWorkspace({
           ctx.fullLyrics === lyrics &&
           (ctx.projectId ?? null) === (projectId ?? null) &&
           (ctx.basePromptId ?? null) === (currentBasePromptId ?? null);
-        if (sameSource && !cancelled && ["pending", "processing", "completed"].includes(job.status)) {
+        if (
+          sameSource &&
+          !cancelled &&
+          ["pending", "processing", "completed"].includes(job.status)
+        ) {
           if (!acceptCompletedJob(job)) startPolling(job.jobId);
         }
       } catch {
@@ -272,11 +281,12 @@ export function LyricsWorkspace({
   };
 
   const proposalOptions = proposal ? [proposal.replacement, ...proposal.alternatives] : [];
-  const editingSection = editingKey ? sections.find((item) => item.key === editingKey) ?? null : null;
+  const editingSection = editingKey
+    ? (sections.find((item) => item.key === editingKey) ?? null)
+    : null;
   const regularChoruses = sections.filter(isRegularChorusSection);
   const canApplyAllChoruses =
-    Boolean(editingSection && isRegularChorusSection(editingSection)) &&
-    regularChoruses.length > 1;
+    Boolean(editingSection && isRegularChorusSection(editingSection)) && regularChoruses.length > 1;
   const hasLockedRegularChorus = regularChoruses.some((section) => locked.has(section.key));
 
   const applyProposal = () => {
@@ -359,7 +369,10 @@ export function LyricsWorkspace({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
         queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
-        queryClient.invalidateQueries({ queryKey: ["generator", "revision-versions"], exact: false }),
+        queryClient.invalidateQueries({
+          queryKey: ["generator", "revision-versions"],
+          exact: false,
+        }),
       ]);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t("lyricsWorkspace.saveFailed"));
@@ -391,10 +404,16 @@ export function LyricsWorkspace({
     <div className="space-y-4 rounded-3xl border border-accent/25 bg-black/30 p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">{t("lyricsWorkspace.title")}</p>
-          <h2 className="mt-1 truncate font-display text-xl font-bold">{song.title || t("library.untitledPrompt")}</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+            {t("lyricsWorkspace.title")}
+          </p>
+          <h2 className="mt-1 truncate font-display text-xl font-bold">
+            {song.title || t("library.untitledPrompt")}
+          </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {[projectName, currentBaseVersion ? `V${currentBaseVersion}` : null, workspaceLanguage].filter(Boolean).join(" · ")}
+            {[projectName, currentBaseVersion ? `V${currentBaseVersion}` : null, workspaceLanguage]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -405,7 +424,11 @@ export function LyricsWorkspace({
               onChange={(e) => setModel(e.target.value)}
               className="h-10 min-w-0 max-w-full rounded-xl border border-white/10 bg-black/50 px-3 text-xs"
             >
-              {modelOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              {modelOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
             </select>
           )}
           {projectId && currentBasePromptId && (
@@ -419,7 +442,12 @@ export function LyricsWorkspace({
               {t("lyricsWorkspace.saveNewVersion")}
             </button>
           )}
-          <button type="button" onClick={closeWorkspace} aria-label={t("common.close")} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={closeWorkspace}
+            aria-label={t("common.close")}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -431,7 +459,10 @@ export function LyricsWorkspace({
         </p>
       )}
       {actionFeedback && (
-        <p role="status" className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 p-3 text-xs font-medium text-accent">
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 p-3 text-xs font-medium text-accent"
+        >
           <Check className="h-4 w-4 shrink-0" />
           {actionFeedback}
         </p>
@@ -444,32 +475,57 @@ export function LyricsWorkspace({
           const editing = editingKey === section.key;
           const canUndo = undoBySection[section.key] != null;
           return (
-            <section key={section.key} className={cn("rounded-2xl border p-3 sm:p-4", isLocked ? "border-white/10 bg-white/[0.02]" : "border-white/10 bg-black/25")}>
+            <section
+              key={section.key}
+              className={cn(
+                "rounded-2xl border p-3 sm:p-4",
+                isLocked ? "border-white/10 bg-white/[0.02]" : "border-white/10 bg-black/25",
+              )}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="font-display text-sm font-bold text-foreground">{section.displayLabel}</h3>
-                  {section.rawHeader && <p className="text-[10px] text-muted-foreground">{section.rawHeader}</p>}
+                  <h3 className="font-display text-sm font-bold text-foreground">
+                    {section.displayLabel}
+                  </h3>
+                  {section.rawHeader && (
+                    <p className="text-[10px] text-muted-foreground">{section.rawHeader}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   {canUndo && (
-                    <button type="button" onClick={() => undoSection(section.key)} disabled={isLocked} aria-label={t("lyricsWorkspace.undo")} title={t("lyricsWorkspace.undo")} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-muted-foreground hover:text-accent disabled:opacity-40">
+                    <button
+                      type="button"
+                      onClick={() => undoSection(section.key)}
+                      disabled={isLocked}
+                      aria-label={t("lyricsWorkspace.undo")}
+                      title={t("lyricsWorkspace.undo")}
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-muted-foreground hover:text-accent disabled:opacity-40"
+                    >
                       <RotateCcw className="h-4 w-4" />
                     </button>
                   )}
                   <button
                     type="button"
-                    onClick={() => setLocked((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(section.key)) next.delete(section.key); else next.add(section.key);
-                      return next;
-                    })}
+                    onClick={() =>
+                      setLocked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(section.key)) next.delete(section.key);
+                        else next.add(section.key);
+                        return next;
+                      })
+                    }
                     aria-pressed={isLocked}
                     aria-label={isLocked ? t("lyricsWorkspace.unlock") : t("lyricsWorkspace.lock")}
                     className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-muted-foreground hover:text-accent"
                   >
                     {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                   </button>
-                  <button type="button" onClick={() => openAiEditor(section.key)} disabled={isLocked || Boolean(jobId)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 text-xs text-accent disabled:opacity-40">
+                  <button
+                    type="button"
+                    onClick={() => openAiEditor(section.key)}
+                    disabled={isLocked || Boolean(jobId)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 text-xs text-accent disabled:opacity-40"
+                  >
                     <Sparkles className="h-3.5 w-3.5" />
                     {t("lyricsWorkspace.aiEdit")}
                   </button>
@@ -488,50 +544,133 @@ export function LyricsWorkspace({
               {editing && !isLocked && (
                 <div className="mt-3 space-y-3 rounded-xl border border-accent/20 bg-accent/[0.04] p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <select value={action} onChange={(e) => { setAction(e.target.value as LyricsSectionAction); setProposal(null); setAiError(null); }} className="h-10 flex-1 rounded-lg border border-white/10 bg-black/50 px-3 text-xs">
-                      {LYRICS_SECTION_ACTIONS.map((item) => <option key={item} value={item}>{t(actionLabelKey(item))}</option>)}
+                    <select
+                      value={action}
+                      onChange={(e) => {
+                        setAction(e.target.value as LyricsSectionAction);
+                        setProposal(null);
+                        setAiError(null);
+                      }}
+                      className="h-10 flex-1 rounded-lg border border-white/10 bg-black/50 px-3 text-xs"
+                    >
+                      {LYRICS_SECTION_ACTIONS.map((item) => (
+                        <option key={item} value={item}>
+                          {t(actionLabelKey(item))}
+                        </option>
+                      ))}
                     </select>
-                    <button type="button" onClick={() => { setEditingKey(null); setProposal(null); setAiError(null); }} className="h-10 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground">{t("common.cancel")}</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingKey(null);
+                        setProposal(null);
+                        setAiError(null);
+                      }}
+                      className="h-10 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground"
+                    >
+                      {t("common.cancel")}
+                    </button>
                   </div>
                   {action === "custom" && (
-                    <textarea value={customInstruction} onChange={(e) => setCustomInstruction(e.target.value.slice(0, 2000))} rows={3} placeholder={t("lyricsWorkspace.customPlaceholder")} className="w-full rounded-lg border border-white/10 bg-black/40 p-3 text-xs outline-none focus:border-accent/50" />
+                    <textarea
+                      value={customInstruction}
+                      onChange={(e) => setCustomInstruction(e.target.value.slice(0, 2000))}
+                      rows={3}
+                      placeholder={t("lyricsWorkspace.customPlaceholder")}
+                      className="w-full rounded-lg border border-white/10 bg-black/40 p-3 text-xs outline-none focus:border-accent/50"
+                    />
                   )}
 
                   {!proposal && (
-                    <button type="button" onClick={runAiEdit} disabled={Boolean(jobId) || !model} className="inline-flex h-10 items-center gap-2 rounded-lg bg-gradient-neon px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50">
-                      {jobId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    <button
+                      type="button"
+                      onClick={runAiEdit}
+                      disabled={Boolean(jobId) || !model}
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-gradient-neon px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      {jobId ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
                       {jobId ? t("lyricsWorkspace.editing") : t("lyricsWorkspace.generateProposal")}
                     </button>
                   )}
 
                   {proposal && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{t("lyricsWorkspace.preview")}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                        {t("lyricsWorkspace.preview")}
+                      </p>
                       {proposalOptions.length > 1 && (
                         <div className="flex flex-wrap gap-2">
                           {proposalOptions.map((_, index) => (
-                            <button key={index} type="button" onClick={() => setProposalChoice(index)} className={proposalChoice === index ? "rounded-full border border-accent bg-accent/10 px-3 py-1 text-xs text-accent" : "rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground"}>
-                              {t("lyricsWorkspace.option", { option: String.fromCharCode(65 + index) })}
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setProposalChoice(index)}
+                              className={
+                                proposalChoice === index
+                                  ? "rounded-full border border-accent bg-accent/10 px-3 py-1 text-xs text-accent"
+                                  : "rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground"
+                              }
+                            >
+                              {t("lyricsWorkspace.option", {
+                                option: String.fromCharCode(65 + index),
+                              })}
                             </button>
                           ))}
                         </div>
                       )}
-                      <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/50 p-3 text-sm leading-6">{proposalOptions[proposalChoice] ?? proposal.replacement}</pre>
+                      <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/50 p-3 text-sm leading-6">
+                        {proposalOptions[proposalChoice] ?? proposal.replacement}
+                      </pre>
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={applyProposal} className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-neon px-4 text-xs font-semibold text-primary-foreground"><Check className="h-4 w-4" />{t("lyricsWorkspace.apply")}</button>
+                        <button
+                          type="button"
+                          onClick={applyProposal}
+                          className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-neon px-4 text-xs font-semibold text-primary-foreground"
+                        >
+                          <Check className="h-4 w-4" />
+                          {t("lyricsWorkspace.apply")}
+                        </button>
                         {canApplyAllChoruses && (
                           <button
                             type="button"
                             onClick={applyProposalToAllChoruses}
                             disabled={hasLockedRegularChorus}
-                            title={hasLockedRegularChorus ? t("lyricsWorkspace.applyAllChorusesLocked") : t("lyricsWorkspace.applyAllChoruses")}
+                            title={
+                              hasLockedRegularChorus
+                                ? t("lyricsWorkspace.applyAllChorusesLocked")
+                                : t("lyricsWorkspace.applyAllChoruses")
+                            }
                             className="inline-flex h-9 items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-4 text-xs font-semibold text-accent transition-all hover:bg-accent/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            <Check className="h-4 w-4" />{t("lyricsWorkspace.applyAllChoruses")}
+                            <Check className="h-4 w-4" />
+                            {t("lyricsWorkspace.applyAllChoruses")}
                           </button>
                         )}
-                        <button type="button" onClick={() => { setProposal(null); void runAiEdit(); }} disabled={Boolean(jobId)} className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground">{t("common.retry")}</button>
-                        <button type="button" onClick={() => { setProposal(null); setEditingKey(null); }} className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground">{t("common.cancel")}</button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProposal(null);
+                            void runAiEdit();
+                          }}
+                          disabled={Boolean(jobId)}
+                          className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground"
+                        >
+                          {t("common.retry")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProposal(null);
+                            setEditingKey(null);
+                          }}
+                          className="h-9 rounded-lg border border-white/10 px-3 text-xs text-muted-foreground"
+                        >
+                          {t("common.cancel")}
+                        </button>
                       </div>
                     </div>
                   )}

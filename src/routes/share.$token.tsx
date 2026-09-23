@@ -33,15 +33,27 @@ function SharedTrackPage() {
   });
 
   if (isLoading) {
-    return <div className="aurora min-h-screen bg-[#0a0a0c] p-6 text-center text-sm text-muted-foreground">{language === "el" ? "Φόρτωση..." : "Loading..."}</div>;
+    return (
+      <div className="aurora min-h-screen bg-[#0a0a0c] p-6 text-center text-sm text-muted-foreground">
+        {language === "el" ? "Φόρτωση..." : "Loading..."}
+      </div>
+    );
   }
 
   if (!data || data.state === "unavailable") {
     return (
       <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-10">
         <div className="glass mx-auto max-w-xl rounded-3xl p-8 text-center">
-          <h1 className="font-display text-2xl font-bold">{language === "el" ? "Το link δεν είναι πλέον διαθέσιμο" : "This link is no longer available"}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">{language === "el" ? "Μπορεί να έχει ανακληθεί ή το τραγούδι να μην είναι πλέον διαθέσιμο." : "It may have been revoked or the track may no longer be available."}</p>
+          <h1 className="font-display text-2xl font-bold">
+            {language === "el"
+              ? "Το link δεν είναι πλέον διαθέσιμο"
+              : "This link is no longer available"}
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {language === "el"
+              ? "Μπορεί να έχει ανακληθεί ή το τραγούδι να μην είναι πλέον διαθέσιμο."
+              : "It may have been revoked or the track may no longer be available."}
+          </p>
         </div>
       </div>
     );
@@ -52,32 +64,53 @@ function SharedTrackPage() {
       <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-10">
         <div className="glass mx-auto max-w-xl rounded-3xl p-8 text-center">
           <h1 className="font-display text-2xl font-bold">{data.title}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">{language === "el" ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό." : "The creator made this track private."}</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {language === "el"
+              ? "Ο δημιουργός έκανε αυτό το τραγούδι ιδιωτικό."
+              : "The creator made this track private."}
+          </p>
         </div>
       </div>
     );
   }
 
   const { track, artist } = data;
-  const artistName = artist?.artist_alias || artist?.display_name || artist?.handle || (language === "el" ? "Δημιουργός" : "Creator");
-  const artwork = track.cover_url ?? (artist?.avatar_url ? getUserAvatarUrl(artist.avatar_url) : artFallback);
+  const artistName =
+    artist?.artist_alias ||
+    artist?.display_name ||
+    artist?.handle ||
+    (language === "el" ? "Δημιουργός" : "Creator");
+  const artwork =
+    track.cover_url ?? (artist?.avatar_url ? getUserAvatarUrl(artist.avatar_url) : artFallback);
   const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c] px-4 py-8 sm:py-10">
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <div className="glass-strong overflow-hidden rounded-3xl p-5 sm:p-7">
-          <div className={embedUrl ? "space-y-6" : "grid gap-6 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.2fr)] lg:items-center"}>
+          <div
+            className={
+              embedUrl
+                ? "space-y-6"
+                : "grid gap-6 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.2fr)] lg:items-center"
+            }
+          >
             {embedUrl ? (
               <div className="relative aspect-[760/240] overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                <ExternalTrackEmbed sourceType={track.source_type} sourceId={track.source_id} title={track.title} />
+                <ExternalTrackEmbed
+                  sourceType={track.source_type}
+                  sourceId={track.source_id}
+                  title={track.title}
+                />
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/30">
                   <img src={artwork} alt={track.title} className="h-full w-full object-cover" />
                 </div>
-                {track.audio_type === "upload" && <audio controls src={track.audio_url} className="w-full" />}
+                {track.audio_type === "upload" && (
+                  <audio controls src={track.audio_url} className="w-full" />
+                )}
               </div>
             )}
 
@@ -87,13 +120,24 @@ function SharedTrackPage() {
                 {track.contains_explicit_lyrics && <ExplicitBadge />}
               </div>
               <h1 className="font-display text-3xl font-bold sm:text-4xl">{track.title}</h1>
-              <p className="text-sm text-muted-foreground">{language === "el" ? "Από" : "By"} <span className="text-accent">{artistName}</span></p>
+              <p className="text-sm text-muted-foreground">
+                {language === "el" ? "Από" : "By"} <span className="text-accent">{artistName}</span>
+              </p>
               <div className="flex flex-wrap items-center gap-2">
-                <Link to="/track/$id" params={{ id: track.id }} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground hover:border-accent/50 hover:text-accent">
+                <Link
+                  to="/track/$id"
+                  params={{ id: track.id }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-muted-foreground hover:border-accent/50 hover:text-accent"
+                >
                   <ExternalLink className="h-4 w-4" />
                   {language === "el" ? "Άνοιγμα στο PromptBeats" : "Open in PromptBeats"}
                 </Link>
-                <ReportTrackControl trackId={track.id} ownerId={track.user_id} isPublished iconOnly={false} />
+                <ReportTrackControl
+                  trackId={track.id}
+                  ownerId={track.user_id}
+                  isPublished
+                  iconOnly={false}
+                />
               </div>
             </div>
           </div>
@@ -103,13 +147,17 @@ function SharedTrackPage() {
           {track.prompt && (
             <section className="glass rounded-2xl p-5">
               <h2 className="font-display text-xl font-semibold">Prompt</h2>
-              <pre className="mt-3 max-h-[28rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm text-muted-foreground">{track.prompt}</pre>
+              <pre className="mt-3 max-h-[28rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm text-muted-foreground">
+                {track.prompt}
+              </pre>
             </section>
           )}
           {track.lyrics && (
             <section className="glass rounded-2xl p-5">
               <h2 className="font-display text-xl font-semibold">Lyrics</h2>
-              <pre className="mt-3 max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm text-muted-foreground">{track.lyrics}</pre>
+              <pre className="mt-3 max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 font-sans text-sm text-muted-foreground">
+                {track.lyrics}
+              </pre>
             </section>
           )}
         </div>

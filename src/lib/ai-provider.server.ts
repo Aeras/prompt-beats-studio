@@ -10,11 +10,7 @@
  */
 import { GoogleGenAI } from "@google/genai";
 
-import {
-  AI_MODELS,
-  DEFAULT_AI_MODEL,
-  type AiModelId,
-} from "@/lib/ai-models";
+import { AI_MODELS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 import {
   getInstalledRegistryModels,
   getOperationDefaultModel,
@@ -62,7 +58,11 @@ export type ModelResult = {
 export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
 function providerRequestTimeoutMs(call: ModelCall) {
-  if (call.reasoningEffort === "high" || call.reasoningEffort === "xhigh" || call.reasoningEffort === "max") {
+  if (
+    call.reasoningEffort === "high" ||
+    call.reasoningEffort === "xhigh" ||
+    call.reasoningEffort === "max"
+  ) {
     return 7 * 60 * 1000;
   }
   if (call.reasoningEffort === "medium") return 6 * 60 * 1000;
@@ -106,7 +106,9 @@ async function assertAiEligibleUser(userId: string) {
 
 async function hasAdminBypass(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: isAdmin } = await supabaseAdmin.rpc("_is_admin_level_internal", { _user_id: userId });
+  const { data: isAdmin } = await supabaseAdmin.rpc("_is_admin_level_internal", {
+    _user_id: userId,
+  });
   return isAdmin === true;
 }
 
@@ -376,7 +378,8 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   let res = await send();
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get("retry-after"));
-    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 1500;
+    const waitMs =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 1500;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     res = await send();
   }
@@ -416,7 +419,11 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
         : "";
   const reason = choice?.finish_reason ?? null;
   const stopReason =
-    reason === "stop" ? "end_turn" : reason === "length" || reason === "model_length" ? "max_tokens" : reason;
+    reason === "stop"
+      ? "end_turn"
+      : reason === "length" || reason === "model_length"
+        ? "max_tokens"
+        : reason;
   const inputTokens = payload.usage?.prompt_tokens ?? null;
   const outputTokens = payload.usage?.completion_tokens ?? null;
   const totalTokens =
@@ -543,7 +550,6 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   );
 }
 
-
 function toOpenAiJsonSchema(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(toOpenAiJsonSchema);
   if (!value || typeof value !== "object") return value;
@@ -572,7 +578,11 @@ function openAiOutputBudget(call: ModelCall): number {
   // Responses API counts hidden reasoning and visible JSON together against
   // max_output_tokens. Give reasoning calls headroom without changing the
   // canonical PromptBeats visible-output budget or charging unused tokens.
-  if (call.reasoningEffort === "high" || call.reasoningEffort === "xhigh" || call.reasoningEffort === "max") {
+  if (
+    call.reasoningEffort === "high" ||
+    call.reasoningEffort === "xhigh" ||
+    call.reasoningEffort === "max"
+  ) {
     return Math.max(baseline * 4, 32768);
   }
   if (call.reasoningEffort === "medium") return Math.max(baseline * 2, 16384);
@@ -700,11 +710,31 @@ export function modelCaller(model: string, providerOverride?: string): ModelCall
     if (provider === "gemini") return callGemini(model, call);
 
     const configs: Record<string, { secret: string; endpoint: string; jsonMode: boolean }> = {
-      deepseek: { secret: "DEEPSEEK_API_KEY", endpoint: "https://api.deepseek.com/chat/completions", jsonMode: true },
-      together: { secret: "TOGETHER_API_KEY", endpoint: "https://api.together.xyz/v1/chat/completions", jsonMode: true },
-      fireworks: { secret: "FIREWORKS_API_KEY", endpoint: "https://api.fireworks.ai/inference/v1/chat/completions", jsonMode: true },
-      cerebras: { secret: "CEREBRAS_API_KEY", endpoint: "https://api.cerebras.ai/v1/chat/completions", jsonMode: true },
-      nvidia: { secret: "NVIDIA_API_KEY", endpoint: "https://integrate.api.nvidia.com/v1/chat/completions", jsonMode: true },
+      deepseek: {
+        secret: "DEEPSEEK_API_KEY",
+        endpoint: "https://api.deepseek.com/chat/completions",
+        jsonMode: true,
+      },
+      together: {
+        secret: "TOGETHER_API_KEY",
+        endpoint: "https://api.together.xyz/v1/chat/completions",
+        jsonMode: true,
+      },
+      fireworks: {
+        secret: "FIREWORKS_API_KEY",
+        endpoint: "https://api.fireworks.ai/inference/v1/chat/completions",
+        jsonMode: true,
+      },
+      cerebras: {
+        secret: "CEREBRAS_API_KEY",
+        endpoint: "https://api.cerebras.ai/v1/chat/completions",
+        jsonMode: true,
+      },
+      nvidia: {
+        secret: "NVIDIA_API_KEY",
+        endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
+        jsonMode: true,
+      },
     };
     const config = configs[provider];
     if (!config) throw new Error("This AI provider is not supported for PromptBeats generation.");
@@ -718,7 +748,9 @@ export function modelCaller(model: string, providerOverride?: string): ModelCall
  * Server-authoritative operation default. The legacy no-argument form maps to
  * Generator so older call sites remain safe during the Phase 1 transition.
  */
-export async function getActiveModel(operation: AiModelOperation = "generator"): Promise<AiModelId> {
+export async function getActiveModel(
+  operation: AiModelOperation = "generator",
+): Promise<AiModelId> {
   return (await getOperationDefaultModel(operation)).providerModelId;
 }
 

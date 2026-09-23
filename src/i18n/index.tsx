@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { en, type TranslationKey } from "@/i18n/locales/en";
 import { el } from "@/i18n/locales/el";
@@ -18,7 +27,10 @@ import { enPreferences, type PreferencesTranslationKey } from "@/i18n/locales/en
 import { elPreferences } from "@/i18n/locales/el-preferences";
 import { enCreatorPage, type CreatorPageTranslationKey } from "@/i18n/locales/en-creator-page";
 import { elCreatorPage } from "@/i18n/locales/el-creator-page";
-import { enPasswordReset, type PasswordResetTranslationKey } from "@/i18n/locales/en-password-reset";
+import {
+  enPasswordReset,
+  type PasswordResetTranslationKey,
+} from "@/i18n/locales/en-password-reset";
 import { elPasswordReset } from "@/i18n/locales/el-password-reset";
 import { enAiModels, type AiModelsTranslationKey } from "@/i18n/locales/en-ai-models";
 import { elAiModels } from "@/i18n/locales/el-ai-models";
@@ -26,14 +38,52 @@ import { enSongAnalyzer, type SongAnalyzerTranslationKey } from "@/i18n/locales/
 import { elSongAnalyzer } from "@/i18n/locales/el-song-analyzer";
 
 export type AppLanguage = "en" | "el";
-export type AppTranslationKey = TranslationKey | AppUiTranslationKey | ExtraTranslationKey | ProfileTranslationKey | FinalTranslationKey | CatalogTranslationKey | DiscoverTranslationKey | PreferencesTranslationKey | CreatorPageTranslationKey | PasswordResetTranslationKey | AiModelsTranslationKey | SongAnalyzerTranslationKey;
+export type AppTranslationKey =
+  | TranslationKey
+  | AppUiTranslationKey
+  | ExtraTranslationKey
+  | ProfileTranslationKey
+  | FinalTranslationKey
+  | CatalogTranslationKey
+  | DiscoverTranslationKey
+  | PreferencesTranslationKey
+  | CreatorPageTranslationKey
+  | PasswordResetTranslationKey
+  | AiModelsTranslationKey
+  | SongAnalyzerTranslationKey;
 
 const STORAGE_KEY = "pb:interface-language";
 const ACCOUNT_LANGUAGE_KEY = "interface_language";
 
 const dictionaries: Record<AppLanguage, Readonly<Record<AppTranslationKey, string>>> = {
-  en: { ...en, ...enApp, ...enExtra, ...enProfile, ...enFinal, ...enCatalog, ...enDiscover, ...enPreferences, ...enCreatorPage, ...enPasswordReset, ...enAiModels, ...enSongAnalyzer },
-  el: { ...el, ...elApp, ...elExtra, ...elProfile, ...elFinal, ...elCatalog, ...elDiscover, ...elPreferences, ...elCreatorPage, ...elPasswordReset, ...elAiModels, ...elSongAnalyzer },
+  en: {
+    ...en,
+    ...enApp,
+    ...enExtra,
+    ...enProfile,
+    ...enFinal,
+    ...enCatalog,
+    ...enDiscover,
+    ...enPreferences,
+    ...enCreatorPage,
+    ...enPasswordReset,
+    ...enAiModels,
+    ...enSongAnalyzer,
+  },
+  el: {
+    ...el,
+    ...elApp,
+    ...elExtra,
+    ...elProfile,
+    ...elFinal,
+    ...elCatalog,
+    ...elDiscover,
+    ...elPreferences,
+    ...elCreatorPage,
+    ...elPasswordReset,
+    ...elAiModels,
+    ...elSongAnalyzer,
+  },
 };
 
 function isAppLanguage(value: unknown): value is AppLanguage {
@@ -74,7 +124,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    const applySession = (session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]) => {
+    const applySession = (
+      session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"],
+    ) => {
       if (!active) return;
       const user = session?.user ?? null;
       if (!user) {
@@ -96,18 +148,25 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       applyLanguage(fallback);
       if (seededAccountRef.current === user.id) return;
       seededAccountRef.current = user.id;
-      void supabase.auth.updateUser({
-        data: { [ACCOUNT_LANGUAGE_KEY]: fallback },
-      }).then(({ error }) => {
-        if (error) {
-          seededAccountRef.current = null;
-          console.error("[i18n] Failed to initialize account language preference:", error.message);
-        }
-      });
+      void supabase.auth
+        .updateUser({
+          data: { [ACCOUNT_LANGUAGE_KEY]: fallback },
+        })
+        .then(({ error }) => {
+          if (error) {
+            seededAccountRef.current = null;
+            console.error(
+              "[i18n] Failed to initialize account language preference:",
+              error.message,
+            );
+          }
+        });
     };
 
     void supabase.auth.getSession().then(({ data }) => applySession(data.session));
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) =>
+      applySession(session),
+    );
 
     return () => {
       active = false;
@@ -115,16 +174,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     };
   }, [applyLanguage]);
 
-  const setLanguage = useCallback((next: AppLanguage) => {
-    applyLanguage(next);
-    if (!signedIn) return;
+  const setLanguage = useCallback(
+    (next: AppLanguage) => {
+      applyLanguage(next);
+      if (!signedIn) return;
 
-    void supabase.auth.updateUser({
-      data: { [ACCOUNT_LANGUAGE_KEY]: next },
-    }).then(({ error }) => {
-      if (error) console.error("[i18n] Failed to save account language preference:", error.message);
-    });
-  }, [applyLanguage, signedIn]);
+      void supabase.auth
+        .updateUser({
+          data: { [ACCOUNT_LANGUAGE_KEY]: next },
+        })
+        .then(({ error }) => {
+          if (error)
+            console.error("[i18n] Failed to save account language preference:", error.message);
+        });
+    },
+    [applyLanguage, signedIn],
+  );
 
   useEffect(() => {
     if (typeof document !== "undefined") document.documentElement.lang = language;

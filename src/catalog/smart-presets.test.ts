@@ -65,7 +65,10 @@ describe("Smart Presets catalog", () => {
     const preset = SMART_PRESETS.find((item) => item.id === "modern-pop");
     expect(preset).toBeDefined();
 
-    const blueprint = buildPresetBlueprint(["Verse", "Chorus", "Verse", "Chorus", "Final Chorus"], preset!);
+    const blueprint = buildPresetBlueprint(
+      ["Verse", "Chorus", "Verse", "Chorus", "Final Chorus"],
+      preset!,
+    );
     expect(blueprint.map((item) => item.occurrence)).toEqual([1, 1, 2, 2, 1]);
     expect(blueprint[1]?.instruction).toContain("wider");
     expect(blueprint[3]?.instruction).toBe("");

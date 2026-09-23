@@ -26,7 +26,8 @@ function smtpConfig(): SmtpConfig {
   const fromName = process.env["SMTP_FROM_NAME"] ?? "PromptBeats";
 
   if (!password) throw new Error("SMTP is not configured: SMTP_PASSWORD is missing.");
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) throw new Error("SMTP_PORT is invalid.");
+  if (!Number.isInteger(port) || port <= 0 || port > 65535)
+    throw new Error("SMTP_PORT is invalid.");
 
   return { host, port, username, password, fromEmail, fromName };
 }

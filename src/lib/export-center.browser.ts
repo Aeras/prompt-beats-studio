@@ -48,7 +48,9 @@ export const downloadProjectSeparateExport = createClientOnlyFn(
 
     const summaryDocument = buildProjectSummaryDocument(source, locale);
     const summaryFilename = uniqueExportFilename(projectBase, extension, used);
-    entries[`${folder}${summaryFilename}`] = strToU8(serializeExportDocument(summaryDocument, format));
+    entries[`${folder}${summaryFilename}`] = strToU8(
+      serializeExportDocument(summaryDocument, format),
+    );
 
     for (const document of buildProjectPromptDocuments(source, locale)) {
       const base = sanitizeExportFilename(projectPromptFilenameBase(document), "Prompt");

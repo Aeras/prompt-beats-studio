@@ -15,7 +15,9 @@ export const TRACK_MODERATION_REASONS = [
   { code: "other", label: "Other" },
 ] as const;
 
-const reasonCode = z.enum(TRACK_MODERATION_REASONS.map((reason) => reason.code) as [string, ...string[]]);
+const reasonCode = z.enum(
+  TRACK_MODERATION_REASONS.map((reason) => reason.code) as [string, ...string[]],
+);
 const trackId = z.string().uuid();
 
 export type StaffTrack = {
@@ -49,8 +51,13 @@ type TrackStorageCleanup = {
   attempt_count: number;
 };
 
-async function requireTrackCapability(supabase: SupabaseClient<Database>, capability: "can_lock_tracks" | "can_delete_tracks") {
-  const { data, error } = await supabase.rpc("has_moderation_capability", { _capability: capability });
+async function requireTrackCapability(
+  supabase: SupabaseClient<Database>,
+  capability: "can_lock_tracks" | "can_delete_tracks",
+) {
+  const { data, error } = await supabase.rpc("has_moderation_capability", {
+    _capability: capability,
+  });
   if (error || data !== true) throw new Error("Not allowed");
 }
 
@@ -59,14 +66,20 @@ export const getStaffTrack = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ trackId }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
-    const { data: result, error } = await context.supabase.rpc("staff_get_track", { _track_id: data.trackId });
+    const { data: result, error } = await context.supabase.rpc("staff_get_track", {
+      _track_id: data.trackId,
+    });
     if (error) throw new Error(error.message);
     return result as unknown as StaffTrack | null;
   });
 
 export const lockStaffTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ trackId, reasonCode, reasonText: z.string().trim().max(500).nullish() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({ trackId, reasonCode, reasonText: z.string().trim().max(500).nullish() })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_lock_tracks");
     const { error } = await context.supabase.rpc("staff_lock_track", {
@@ -93,7 +106,9 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId }).parse(input))
   .handler(async ({ data, context }) => {
     await requireTrackCapability(context.supabase, "can_delete_tracks");
-    const { data: result, error } = await context.supabase.rpc("staff_delete_track", { _track_id: data.trackId });
+    const { data: result, error } = await context.supabase.rpc("staff_delete_track", {
+      _track_id: data.trackId,
+    });
     if (error) throw new Error(error.message);
 
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
@@ -105,7 +120,9 @@ export const deleteStaffTrack = createServerFn({ method: "POST" })
   });
 
 export async function cleanTrackStorage(supabase: SupabaseClient<Database>, cleanupId: string) {
-  const { data, error } = await supabase.rpc("staff_get_track_storage_cleanup", { _cleanup_id: cleanupId });
+  const { data, error } = await supabase.rpc("staff_get_track_storage_cleanup", {
+    _cleanup_id: cleanupId,
+  });
   if (error) throw new Error(error.message);
   const cleanup = data as unknown as TrackStorageCleanup;
   const failures: string[] = [];
@@ -118,7 +135,9 @@ export async function cleanTrackStorage(supabase: SupabaseClient<Database>, clea
       const { deleteOwnedR2Object } = await import("@/lib/r2.server");
       await deleteOwnedR2Object(cleanup.audio_key, cleanup.owner_id);
     } catch (error) {
-      failures.push(`audio cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`);
+      failures.push(
+        `audio cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
     }
   }
   if (cleanup.cover_path) {
@@ -127,19 +146,33 @@ export async function cleanTrackStorage(supabase: SupabaseClient<Database>, clea
         throw new Error("Unsafe owned cover storage path");
       }
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.storage.from("track-covers").remove([cleanup.cover_path]);
+      const { error } = await supabaseAdmin.storage
+        .from("track-covers")
+        .remove([cleanup.cover_path]);
       if (error) failures.push(`cover cleanup failed: ${error.message}`);
     } catch (error) {
-      failures.push(`cover cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`);
+      failures.push(
+        `cover cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
     }
   }
 
   if (failures.length) {
-    await supabase.rpc("staff_fail_track_storage_cleanup", { _cleanup_id: cleanupId, _error: failures.join("; ") });
-    throw new Error(`Track deleted, but storage cleanup is pending (cleanup ${cleanupId}): ${failures.join("; ")}`);
+    await supabase.rpc("staff_fail_track_storage_cleanup", {
+      _cleanup_id: cleanupId,
+      _error: failures.join("; "),
+    });
+    throw new Error(
+      `Track deleted, but storage cleanup is pending (cleanup ${cleanupId}): ${failures.join("; ")}`,
+    );
   }
-  const { error: completeError } = await supabase.rpc("staff_complete_track_storage_cleanup", { _cleanup_id: cleanupId });
-  if (completeError) throw new Error(`Track deleted, but storage cleanup could not be recorded: ${completeError.message}`);
+  const { error: completeError } = await supabase.rpc("staff_complete_track_storage_cleanup", {
+    _cleanup_id: cleanupId,
+  });
+  if (completeError)
+    throw new Error(
+      `Track deleted, but storage cleanup could not be recorded: ${completeError.message}`,
+    );
 }
 
 export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
@@ -159,8 +192,9 @@ export const retryStaffTrackStorageCleanup = createServerFn({ method: "POST" })
       await requireTrackCapability(context.supabase, "can_delete_tracks");
       authorized = true;
     } catch {
-      authorized = (cleanup as { created_by?: string | null; cleanup_type?: string }).created_by === context.userId
-        && (cleanup as { cleanup_type?: string }).cleanup_type === "audio_replace";
+      authorized =
+        (cleanup as { created_by?: string | null; cleanup_type?: string }).created_by ===
+          context.userId && (cleanup as { cleanup_type?: string }).cleanup_type === "audio_replace";
     }
     if (!authorized) throw new Error("Not allowed");
 

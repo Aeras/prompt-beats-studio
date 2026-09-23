@@ -6,15 +6,20 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
-const songPackageSchema = z.object({
-  title: z.string().trim().max(300),
-  musicStyle: z.string().trim().max(8_000),
-  lyrics: z.string().trim().max(40_000),
-  productionNotes: z.string().trim().max(8_000),
-  previousAudioKey: z.string().max(500).nullable().optional(),
-}).refine((value) => Boolean(value.title || value.musicStyle || value.lyrics || value.productionNotes), {
-  message: "Song package is empty",
-});
+const songPackageSchema = z
+  .object({
+    title: z.string().trim().max(300),
+    musicStyle: z.string().trim().max(8_000),
+    lyrics: z.string().trim().max(40_000),
+    productionNotes: z.string().trim().max(8_000),
+    previousAudioKey: z.string().max(500).nullable().optional(),
+  })
+  .refine(
+    (value) => Boolean(value.title || value.musicStyle || value.lyrics || value.productionNotes),
+    {
+      message: "Song package is empty",
+    },
+  );
 
 async function requireMusicLabAccess(context: { supabase: any }) {
   await requireFeatureAccess(context.supabase, "ai_music_lab");
@@ -27,7 +32,11 @@ function isOwnedLyriaTempKey(key: string, userId: string) {
 async function deleteUnusedLyriaTemp(context: { supabase: any; userId: string }, key: string) {
   if (!isOwnedLyriaTempKey(key, context.userId)) return false;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: inUse, error } = await supabaseAdmin.from("tracks").select("id").eq("audio_key", key).limit(1);
+  const { data: inUse, error } = await supabaseAdmin
+    .from("tracks")
+    .select("id")
+    .eq("audio_key", key)
+    .limit(1);
   if (error) throw new Error("Could not verify generated audio state");
   if (inUse?.length) return false;
   const { deleteOwnedR2Object } = await import("@/lib/r2.server");
@@ -61,7 +70,9 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
       data.musicStyle && `MUSIC STYLE:\n${data.musicStyle}`,
       data.lyrics && `LYRICS:\n${data.lyrics}`,
       data.productionNotes && `PRODUCER NOTES:\n${data.productionNotes}`,
-    ].filter(Boolean).join("\n\n");
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent",
@@ -81,7 +92,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
       },
     );
 
-    const payload = await response.json() as {
+    const payload = (await response.json()) as {
       error?: { message?: string };
       candidates?: Array<{
         content?: {
@@ -93,7 +104,8 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
       }>;
     };
 
-    if (!response.ok) throw new Error(payload.error?.message || `Lyria request failed (${response.status})`);
+    if (!response.ok)
+      throw new Error(payload.error?.message || `Lyria request failed (${response.status})`);
 
     const parts = payload.candidates?.[0]?.content?.parts ?? [];
     const audioPart = parts.find((part) => part.inlineData?.data)?.inlineData;
@@ -101,23 +113,35 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
 
     const mimeType = audioPart.mimeType || "audio/mpeg";
     const extension = mimeType.includes("wav") ? "wav" : "mp3";
-    const safeTitle = (data.title || "promptbeats-song")
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "promptbeats-song";
+    const safeTitle =
+      (data.title || "promptbeats-song")
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "promptbeats-song";
     const key = `tracks/${context.userId}/lyria-temp/${Date.now()}-${safeTitle}.${extension}`;
     const bytes = Buffer.from(audioPart.data, "base64");
-    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
     const { uploadToR2 } = await import("@/lib/r2.server");
     const stored = await uploadToR2(key, arrayBuffer, mimeType);
 
     if (data.previousAudioKey && data.previousAudioKey !== stored.key) {
-      try { await deleteUnusedLyriaTemp(context, data.previousAudioKey); } catch { /* keep the new result even if old temp cleanup fails */ }
+      try {
+        await deleteUnusedLyriaTemp(context, data.previousAudioKey);
+      } catch {
+        /* keep the new result even if old temp cleanup fails */
+      }
     }
 
-    const generatedText = parts.map((part) => part.text).filter((value): value is string => Boolean(value)).join("\n").trim();
+    const generatedText = parts
+      .map((part) => part.text)
+      .filter((value): value is string => Boolean(value))
+      .join("\n")
+      .trim();
 
     return {
       audioUrl: stored.url,
@@ -130,10 +154,13 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
 
 export const downloadLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ audioKey: z.string().min(1).max(500) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
-    if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
+    if (!isOwnedLyriaTempKey(data.audioKey, context.userId))
+      throw new Error("Invalid generated audio reference");
 
     const { getR2Client, getR2Config } = await import("@/lib/r2.server");
     const { endpoint, bucket } = getR2Config();
@@ -143,16 +170,21 @@ export const downloadLyriaSong = createServerFn({ method: "POST" })
     const arrayBuffer = await response.arrayBuffer();
     return {
       audioBase64: Buffer.from(arrayBuffer).toString("base64"),
-      mimeType: response.headers.get("content-type") || (data.audioKey.endsWith(".wav") ? "audio/wav" : "audio/mpeg"),
+      mimeType:
+        response.headers.get("content-type") ||
+        (data.audioKey.endsWith(".wav") ? "audio/wav" : "audio/mpeg"),
     };
   });
 
 export const discardLyriaSong = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ audioKey: z.string().min(1).max(500) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ audioKey: z.string().min(1).max(500) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
-    if (!isOwnedLyriaTempKey(data.audioKey, context.userId)) throw new Error("Invalid generated audio reference");
+    if (!isOwnedLyriaTempKey(data.audioKey, context.userId))
+      throw new Error("Invalid generated audio reference");
     const deleted = await deleteUnusedLyriaTemp(context, data.audioKey);
     return { ok: true as const, deleted };
   });

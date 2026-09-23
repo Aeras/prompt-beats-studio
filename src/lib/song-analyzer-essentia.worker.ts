@@ -38,7 +38,9 @@ function compactTicks(values: number[], max = 128): number[] {
   if (values.length <= max) return values;
   const out: number[] = [];
   for (let i = 0; i < max; i += 1) {
-    out.push(values[Math.min(values.length - 1, Math.round((i / (max - 1)) * (values.length - 1)))]!);
+    out.push(
+      values[Math.min(values.length - 1, Math.round((i / (max - 1)) * (values.length - 1)))]!,
+    );
   }
   return out;
 }
@@ -49,7 +51,9 @@ function ensureEssentia(): any {
   return essentia;
 }
 
-self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sampleRate: number }>) => {
+self.onmessage = (
+  event: MessageEvent<{ id: number; samples: ArrayBuffer; sampleRate: number }>,
+) => {
   const { id, samples, sampleRate } = event.data;
   const startedAt = performance.now();
 
@@ -60,29 +64,43 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
     const signal = es.arrayToVector(pcm);
 
     const rhythm = es.RhythmExtractor2013(signal, 208, "multifeature", 40);
-    const ticks = compactTicks(toArray(rhythm.ticks)).map((value: number) => Number(value.toFixed(4)));
-    const estimates = toArray(rhythm.estimates).filter((value: number) => Number.isFinite(value) && value > 0);
-    const intervals = toArray(rhythm.bpmIntervals).filter((value: number) => Number.isFinite(value) && value > 0);
-    const localBpms = intervals.map((interval: number) => 60 / interval).filter((value: number) => value >= 20 && value <= 300);
+    const ticks = compactTicks(toArray(rhythm.ticks)).map((value: number) =>
+      Number(value.toFixed(4)),
+    );
+    const estimates = toArray(rhythm.estimates).filter(
+      (value: number) => Number.isFinite(value) && value > 0,
+    );
+    const intervals = toArray(rhythm.bpmIntervals).filter(
+      (value: number) => Number.isFinite(value) && value > 0,
+    );
+    const localBpms = intervals
+      .map((interval: number) => 60 / interval)
+      .filter((value: number) => value >= 20 && value <= 300);
     const localMean = mean(localBpms);
     const localStd = std(localBpms, localMean);
-    const stabilityScore = localBpms.length >= 2 && localMean > 0
-      ? clamp(1 - localStd / Math.max(1, localMean * 0.08))
-      : null;
+    const stabilityScore =
+      localBpms.length >= 2 && localMean > 0
+        ? clamp(1 - localStd / Math.max(1, localMean * 0.08))
+        : null;
 
     const rawConfidence = Number(rhythm.confidence);
     const confidence = Number.isFinite(rawConfidence) ? clamp(rawConfidence / 5.32) : null;
-    const primaryBpm = Number.isFinite(Number(rhythm.bpm)) ? Number(Number(rhythm.bpm).toFixed(2)) : null;
+    const primaryBpm = Number.isFinite(Number(rhythm.bpm))
+      ? Number(Number(rhythm.bpm).toFixed(2))
+      : null;
 
     const onset = es.OnsetRate(signal);
-    const onsetTimes = compactTicks(toArray(onset.onsets)).map((value: number) => Number(value.toFixed(4)));
-    const onsetRate = Number.isFinite(Number(onset.onsetRate)) ? Number(Number(onset.onsetRate).toFixed(4)) : null;
+    const onsetTimes = compactTicks(toArray(onset.onsets)).map((value: number) =>
+      Number(value.toFixed(4)),
+    );
+    const onsetRate = Number.isFinite(Number(onset.onsetRate))
+      ? Number(Number(onset.onsetRate).toFixed(4))
+      : null;
 
     const key = es.KeyExtractor(signal);
     const keyStrength = Number.isFinite(Number(key.strength)) ? clamp(Number(key.strength)) : null;
-    const keyCandidate = keyStrength != null && keyStrength >= 0.18
-      ? `${String(key.key)} ${String(key.scale)}`
-      : null;
+    const keyCandidate =
+      keyStrength != null && keyStrength >= 0.18 ? `${String(key.key)} ${String(key.scale)}` : null;
 
     const dynamics = es.DynamicComplexity(signal, 0.2, 44100);
     const spectral = es.SpectralCentroidTime(signal, 44100);
@@ -101,13 +119,22 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
         confidence,
         stable: stabilityScore == null ? null : stabilityScore >= 0.65,
         stabilityScore: stabilityScore == null ? null : Number(stabilityScore.toFixed(4)),
-        ambiguous: confidence == null ? null : confidence < 0.58 || (stabilityScore != null && stabilityScore < 0.65),
+        ambiguous:
+          confidence == null
+            ? null
+            : confidence < 0.58 || (stabilityScore != null && stabilityScore < 0.65),
         estimates: estimates.slice(0, 24).map((value: number) => Number(value.toFixed(2))),
         notes: [
-          primaryBpm != null ? `Essentia RhythmExtractor2013 primary estimate: ${primaryBpm} BPM.` : "No Essentia primary BPM estimate.",
-          localBpms.length ? `Beat-interval tempo mean: ${localMean.toFixed(2)} BPM; std: ${localStd.toFixed(2)}.` : "",
+          primaryBpm != null
+            ? `Essentia RhythmExtractor2013 primary estimate: ${primaryBpm} BPM.`
+            : "No Essentia primary BPM estimate.",
+          localBpms.length
+            ? `Beat-interval tempo mean: ${localMean.toFixed(2)} BPM; std: ${localStd.toFixed(2)}.`
+            : "",
           "Confidence is normalized from Essentia multifeature beat-tracker confidence and remains supporting evidence only.",
-        ].filter(Boolean).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
       rhythm: {
         beatStrength: confidence == null ? null : Number(confidence.toFixed(4)),
@@ -124,16 +151,24 @@ self.onmessage = (event: MessageEvent<{ id: number; samples: ArrayBuffer; sample
           : "Essentia tonal estimate is weak; key remains uncertain.",
       },
       energy: {
-        dynamicComplexity: Number.isFinite(Number(dynamics.dynamicComplexity)) ? Number(Number(dynamics.dynamicComplexity).toFixed(4)) : null,
-        loudnessDb: Number.isFinite(Number(dynamics.loudness)) ? Number(Number(dynamics.loudness).toFixed(3)) : null,
+        dynamicComplexity: Number.isFinite(Number(dynamics.dynamicComplexity))
+          ? Number(Number(dynamics.dynamicComplexity).toFixed(4))
+          : null,
+        loudnessDb: Number.isFinite(Number(dynamics.loudness))
+          ? Number(Number(dynamics.loudness).toFixed(3))
+          : null,
       },
       spectral: {
-        spectralCentroidHz: Number.isFinite(Number(spectral.centroid)) ? Number(Number(spectral.centroid).toFixed(2)) : null,
+        spectralCentroidHz: Number.isFinite(Number(spectral.centroid))
+          ? Number(Number(spectral.centroid).toFixed(2))
+          : null,
       },
       processingMs: Number((performance.now() - startedAt).toFixed(2)),
     };
 
-    try { signal.delete?.(); } catch {}
+    try {
+      signal.delete?.();
+    } catch {}
     (self as any).postMessage({ id, ok: true, result });
   } catch (error) {
     (self as any).postMessage({

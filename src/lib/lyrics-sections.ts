@@ -13,10 +13,30 @@ export type LyricsSection = {
 };
 
 const STRUCTURAL_LABELS = new Set([
-  "intro", "verse", "pre-chorus", "pre chorus", "chorus", "post-chorus", "post chorus",
-  "bridge", "breakdown", "instrumental", "instrumental break", "guitar solo", "solo",
-  "final chorus", "outro", "coda", "hook", "refrain", "interlude", "build", "drop",
-  "rap verse", "spoken word", "spoken interlude",
+  "intro",
+  "verse",
+  "pre-chorus",
+  "pre chorus",
+  "chorus",
+  "post-chorus",
+  "post chorus",
+  "bridge",
+  "breakdown",
+  "instrumental",
+  "instrumental break",
+  "guitar solo",
+  "solo",
+  "final chorus",
+  "outro",
+  "coda",
+  "hook",
+  "refrain",
+  "interlude",
+  "build",
+  "drop",
+  "rap verse",
+  "spoken word",
+  "spoken interlude",
 ]);
 
 const INLINE_ROLE_PATTERNS = [
@@ -27,12 +47,53 @@ const INLINE_ROLE_PATTERNS = [
 ];
 
 const DIRECTION_WORDS = new Set([
-  "enter", "enters", "entering", "drop", "drops", "build", "builds", "fade", "fades",
-  "soft", "warm", "clean", "distorted", "overdriven", "driving", "wide", "full", "gentle",
-  "emotional", "atmospheric", "whispered", "spoken", "sung", "strummed", "strumming",
-  "arpeggio", "arpeggios", "piano", "guitar", "bass", "drums", "kick", "snare", "synth",
-  "strings", "vocal", "vocals", "harmony", "harmonies", "delay", "reverb", "pulse",
-  "dynamic", "dynamics", "instrumentation", "production", "soloing",
+  "enter",
+  "enters",
+  "entering",
+  "drop",
+  "drops",
+  "build",
+  "builds",
+  "fade",
+  "fades",
+  "soft",
+  "warm",
+  "clean",
+  "distorted",
+  "overdriven",
+  "driving",
+  "wide",
+  "full",
+  "gentle",
+  "emotional",
+  "atmospheric",
+  "whispered",
+  "spoken",
+  "sung",
+  "strummed",
+  "strumming",
+  "arpeggio",
+  "arpeggios",
+  "piano",
+  "guitar",
+  "bass",
+  "drums",
+  "kick",
+  "snare",
+  "synth",
+  "strings",
+  "vocal",
+  "vocals",
+  "harmony",
+  "harmonies",
+  "delay",
+  "reverb",
+  "pulse",
+  "dynamic",
+  "dynamics",
+  "instrumentation",
+  "production",
+  "soloing",
 ]);
 
 function normalizeLabel(value: string) {
@@ -48,10 +109,17 @@ function baseStructuralLabel(value: string) {
 
 function looksLikeInlineDirection(label: string) {
   if (INLINE_ROLE_PATTERNS.some((pattern) => pattern.test(label))) return true;
-  const words = label.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, " ").split(/\s+/).filter(Boolean);
+  const words = label
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   if (words.length >= 6) return true;
   if (words.some((word) => DIRECTION_WORDS.has(word))) return true;
-  if (/\b(with|and|then|into|under|over|only|returns?|continues?|rises?|slows?|fades?)\b/i.test(label)) return true;
+  if (
+    /\b(with|and|then|into|under|over|only|returns?|continues?|rises?|slows?|fades?)\b/i.test(label)
+  )
+    return true;
   return false;
 }
 
@@ -62,7 +130,12 @@ export function isStructuralSectionHeader(line: string): boolean {
   if (!label || label.length > 80) return false;
   const base = baseStructuralLabel(label);
   if (STRUCTURAL_LABELS.has(base)) return true;
-  if (/\b(verse|chorus|refrain|hook|bridge|outro|intro|coda|breakdown|interlude|instrumental|solo)\b/i.test(base)) return true;
+  if (
+    /\b(verse|chorus|refrain|hook|bridge|outro|intro|coda|breakdown|interlude|instrumental|solo)\b/i.test(
+      base,
+    )
+  )
+    return true;
   if (looksLikeInlineDirection(label)) return false;
   // Preserve concise unknown/custom labels as structural sections.
   return label.split(/\s+/).length <= 5;
@@ -108,19 +181,21 @@ export function parseLyricsSections(lyrics: string): LyricsSection[] {
   }
 
   if (!headers.length) {
-    return [{
-      key: "full-lyrics:1",
-      label: "Full Lyrics",
-      displayLabel: "Full Lyrics",
-      occurrence: 1,
-      index: 0,
-      rawHeader: null,
-      headerStart: 0,
-      contentStart: 0,
-      end: lyrics.length,
-      content: lyrics,
-      synthetic: true,
-    }];
+    return [
+      {
+        key: "full-lyrics:1",
+        label: "Full Lyrics",
+        displayLabel: "Full Lyrics",
+        occurrence: 1,
+        index: 0,
+        rawHeader: null,
+        headerStart: 0,
+        contentStart: 0,
+        end: lyrics.length,
+        content: lyrics,
+        synthetic: true,
+      },
+    ];
   }
 
   const counts = new Map<string, number>();
@@ -237,7 +312,8 @@ export function replaceAllRegularChorusLyrics(
 
   for (const section of [...choruses].sort((a, b) => b.contentStart - a.contentStart)) {
     const { prefix } = splitLeadingInlineDirections(section.content);
-    output = output.slice(0, section.contentStart) + prefix + replacementBody + output.slice(section.end);
+    output =
+      output.slice(0, section.contentStart) + prefix + replacementBody + output.slice(section.end);
     changedKeys.push(section.key);
   }
 

@@ -31,9 +31,10 @@ export function DonationMethods({ userId }: { userId: string }) {
       </p>
       <div className="flex flex-wrap gap-2">
         {data.methods.map((method) => {
-          const label = method.provider === "custom"
-            ? (method.customLabel || t("donate.support"))
-            : providerLabel(method.provider);
+          const label =
+            method.provider === "custom"
+              ? method.customLabel || t("donate.support")
+              : providerLabel(method.provider);
           const safeUrl = getSafeExternalUrl(method.value);
 
           if (safeUrl) {
@@ -52,7 +53,10 @@ export function DonationMethods({ userId }: { userId: string }) {
           }
 
           return (
-            <div key={method.id} className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
+            <div
+              key={method.id}
+              className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm"
+            >
               <p className="font-semibold">{label}</p>
               <p className="mt-1 break-all text-xs text-muted-foreground">{method.value}</p>
             </div>

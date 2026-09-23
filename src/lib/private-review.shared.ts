@@ -139,6 +139,9 @@ export function privateReviewExpiryDate(days: number) {
 }
 
 export function privateReviewUrl(token: string, origin?: string) {
-  const base = (origin ?? (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+  const base = (origin ?? (typeof window !== "undefined" ? window.location.origin : "")).replace(
+    /\/$/,
+    "",
+  );
   return `${base}/review/${encodeURIComponent(token)}`;
 }

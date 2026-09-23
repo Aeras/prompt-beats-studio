@@ -79,9 +79,11 @@ function applyNullableFolderFilter(query: any, folderId: string | null | undefin
 function friendlyFolderWriteError(error: { code?: string | null; message: string }) {
   if (error.code === "23505") return new Error("A folder with this name already exists here.");
   if (error.message.includes("5 levels")) return new Error("Folders can be nested up to 5 levels.");
-  if (error.message.includes("descendants")) return new Error("A folder cannot be moved into one of its subfolders.");
+  if (error.message.includes("descendants"))
+    return new Error("A folder cannot be moved into one of its subfolders.");
   if (error.message.includes("itself")) return new Error("A folder cannot be moved into itself.");
-  if (error.message.includes("does not belong")) return new Error("The destination folder is unavailable.");
+  if (error.message.includes("does not belong"))
+    return new Error("The destination folder is unavailable.");
   return new Error(error.message);
 }
 
@@ -104,7 +106,9 @@ export const listLibraryFolderContents = createServerFn({ method: "POST" })
 
     let projectsQuery = context.supabase
       .from("prompt_projects")
-      .select("id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at")
+      .select(
+        "id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at",
+      )
       .eq("user_id", context.userId)
       .order("updated_at", { ascending: false });
 
@@ -112,7 +116,9 @@ export const listLibraryFolderContents = createServerFn({ method: "POST" })
 
     let promptsQuery = context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select(
+        "id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at",
+      )
       .eq("user_id", context.userId)
       .is("project_id", null)
       .order("updated_at", { ascending: false });
@@ -351,7 +357,6 @@ export const searchLibraryFolders = createServerFn({ method: "POST" })
     return { folders: folders ?? [] };
   });
 
-
 export const searchLibraryScope = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => searchScopeInput.parse(input))
@@ -375,7 +380,6 @@ export const searchLibraryScope = createServerFn({ method: "POST" })
     };
   });
 
-
 export const duplicatePromptProjectToFolder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => duplicateProjectInput.parse(input))
@@ -391,11 +395,14 @@ export const duplicatePromptProjectToFolder = createServerFn({ method: "POST" })
     if (sourceError) throw new Error(sourceError.message);
     if (!source) throw new Error("Project not found.");
 
-    const { data: duplicated, error } = await (context.supabase as any).rpc("duplicate_prompt_project_to_folder", {
-      _project_id: data.projectId,
-      _destination_folder_id: data.destinationFolderId ?? null,
-      _new_name: data.newName,
-    });
+    const { data: duplicated, error } = await (context.supabase as any).rpc(
+      "duplicate_prompt_project_to_folder",
+      {
+        _project_id: data.projectId,
+        _destination_folder_id: data.destinationFolderId ?? null,
+        _new_name: data.newName,
+      },
+    );
     if (error) throw new Error(error.message);
     return { duplicated };
   });
@@ -415,11 +422,14 @@ export const duplicateStandalonePromptToFolder = createServerFn({ method: "POST"
     if (sourceError) throw new Error(sourceError.message);
     if (!source || source.project_id) throw new Error("Standalone prompt not found.");
 
-    const { data: duplicated, error } = await (context.supabase as any).rpc("duplicate_standalone_prompt_to_folder", {
-      _prompt_id: data.promptId,
-      _destination_folder_id: data.destinationFolderId ?? null,
-      _new_name: data.newName,
-    });
+    const { data: duplicated, error } = await (context.supabase as any).rpc(
+      "duplicate_standalone_prompt_to_folder",
+      {
+        _prompt_id: data.promptId,
+        _destination_folder_id: data.destinationFolderId ?? null,
+        _new_name: data.newName,
+      },
+    );
     if (error) throw new Error(error.message);
     return { duplicated };
   });

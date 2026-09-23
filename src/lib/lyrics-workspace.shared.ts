@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
-import { generatorInputSnapshotSchema, type GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
+import {
+  generatorInputSnapshotSchema,
+  type GeneratorInputSnapshot,
+} from "@/lib/generator-revision.shared";
 import { CUSTOM_LANGUAGE_VALUE, resolveSongLanguage } from "@/catalog/song-languages";
 
 export const LYRICS_SECTION_ACTIONS = [
@@ -20,7 +23,10 @@ export type LyricsSectionAction = z.infer<typeof lyricsSectionActionSchema>;
 
 export function resolveLyricsWorkspaceLanguage(
   storedLanguage: string | null | undefined,
-  snapshot: Pick<GeneratorInputSnapshot, "language" | "languageVariant" | "customLanguage"> | null | undefined,
+  snapshot:
+    | Pick<GeneratorInputSnapshot, "language" | "languageVariant" | "customLanguage">
+    | null
+    | undefined,
 ): string {
   const stored = storedLanguage?.trim() ?? "";
   if (stored) return stored;

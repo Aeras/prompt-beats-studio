@@ -29,9 +29,13 @@ export function HelpMenu() {
           className="glass-strong z-50 w-[300px] rounded-2xl border border-white/10 p-2 shadow-2xl shadow-black/50"
         >
           <div className="px-3 pb-2 pt-1">
-            <p className="font-display text-sm font-bold">{el ? "Βοήθεια & Πληροφορίες" : "Help & Information"}</p>
+            <p className="font-display text-sm font-bold">
+              {el ? "Βοήθεια & Πληροφορίες" : "Help & Information"}
+            </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {el ? "Υποστήριξη και νομικές πληροφορίες PromptBeats" : "PromptBeats support and legal information"}
+              {el
+                ? "Υποστήριξη και νομικές πληροφορίες PromptBeats"
+                : "PromptBeats support and legal information"}
             </p>
           </div>
 

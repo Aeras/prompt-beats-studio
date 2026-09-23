@@ -14,11 +14,18 @@ describe("lyrics section parser", () => {
   test("assigns stable identities to repeated labels", () => {
     const sections = parseLyricsSections("[Verse]\nA\n[Chorus]\nB\n[Verse]\nC\n[Chorus]\nD");
     expect(sections.map((s) => s.key)).toEqual(["verse:1", "chorus:1", "verse:2", "chorus:2"]);
-    expect(sections.map((s) => s.displayLabel)).toEqual(["Verse 1", "Chorus 1", "Verse 2", "Chorus 2"]);
+    expect(sections.map((s) => s.displayLabel)).toEqual([
+      "Verse 1",
+      "Chorus 1",
+      "Verse 2",
+      "Chorus 2",
+    ]);
   });
 
   test("keeps vocal tags inside the structural section", () => {
-    const sections = parseLyricsSections("[Chorus]\n[Male]\nLine 1\n[Female]\nLine 2\n[Both]\nLine 3");
+    const sections = parseLyricsSections(
+      "[Chorus]\n[Male]\nLine 1\n[Female]\nLine 2\n[Both]\nLine 3",
+    );
     expect(sections).toHaveLength(1);
     expect(sections[0]!.content).toContain("[Male]");
     expect(sections[0]!.content).toContain("[Female]");
@@ -26,7 +33,9 @@ describe("lyrics section parser", () => {
   });
 
   test("keeps concise production directions inside sections", () => {
-    const sections = parseLyricsSections("[Verse]\n[Clean electric guitar arpeggio]\nLine\n[Chorus]\n[Full band enters]\nHook");
+    const sections = parseLyricsSections(
+      "[Verse]\n[Clean electric guitar arpeggio]\nLine\n[Chorus]\n[Full band enters]\nHook",
+    );
     expect(sections.map((s) => s.label)).toEqual(["Verse", "Chorus"]);
   });
 

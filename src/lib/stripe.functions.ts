@@ -20,7 +20,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context }) => {
-    const { getStripeProPriceId, getTrustedAppOrigin, stripeRequest } = await import("@/lib/stripe.server");
+    const { getStripeProPriceId, getTrustedAppOrigin, stripeRequest } =
+      await import("@/lib/stripe.server");
     const { supabase, userId, claims } = context;
     const email = (claims as { email?: string }).email;
     const priceId = getStripeProPriceId();
@@ -35,10 +36,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
     let customerId = sub?.stripe_customer_id ?? null;
     if (!customerId) {
-      const customer = await stripeRequest<{ id: string }>("POST", "/v1/customers", {
-        ...(email ? { email } : {}),
-        "metadata[user_id]": userId,
-      }, { idempotencyKey: `promptbeats-customer-${userId}` });
+      const customer = await stripeRequest<{ id: string }>(
+        "POST",
+        "/v1/customers",
+        {
+          ...(email ? { email } : {}),
+          "metadata[user_id]": userId,
+        },
+        { idempotencyKey: `promptbeats-customer-${userId}` },
+      );
       customerId = customer.id;
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: customerPersistError } = await supabaseAdmin
@@ -67,7 +73,12 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 /** Creates a Stripe billing portal session for the signed-in user. */
 export const createBillingPortalSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({}).strict().parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z
+      .object({})
+      .strict()
+      .parse(input ?? {}),
+  )
   .handler(async ({ context }) => {
     const { data: sub, error: subscriptionError } = await context.supabase
       .from("subscriptions")

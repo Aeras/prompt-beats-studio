@@ -2,7 +2,8 @@ import type { AiModelsTranslationKey } from "@/i18n/locales/en-ai-models";
 
 export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.title": "Μοντέλα AI",
-  "aiModels.subtitle": "Διαχείριση εγκατεστημένων μοντέλων AI, προεπιλογών, πρόσβασης, reasoning και pricing.",
+  "aiModels.subtitle":
+    "Διαχείριση εγκατεστημένων μοντέλων AI, προεπιλογών, πρόσβασης, reasoning και pricing.",
   "aiModels.generatorDefault": "Προεπιλογή Generator",
   "aiModels.qualityDefault": "Προεπιλογή Quality Check",
   "aiModels.saveDefault": "Αποθήκευση προεπιλογής",
@@ -64,17 +65,22 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.priceUnknown": "N/A",
   "aiModels.inputShort": "input",
   "aiModels.outputShort": "output",
-  "aiModels.defaultProtection": "Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο πριν απενεργοποιήσεις αυτό.",
-  "aiModels.defaultAccessProtectionGenerator": "Αυτό το μοντέλο είναι το προεπιλεγμένο του AI Generator και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο για τον Generator.",
-  "aiModels.defaultAccessProtectionQuality": "Αυτό το μοντέλο είναι το προεπιλεγμένο του Quality Check και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο για το Quality Check.",
-  "aiModels.defaultAccessProtectionBoth": "Αυτό το μοντέλο είναι προεπιλεγμένο και για AI Generator και για Quality Check και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλα προεπιλεγμένα μοντέλα.",
+  "aiModels.defaultProtection":
+    "Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο πριν απενεργοποιήσεις αυτό.",
+  "aiModels.defaultAccessProtectionGenerator":
+    "Αυτό το μοντέλο είναι το προεπιλεγμένο του AI Generator και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο για τον Generator.",
+  "aiModels.defaultAccessProtectionQuality":
+    "Αυτό το μοντέλο είναι το προεπιλεγμένο του Quality Check και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλο προεπιλεγμένο μοντέλο για το Quality Check.",
+  "aiModels.defaultAccessProtectionBoth":
+    "Αυτό το μοντέλο είναι προεπιλεγμένο και για AI Generator και για Quality Check και πρέπει να παραμένει διαθέσιμο σε όλους τους χρήστες. Επίλεξε πρώτα άλλα προεπιλεγμένα μοντέλα.",
   "aiModels.manualPricingHint": "Οι τιμές καταχωρούνται χειροκίνητα σε USD ανά 1.000.000 tokens.",
   "aiModels.advancedPricing": "Προχωρημένο pricing",
   "aiModels.preview": "Preview",
   "aiModels.retirementDate": "Ημερομηνία απόσυρσης",
   "aiModels.close": "Κλείσιμο",
   "aiModels.saving": "Αποθήκευση…",
-  "aiModels.verifiedPricingRequired": "Για επιβεβαιωμένο pricing απαιτούνται τιμές input και output.",
+  "aiModels.verifiedPricingRequired":
+    "Για επιβεβαιωμένο pricing απαιτούνται τιμές input και output.",
   "aiModels.providers": "Συνδέσεις providers",
   "aiModels.providersHint": "Εμφανίζονται μόνο providers με ρυθμισμένα server-side credentials.",
   "aiModels.noProviders": "Δεν εντοπίστηκαν ρυθμισμένοι AI providers.",
@@ -87,7 +93,8 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.providerDeprecated": "Deprecated",
   "aiModels.contextWindow": "Context",
   "aiModels.noDiscoveredModels": "Ο provider δεν επέστρεψε συμβατά μοντέλα δημιουργίας κειμένου.",
-  "aiModels.phase4Notice": "Η προσθήκη νέων μοντέλων θα ενεργοποιηθεί στη Phase 4 μετά από Compatibility Test.",
+  "aiModels.phase4Notice":
+    "Η προσθήκη νέων μοντέλων θα ενεργοποιηθεί στη Phase 4 μετά από Compatibility Test.",
   "aiModels.discoverySummary": "Σύνοψη ανακάλυψης",
   "aiModels.returnedCount": "Επέστρεψε",
   "aiModels.candidateCount": "Πιθανά candidates",
@@ -98,7 +105,8 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.compatibilityError": "Δεν ήταν δυνατή η ολοκλήρωση του Compatibility Test.",
   "aiModels.noTestableCandidates": "Δεν υπάρχουν νέα candidate μοντέλα για έλεγχο.",
   "aiModels.compatibleModels": "Μοντέλα διαθέσιμα για προσθήκη",
-  "aiModels.compatibilitySummary": "{compatible} συμβατά · {unsupported} μη συμβατά · {inconclusive} αβέβαια",
+  "aiModels.compatibilitySummary":
+    "{compatible} συμβατά · {unsupported} μη συμβατά · {inconclusive} αβέβαια",
   "aiModels.noCompatibleModels": "Κανένα μοντέλο δεν πέρασε το PromptBeats Compatibility Test.",
   "aiModels.compatibility": "Συμβατότητα",
   "aiModels.generatorOnly": "Μόνο Generator",
@@ -121,13 +129,18 @@ export const elAiModels: Record<AiModelsTranslationKey, string> = {
   "aiModels.recheckProvider": "Επανέλεγχος provider",
   "aiModels.recheckingProvider": "Επανέλεγχος provider…",
   "aiModels.healthRechecked": "Ο έλεγχος υγείας ολοκληρώθηκε: {status}",
-  "aiModels.providerHealthRechecked": "Ο έλεγχος provider ολοκληρώθηκε για {checked} εγκατεστημένα μοντέλα",
+  "aiModels.providerHealthRechecked":
+    "Ο έλεγχος provider ολοκληρώθηκε για {checked} εγκατεστημένα μοντέλα",
   "aiModels.healthCheckError": "Δεν ήταν δυνατή η ολοκλήρωση του ελέγχου υγείας.",
   "aiModels.defaultAttentionTitle": "Ένα προεπιλεγμένο μοντέλο χρειάζεται προσοχή",
-  "aiModels.generatorDefaultAttention": "Το προεπιλεγμένο μοντέλο του Generator είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
-  "aiModels.qualityDefaultAttention": "Το προεπιλεγμένο μοντέλο του Quality Check είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
+  "aiModels.generatorDefaultAttention":
+    "Το προεπιλεγμένο μοντέλο του Generator είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
+  "aiModels.qualityDefaultAttention":
+    "Το προεπιλεγμένο μοντέλο του Quality Check είναι παλιό, degraded, failing ή deprecated. Έλεγξε την κατάστασή του πριν το αλλάξεις.",
   "aiModels.compatibilityProgress": "Έλεγχος {completed}/{total}…",
   "aiModels.stopCompatibility": "Διακοπή",
-  "aiModels.compatibilityStopped": "Ο έλεγχος σταμάτησε μετά από {completed}/{total} μοντέλα. Εμφανίζονται τα μερικά αποτελέσματα.",
-  "aiModels.defaultNotEligible": "Αυτό το μοντέλο δεν μπορεί να χρησιμοποιηθεί ως επιλεγμένη προεπιλογή."
+  "aiModels.compatibilityStopped":
+    "Ο έλεγχος σταμάτησε μετά από {completed}/{total} μοντέλα. Εμφανίζονται τα μερικά αποτελέσματα.",
+  "aiModels.defaultNotEligible":
+    "Αυτό το μοντέλο δεν μπορεί να χρησιμοποιηθεί ως επιλεγμένη προεπιλογή.",
 };

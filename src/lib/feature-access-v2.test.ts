@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-const registryMigration = "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
-const mutationMigration = "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
-const songSetupMigration = "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
-const lyricsReviewMigration = "supabase/migrations/20260923043000_add_lyrics_review_feature_access.sql";
+const registryMigration =
+  "supabase/migrations/20260921090000_feature_access_v2_registry_and_ai_admission.sql";
+const mutationMigration =
+  "supabase/migrations/20260921090100_feature_access_v2_mutation_enforcement.sql";
+const songSetupMigration =
+  "supabase/migrations/20260922105500_add_song_setup_assistant_feature_access.sql";
+const lyricsReviewMigration =
+  "supabase/migrations/20260923043000_add_lyrics_review_feature_access.sql";
 const privateReviewMigration = "supabase/migrations/20260923054500_private_review_links_phase1.sql";
-const dependentSurfaceMigration = "supabase/migrations/20260922182136_feature_access_dependent_surface_rls.sql";
+const dependentSurfaceMigration =
+  "supabase/migrations/20260922182136_feature_access_dependent_surface_rls.sql";
 
 const CANONICAL_KEYS = [
   "ai_generator",
@@ -51,7 +56,15 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("V2 migration keeps its original ten definitions while later features are seeded separately", async () => {
     const sql = await source(registryMigration);
-    const laterKeys = ["smart_presets","song_setup_assistant","lyrics_review","private_review_links","export_center","follow_creators","notifications"];
+    const laterKeys = [
+      "smart_presets",
+      "song_setup_assistant",
+      "lyrics_review",
+      "private_review_links",
+      "export_center",
+      "follow_creators",
+      "notifications",
+    ];
     const originalKeys = CANONICAL_KEYS.filter((key) => !laterKeys.includes(key));
     for (const key of originalKeys) {
       expect(sql).toContain(`('${key}'`);
@@ -90,7 +103,7 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("Feature Access panel keeps stable feature_key identity and Super Admin boundary", async () => {
     const ui = await source("src/routes/management.tsx");
-    expect(ui).toContain('key={policy.feature_key}');
+    expect(ui).toContain("key={policy.feature_key}");
     expect(ui).toContain('isSuperAdmin && section === "features"');
     expect(ui).toContain("<FeatureAccessPanel />");
   });
@@ -122,7 +135,9 @@ describe("Feature Access V2 — 17 features", () => {
 
     const setup = await source("src/lib/song-setup-assistant.functions.ts");
     const generatorGate = setup.indexOf('requireFeatureAccess(context.supabase, "ai_generator")');
-    const assistantGate = setup.indexOf('requireFeatureAccess(context.supabase, "song_setup_assistant")');
+    const assistantGate = setup.indexOf(
+      'requireFeatureAccess(context.supabase, "song_setup_assistant")',
+    );
     const provider = setup.indexOf('import("@/lib/ai-provider.server")');
     expect(generatorGate).toBeGreaterThan(-1);
     expect(assistantGate).toBeGreaterThan(generatorGate);
@@ -136,14 +151,16 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("Quality Check recovery remains readable while new durable admission is gated before creation", async () => {
     const sql = await source(registryMigration);
-    for (const name of ["start_quality_check_job","claim_quality_check"]) {
+    for (const name of ["start_quality_check_job", "claim_quality_check"]) {
       const block = functionBlock(sql, name);
       const existing = block.indexOf("idempotency_key=_idempotency_key");
       const feature = block.indexOf("can_use_feature(v_user,'quality_check')");
       expect(existing).toBeGreaterThan(-1);
       expect(feature).toBeGreaterThan(existing);
       if (name === "start_quality_check_job") {
-        expect(block.indexOf("INSERT INTO public.ai_quality_check_actions")).toBeGreaterThan(feature);
+        expect(block.indexOf("INSERT INTO public.ai_quality_check_actions")).toBeGreaterThan(
+          feature,
+        );
         expect(block.indexOf("kick_quality_check_runner")).toBeGreaterThan(feature);
       }
     }
@@ -167,7 +184,7 @@ describe("Feature Access V2 — 17 features", () => {
     const tracks = await source("src/lib/tracks.functions.ts");
     expect(tracks).toContain("isInternalLyriaSave");
     expect(tracks).toContain("lyria-temp/");
-    expect(tracks).toContain('!isInternalLyriaSave');
+    expect(tracks).toContain("!isInternalLyriaSave");
   });
 
   test("Song Analyzer provider path and route admission are Feature Access protected", async () => {
@@ -203,8 +220,12 @@ describe("Feature Access V2 — 17 features", () => {
     expect(r2Upload).toBeGreaterThan(bodyRead);
 
     const sql = await source(mutationMigration);
-    expect(functionBlock(sql, "admit_track_upload")).toContain("can_use_feature(v_user_id,'track_uploads')");
-    expect(sql).toContain("(source_type<>'upload' OR public.current_user_can_use_feature('track_uploads'))");
+    expect(functionBlock(sql, "admit_track_upload")).toContain(
+      "can_use_feature(v_user_id,'track_uploads')",
+    );
+    expect(sql).toContain(
+      "(source_type<>'upload' OR public.current_user_can_use_feature('track_uploads'))",
+    );
 
     const tracks = await source("src/lib/tracks.functions.ts");
     expect(tracks).toContain('requireFeatureAccess(context.supabase, "track_uploads")');
@@ -223,7 +244,9 @@ describe("Feature Access V2 — 17 features", () => {
     for (const name of ["listMyShareManagement", "revokeTrackShareLink"]) {
       const start = server.indexOf(`export const ${name}`);
       const next = server.indexOf("export const", start + 20);
-      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "sharing_public_links")');
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain(
+        'requireFeatureAccess(context.supabase, "sharing_public_links")',
+      );
     }
 
     const management = await source("src/components/promptbeats/SharedLinksPanel.tsx");
@@ -233,15 +256,26 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("Playlists reads and mutations are gated and the dependent Library surface does not query when unavailable", async () => {
     const server = await source("src/lib/playlists.functions.ts");
-    for (const name of ["createPlaylist","updatePlaylist","deletePlaylist","addTrackToPlaylist","removeTrackFromPlaylist","reorderPlaylistTracks"]) {
+    for (const name of [
+      "createPlaylist",
+      "updatePlaylist",
+      "deletePlaylist",
+      "addTrackToPlaylist",
+      "removeTrackFromPlaylist",
+      "reorderPlaylistTracks",
+    ]) {
       const start = server.indexOf(`export const ${name}`);
       const next = server.indexOf("export const", start + 20);
-      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "playlists")');
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain(
+        'requireFeatureAccess(context.supabase, "playlists")',
+      );
     }
-    for (const name of ["listPlaylists","getPlaylist"]) {
+    for (const name of ["listPlaylists", "getPlaylist"]) {
       const start = server.indexOf(`export const ${name}`);
       const next = server.indexOf("export const", start + 20);
-      expect(server.slice(start, next === -1 ? server.length : next)).toContain('requireFeatureAccess(context.supabase, "playlists")');
+      expect(server.slice(start, next === -1 ? server.length : next)).toContain(
+        'requireFeatureAccess(context.supabase, "playlists")',
+      );
     }
     const ui = await source("src/components/promptbeats/PlaylistLibraryPanel.tsx");
     expect(ui).toContain('useFeatureAccess("playlists")');
@@ -253,12 +287,16 @@ describe("Feature Access V2 — 17 features", () => {
     const server = await source("src/lib/playlists.functions.ts");
     const toggleStart = server.indexOf("export const toggleFavorite");
     const toggleEnd = server.indexOf("export const", toggleStart + 20);
-    expect(server.slice(toggleStart, toggleEnd)).toContain('requireFeatureAccess(context.supabase, "favorites")');
+    expect(server.slice(toggleStart, toggleEnd)).toContain(
+      'requireFeatureAccess(context.supabase, "favorites")',
+    );
 
     for (const name of ["listFavoriteTrackIds", "listFavoriteTracks"]) {
       const readStart = server.indexOf(`export const ${name}`);
       const readEnd = server.indexOf("export const", readStart + 20);
-      expect(server.slice(readStart, readEnd === -1 ? server.length : readEnd)).toContain('requireFeatureAccess(context.supabase, "favorites")');
+      expect(server.slice(readStart, readEnd === -1 ? server.length : readEnd)).toContain(
+        'requireFeatureAccess(context.supabase, "favorites")',
+      );
     }
 
     const sql = await source(mutationMigration);
@@ -297,7 +335,16 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("new mutations do not delete historical user data or auto-revoke share links", async () => {
     const sql = (await source(registryMigration)) + "\n" + (await source(mutationMigration));
-    for (const table of ["ai_generation_jobs","ai_quality_check_actions","playlists","playlist_tracks","favorites","likes","track_share_links","tracks"]) {
+    for (const table of [
+      "ai_generation_jobs",
+      "ai_quality_check_actions",
+      "playlists",
+      "playlist_tracks",
+      "favorites",
+      "likes",
+      "track_share_links",
+      "tracks",
+    ]) {
       expect(sql).not.toMatch(new RegExp(`DELETE FROM public\\.${table}\\b`, "i"));
     }
     expect(sql).not.toContain("revoked_at=now()");
@@ -305,7 +352,13 @@ describe("Feature Access V2 — 17 features", () => {
 
   test("Library feature-owned tabs, Analyzer results and prompt actions follow effective Feature Access with safe fallback", async () => {
     const library = await source("src/routes/library.tsx");
-    for (const key of ["playlists", "sharing_public_links", "favorites", "likes", "song_analyzer"]) {
+    for (const key of [
+      "playlists",
+      "sharing_public_links",
+      "favorites",
+      "likes",
+      "song_analyzer",
+    ]) {
       expect(library).toContain(`useFeatureAccess("${key}")`);
     }
     expect(library).toContain("availableTabs");
@@ -315,14 +368,20 @@ describe("Feature Access V2 — 17 features", () => {
     expect(library).toContain("enabled: Boolean(user && likesAccess.allowed)");
     expect(library).toContain("enabled: Boolean(user && favoritesAccess.allowed)");
     expect(library).toContain("showAnalyses={analyzerAccess.allowed}");
-    expect(library).toContain('lyricsWorkspaceAccess.allowed');
-    expect(library).toContain('generatorAccess.allowed');
+    expect(library).toContain("lyricsWorkspaceAccess.allowed");
+    expect(library).toContain("generatorAccess.allowed");
 
     const analyzer = await source("src/lib/song-analyzer.functions.ts");
-    for (const name of ["listSongAnalyses", "updateSongAnalysisOrganization", "deleteSongAnalysis"]) {
+    for (const name of [
+      "listSongAnalyses",
+      "updateSongAnalysisOrganization",
+      "deleteSongAnalysis",
+    ]) {
       const start = analyzer.indexOf(`export const ${name}`);
       const next = analyzer.indexOf("export const", start + 20);
-      expect(analyzer.slice(start, next === -1 ? analyzer.length : next)).toContain('requireFeatureAccess(context.supabase, "song_analyzer")');
+      expect(analyzer.slice(start, next === -1 ? analyzer.length : next)).toContain(
+        'requireFeatureAccess(context.supabase, "song_analyzer")',
+      );
     }
   });
 
@@ -348,7 +407,7 @@ describe("Feature Access V2 — 17 features", () => {
       follow_creators: "src/components/promptbeats/FollowCreatorControl.tsx",
       notifications: "src/components/promptbeats/NotificationCenter.tsx",
     } as const;
-    for (const [key,path] of Object.entries(files)) {
+    for (const [key, path] of Object.entries(files)) {
       expect(await source(path)).toContain(`useFeatureAccess("${key}")`);
     }
   });

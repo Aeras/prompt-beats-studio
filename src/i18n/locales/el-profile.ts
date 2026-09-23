@@ -10,8 +10,10 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
   "profile.manage": "Διαχείριση λογαριασμού",
   "profile.blockTitle": "Αποκλεισμός αυτού του λογαριασμού;",
   "profile.unblockTitle": "Άρση αποκλεισμού αυτού του λογαριασμού;",
-  "profile.blockBody": "Ο λογαριασμός θα χάσει την πρόσβαση στις προστατευμένες λειτουργίες του PromptBeats.",
-  "profile.unblockBody": "Να αποκατασταθεί η κανονική πρόσβαση στο PromptBeats για αυτόν τον λογαριασμό;",
+  "profile.blockBody":
+    "Ο λογαριασμός θα χάσει την πρόσβαση στις προστατευμένες λειτουργίες του PromptBeats.",
+  "profile.unblockBody":
+    "Να αποκατασταθεί η κανονική πρόσβαση στο PromptBeats για αυτόν τον λογαριασμό;",
   "profile.selectReason": "Επίλεξε αιτία",
   "profile.enterReason": "Γράψε την αιτία",
   "profile.accountBlocked": "Ο λογαριασμός αποκλείστηκε",
@@ -31,15 +33,18 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
 
   "donations.loading": "Φόρτωση ρυθμίσεων δωρεών…",
   "donations.title": "Δωρεές δημιουργού",
-  "donations.accessHint": "Επίλεξε αν οι δωρεές θα εμφανίζονται δημόσια και διαχειρίσου έως 3 μεθόδους δωρεάς.",
+  "donations.accessHint":
+    "Επίλεξε αν οι δωρεές θα εμφανίζονται δημόσια και διαχειρίσου έως 3 μεθόδους δωρεάς.",
   "donations.publicEnabled": "Δημόσιες",
   "donations.methodEnabled": "Ενεργή",
   "donations.removeMethod": "Αφαίρεση μεθόδου δωρεάς",
   "donations.customProvider": "Πάροχος / όνομα",
-  "donations.customWarning": "Οι πληροφορίες που καταχωρείς εδώ μπορεί να εμφανίζονται δημόσια. Μην δημοσιεύεις αριθμούς καρτών, CVV, ημερομηνίες λήξης, κωδικούς πρόσβασης ή άλλα ευαίσθητα προσωπικά ή τραπεζικά στοιχεία. Προτίμησε ασφαλή σύνδεσμο πληρωμής ή αναγνωρισμένο ηλεκτρονικό πορτοφόλι.",
+  "donations.customWarning":
+    "Οι πληροφορίες που καταχωρείς εδώ μπορεί να εμφανίζονται δημόσια. Μην δημοσιεύεις αριθμούς καρτών, CVV, ημερομηνίες λήξης, κωδικούς πρόσβασης ή άλλα ευαίσθητα προσωπικά ή τραπεζικά στοιχεία. Προτίμησε ασφαλή σύνδεσμο πληρωμής ή αναγνωρισμένο ηλεκτρονικό πορτοφόλι.",
   "donations.customValue": "Στοιχεία δωρεάς, URL πληρωμής, username ή IBAN",
   "donations.providerUrl": "Ασφαλές URL πληρωμής / προφίλ",
-  "donations.customAcknowledge": "Κατανοώ ότι οι πληροφορίες που καταχωρώ εδώ μπορεί να εμφανίζονται δημόσια. Αν εισάγω IBAN, αποδέχομαι ρητά ότι μπορεί να είναι δημόσιο.",
+  "donations.customAcknowledge":
+    "Κατανοώ ότι οι πληροφορίες που καταχωρώ εδώ μπορεί να εμφανίζονται δημόσια. Αν εισάγω IBAN, αποδέχομαι ρητά ότι μπορεί να είναι δημόσιο.",
   "donations.addMethod": "Προσθήκη μεθόδου δωρεάς",
   "donations.save": "Αποθήκευση δωρεών",
   "donations.saved": "Οι ρυθμίσεις δωρεών αποθηκεύτηκαν",
@@ -78,5 +83,5 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
   "social.instagram": "Instagram",
   "social.tiktok": "TikTok",
   "social.twitter": "X (Twitter)",
-  "social.youtube": "YouTube"
+  "social.youtube": "YouTube",
 };

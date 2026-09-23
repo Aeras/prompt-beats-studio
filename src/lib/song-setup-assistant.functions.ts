@@ -61,7 +61,9 @@ const SETUP_SCHEMA: Record<string, unknown> = {
 };
 
 function values(items: readonly { value: string }[]) {
-  return items.map((item) => item.value).filter((value) => value !== "Custom…" && value !== "Custom");
+  return items
+    .map((item) => item.value)
+    .filter((value) => value !== "Custom…" && value !== "Custom");
 }
 
 const SYSTEM_PROMPT = `You are the PromptBeats Song Setup Assistant, a professional music brief architect and pre-production assistant.
@@ -160,8 +162,13 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
       }
       const setup = songSetupDraftSchema.parse(parsed);
 
-      const bpmValid = setup.bpm === "Auto" || (/^\d{2,3}$/.test(setup.bpm) && Number(setup.bpm) >= 40 && Number(setup.bpm) <= 260);
-      if (!bpmValid) throw new Error("The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.");
+      const bpmValid =
+        setup.bpm === "Auto" ||
+        (/^\d{2,3}$/.test(setup.bpm) && Number(setup.bpm) >= 40 && Number(setup.bpm) <= 260);
+      if (!bpmValid)
+        throw new Error(
+          "The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.",
+        );
 
       return { setup, model: SONG_SETUP_ASSISTANT_MODEL };
     } catch (error) {

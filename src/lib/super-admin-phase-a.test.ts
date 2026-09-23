@@ -34,7 +34,9 @@ describe("Super Admin Phase A", () => {
   test("Admin cannot create or modify high roles", async () => {
     const sql = await source(coreMigrationPath);
     expect(sql).toContain("IF v_actor_role = 'admin' THEN");
-    expect(sql).toContain("IF v_old IN ('admin','super_admin') THEN RAISE EXCEPTION 'protected account'");
+    expect(sql).toContain(
+      "IF v_old IN ('admin','super_admin') THEN RAISE EXCEPTION 'protected account'",
+    );
     expect(sql).toContain("IF _role::text NOT IN ('user','moderator','senior_moderator')");
   });
 
@@ -49,7 +51,9 @@ describe("Super Admin Phase A", () => {
 
   test("self-role changes stay prohibited", async () => {
     const sql = await source(coreMigrationPath);
-    expect(sql).toContain("IF _target_user_id = v_actor THEN RAISE EXCEPTION 'cannot change your own role'");
+    expect(sql).toContain(
+      "IF _target_user_id = v_actor THEN RAISE EXCEPTION 'cannot change your own role'",
+    );
   });
 
   test("last active Super Admin protection is serialized at database level", async () => {
@@ -156,8 +160,12 @@ describe("Super Admin Phase A", () => {
   test("rewrites persisted staff badges before enforcing the new badge constraint", async () => {
     const sql = await source(coreMigrationPath);
     const dropConstraint = sql.indexOf("DROP CONSTRAINT IF EXISTS public_staff_badges_badge_check");
-    const refreshFunction = sql.indexOf("CREATE OR REPLACE FUNCTION public.refresh_public_staff_badge");
-    const backfill = sql.indexOf("SELECT public.refresh_public_staff_badge(id) FROM public.profiles");
+    const refreshFunction = sql.indexOf(
+      "CREATE OR REPLACE FUNCTION public.refresh_public_staff_badge",
+    );
+    const backfill = sql.indexOf(
+      "SELECT public.refresh_public_staff_badge(id) FROM public.profiles",
+    );
     const addConstraint = sql.lastIndexOf("ADD CONSTRAINT public_staff_badges_badge_check");
     expect(dropConstraint).toBeGreaterThan(-1);
     expect(refreshFunction).toBeGreaterThan(dropConstraint);
@@ -166,7 +174,9 @@ describe("Super Admin Phase A", () => {
   });
 
   test("bootstrap migration promotes only the verified primary Admin", async () => {
-    const sql = await source("supabase/migrations/20260921060300_bootstrap_primary_super_admin.sql");
+    const sql = await source(
+      "supabase/migrations/20260921060300_bootstrap_primary_super_admin.sql",
+    );
     expect(sql).toContain("lower(email) = 'nikos76gr@gmail.com'");
     expect(sql).toContain("v_match_count <> 1");
     expect(sql).toContain("v_current_role <> 'admin'");

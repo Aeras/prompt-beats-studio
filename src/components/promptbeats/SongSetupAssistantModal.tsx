@@ -9,10 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  generateSongSetup,
-  type SongSetupDraft,
-} from "@/lib/song-setup-assistant.functions";
+import { generateSongSetup, type SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import { AI_TARGET_PLATFORM_LABEL, type AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 
@@ -32,7 +29,12 @@ const fields: Array<{
   { key: "bpm", labelKey: "generator.bpm" },
   { key: "songStructure", labelKey: "generator.songStructure", multiline: true, rows: 2 },
   { key: "productionStyle", labelKey: "generator.productionStyle", multiline: true, rows: 4 },
-  { key: "additionalInstructions", labelKey: "generator.additionalInstructions", multiline: true, rows: 5 },
+  {
+    key: "additionalInstructions",
+    labelKey: "generator.additionalInstructions",
+    multiline: true,
+    rows: 5,
+  },
   { key: "language", labelKey: "generator.language" },
 ];
 
@@ -65,7 +67,8 @@ const copy = {
     regenerate: "Νέα δημιουργία",
     reset: "Επαναφορά",
     preview: "Προεπισκόπηση προηγμένης ρύθμισης",
-    previewHint: "Έλεγξε ή επεξεργάσου οποιοδήποτε πεδίο πριν το εφαρμόσεις στην Προηγμένη λειτουργία.",
+    previewHint:
+      "Έλεγξε ή επεξεργάσου οποιοδήποτε πεδίο πριν το εφαρμόσεις στην Προηγμένη λειτουργία.",
     apply: "Εφαρμογή στο Προηγμένο",
     fallbackError: "Δεν ήταν δυνατή η δημιουργία της ρύθμισης. Δοκίμασε ξανά.",
   },
@@ -133,10 +136,15 @@ export function SongSetupAssistantModal({
         <div className="space-y-3">
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
-              <label htmlFor="song-setup-description" className="text-xs font-semibold uppercase tracking-wider text-foreground/90">
+              <label
+                htmlFor="song-setup-description"
+                className="text-xs font-semibold uppercase tracking-wider text-foreground/90"
+              >
                 {text.describe}
               </label>
-              <span className="text-[11px] text-muted-foreground">Gemini 3.8 Flash · {description.length}/2500</span>
+              <span className="text-[11px] text-muted-foreground">
+                Gemini 3.8 Flash · {description.length}/2500
+              </span>
             </div>
             <textarea
               id="song-setup-description"
@@ -170,7 +178,11 @@ export function SongSetupAssistantModal({
             </button>
           </div>
 
-          {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-400">
+              {error}
+            </p>
+          )}
         </div>
 
         {draft && (
@@ -183,9 +195,17 @@ export function SongSetupAssistantModal({
               {fields.map((field) => (
                 <label
                   key={field.key}
-                  className={field.key === "theme" || field.key === "productionStyle" || field.key === "additionalInstructions" ? "sm:col-span-2" : ""}
+                  className={
+                    field.key === "theme" ||
+                    field.key === "productionStyle" ||
+                    field.key === "additionalInstructions"
+                      ? "sm:col-span-2"
+                      : ""
+                  }
                 >
-                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t(field.labelKey)}</span>
+                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t(field.labelKey)}
+                  </span>
                   {field.multiline ? (
                     <textarea
                       value={draft[field.key]}

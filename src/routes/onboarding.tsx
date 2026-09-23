@@ -14,7 +14,11 @@ export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
       { title: "Set Up Your Artist Profile — PromptBeats" },
-      { name: "description", content: "Add an avatar, a short bio and your social links so listeners can find you on your PromptBeats creator page." },
+      {
+        name: "description",
+        content:
+          "Add an avatar, a short bio and your social links so listeners can find you on your PromptBeats creator page.",
+      },
       { property: "og:title", content: "Set Up Your Artist Profile — PromptBeats" },
       { property: "og:description", content: "Customize your public PromptBeats creator page." },
       { property: "og:type", content: "website" },
@@ -33,7 +37,13 @@ function Onboarding() {
   const { user, profile, loading } = useAuth();
   const [alias, setAlias] = useState("");
   const [bio, setBio] = useState("");
-  const [links, setLinks] = useState({ website_url: "", instagram_url: "", tiktok_url: "", youtube_url: "", x_url: "" });
+  const [links, setLinks] = useState({
+    website_url: "",
+    instagram_url: "",
+    tiktok_url: "",
+    youtube_url: "",
+    x_url: "",
+  });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +68,9 @@ function Onboarding() {
         x_url: l.x_url || p.x_url || "",
       }));
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -75,9 +87,13 @@ function Onboarding() {
     if (!avatarFile || !user) return undefined;
     const ext = validateAvatarFile(avatarFile);
     const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true });
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, avatarFile, { upsert: true });
     if (upErr) throw new Error(upErr.message);
-    const { data } = await supabase.storage.from("avatars").createSignedUrl(path, 60 * 60 * 24 * 365);
+    const { data } = await supabase.storage
+      .from("avatars")
+      .createSignedUrl(path, 60 * 60 * 24 * 365);
     return data?.signedUrl;
   };
 
@@ -88,7 +104,8 @@ function Onboarding() {
       const avatarUrl = persist ? await uploadAvatar() : undefined;
       const completed = persist
         ? Boolean(alias.trim()) && Boolean(avatarUrl ?? profile?.avatar_url)
-        : Boolean((profile?.artist_alias ?? profile?.display_name ?? "").trim()) && Boolean(profile?.avatar_url);
+        : Boolean((profile?.artist_alias ?? profile?.display_name ?? "").trim()) &&
+          Boolean(profile?.avatar_url);
       await updateMyProfile({
         data: {
           profile_completed: completed,
@@ -121,9 +138,17 @@ function Onboarding() {
     <div className="aurora flex min-h-screen items-center justify-center bg-[#0a0a0c] px-4 py-10">
       <div className="glass-strong w-full max-w-lg rounded-3xl p-6 sm:p-8">
         <div className="flex items-center gap-3">
-          <img src={logoAsset.url} alt="PromptBeats logo" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl glow-neon" />
+          <img
+            src={logoAsset.url}
+            alt="PromptBeats logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-xl glow-neon"
+          />
           <div className="min-w-0">
-            <h1 className="font-display text-xl font-bold tracking-tight">{t("onboarding.title")}</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">
+              {t("onboarding.title")}
+            </h1>
             <p className="truncate text-xs text-muted-foreground">{t("onboarding.subtitle")}</p>
           </div>
         </div>
@@ -140,11 +165,22 @@ function Onboarding() {
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent">
               <Upload className="h-4 w-4" />
               {avatarFile ? avatarFile.name.slice(0, 24) : t("onboarding.uploadAvatar")}
-              <input type="file" accept={AVATAR_ACCEPT} className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)} />
+              <input
+                type="file"
+                accept={AVATAR_ACCEPT}
+                className="hidden"
+                onChange={(e) => pickAvatar(e.target.files?.[0] ?? null)}
+              />
             </label>
           </div>
 
-          <input value={alias} onChange={(e) => setAlias(e.target.value)} placeholder={t("onboarding.artistAlias")} aria-label={t("onboarding.artistAlias")} className={inputClass} />
+          <input
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            placeholder={t("onboarding.artistAlias")}
+            aria-label={t("onboarding.artistAlias")}
+            className={inputClass}
+          />
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value.slice(0, 500))}
@@ -155,18 +191,33 @@ function Onboarding() {
           />
 
           {linkFields.map(([key, label]) => (
-            <input key={key} value={links[key]} onChange={(e) => setLinks({ ...links, [key]: e.target.value })} placeholder={label} aria-label={label} className={inputClass} />
+            <input
+              key={key}
+              value={links[key]}
+              onChange={(e) => setLinks({ ...links, [key]: e.target.value })}
+              placeholder={label}
+              aria-label={label}
+              className={inputClass}
+            />
           ))}
         </div>
 
         {error && <p className="mt-4 text-center text-xs text-destructive">{error}</p>}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button onClick={() => save(true)} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60">
+          <button
+            onClick={() => save(true)}
+            disabled={busy}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-60"
+          >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("onboarding.saveProfile")}
           </button>
-          <button onClick={() => save(false)} disabled={busy} className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60">
+          <button
+            onClick={() => save(false)}
+            disabled={busy}
+            className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
+          >
             {t("onboarding.skip")}
           </button>
         </div>

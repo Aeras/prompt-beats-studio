@@ -44,9 +44,7 @@ export function renderContactEmail(payload: ContactEmailPayload) {
 </html>`;
 }
 
-export async function sendContactEmailViaSmtp(
-  payload: ContactEmailPayload,
-) {
+export async function sendContactEmailViaSmtp(payload: ContactEmailPayload) {
   return sendSmtpEmail({
     to: "support@promptbeats.app",
     replyTo: payload.email,

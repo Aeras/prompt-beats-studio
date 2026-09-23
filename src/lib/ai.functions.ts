@@ -16,10 +16,7 @@ import {
   generatorInputSnapshotSchema,
   revisionJobContextSchema,
 } from "@/lib/generator-revision.shared";
-import {
-  activeSongBlueprint,
-  songBlueprintSchema,
-} from "@/lib/song-blueprint.shared";
+import { activeSongBlueprint, songBlueprintSchema } from "@/lib/song-blueprint.shared";
 import {
   lyricsSectionEditJobSchema,
   lyricsSectionEditOutputSchema,
@@ -134,9 +131,7 @@ export function buildSongBlueprintPrompt(
     .map((item) => {
       const details = [
         item.energy != null ? `Energy target: ${item.energy}/5` : "",
-        item.instruction.trim()
-          ? `Direction: ${item.instruction.trim()}`
-          : "",
+        item.instruction.trim() ? `Direction: ${item.instruction.trim()}` : "",
       ].filter(Boolean);
       return `- Structure position ${item.structureIndex + 1}: ${item.sectionType} #${item.occurrence} — ${details.join(" — ")}`;
     })
@@ -187,9 +182,13 @@ ${
   d.structure || d.production || d.instructions
     ? `ADVANCED USER DIRECTION — AUTHORITATIVE:
 
-${d.structure ? `- The Requested Song Structure defines the order of song sections and is authoritative.
+${
+  d.structure
+    ? `- The Requested Song Structure defines the order of song sections and is authoritative.
 - Follow the requested section order using matching square-bracketed structural tags in the lyrics.
-- Do not replace, reorder, remove or rename requested sections merely because another structure is more conventional.` : ""}
+- Do not replace, reorder, remove or rename requested sections merely because another structure is more conventional.`
+    : ""
+}
 ${d.production ? `- The Requested Production Style defines the production, arrangement, sonic character, dynamics, texture, groove and vocal treatment direction. Reflect it in the Music Style tags, the arrangement and the Producer's Note.` : ""}
 ${d.instructions ? `- The Additional Instructions are user requirements and must be respected wherever they do not contradict the Core Idea, Language, Genre or Mood.` : ""}
 - Integrate all of the above with the Core Idea, Genre, Mood and Language into ONE coherent brief.
@@ -814,7 +813,12 @@ function sectionRoleGuidance(label: string) {
   if (normalized.includes("verse")) return "Verse";
   if (normalized.includes("bridge")) return "Bridge";
   if (normalized.includes("outro") || normalized.includes("coda")) return "Outro";
-  if (normalized.includes("instrumental") || normalized.includes("solo") || normalized.includes("breakdown")) return "Instrumental / Solo";
+  if (
+    normalized.includes("instrumental") ||
+    normalized.includes("solo") ||
+    normalized.includes("breakdown")
+  )
+    return "Instrumental / Solo";
   if (normalized.includes("intro")) return "Intro";
   return "Custom section";
 }
@@ -822,14 +826,21 @@ function sectionRoleGuidance(label: string) {
 function buildLyricsSectionEditPrompt(context: LyricsSectionEditContext) {
   const platformLabel = context.targetPlatform === "udio" ? "Udio" : "Suno";
   const actionMap: Record<LyricsSectionEditContext["action"], string> = {
-    rewrite: "Rewrite the selected section while preserving song continuity and its musical function.",
-    improve_rhyme: "Improve the rhyme quality of the selected section while preserving natural language and core meaning.",
-    improve_singability: "Improve singability, cadence, stress, breath, and syllable flow while preserving core meaning.",
-    keep_meaning_improve_wording: "Keep the same meaning and improve only wording, naturalness, and lyrical quality.",
-    more_emotional: "Make the selected section more emotionally effective without changing the song's premise.",
+    rewrite:
+      "Rewrite the selected section while preserving song continuity and its musical function.",
+    improve_rhyme:
+      "Improve the rhyme quality of the selected section while preserving natural language and core meaning.",
+    improve_singability:
+      "Improve singability, cadence, stress, breath, and syllable flow while preserving core meaning.",
+    keep_meaning_improve_wording:
+      "Keep the same meaning and improve only wording, naturalness, and lyrical quality.",
+    more_emotional:
+      "Make the selected section more emotionally effective without changing the song's premise.",
     more_concise: "Make the selected section more concise while preserving essential meaning.",
-    more_poetic: "Make the selected section more poetic while preserving clarity, natural language, and continuity.",
-    stronger_hook: "Make the selected section's hook more memorable and singable without changing unrelated content.",
+    more_poetic:
+      "Make the selected section more poetic while preserving clarity, natural language, and continuity.",
+    stronger_hook:
+      "Make the selected section's hook more memorable and singable without changing unrelated content.",
     custom: context.customInstruction || "Apply the user's custom instruction precisely.",
   };
 
@@ -859,9 +870,15 @@ EDITABLE_SECTION
 USER EDIT ACTION
 ${actionMap[context.action]}
 
-${context.action === "custom" ? `CUSTOM INSTRUCTION — AUTHORITATIVE
-${context.customInstruction}` : context.customInstruction ? `OPTIONAL USER DETAIL
-${context.customInstruction}` : ""}
+${
+  context.action === "custom"
+    ? `CUSTOM INSTRUCTION — AUTHORITATIVE
+${context.customInstruction}`
+    : context.customInstruction
+      ? `OPTIONAL USER DETAIL
+${context.customInstruction}`
+      : ""
+}
 
 FINAL INTEGRITY RULES
 - Read the full song for continuity only.
@@ -945,7 +962,7 @@ async function activeCaller(
         return {
           model,
           provider: provider.providerOf(model),
-          reasoningEffort: operation === "generator" ? "medium" as const : "high" as const,
+          reasoningEffort: operation === "generator" ? ("medium" as const) : ("high" as const),
         };
       })();
   return {
@@ -1647,7 +1664,14 @@ A genuine language or lyric defect must never be hidden by an otherwise strong s
 
 type QualityPromptInput = Pick<
   z.infer<typeof generateInput>,
-  "targetPlatform" | "theme" | "genre" | "mood" | "language" | "structure" | "production" | "instructions"
+  | "targetPlatform"
+  | "theme"
+  | "genre"
+  | "mood"
+  | "language"
+  | "structure"
+  | "production"
+  | "instructions"
 >;
 
 function buildQualityPrompt(d: QualityPromptInput, r: z.infer<typeof generationOutput>) {
@@ -1715,7 +1739,8 @@ function normalizeQualityScore(raw: unknown): unknown {
   return raw;
 }
 
-type QualityResponseValueType = "string" | "number" | "boolean" | "array" | "object" | "null" | "undefined";
+type QualityResponseValueType =
+  "string" | "number" | "boolean" | "array" | "object" | "null" | "undefined";
 
 function qualityResponseValueType(value: unknown): QualityResponseValueType {
   if (value === null) return "null";
@@ -1864,9 +1889,13 @@ async function runQualityCheck(
           ...(issue.code === "invalid_type"
             ? {
                 expected:
-                  "expected" in issue && typeof issue.expected === "string" ? issue.expected : undefined,
+                  "expected" in issue && typeof issue.expected === "string"
+                    ? issue.expected
+                    : undefined,
                 received:
-                  "received" in issue && typeof issue.received === "string" ? issue.received : undefined,
+                  "received" in issue && typeof issue.received === "string"
+                    ? issue.received
+                    : undefined,
               }
             : {}),
         })),
@@ -1985,7 +2014,11 @@ export async function runLyricsSectionEdit(
   data: z.infer<typeof lyricsSectionEditJobSchema>,
   userId: string,
   generationId: string | null,
-): Promise<{ result: z.infer<typeof lyricsSectionEditOutputSchema>; provider: string; model: string }> {
+): Promise<{
+  result: z.infer<typeof lyricsSectionEditOutputSchema>;
+  provider: string;
+  model: string;
+}> {
   const { call, provider, model, reasoningEffort, schemas } = await activeCaller(
     "generator",
     data.generationModel ?? undefined,
@@ -2043,7 +2076,10 @@ export async function runLyricsSectionEdit(
     await flushUsage(userId, generationId, records);
     throw new Error("The AI returned an invalid section edit. Please try again.");
   }
-  if (result.data.sectionLabel.trim().toLowerCase() !== data.sectionEdit.sectionLabel.trim().toLowerCase()) {
+  if (
+    result.data.sectionLabel.trim().toLowerCase() !==
+    data.sectionEdit.sectionLabel.trim().toLowerCase()
+  ) {
     await flushUsage(userId, generationId, records);
     throw new Error("The AI returned a section edit for the wrong section.");
   }
@@ -2248,7 +2284,9 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => savedInput.parse(input))
   .handler(async ({ data, context }) => {
     if (data.project_id && data.folder_id) {
-      throw new Error("Project versions inherit the Project folder. Do not assign a folder directly to a Project version.");
+      throw new Error(
+        "Project versions inherit the Project folder. Do not assign a folder directly to a Project version.",
+      );
     }
     if (data.folder_id) {
       const { data: folder, error: folderError } = await context.supabase
@@ -2268,7 +2306,10 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
 
     if (data.project_id) {
       if (versionNumber == null) {
-        const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", { p_project_id: data.project_id });
+        const { data: next, error: versionError } = await context.supabase.rpc(
+          "next_prompt_project_version",
+          { p_project_id: data.project_id },
+        );
         if (versionError) throw new Error(versionError.message);
         versionNumber = Number(next ?? 1);
       }
@@ -2285,7 +2326,9 @@ export const savePromptToLibrary = createServerFn({ method: "POST" })
           .maybeSingle();
         if (previousError) throw new Error(previousError.message);
         parentPromptId = previous?.id ?? null;
-        const parsedParent = generatorInputSnapshotSchema.safeParse(previous?.generator_input_snapshot);
+        const parsedParent = generatorInputSnapshotSchema.safeParse(
+          previous?.generator_input_snapshot,
+        );
         parentSnapshot = parsedParent.success ? parsedParent.data : null;
         parentLyrics = previous?.lyrics ?? null;
       }
@@ -2323,7 +2366,9 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select(
+        "id, title, custom_name, project_id, folder_id, duplicated_from_prompt_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, source_generation_job_id, version_change_metadata, version_user_note, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at",
+      )
       .order("created_at", { ascending: false })
       .limit(250);
     if (error) throw new Error(error.message);
@@ -2345,7 +2390,9 @@ export const listPromptProjectVersions = createServerFn({ method: "POST" })
 
     const { data: prompts, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select(
+        "id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at",
+      )
       .eq("user_id", context.userId)
       .eq("project_id", data.projectId)
       .order("version_number", { ascending: true, nullsFirst: false })
@@ -2369,7 +2416,9 @@ export const listProjectVersionHistory = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, version_number, version_label, parent_prompt_id, version_change_metadata, version_user_note, created_at")
+      .select(
+        "id, title, custom_name, version_number, version_label, parent_prompt_id, version_change_metadata, version_user_note, created_at",
+      )
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
       .order("version_number", { ascending: true, nullsFirst: false })
@@ -2387,7 +2436,10 @@ export const listProjectVersionHistory = createServerFn({ method: "POST" })
         .in("version_prompt_id", versionIds);
       if (linksError) throw new Error(linksError.message);
       for (const link of links ?? []) {
-        linkedCounts.set(link.version_prompt_id, (linkedCounts.get(link.version_prompt_id) ?? 0) + 1);
+        linkedCounts.set(
+          link.version_prompt_id,
+          (linkedCounts.get(link.version_prompt_id) ?? 0) + 1,
+        );
       }
     }
 
@@ -2406,10 +2458,14 @@ export const listProjectVersionHistory = createServerFn({ method: "POST" })
 
 export const updateVersionUserNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    id: z.string().uuid(),
-    note: z.string().max(1000),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        note: z.string().max(1000),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("saved_prompts")
@@ -2425,10 +2481,14 @@ export const updateVersionUserNote = createServerFn({ method: "POST" })
 
 export const setPreferredProjectVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    projectId: z.string().uuid(),
-    promptId: z.string().uuid().nullable(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        projectId: z.string().uuid(),
+        promptId: z.string().uuid().nullable(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     if (data.promptId) {
       const { data: version, error: versionError } = await context.supabase
@@ -2456,11 +2516,15 @@ export const setPreferredProjectVersion = createServerFn({ method: "POST" })
 
 export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    projectId: z.string().uuid(),
-    leftId: z.string().uuid(),
-    rightId: z.string().uuid(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        projectId: z.string().uuid(),
+        leftId: z.string().uuid(),
+        rightId: z.string().uuid(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     if (data.leftId === data.rightId) throw new Error("Select two different versions.");
 
@@ -2475,13 +2539,17 @@ export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, version_number, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot")
+      .select(
+        "id, version_number, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot",
+      )
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
       .in("id", [data.leftId, data.rightId]);
     if (error) throw new Error(error.message);
 
-    const selected = (rows ?? []).filter((row) => row.id === data.leftId || row.id === data.rightId);
+    const selected = (rows ?? []).filter(
+      (row) => row.id === data.leftId || row.id === data.rightId,
+    );
     if (selected.length !== 2) throw new Error("One or both versions could not be found.");
 
     const normalize = (id: string) => {
@@ -2511,10 +2579,14 @@ export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
 
 export const getPromptRevisionBase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    projectId: z.string().uuid(),
-    basePromptId: z.string().uuid(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        projectId: z.string().uuid(),
+        basePromptId: z.string().uuid(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
@@ -2527,7 +2599,9 @@ export const getPromptRevisionBase = createServerFn({ method: "POST" })
 
     const { data: prompt, error } = await context.supabase
       .from("saved_prompts")
-      .select("id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at")
+      .select(
+        "id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at",
+      )
       .eq("id", data.basePromptId)
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId)
@@ -2549,7 +2623,11 @@ export const deleteSavedPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("saved_prompts").delete().eq("id", data.id).eq("user_id", context.userId);
+    const { error } = await context.supabase
+      .from("saved_prompts")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -2559,7 +2637,9 @@ export const listPromptProjects = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("prompt_projects")
-      .select("id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at")
+      .select(
+        "id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at",
+      )
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { projects: data ?? [] };
@@ -2567,10 +2647,14 @@ export const listPromptProjects = createServerFn({ method: "GET" })
 
 export const createPromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    name: z.string().trim().min(1).max(120),
-    folderId: z.string().uuid().nullable().optional(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(1).max(120),
+        folderId: z.string().uuid().nullable().optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     if (data.folderId) {
       const { data: folder, error: folderError } = await context.supabase
@@ -2590,7 +2674,9 @@ export const createPromptProject = createServerFn({ method: "POST" })
         name: data.name,
         folder_id: data.folderId ?? null,
       })
-      .select("id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at")
+      .select(
+        "id, name, creation_notes, preferred_prompt_id, folder_id, duplicated_from_project_id, created_at, updated_at",
+      )
       .single();
     if (error) throw new Error(error.message);
     return { project };
@@ -2598,9 +2684,15 @@ export const createPromptProject = createServerFn({ method: "POST" })
 
 export const renamePromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("prompt_projects").update({ name: data.name, updated_at: new Date().toISOString() }).eq("id", data.id).eq("user_id", context.userId);
+    const { error } = await context.supabase
+      .from("prompt_projects")
+      .update({ name: data.name, updated_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -2608,10 +2700,12 @@ export const renamePromptProject = createServerFn({ method: "POST" })
 export const updatePromptProjectCreationNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      id: z.string().uuid(),
-      creationNotes: z.string().max(6000),
-    }).parse(input),
+    z
+      .object({
+        id: z.string().uuid(),
+        creationNotes: z.string().max(6000),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -2630,24 +2724,34 @@ export const deletePromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("prompt_projects").delete().eq("id", data.id).eq("user_id", context.userId);
+    const { error } = await context.supabase
+      .from("prompt_projects")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    id: z.string().uuid(),
-    custom_name: z.string().trim().max(200).nullable().optional(),
-    project_id: z.string().uuid().nullable().optional(),
-    version_number: z.number().int().positive().nullable().optional(),
-    version_label: z.string().trim().max(120).nullable().optional(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        custom_name: z.string().trim().max(200).nullable().optional(),
+        project_id: z.string().uuid().nullable().optional(),
+        version_number: z.number().int().positive().nullable().optional(),
+        version_label: z.string().trim().max(120).nullable().optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: current, error: currentError } = await context.supabase
       .from("saved_prompts")
-      .select("id, project_id, version_number, version_change_metadata, generator_input_snapshot, lyrics")
+      .select(
+        "id, project_id, version_number, version_change_metadata, generator_input_snapshot, lyrics",
+      )
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -2662,7 +2766,9 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
 
     if (data.project_id !== undefined && data.project_id !== current.project_id) {
       if (current.project_id) {
-        throw new Error("Project versions cannot be moved between projects. Create or save a new version instead.");
+        throw new Error(
+          "Project versions cannot be moved between projects. Create or save a new version instead.",
+        );
       }
       if (!data.project_id) {
         throw new Error("This prompt is not assigned to a project.");
@@ -2688,22 +2794,30 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
         .maybeSingle();
       if (previousError) throw new Error(previousError.message);
 
-      const { data: next, error: versionError } = await context.supabase.rpc("next_prompt_project_version", {
-        p_project_id: data.project_id,
-      });
+      const { data: next, error: versionError } = await context.supabase.rpc(
+        "next_prompt_project_version",
+        {
+          p_project_id: data.project_id,
+        },
+      );
       if (versionError) throw new Error(versionError.message);
       const versionNumber = Number(next ?? 1);
 
-      const currentSnapshot = generatorInputSnapshotSchema.safeParse(current.generator_input_snapshot);
-      const previousSnapshot = generatorInputSnapshotSchema.safeParse(previous?.generator_input_snapshot);
-      const metadata = versionNumber === 1
-        ? buildInitialVersionMetadata()
-        : buildManualVersionMetadata({
-            baseSnapshot: previousSnapshot.success ? previousSnapshot.data : null,
-            desiredSnapshot: currentSnapshot.success ? currentSnapshot.data : null,
-            beforeLyrics: previous?.lyrics ?? null,
-            afterLyrics: current.lyrics,
-          });
+      const currentSnapshot = generatorInputSnapshotSchema.safeParse(
+        current.generator_input_snapshot,
+      );
+      const previousSnapshot = generatorInputSnapshotSchema.safeParse(
+        previous?.generator_input_snapshot,
+      );
+      const metadata =
+        versionNumber === 1
+          ? buildInitialVersionMetadata()
+          : buildManualVersionMetadata({
+              baseSnapshot: previousSnapshot.success ? previousSnapshot.data : null,
+              desiredSnapshot: currentSnapshot.success ? currentSnapshot.data : null,
+              beforeLyrics: previous?.lyrics ?? null,
+              afterLyrics: current.lyrics,
+            });
 
       patch.project_id = data.project_id;
       patch.version_number = versionNumber;

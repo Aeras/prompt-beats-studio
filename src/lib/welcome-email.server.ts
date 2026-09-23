@@ -36,10 +36,7 @@ export function renderWelcomeEmail(handle: string) {
 </html>`;
 }
 
-export async function sendWelcomeEmailViaSmtp(
-  to: string,
-  handle: string,
-) {
+export async function sendWelcomeEmailViaSmtp(to: string, handle: string) {
   const name = handle.startsWith("@") ? handle : `@${handle}`;
 
   return sendSmtpEmail({

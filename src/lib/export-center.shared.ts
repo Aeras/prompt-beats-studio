@@ -147,17 +147,26 @@ function promptSections(prompt: ExportPromptRecord, locale: ExportLocale): Expor
   return sections;
 }
 
-function promptHeaderContent(prompt: ExportPromptRecord, projectName: string | null, locale: ExportLocale) {
+function promptHeaderContent(
+  prompt: ExportPromptRecord,
+  projectName: string | null,
+  locale: ExportLocale,
+) {
   const l = labels[locale];
   return [
     projectName ? `${l.project}: ${projectName}` : null,
     versionText(prompt, locale) ? `${l.version}: ${versionText(prompt, locale)}` : null,
     `${l.created}: ${prompt.createdAt}`,
     `${l.updated}: ${prompt.updatedAt}`,
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
-export function buildPromptExportDocument(source: PromptExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "prompt" }> {
+export function buildPromptExportDocument(
+  source: PromptExportSource,
+  locale: ExportLocale,
+): Extract<ExportDocument, { exportType: "prompt" }> {
   const header = promptHeaderContent(source.prompt, source.project?.name ?? null, locale);
   return {
     schemaVersion: source.schemaVersion,
@@ -173,15 +182,22 @@ export function buildPromptExportDocument(source: PromptExportSource, locale: Ex
   };
 }
 
-export function buildProjectExportDocument(source: ProjectExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "project" }> {
+export function buildProjectExportDocument(
+  source: ProjectExportSource,
+  locale: ExportLocale,
+): Extract<ExportDocument, { exportType: "project" }> {
   const l = labels[locale];
-  const index = source.prompts.map((prompt, index) => {
-    const version = versionText(prompt, locale);
-    return `${index + 1}. ${version ? `${version} — ` : ""}${prompt.name}`;
-  }).join("\n");
+  const index = source.prompts
+    .map((prompt, index) => {
+      const version = versionText(prompt, locale);
+      return `${index + 1}. ${version ? `${version} — ` : ""}${prompt.name}`;
+    })
+    .join("\n");
 
   const promptBlocks: ExportSection[] = source.prompts.map((prompt) => ({
-    heading: versionText(prompt, locale) ? `${versionText(prompt, locale)} — ${prompt.name}` : prompt.name,
+    heading: versionText(prompt, locale)
+      ? `${versionText(prompt, locale)} — ${prompt.name}`
+      : prompt.name,
     content: promptHeaderContent(prompt, source.project.name, locale),
     sections: promptSections(prompt, locale),
   }));
@@ -202,20 +218,31 @@ export function buildProjectExportDocument(source: ProjectExportSource, locale: 
           `${l.updated}: ${source.project.updatedAt}`,
         ].join("\n"),
       },
-      ...(hasText(source.project.creationNotes) ? [{ heading: l.creationNotes, content: source.project.creationNotes }] : []),
+      ...(hasText(source.project.creationNotes)
+        ? [{ heading: l.creationNotes, content: source.project.creationNotes }]
+        : []),
       ...(index ? [{ heading: l.promptVersions, content: index }] : []),
       ...promptBlocks,
     ],
   };
 }
 
-export function buildProjectSummaryDocument(source: ProjectExportSource, locale: ExportLocale): Extract<ExportDocument, { exportType: "project-summary" }> {
+export function buildProjectSummaryDocument(
+  source: ProjectExportSource,
+  locale: ExportLocale,
+): Extract<ExportDocument, { exportType: "project-summary" }> {
   const l = labels[locale];
-  const promptIndex = source.prompts.map(({ name, versionNumber, versionLabel }) => ({ name, versionNumber, versionLabel }));
-  const index = source.prompts.map((prompt, index) => {
-    const version = versionText(prompt, locale);
-    return `${index + 1}. ${version ? `${version} — ` : ""}${prompt.name}`;
-  }).join("\n");
+  const promptIndex = source.prompts.map(({ name, versionNumber, versionLabel }) => ({
+    name,
+    versionNumber,
+    versionLabel,
+  }));
+  const index = source.prompts
+    .map((prompt, index) => {
+      const version = versionText(prompt, locale);
+      return `${index + 1}. ${version ? `${version} — ` : ""}${prompt.name}`;
+    })
+    .join("\n");
 
   return {
     schemaVersion: source.schemaVersion,
@@ -233,28 +260,37 @@ export function buildProjectSummaryDocument(source: ProjectExportSource, locale:
           `${l.updated}: ${source.project.updatedAt}`,
         ].join("\n"),
       },
-      ...(hasText(source.project.creationNotes) ? [{ heading: l.creationNotes, content: source.project.creationNotes }] : []),
+      ...(hasText(source.project.creationNotes)
+        ? [{ heading: l.creationNotes, content: source.project.creationNotes }]
+        : []),
       ...(index ? [{ heading: l.promptVersions, content: index }] : []),
     ],
   };
 }
 
-export function buildProjectPromptDocuments(source: ProjectExportSource, locale: ExportLocale): Array<Extract<ExportDocument, { exportType: "prompt" }>> {
+export function buildProjectPromptDocuments(
+  source: ProjectExportSource,
+  locale: ExportLocale,
+): Array<Extract<ExportDocument, { exportType: "prompt" }>> {
   return source.prompts.map((prompt) =>
-    buildPromptExportDocument({
-      schemaVersion: source.schemaVersion,
-      exportType: "prompt",
-      exportedAt: source.exportedAt,
-      project: { name: source.project.name },
-      prompt,
-    }, locale),
+    buildPromptExportDocument(
+      {
+        schemaVersion: source.schemaVersion,
+        exportType: "prompt",
+        exportedAt: source.exportedAt,
+        project: { name: source.project.name },
+        prompt,
+      },
+      locale,
+    ),
   );
 }
 
 function txtSection(section: ExportSection, level = 0): string {
-  const heading = level === 0
-    ? `${section.heading.toUpperCase()}\n${"=".repeat(Math.max(3, section.heading.length))}`
-    : `${section.heading}\n${"-".repeat(Math.max(3, section.heading.length))}`;
+  const heading =
+    level === 0
+      ? `${section.heading.toUpperCase()}\n${"=".repeat(Math.max(3, section.heading.length))}`
+      : `${section.heading}\n${"-".repeat(Math.max(3, section.heading.length))}`;
   const content = hasText(section.content) ? `\n\n${section.content}` : "";
   const children = section.sections?.length
     ? `\n\n${section.sections.map((child) => txtSection(child, level + 1)).join("\n\n")}`
@@ -285,7 +321,8 @@ function htmlSection(section: ExportSection, level = 2): string {
   const content = hasText(section.content)
     ? `<div class="content" dir="auto">${escapeHtml(section.content)}</div>`
     : "";
-  const children = section.sections?.map((child) => htmlSection(child, headingLevel + 1)).join("") ?? "";
+  const children =
+    section.sections?.map((child) => htmlSection(child, headingLevel + 1)).join("") ?? "";
   return `<section><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}>${content}${children}</section>`;
 }
 
@@ -374,7 +411,10 @@ export function exportMime(format: ExportFormat) {
   return "text/plain";
 }
 
-
-export function projectPromptFilenameBase(document: Extract<ExportDocument, { exportType: "prompt" }>) {
-  return document.prompt.versionNumber != null ? `Version ${document.prompt.versionNumber}` : document.title;
+export function projectPromptFilenameBase(
+  document: Extract<ExportDocument, { exportType: "prompt" }>,
+) {
+  return document.prompt.versionNumber != null
+    ? `Version ${document.prompt.versionNumber}`
+    : document.title;
 }

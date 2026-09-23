@@ -45,7 +45,11 @@ function promptName(row: PromptRow, inProject: boolean) {
     if (row.version_number != null) return `Version ${row.version_number}`;
   }
 
-  return present(row.title) ?? present(row.theme) ?? (row.version_number != null ? `Version ${row.version_number}` : "Untitled Prompt");
+  return (
+    present(row.title) ??
+    present(row.theme) ??
+    (row.version_number != null ? `Version ${row.version_number}` : "Untitled Prompt")
+  );
 }
 
 function toPromptRecord(row: PromptRow, inProject: boolean): ExportPromptRecord {
@@ -67,7 +71,8 @@ function toPromptRecord(row: PromptRow, inProject: boolean): ExportPromptRecord 
   };
 }
 
-const promptSelect = "title, custom_name, project_id, version_number, version_label, theme, genre, mood, language, tags, lyrics, note, revision_request, created_at, updated_at";
+const promptSelect =
+  "title, custom_name, project_id, version_number, version_label, theme, genre, mood, language, tags, lyrics, note, revision_request, created_at, updated_at";
 
 export const getPromptExportSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

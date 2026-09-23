@@ -1,14 +1,14 @@
-import * as React from 'react'
+import * as React from "react";
 
-import { Button, Link, Text } from '@react-email/components'
+import { Button, Link, Text } from "@react-email/components";
 
-import { EmailLayout, button, link, text } from './brand'
+import { EmailLayout, button, link, text } from "./brand";
 
 interface SignupEmailProps {
-  siteName: string
-  siteUrl: string
-  recipient: string
-  confirmationUrl: string
+  siteName: string;
+  siteUrl: string;
+  recipient: string;
+  confirmationUrl: string;
 }
 
 export const SignupEmail = ({ siteName, recipient, confirmationUrl }: SignupEmailProps) => (
@@ -17,19 +17,19 @@ export const SignupEmail = ({ siteName, recipient, confirmationUrl }: SignupEmai
       Welcome to PromptBeats — where AI-made music travels with the prompt that created it.
     </Text>
     <Text style={text}>
-      Confirm{' '}
+      Confirm{" "}
       <Link href={`mailto:${recipient}`} style={link}>
         {recipient}
-      </Link>{' '}
+      </Link>{" "}
       to activate your account and start uploading tracks.
     </Text>
     <Button style={button} href={confirmationUrl}>
       Verify email
     </Button>
-    <Text style={{ ...text, margin: '24px 0 0', fontSize: '13px' }}>
+    <Text style={{ ...text, margin: "24px 0 0", fontSize: "13px" }}>
       If you didn't create an account, you can safely ignore this email.
     </Text>
   </EmailLayout>
-)
+);
 
-export default SignupEmail
+export default SignupEmail;

@@ -46,7 +46,8 @@ export const el: Record<TranslationKey, string> = {
   "shell.logOut": "Αποσύνδεση",
   "shell.checkingAccount": "Έλεγχος κατάστασης λογαριασμού…",
   "shell.accountUnavailable": "Η κατάσταση λογαριασμού δεν είναι διαθέσιμη",
-  "shell.accountUnavailableBody": "Δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση του λογαριασμού σου. Δοκίμασε ξανά.",
+  "shell.accountUnavailableBody":
+    "Δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση του λογαριασμού σου. Δοκίμασε ξανά.",
   "shell.sessionEnded": "Η συνεδρία έληξε",
   "shell.sessionEndedBody": "Αυτός ο λογαριασμός δεν είναι πλέον διαθέσιμος. Γίνεται αποσύνδεση.",
 
@@ -54,7 +55,8 @@ export const el: Record<TranslationKey, string> = {
   "root.notFoundBody": "Η σελίδα που αναζητάς δεν υπάρχει ή έχει μετακινηθεί.",
   "root.goHome": "Αρχική σελίδα",
   "root.errorTitle": "Η σελίδα δεν φορτώθηκε",
-  "root.errorBody": "Παρουσιάστηκε πρόβλημα από τη δική μας πλευρά. Μπορείς να δοκιμάσεις ανανέωση ή να επιστρέψεις στην αρχική.",
+  "root.errorBody":
+    "Παρουσιάστηκε πρόβλημα από τη δική μας πλευρά. Μπορείς να δοκιμάσεις ανανέωση ή να επιστρέψεις στην αρχική.",
 
   "discover.searchPlaceholder": "Αναζήτηση τραγουδιών, δημιουργών, prompts…",
   "discover.searchAria": "Αναζήτηση τραγουδιών",
@@ -68,7 +70,8 @@ export const el: Record<TranslationKey, string> = {
   "discover.creatorSearchError": "Δεν ήταν δυνατή η αναζήτηση δημιουργών.",
   "discover.noCreatorMatches": "Δεν βρέθηκαν δημιουργοί που να ταιριάζουν στην αναζήτησή σου.",
   "discover.creatorSearchHint": "Αναζήτησε με όνομα δημιουργού ή username.",
-  "discover.noTracks": "Δεν έχουν ανέβει ακόμη τραγούδια. Γίνε ο πρώτος που θα μοιραστεί AI μουσική!",
+  "discover.noTracks":
+    "Δεν έχουν ανέβει ακόμη τραγούδια. Γίνε ο πρώτος που θα μοιραστεί AI μουσική!",
   "discover.noTracksHint": "Ανέβασε MP3 από την καρτέλα Studio.",
   "discover.noFilterMatches": "Δεν βρέθηκαν τραγούδια που να ταιριάζουν στα φίλτρα.",
   "discover.creatorFallback": "Δημιουργός",
@@ -100,11 +103,14 @@ export const el: Record<TranslationKey, string> = {
   "library.public": "Δημόσια",
   "library.private": "Ιδιωτικά",
   "library.guestTitle": "Η βιβλιοθήκη σου βρίσκεται εδώ",
-  "library.guestBody": "Συνδέσου για να δεις τα uploads, τα αποθηκευμένα prompts και τα τραγούδια που σου αρέσουν.",
+  "library.guestBody":
+    "Συνδέσου για να δεις τα uploads, τα αποθηκευμένα prompts και τα τραγούδια που σου αρέσουν.",
   "library.noTracks": "Δεν έχεις ανεβάσει ακόμη κανένα τραγούδι.",
   "library.noVisibilityTracks": "Δεν υπάρχουν ακόμη {visibility} τραγούδια.",
-  "library.noLikes": "Δεν υπάρχουν ακόμη τραγούδια που σου αρέσουν — πάτησε την καρδιά σε οποιοδήποτε τραγούδι.",
-  "library.noPrompts": "Δεν υπάρχουν ακόμη αποθηκευμένα prompts. Δημιούργησε ένα στο Studio και πάτησε «Αποθήκευση στη βιβλιοθήκη μου».",
+  "library.noLikes":
+    "Δεν υπάρχουν ακόμη τραγούδια που σου αρέσουν — πάτησε την καρδιά σε οποιοδήποτε τραγούδι.",
+  "library.noPrompts":
+    "Δεν υπάρχουν ακόμη αποθηκευμένα prompts. Δημιούργησε ένα στο Studio και πάτησε «Αποθήκευση στη βιβλιοθήκη μου».",
   "library.untitledPrompt": "Prompt χωρίς τίτλο",
   "library.copyPrompt": "Αντιγραφή Prompt",
   "library.deletePrompt": "Διαγραφή Prompt",
@@ -121,13 +127,17 @@ export const el: Record<TranslationKey, string> = {
   "generator.revisionSelectProject": "Επίλεξε Project",
   "generator.revisionSelectVersion": "Επίλεξε έκδοση",
   "generator.revisionBase": "Επιλεγμένη βασική έκδοση",
-  "generator.revisionBaseHint": "Αυτή η αποθηκευμένη έκδοση είναι η authoritative βάση της αναθεώρησης.",
+  "generator.revisionBaseHint":
+    "Αυτή η αποθηκευμένη έκδοση είναι η authoritative βάση της αναθεώρησης.",
   "generator.revisionRequest": "Τι θέλεις να αλλάξεις;",
-  "generator.revisionRequestPlaceholder": "π.χ. Κράτησε τα κουπλέ ακριβώς ίδια και ξαναγράψε μόνο το ρεφρέν ώστε να είναι πιο δυνατό και αξιομνημόνευτο.",
+  "generator.revisionRequestPlaceholder":
+    "π.χ. Κράτησε τα κουπλέ ακριβώς ίδια και ξαναγράψε μόνο το ρεφρέν ώστε να είναι πιο δυνατό και αξιομνημόνευτο.",
   "generator.revisionRequestRequired": "Γράψε τι θέλεις να αλλάξεις.",
-  "generator.revisionLegacySnapshot": "Αυτή είναι παλαιότερη έκδοση χωρίς πλήρες snapshot. Φορτώθηκαν μόνο τα πραγματικά αποθηκευμένα δεδομένα.",
+  "generator.revisionLegacySnapshot":
+    "Αυτή είναι παλαιότερη έκδοση χωρίς πλήρες snapshot. Φορτώθηκαν μόνο τα πραγματικά αποθηκευμένα δεδομένα.",
   "generator.revisionCreated": "Δημιουργήθηκε αυτόματα η έκδοση V{version} από τη βασική έκδοση.",
-  "generator.revisionSwitchConfirm": "Υπάρχει κείμενο αναθεώρησης που δεν έχει χρησιμοποιηθεί. Θέλεις να αλλάξεις βάση και να το χάσεις;",
+  "generator.revisionSwitchConfirm":
+    "Υπάρχει κείμενο αναθεώρησης που δεν έχει χρησιμοποιηθεί. Θέλεις να αλλάξεις βάση και να το χάσεις;",
   "generator.revisionLoading": "Φόρτωση βασικής έκδοσης…",
   "generator.revisionNoVersions": "Δεν υπάρχουν αποθηκευμένες εκδόσεις σε αυτό το Project.",
   "generator.revisionAutoSaved": "Η νέα έκδοση αποθηκεύτηκε αυτόματα στο ίδιο Project.",
@@ -142,7 +152,8 @@ export const el: Record<TranslationKey, string> = {
   "lyricsWorkspace.undo": "Αναίρεση τελευταίας εφαρμοσμένης αλλαγής AI",
   "lyricsWorkspace.aiEdit": "AI Επεξεργασία",
   "lyricsWorkspace.sectionEditor": "Επεξεργασία {section}",
-  "lyricsWorkspace.customPlaceholder": "Περιέγραψε ακριβώς τι θέλεις να αλλάξει μόνο σε αυτή την ενότητα…",
+  "lyricsWorkspace.customPlaceholder":
+    "Περιέγραψε ακριβώς τι θέλεις να αλλάξει μόνο σε αυτή την ενότητα…",
   "lyricsWorkspace.customRequired": "Γράψε μια προσαρμοσμένη οδηγία.",
   "lyricsWorkspace.generateProposal": "Δημιουργία πρότασης",
   "lyricsWorkspace.editing": "Επεξεργασία ενότητας…",
@@ -151,18 +162,23 @@ export const el: Record<TranslationKey, string> = {
   "lyricsWorkspace.apply": "Εφαρμογή",
   "lyricsWorkspace.applyAllChoruses": "Εφαρμογή σε όλα τα Chorus",
   "lyricsWorkspace.appliedAllChoruses": "Εφαρμόστηκε σε όλα τα Chorus",
-  "lyricsWorkspace.applyAllChorusesLocked": "Ξεκλείδωσε όλα τα Chorus για να εφαρμοστεί η αλλαγή σε όλα.",
+  "lyricsWorkspace.applyAllChorusesLocked":
+    "Ξεκλείδωσε όλα τα Chorus για να εφαρμοστεί η αλλαγή σε όλα.",
   "lyricsWorkspace.unsaved": "Μη αποθηκευμένες αλλαγές στίχων",
   "lyricsWorkspace.noUnsaved": "Δεν υπάρχουν μη αποθηκευμένες αλλαγές",
   "lyricsWorkspace.sectionCount": "{count} ενότητες",
-  "lyricsWorkspace.unsavedConfirm": "Υπάρχουν μη αποθηκευμένες αλλαγές στίχων. Θέλεις να φύγεις και να τις απορρίψεις;",
+  "lyricsWorkspace.unsavedConfirm":
+    "Υπάρχουν μη αποθηκευμένες αλλαγές στίχων. Θέλεις να φύγεις και να τις απορρίψεις;",
   "lyricsWorkspace.rateLimited": "Έφτασες το όριο χρήσης AI. Δοκίμασε ξανά αργότερα.",
-  "lyricsWorkspace.otherJobActive": "Υπάρχει ήδη άλλη ενέργεια AI σε εξέλιξη. Περίμενε να ολοκληρωθεί.",
-  "lyricsWorkspace.languageRequired": "Αυτή η αποθηκευμένη έκδοση δεν έχει στοιχεία γλώσσας. Επίλεξε ή επανάφερε τη γλώσσα του τραγουδιού πριν χρησιμοποιήσεις την AI επεξεργασία ενότητας.",
+  "lyricsWorkspace.otherJobActive":
+    "Υπάρχει ήδη άλλη ενέργεια AI σε εξέλιξη. Περίμενε να ολοκληρωθεί.",
+  "lyricsWorkspace.languageRequired":
+    "Αυτή η αποθηκευμένη έκδοση δεν έχει στοιχεία γλώσσας. Επίλεξε ή επανάφερε τη γλώσσα του τραγουδιού πριν χρησιμοποιήσεις την AI επεξεργασία ενότητας.",
   "lyricsWorkspace.aiFailed": "Η επεξεργασία της ενότητας απέτυχε. Δοκίμασε ξανά.",
   "lyricsWorkspace.aiInvalid": "Το AI επέστρεψε μη έγκυρη επεξεργασία ενότητας.",
   "lyricsWorkspace.sectionChanged": "Η επιλεγμένη ενότητα άλλαξε πριν εφαρμοστεί η πρόταση.",
-  "lyricsWorkspace.saveFailed": "Οι επεξεργασμένοι στίχοι δεν μπόρεσαν να αποθηκευτούν ως νέα έκδοση.",
+  "lyricsWorkspace.saveFailed":
+    "Οι επεξεργασμένοι στίχοι δεν μπόρεσαν να αποθηκευτούν ως νέα έκδοση.",
   "lyricsWorkspace.open": "Άνοιγμα Lyrics Workspace",
   "lyricsWorkspace.loading": "Φόρτωση Lyrics Workspace…",
   "lyricsWorkspace.action.rewrite": "Ξαναγράψε την ενότητα",
@@ -176,7 +192,8 @@ export const el: Record<TranslationKey, string> = {
   "lyricsWorkspace.action.custom": "Προσαρμοσμένη οδηγία",
   "generator.clear": "Καθαρισμός",
   "generator.theme": "Θέμα",
-  "generator.themePlaceholder": "Το θέμα ή η ιδέα σου — π.χ. μια νυχτερινή διαδρομή σε φωτισμένη πόλη μετά από έναν χωρισμό",
+  "generator.themePlaceholder":
+    "Το θέμα ή η ιδέα σου — π.χ. μια νυχτερινή διαδρομή σε φωτισμένη πόλη μετά από έναν χωρισμό",
   "generator.musicStyle": "Μουσικό στυλ",
   "generator.selectMusicStyle": "Επίλεξε μουσικό στυλ",
   "generator.pickMany": "Επίλεξε όσα θέλεις",
@@ -190,7 +207,8 @@ export const el: Record<TranslationKey, string> = {
   "generator.customLanguagePlaceholder": "Γράψε τη γλώσσα που θέλεις",
   "generator.languageVariant": "Παραλλαγή / Διάλεκτος",
   "generator.languageVariantAuto": "Auto / Ουδέτερη",
-  "generator.languageVariantHint": "Προαιρετικό. Εξειδικεύει λεξιλόγιο, ορθογραφία, ιδιωματισμούς και τοπική φρασεολογία των στίχων.",
+  "generator.languageVariantHint":
+    "Προαιρετικό. Εξειδικεύει λεξιλόγιο, ορθογραφία, ιδιωματισμούς και τοπική φρασεολογία των στίχων.",
   "generator.bpm": "BPM",
   "generator.chooseOne": "Επίλεξε ένα",
   "generator.customBpm": "Προσαρμοσμένο BPM (40–260)",
@@ -199,17 +217,20 @@ export const el: Record<TranslationKey, string> = {
   "generator.hideTags": "Απόκρυψη tags",
   "generator.blueprint.title": "Song Blueprint",
   "generator.blueprint.hint": "Πρόσθεσε προαιρετικές οδηγίες για κάθε ενότητα",
-  "generator.blueprint.description": "Γράψε φυσικά τι θέλεις να συμβαίνει σε κάθε ενότητα. Το PromptBeats θα το μετατρέψει σε σύντομες square-bracket οδηγίες παραγωγής κατά τη δημιουργία του τραγουδιού.",
+  "generator.blueprint.description":
+    "Γράψε φυσικά τι θέλεις να συμβαίνει σε κάθε ενότητα. Το PromptBeats θα το μετατρέψει σε σύντομες square-bracket οδηγίες παραγωγής κατά τη δημιουργία του τραγουδιού.",
   "generator.blueprint.activeCount": "{count} οδηγίες ενοτήτων",
   "generator.blueprint.hasInstruction": "Η ενότητα έχει οδηγία Blueprint",
-  "generator.blueprint.placeholder": "π.χ. {section}: χαμήλωσε τα drums, κοντινή φωνή και βάλε το μπάσο από τη μέση",
+  "generator.blueprint.placeholder":
+    "π.χ. {section}: χαμήλωσε τα drums, κοντινή φωνή και βάλε το μπάσο από τη μέση",
   "generator.blueprint.sectionInstruction": "Οδηγία Blueprint για {section}",
   "generator.blueprint.applyAllChorus": "Εφαρμογή σε όλα τα Chorus",
   "generator.blueprint.appliedAllChorus": "Εφαρμόστηκε σε όλα τα Chorus",
   "generator.blueprint.clearSection": "Καθαρισμός",
   "generator.arrangement.title": "Visual Arrangement",
   "generator.arrangement.advanced": "Advanced",
-  "generator.arrangement.hint": "Ρύθμισε τη σειρά των ενοτήτων, τις οδηγίες Blueprint και την ενέργεια. Σύρε τις ενότητες στο desktop ή χρησιμοποίησε Μετακίνηση πάνω / κάτω.",
+  "generator.arrangement.hint":
+    "Ρύθμισε τη σειρά των ενοτήτων, τις οδηγίες Blueprint και την ενέργεια. Σύρε τις ενότητες στο desktop ή χρησιμοποίησε Μετακίνηση πάνω / κάτω.",
   "generator.arrangement.add": "Προσθήκη ενότητας",
   "generator.arrangement.empty": "Πρόσθεσε μια ενότητα για να ξεκινήσεις το arrangement.",
   "generator.arrangement.sectionDetails": "Λεπτομέρειες ενότητας",
@@ -228,7 +249,8 @@ export const el: Record<TranslationKey, string> = {
   "generator.arrangement.advancedBlueprint": "Advanced Blueprint / Text View",
   "generator.arrangement.dragHandle": "Σύρε το {section} για αλλαγή σειράς",
   "generator.arrangement.energyCurve": "Καμπύλη ενέργειας",
-  "generator.arrangement.energyCurveHint": "Σχετική δημιουργική ένταση σε όλο το τραγούδι. Οι ενότητες χωρίς τιμή εμφανίζονται ως —.",
+  "generator.arrangement.energyCurveHint":
+    "Σχετική δημιουργική ένταση σε όλο το τραγούδι. Οι ενότητες χωρίς τιμή εμφανίζονται ως —.",
   "generator.arrangement.energySequence": "Ακολουθία ενέργειας",
   "generator.arrangement.energyCurveAria": "Καμπύλη ενέργειας τραγουδιού ανά ενότητα",
   "generator.arrangement.noBlueprint": "Χωρίς οδηγία Blueprint",
@@ -237,9 +259,11 @@ export const el: Record<TranslationKey, string> = {
   "generator.structureHint": "Πάτησε για να ορίσεις τη σειρά",
   "generator.clearStructure": "Καθαρισμός δομής",
   "generator.productionStyle": "Στυλ παραγωγής",
-  "generator.productionPlaceholder": "Παραγωγή, ενορχήστρωση, ηχητικός χαρακτήρας, δυναμικές, υφή, groove, επεξεργασία φωνής…",
+  "generator.productionPlaceholder":
+    "Παραγωγή, ενορχήστρωση, ηχητικός χαρακτήρας, δυναμικές, υφή, groove, επεξεργασία φωνής…",
   "generator.additionalInstructions": "Πρόσθετες οδηγίες",
-  "generator.additionalInstructionsPlaceholder": "π.χ. Ανδρική βραχνή φωνή, σύντομο intro και πιο δυνατό τελευταίο chorus",
+  "generator.additionalInstructionsPlaceholder":
+    "π.χ. Ανδρική βραχνή φωνή, σύντομο intro και πιο δυνατό τελευταίο chorus",
   "generator.aiModel": "Μοντέλο AI",
   "generator.generateWith": "Δημιουργία με:",
   "generator.generationModel": "Μοντέλο δημιουργίας: {model}",
@@ -404,13 +428,12 @@ export const el: Record<TranslationKey, string> = {
   "generator.structure.solo": "Solo",
   "generator.structure.finalChorus": "Final Chorus",
   "generator.structure.outro": "Outro",
-  "generator.structure.coda": "Coda"
-,
-
+  "generator.structure.coda": "Coda",
   "generator.languageSearch": "Αναζήτηση γλώσσας…",
   "generator.languageNoResults": "Δεν βρέθηκε αντίστοιχη γλώσσα",
   "generator.presets.title": "Smart Presets",
-  "generator.presets.description": "Ξεκίνα από ένα επιμελημένο μουσικό fingerprint και μετά άλλαξε ελεύθερα κάθε πεδίο.",
+  "generator.presets.description":
+    "Ξεκίνα από ένα επιμελημένο μουσικό fingerprint και μετά άλλαξε ελεύθερα κάθε πεδίο.",
   "generator.presets.active": "Εφαρμοσμένο preset: {preset}",
   "generator.presets.browse": "Προβολή presets",
   "generator.presets.close": "Κλείσιμο presets",
@@ -424,7 +447,8 @@ export const el: Record<TranslationKey, string> = {
   "generator.presets.culturalStyle": "Μουσική παράδοση / στυλ",
   "generator.presets.selectCulturalStyle": "Επιλέξτε μουσικό fingerprint",
   "generator.presets.customCulturalStylePlaceholder": "Γράψτε πολιτισμικό ή τοπικό στυλ…",
-  "generator.presets.languageIndependent": "Αλλάζει μόνο το μουσικό fingerprint. Η γλώσσα των στίχων παραμένει όπως την επέλεξες.",
+  "generator.presets.languageIndependent":
+    "Αλλάζει μόνο το μουσικό fingerprint. Η γλώσσα των στίχων παραμένει όπως την επέλεξες.",
   "generator.presets.category.all": "Όλα",
   "generator.presets.category.pop": "Pop",
   "generator.presets.category.rock": "Rock",

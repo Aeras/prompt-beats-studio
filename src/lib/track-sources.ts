@@ -36,7 +36,10 @@ function pathId(url: URL, allowedPrefixes: readonly string[]): string | null {
 }
 
 /** Client-side format validation only; server-side resolution remains authoritative. */
-export function isSupportedExternalTrackUrl(sourceType: ExternalTrackSourceType, rawUrl: string): boolean {
+export function isSupportedExternalTrackUrl(
+  sourceType: ExternalTrackSourceType,
+  rawUrl: string,
+): boolean {
   const url = parseHttpsUrl(rawUrl);
   if (!url || url.username || url.password) return false;
 

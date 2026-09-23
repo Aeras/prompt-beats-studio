@@ -9,7 +9,10 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 export function LikeButton({ trackId, enabled = true }: { trackId: string; enabled?: boolean }) {
   const { t } = useI18n();
   const featureAccess = useFeatureAccess("likes");
-  const { count, liked, canLike, isPending, toggle } = useLikes(trackId, enabled && featureAccess.allowed);
+  const { count, liked, canLike, isPending, toggle } = useLikes(
+    trackId,
+    enabled && featureAccess.allowed,
+  );
   const label = liked ? t("like.remove") : t("like.add");
 
   if (!featureAccess.allowed) return null;

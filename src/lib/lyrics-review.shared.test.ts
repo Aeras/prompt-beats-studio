@@ -13,7 +13,14 @@ import {
 
 describe("Lyrics Review deterministic core", () => {
   test("Phase 1 exposes exactly EL EN ES IT PT RU", () => {
-    expect(LYRICS_REVIEW_LANGUAGES.map((item) => item.code)).toEqual(["el", "en", "es", "it", "pt", "ru"]);
+    expect(LYRICS_REVIEW_LANGUAGES.map((item) => item.code)).toEqual([
+      "el",
+      "en",
+      "es",
+      "it",
+      "pt",
+      "ru",
+    ]);
   });
 
   test("canonical Generator and Project language values map to Lyrics Review profiles", () => {
@@ -26,27 +33,47 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("standalone detection recognizes Greek from script", () => {
-    expect(detectLyricsLanguage("Στο τζάμι τρέχουν φώτα της γραμμής\nΚοιτάζω έξω και δεν ξέρω τι ζητώ")).toEqual({ code: "el", confidence: "high" });
+    expect(
+      detectLyricsLanguage("Στο τζάμι τρέχουν φώτα της γραμμής\nΚοιτάζω έξω και δεν ξέρω τι ζητώ"),
+    ).toEqual({ code: "el", confidence: "high" });
   });
 
   test("standalone detection recognizes Russian from Cyrillic script", () => {
-    expect(detectLyricsLanguage("Я снова иду по ночному городу\nИ сердце не знает куда мне идти")).toEqual({ code: "ru", confidence: "high" });
+    expect(
+      detectLyricsLanguage("Я снова иду по ночному городу\nИ сердце не знает куда мне идти"),
+    ).toEqual({ code: "ru", confidence: "high" });
   });
 
   test("standalone detection distinguishes Spanish Latin lyrics", () => {
-    expect(detectLyricsLanguage("Yo quiero volver a la noche porque mi corazón no te olvida y siempre vive contigo").code).toBe("es");
+    expect(
+      detectLyricsLanguage(
+        "Yo quiero volver a la noche porque mi corazón no te olvida y siempre vive contigo",
+      ).code,
+    ).toBe("es");
   });
 
   test("standalone detection distinguishes Italian Latin lyrics", () => {
-    expect(detectLyricsLanguage("Io sono qui perché il cuore nella notte resta sempre con te e senza paura").code).toBe("it");
+    expect(
+      detectLyricsLanguage(
+        "Io sono qui perché il cuore nella notte resta sempre con te e senza paura",
+      ).code,
+    ).toBe("it");
   });
 
   test("standalone detection distinguishes Portuguese Latin lyrics", () => {
-    expect(detectLyricsLanguage("Eu não sei por que você ficou no meu coração e na noite eu vivo sem você").code).toBe("pt");
+    expect(
+      detectLyricsLanguage(
+        "Eu não sei por que você ficou no meu coração e na noite eu vivo sem você",
+      ).code,
+    ).toBe("pt");
   });
 
   test("standalone detection recognizes English when language clues support it", () => {
-    expect(detectLyricsLanguage("I walk through the night with your heart in my mind and this feeling will always stay").code).toBe("en");
+    expect(
+      detectLyricsLanguage(
+        "I walk through the night with your heart in my mind and this feeling will always stay",
+      ).code,
+    ).toBe("en");
   });
 
   test("low-evidence Latin text remains explicitly low confidence", () => {
@@ -55,7 +82,8 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("language detection ignores every square-bracket tag, including inline tags", () => {
-    const lyrics = "[Русский текст fake]\n[Verse] I walk through the [Громкий русский fake] night with your heart and this feeling will always stay";
+    const lyrics =
+      "[Русский текст fake]\n[Verse] I walk through the [Громкий русский fake] night with your heart and this feeling will always stay";
     expect(detectLyricsLanguage(lyrics).code).toBe("en");
   });
 
@@ -72,11 +100,16 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("square-bracket content never contributes to syllable metrics", () => {
-    expect(approximateSyllables("αγάπη [πολύ μεγάλη ψεύτικη φράση]", "el")).toBe(approximateSyllables("αγάπη", "el"));
+    expect(approximateSyllables("αγάπη [πολύ μεγάλη ψεύτικη φράση]", "el")).toBe(
+      approximateSyllables("αγάπη", "el"),
+    );
   });
 
   test("section parser keeps line metrics attached to the correct song section", () => {
-    const analysis = analyzeLyricsDeterministic("[Verse 1]\nOne two three\nFour five\n\n[Chorus]\nStay with me tonight\nStay with me tonight", "en");
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse 1]\nOne two three\nFour five\n\n[Chorus]\nStay with me tonight\nStay with me tonight",
+      "en",
+    );
     expect(analysis.sections).toHaveLength(2);
     expect(analysis.sections[0]?.label).toContain("Verse");
     expect(analysis.sections[0]?.lines).toHaveLength(2);
@@ -106,17 +139,28 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("repeated phrases are detected deterministically", () => {
-    const analysis = analyzeLyricsDeterministic("[Chorus]\nstay with me tonight\nstay with me tonight\nstay with me forever", "en");
-    expect(analysis.overview.repeatedPhrases.some((item) => item.value.includes("stay with"))).toBe(true);
+    const analysis = analyzeLyricsDeterministic(
+      "[Chorus]\nstay with me tonight\nstay with me tonight\nstay with me forever",
+      "en",
+    );
+    expect(analysis.overview.repeatedPhrases.some((item) => item.value.includes("stay with"))).toBe(
+      true,
+    );
   });
 
   test("repetition analysis ignores repeated words inside tags", () => {
-    const analysis = analyzeLyricsDeterministic("[Verse]\nI see light [echo echo echo echo]\nYou see stars [echo echo echo echo]\nWe see dawn [echo echo echo echo]", "en");
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse]\nI see light [echo echo echo echo]\nYou see stars [echo echo echo echo]\nWe see dawn [echo echo echo echo]",
+      "en",
+    );
     expect(analysis.overview.repeatedWords.some((item) => item.value === "echo")).toBe(false);
   });
 
   test("rhyme output is an ending clue group, not a fake percentage", () => {
-    const analysis = analyzeLyricsDeterministic("[Verse]\nI wait in the night\nYou hold me tight", "en");
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse]\nI wait in the night\nYou hold me tight",
+      "en",
+    );
     const groups = analysis.sections[0]?.rhymeGroups ?? [];
     expect(groups.length).toBeGreaterThan(0);
     expect(JSON.stringify(groups)).not.toContain("percent");
@@ -124,12 +168,18 @@ describe("Lyrics Review deterministic core", () => {
   });
 
   test("rhyme ending ignores a trailing square-bracket production tag", () => {
-    const analysis = analyzeLyricsDeterministic("[Verse]\nI wait in the night [drums enter]\nYou hold me tight [guitar swell]", "en");
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse]\nI wait in the night [drums enter]\nYou hold me tight [guitar swell]",
+      "en",
+    );
     expect(analysis.sections[0]?.rhymeGroups.length).toBeGreaterThan(0);
   });
 
   test("large within-section length deviation is flagged as an observation", () => {
-    const analysis = analyzeLyricsDeterministic("[Verse]\nShort line\nAnother short line\nThis is an extremely long lyric line with many extra words that clearly changes the rhythmic density of this section", "en");
+    const analysis = analyzeLyricsDeterministic(
+      "[Verse]\nShort line\nAnother short line\nThis is an extremely long lyric line with many extra words that clearly changes the rhythmic density of this section",
+      "en",
+    );
     expect(analysis.overview.outlierLineCount).toBeGreaterThan(0);
   });
 
@@ -143,8 +193,12 @@ describe("Lyrics Review deterministic core", () => {
   test("protected tag comparison requires exact tag text and order", () => {
     const original = "[Verse]\nHello [whisper] world\n[guitar solo]";
     expect(extractLyricsReviewTags(original)).toEqual(["[Verse]", "[whisper]", "[guitar solo]"]);
-    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [whisper]\n[guitar solo]")).toBe(true);
-    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [Whisper]\n[guitar solo]")).toBe(false);
+    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [whisper]\n[guitar solo]")).toBe(
+      true,
+    );
+    expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line [Whisper]\n[guitar solo]")).toBe(
+      false,
+    );
     expect(lyricsReviewTagsPreserved(original, "[Verse]\nNew line\n[guitar solo]")).toBe(false);
   });
 

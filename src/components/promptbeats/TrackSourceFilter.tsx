@@ -30,7 +30,9 @@ function readLocalPreference(): TrackSourcePreference {
 
 function writeLocalPreference(value: TrackSourcePreference) {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(LOCAL_KEY, value); } catch {}
+  try {
+    window.localStorage.setItem(LOCAL_KEY, value);
+  } catch {}
   window.dispatchEvent(new CustomEvent<TrackSourcePreference>(EVENT_KEY, { detail: value }));
 }
 
@@ -42,7 +44,7 @@ export function useTrackSourcePreference() {
 
   useEffect(() => {
     const next = isPreference(user?.user_metadata?.[ACCOUNT_KEY])
-      ? user!.user_metadata[ACCOUNT_KEY] as TrackSourcePreference
+      ? (user!.user_metadata[ACCOUNT_KEY] as TrackSourcePreference)
       : readLocalPreference();
     setPreferenceState(next);
   }, [user?.id, user?.user_metadata?.[ACCOUNT_KEY]]);
@@ -56,21 +58,21 @@ export function useTrackSourcePreference() {
     return () => window.removeEventListener(EVENT_KEY, sync);
   }, []);
 
-  const setPreference = useCallback(async (next: TrackSourcePreference) => {
-    setPreferenceState(next);
-    writeLocalPreference(next);
-    if (!user) return;
-    const { error } = await supabase.auth.updateUser({ data: { [ACCOUNT_KEY]: next } });
-    if (error) throw new Error(error.message);
-  }, [user]);
+  const setPreference = useCallback(
+    async (next: TrackSourcePreference) => {
+      setPreferenceState(next);
+      writeLocalPreference(next);
+      if (!user) return;
+      const { error } = await supabase.auth.updateUser({ data: { [ACCOUNT_KEY]: next } });
+      if (error) throw new Error(error.message);
+    },
+    [user],
+  );
 
   return { preference, setPreference };
 }
 
-export function filterByTrackSource(
-  tracks: Track[],
-  preference: TrackSourcePreference,
-): Track[] {
+export function filterByTrackSource(tracks: Track[], preference: TrackSourcePreference): Track[] {
   if (preference === "all") return tracks;
   return tracks.filter((track) => {
     const sourceTrack = track as TrackSourceLike;
@@ -91,12 +93,20 @@ export function TrackSourceFilter({
   language: "en" | "el";
   className?: string;
 }) {
-  const labels = useMemo(() => language === "el"
-    ? { all: "Όλα", uploads: "Uploads", external: "External" }
-    : { all: "All", uploads: "Uploads", external: "External" }, [language]);
+  const labels = useMemo(
+    () =>
+      language === "el"
+        ? { all: "Όλα", uploads: "Uploads", external: "External" }
+        : { all: "All", uploads: "Uploads", external: "External" },
+    [language],
+  );
 
   return (
-    <div className={cn("inline-flex rounded-full border border-white/10 bg-black/20 p-1", className)} role="group" aria-label={language === "el" ? "Πηγή τραγουδιών" : "Track source"}>
+    <div
+      className={cn("inline-flex rounded-full border border-white/10 bg-black/20 p-1", className)}
+      role="group"
+      aria-label={language === "el" ? "Πηγή τραγουδιών" : "Track source"}
+    >
       {(["all", "uploads", "external"] as const).map((item) => (
         <button
           key={item}
@@ -105,7 +115,9 @@ export function TrackSourceFilter({
           onClick={() => onChange(item)}
           className={cn(
             "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
-            value === item ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground",
+            value === item
+              ? "bg-accent/20 text-accent"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {labels[item]}

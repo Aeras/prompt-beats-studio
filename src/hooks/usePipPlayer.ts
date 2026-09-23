@@ -174,7 +174,10 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
 
       // --- Tonearm (needle) ---
       const currentTime = audioElement?.currentTime ?? 0;
-      const duration = audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
+      const duration =
+        audioElement?.duration && Number.isFinite(audioElement.duration)
+          ? audioElement.duration
+          : 0;
       const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
 
       // Needle tip sweeps from outer groove to inner groove area.
@@ -191,7 +194,14 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       const armLength = Math.hypot(tipX - PIVOT.x, tipY - PIVOT.y);
 
       // Pivot base (sleek metallic cylinder).
-      const baseGradient = ctx.createRadialGradient(PIVOT.x - 4, PIVOT.y - 4, 4, PIVOT.x, PIVOT.y, 22);
+      const baseGradient = ctx.createRadialGradient(
+        PIVOT.x - 4,
+        PIVOT.y - 4,
+        4,
+        PIVOT.x,
+        PIVOT.y,
+        22,
+      );
       baseGradient.addColorStop(0, "#F3F4F6");
       baseGradient.addColorStop(0.5, "#9CA3AF");
       baseGradient.addColorStop(1, "#374151");
@@ -245,8 +255,14 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       ctx.strokeStyle = "rgba(255,255,255,0.75)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(PIVOT.x + Math.cos(armAngle + Math.PI / 2) * 2, PIVOT.y + Math.sin(armAngle + Math.PI / 2) * 2);
-      ctx.lineTo(tipX + Math.cos(armAngle + Math.PI / 2) * 2, tipY + Math.sin(armAngle + Math.PI / 2) * 2);
+      ctx.moveTo(
+        PIVOT.x + Math.cos(armAngle + Math.PI / 2) * 2,
+        PIVOT.y + Math.sin(armAngle + Math.PI / 2) * 2,
+      );
+      ctx.lineTo(
+        tipX + Math.cos(armAngle + Math.PI / 2) * 2,
+        tipY + Math.sin(armAngle + Math.PI / 2) * 2,
+      );
       ctx.stroke();
       ctx.restore();
 

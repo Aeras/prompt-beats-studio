@@ -63,16 +63,25 @@ const statusSchema = z.enum(REPORT_STATUSES);
 
 export const submitTrackReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    trackId: z.string().uuid(),
-    category: categorySchema,
-    details: z.string().trim().max(2000).optional(),
-    supportingUrl: z.string().trim().url().max(1000).optional().or(z.literal("")),
-  }).superRefine((value, ctx) => {
-    if (value.category === "other" && (value.details?.trim().length ?? 0) < 5) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["details"], message: "Details are required." });
-    }
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        trackId: z.string().uuid(),
+        category: categorySchema,
+        details: z.string().trim().max(2000).optional(),
+        supportingUrl: z.string().trim().url().max(1000).optional().or(z.literal("")),
+      })
+      .superRefine((value, ctx) => {
+        if (value.category === "other" && (value.details?.trim().length ?? 0) < 5) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["details"],
+            message: "Details are required.",
+          });
+        }
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: reportId, error } = await (context.supabase as any).rpc("submit_track_report", {
       _track_id: data.trackId,
@@ -86,9 +95,13 @@ export const submitTrackReport = createServerFn({ method: "POST" })
 
 export const listContentReports = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    scope: z.enum(["open","under_review","resolved","all"]).default("open"),
-  }).parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        scope: z.enum(["open", "under_review", "resolved", "all"]).default("open"),
+      })
+      .parse(input ?? {}),
+  )
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await (context.supabase as any).rpc("list_content_reports", {
       _scope: data.scope,
@@ -110,12 +123,16 @@ export const getContentReport = createServerFn({ method: "POST" })
 
 export const reviewContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({
-    reportId: z.string().uuid(),
-    status: statusSchema,
-    resolution: z.string().trim().max(1000).optional(),
-    moderatorNotes: z.string().trim().max(2000).optional(),
-  }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        reportId: z.string().uuid(),
+        status: statusSchema,
+        resolution: z.string().trim().max(1000).optional(),
+        moderatorNotes: z.string().trim().max(2000).optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).rpc("review_content_report", {
       _report_id: data.reportId,

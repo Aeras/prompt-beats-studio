@@ -15,20 +15,22 @@ describe("mobile navigation safe layout", () => {
     expect(styles).toContain('[data-pb-bottom-safe="true"]');
     expect(shell).toContain("pb-[var(--pb-mobile-nav-offset)]");
     expect(shell).toContain("min-h-[var(--pb-mobile-nav-content-height)]");
-    expect(shell).toContain('h-[18px] w-[18px]');
+    expect(shell).toContain("h-[18px] w-[18px]");
   });
 
   test("persistent player and bottom sheets respect the shared safe boundary", async () => {
     const player = await source("src/components/promptbeats/PlayerBar.tsx");
-    const files = await Promise.all([
-      "src/components/promptbeats/LibraryFolderPicker.tsx",
-      "src/components/promptbeats/StudioModal.tsx",
-      "src/components/promptbeats/ReportTrackControl.tsx",
-      "src/components/promptbeats/TrackOwnerActions.tsx",
-      "src/components/promptbeats/TrackLibraryActions.tsx",
-      "src/components/promptbeats/ReportsManagementPanel.tsx",
-      "src/routes/ai-music-lab.tsx",
-    ].map(source));
+    const files = await Promise.all(
+      [
+        "src/components/promptbeats/LibraryFolderPicker.tsx",
+        "src/components/promptbeats/StudioModal.tsx",
+        "src/components/promptbeats/ReportTrackControl.tsx",
+        "src/components/promptbeats/TrackOwnerActions.tsx",
+        "src/components/promptbeats/TrackLibraryActions.tsx",
+        "src/components/promptbeats/ReportsManagementPanel.tsx",
+        "src/routes/ai-music-lab.tsx",
+      ].map(source),
+    );
 
     expect(player).toContain("bottom-[var(--pb-mobile-nav-offset)]");
     for (const file of files) {
