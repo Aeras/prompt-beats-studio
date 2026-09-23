@@ -5,6 +5,7 @@ import {
   Compass,
   Flame,
   Library,
+  Lightbulb,
   LogIn,
   LogOut,
   Plus,
@@ -33,6 +34,7 @@ export const NAV = [
   { id: "musicLab", labelKey: null, icon: AudioLines },
   { id: "songAnalyzer", labelKey: null, icon: ScanSearch },
   { id: "lyricsReview", labelKey: null, icon: TextSearch },
+  { id: "inspirationWall", labelKey: null, icon: Lightbulb },
   { id: "library", labelKey: "nav.library", icon: Library },
   { id: "management", labelKey: "nav.management", icon: BarChart3 },
 ] as const satisfies ReadonlyArray<{
@@ -50,6 +52,7 @@ const NAV_TO: Record<NavId, string> = {
   musicLab: "/ai-music-lab",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
+  inspirationWall: "/inspiration-wall",
   library: "/library",
   management: "/management",
 };
@@ -69,6 +72,7 @@ export function SidebarNav({
   const musicLabAccess = useFeatureAccess("ai_music_lab");
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const lyricsReviewAccess = useFeatureAccess("lyrics_review");
+  const inspirationWallAccess = useFeatureAccess("inspiration_wall");
   const { t, language } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -103,6 +107,7 @@ export function SidebarNav({
             (item.id !== "musicLab" || musicLabAccess.allowed) &&
             (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
             (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
+            (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
             (!STAFF_ONLY.includes(item.id) || canViewUsers),
         ).map((item) => {
           const isActive = active === item.id;
@@ -113,7 +118,9 @@ export function SidebarNav({
                 ? "AI Music Lab"
                 : item.id === "lyricsReview"
                   ? "Lyrics Review"
-                  : item.id;
+                  : item.id === "inspirationWall"
+                    ? "Inspiration Wall"
+                    : item.id;
           return (
             <Link
               key={item.id}

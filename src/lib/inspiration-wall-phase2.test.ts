@@ -50,7 +50,10 @@ describe("Inspiration Wall Phase 2 UI", () => {
     expect(sidebar).toContain('id: "inspirationWall"');
     expect(sidebar).toContain('useFeatureAccess("inspiration_wall")');
     expect(shell).toContain('inspirationWall: "/inspiration-wall"');
-    const mobileTabs = shell.slice(shell.indexOf("const MOBILE_TABS"), shell.indexOf("const DESKTOP_SIDEBAR_STORAGE_KEY"));
+    const mobileTabs = shell.slice(
+      shell.indexOf("const MOBILE_TABS"),
+      shell.indexOf("const DESKTOP_SIDEBAR_STORAGE_KEY"),
+    );
     expect(mobileTabs).not.toContain('id: "inspirationWall"');
   });
 });

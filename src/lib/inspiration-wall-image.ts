@@ -27,7 +27,11 @@ function canvasBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
 }
 
 export async function optimizeInspirationWallImage(file: File): Promise<File> {
-  if (!INSPIRATION_WALL_IMAGE_TYPES.includes(file.type as (typeof INSPIRATION_WALL_IMAGE_TYPES)[number])) {
+  if (
+    !INSPIRATION_WALL_IMAGE_TYPES.includes(
+      file.type as (typeof INSPIRATION_WALL_IMAGE_TYPES)[number],
+    )
+  ) {
     throw new Error("Inspiration Wall images must be JPEG, PNG or WebP.");
   }
 

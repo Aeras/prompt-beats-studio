@@ -20,6 +20,7 @@ export const NAV_PATHS: Record<NavId, string> = {
   musicLab: "/ai-music-lab",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
+  inspirationWall: "/inspiration-wall",
   library: "/library",
   management: "/management",
 };
@@ -30,7 +31,10 @@ const MOBILE_TABS = [
   { id: "studio", labelKey: "nav.studioShort" },
   { id: "library", labelKey: "nav.libraryShort" },
 ] as const satisfies ReadonlyArray<{
-  id: Exclude<NavId, "musicLab" | "songAnalyzer" | "lyricsReview" | "management">;
+  id: Exclude<
+    NavId,
+    "musicLab" | "songAnalyzer" | "lyricsReview" | "inspirationWall" | "management"
+  >;
   labelKey: TranslationKey;
 }>;
 
@@ -42,6 +46,7 @@ export function useActiveNav(): NavId {
   if (pathname.startsWith("/ai-music-lab")) return "musicLab";
   if (pathname.startsWith("/song-analyzer")) return "songAnalyzer";
   if (pathname.startsWith("/lyrics-review")) return "lyricsReview";
+  if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";
   if (pathname.startsWith("/generate")) return "studio";
   if (pathname.startsWith("/library")) return "library";
   if (pathname.startsWith("/management")) return "management";

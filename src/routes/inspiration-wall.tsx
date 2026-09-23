@@ -55,7 +55,8 @@ export const Route = createFileRoute("/inspiration-wall")({
       { title: "Inspiration Wall — PromptBeats" },
       {
         name: "description",
-        content: "Turn raw creative inspiration into a private visual direction board for your next song.",
+        content:
+          "Turn raw creative inspiration into a private visual direction board for your next song.",
       },
     ],
   }),
@@ -96,7 +97,8 @@ function InspirationWallPage() {
   });
 
   useEffect(() => {
-    if (!selectedWallId && walls.data?.walls?.length) setSelectedWallId(walls.data.walls[0].id);
+    const firstWall = walls.data?.walls?.[0];
+    if (!selectedWallId && firstWall) setSelectedWallId(firstWall.id);
   }, [selectedWallId, walls.data?.walls]);
 
   const wall = useQuery({
@@ -111,7 +113,9 @@ function InspirationWallPage() {
   };
 
   const createWall = async () => {
-    const title = window.prompt(language === "el" ? "Όνομα Inspiration Wall" : "Inspiration Wall title");
+    const title = window.prompt(
+      language === "el" ? "Όνομα Inspiration Wall" : "Inspiration Wall title",
+    );
     if (!title?.trim()) return;
     setBusy(true);
     setError(null);
@@ -130,7 +134,14 @@ function InspirationWallPage() {
 
   const removeWall = async () => {
     if (!selectedWallId) return;
-    if (!window.confirm(language === "el" ? "Διαγραφή αυτού του Inspiration Wall;" : "Delete this Inspiration Wall?")) return;
+    if (
+      !window.confirm(
+        language === "el"
+          ? "Διαγραφή αυτού του Inspiration Wall;"
+          : "Delete this Inspiration Wall?",
+      )
+    )
+      return;
     setBusy(true);
     try {
       await deleteInspirationWall({ data: { wallId: selectedWallId } });
@@ -155,9 +166,14 @@ function InspirationWallPage() {
           <div className="glass rounded-3xl p-8 text-center">
             <h1 className="font-display text-2xl font-bold">Inspiration Wall</h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              {language === "el" ? "Συνδέσου για να χρησιμοποιήσεις τον ιδιωτικό δημιουργικό σου χώρο." : "Sign in to use your private creative workspace."}
+              {language === "el"
+                ? "Συνδέσου για να χρησιμοποιήσεις τον ιδιωτικό δημιουργικό σου χώρο."
+                : "Sign in to use your private creative workspace."}
             </p>
-            <Link to="/auth" className="mt-5 inline-flex rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground glow-neon">
+            <Link
+              to="/auth"
+              className="mt-5 inline-flex rounded-xl bg-gradient-neon px-5 py-2.5 text-sm font-semibold text-primary-foreground glow-neon"
+            >
               {language === "el" ? "Σύνδεση" : "Sign in"}
             </Link>
           </div>
@@ -166,12 +182,14 @@ function InspirationWallPage() {
     );
   }
 
-  if (!access.loading && !access.allowed) {
+  if (!access.isLoading && !access.allowed) {
     return (
       <AppShell header={header}>
         <main className="mx-auto max-w-3xl px-4 py-10 md:px-8">
           <div className="glass rounded-3xl p-8 text-center text-sm text-muted-foreground">
-            {language === "el" ? "Το Inspiration Wall δεν είναι διαθέσιμο για αυτόν τον λογαριασμό." : "Inspiration Wall is not available for this account."}
+            {language === "el"
+              ? "Το Inspiration Wall δεν είναι διαθέσιμο για αυτόν τον λογαριασμό."
+              : "Inspiration Wall is not available for this account."}
           </div>
         </main>
       </AppShell>
@@ -187,10 +205,18 @@ function InspirationWallPage() {
               <div>
                 <h1 className="font-display text-lg font-bold">Wall Library</h1>
                 <p className="text-[11px] text-muted-foreground">
-                  {language === "el" ? "Ιδιωτικός δημιουργικός χώρος" : "Private creative workspace"}
+                  {language === "el"
+                    ? "Ιδιωτικός δημιουργικός χώρος"
+                    : "Private creative workspace"}
                 </p>
               </div>
-              <button type="button" onClick={createWall} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-neon text-primary-foreground disabled:opacity-50" aria-label={language === "el" ? "Νέο Wall" : "New Wall"}>
+              <button
+                type="button"
+                onClick={createWall}
+                disabled={busy}
+                className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-neon text-primary-foreground disabled:opacity-50"
+                aria-label={language === "el" ? "Νέο Wall" : "New Wall"}
+              >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               </button>
             </div>
@@ -203,17 +229,29 @@ function InspirationWallPage() {
                   onClick={() => setSelectedWallId(item.id)}
                   className={cn(
                     "min-w-[180px] rounded-2xl border px-3 py-3 text-left transition-colors xl:min-w-0",
-                    selectedWallId === item.id ? "border-accent/50 bg-accent/10" : "border-white/10 bg-black/10 hover:bg-white/5",
+                    selectedWallId === item.id
+                      ? "border-accent/50 bg-accent/10"
+                      : "border-white/10 bg-black/10 hover:bg-white/5",
                   )}
                 >
                   <div className="truncate text-sm font-semibold">{item.title}</div>
-                  <div className="mt-1 truncate text-[10px] text-muted-foreground">{THEMES.find((theme) => theme.id === item.selected_theme)?.[language === "el" ? "el" : "en"]}</div>
+                  <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                    {
+                      THEMES.find((theme) => theme.id === item.selected_theme)?.[
+                        language === "el" ? "el" : "en"
+                      ]
+                    }
+                  </div>
                 </button>
               ))}
             </div>
 
             {!walls.isLoading && !(walls.data?.walls ?? []).length && (
-              <button type="button" onClick={createWall} className="mt-5 w-full rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-muted-foreground hover:border-accent/50 hover:text-accent">
+              <button
+                type="button"
+                onClick={createWall}
+                className="mt-5 w-full rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-muted-foreground hover:border-accent/50 hover:text-accent"
+              >
                 <Plus className="mx-auto mb-2 h-5 w-5" />
                 {language === "el" ? "Δημιούργησε το πρώτο Wall" : "Create your first Wall"}
               </button>
@@ -221,7 +259,11 @@ function InspirationWallPage() {
           </aside>
 
           <section className="min-w-0">
-            {error && <div className="mb-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+            {error && (
+              <div className="mb-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                {error}
+              </div>
+            )}
             {selectedWallId && wall.data?.wall ? (
               <WallWorkspace
                 wall={wall.data.wall}
@@ -233,7 +275,13 @@ function InspirationWallPage() {
               />
             ) : (
               <div className="glass flex min-h-[60vh] items-center justify-center rounded-3xl p-8 text-center text-sm text-muted-foreground">
-                {wall.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : language === "el" ? "Επίλεξε ή δημιούργησε ένα Inspiration Wall." : "Select or create an Inspiration Wall."}
+                {wall.isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : language === "el" ? (
+                  "Επίλεξε ή δημιούργησε ένα Inspiration Wall."
+                ) : (
+                  "Select or create an Inspiration Wall."
+                )}
               </div>
             )}
           </section>
@@ -278,7 +326,12 @@ function WallWorkspace({
           body: type === "color" ? null : "",
           colorValue: type === "color" ? "#7c3aed" : null,
           sortOrder: index,
-          artisticLayout: { x: 32 + (index % 4) * 210, y: 34 + Math.floor(index / 4) * 190, rotation: 0, size: "medium" },
+          artisticLayout: {
+            x: 32 + (index % 4) * 210,
+            y: 34 + Math.floor(index / 4) * 190,
+            rotation: 0,
+            size: "medium",
+          },
           structuredLayout: { order: index, span: type === "image" ? "wide" : "normal" },
         },
       });
@@ -294,9 +347,16 @@ function WallWorkspace({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate font-display text-xl font-bold sm:text-2xl">{wall.title}</h2>
-            {wall.description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{wall.description}</p>}
+            {wall.description && (
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{wall.description}</p>
+            )}
           </div>
-          <button type="button" onClick={() => void onDeleteWall()} className="rounded-xl border border-red-400/20 p-2 text-red-300 hover:bg-red-400/10" aria-label={language === "el" ? "Διαγραφή Wall" : "Delete Wall"}>
+          <button
+            type="button"
+            onClick={() => void onDeleteWall()}
+            className="rounded-xl border border-red-400/20 p-2 text-red-300 hover:bg-red-400/10"
+            aria-label={language === "el" ? "Διαγραφή Wall" : "Delete Wall"}
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -304,12 +364,30 @@ function WallWorkspace({
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {THEMES.map((theme) => (
-              <button key={theme.id} type="button" onClick={() => void changeTheme(theme.id)} className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs", wall.selected_theme === theme.id ? "border-accent/50 bg-accent/15 text-accent" : "border-white/10 text-muted-foreground hover:text-foreground")}>{theme[language]}</button>
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => void changeTheme(theme.id)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-xs",
+                  wall.selected_theme === theme.id
+                    ? "border-accent/50 bg-accent/15 text-accent"
+                    : "border-white/10 text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {theme[language]}
+              </button>
             ))}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {INSPIRATION_WALL_CARD_TYPES.map((type) => (
-              <button key={type} type="button" disabled={adding} onClick={() => void addCard(type)} className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:border-accent/40 hover:text-accent disabled:opacity-50">
+              <button
+                key={type}
+                type="button"
+                disabled={adding}
+                onClick={() => void addCard(type)}
+                className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:border-accent/40 hover:text-accent disabled:opacity-50"
+              >
                 + {CARD_LABELS[type][language]}
               </button>
             ))}
@@ -317,26 +395,56 @@ function WallWorkspace({
         </div>
       </div>
 
-      <div className={cn("relative min-h-[68vh] overflow-hidden rounded-3xl border border-white/10 p-4 sm:p-6", themeSurface(wall.selected_theme), artistic ? "sm:min-h-[760px]" : "") }>
+      <div
+        className={cn(
+          "relative min-h-[68vh] overflow-hidden rounded-3xl border border-white/10 p-4 sm:p-6",
+          themeSurface(wall.selected_theme),
+          artistic ? "sm:min-h-[760px]" : "",
+        )}
+      >
         {artistic ? (
           <div className="relative min-h-[720px] w-full touch-none">
             {cards.map((card) => (
-              <WallCard key={card.id} card={card} wallId={wall.id} theme={wall.selected_theme} language={language} userId={userId} artistic onRefresh={onRefresh} />
+              <WallCard
+                key={card.id}
+                card={card}
+                wallId={wall.id}
+                theme={wall.selected_theme}
+                language={language}
+                userId={userId}
+                artistic
+                onRefresh={onRefresh}
+              />
             ))}
           </div>
         ) : (
           <div className="grid auto-rows-min gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {[...cards]
-              .sort((a, b) => (a.structured_layout.order ?? a.sort_order) - (b.structured_layout.order ?? b.sort_order))
+              .sort(
+                (a, b) =>
+                  (a.structured_layout.order ?? a.sort_order) -
+                  (b.structured_layout.order ?? b.sort_order),
+              )
               .map((card) => (
-                <WallCard key={card.id} card={card} wallId={wall.id} theme={wall.selected_theme} language={language} userId={userId} artistic={false} onRefresh={onRefresh} />
+                <WallCard
+                  key={card.id}
+                  card={card}
+                  wallId={wall.id}
+                  theme={wall.selected_theme}
+                  language={language}
+                  userId={userId}
+                  artistic={false}
+                  onRefresh={onRefresh}
+                />
               ))}
           </div>
         )}
 
         {!cards.length && (
           <div className="absolute inset-0 grid place-items-center p-8 text-center text-sm text-muted-foreground pointer-events-none">
-            {language === "el" ? "Πρόσθεσε μια κάρτα για να ξεκινήσεις το Wall." : "Add a card to start building your Wall."}
+            {language === "el"
+              ? "Πρόσθεσε μια κάρτα για να ξεκινήσεις το Wall."
+              : "Add a card to start building your Wall."}
           </div>
         )}
       </div>
@@ -367,8 +475,17 @@ function WallCard({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
-  const [position, setPosition] = useState({ x: card.artistic_layout.x ?? 24, y: card.artistic_layout.y ?? 24 });
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+  } | null>(null);
+  const [position, setPosition] = useState({
+    x: card.artistic_layout.x ?? 24,
+    y: card.artistic_layout.y ?? 24,
+  });
 
   useEffect(() => {
     setTitle(card.title ?? "");
@@ -401,7 +518,12 @@ function WallCard({
     }, 650);
   };
 
-  useEffect(() => () => saveTimer.current && clearTimeout(saveTimer.current), []);
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
   const togglePin = async () => {
     await updateInspirationWallCard({ data: { cardId: card.id, isPinned: !card.is_pinned } });
@@ -419,11 +541,18 @@ function WallCard({
     try {
       const optimized = await optimizeInspirationWallImage(file);
       if (optimized.size > MAX_INSPIRATION_WALL_IMAGE_BYTES) throw new Error("Image exceeds 4 MB.");
-      const objectKey = inspirationWallImageObjectKey({ userId, wallId, cardId: card.id, fileName: optimized.name });
-      const { error } = await supabase.storage.from("inspiration-wall-images").upload(objectKey, optimized, {
-        contentType: optimized.type,
-        upsert: true,
+      const objectKey = inspirationWallImageObjectKey({
+        userId,
+        wallId,
+        cardId: card.id,
+        fileName: optimized.name,
       });
+      const { error } = await supabase.storage
+        .from("inspiration-wall-images")
+        .upload(objectKey, optimized, {
+          contentType: optimized.type,
+          upsert: true,
+        });
       if (error) throw error;
       await updateInspirationWallCard({ data: { cardId: card.id, imageObjectKey: objectKey } });
       await onRefresh();
@@ -447,7 +576,10 @@ function WallCard({
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    setPosition({ x: Math.max(0, drag.baseX + event.clientX - drag.startX), y: Math.max(0, drag.baseY + event.clientY - drag.startY) });
+    setPosition({
+      x: Math.max(0, drag.baseX + event.clientX - drag.startX),
+      y: Math.max(0, drag.baseY + event.clientY - drag.startY),
+    });
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -466,7 +598,12 @@ function WallCard({
     ? {
         left: position.x,
         top: position.y,
-        width: card.artistic_layout.size === "large" ? 320 : card.artistic_layout.size === "small" ? 190 : 250,
+        width:
+          card.artistic_layout.size === "large"
+            ? 320
+            : card.artistic_layout.size === "small"
+              ? 190
+              : 250,
         transform: `rotate(${card.artistic_layout.rotation ?? 0}deg)`,
       }
     : undefined;
@@ -479,18 +616,36 @@ function WallCard({
       style={style}
       className={cn(
         "group rounded-2xl border border-black/10 p-3 shadow-xl",
-        artistic ? "absolute cursor-grab active:cursor-grabbing" : card.structured_layout.span === "wide" && "sm:col-span-2",
+        artistic
+          ? "absolute cursor-grab active:cursor-grabbing"
+          : card.structured_layout.span === "wide" && "sm:col-span-2",
         cardSurface(theme, card.type),
       )}
     >
       <div className="flex items-center gap-2">
         <CardIcon type={card.type} />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-60">{CARD_LABELS[card.type][language]}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-60">
+          {CARD_LABELS[card.type][language]}
+        </span>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={() => void togglePin()} className="grid h-7 w-7 place-items-center rounded-lg hover:bg-black/10" aria-label={card.is_pinned ? "Unpin" : "Pin"}>
-            {card.is_pinned ? <Pin className="h-3.5 w-3.5" /> : <PinOff className="h-3.5 w-3.5 opacity-50" />}
+          <button
+            type="button"
+            onClick={() => void togglePin()}
+            className="grid h-7 w-7 place-items-center rounded-lg hover:bg-black/10"
+            aria-label={card.is_pinned ? "Unpin" : "Pin"}
+          >
+            {card.is_pinned ? (
+              <Pin className="h-3.5 w-3.5" />
+            ) : (
+              <PinOff className="h-3.5 w-3.5 opacity-50" />
+            )}
           </button>
-          <button type="button" onClick={() => void remove()} className="grid h-7 w-7 place-items-center rounded-lg hover:bg-red-500/10 hover:text-red-500" aria-label={language === "el" ? "Διαγραφή κάρτας" : "Delete card"}>
+          <button
+            type="button"
+            onClick={() => void remove()}
+            className="grid h-7 w-7 place-items-center rounded-lg hover:bg-red-500/10 hover:text-red-500"
+            aria-label={language === "el" ? "Διαγραφή κάρτας" : "Delete card"}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -508,17 +663,48 @@ function WallCard({
 
       {card.type === "image" && (
         <div className="mt-3">
-          {imageUrl ? <img src={imageUrl} alt={title || "Inspiration"} loading="lazy" className="max-h-64 w-full rounded-xl object-contain" /> : <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-current/20 opacity-60"><ImageIcon className="h-6 w-6" /></div>}
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={title || "Inspiration"}
+              loading="lazy"
+              className="max-h-64 w-full rounded-xl object-contain"
+            />
+          ) : (
+            <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-current/20 opacity-60">
+              <ImageIcon className="h-6 w-6" />
+            </div>
+          )}
           <label className="mt-2 flex cursor-pointer items-center justify-center rounded-xl border border-current/15 px-3 py-2 text-xs hover:bg-black/5">
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : language === "el" ? "Επιλογή εικόνας" : "Choose image"}
-            <input type="file" accept={INSPIRATION_WALL_IMAGE_ACCEPT} disabled={uploading} className="hidden" onChange={(event) => void uploadImage(event.target.files?.[0])} />
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : language === "el" ? (
+              "Επιλογή εικόνας"
+            ) : (
+              "Choose image"
+            )}
+            <input
+              type="file"
+              accept={INSPIRATION_WALL_IMAGE_ACCEPT}
+              disabled={uploading}
+              className="hidden"
+              onChange={(event) => void uploadImage(event.target.files?.[0])}
+            />
           </label>
         </div>
       )}
 
       {card.type === "color" ? (
         <div className="mt-3 flex items-center gap-3">
-          <input type="color" value={color} onChange={(event) => { setColor(event.target.value); queueSave({ colorValue: event.target.value }); }} className="h-10 w-14 cursor-pointer rounded border-0 bg-transparent" />
+          <input
+            type="color"
+            value={color}
+            onChange={(event) => {
+              setColor(event.target.value);
+              queueSave({ colorValue: event.target.value });
+            }}
+            className="h-10 w-14 cursor-pointer rounded border-0 bg-transparent"
+          />
           <span className="text-xs opacity-70">{color}</span>
         </div>
       ) : (
@@ -534,7 +720,12 @@ function WallCard({
         />
       )}
 
-      {artistic && <div className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-zinc-300 shadow-md" aria-hidden="true" />}
+      {artistic && (
+        <div
+          className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-zinc-300 shadow-md"
+          aria-hidden="true"
+        />
+      )}
     </article>
   );
 }
@@ -548,7 +739,8 @@ function CardIcon({ type }: { type: InspirationWallCardType }) {
 
 function themeSurface(theme: InspirationWallTheme) {
   if (theme === "whiteboard") return "bg-[#f4f1e8] text-zinc-900";
-  if (theme === "corkboard") return "bg-[#9b6a43] text-zinc-950 [background-image:radial-gradient(rgba(55,34,20,.18)_1px,transparent_1px)] [background-size:8px_8px]";
+  if (theme === "corkboard")
+    return "bg-[#9b6a43] text-zinc-950 [background-image:radial-gradient(rgba(55,34,20,.18)_1px,transparent_1px)] [background-size:8px_8px]";
   if (theme === "clean_studio") return "bg-[#f7f7f4] text-zinc-900";
   return "bg-[#090914] text-zinc-100 [background-image:linear-gradient(rgba(120,70,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(120,70,255,.08)_1px,transparent_1px)] [background-size:28px_28px]";
 }
