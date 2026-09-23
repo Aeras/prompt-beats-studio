@@ -62,10 +62,13 @@ export function useTrackSourcePreference() {
   return { preference, setPreference };
 }
 
-export function filterByTrackSource<T extends { sourceType?: string | null; source_type?: string | null }>(
+export function filterByTrackSource<T extends {
+  sourceType?: string | null | undefined;
+  source_type?: string | null | undefined;
+}>(
   tracks: T[],
   preference: TrackSourcePreference,
-) {
+): T[] {
   if (preference === "all") return tracks;
   return tracks.filter((track) => {
     const source = track.sourceType ?? track.source_type ?? "upload";
