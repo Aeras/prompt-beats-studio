@@ -5,36 +5,23 @@ on:
     branches: [story-map-step1]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
-    if: github.event.head_commit.message != 'Record Story Map final lint diagnostic'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: story-map-step1
-          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - name: Story Map tests
         run: bun test src/lib/story-map.test.ts
-      - name: Capture lint
-        run: |
-          set +e
-          bun run lint > story-map-final-lint.txt 2>&1
-          code=$?
-          echo "lint_exit=$code" >> story-map-final-lint.txt
-          cat story-map-final-lint.txt
-          exit 0
-      - name: Commit lint diagnostic
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add story-map-final-lint.txt
-          git commit -m 'Record Story Map final lint diagnostic' || exit 0
-          git push origin story-map-step1
+      - name: Lint
+        run: bun run lint
+      - name: Build
+        run: bun run build
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit --pretty false
