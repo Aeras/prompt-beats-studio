@@ -53,7 +53,7 @@ function toPlayerTrack(track: {
     plays: "",
     prompt: "",
     lyrics: "",
-    audioUrl: track.audio_url ?? undefined,
+    ...(track.audio_url ? { audioUrl: track.audio_url } : {}),
     audioType: "upload",
     isPublished: track.is_published,
     sourceType: "upload",
