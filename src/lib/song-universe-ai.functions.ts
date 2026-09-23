@@ -233,7 +233,9 @@ async function loadUniverseProjectContext(supabase: any, universeId: string, use
 
   const { data: storyMaps, error: storyError } = await supabase
     .from("story_maps")
-    .select("project_id,summary,progression_type,starting_state,central_change,turning_point,resolution")
+    .select(
+      "project_id,summary,progression_type,starting_state,central_change,turning_point,resolution",
+    )
     .eq("owner_id", userId)
     .in("project_id", projectIds);
   if (storyError) throw new Error(storyError.message);
@@ -338,7 +340,11 @@ export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
     const universe = await requireOwnedUniverse(context.supabase, data.universeId, context.userId);
-    const projects = await loadUniverseProjectContext(context.supabase, data.universeId, context.userId);
+    const projects = await loadUniverseProjectContext(
+      context.supabase,
+      data.universeId,
+      context.userId,
+    );
     const result = await runStructured({
       userId: context.userId,
       requestedModel: data.model,
@@ -371,7 +377,11 @@ export const analyzeSongUniverseProjectFit = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_universe");
     await admitUniverseAi(context.supabase);
     const universe = await requireOwnedUniverse(context.supabase, data.universeId, context.userId);
-    const projects = await loadUniverseProjectContext(context.supabase, data.universeId, context.userId);
+    const projects = await loadUniverseProjectContext(
+      context.supabase,
+      data.universeId,
+      context.userId,
+    );
     const project = projects.find((item: any) => item.projectId === data.projectId);
     if (!project) throw new Error("Project is not connected to this Song Universe.");
     return runStructured({
