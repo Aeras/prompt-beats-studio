@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProjectVersionCompare } from "@/components/promptbeats/ProjectVersionCompare";
 import { ProjectVersionLinkedTracks } from "@/components/promptbeats/ProjectVersionLinkedTracks";
+import { PrivateReviewManager } from "@/components/promptbeats/PrivateReviewManager";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 type Props = {
@@ -38,6 +39,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
   const el = language === "el";
   const queryClient = useQueryClient();
   const lyricsReviewFeature = useFeatureAccess("lyrics_review");
+  const privateReviewFeature = useFeatureAccess("private_review_links");
   const [expanded, setExpanded] = useState(true);
   const [noteEditingId, setNoteEditingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -46,6 +48,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
   const [compareLeftId, setCompareLeftId] = useState<string | null>(null);
   const [compareRightId, setCompareRightId] = useState<string>("");
   const [openVersionId, setOpenVersionId] = useState<string | null>(null);
+  const [privateReviewOpen, setPrivateReviewOpen] = useState(false);
 
   const history = useQuery({
     queryKey: ["project-version-history", projectId],
@@ -126,15 +129,26 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
             </div>
             <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
           </button>
-          {lyricsReviewFeature.allowed && versions.length > 0 && (
-            <Link
-              to="/lyrics-review"
-              search={{ source: "project", project: projectId }}
-              className="shrink-0 rounded-xl border border-accent/30 px-3 py-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/5"
-            >
-              Lyrics Review
-            </Link>
-          )}
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {privateReviewFeature.allowed && versions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPrivateReviewOpen(true)}
+                className="rounded-xl border border-accent/30 px-3 py-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/5"
+              >
+                Private Review
+              </button>
+            )}
+            {lyricsReviewFeature.allowed && versions.length > 0 && (
+              <Link
+                to="/lyrics-review"
+                search={{ source: "project", project: projectId }}
+                className="rounded-xl border border-accent/30 px-3 py-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/5"
+              >
+                Lyrics Review
+              </Link>
+            )}
+          </div>
         </div>
 
         {expanded && (
@@ -182,7 +196,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                           onClick={() => togglePreferred(version.id)}
                           disabled={Boolean(preferredBusy)}
                           className={cn("rounded-lg border p-1.5", isPreferred ? "border-amber-400/30 text-amber-300" : "border-white/10 text-muted-foreground hover:text-amber-300")}
-                          aria-label={isPreferred ? (el ? "Αφαίρεση προτιμώμενης έκδοσης" : "Unmark preferred version") : (el ? "Ορισμός ως προτιμώμενη έκδοση" : "Mark as preferred")}
+                          aria-label={isPreferred ? (el ? "Αφαίρεση προτιμώμενης έκδοσης" : "Unmark preferred version") : (el ? "Ορισμός ως προτιμώμενη έκδοσης" : "Mark as preferred")}
                         >
                           {preferredBusy === version.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className={cn("h-3.5 w-3.5", isPreferred && "fill-current")} />}
                         </button>
@@ -328,6 +342,16 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
             );
           })()}
         </section>
+      )}
+
+      {privateReviewOpen && (
+        <PrivateReviewManager
+          projectId={projectId}
+          projectName={projectName}
+          versions={versions.map((version) => ({ id: version.id, version_number: version.version_number, version_label: version.version_label }))}
+          language={language}
+          onClose={() => setPrivateReviewOpen(false)}
+        />
       )}
     </div>
   );
