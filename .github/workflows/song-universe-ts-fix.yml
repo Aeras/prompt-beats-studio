@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   fix:
-    if: github.event.head_commit.message != 'Apply Song Universe TypeScript fixes'
+    if: github.event.head_commit.message != 'Song Universe TypeScript fix applied'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,6 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src
           if ! git diff --cached --quiet; then
-            git commit -m 'Apply Song Universe TypeScript fixes'
+            git commit -m 'Song Universe TypeScript fix applied'
             git push origin song-universe-step2
           fi
