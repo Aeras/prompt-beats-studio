@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { generatorInputSnapshotSchema } from "@/lib/generator-revision.shared";
 import { parseLyricsSections } from "@/lib/lyrics-sections";
+import { extractLyricsReviewTags } from "@/lib/lyrics-review.shared";
 import {
   lyricsSectionEditJobSchema,
   lyricsSectionEditRequestSchema,
@@ -52,6 +53,19 @@ const saveResultSchema = z.object({
 const reviewEditRequestSchema = lyricsSectionEditRequestSchema.extend({
   feature: z.literal("lyrics_review").default("lyrics_review"),
 });
+
+function protectedTagInstruction(selectedContent: string, userInstruction: string) {
+  const protectedTags = extractLyricsReviewTags(selectedContent);
+  const contract = [
+    "PROMPTBEATS PROTECTED SQUARE-BRACKET TAG CONTRACT:",
+    "- Anything inside square brackets [...] is metadata/instruction, never sung lyric content.",
+    "- Ignore square-bracket content completely when judging or improving meter, syllables, rhyme, wording, repetition, cadence, language, or singability.",
+    "- Existing square-bracket tags are READ-ONLY: do not add, remove, rename, rewrite, translate, reorder, or otherwise alter them.",
+    "- Preserve every existing square-bracket tag exactly as written in the selected section.",
+    protectedTags.length ? `- Protected tags in exact order: ${JSON.stringify(protectedTags)}` : "- The selected section contains no protected square-bracket tags; do not invent any.",
+  ].join("\n");
+  return userInstruction.trim() ? `${userInstruction.trim()}\n\n${contract}` : contract;
+}
 
 export const getLyricsReviewProjectContext = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -264,7 +278,7 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
         sectionOccurrence: selected.occurrence,
         selectedContent: selected.content,
         action: data.action,
-        customInstruction: data.customInstruction,
+        customInstruction: protectedTagInstruction(selected.content, data.customInstruction),
         ...authoritative,
         projectId: data.projectId ?? null,
         basePromptId: data.basePromptId ?? null,
