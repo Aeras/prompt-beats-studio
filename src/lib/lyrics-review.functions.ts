@@ -146,8 +146,11 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
     });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // The new RPCs are already deployed by migration; this cast can be removed
+    // after the next generated Supabase type refresh reaches main.
+    const adminRpc = supabaseAdmin as any;
     if (data.mode === "replace_latest") {
-      const { data: raw, error } = await supabaseAdmin.rpc("replace_latest_prompt_lyrics_review_version", {
+      const { data: raw, error } = await adminRpc.rpc("replace_latest_prompt_lyrics_review_version", {
         _user_id: context.userId,
         _project_id: data.projectId,
         _version_prompt_id: data.basePromptId,
@@ -171,7 +174,7 @@ export const saveLyricsReviewProjectVersion = createServerFn({ method: "POST" })
       };
     }
 
-    const { data: raw, error } = await supabaseAdmin.rpc("create_prompt_lyrics_review_version", {
+    const { data: raw, error } = await adminRpc.rpc("create_prompt_lyrics_review_version", {
       _user_id: context.userId,
       _project_id: data.projectId,
       _parent_prompt_id: data.basePromptId,
