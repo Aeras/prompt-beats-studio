@@ -72,7 +72,7 @@ export const lockStaffTrack = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_lock_track", {
       _track_id: data.trackId,
       _reason_code: data.reasonCode,
-      _reason_text: data.reasonText ?? null,
+      ...(data.reasonText != null ? { _reason_text: data.reasonText } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true, status: "locked" as const };
