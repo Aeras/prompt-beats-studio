@@ -44,8 +44,7 @@ export async function verifyStripeSignature(
   const signatures = header
     .split(",")
     .map((part) => part.trim().split("=", 2))
-    .filter(([key, value]) => key === "v1" && Boolean(value))
-    .map(([, value]) => value);
+    .flatMap(([key, value]) => key === "v1" && value ? [value] : []);
   if (!timestamp || signatures.length === 0 || !/^\d+$/.test(timestamp)) return false;
 
   // Stripe recommends rejecting old signed payloads so a captured valid event
