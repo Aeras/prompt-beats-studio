@@ -69,10 +69,7 @@ const updateCardSchema = z
     artisticLayout: inspirationWallArtisticLayoutSchema.optional(),
     structuredLayout: inspirationWallStructuredLayoutSchema.optional(),
   })
-  .refine(
-    (value) => Object.keys(value).some((key) => key !== "cardId"),
-    "No changes supplied.",
-  );
+  .refine((value) => Object.keys(value).some((key) => key !== "cardId"), "No changes supplied.");
 
 async function requireWallAccess(supabase: any, wallId: string, userId: string) {
   const { data, error } = await supabase
