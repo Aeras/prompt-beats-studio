@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
+  PRIVATE_REVIEW_SOURCE_TYPES,
   PRIVATE_REVIEW_VISIBILITIES,
   privateReviewLinkInfoSchema,
   privateReviewOwnerListItemSchema,
@@ -14,14 +15,25 @@ import {
 const tokenSchema = z.string().trim().min(40).max(100);
 const reviewerKeySchema = z.string().trim().min(40).max(100);
 
-const createInput = z.object({
-  projectId: z.string().uuid(),
-  versionPromptId: z.string().uuid(),
+const commonCreateInput = {
   creatorMessage: z.string().trim().max(1000).default(""),
   commentVisibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
   expiresAt: z.string().datetime(),
   pin: z.string().min(4).max(20).nullable().optional(),
+};
+
+const createInput = z.object({
+  projectId: z.string().uuid(),
+  versionPromptId: z.string().uuid(),
+  ...commonCreateInput,
   sharedTrackId: z.string().uuid().nullable().optional(),
+});
+
+const createTrackInput = z.object({
+  trackId: z.string().uuid(),
+  ...commonCreateInput,
+  includePrompt: z.boolean().default(false),
+  includeLyrics: z.boolean().default(false),
 });
 
 export const createPrivateReviewSession = createServerFn({ method: "POST" })
@@ -47,6 +59,35 @@ export const createPrivateReviewSession = createServerFn({ method: "POST" })
       comment_visibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
       include_audio: z.boolean(),
       shared_track_id: z.string().uuid().nullable(),
+      created_at: z.string(),
+      expires_at: z.string(),
+    }).parse(raw);
+  });
+
+export const createPrivateTrackReviewSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => createTrackInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "private_review_links");
+    const { data: raw, error } = await (context.supabase as any).rpc("create_private_track_review_session", {
+      _track_id: data.trackId,
+      _creator_message: data.creatorMessage,
+      _comment_visibility: data.commentVisibility,
+      _expires_at: data.expiresAt,
+      _pin: data.pin || null,
+      _include_prompt: data.includePrompt,
+      _include_lyrics: data.includeLyrics,
+    });
+    if (error) throw new Error(error.message);
+    return z.object({
+      id: z.string().uuid(),
+      token: z.string(),
+      source_type: z.enum(PRIVATE_REVIEW_SOURCE_TYPES),
+      source_track_id: z.string().uuid(),
+      comment_visibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
+      include_audio: z.boolean(),
+      include_prompt: z.boolean(),
+      include_lyrics: z.boolean(),
       created_at: z.string(),
       expires_at: z.string(),
     }).parse(raw);
@@ -124,14 +165,18 @@ export const addPrivateReviewComment = createServerFn({ method: "POST" })
 
 export const listMyPrivateReviewSessions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid().nullable().optional() }).parse(input ?? {}))
+  .inputValidator((input: unknown) => z.object({
+    projectId: z.string().uuid().nullable().optional(),
+    trackId: z.string().uuid().nullable().optional(),
+  }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "private_review_links");
     const { data: raw, error } = await (context.supabase as any).rpc("list_my_private_review_sessions", {
       _project_id: data.projectId || null,
     });
     if (error) throw new Error(error.message);
-    return z.array(privateReviewOwnerListItemSchema).parse(raw ?? []);
+    const rows = z.array(privateReviewOwnerListItemSchema).parse(raw ?? []);
+    return data.trackId ? rows.filter((row) => row.sourceTrackId === data.trackId) : rows;
   });
 
 export const getMyPrivateReviewSession = createServerFn({ method: "POST" })
