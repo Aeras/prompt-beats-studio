@@ -31,6 +31,12 @@ jobs:
       - name: Lyrics section parser tests
         run: bun test src/lib/lyrics-sections.test.ts
 
+      - name: Lyrics Review deterministic tests
+        run: bun test src/lib/lyrics-review.shared.test.ts
+
+      - name: Lyrics Review integration tests
+        run: bun test src/lib/lyrics-review-integration.test.ts
+
       - name: Song Blueprint tests
         run: bun test src/lib/song-blueprint.test.ts
 
