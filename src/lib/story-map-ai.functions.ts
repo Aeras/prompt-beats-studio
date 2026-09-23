@@ -1,0 +1,310 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { getEffectiveModelAccess, modelCaller } from "@/lib/ai-provider.server";
+import { recordAiUsage, type AiOperation } from "@/lib/ai-usage.server";
+import {
+  storyMapAnalysisSchema,
+  storyMapDraftSchema,
+  type StoryMapDraft,
+} from "@/lib/story-map.shared";
+
+const idSchema = z.string().uuid();
+
+const STORY_MAP_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    progressionType: {
+      type: "STRING",
+      enum: ["narrative", "emotional", "relationship", "conceptual", "anthemic", "minimal"],
+    },
+    summary: { type: "STRING" },
+    narrator: { type: "STRING" },
+    pointOfView: { type: "STRING" },
+    startingState: { type: "STRING" },
+    centralChange: { type: "STRING" },
+    turningPoint: { type: "STRING" },
+    resolution: { type: "STRING" },
+    beats: {
+      type: "ARRAY",
+      minItems: 3,
+      maxItems: 10,
+      items: {
+        type: "OBJECT",
+        properties: {
+          position: { type: "INTEGER" },
+          title: { type: "STRING" },
+          whatHappens: { type: "STRING" },
+          emotion: { type: "STRING" },
+          purpose: { type: "STRING" },
+          narratorState: { type: "STRING" },
+          keyImage: { type: "STRING" },
+          reveal: { type: "STRING" },
+          changeAfterBeat: { type: "STRING" },
+          lyricAnchor: { type: "STRING" },
+          suggestedSections: { type: "ARRAY", items: { type: "STRING" } },
+          isKeyBeat: { type: "BOOLEAN" },
+        },
+        required: [
+          "position", "title", "whatHappens", "emotion", "purpose", "narratorState",
+          "keyImage", "reveal", "changeAfterBeat", "lyricAnchor", "suggestedSections", "isKeyBeat",
+        ],
+      },
+    },
+  },
+  required: [
+    "progressionType", "summary", "narrator", "pointOfView", "startingState",
+    "centralChange", "turningPoint", "resolution", "beats",
+  ],
+};
+
+const ANALYSIS_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    overall: { type: "STRING" },
+    observations: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          category: { type: "STRING" },
+          evidence: { type: "STRING" },
+          suggestion: { type: "STRING" },
+          sectionLabel: { type: ["STRING", "NULL"] },
+        },
+        required: ["category", "evidence", "suggestion", "sectionLabel"],
+      },
+    },
+    sectionSuggestions: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          sectionKey: { type: "STRING" },
+          sectionLabel: { type: "STRING" },
+          storyGoal: { type: "STRING" },
+          issue: { type: "STRING" },
+          suggestion: { type: "STRING" },
+        },
+        required: ["sectionKey", "sectionLabel", "storyGoal", "issue", "suggestion"],
+      },
+    },
+  },
+  required: ["overall", "observations", "sectionSuggestions"],
+};
+
+const BUILD_SYSTEM = `You are PromptBeats Story Map, a narrative and emotional progression planner for songs.
+A Story Map is NOT lyrics and NOT a Song Blueprint. It describes what changes from the beginning of the song to the end.
+
+Rules:
+- Identify whether progression is narrative, emotional, relationship, conceptual, anthemic, or minimal.
+- Use only the number of beats needed, normally 3–10.
+- Do not manufacture a literal plot when the concept is emotional, conceptual, anthemic, or intentionally minimal.
+- Preserve the user's narrator, point of view, desired ending, ambiguity, constraints and intentional repetition.
+- Avoid redundant beats, forced tragedy, forced cinematic clichés and unnecessary characters.
+- Include a turning point or resolution only when appropriate. Open or unresolved endings are valid.
+- Suggested song sections are advisory only. Story Map and Song Blueprint are separate and mapping is never mechanically 1:1.
+- Do not write final lyrics. lyricAnchor may contain only a short optional phrase/idea, never a full verse or chorus.
+- Return only schema-compliant JSON.`;
+
+const FROM_LYRICS_SYSTEM = `${BUILD_SYSTEM}
+
+You are extracting the Story Map from EXISTING LYRICS.
+Hard rule: describe what is actually present in the supplied lyrics. Do not invent a better story and pretend it exists.
+If progression, trigger, turning point, motivation, or resolution is missing, represent that honestly with concise wording rather than fabricating it.`;
+
+const ANALYZE_SYSTEM = `You are PromptBeats Story Map Narrative Diagnostic.
+Compare the supplied current lyrics with the supplied Story Map and song-section labels.
+Diagnose, suggest, and preserve user agency. Do NOT rewrite the song and do NOT mutate the Story Map.
+Suggestions must be specific, section-aware and actionable. Protect intentional repetition and ambiguity.
+Use evidence from the actual lyrics. Do not invent events or meanings that are not supported.
+No numeric quality score. Return only schema-compliant JSON.`;
+
+async function requireOwnedMap(supabase: any, storyMapId: string, userId: string) {
+  const { data: map, error } = await supabase
+    .from("story_maps")
+    .select("*")
+    .eq("id", storyMapId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!map) throw new Error("Story Map not found.");
+  const { data: beats, error: beatsError } = await supabase
+    .from("story_map_beats")
+    .select("*")
+    .eq("story_map_id", storyMapId)
+    .order("position", { ascending: true });
+  if (beatsError) throw new Error(beatsError.message);
+  return { map, beats: beats ?? [] };
+}
+
+async function resolveStoryMapModel(userId: string, requestedModel?: string | null) {
+  // Story Map uses the shared model registry now. The dedicated AI Tools default
+  // will replace this generator-operation lookup in the agreed model-architecture step.
+  const access = await getEffectiveModelAccess(userId, "generator");
+  const requested = requestedModel
+    ? access.modelOptions.find((option) => option.id === requestedModel)
+    : null;
+  const selected = requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
+  if (!selected) throw new Error("No compatible AI model is available for Story Map.");
+  return selected;
+}
+
+function cleanJsonText(text: string) {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("```") && trimmed.endsWith("```")) {
+    return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  }
+  return trimmed;
+}
+
+async function runStructured<T>(input: {
+  userId: string;
+  requestedModel?: string | null;
+  system: string;
+  prompt: string;
+  schema: Record<string, unknown>;
+  parse: (value: unknown) => T;
+  operation: AiOperation;
+}) {
+  const selected = await resolveStoryMapModel(input.userId, input.requestedModel);
+  const caller = modelCaller(selected.id, selected.provider);
+  let usage: Awaited<ReturnType<typeof caller>>["usage"] = null;
+  let success = false;
+  try {
+    const result = await caller({
+      system: input.system,
+      prompt: input.prompt,
+      schema: input.schema,
+      maxTokens: 6144,
+      reasoningEffort: selected.reasoningEffort,
+    });
+    usage = result.usage;
+    if (result.stopReason === "max_tokens") throw new Error("The Story Map response was incomplete. Please retry.");
+    const parsed = input.parse(JSON.parse(cleanJsonText(result.text)));
+    success = true;
+    return { value: parsed, model: result.model, provider: result.provider, modelLabel: selected.label };
+  } finally {
+    await recordAiUsage({
+      userId: input.userId,
+      provider: selected.provider,
+      model: selected.id,
+      operation: input.operation,
+      usage,
+      success,
+    });
+  }
+}
+
+export const buildStoryMapWithAi = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ storyMapId: idSchema, model: z.string().trim().max(240).nullable().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "story_map");
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "story_map");
+    const { map } = await requireOwnedMap(context.supabase as any, data.storyMapId, context.userId);
+    const prompt = [
+      `TITLE: ${map.title}`,
+      `CORE IDEA: ${map.concept}`,
+      map.theme ? `THEME: ${map.theme}` : "",
+      map.emotional_direction ? `EMOTIONAL DIRECTION: ${map.emotional_direction}` : "",
+      map.narrator ? `NARRATOR: ${map.narrator}` : "",
+      map.point_of_view ? `POINT OF VIEW: ${map.point_of_view}` : "",
+      map.desired_ending ? `DESIRED ENDING: ${map.desired_ending}` : "",
+      "Build the Story Map. Do not write final lyrics.",
+    ].filter(Boolean).join("\n");
+    const result = await runStructured<StoryMapDraft>({
+      userId: context.userId,
+      requestedModel: data.model,
+      system: BUILD_SYSTEM,
+      prompt,
+      schema: STORY_MAP_RESPONSE_SCHEMA,
+      parse: (value) => storyMapDraftSchema.parse(value),
+      operation: "story_map_generate",
+    });
+    return { draft: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+  });
+
+export const createStoryMapFromLyrics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    lyrics: z.string().trim().min(20).max(30000),
+    songTitle: z.string().trim().max(200).optional().default(""),
+    structure: z.string().trim().max(4000).optional().default(""),
+    model: z.string().trim().max(240).nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "story_map");
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "story_map");
+    const prompt = [
+      data.songTitle ? `SONG TITLE: ${data.songTitle}` : "",
+      data.structure ? `KNOWN SONG STRUCTURE:\n${data.structure}` : "",
+      `CURRENT LYRICS — analyze only what is actually present:\n${data.lyrics}`,
+    ].filter(Boolean).join("\n\n");
+    const result = await runStructured<StoryMapDraft>({
+      userId: context.userId,
+      requestedModel: data.model,
+      system: FROM_LYRICS_SYSTEM,
+      prompt,
+      schema: STORY_MAP_RESPONSE_SCHEMA,
+      parse: (value) => storyMapDraftSchema.parse(value),
+      operation: "story_map_from_lyrics",
+    });
+    return { draft: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+  });
+
+export const analyzeLyricsWithStoryMap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    storyMapId: idSchema,
+    lyrics: z.string().trim().min(20).max(30000),
+    structure: z.string().trim().max(4000).optional().default(""),
+    model: z.string().trim().max(240).nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "story_map");
+    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
+    await requireAuxiliaryAiAdmission(context.supabase, "story_map");
+    const { map, beats } = await requireOwnedMap(context.supabase as any, data.storyMapId, context.userId);
+    const mapContext = {
+      concept: map.concept,
+      progressionType: map.progression_type,
+      summary: map.summary,
+      startingState: map.starting_state,
+      centralChange: map.central_change,
+      turningPoint: map.turning_point,
+      resolution: map.resolution,
+      beats: beats.map((beat: any) => ({
+        position: beat.position,
+        title: beat.title,
+        whatHappens: beat.what_happens,
+        emotion: beat.emotion,
+        purpose: beat.purpose,
+        reveal: beat.reveal,
+        changeAfterBeat: beat.change_after_beat,
+        suggestedSections: beat.suggested_sections,
+      })),
+    };
+    const prompt = [
+      `STORY MAP:\n${JSON.stringify(mapContext)}`,
+      data.structure ? `SONG STRUCTURE:\n${data.structure}` : "",
+      `CURRENT LYRICS:\n${data.lyrics}`,
+      "Return diagnosis and section-specific suggestions only. Do not return rewritten lyrics.",
+    ].filter(Boolean).join("\n\n");
+    const result = await runStructured({
+      userId: context.userId,
+      requestedModel: data.model,
+      system: ANALYZE_SYSTEM,
+      prompt,
+      schema: ANALYSIS_RESPONSE_SCHEMA,
+      parse: (value) => storyMapAnalysisSchema.parse(value),
+      operation: "story_map_analyze_lyrics",
+    });
+    return { analysis: result.value, model: result.model, provider: result.provider, modelLabel: result.modelLabel };
+  });
