@@ -1,0 +1,33 @@
+name: Apply manual cleanup patch
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Apply cleanup patch
+        run: |
+          git apply cleanup-manual.patch
+          rm -f cleanup-manual.patch lint-autofix-files.txt lint-autofix.patch lint-after-autofix.log
+          rm -f .github/workflows/apply-manual-cleanup.yml
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "Aeras"
+          git config user.email "nkarypidis@gmail.com"
+          git add -A
+          git commit -m "Finish repository lint cleanup"
+          git push origin HEAD:main
