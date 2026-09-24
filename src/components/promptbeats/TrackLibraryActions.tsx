@@ -16,25 +16,10 @@ import {
   listPlaylists,
   toggleFavorite,
 } from "@/lib/playlists.functions";
-import { downloadTrackAudio } from "@/lib/track-download.functions";
-
-function fileName(title: string, mimeType: string) {
-  const ext = mimeType.includes("wav") ? "wav" : "mp3";
-  const safe =
-    title
-      .trim()
-      .replace(/[\\/:*?"<>|]+/g, "-")
-      .replace(/\s+/g, " ")
-      .slice(0, 100) || "promptbeats-track";
-  return `${safe}.${ext}`;
-}
-
-function base64ToBlob(value: string, mimeType: string) {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return new Blob([bytes], { type: mimeType });
-}
+import {
+  downloadTrackAudio,
+  getTrackDownloadAvailability,
+} from "@/lib/track-download.functions";
 
 export function TrackLibraryActions({
   track,
@@ -62,6 +47,7 @@ export function TrackLibraryActions({
           removeFavorite: "Αφαίρεση από τα Αγαπημένα",
           playlist: "Προσθήκη σε λίστα αναπαραγωγής",
           download: "Λήψη",
+          downloadDisabled: "Η λήψη δεν επιτρέπεται από τον δημιουργό",
           playlists: "Λίστες αναπαραγωγής",
           newPlaylist: "Νέα λίστα αναπαραγωγής",
           name: "Όνομα λίστας",
@@ -79,6 +65,7 @@ export function TrackLibraryActions({
           removeFavorite: "Remove from Favorites",
           playlist: "Add to playlist",
           download: "Download",
+          downloadDisabled: "Downloads are disabled by the creator",
           playlists: "Playlists",
           newPlaylist: "New playlist",
           name: "Playlist name",
@@ -94,11 +81,17 @@ export function TrackLibraryActions({
   const canPlaylist = Boolean(
     playlistsAccess.allowed && user && track.sourceType === "upload" && track.audioUrl,
   );
+  const hasDownloadableSource = Boolean(track.sourceType === "upload" && track.audioUrl);
+  const downloadAvailability = useQuery({
+    queryKey: ["tracks", "download-availability", track.id, user?.id],
+    queryFn: () => getTrackDownloadAvailability({ data: { trackIds: [track.id] } }),
+    enabled: Boolean(user && hasDownloadableSource),
+    staleTime: 20_000,
+  });
   const canDownload = Boolean(
-    user &&
-    track.sourceType === "upload" &&
-    track.audioUrl &&
-    (track.userId === user.id || track.allowDownload === true),
+    hasDownloadableSource &&
+      user &&
+      (track.userId === user.id || downloadAvailability.data?.allowed[track.id] === true),
   );
 
   const favoriteIds = useQuery({
@@ -189,18 +182,17 @@ export function TrackLibraryActions({
   };
 
   const download = async () => {
+    if (!canDownload) return;
     setBusy("download");
     try {
       const result = await downloadTrackAudio({ data: { trackId: track.id } });
-      const blob = base64ToBlob(result.audioBase64, result.mimeType);
-      const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName(result.title, result.mimeType);
+      anchor.href = result.downloadUrl;
+      anchor.download = result.fileName;
+      anchor.rel = "noopener";
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       toast.error(copy.error);
     } finally {
@@ -327,10 +319,12 @@ export function TrackLibraryActions({
                   <ListPlus className="h-4 w-4" /> {copy.playlist}
                 </DropdownMenu.Item>
               )}
-              {canDownload && (
+              {hasDownloadableSource && (
                 <DropdownMenu.Item
+                  disabled={!canDownload || busy === "download"}
                   onSelect={() => void download()}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"
+                  title={canDownload ? copy.download : copy.downloadDisabled}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 data-[disabled]:cursor-not-allowed data-[disabled]:text-muted-foreground/40 data-[disabled]:opacity-60"
                 >
                   <Download className="h-4 w-4" /> {copy.download}
                 </DropdownMenu.Item>
@@ -345,7 +339,7 @@ export function TrackLibraryActions({
   }
 
   const iconClass =
-    "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50";
+    "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:border-white/5 disabled:text-muted-foreground/30 disabled:opacity-60 disabled:hover:border-white/5 disabled:hover:text-muted-foreground/30";
   return (
     <>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -374,15 +368,15 @@ export function TrackLibraryActions({
             <ListPlus className="h-3.5 w-3.5" />
           </button>
         )}
-        {canDownload && (
+        {hasDownloadableSource && (
           <button
             onClick={() => void download()}
-            disabled={busy === "download"}
-            aria-label={copy.download}
-            title={copy.download}
+            disabled={!canDownload || busy === "download"}
+            aria-label={canDownload ? copy.download : copy.downloadDisabled}
+            title={canDownload ? copy.download : copy.downloadDisabled}
             className={iconClass}
           >
-            {busy === "download" ? (
+            {busy === "download" && canDownload ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Download className="h-3.5 w-3.5" />
