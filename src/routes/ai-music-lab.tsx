@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -135,6 +135,7 @@ function AiMusicLabPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardError, setDiscardError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const lyriaRequestKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (access.data?.allowed !== true || typeof window === "undefined") return;
@@ -176,10 +177,12 @@ function AiMusicLabPage() {
           lyrics,
           productionNotes,
           previousAudioKey: generated?.audioKey ?? null,
+          requestKey: (lyriaRequestKeyRef.current ??= crypto.randomUUID()),
         },
       }),
     onSuccess: (result) => {
       setGenerated(result);
+      lyriaRequestKeyRef.current = null;
       setDiscardError(null);
       setDownloadError(null);
       setSaveOpen(false);

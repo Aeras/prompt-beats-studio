@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import {
+  auxiliaryRequestKeySchema,
+  executeDurableAuxiliaryAiRequest,
+} from "@/lib/ai-auxiliary-idempotency.server";
 import { getEffectiveModelAccess, modelCaller } from "@/lib/ai-provider.server";
 import { recordAiUsage, type AiOperation } from "@/lib/ai-usage.server";
 import {
@@ -207,6 +211,7 @@ async function runStructured<T>(input: {
   schema: Record<string, unknown>;
   parse: (value: unknown) => T;
   operation: AiOperation;
+  markProviderStarted?: () => Promise<void>;
 }) {
   const selected = await resolveStoryMapModel(input.userId, input.requestedModel);
   const caller = modelCaller(selected.id, selected.provider);
@@ -215,6 +220,7 @@ async function runStructured<T>(input: {
   let actualModel = selected.id;
   let success = false;
   try {
+    await input.markProviderStarted?.();
     const result = await caller({
       system: input.system,
       prompt: input.prompt,
@@ -247,47 +253,59 @@ async function runStructured<T>(input: {
   }
 }
 
-async function admitStoryMapAi(supabase: any) {
-  const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
-  await requireAuxiliaryAiAdmission(supabase, "story_map");
-}
-
 export const buildStoryMapWithAi = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ storyMapId: idSchema, model: optionalModelSchema }).parse(input),
+    z
+      .object({
+        storyMapId: idSchema,
+        model: optionalModelSchema,
+        requestKey: auxiliaryRequestKeySchema,
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "story_map");
-    await admitStoryMapAi(context.supabase);
-    const { map } = await requireOwnedMap(context.supabase as any, data.storyMapId, context.userId);
-    const prompt = [
-      `TITLE: ${map.title}`,
-      `CORE IDEA: ${map.concept}`,
-      map.theme ? `THEME: ${map.theme}` : "",
-      map.emotional_direction ? `EMOTIONAL DIRECTION: ${map.emotional_direction}` : "",
-      map.narrator ? `NARRATOR: ${map.narrator}` : "",
-      map.point_of_view ? `POINT OF VIEW: ${map.point_of_view}` : "",
-      map.desired_ending ? `DESIRED ENDING: ${map.desired_ending}` : "",
-      "Build the Story Map. Do not write final lyrics.",
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const result = await runStructured<StoryMapDraft>({
-      userId: context.userId,
-      requestedModel: data.model ?? null,
-      system: BUILD_SYSTEM,
-      prompt,
-      schema: STORY_MAP_RESPONSE_SCHEMA,
-      parse: (value) => storyMapDraftSchema.parse(value),
-      operation: "story_map_generate",
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "story_map",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const { map } = await requireOwnedMap(
+          context.supabase as any,
+          data.storyMapId,
+          context.userId,
+        );
+        const prompt = [
+          `TITLE: ${map.title}`,
+          `CORE IDEA: ${map.concept}`,
+          map.theme ? `THEME: ${map.theme}` : "",
+          map.emotional_direction ? `EMOTIONAL DIRECTION: ${map.emotional_direction}` : "",
+          map.narrator ? `NARRATOR: ${map.narrator}` : "",
+          map.point_of_view ? `POINT OF VIEW: ${map.point_of_view}` : "",
+          map.desired_ending ? `DESIRED ENDING: ${map.desired_ending}` : "",
+          "Build the Story Map. Do not write final lyrics.",
+        ]
+          .filter(Boolean)
+          .join("\n");
+        const result = await runStructured<StoryMapDraft>({
+          userId: context.userId,
+          requestedModel: data.model ?? null,
+          system: BUILD_SYSTEM,
+          prompt,
+          schema: STORY_MAP_RESPONSE_SCHEMA,
+          parse: (value) => storyMapDraftSchema.parse(value),
+          operation: "story_map_generate",
+          markProviderStarted,
+        });
+        return {
+          draft: result.value,
+          model: result.model,
+          provider: result.provider,
+          modelLabel: result.modelLabel,
+        };
+      },
     });
-    return {
-      draft: result.value,
-      model: result.model,
-      provider: result.provider,
-      modelLabel: result.modelLabel,
-    };
   });
 
 export const planStoryDrivenGeneration = createServerFn({ method: "POST" })
@@ -303,42 +321,50 @@ export const planStoryDrivenGeneration = createServerFn({ method: "POST" })
         production: z.string().trim().max(2000).default(""),
         instructions: z.string().trim().max(2000).default(""),
         model: optionalModelSchema,
+        requestKey: auxiliaryRequestKeySchema,
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "story_map");
-    await admitStoryMapAi(context.supabase);
-    const prompt = [
-      `CORE IDEA: ${data.theme}`,
-      `MUSIC STYLE: ${data.genre}`,
-      `MOOD: ${data.mood}`,
-      `LYRICS LANGUAGE: ${data.language}`,
-      data.structure
-        ? `SONG BLUEPRINT / STRUCTURE (authoritative for section structure): ${data.structure}`
-        : "",
-      data.production ? `PRODUCTION DIRECTION: ${data.production}` : "",
-      data.instructions ? `ADDITIONAL USER INSTRUCTIONS: ${data.instructions}` : "",
-      "Create a compact internal Story Map that gives the eventual lyrics meaningful progression while preserving every explicit Generator instruction. Do not write the lyrics yet.",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    const result = await runStructured<StoryMapDraft>({
-      userId: context.userId,
-      requestedModel: data.model ?? null,
-      system: BUILD_SYSTEM,
-      prompt,
-      schema: STORY_MAP_RESPONSE_SCHEMA,
-      parse: (value) => storyMapDraftSchema.parse(value),
-      operation: "story_driven_plan",
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "story_map",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const prompt = [
+          `CORE IDEA: ${data.theme}`,
+          `MUSIC STYLE: ${data.genre}`,
+          `MOOD: ${data.mood}`,
+          `LYRICS LANGUAGE: ${data.language}`,
+          data.structure
+            ? `SONG BLUEPRINT / STRUCTURE (authoritative for section structure): ${data.structure}`
+            : "",
+          data.production ? `PRODUCTION DIRECTION: ${data.production}` : "",
+          data.instructions ? `ADDITIONAL USER INSTRUCTIONS: ${data.instructions}` : "",
+          "Create a compact internal Story Map that gives the eventual lyrics meaningful progression while preserving every explicit Generator instruction. Do not write the lyrics yet.",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        const result = await runStructured<StoryMapDraft>({
+          userId: context.userId,
+          requestedModel: data.model ?? null,
+          system: BUILD_SYSTEM,
+          prompt,
+          schema: STORY_MAP_RESPONSE_SCHEMA,
+          parse: (value) => storyMapDraftSchema.parse(value),
+          operation: "story_driven_plan",
+          markProviderStarted,
+        });
+        return {
+          draft: result.value,
+          model: result.model,
+          provider: result.provider,
+          modelLabel: result.modelLabel,
+        };
+      },
     });
-    return {
-      draft: result.value,
-      model: result.model,
-      provider: result.provider,
-      modelLabel: result.modelLabel,
-    };
   });
 
 export const createStoryMapFromLyrics = createServerFn({ method: "POST" })
@@ -350,34 +376,42 @@ export const createStoryMapFromLyrics = createServerFn({ method: "POST" })
         songTitle: z.string().trim().max(200).optional().default(""),
         structure: z.string().trim().max(4000).optional().default(""),
         model: optionalModelSchema,
+        requestKey: auxiliaryRequestKeySchema,
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "story_map");
-    await admitStoryMapAi(context.supabase);
-    const prompt = [
-      data.songTitle ? `SONG TITLE: ${data.songTitle}` : "",
-      data.structure ? `KNOWN SONG STRUCTURE:\n${data.structure}` : "",
-      `CURRENT LYRICS — analyze only what is actually present:\n${data.lyrics}`,
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    const result = await runStructured<StoryMapDraft>({
-      userId: context.userId,
-      requestedModel: data.model ?? null,
-      system: FROM_LYRICS_SYSTEM,
-      prompt,
-      schema: STORY_MAP_RESPONSE_SCHEMA,
-      parse: (value) => storyMapDraftSchema.parse(value),
-      operation: "story_map_from_lyrics",
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "story_map",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const prompt = [
+          data.songTitle ? `SONG TITLE: ${data.songTitle}` : "",
+          data.structure ? `KNOWN SONG STRUCTURE:\n${data.structure}` : "",
+          `CURRENT LYRICS — analyze only what is actually present:\n${data.lyrics}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        const result = await runStructured<StoryMapDraft>({
+          userId: context.userId,
+          requestedModel: data.model ?? null,
+          system: FROM_LYRICS_SYSTEM,
+          prompt,
+          schema: STORY_MAP_RESPONSE_SCHEMA,
+          parse: (value) => storyMapDraftSchema.parse(value),
+          operation: "story_map_from_lyrics",
+          markProviderStarted,
+        });
+        return {
+          draft: result.value,
+          model: result.model,
+          provider: result.provider,
+          modelLabel: result.modelLabel,
+        };
+      },
     });
-    return {
-      draft: result.value,
-      model: result.model,
-      provider: result.provider,
-      modelLabel: result.modelLabel,
-    };
   });
 
 export const analyzeLyricsWithStoryMap = createServerFn({ method: "POST" })
@@ -389,57 +423,65 @@ export const analyzeLyricsWithStoryMap = createServerFn({ method: "POST" })
         lyrics: z.string().trim().min(20).max(30000),
         structure: z.string().trim().max(4000).optional().default(""),
         model: optionalModelSchema,
+        requestKey: auxiliaryRequestKeySchema,
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "story_map");
-    await admitStoryMapAi(context.supabase);
-    const { map, beats } = await requireOwnedMap(
-      context.supabase as any,
-      data.storyMapId,
-      context.userId,
-    );
-    const mapContext = {
-      concept: map.concept,
-      progressionType: map.progression_type,
-      summary: map.summary,
-      startingState: map.starting_state,
-      centralChange: map.central_change,
-      turningPoint: map.turning_point,
-      resolution: map.resolution,
-      beats: beats.map((beat: any) => ({
-        position: beat.position,
-        title: beat.title,
-        whatHappens: beat.what_happens,
-        emotion: beat.emotion,
-        purpose: beat.purpose,
-        reveal: beat.reveal,
-        changeAfterBeat: beat.change_after_beat,
-        suggestedSections: beat.suggested_sections,
-      })),
-    };
-    const prompt = [
-      `STORY MAP:\n${JSON.stringify(mapContext)}`,
-      data.structure ? `SONG STRUCTURE:\n${data.structure}` : "",
-      `CURRENT LYRICS:\n${data.lyrics}`,
-      "Return diagnosis and section-specific suggestions only. Do not return rewritten lyrics.",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    const result = await runStructured<StoryMapAnalysis>({
-      userId: context.userId,
-      requestedModel: data.model ?? null,
-      system: ANALYZE_SYSTEM,
-      prompt,
-      schema: ANALYSIS_RESPONSE_SCHEMA,
-      parse: (value) => storyMapAnalysisSchema.parse(value),
-      operation: "story_map_analyze_lyrics",
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "story_map",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const { map, beats } = await requireOwnedMap(
+          context.supabase as any,
+          data.storyMapId,
+          context.userId,
+        );
+        const mapContext = {
+          concept: map.concept,
+          progressionType: map.progression_type,
+          summary: map.summary,
+          startingState: map.starting_state,
+          centralChange: map.central_change,
+          turningPoint: map.turning_point,
+          resolution: map.resolution,
+          beats: beats.map((beat: any) => ({
+            position: beat.position,
+            title: beat.title,
+            whatHappens: beat.what_happens,
+            emotion: beat.emotion,
+            purpose: beat.purpose,
+            reveal: beat.reveal,
+            changeAfterBeat: beat.change_after_beat,
+            suggestedSections: beat.suggested_sections,
+          })),
+        };
+        const prompt = [
+          `STORY MAP:\n${JSON.stringify(mapContext)}`,
+          data.structure ? `SONG STRUCTURE:\n${data.structure}` : "",
+          `CURRENT LYRICS:\n${data.lyrics}`,
+          "Return diagnosis and section-specific suggestions only. Do not return rewritten lyrics.",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        const result = await runStructured<StoryMapAnalysis>({
+          userId: context.userId,
+          requestedModel: data.model ?? null,
+          system: ANALYZE_SYSTEM,
+          prompt,
+          schema: ANALYSIS_RESPONSE_SCHEMA,
+          parse: (value) => storyMapAnalysisSchema.parse(value),
+          operation: "story_map_analyze_lyrics",
+          markProviderStarted,
+        });
+        return {
+          analysis: result.value,
+          model: result.model,
+          provider: result.provider,
+          modelLabel: result.modelLabel,
+        };
+      },
     });
-    return {
-      analysis: result.value,
-      model: result.model,
-      provider: result.provider,
-      modelLabel: result.modelLabel,
-    };
   });

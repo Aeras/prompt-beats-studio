@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 
 import {
@@ -98,6 +98,7 @@ export function SongSetupAssistantModal({
   const [draft, setDraft] = useState<SongSetupDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestKeyRef = useRef<string | null>(null);
   const aiModel = useAiModelSelection("aiTools");
 
   useEffect(() => {
@@ -117,10 +118,12 @@ export function SongSetupAssistantModal({
         data: {
           description: clean,
           targetPlatform,
+          requestKey: (requestKeyRef.current ??= crypto.randomUUID()),
           ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}),
         },
       });
       setDraft(result.setup);
+      requestKeyRef.current = null;
     } catch (err) {
       setError(err instanceof Error && language === "en" ? err.message : text.fallbackError);
     } finally {
@@ -133,6 +136,7 @@ export function SongSetupAssistantModal({
     setDescription("");
     setDraft(null);
     setError(null);
+    requestKeyRef.current = null;
   };
 
   const updateDraft = (key: keyof SongSetupDraft, value: string) => {

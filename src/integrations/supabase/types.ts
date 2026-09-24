@@ -122,6 +122,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_auxiliary_requests: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          error: string | null;
+          execution_token: string | null;
+          id: string;
+          operation: string;
+          provider_started_at: string | null;
+          request_key: string;
+          result: Json | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          error?: string | null;
+          execution_token?: string | null;
+          id?: string;
+          operation: string;
+          provider_started_at?: string | null;
+          request_key: string;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          error?: string | null;
+          execution_token?: string | null;
+          id?: string;
+          operation?: string;
+          provider_started_at?: string | null;
+          request_key?: string;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       ai_generation_jobs: {
         Row: {
           attempts: number;
@@ -2994,6 +3039,27 @@ export type Database = {
         Returns: Json;
       };
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json };
+      claim_auxiliary_ai_request: {
+        Args: { _operation: string; _request_key: string };
+        Returns: Json;
+      };
+      complete_auxiliary_ai_request: {
+        Args: { _execution_token: string; _operation: string; _request_key: string; _result: Json };
+        Returns: undefined;
+      };
+      fail_auxiliary_ai_request: {
+        Args: {
+          _error: string;
+          _execution_token: string;
+          _operation: string;
+          _request_key: string;
+        };
+        Returns: undefined;
+      };
+      mark_auxiliary_ai_provider_started: {
+        Args: { _execution_token: string; _operation: string; _request_key: string };
+        Returns: boolean;
+      };
       close_private_review_session: {
         Args: { _session_id: string };
         Returns: undefined;

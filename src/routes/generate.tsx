@@ -91,6 +91,7 @@ import {
   type StoryMapSongSetupHandoff,
 } from "@/lib/story-map.shared";
 import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
+import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {
@@ -1799,6 +1800,7 @@ function GeneratePage() {
         );
         const planned = await planStoryDrivenGeneration({
           data: {
+            requestKey: getAuxiliaryRequestKey("story_map:generator-plan"),
             theme: theme.trim(),
             genre: effectiveGenre,
             mood: effectiveMood,

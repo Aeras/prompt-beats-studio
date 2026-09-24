@@ -12,11 +12,16 @@ import {
   SONG_STRUCTURE_TAGS,
 } from "@/catalog/generator-options";
 import { AI_TARGET_PLATFORMS, type AITargetPlatform } from "@/lib/ai-target-platforms";
+import {
+  auxiliaryRequestKeySchema,
+  executeDurableAuxiliaryAiRequest,
+} from "@/lib/ai-auxiliary-idempotency.server";
 
 const setupInput = z.object({
   description: z.string().trim().min(10).max(2500),
   targetPlatform: z.enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]]),
   model: z.string().trim().min(1).max(240).optional(),
+  requestKey: auxiliaryRequestKeySchema,
 });
 
 export const songSetupDraftSchema = z.object({
@@ -100,17 +105,19 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
-    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
-    await requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant");
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "song_setup_assistant",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const musicStyles = values(ADVANCED_MUSIC_STYLES);
+        const moods = values(ADVANCED_MOODS);
+        const instruments = values(INSTRUMENTS);
+        const structures = values(SONG_STRUCTURE_TAGS);
+        const languages = values(SONG_LANGUAGES);
+        const bpmOptions = values(BPM_OPTIONS);
 
-    const musicStyles = values(ADVANCED_MUSIC_STYLES);
-    const moods = values(ADVANCED_MOODS);
-    const instruments = values(INSTRUMENTS);
-    const structures = values(SONG_STRUCTURE_TAGS);
-    const languages = values(SONG_LANGUAGES);
-    const bpmOptions = values(BPM_OPTIONS);
-
-    const prompt = `TARGET PLATFORM: ${data.targetPlatform.toUpperCase()}
+        const prompt = `TARGET PLATFORM: ${data.targetPlatform.toUpperCase()}
 
 USER DESCRIPTION:
 ${data.description}
@@ -127,61 +134,68 @@ Platform-aware guidance: tailor the setup for ${data.targetPlatform === "udio" ?
 
 Build the strongest coherent Advanced Mode setup from the user's intent. Keep Theme strictly about what the song is about, and put all sonic/style information in the appropriate non-Theme fields.`;
 
-    const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
-    const { recordAiUsage } = await import("@/lib/ai-usage.server");
-    const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.model);
-    const caller = modelCaller(resolved.model, resolved.provider);
-    const provider = resolved.provider;
+        const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
+        const { recordAiUsage } = await import("@/lib/ai-usage.server");
+        const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.model);
+        const caller = modelCaller(resolved.model, resolved.provider);
+        const provider = resolved.provider;
 
-    let result: Awaited<ReturnType<typeof caller>> | null = null;
-    try {
-      result = await caller({
-        system: SYSTEM_PROMPT,
-        prompt,
-        maxTokens: 1800,
-        schema: SETUP_SCHEMA,
-      });
-      await recordAiUsage({
-        userId: context.userId,
-        provider: result.provider,
-        model: result.model,
-        operation: "song_setup_assistant",
-        usage: result.usage,
-        success: result.stopReason === "end_turn",
-      });
+        let result: Awaited<ReturnType<typeof caller>> | null = null;
+        try {
+          await markProviderStarted();
+          result = await caller({
+            system: SYSTEM_PROMPT,
+            prompt,
+            maxTokens: 1800,
+            schema: SETUP_SCHEMA,
+          });
+          await recordAiUsage({
+            userId: context.userId,
+            provider: result.provider,
+            model: result.model,
+            operation: "song_setup_assistant",
+            usage: result.usage,
+            success: result.stopReason === "end_turn",
+          });
 
-      if (result.stopReason !== "end_turn") {
-        throw new Error("The Song Setup Assistant did not finish its response. Please try again.");
-      }
+          if (result.stopReason !== "end_turn") {
+            throw new Error(
+              "The Song Setup Assistant did not finish its response. Please try again.",
+            );
+          }
 
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(result.text);
-      } catch {
-        throw new Error("The Song Setup Assistant returned an invalid response. Please try again.");
-      }
-      const setup = songSetupDraftSchema.parse(parsed);
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(result.text);
+          } catch {
+            throw new Error(
+              "The Song Setup Assistant returned an invalid response. Please try again.",
+            );
+          }
+          const setup = songSetupDraftSchema.parse(parsed);
 
-      const bpmValid =
-        setup.bpm === "Auto" ||
-        (/^\d{2,3}$/.test(setup.bpm) && Number(setup.bpm) >= 40 && Number(setup.bpm) <= 260);
-      if (!bpmValid)
-        throw new Error(
-          "The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.",
-        );
+          const bpmValid =
+            setup.bpm === "Auto" ||
+            (/^\d{2,3}$/.test(setup.bpm) && Number(setup.bpm) >= 40 && Number(setup.bpm) <= 260);
+          if (!bpmValid)
+            throw new Error(
+              "The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.",
+            );
 
-      return { setup, model: result.model };
-    } catch (error) {
-      if (!result) {
-        await recordAiUsage({
-          userId: context.userId,
-          provider,
-          model: resolved.model,
-          operation: "song_setup_assistant",
-          usage: null,
-          success: false,
-        });
-      }
-      throw error;
-    }
+          return { setup, model: result.model };
+        } catch (error) {
+          if (!result) {
+            await recordAiUsage({
+              userId: context.userId,
+              provider,
+              model: resolved.model,
+              operation: "song_setup_assistant",
+              usage: null,
+              success: false,
+            });
+          }
+          throw error;
+        }
+      },
+    });
   });

@@ -8,6 +8,7 @@ import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUnive
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
+import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
 import {
   analyzeSongUniverseContinuity,
   analyzeSongUniverseProjectFit,
@@ -702,7 +703,11 @@ function UniverseAiPanel({
             onClick={() =>
               void run("continuity", async () => {
                 await analyzeSongUniverseContinuity({
-                  data: { universeId: universe.id, model: aiModel.selectedModel },
+                  data: {
+                    universeId: universe.id,
+                    model: aiModel.selectedModel,
+                    requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:continuity`),
+                  },
                 });
                 await latest.refetch();
               })
@@ -733,7 +738,11 @@ function UniverseAiPanel({
           onClick={() =>
             void run("generate-bible", async () => {
               const result = await generateSongUniverseCreativeBible({
-                data: { universeId: universe.id, model: aiModel.selectedModel },
+                data: {
+                  universeId: universe.id,
+                  model: aiModel.selectedModel,
+                  requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:bible`),
+                },
               });
               await applyBible(result.creativeBible);
             })
@@ -774,6 +783,7 @@ function UniverseAiPanel({
                     universeId: universe.id,
                     instruction: refineInstruction,
                     model: aiModel.selectedModel,
+                    requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:refine`),
                   },
                 });
                 await applyBible(result.creativeBible);
@@ -855,6 +865,9 @@ function UniverseAiPanel({
                         universeId: universe.id,
                         projectId: project.projectId,
                         model: aiModel.selectedModel,
+                        requestKey: getAuxiliaryRequestKey(
+                          `song_universe:${universe.id}:fit:${project.projectId}`,
+                        ),
                       },
                     });
                     setFit({ projectName: project.projectName, ...result.fit });

@@ -4,6 +4,10 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import {
+  auxiliaryRequestKeySchema,
+  executeDurableAuxiliaryAiRequest,
+} from "@/lib/ai-auxiliary-idempotency.server";
 import { recordAiUsage } from "@/lib/ai-usage.server";
 import { supportsPromptBeatsVisionInput } from "@/lib/ai-model-capabilities.shared";
 import { getEffectiveModelAccess } from "@/lib/ai-provider.server";
@@ -194,146 +198,158 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
-      .object({ wallId: wallIdSchema, model: z.string().trim().max(240).nullable().optional() })
+      .object({
+        wallId: wallIdSchema,
+        model: z.string().trim().max(240).nullable().optional(),
+        requestKey: auxiliaryRequestKeySchema,
+      })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");
-    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
-    await requireAuxiliaryAiAdmission(context.supabase, "inspiration_wall");
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "inspiration_wall",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const supabase = context.supabase as any;
+        const wall = await requireOwnedWall(supabase, data.wallId, context.userId);
+        const { data: cards, error: cardsError } = await supabase
+          .from("inspiration_wall_cards")
+          .select("id, type, title, body, color_value, image_object_key, is_pinned, sort_order")
+          .eq("wall_id", data.wallId)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+        if (cardsError) throw new Error(cardsError.message);
 
-    const supabase = context.supabase as any;
-    const wall = await requireOwnedWall(supabase, data.wallId, context.userId);
-    const { data: cards, error: cardsError } = await supabase
-      .from("inspiration_wall_cards")
-      .select("id, type, title, body, color_value, image_object_key, is_pinned, sort_order")
-      .eq("wall_id", data.wallId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (cardsError) throw new Error(cardsError.message);
+        const orderedCards = [...(cards ?? [])].sort((a: any, b: any) => {
+          const priority = cardPriority(a) - cardPriority(b);
+          return priority || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
+        });
 
-    const orderedCards = [...(cards ?? [])].sort((a: any, b: any) => {
-      const priority = cardPriority(a) - cardPriority(b);
-      return priority || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
-    });
+        const textCards = orderedCards.map((card: any, index: number) => ({
+          priorityRank: cardPriority(card) + 1,
+          order: index + 1,
+          type: card.type,
+          pinned: card.is_pinned === true,
+          title: card.title ?? "",
+          body: card.body ?? "",
+          color: card.color_value ?? null,
+          hasImage: Boolean(card.image_object_key),
+        }));
 
-    const textCards = orderedCards.map((card: any, index: number) => ({
-      priorityRank: cardPriority(card) + 1,
-      order: index + 1,
-      type: card.type,
-      pinned: card.is_pinned === true,
-      title: card.title ?? "",
-      body: card.body ?? "",
-      color: card.color_value ?? null,
-      hasImage: Boolean(card.image_object_key),
-    }));
+        const parts: Array<Record<string, unknown>> = [
+          {
+            text: [
+              `WALL TITLE: ${wall.title}`,
+              wall.description ? `WALL DESCRIPTION: ${wall.description}` : "",
+              `THEME: ${wall.selected_theme}`,
+              "",
+              "ORDERED CARD EVIDENCE (already sorted by semantic priority):",
+              JSON.stringify(textCards),
+              "",
+              "Extract the structured Creative Direction now.",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          },
+        ];
 
-    const parts: Array<Record<string, unknown>> = [
-      {
-        text: [
-          `WALL TITLE: ${wall.title}`,
-          wall.description ? `WALL DESCRIPTION: ${wall.description}` : "",
-          `THEME: ${wall.selected_theme}`,
-          "",
-          "ORDERED CARD EVIDENCE (already sorted by semantic priority):",
-          JSON.stringify(textCards),
-          "",
-          "Extract the structured Creative Direction now.",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      },
-    ];
-
-    let imageBytes = 0;
-    let imagesIncluded = 0;
-    for (const card of orderedCards as any[]) {
-      if (!card.image_object_key) continue;
-      const { data: blob, error } = await context.supabase.storage
-        .from("inspiration-wall-images")
-        .download(card.image_object_key);
-      if (error || !blob) continue;
-      const bytes = Buffer.from(await blob.arrayBuffer());
-      if (imageBytes + bytes.byteLength > MAX_IMAGE_CONTEXT_BYTES) continue;
-      imageBytes += bytes.byteLength;
-      imagesIncluded += 1;
-      parts.push({
-        inlineData: {
-          mimeType: blob.type || "image/jpeg",
-          data: bytes.toString("base64"),
-        },
-      });
-      parts.push({
-        text: `Image context for card ${card.id}. Interpret only under the image rules.`,
-      });
-    }
-
-    const selected = await resolveMultimodalModel(context.userId, data.model);
-    const apiKey = process.env["GEMINI_API_KEY"];
-    if (!apiKey) throw new Error("The multimodal AI service is not configured.");
-
-    let usage: ReturnType<typeof normalizedGeminiUsage> = null;
-    let success = false;
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selected.id)}:generateContent`,
-        {
-          method: "POST",
-          signal: AbortSignal.timeout(5 * 60 * 1000),
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents: [{ role: "user", parts }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: CREATIVE_DIRECTION_RESPONSE_SCHEMA,
-              maxOutputTokens: 4096,
-              temperature: 0.2,
+        let imageBytes = 0;
+        let imagesIncluded = 0;
+        for (const card of orderedCards as any[]) {
+          if (!card.image_object_key) continue;
+          const { data: blob, error } = await context.supabase.storage
+            .from("inspiration-wall-images")
+            .download(card.image_object_key);
+          if (error || !blob) continue;
+          const bytes = Buffer.from(await blob.arrayBuffer());
+          if (imageBytes + bytes.byteLength > MAX_IMAGE_CONTEXT_BYTES) continue;
+          imageBytes += bytes.byteLength;
+          imagesIncluded += 1;
+          parts.push({
+            inlineData: {
+              mimeType: blob.type || "image/jpeg",
+              data: bytes.toString("base64"),
             },
-          }),
-        },
-      );
-      const payload = (await response.json()) as any;
-      usage = normalizedGeminiUsage(payload);
-      if (!response.ok) {
-        throw new Error(
-          payload?.error?.message || `Creative Direction extraction failed (${response.status}).`,
-        );
-      }
-      const candidate = payload?.candidates?.[0];
-      const finishReason = candidate?.finishReason ?? null;
-      if (finishReason && finishReason !== "STOP") {
-        throw new Error(`Creative Direction extraction stopped before completion: ${finishReason}`);
-      }
-      const text = (candidate?.content?.parts ?? [])
-        .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
-        .join("")
-        .trim();
-      if (!text) throw new Error("Creative Direction extraction returned no JSON.");
-      const parsed = inspirationWallCreativeDirectionSchema.parse(JSON.parse(text));
+          });
+          parts.push({
+            text: `Image context for card ${card.id}. Interpret only under the image rules.`,
+          });
+        }
 
-      const { error: saveError } = await supabase
-        .from("inspiration_walls")
-        .update({ creative_direction: parsed })
-        .eq("id", data.wallId)
-        .eq("owner_id", context.userId);
-      if (saveError) throw new Error(saveError.message);
-      success = true;
+        const selected = await resolveMultimodalModel(context.userId, data.model);
+        const apiKey = process.env["GEMINI_API_KEY"];
+        if (!apiKey) throw new Error("The multimodal AI service is not configured.");
 
-      return {
-        direction: parsed,
-        model: selected.id,
-        modelLabel: selected.label,
-        imagesIncluded,
-      };
-    } finally {
-      await recordAiUsage({
-        userId: context.userId,
-        provider: "gemini",
-        model: selected.id,
-        operation: "inspiration_wall_extraction",
-        usage,
-        success,
-      });
-    }
+        let usage: ReturnType<typeof normalizedGeminiUsage> = null;
+        let success = false;
+        try {
+          await markProviderStarted();
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selected.id)}:generateContent`,
+            {
+              method: "POST",
+              signal: AbortSignal.timeout(5 * 60 * 1000),
+              headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                contents: [{ role: "user", parts }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  responseSchema: CREATIVE_DIRECTION_RESPONSE_SCHEMA,
+                  maxOutputTokens: 4096,
+                  temperature: 0.2,
+                },
+              }),
+            },
+          );
+          const payload = (await response.json()) as any;
+          usage = normalizedGeminiUsage(payload);
+          if (!response.ok) {
+            throw new Error(
+              payload?.error?.message ||
+                `Creative Direction extraction failed (${response.status}).`,
+            );
+          }
+          const candidate = payload?.candidates?.[0];
+          const finishReason = candidate?.finishReason ?? null;
+          if (finishReason && finishReason !== "STOP") {
+            throw new Error(
+              `Creative Direction extraction stopped before completion: ${finishReason}`,
+            );
+          }
+          const text = (candidate?.content?.parts ?? [])
+            .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+            .join("")
+            .trim();
+          if (!text) throw new Error("Creative Direction extraction returned no JSON.");
+          const parsed = inspirationWallCreativeDirectionSchema.parse(JSON.parse(text));
+
+          const { error: saveError } = await supabase
+            .from("inspiration_walls")
+            .update({ creative_direction: parsed })
+            .eq("id", data.wallId)
+            .eq("owner_id", context.userId);
+          if (saveError) throw new Error(saveError.message);
+          success = true;
+
+          return {
+            direction: parsed,
+            model: selected.id,
+            modelLabel: selected.label,
+            imagesIncluded,
+          };
+        } finally {
+          await recordAiUsage({
+            userId: context.userId,
+            provider: "gemini",
+            model: selected.id,
+            operation: "inspiration_wall_extraction",
+            usage,
+            success,
+          });
+        }
+      },
+    });
   });

@@ -5,6 +5,10 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
+import {
+  auxiliaryRequestKeySchema,
+  executeDurableAuxiliaryAiRequest,
+} from "@/lib/ai-auxiliary-idempotency.server";
 
 const songPackageSchema = z
   .object({
@@ -13,6 +17,7 @@ const songPackageSchema = z
     lyrics: z.string().trim().max(40_000),
     productionNotes: z.string().trim().max(8_000),
     previousAudioKey: z.string().max(500).nullable().optional(),
+    requestKey: auxiliaryRequestKeySchema,
   })
   .refine(
     (value) => Boolean(value.title || value.musicStyle || value.lyrics || value.productionNotes),
@@ -85,124 +90,129 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
-    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
-    await requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab");
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "ai_music_lab",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const apiKey = process.env["GEMINI_API_KEY"];
+        if (!apiKey) throw new Error("Gemini API is not configured");
 
-    const apiKey = process.env["GEMINI_API_KEY"];
-    if (!apiKey) throw new Error("Gemini API is not configured");
+        const prompt = [
+          "Create a complete song from the following PromptBeats song package.",
+          "Follow the supplied lyrics exactly where possible. Preserve section labels as structural guidance.",
+          "Use the music style and producer notes as musical and production direction.",
+          data.title && `TITLE:\n${data.title}`,
+          data.musicStyle && `MUSIC STYLE:\n${data.musicStyle}`,
+          data.lyrics && `LYRICS:\n${data.lyrics}`,
+          data.productionNotes && `PRODUCER NOTES:\n${data.productionNotes}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
 
-    const prompt = [
-      "Create a complete song from the following PromptBeats song package.",
-      "Follow the supplied lyrics exactly where possible. Preserve section labels as structural guidance.",
-      "Use the music style and producer notes as musical and production direction.",
-      data.title && `TITLE:\n${data.title}`,
-      data.musicStyle && `MUSIC STYLE:\n${data.musicStyle}`,
-      data.lyrics && `LYRICS:\n${data.lyrics}`,
-      data.productionNotes && `PRODUCER NOTES:\n${data.productionNotes}`,
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+        const { recordAiUsage } = await import("@/lib/ai-usage.server");
+        let usage: ReturnType<typeof normalizedLyriaUsage> = null;
+        let success = false;
 
-    const { recordAiUsage } = await import("@/lib/ai-usage.server");
-    let usage: ReturnType<typeof normalizedLyriaUsage> = null;
-    let success = false;
-
-    try {
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent",
-        {
-          method: "POST",
-          signal: AbortSignal.timeout(5 * 60 * 1000),
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseModalities: ["AUDIO", "TEXT"],
+        try {
+          await markProviderStarted();
+          const response = await fetch(
+            "https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent",
+            {
+              method: "POST",
+              signal: AbortSignal.timeout(5 * 60 * 1000),
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": apiKey,
+              },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseModalities: ["AUDIO", "TEXT"],
+                },
+              }),
             },
-          }),
-        },
-      );
+          );
 
-      const payload = (await response.json()) as {
-        error?: { message?: string };
-        usageMetadata?: {
-          promptTokenCount?: number;
-          candidatesTokenCount?: number;
-          totalTokenCount?: number;
-          cachedContentTokenCount?: number;
-          thoughtsTokenCount?: number;
-        };
-        candidates?: Array<{
-          content?: {
-            parts?: Array<{
-              text?: string;
-              inlineData?: { data?: string; mimeType?: string };
+          const payload = (await response.json()) as {
+            error?: { message?: string };
+            usageMetadata?: {
+              promptTokenCount?: number;
+              candidatesTokenCount?: number;
+              totalTokenCount?: number;
+              cachedContentTokenCount?: number;
+              thoughtsTokenCount?: number;
+            };
+            candidates?: Array<{
+              content?: {
+                parts?: Array<{
+                  text?: string;
+                  inlineData?: { data?: string; mimeType?: string };
+                }>;
+              };
             }>;
           };
-        }>;
-      };
-      usage = normalizedLyriaUsage(payload);
+          usage = normalizedLyriaUsage(payload);
 
-      if (!response.ok)
-        throw new Error(payload.error?.message || `Lyria request failed (${response.status})`);
+          if (!response.ok)
+            throw new Error(payload.error?.message || `Lyria request failed (${response.status})`);
 
-      const parts = payload.candidates?.[0]?.content?.parts ?? [];
-      const audioPart = parts.find((part) => part.inlineData?.data)?.inlineData;
-      if (!audioPart?.data) throw new Error("Lyria returned no audio");
+          const parts = payload.candidates?.[0]?.content?.parts ?? [];
+          const audioPart = parts.find((part) => part.inlineData?.data)?.inlineData;
+          if (!audioPart?.data) throw new Error("Lyria returned no audio");
 
-      const mimeType = audioPart.mimeType || "audio/mpeg";
-      const extension = mimeType.includes("wav") ? "wav" : "mp3";
-      const safeTitle =
-        (data.title || "promptbeats-song")
-          .toLowerCase()
-          .normalize("NFKD")
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "")
-          .slice(0, 60) || "promptbeats-song";
-      const key = `tracks/${context.userId}/lyria-temp/${Date.now()}-${safeTitle}.${extension}`;
-      const bytes = Buffer.from(audioPart.data, "base64");
-      const arrayBuffer = bytes.buffer.slice(
-        bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength,
-      ) as ArrayBuffer;
-      const { uploadToR2 } = await import("@/lib/r2.server");
-      const stored = await uploadToR2(key, arrayBuffer, mimeType);
+          const mimeType = audioPart.mimeType || "audio/mpeg";
+          const extension = mimeType.includes("wav") ? "wav" : "mp3";
+          const safeTitle =
+            (data.title || "promptbeats-song")
+              .toLowerCase()
+              .normalize("NFKD")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .slice(0, 60) || "promptbeats-song";
+          const key = `tracks/${context.userId}/lyria-temp/${Date.now()}-${safeTitle}.${extension}`;
+          const bytes = Buffer.from(audioPart.data, "base64");
+          const arrayBuffer = bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength,
+          ) as ArrayBuffer;
+          const { uploadToR2 } = await import("@/lib/r2.server");
+          const stored = await uploadToR2(key, arrayBuffer, mimeType);
 
-      if (data.previousAudioKey && data.previousAudioKey !== stored.key) {
-        try {
-          await deleteUnusedLyriaTemp(context, data.previousAudioKey);
-        } catch {
-          /* keep the new result even if old temp cleanup fails */
+          if (data.previousAudioKey && data.previousAudioKey !== stored.key) {
+            try {
+              await deleteUnusedLyriaTemp(context, data.previousAudioKey);
+            } catch {
+              /* keep the new result even if old temp cleanup fails */
+            }
+          }
+
+          const generatedText = parts
+            .map((part) => part.text)
+            .filter((value): value is string => Boolean(value))
+            .join("\n")
+            .trim();
+
+          success = true;
+          return {
+            audioUrl: stored.url,
+            audioKey: stored.key,
+            mimeType,
+            generatedText,
+            model: "lyria-3.5" as const,
+          };
+        } finally {
+          await recordAiUsage({
+            userId: context.userId,
+            provider: "gemini",
+            model: "lyria-3.5",
+            operation: "ai_music_lab_generation",
+            usage,
+            success,
+          });
         }
-      }
-
-      const generatedText = parts
-        .map((part) => part.text)
-        .filter((value): value is string => Boolean(value))
-        .join("\n")
-        .trim();
-
-      success = true;
-      return {
-        audioUrl: stored.url,
-        audioKey: stored.key,
-        mimeType,
-        generatedText,
-        model: "lyria-3.5" as const,
-      };
-    } finally {
-      await recordAiUsage({
-        userId: context.userId,
-        provider: "gemini",
-        model: "lyria-3.5",
-        operation: "ai_music_lab_generation",
-        usage,
-        success,
-      });
-    }
+      },
+    });
   });
 
 export const downloadLyriaSong = createServerFn({ method: "POST" })

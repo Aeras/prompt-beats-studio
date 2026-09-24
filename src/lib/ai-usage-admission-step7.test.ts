@@ -17,15 +17,17 @@ describe("Step 7 AI usage and admission hardening", () => {
     expect(migration).toContain("v_used+v_reserved+v_failed_started>=10");
   });
 
-  test("auxiliary AI admission rejects immediate duplicate bursts", async () => {
+  test("auxiliary AI admission is durable and replayable rather than time-window deduped", async () => {
     const migration = await source(
-      "supabase/migrations/20260924190000_ai_usage_admission_step7_hardening.sql",
+      "supabase/migrations/20260924200000_auxiliary_ai_durable_idempotency.sql",
     );
 
-    const duplicateGuard = migration.indexOf("created_at > now() - interval '15 seconds'");
-    const providerBudget = migration.indexOf("v_used >= _limit_per_hour");
-    expect(duplicateGuard).toBeGreaterThan(-1);
-    expect(providerBudget).toBeGreaterThan(duplicateGuard);
+    expect(migration).toContain("UNIQUE (user_id, operation, request_key)");
+    expect(migration).toContain("status IN ('pending','processing','completed','failed')");
+    expect(migration).toContain("provider_started_at IS NOT NULL");
+    expect(migration).toContain("'status','completed','result',v_request.result");
+    expect(migration).toContain("mark_auxiliary_ai_provider_started");
+    expect(migration).toContain("FOR UPDATE");
   });
 
   test("AI Music Lab records every Lyria provider attempt", async () => {

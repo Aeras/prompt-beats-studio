@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import {
+  auxiliaryRequestKeySchema,
+  executeDurableAuxiliaryAiRequest,
+} from "@/lib/ai-auxiliary-idempotency.server";
 import { recordAiUsage } from "@/lib/ai-usage.server";
 import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
@@ -1225,6 +1229,7 @@ const analyzeInput = z.object({
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
   stage0Evidence: stage0DspEvidenceSchema,
+  requestKey: auxiliaryRequestKeySchema,
 });
 
 export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
@@ -1264,171 +1269,191 @@ export const analyzeSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => analyzeInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAnalyzerAccess(context);
-    const { requireAuxiliaryAiAdmission } = await import("@/lib/ai-admission.server");
-    await requireAuxiliaryAiAdmission(context.supabase, "song_analyzer");
+    return executeDurableAuxiliaryAiRequest({
+      supabase: context.supabase,
+      operation: "song_analyzer",
+      requestKey: data.requestKey,
+      execute: async (markProviderStarted) => {
+        const bytes = Buffer.from(data.audioBase64, "base64");
+        if (!bytes.length || bytes.byteLength > SONG_ANALYZER_MAX_FILE_BYTES) {
+          throw new Error("Audio file exceeds the 15 MB Analyzer limit.");
+        }
 
-    const bytes = Buffer.from(data.audioBase64, "base64");
-    if (!bytes.length || bytes.byteLength > SONG_ANALYZER_MAX_FILE_BYTES) {
-      throw new Error("Audio file exceeds the 15 MB Analyzer limit.");
-    }
+        const apiKey = process.env["GEMINI_API_KEY"];
+        if (!apiKey) throw new Error("Gemini API is not configured");
 
-    const apiKey = process.env["GEMINI_API_KEY"];
-    if (!apiKey) throw new Error("Gemini API is not configured");
+        const totalStartedAt = Date.now();
+        const stage0Evidence = data.stage0Evidence;
+        logStage(data.model, "stage0_dsp", stage0Evidence.available ? "available" : "unavailable", {
+          processing: stage0Evidence.processing,
+          tempo: stage0Evidence.tempo,
+          limitations: stage0Evidence.limitations,
+        });
 
-    const totalStartedAt = Date.now();
-    const stage0Evidence = data.stage0Evidence;
-    logStage(data.model, "stage0_dsp", stage0Evidence.available ? "available" : "unavailable", {
-      processing: stage0Evidence.processing,
-      tempo: stage0Evidence.tempo,
-      limitations: stage0Evidence.limitations,
+        let evidenceUsage: ReturnType<typeof normalizedUsage> = null;
+        let evidence: StageAEvidence;
+        const stageAStartedAt = Date.now();
+        try {
+          await markProviderStarted();
+          evidence = await generateAudioEvidence({
+            apiKey,
+            model: data.model,
+            audioBase64: data.audioBase64,
+            mimeType: data.mimeType,
+            stage0Evidence,
+            onUsage: (usage) => {
+              evidenceUsage = usage;
+            },
+          });
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "evidence_extraction",
+            usage: evidenceUsage,
+            success: true,
+          });
+          logStage(data.model, "evidence_extraction", "timing", {
+            durationMs: Date.now() - stageAStartedAt,
+          });
+        } catch (error) {
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "evidence_extraction",
+            usage: evidenceUsage,
+            success: false,
+          });
+          throw error;
+        }
+
+        let synthesisUsage: ReturnType<typeof normalizedUsage> = null;
+        let result: SongAnalysisResult;
+        const stageBStartedAt = Date.now();
+        try {
+          result = await generateFinalFromEvidence({
+            apiKey,
+            model: data.model,
+            evidence,
+            stage0Evidence,
+            onUsage: (usage) => {
+              synthesisUsage = usage;
+            },
+          });
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "final_synthesis",
+            usage: synthesisUsage,
+            success: true,
+          });
+          logStage(data.model, "final_synthesis", "timing", {
+            durationMs: Date.now() - stageBStartedAt,
+          });
+        } catch (error) {
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "final_synthesis",
+            usage: synthesisUsage,
+            success: false,
+          });
+          throw error;
+        }
+
+        const trackTitle = data.trackTitle?.trim();
+        const artist = data.artist?.trim();
+
+        if (!trackTitle || !artist) {
+          logStage(data.model, "analysis_total", "timing", {
+            durationMs: Date.now() - totalStartedAt,
+          });
+          return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
+        }
+
+        let externalUsage: ReturnType<typeof normalizedUsage> = null;
+        let external: ExternalValidation | null = null;
+        try {
+          const validationResult = await runExternalReferenceValidation({
+            apiKey,
+            model: data.model,
+            trackTitle,
+            artist,
+            initialAnalysis: result,
+          });
+          external = validationResult.validation;
+          externalUsage = validationResult.usage;
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "external_validation",
+            usage: externalUsage,
+            success: true,
+          });
+        } catch (error) {
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "external_validation",
+            usage: externalUsage,
+            success: false,
+          });
+          logStage(data.model, "analysis_total", "timing", {
+            durationMs: Date.now() - totalStartedAt,
+          });
+          return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
+        }
+
+        if (!external.used || !external.identityConfirmed) {
+          logStage(data.model, "analysis_total", "timing", {
+            durationMs: Date.now() - totalStartedAt,
+          });
+          return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
+        }
+
+        let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
+        try {
+          const reconciled = await generateFinalFromEvidence({
+            apiKey,
+            model: data.model,
+            evidence,
+            stage0Evidence,
+            initialResult: result,
+            externalValidation: external,
+            onUsage: (usage) => {
+              reconciliationUsage = usage;
+            },
+          });
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "external_reconciliation",
+            usage: reconciliationUsage,
+            success: true,
+          });
+          logStage(data.model, "analysis_total", "timing", {
+            durationMs: Date.now() - totalStartedAt,
+          });
+          return {
+            result: reconciled,
+            model: data.model,
+            stage0Evidence,
+            stageAEvidence: evidence,
+          };
+        } catch (error) {
+          await recordStageUsage({
+            userId: context.userId,
+            model: data.model,
+            stage: "external_reconciliation",
+            usage: reconciliationUsage,
+            success: false,
+          });
+          logStage(data.model, "analysis_total", "timing", {
+            durationMs: Date.now() - totalStartedAt,
+          });
+          return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
+        }
+      },
     });
-
-    let evidenceUsage: ReturnType<typeof normalizedUsage> = null;
-    let evidence: StageAEvidence;
-    const stageAStartedAt = Date.now();
-    try {
-      evidence = await generateAudioEvidence({
-        apiKey,
-        model: data.model,
-        audioBase64: data.audioBase64,
-        mimeType: data.mimeType,
-        stage0Evidence,
-        onUsage: (usage) => {
-          evidenceUsage = usage;
-        },
-      });
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "evidence_extraction",
-        usage: evidenceUsage,
-        success: true,
-      });
-      logStage(data.model, "evidence_extraction", "timing", {
-        durationMs: Date.now() - stageAStartedAt,
-      });
-    } catch (error) {
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "evidence_extraction",
-        usage: evidenceUsage,
-        success: false,
-      });
-      throw error;
-    }
-
-    let synthesisUsage: ReturnType<typeof normalizedUsage> = null;
-    let result: SongAnalysisResult;
-    const stageBStartedAt = Date.now();
-    try {
-      result = await generateFinalFromEvidence({
-        apiKey,
-        model: data.model,
-        evidence,
-        stage0Evidence,
-        onUsage: (usage) => {
-          synthesisUsage = usage;
-        },
-      });
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "final_synthesis",
-        usage: synthesisUsage,
-        success: true,
-      });
-      logStage(data.model, "final_synthesis", "timing", {
-        durationMs: Date.now() - stageBStartedAt,
-      });
-    } catch (error) {
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "final_synthesis",
-        usage: synthesisUsage,
-        success: false,
-      });
-      throw error;
-    }
-
-    const trackTitle = data.trackTitle?.trim();
-    const artist = data.artist?.trim();
-
-    if (!trackTitle || !artist) {
-      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
-      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
-    }
-
-    let externalUsage: ReturnType<typeof normalizedUsage> = null;
-    let external: ExternalValidation | null = null;
-    try {
-      const validationResult = await runExternalReferenceValidation({
-        apiKey,
-        model: data.model,
-        trackTitle,
-        artist,
-        initialAnalysis: result,
-      });
-      external = validationResult.validation;
-      externalUsage = validationResult.usage;
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "external_validation",
-        usage: externalUsage,
-        success: true,
-      });
-    } catch (error) {
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "external_validation",
-        usage: externalUsage,
-        success: false,
-      });
-      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
-      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
-    }
-
-    if (!external.used || !external.identityConfirmed) {
-      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
-      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
-    }
-
-    let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
-    try {
-      const reconciled = await generateFinalFromEvidence({
-        apiKey,
-        model: data.model,
-        evidence,
-        stage0Evidence,
-        initialResult: result,
-        externalValidation: external,
-        onUsage: (usage) => {
-          reconciliationUsage = usage;
-        },
-      });
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "external_reconciliation",
-        usage: reconciliationUsage,
-        success: true,
-      });
-      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
-      return { result: reconciled, model: data.model, stage0Evidence, stageAEvidence: evidence };
-    } catch (error) {
-      await recordStageUsage({
-        userId: context.userId,
-        model: data.model,
-        stage: "external_reconciliation",
-        usage: reconciliationUsage,
-        success: false,
-      });
-      logStage(data.model, "analysis_total", "timing", { durationMs: Date.now() - totalStartedAt });
-      return { result, model: data.model, stage0Evidence, stageAEvidence: evidence };
-    }
   });
 
 const saveAnalysisInput = z.object({

@@ -20,6 +20,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
 import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
+import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
 import {
   createStoryBeat,
   createStoryMap,
@@ -411,6 +412,7 @@ function StoryMapWorkspace({
     try {
       const result = await buildStoryMapWithAi({
         data: {
+          requestKey: getAuxiliaryRequestKey(`story_map:${storyMap.id}:build`),
           storyMapId: storyMap.id,
           ...(aiModel.selectedModel ? { model: aiModel.selectedModel } : {}),
         },
