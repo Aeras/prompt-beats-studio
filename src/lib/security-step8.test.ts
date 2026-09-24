@@ -52,4 +52,18 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
       "UPDATE storage.buckets SET public = true WHERE id = 'inspiration-wall-images'",
     );
   });
+
+  test("owner RLS policies cache auth.uid per statement without changing ownership rules", async () => {
+    const migration = await source(
+      "supabase/migrations/20260924021000_step8_rls_performance_hardening.sql",
+    );
+
+    expect(migration).toContain("user_id = (SELECT auth.uid())");
+    expect(migration).toContain("owner_id = (SELECT auth.uid())");
+    expect(migration).toContain("w.owner_id = (SELECT auth.uid())");
+    expect(migration).toContain("u.owner_id = (SELECT auth.uid())");
+    expect(migration).toContain("m.user_id = (SELECT auth.uid())");
+    expect(migration).not.toContain("owner_id = auth.uid()");
+    expect(migration).not.toContain("user_id = auth.uid()");
+  });
 });
