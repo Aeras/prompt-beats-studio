@@ -66,4 +66,53 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
     expect(migration).not.toContain("owner_id = auth.uid()");
     expect(migration).not.toContain("user_id = auth.uid()");
   });
+
+  test("R2 upload storage no longer returns permanent public playback URLs", async () => {
+    const r2 = await source("src/lib/r2.server.ts");
+
+    expect(r2).toContain('unsignedUrl.searchParams.set("X-Amz-Expires"');
+    expect(r2).toContain("signQuery: true");
+    expect(r2).toContain("return { key, url: buildR2ObjectUrl(key) }");
+    expect(r2).not.toContain("url: `${publicBase}/${key}`");
+  });
+
+  test("native player resolves uploaded tracks through the authorized signed playback resolver", async () => {
+    const player = await source("src/lib/player.tsx");
+    const resolver = await source("src/lib/track-playback.functions.ts");
+
+    expect(player).toContain('track.sourceType === "upload"');
+    expect(player).toContain("getTrackPlaybackUrl({ data: { trackId: track.id } })");
+    expect(resolver).toContain('track.is_published !== true && track.user_id !== viewerId');
+    expect(resolver).toContain("createSignedR2GetUrl(track.audio_key)");
+    expect(resolver).toContain("isSafeOwnedAudioKey(track.audio_key, track.user_id)");
+  });
+
+  test("share, review, and AI Music Lab playback receive short-lived signed audio URLs", async () => {
+    const sharing = await source("src/lib/track-sharing.functions.ts");
+    const review = await source("src/lib/private-review.functions.ts");
+    const lab = await source("src/lib/ai-music-lab.functions.ts");
+
+    expect(sharing).toContain("hydrateTrackAudioUrl");
+    expect(review).toContain("hydrateTrackAudioUrl");
+    expect(lab).toContain("createSignedR2GetUrl(result.audioKey)");
+  });
+
+  test("public token RPCs are callable only through the server-side service role", async () => {
+    const migration = await source(
+      "supabase/migrations/20260924022000_step8_public_token_rpc_hardening.sql",
+    );
+
+    for (const signature of [
+      "public.private_review_link_info(text)",
+      "public.join_private_review_session(text, text, text)",
+      "public.get_private_review_session(text, text)",
+      "public.add_private_review_comment(text, text, text, uuid)",
+      "public.get_track_share_by_token(text)",
+    ]) {
+      expect(migration).toContain(
+        `REVOKE ALL ON FUNCTION ${signature} FROM PUBLIC, anon, authenticated`,
+      );
+      expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${signature} TO service_role`);
+    }
+  });
 });
