@@ -23,7 +23,7 @@ import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
 import {
   completeAuxiliaryRequest,
   getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key.client";
+} from "@/lib/auxiliary-request-key";
 import {
   createStoryBeat,
   createStoryMap,

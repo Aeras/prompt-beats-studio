@@ -25,7 +25,7 @@ import { INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY } from "@/lib/inspiration-wall-
 import {
   completeAuxiliaryRequest,
   getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key.client";
+} from "@/lib/auxiliary-request-key";
 
 type Props = {
   wall: InspirationWallRecord;

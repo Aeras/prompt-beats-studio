@@ -94,7 +94,7 @@ import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
 import {
   completeAuxiliaryRequest,
   getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key.client";
+} from "@/lib/auxiliary-request-key";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {

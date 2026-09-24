@@ -2,6 +2,8 @@ const activeKeys = new Map<string, string>();
 const STORAGE_PREFIX = "promptbeats:auxiliary-request:";
 
 function readStoredKey(scope: string) {
+  if (typeof window === "undefined") return null;
+
   try {
     const value = window.sessionStorage.getItem(`${STORAGE_PREFIX}${scope}`);
     return value &&
@@ -14,6 +16,8 @@ function readStoredKey(scope: string) {
 }
 
 function storeKey(scope: string, key: string | null) {
+  if (typeof window === "undefined") return;
+
   try {
     if (key) window.sessionStorage.setItem(`${STORAGE_PREFIX}${scope}`, key);
     else window.sessionStorage.removeItem(`${STORAGE_PREFIX}${scope}`);

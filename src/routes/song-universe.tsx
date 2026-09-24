@@ -11,7 +11,7 @@ import { useI18n } from "@/i18n";
 import {
   completeAuxiliaryRequest,
   getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key.client";
+} from "@/lib/auxiliary-request-key";
 import {
   analyzeSongUniverseContinuity,
   analyzeSongUniverseProjectFit,
