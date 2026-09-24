@@ -29,8 +29,7 @@ export const enProfile = {
   "editProfile.invalidWebsiteUrl": "Enter a valid URL, e.g. https://example.com",
   "editProfile.invalidInstagramUrl":
     "Enter a valid Instagram URL, e.g. https://www.instagram.com/username",
-  "editProfile.invalidTiktokUrl":
-    "Enter a valid TikTok URL, e.g. https://www.tiktok.com/@username",
+  "editProfile.invalidTiktokUrl": "Enter a valid TikTok URL, e.g. https://www.tiktok.com/@username",
   "editProfile.invalidTwitterUrl": "Enter a valid X URL, e.g. https://x.com/username",
   "editProfile.invalidYoutubeUrl":
     "Enter a valid YouTube URL, e.g. https://www.youtube.com/@username",
