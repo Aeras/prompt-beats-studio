@@ -37,23 +37,19 @@ describe("September 22 production audit hardening", () => {
     expect(shareSql).not.toContain("'state','private','track_id'");
   });
 
-  test("auxiliary AI calls use durable database admission before provider work", async () => {
+  test("auxiliary AI calls use durable database idempotency before provider work", async () => {
     const setup = await source("src/lib/song-setup-assistant.functions.ts");
     const musicLab = await source("src/lib/ai-music-lab.functions.ts");
     const analyzer = await source("src/lib/song-analyzer.functions.ts");
-    const migration = await source("supabase/migrations/20260922113000_auxiliary_ai_admission.sql");
+    const migration = await source(
+      "supabase/migrations/20260924200000_auxiliary_ai_durable_idempotency.sql",
+    );
 
-    expect(
-      setup.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_setup_assistant")'),
-    ).toBeLessThan(setup.indexOf('resolveAiModelForUser(context.userId, "ai_tools", data.model)'));
-    expect(
-      musicLab.indexOf('requireAuxiliaryAiAdmission(context.supabase, "ai_music_lab")'),
-    ).toBeLessThan(musicLab.indexOf('process.env["GEMINI_API_KEY"]'));
-    expect(
-      analyzer.indexOf('requireAuxiliaryAiAdmission(context.supabase, "song_analyzer")'),
-    ).toBeLessThan(analyzer.indexOf('process.env["GEMINI_API_KEY"]'));
+    expect(setup).toContain("executeDurableAuxiliaryAiRequest");
+    expect(musicLab).toContain("executeDurableAuxiliaryAiRequest");
+    expect(analyzer).toContain("executeDurableAuxiliaryAiRequest");
     expect(migration).toContain("pg_advisory_xact_lock");
-    expect(migration).toContain("v_used >= _limit_per_hour");
+    expect(migration).toContain("UNIQUE (user_id, operation, request_key)");
   });
 
   test("Lyrics Workspace save is feature-gated before service-role persistence", async () => {

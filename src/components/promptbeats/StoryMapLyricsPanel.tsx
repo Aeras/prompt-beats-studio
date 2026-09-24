@@ -5,7 +5,10 @@ import { Loader2, MapPinned, Sparkles, Wand2 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { analyzeLyricsWithStoryMap, createStoryMapFromLyrics } from "@/lib/story-map-ai.functions";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import {
+  completeAuxiliaryRequest,
+  getAuxiliaryRequestKey,
+} from "@/lib/auxiliary-request-key.client";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { getStoryMapIdForProject, replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import type { StoryMapAnalysis } from "@/lib/story-map.shared";
@@ -83,6 +86,7 @@ export function StoryMapLyricsPanel({
       });
       await queryClient.invalidateQueries({ queryKey: ["story-map-for-project", projectId] });
       await queryClient.invalidateQueries({ queryKey: ["story-maps"] });
+      completeAuxiliaryRequest("story_map:from-lyrics");
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -111,6 +115,7 @@ export function StoryMapLyricsPanel({
         },
       });
       setAnalysis(result.analysis);
+      completeAuxiliaryRequest(`story_map:${storyMapId}:analyze-lyrics`);
     } catch (cause) {
       setError(
         cause instanceof Error

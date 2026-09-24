@@ -28,7 +28,10 @@ import {
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import {
+  completeAuxiliaryRequest,
+  getAuxiliaryRequestKey,
+} from "@/lib/auxiliary-request-key.client";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
 import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
@@ -175,6 +178,7 @@ function SongAnalyzerPage() {
       setStage0Evidence(response.stage0Evidence);
       setStageAEvidence(response.stageAEvidence);
       setResultModel(response.model);
+      completeAuxiliaryRequest("song_analyzer");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("songAnalyzer.analysisFailed"));
     } finally {

@@ -22,7 +22,10 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { supportsPromptBeatsVisionInput } from "@/lib/ai-model-capabilities.shared";
 import { INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY } from "@/lib/inspiration-wall-song-setup.shared";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import {
+  completeAuxiliaryRequest,
+  getAuxiliaryRequestKey,
+} from "@/lib/auxiliary-request-key.client";
 
 type Props = {
   wall: InspirationWallRecord;
@@ -169,6 +172,7 @@ export function InspirationWallDirectionPanel({ wall, trackLinks, language, onRe
         },
       });
       setDirection(result.direction);
+      completeAuxiliaryRequest(`inspiration_wall:${wall.id}`);
       setKept(
         Object.fromEntries(FIELD_META.map((field) => [field.key, true])) as Record<
           FieldKey,
