@@ -291,7 +291,7 @@ export function TrackLibraryActions({
   if (compact) {
     return (
       <>
-        <DropdownMenu.Root>
+        <DropdownMenu.Root modal={false}>
           <DropdownMenu.Trigger asChild>
             <button
               aria-label="More track actions"
@@ -304,6 +304,10 @@ export function TrackLibraryActions({
             <DropdownMenu.Content
               sideOffset={6}
               align="end"
+              onInteractOutside={(event) => {
+                const target = event.target as HTMLElement | null;
+                if (target?.closest?.('[role="dialog"]')) event.preventDefault();
+              }}
               className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl"
             >
               {favoritesAccess.allowed && (
