@@ -20,8 +20,7 @@ export const Route = createFileRoute("/api/track-download")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const { createPublicServerClient, getUserIdFromRequest } =
-          await import("@/lib/supabase-public.server");
+        const { getUserIdFromRequest } = await import("@/lib/supabase-public.server");
         const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
         const userId = await getUserIdFromRequest(request);
         if (!userId || !token) {
@@ -35,17 +34,22 @@ export const Route = createFileRoute("/api/track-download")({
           return Response.json({ error: "Invalid track download request" }, { status: 400 });
         }
 
-        const supabase = createPublicServerClient(token);
-        const { data: track, error } = await supabase
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: track, error } = await supabaseAdmin
           .from("tracks")
-          .select("id, user_id, title, source_type, audio_key, is_published, allow_download")
+          .select(
+            "id, user_id, title, source_type, audio_key, is_published, allow_download, moderation_status",
+          )
           .eq("id", parsed.data.trackId)
           .maybeSingle();
 
         if (error) {
-          return Response.json({ error: "Track download is unavailable" }, { status: 403 });
+          return Response.json({ error: "Track download is unavailable" }, { status: 500 });
         }
         if (!track || track.source_type !== "upload" || !track.audio_key) {
+          return Response.json({ error: "Track audio is unavailable" }, { status: 404 });
+        }
+        if (track.moderation_status !== "active") {
           return Response.json({ error: "Track audio is unavailable" }, { status: 404 });
         }
 

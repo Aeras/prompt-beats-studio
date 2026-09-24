@@ -115,4 +115,16 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
       expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${signature} TO service_role`);
     }
   });
+
+  test("track downloads verify the caller but read the track through the server-only admin client", async () => {
+    const route = await source("src/routes/api/track-download.ts");
+
+    expect(route).toContain("getUserIdFromRequest(request)");
+    expect(route).toContain('await import("@/integrations/supabase/client.server")');
+    expect(route).toContain("await supabaseAdmin");
+    expect(route).toContain('track.moderation_status !== "active"');
+    expect(route).toContain("track.is_published !== true || track.allow_download !== true");
+    expect(route).not.toContain("createPublicServerClient(token)");
+    expect(route).not.toContain("GRANT SELECT");
+  });
 });
