@@ -1,0 +1,113 @@
+name: Temporary generator required-field guidance patch
+
+on:
+  push:
+    branches:
+      - fix/generator-required-field-guidance
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply generator required-field UX patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/generator-required-field-guidance
+      - name: Apply targeted generator UX patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routes/generate.tsx')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, got {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '  const pendingKey = useRef<string | null>(null);\n',
+              '''  const pendingKey = useRef<string | null>(null);\n  const [requiredValidationAttempted, setRequiredValidationAttempted] = useState(false);\n  const themeRequiredRef = useRef<HTMLDivElement>(null);\n  const musicStyleRequiredRef = useRef<HTMLDivElement>(null);\n  const moodRequiredRef = useRef<HTMLDivElement>(null);\n  const languageRequiredRef = useRef<HTMLDivElement>(null);\n''',
+          )
+
+          replace_once(
+              '''  const ready =\n    theme.trim().length >= 3 &&\n    !!baseGenre &&\n    !!effectiveMood &&\n    !!effectiveLanguage &&\n    !validationError &&\n    revisionReady;\n\n''',
+              '''  const ready =\n    theme.trim().length >= 3 &&\n    !!baseGenre &&\n    !!effectiveMood &&\n    !!effectiveLanguage &&\n    !validationError &&\n    revisionReady;\n  type RequiredFieldKey = "theme" | "musicStyle" | "mood" | "language";\n  const missingRequiredFields: Array<{ key: RequiredFieldKey; message: string }> = [];\n  if (theme.trim().length < 3) {\n    missingRequiredFields.push({\n      key: "theme",\n      message:\n        appLanguage === "el"\n          ? "Θέμα — γράψε τουλάχιστον 3 χαρακτήρες."\n          : "Theme — enter at least 3 characters.",\n    });\n  }\n  if (!baseGenre) {\n    missingRequiredFields.push({\n      key: "musicStyle",\n      message:\n        appLanguage === "el"\n          ? "Music Style — επίλεξε τουλάχιστον ένα style ή γράψε custom style."\n          : "Music Style — choose at least one style or enter a custom style.",\n    });\n  }\n  if (!effectiveMood) {\n    missingRequiredFields.push({\n      key: "mood",\n      message:\n        appLanguage === "el"\n          ? "Mood / Vibe — επίλεξε τουλάχιστον ένα mood ή γράψε custom mood."\n          : "Mood / Vibe — choose at least one mood or enter a custom mood.",\n    });\n  }\n  if (!effectiveLanguage) {\n    missingRequiredFields.push({\n      key: "language",\n      message:\n        appLanguage === "el"\n          ? "Γλώσσα — επίλεξε γλώσσα ή συμπλήρωσε custom γλώσσα."\n          : "Language — choose a language or enter a custom language.",\n    });\n  }\n  const missingRequiredKeys = new Set(missingRequiredFields.map((field) => field.key));\n  const requiredFieldClass = (key: RequiredFieldKey) =>\n    requiredValidationAttempted && missingRequiredKeys.has(key)\n      ? "-m-2 rounded-2xl p-2 ring-1 ring-accent/70 shadow-[0_0_24px_color-mix(in_oklab,var(--accent)_32%,transparent)] transition-shadow"\n      : "";\n  const generationActionDisabled =\n    !generatorFeature.allowed ||\n    busy ||\n    checking ||\n    blocked ||\n    modelAccessLoading ||\n    generationModelAccessUnavailable ||\n    (revisionMode && !revisionReady);\n\n''',
+          )
+
+          replace_once(
+              '''  const generate = async () => {\n    if (!generatorFeature.allowed) {\n''',
+              '''  const generate = async () => {\n    if (!ready) return;\n    if (!generatorFeature.allowed) {\n''',
+          )
+
+          replace_once(
+              '''  const runCheck = async () => {\n''',
+              '''  const handleGenerateClick = () => {\n    if (!ready) {\n      setRequiredValidationAttempted(true);\n      const firstMissingKey = missingRequiredFields[0]?.key;\n      const targetRef =\n        firstMissingKey === "theme"\n          ? themeRequiredRef\n          : firstMissingKey === "musicStyle"\n            ? musicStyleRequiredRef\n            : firstMissingKey === "mood"\n              ? moodRequiredRef\n              : firstMissingKey === "language"\n                ? languageRequiredRef\n                : null;\n      if (targetRef) {\n        requestAnimationFrame(() =>\n          targetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),\n        );\n      }\n      return;\n    }\n    setRequiredValidationAttempted(false);\n    void generate();\n  };\n\n  const runCheck = async () => {\n''',
+          )
+
+          replace_once(
+              '''    setConfirm(null);\n    setConfirmClear(false);\n''',
+              '''    setConfirm(null);\n    setConfirmClear(false);\n    setRequiredValidationAttempted(false);\n''',
+          )
+
+          replace_once(
+              '''  const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {\n    if (mode === "revision") {\n''',
+              '''  const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {\n    setRequiredValidationAttempted(false);\n    if (mode === "revision") {\n''',
+          )
+
+          replace_once(
+              '''            <div>\n              {advanced ? (\n                <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} />\n''',
+              '''            <div ref={themeRequiredRef} className={requiredFieldClass("theme")}>\n              {advanced ? (\n                <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} />\n''',
+          )
+
+          replace_once(
+              '''            <div>\n              {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}\n''',
+              '''            <div\n              ref={musicStyleRequiredRef}\n              className={requiredFieldClass("musicStyle")}\n            >\n              {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}\n''',
+          )
+
+          replace_once(
+              '''                <div>\n                  <SectionHeader\n                    title={t("generator.mood")}\n''',
+              '''                <div ref={moodRequiredRef} className={requiredFieldClass("mood")}>\n                  <SectionHeader\n                    title={t("generator.mood")}\n''',
+          )
+
+          replace_once(
+              '''                <div>\n                  <SectionHeader\n                    title={t("generator.language")}\n''',
+              '''                <div\n                  ref={languageRequiredRef}\n                  className={requiredFieldClass("language")}\n                >\n                  <SectionHeader\n                    title={t("generator.language")}\n''',
+          )
+
+          replace_once(
+              '''                <div className="space-y-3">\n                  <select\n                    value={moods[0] ?? ""}\n''',
+              '''                <div\n                  ref={moodRequiredRef}\n                  className={`space-y-3 ${requiredFieldClass("mood")}`}\n                >\n                  <select\n                    value={moods[0] ?? ""}\n''',
+          )
+
+          replace_once(
+              '''                <LanguagePicker\n                  value={language}\n                  onChange={(value) => {\n                    setLanguage(value);\n                    setLanguageVariant("");\n                    if (value !== CUSTOM) setCustomLanguage("");\n                  }}\n                  ariaLabel={t("generator.language")}\n                />\n''',
+              '''                <div\n                  ref={languageRequiredRef}\n                  className={requiredFieldClass("language")}\n                >\n                  <LanguagePicker\n                    value={language}\n                    onChange={(value) => {\n                      setLanguage(value);\n                      setLanguageVariant("");\n                      if (value !== CUSTOM) setCustomLanguage("");\n                    }}\n                    ariaLabel={t("generator.language")}\n                  />\n                </div>\n''',
+          )
+
+          replace_once(
+              '''            {revisionMode &&\n              revisionBasePromptId &&\n              revisionBase.data?.prompt &&\n              !revisionRequest.trim() && (\n                <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>\n              )}\n\n            <div className="space-y-2 pt-1">\n''',
+              '''            {revisionMode &&\n              revisionBasePromptId &&\n              revisionBase.data?.prompt &&\n              !revisionRequest.trim() && (\n                <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>\n              )}\n            {requiredValidationAttempted &&\n              !revisionMode &&\n              missingRequiredFields.length > 0 && (\n                <div\n                  role="alert"\n                  className="rounded-2xl border border-accent/35 bg-accent/[0.06] p-4 shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_12%,transparent)]"\n                >\n                  <p className="text-sm font-semibold text-foreground">\n                    {appLanguage === "el"\n                      ? "Συμπλήρωσε τα απαραίτητα πεδία πριν τη δημιουργία."\n                      : "Complete the required fields before generating."}\n                  </p>\n                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">\n                    {missingRequiredFields.map((field) => (\n                      <li key={field.key}>• {field.message}</li>\n                    ))}\n                  </ul>\n                </div>\n              )}\n\n            <div className="space-y-2 pt-1">\n''',
+          )
+
+          replace_once(
+              '''                <button\n                  onClick={generate}\n                  disabled={\n                    !generatorFeature.allowed ||\n                    busy ||\n                    checking ||\n                    blocked ||\n                    !ready ||\n                    modelAccessLoading ||\n                    generationModelAccessUnavailable\n                  }\n                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"\n                >\n''',
+              '''                <button\n                  onClick={handleGenerateClick}\n                  disabled={generationActionDisabled}\n                  className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${\n                    ready\n                      ? "glow-neon"\n                      : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"\n                  }`}\n                >\n''',
+          )
+
+          path.write_text(text)
+          PY
+
+          git config user.name "PromptBeats CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/routes/generate.tsx
+          git diff --cached --check
+          git commit -m "Apply generator required-field UX patch"
+          git push origin HEAD:fix/generator-required-field-guidance
