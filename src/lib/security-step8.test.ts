@@ -82,7 +82,7 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
 
     expect(player).toContain('track.sourceType === "upload"');
     expect(player).toContain("getTrackPlaybackUrl({ data: { trackId: track.id } })");
-    expect(resolver).toContain('track.is_published !== true && track.user_id !== viewerId');
+    expect(resolver).toContain("track.is_published !== true && track.user_id !== viewerId");
     expect(resolver).toContain("createSignedR2GetUrl(track.audio_key)");
     expect(resolver).toContain("isSafeOwnedAudioKey(track.audio_key, track.user_id)");
   });
