@@ -90,7 +90,7 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => songPackageSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireMusicLabAccess(context);
-    return executeDurableAuxiliaryAiRequest({
+    const result = await executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
       operation: "ai_music_lab",
       requestKey: data.requestKey,
@@ -213,6 +213,12 @@ export const generateLyriaSong = createServerFn({ method: "POST" })
         }
       },
     });
+
+    if (!isOwnedLyriaTempKey(result.audioKey, context.userId)) {
+      throw new Error("Invalid generated audio reference");
+    }
+    const { createSignedR2GetUrl } = await import("@/lib/r2.server");
+    return { ...result, audioUrl: await createSignedR2GetUrl(result.audioKey) };
   });
 
 export const downloadLyriaSong = createServerFn({ method: "POST" })
