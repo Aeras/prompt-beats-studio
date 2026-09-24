@@ -9,6 +9,7 @@ import type { Track } from "@/lib/tracks";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
+import { supabase } from "@/integrations/supabase/client";
 import {
   addTrackToPlaylist,
   createPlaylist,
@@ -16,10 +17,18 @@ import {
   listPlaylists,
   toggleFavorite,
 } from "@/lib/playlists.functions";
-import {
-  downloadTrackAudio,
-  getTrackDownloadAvailability,
-} from "@/lib/track-download.functions";
+import { getTrackDownloadAvailability } from "@/lib/track-download.functions";
+
+function fileName(title: string, mimeType: string) {
+  const ext = mimeType.includes("wav") ? "wav" : "mp3";
+  const safe =
+    title
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, " ")
+      .slice(0, 100) || "promptbeats-track";
+  return `${safe}.${ext}`;
+}
 
 export function TrackLibraryActions({
   track,
@@ -185,14 +194,27 @@ export function TrackLibraryActions({
     if (!canDownload) return;
     setBusy("download");
     try {
-      const result = await downloadTrackAudio({ data: { trackId: track.id } });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Authentication is required");
+      const response = await fetch(`/api/track-download?trackId=${encodeURIComponent(track.id)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) throw new Error("Track download failed");
+      const blob = await response.blob();
+      const mimeType = response.headers.get("content-type") ?? "audio/mpeg";
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+      const name = encodedName ? decodeURIComponent(encodedName) : fileName(track.title, mimeType);
+      const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
-      anchor.href = result.downloadUrl;
-      anchor.download = result.fileName;
-      anchor.rel = "noopener";
+      anchor.href = url;
+      anchor.download = name;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       toast.error(copy.error);
     } finally {
