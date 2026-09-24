@@ -10,7 +10,10 @@ describe("Settings and track source preferences", () => {
     expect(settings).toContain("<LanguageSelector");
     expect(settings).toContain("useExternalMediaConsent()");
     expect(settings).toContain("useTrackSourcePreference()");
+    expect(settings).toContain("useExplicitContentPreference()");
     expect(settings).toContain("<TrackSourceFilter");
+    expect(settings).toContain("Απόκρυψη explicit τραγουδιών");
+    expect(settings).toContain("Hide explicit tracks");
 
     const sidebar = await source("src/components/promptbeats/Sidebar.tsx");
     expect(sidebar).toContain("<SettingsPanel");
@@ -40,7 +43,6 @@ describe("Settings and track source preferences", () => {
     for (const path of [
       "src/routes/index.tsx",
       "src/routes/trending.tsx",
-      "src/components/promptbeats/ArtistProfileView.tsx",
       "src/routes/library.tsx",
       "src/components/promptbeats/PlaylistLibraryPanel.tsx",
     ]) {
@@ -49,5 +51,32 @@ describe("Settings and track source preferences", () => {
       expect(code).toContain("TrackSourceFilter");
       expect(code).toContain("filterByTrackSource");
     }
+
+    const artist = await source("src/components/promptbeats/ArtistProfileView.tsx");
+    expect(artist).toContain("useTrackSourcePreference");
+    expect(artist).toContain("TrackSourceFilter");
+  });
+
+  test("Explicit preference persists to the account and filters both normalized and DB track shapes", async () => {
+    const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
+    expect(filter).toContain('EXPLICIT_ACCOUNT_KEY = "hide_explicit_tracks"');
+    expect(filter).toContain('EXPLICIT_EVENT_KEY = "promptbeats:hide-explicit-tracks"');
+    expect(filter).toContain("useExplicitContentPreference");
+    expect(filter).toContain("setHideExplicit");
+    expect(filter).toContain("supabase.auth.updateUser");
+    expect(filter).toContain("track.containsExplicitLyrics !== true");
+    expect(filter).toContain("track.contains_explicit_lyrics !== true");
+    expect(filter).toContain("filterExplicitTracks");
+    expect(filter).toContain("const visibleTracks = filterExplicitTracks");
+  });
+
+  test("Explicit badge acts as a global safety gate for track surfaces not using list filtering", async () => {
+    const badge = await source("src/components/promptbeats/ExplicitBadge.tsx");
+    expect(badge).toContain("useExplicitContentPreference");
+    expect(badge).toContain('closest<HTMLElement>("article")');
+    expect(badge).toContain('pathname.startsWith("/track/")');
+    expect(badge).toContain('pathname.startsWith("/share/")');
+    expect(badge).toContain("surface.hidden = hideExplicit");
+    expect(badge).toContain('data-pb-explicit-badge="true"');
   });
 });
