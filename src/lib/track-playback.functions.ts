@@ -2,14 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { createSignedR2GetUrl } from "@/lib/r2.server";
-import { getUserIdFromRequest } from "@/lib/supabase-public.server";
-import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
-
 export const getTrackPlaybackUrl = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
+    const [{ supabaseAdmin }, { getUserIdFromRequest }, { isSafeOwnedAudioKey }] =
+      await Promise.all([
+        import("@/integrations/supabase/client.server"),
+        import("@/lib/supabase-public.server"),
+        import("@/lib/storage-paths"),
+      ]);
     const request = getRequest();
     const viewerId = request ? await getUserIdFromRequest(request) : null;
     const { data: track, error } = await (supabaseAdmin.from("tracks") as any)
@@ -39,5 +40,6 @@ export const getTrackPlaybackUrl = createServerFn({ method: "POST" })
       throw new Error("Track audio is unavailable");
     }
 
+    const { createSignedR2GetUrl } = await import("@/lib/r2.server");
     return { audioUrl: await createSignedR2GetUrl(track.audio_key) };
   });
