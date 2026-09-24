@@ -158,7 +158,23 @@ export const getPrivateReviewSession = createServerFn({ method: "POST" })
     });
     if (error) throw new Error("The review session could not be loaded.");
     if ((raw as any)?.state === "unavailable") return { state: "unavailable" as const };
-    return privateReviewSessionSchema.parse(raw);
+
+    const review = raw as any;
+    const trackId = review?.audio?.trackId;
+    if (typeof trackId === "string") {
+      const { hydrateTrackAudioUrl } = await import("@/lib/track-audio-playback.server");
+      const [hydrated] = await hydrateTrackAudioUrl(
+        {
+          id: trackId,
+          source_type: "upload",
+          audio_url: review.audio.audioUrl ?? null,
+        },
+        60 * 60,
+      ).then((track) => [track]);
+      if (hydrated?.audio_url) review.audio.audioUrl = hydrated.audio_url;
+    }
+
+    return privateReviewSessionSchema.parse(review);
   });
 
 export const addPrivateReviewComment = createServerFn({ method: "POST" })
