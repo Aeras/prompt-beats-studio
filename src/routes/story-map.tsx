@@ -20,7 +20,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
 import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
   createStoryBeat,
   createStoryMap,
@@ -419,6 +419,7 @@ function StoryMapWorkspace({
       });
       await replaceStoryMapDraft({ data: { storyMapId: storyMap.id, draft: result.draft } });
       await onRefresh();
+      completeAuxiliaryRequest(`story_map:${storyMap.id}:build`);
     } catch (cause) {
       onError(
         cause instanceof Error

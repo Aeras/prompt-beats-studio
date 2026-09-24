@@ -8,7 +8,7 @@ import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUnive
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
   analyzeSongUniverseContinuity,
   analyzeSongUniverseProjectFit,
@@ -709,6 +709,7 @@ function UniverseAiPanel({
                     requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:continuity`),
                   },
                 });
+                completeAuxiliaryRequest(`song_universe:${universe.id}:continuity`);
                 await latest.refetch();
               })
             }
@@ -744,6 +745,7 @@ function UniverseAiPanel({
                   requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:bible`),
                 },
               });
+              completeAuxiliaryRequest(`song_universe:${universe.id}:bible`);
               await applyBible(result.creativeBible);
             })
           }
@@ -786,6 +788,7 @@ function UniverseAiPanel({
                     requestKey: getAuxiliaryRequestKey(`song_universe:${universe.id}:refine`),
                   },
                 });
+                completeAuxiliaryRequest(`song_universe:${universe.id}:refine`);
                 await applyBible(result.creativeBible);
                 setRefineInstruction("");
               })
@@ -870,6 +873,9 @@ function UniverseAiPanel({
                         ),
                       },
                     });
+                    completeAuxiliaryRequest(
+                      `song_universe:${universe.id}:fit:${project.projectId}`,
+                    );
                     setFit({ projectName: project.projectName, ...result.fit });
                   })
                 }

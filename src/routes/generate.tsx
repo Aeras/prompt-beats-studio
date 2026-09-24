@@ -91,7 +91,7 @@ import {
   type StoryMapSongSetupHandoff,
 } from "@/lib/story-map.shared";
 import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
-import { getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key.client";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {
@@ -1811,6 +1811,7 @@ function GeneratePage() {
             model: generationModel || null,
           },
         });
+        completeAuxiliaryRequest("story_map:generator-plan");
         narrativePlan = planned.draft;
         setStoryDrivenDraft(planned.draft);
       }
