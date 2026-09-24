@@ -28,10 +28,7 @@ import {
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
-import {
-  completeAuxiliaryRequest,
-  getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
 import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";

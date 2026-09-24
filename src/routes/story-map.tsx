@@ -20,10 +20,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
 import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
-import {
-  completeAuxiliaryRequest,
-  getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
   createStoryBeat,
   createStoryMap,

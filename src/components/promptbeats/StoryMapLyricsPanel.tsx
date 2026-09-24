@@ -5,10 +5,7 @@ import { Loader2, MapPinned, Sparkles, Wand2 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { analyzeLyricsWithStoryMap, createStoryMapFromLyrics } from "@/lib/story-map-ai.functions";
-import {
-  completeAuxiliaryRequest,
-  getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { createStoryMap } from "@/lib/story-map.functions";
 import { getStoryMapIdForProject, replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import type { StoryMapAnalysis } from "@/lib/story-map.shared";

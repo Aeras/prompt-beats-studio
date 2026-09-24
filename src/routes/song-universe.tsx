@@ -8,10 +8,7 @@ import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUnive
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
-import {
-  completeAuxiliaryRequest,
-  getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
   analyzeSongUniverseContinuity,
   analyzeSongUniverseProjectFit,

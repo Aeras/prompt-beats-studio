@@ -22,10 +22,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { supportsPromptBeatsVisionInput } from "@/lib/ai-model-capabilities.shared";
 import { INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY } from "@/lib/inspiration-wall-song-setup.shared";
-import {
-  completeAuxiliaryRequest,
-  getAuxiliaryRequestKey,
-} from "@/lib/auxiliary-request-key";
+import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 
 type Props = {
   wall: InspirationWallRecord;
