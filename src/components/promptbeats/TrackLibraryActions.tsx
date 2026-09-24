@@ -99,8 +99,8 @@ export function TrackLibraryActions({
   });
   const canDownload = Boolean(
     hasDownloadableSource &&
-      user &&
-      (track.userId === user.id || downloadAvailability.data?.allowed[track.id] === true),
+    user &&
+    (track.userId === user.id || downloadAvailability.data?.allowed[track.id] === true),
   );
 
   const favoriteIds = useQuery({
