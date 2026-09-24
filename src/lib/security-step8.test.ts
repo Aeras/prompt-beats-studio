@@ -45,7 +45,9 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
     expect(migration).toContain(
       'DROP POLICY IF EXISTS "Anyone can view track covers" ON storage.objects',
     );
-    expect(migration).not.toContain("UPDATE storage.buckets SET public = true WHERE id = 'avatars'");
+    expect(migration).not.toContain(
+      "UPDATE storage.buckets SET public = true WHERE id = 'avatars'",
+    );
     expect(migration).not.toContain(
       "UPDATE storage.buckets SET public = true WHERE id = 'inspiration-wall-images'",
     );
