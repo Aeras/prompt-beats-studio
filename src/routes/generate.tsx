@@ -1709,9 +1709,13 @@ function GeneratePage() {
     });
   }
   const missingRequiredKeys = new Set(missingRequiredFields.map((field) => field.key));
-  const requiredFieldClass = (key: RequiredFieldKey) =>
+  const requiredControlClass = (key: RequiredFieldKey) =>
     requiredValidationAttempted && missingRequiredKeys.has(key)
-      ? "-m-2 rounded-2xl p-2 ring-1 ring-accent/70 shadow-[0_0_24px_color-mix(in_oklab,var(--accent)_32%,transparent)] transition-shadow"
+      ? " !border-red-400/70 shadow-[0_0_0_3px_color-mix(in_oklab,var(--destructive)_20%,transparent)] focus:!border-red-400/80 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--destructive)_24%,transparent)]"
+      : "";
+  const requiredPickerClass = (key: RequiredFieldKey) =>
+    requiredValidationAttempted && missingRequiredKeys.has(key)
+      ? "[&>button]:!border-red-400/70 [&>button]:!shadow-[0_0_0_3px_color-mix(in_oklab,var(--destructive)_20%,transparent)]"
       : "";
   const generationActionDisabled =
     !generatorFeature.allowed ||
@@ -2715,7 +2719,7 @@ ${narrativePlan.beats
               />
             )}
 
-            <div ref={themeRequiredRef} className={requiredFieldClass("theme")}>
+            <div ref={themeRequiredRef}>
               {advanced ? (
                 <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} />
               ) : (
@@ -2728,14 +2732,14 @@ ${narrativePlan.beats
                 rows={3}
                 placeholder={t("generator.themePlaceholder")}
                 aria-label={t("generator.theme")}
-                className="w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+                className={`w-full rounded-xl border border-white/10 bg-black/40 p-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]${requiredControlClass("theme")}`}
               />
               <p className="mt-1 text-right text-[11px] text-muted-foreground">
                 {theme.length}/{themeLimit}
               </p>
             </div>
 
-            <div ref={musicStyleRequiredRef} className={requiredFieldClass("musicStyle")}>
+            <div ref={musicStyleRequiredRef}>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
               {advanced ? (
                 <>
@@ -2764,7 +2768,7 @@ ${narrativePlan.beats
                   value={genres[0] ?? ""}
                   onChange={(e) => pickPrimary(setGenres)(e.target.value)}
                   aria-label={t("generator.musicStyle")}
-                  className={fieldClass}
+                  className={fieldClass + requiredControlClass("musicStyle")}
                 >
                   <option value="" disabled className="bg-[#0a0a0c]">
                     {t("generator.selectMusicStyle")}
@@ -2788,7 +2792,10 @@ ${narrativePlan.beats
                   placeholder={t("generator.customStylePlaceholder")}
                   aria-label={`${t("common.custom")} ${t("generator.musicStyle")}`}
                   maxLength={advanced && !hasAdminInputBypass ? musicStyleLimit : undefined}
-                  className={advanced ? fieldClass + " mt-2" : fieldClass}
+                  className={
+                    (advanced ? fieldClass + " mt-2" : fieldClass) +
+                    requiredControlClass("musicStyle")
+                  }
                 />
                 {advanced && (
                   <p className="mt-1 text-right text-[11px] text-muted-foreground">
@@ -2800,7 +2807,7 @@ ${narrativePlan.beats
 
             {advanced ? (
               <>
-                <div ref={moodRequiredRef} className={requiredFieldClass("mood")}>
+                <div ref={moodRequiredRef}>
                   <SectionHeader
                     title={t("generator.mood")}
                     hint={t("generator.pickMany")}
@@ -2826,7 +2833,7 @@ ${narrativePlan.beats
                     placeholder={t("generator.customMoodPlaceholder")}
                     aria-label={`${t("common.custom")} ${t("generator.mood")}`}
                     maxLength={hasAdminInputBypass ? undefined : 120}
-                    className={fieldClass + " mt-2"}
+                    className={fieldClass + " mt-2" + requiredControlClass("mood")}
                   />
                   <p className="mt-1 text-right text-[11px] text-muted-foreground">
                     {effectiveMood.length}/120
@@ -3059,7 +3066,7 @@ ${narrativePlan.beats
                     className={fieldClass + " h-auto resize-y py-3"}
                   />
                 </div>
-                <div ref={languageRequiredRef} className={requiredFieldClass("language")}>
+                <div ref={languageRequiredRef}>
                   <SectionHeader
                     title={t("generator.language")}
                     onClear={() => {
@@ -3076,17 +3083,18 @@ ${narrativePlan.beats
                       if (value !== CUSTOM) setCustomLanguage("");
                     }}
                     ariaLabel={t("generator.language")}
+                    className={language !== CUSTOM ? requiredPickerClass("language") : ""}
                   />
                 </div>
               </>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div ref={moodRequiredRef} className={`space-y-3 ${requiredFieldClass("mood")}`}>
+                <div ref={moodRequiredRef} className="space-y-3">
                   <select
                     value={moods[0] ?? ""}
                     onChange={(e) => pickPrimary(setMoods)(e.target.value)}
                     aria-label={t("generator.mood")}
-                    className={fieldClass}
+                    className={fieldClass + requiredControlClass("mood")}
                   >
                     <option value="" disabled className="bg-[#0a0a0c]">
                       {t("generator.selectMood")}
@@ -3105,11 +3113,11 @@ ${narrativePlan.beats
                       onChange={(e) => setCustomMood(e.target.value)}
                       placeholder={t("generator.customMoodPlaceholder")}
                       aria-label={`${t("common.custom")} ${t("generator.mood")}`}
-                      className={fieldClass}
+                      className={fieldClass + requiredControlClass("mood")}
                     />
                   )}
                 </div>
-                <div ref={languageRequiredRef} className={requiredFieldClass("language")}>
+                <div ref={languageRequiredRef}>
                   <LanguagePicker
                     value={language}
                     onChange={(value) => {
@@ -3118,6 +3126,7 @@ ${narrativePlan.beats
                       if (value !== CUSTOM) setCustomLanguage("");
                     }}
                     ariaLabel={t("generator.language")}
+                    className={language !== CUSTOM ? requiredPickerClass("language") : ""}
                   />
                 </div>
               </div>
@@ -3129,7 +3138,7 @@ ${narrativePlan.beats
                 onChange={(e) => setCustomLanguage(e.target.value)}
                 placeholder={t("generator.customLanguagePlaceholder")}
                 aria-label={`${t("common.custom")} ${t("generator.language")}`}
-                className={fieldClass}
+                className={fieldClass + requiredControlClass("language")}
               />
             )}
             {language !== CUSTOM && getSongLanguageVariants(language).length > 0 && (
