@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 
 import { CUSTOM_LANGUAGE_VALUE, getSongLanguageOptions } from "@/catalog/song-languages";
@@ -15,6 +15,7 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
   const { t, language: appLanguage } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const selectedOptionRef = useRef<HTMLButtonElement>(null);
 
   const localized = useMemo(() => getSongLanguageOptions(appLanguage), [appLanguage]);
   const english = useMemo(() => getSongLanguageOptions("en"), []);
@@ -50,6 +51,14 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
       ? t("generator.option.custom")
       : (selected?.label ?? value) || t("generator.selectLanguage");
 
+  useEffect(() => {
+    if (!open || query) return;
+    const frame = requestAnimationFrame(() => {
+      selectedOptionRef.current?.scrollIntoView({ block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, query, value]);
+
   return (
     <div className={`relative ${className}`}>
       <button
@@ -57,7 +66,13 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
         aria-label={ariaLabel ?? t("generator.language")}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() =>
+          setOpen((current) => {
+            const next = !current;
+            if (next) setQuery("");
+            return next;
+          })
+        }
         className="flex h-11 w-full items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 text-left text-sm outline-none transition-shadow hover:border-white/20 focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
       >
         <span className={value ? "text-foreground" : "text-muted-foreground"}>{displayValue}</span>
@@ -72,7 +87,6 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
-                autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("generator.languageSearch")}
@@ -91,6 +105,7 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
               return (
                 <button
                   key={item.code}
+                  ref={active ? selectedOptionRef : undefined}
                   type="button"
                   role="option"
                   aria-selected={active}
@@ -124,6 +139,7 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
             )}
             <div className="my-1 border-t border-white/10" />
             <button
+              ref={value === CUSTOM_LANGUAGE_VALUE ? selectedOptionRef : undefined}
               type="button"
               role="option"
               aria-selected={value === CUSTOM_LANGUAGE_VALUE}
