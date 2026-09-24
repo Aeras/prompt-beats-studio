@@ -27,6 +27,7 @@ import {
   updateAdminAiModel,
   type AdminAiModel,
 } from "@/lib/ai-model-admin.functions";
+import { displayAiHealthStatus, getAiHealthDiagnostic } from "@/lib/ai-health-diagnostics";
 import { cn } from "@/lib/utils";
 
 type Reasoning = AdminAiModel["generatorReasoningEffort"];
@@ -397,7 +398,7 @@ function AiModelEditor({
 }
 
 export function AiModelsPanel() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-ai-models"],
@@ -1047,8 +1048,14 @@ export function AiModelsPanel() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      <Pill kind={healthKind(model.healthStatus)}>
-                        {healthLabel(model.healthStatus)}
+                      <Pill
+                        kind={healthKind(
+                          displayAiHealthStatus(model.healthStatus, model.lastErrorCode),
+                        )}
+                      >
+                        {healthLabel(
+                          displayAiHealthStatus(model.healthStatus, model.lastErrorCode),
+                        )}
                       </Pill>
                       {isStale(model) && <Pill kind="outdated">{t("aiModels.stale")}</Pill>}
                       {model.deprecated && (
@@ -1062,6 +1069,30 @@ export function AiModelsPanel() {
                           })
                         : t("aiModels.neverChecked")}
                     </div>
+                    {model.lastErrorCode &&
+                      (() => {
+                        const diagnostic = getAiHealthDiagnostic(model.lastErrorCode);
+                        if (!diagnostic) return null;
+                        return (
+                          <div
+                            className={cn(
+                              "mt-2 max-w-[300px] text-[11px] leading-4",
+                              diagnostic.severity === "warning"
+                                ? "text-amber-200/90"
+                                : "text-red-200/90",
+                            )}
+                          >
+                            <div>
+                              {language === "el" ? diagnostic.messageEl : diagnostic.messageEn}
+                            </div>
+                            {diagnostic.technical && (
+                              <div className="mt-1 font-mono text-[10px] text-muted-foreground">
+                                {diagnostic.technical}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                   </td>
                   <td className="px-4 py-3">
                     <Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill>
