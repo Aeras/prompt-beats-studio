@@ -186,6 +186,23 @@ button:not(:disabled):not([data-pb-no-press="true"]):active,
   filter: brightness(1.08);
 }
 
+/* Modal safety contract: centered glass dialogs must remain usable when the
+   mobile viewport shrinks (landscape, browser chrome, or an open keyboard). */
+[role="dialog"][aria-modal="true"] > .glass-strong {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Coarse pointers need a real touch target even when the visual icon button
+   is intentionally compact (for example the 36px library + actions). */
+@media (pointer: coarse) {
+  button[aria-label] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @utility aurora {
   position: relative;
   &::before {
