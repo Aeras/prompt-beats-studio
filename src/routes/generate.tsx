@@ -2768,7 +2768,9 @@ ${narrativePlan.beats
                   value={genres[0] ?? ""}
                   onChange={(e) => pickPrimary(setGenres)(e.target.value)}
                   aria-label={t("generator.musicStyle")}
-                  className={fieldClass + requiredControlClass("musicStyle")}
+                  className={
+                    fieldClass + (genres[0] !== CUSTOM ? requiredControlClass("musicStyle") : "")
+                  }
                 >
                   <option value="" disabled className="bg-[#0a0a0c]">
                     {t("generator.selectMusicStyle")}
@@ -3094,7 +3096,9 @@ ${narrativePlan.beats
                     value={moods[0] ?? ""}
                     onChange={(e) => pickPrimary(setMoods)(e.target.value)}
                     aria-label={t("generator.mood")}
-                    className={fieldClass + requiredControlClass("mood")}
+                    className={
+                      fieldClass + (moods[0] !== CUSTOM ? requiredControlClass("mood") : "")
+                    }
                   >
                     <option value="" disabled className="bg-[#0a0a0c]">
                       {t("generator.selectMood")}
