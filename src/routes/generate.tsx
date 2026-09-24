@@ -2259,24 +2259,34 @@ ${narrativePlan.beats
       return;
     }
 
-    if (customGenre.trim()) {
-      setGenres((prev) => [CUSTOM, ...prev.filter((value) => value !== CUSTOM)]);
-    } else {
-      setGenres((prev) => {
-        const basicMatch = prev.find((value) => value !== CUSTOM && GENRE_OPTIONS.includes(value));
-        if (!basicMatch) return prev;
-        return [basicMatch, ...prev.filter((value) => value !== basicMatch && value !== CUSTOM)];
-      });
+    const selectedGenres = genres.filter((value) => value !== CUSTOM);
+    const mergedGenreText = mergeValues(selectedGenres, customGenre).join(", ");
+    if (customGenre.trim() || selectedGenres.length > 1) {
+      setCustomGenre(mergedGenreText);
+      setGenres([CUSTOM]);
+    } else if (selectedGenres.length === 1) {
+      const onlyGenre = selectedGenres[0]!;
+      if (GENRE_OPTIONS.includes(onlyGenre)) {
+        setGenres([onlyGenre]);
+      } else {
+        setCustomGenre(onlyGenre);
+        setGenres([CUSTOM]);
+      }
     }
 
-    if (customMood.trim()) {
-      setMoods((prev) => [CUSTOM, ...prev.filter((value) => value !== CUSTOM)]);
-    } else {
-      setMoods((prev) => {
-        const basicMatch = prev.find((value) => value !== CUSTOM && MOOD_OPTIONS.includes(value));
-        if (!basicMatch) return prev;
-        return [basicMatch, ...prev.filter((value) => value !== basicMatch && value !== CUSTOM)];
-      });
+    const selectedMoods = moods.filter((value) => value !== CUSTOM);
+    const mergedMoodText = mergeValues(selectedMoods, customMood).join(", ");
+    if (customMood.trim() || selectedMoods.length > 1) {
+      setCustomMood(mergedMoodText);
+      setMoods([CUSTOM]);
+    } else if (selectedMoods.length === 1) {
+      const onlyMood = selectedMoods[0]!;
+      if (MOOD_OPTIONS.includes(onlyMood)) {
+        setMoods([onlyMood]);
+      } else {
+        setCustomMood(onlyMood);
+        setMoods([CUSTOM]);
+      }
     }
   };
 
