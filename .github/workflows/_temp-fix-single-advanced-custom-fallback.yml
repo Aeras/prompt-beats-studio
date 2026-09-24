@@ -1,0 +1,39 @@
+name: Temporary fix single Advanced custom fallback
+
+on:
+  push:
+    branches:
+      - fix/generator-single-advanced-custom-fallback
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Fix single Advanced chip fallback in Basic mode'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/generator-single-advanced-custom-fallback
+      - name: Patch Basic custom fallback visibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/generate.tsx')
+          s = p.read_text()
+          a = '{(advanced || customGenreSelected) && ('
+          b = '{(advanced || customGenreSelected || customGenre.trim().length > 0) && ('
+          c = '{moods[0] === CUSTOM && ('
+          d = '{(moods[0] === CUSTOM || customMood.trim().length > 0) && ('
+          if s.count(a) != 1 or s.count(c) != 1:
+              raise SystemExit(f'Unexpected occurrences: genre={s.count(a)}, mood={s.count(c)}')
+          p.write_text(s.replace(a, b).replace(c, d))
+          PY
+      - run: |
+          git config user.name "PromptBeats CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/routes/generate.tsx
+          git diff --cached --check
+          git commit -m "Fix single Advanced chip fallback in Basic mode"
+          git push origin HEAD:fix/generator-single-advanced-custom-fallback
