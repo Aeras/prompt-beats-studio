@@ -127,7 +127,8 @@ export function getAiHealthDiagnostic(
       severity: "failure",
       code: "incomplete_runtime_response",
       messageEl: "Η απάντηση του μοντέλου ήταν ελλιπής και δεν ολοκλήρωσε σωστά το runtime probe.",
-      messageEn: "The model response was incomplete and did not complete the runtime probe correctly.",
+      messageEn:
+        "The model response was incomplete and did not complete the runtime probe correctly.",
       technical: "incomplete_runtime_response",
     };
   }
@@ -146,8 +147,10 @@ export function getAiHealthDiagnostic(
     return {
       severity: "failure",
       code: value,
-      messageEl: "Το μοντέλο απάντησε, αλλά η απάντηση δεν είχε την έγκυρη μορφή που απαιτεί ο έλεγχος.",
-      messageEn: "The model responded, but the response did not match the valid health-check format.",
+      messageEl:
+        "Το μοντέλο απάντησε, αλλά η απάντηση δεν είχε την έγκυρη μορφή που απαιτεί ο έλεγχος.",
+      messageEn:
+        "The model responded, but the response did not match the valid health-check format.",
       technical: value,
     };
   }
@@ -197,7 +200,8 @@ export function getAiHealthDiagnostic(
     return {
       severity: "failure",
       code: "model_unavailable",
-      messageEl: "Το μοντέλο δεν βρέθηκε ή δεν είναι διαθέσιμο στον συγκεκριμένο πάροχο/API λογαριασμό.",
+      messageEl:
+        "Το μοντέλο δεν βρέθηκε ή δεν είναι διαθέσιμο στον συγκεκριμένο πάροχο/API λογαριασμό.",
       messageEn: "The model was not found or is unavailable to the connected provider/API account.",
       technical: "404 · model_unavailable",
     };
