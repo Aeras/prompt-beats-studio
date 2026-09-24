@@ -5,7 +5,7 @@ import { assertSafeOwnedAudioKey } from "@/lib/storage-paths";
 export function getR2Config() {
   const endpoint = process.env["R2_ENDPOINT"]!.replace(/\/+$/, "");
   const bucket = process.env["R2_BUCKET"]!;
-  const publicBase = process.env["R2_PUBLIC_BASE_URL"]!.replace(/\/+$/, "");
+  const publicBase = process.env["R2_PUBLIC_BASE_URL"]?.replace(/\/+$/, "") ?? null;
   return { endpoint, bucket, publicBase };
 }
 
@@ -23,13 +23,30 @@ export function buildObjectKey(userId: string, fileName: string) {
   return `tracks/${userId}/${Date.now()}-${clean}`;
 }
 
-/** Uploads bytes to Cloudflare R2 and returns the public URL. */
+/** Canonical private R2 object URL. It is not intended for browser playback. */
+export function buildR2ObjectUrl(key: string) {
+  const { endpoint, bucket } = getR2Config();
+  return `${endpoint}/${bucket}/${key}`;
+}
+
+/** Creates a time-limited R2 GET URL using AWS SigV4 query signing. */
+export async function createSignedR2GetUrl(key: string, expiresSeconds = 6 * 60 * 60) {
+  const boundedExpiry = Math.max(60, Math.min(7 * 24 * 60 * 60, Math.trunc(expiresSeconds)));
+  const unsignedUrl = new URL(buildR2ObjectUrl(key));
+  unsignedUrl.searchParams.set("X-Amz-Expires", String(boundedExpiry));
+  const request = await getR2Client().sign(new Request(unsignedUrl, { method: "GET" }), {
+    aws: { signQuery: true },
+  });
+  return request.url;
+}
+
+/** Uploads bytes to Cloudflare R2 and returns the canonical private object URL. */
 export async function uploadToR2(
   key: string,
   body: ArrayBuffer,
   contentType: string,
 ): Promise<{ key: string; url: string }> {
-  const { endpoint, bucket, publicBase } = getR2Config();
+  const { endpoint, bucket } = getR2Config();
   const client = getR2Client();
   const res = await client.fetch(`${endpoint}/${bucket}/${key}`, {
     method: "PUT",
@@ -39,7 +56,7 @@ export async function uploadToR2(
   if (!res.ok) {
     throw new Error(`R2 upload failed (${res.status}): ${await res.text()}`);
   }
-  return { key, url: `${publicBase}/${key}` };
+  return { key, url: buildR2ObjectUrl(key) };
 }
 
 /** Deletes an object from R2. */

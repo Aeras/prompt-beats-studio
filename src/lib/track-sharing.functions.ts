@@ -85,6 +85,12 @@ export const getTrackShareByToken = createServerFn({ method: "GET" })
       _token: data.token,
     } as never);
     if (error) throw new Error(error.message);
+
+    if ((result as any)?.state === "active" && (result as any)?.track) {
+      const { hydrateTrackAudioUrl } = await import("@/lib/track-audio-playback.server");
+      (result as any).track = await hydrateTrackAudioUrl((result as any).track, 60 * 60);
+    }
+
     return result as
       | { state: "unavailable" }
       | { state: "private"; track_id: string; title: string }
