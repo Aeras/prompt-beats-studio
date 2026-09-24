@@ -51,7 +51,10 @@ export const Route = createFileRoute("/api/track-download")({
 
         const isOwner = track.user_id === userId;
         if (!isOwner && (track.is_published !== true || track.allow_download !== true)) {
-          return Response.json({ error: "Download is not allowed for this track" }, { status: 403 });
+          return Response.json(
+            { error: "Download is not allowed for this track" },
+            { status: 403 },
+          );
         }
         if (!isSafeOwnedAudioKey(track.audio_key, track.user_id)) {
           return Response.json({ error: "Invalid track audio reference" }, { status: 403 });
