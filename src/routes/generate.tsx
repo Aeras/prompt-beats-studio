@@ -2837,7 +2837,7 @@ ${narrativePlan.beats
               )}
             </div>
 
-            {(advanced || customGenreSelected) && (
+            {(advanced || customGenreSelected || customGenre.trim().length > 0) && (
               <div>
                 <input
                   value={customGenre}
@@ -3166,7 +3166,7 @@ ${narrativePlan.beats
                       </option>
                     ))}
                   </select>
-                  {moods[0] === CUSTOM && (
+                  {(moods[0] === CUSTOM || customMood.trim().length > 0) && (
                     <input
                       value={customMood}
                       onChange={(e) => setCustomMood(e.target.value)}
