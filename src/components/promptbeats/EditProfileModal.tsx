@@ -12,6 +12,7 @@ import { useI18n } from "@/i18n";
 import { DonationSettingsEditor } from "@/components/promptbeats/DonationSettingsEditor";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { AVATAR_ACCEPT, validateAvatarFile } from "@/lib/avatar-upload";
+import { getSafeExternalUrl, type SupportedSocialPlatform } from "@/lib/safe-external-url";
 
 type EditableProfile = {
   id: string;
@@ -27,8 +28,20 @@ type EditableProfile = {
   profile_completed?: boolean;
 };
 
-const inputClass =
-  "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
+type UrlField = "website" | "instagram" | "tiktok" | "x" | "youtube";
+type UrlErrors = Partial<Record<UrlField, string>>;
+
+const inputClass = (invalid = false) =>
+  `h-11 w-full rounded-xl border bg-black/40 px-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground ${
+    invalid
+      ? "border-destructive/80 shadow-[0_0_0_3px_color-mix(in_oklab,var(--destructive)_18%,transparent)] focus:border-destructive"
+      : "border-white/10 focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
+  }`;
+
+function isValidProfileUrl(value: string, platform?: SupportedSocialPlatform) {
+  const normalized = value.trim();
+  return !normalized || Boolean(getSafeExternalUrl(normalized, platform));
+}
 
 export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const { t } = useI18n();
@@ -43,6 +56,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   const [tiktok, setTiktok] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [youtube, setYoutube] = useState("");
+  const [urlErrors, setUrlErrors] = useState<UrlErrors>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +70,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     setTiktok(profile.tiktok_url || "");
     setXUrl(profile.x_url || "");
     setYoutube(profile.youtube_url || "");
+    setUrlErrors({});
     setAvatarFile(null);
     setAvatarPreview(null);
     setError(null);
@@ -67,6 +82,21 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
     if (busy) return;
     setOpen(false);
     setPlayerMode("fixed");
+  };
+
+  const clearUrlErrorIfValid = (
+    field: UrlField,
+    value: string,
+    platform?: SupportedSocialPlatform,
+  ) => {
+    if (!urlErrors[field] || !isValidProfileUrl(value, platform)) return;
+    setUrlErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    setError(null);
   };
 
   useEffect(() => () => setPlayerMode("fixed"), [setPlayerMode]);
@@ -100,6 +130,25 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
   };
 
   const save = async () => {
+    const nextUrlErrors: UrlErrors = {};
+    if (!isValidProfileUrl(website)) nextUrlErrors.website = t("editProfile.invalidWebsiteUrl");
+    if (!isValidProfileUrl(instagram, "instagram"))
+      nextUrlErrors.instagram = t("editProfile.invalidInstagramUrl");
+    if (!isValidProfileUrl(tiktok, "tiktok"))
+      nextUrlErrors.tiktok = t("editProfile.invalidTiktokUrl");
+    if (!isValidProfileUrl(xUrl, "x")) nextUrlErrors.x = t("editProfile.invalidTwitterUrl");
+    if (!isValidProfileUrl(youtube, "youtube"))
+      nextUrlErrors.youtube = t("editProfile.invalidYoutubeUrl");
+
+    if (Object.keys(nextUrlErrors).length > 0) {
+      const message = t("editProfile.fixHighlightedFields");
+      setUrlErrors(nextUrlErrors);
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    setUrlErrors({});
     setBusy(true);
     setError(null);
     try {
@@ -126,7 +175,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
         profile_completed: Boolean(name.trim()) && Boolean(avatarUrl),
         artist_alias: name.trim(),
         display_name: name.trim(),
-        avatar_url: avatarUrl,
+        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         bio: bio.trim(),
         website_url: website.trim() || null,
         instagram_url: instagram.trim() || null,
@@ -159,16 +208,15 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
       setOpen(false);
       setPlayerMode("fixed");
     } catch (err: unknown) {
-      const message =
-        typeof err === "object" &&
-        err !== null &&
-        "message" in err &&
-        typeof err.message === "string"
+      console.error("Avatar/profile update failed:", err);
+      const knownMessage =
+        err instanceof Error &&
+        (err.message === t("editProfile.avatarUrlError") ||
+          err.message === t("editProfile.noSavedProfile"))
           ? err.message
           : t("editProfile.error");
-      console.error("Avatar/profile update failed:", err);
-      setError(message);
-      toast.error(message);
+      setError(knownMessage);
+      toast.error(knownMessage);
     } finally {
       setBusy(false);
     }
@@ -259,7 +307,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           value={name}
                           onChange={(e) => setName(e.target.value.slice(0, 60))}
                           placeholder={t("editProfile.displayName")}
-                          className={inputClass}
+                          className={inputClass()}
                         />
                       </label>
                       <label className="block space-y-2">
@@ -293,10 +341,29 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                         </span>
                         <input
                           value={website}
-                          onChange={(e) => setWebsite(e.target.value.slice(0, 300))}
+                          onChange={(e) => {
+                            const value = e.target.value.slice(0, 300);
+                            setWebsite(value);
+                            clearUrlErrorIfValid("website", value);
+                          }}
                           placeholder={t("editProfile.websiteOptional")}
-                          className={inputClass}
+                          inputMode="url"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          aria-invalid={Boolean(urlErrors.website)}
+                          aria-describedby={urlErrors.website ? "website-url-error" : undefined}
+                          className={inputClass(Boolean(urlErrors.website))}
                         />
+                        {urlErrors.website && (
+                          <span
+                            id="website-url-error"
+                            className="block text-[11px] text-destructive"
+                            role="alert"
+                          >
+                            {urlErrors.website}
+                          </span>
+                        )}
                       </label>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <label className="block space-y-2">
@@ -305,10 +372,31 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           </span>
                           <input
                             value={instagram}
-                            onChange={(e) => setInstagram(e.target.value.slice(0, 300))}
+                            onChange={(e) => {
+                              const value = e.target.value.slice(0, 300);
+                              setInstagram(value);
+                              clearUrlErrorIfValid("instagram", value, "instagram");
+                            }}
                             placeholder={t("editProfile.instagramOptional")}
-                            className={inputClass}
+                            inputMode="url"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            aria-invalid={Boolean(urlErrors.instagram)}
+                            aria-describedby={
+                              urlErrors.instagram ? "instagram-url-error" : undefined
+                            }
+                            className={inputClass(Boolean(urlErrors.instagram))}
                           />
+                          {urlErrors.instagram && (
+                            <span
+                              id="instagram-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
+                              {urlErrors.instagram}
+                            </span>
+                          )}
                         </label>
                         <label className="block space-y-2">
                           <span className="text-xs font-medium text-foreground">
@@ -316,10 +404,29 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           </span>
                           <input
                             value={tiktok}
-                            onChange={(e) => setTiktok(e.target.value.slice(0, 300))}
+                            onChange={(e) => {
+                              const value = e.target.value.slice(0, 300);
+                              setTiktok(value);
+                              clearUrlErrorIfValid("tiktok", value, "tiktok");
+                            }}
                             placeholder={t("editProfile.tiktokOptional")}
-                            className={inputClass}
+                            inputMode="url"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            aria-invalid={Boolean(urlErrors.tiktok)}
+                            aria-describedby={urlErrors.tiktok ? "tiktok-url-error" : undefined}
+                            className={inputClass(Boolean(urlErrors.tiktok))}
                           />
+                          {urlErrors.tiktok && (
+                            <span
+                              id="tiktok-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
+                              {urlErrors.tiktok}
+                            </span>
+                          )}
                         </label>
                         <label className="block space-y-2">
                           <span className="text-xs font-medium text-foreground">
@@ -327,10 +434,29 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           </span>
                           <input
                             value={xUrl}
-                            onChange={(e) => setXUrl(e.target.value.slice(0, 300))}
+                            onChange={(e) => {
+                              const value = e.target.value.slice(0, 300);
+                              setXUrl(value);
+                              clearUrlErrorIfValid("x", value, "x");
+                            }}
                             placeholder={t("editProfile.twitterOptional")}
-                            className={inputClass}
+                            inputMode="url"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            aria-invalid={Boolean(urlErrors.x)}
+                            aria-describedby={urlErrors.x ? "x-url-error" : undefined}
+                            className={inputClass(Boolean(urlErrors.x))}
                           />
+                          {urlErrors.x && (
+                            <span
+                              id="x-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
+                              {urlErrors.x}
+                            </span>
+                          )}
                         </label>
                         <label className="block space-y-2">
                           <span className="text-xs font-medium text-foreground">
@@ -338,10 +464,29 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           </span>
                           <input
                             value={youtube}
-                            onChange={(e) => setYoutube(e.target.value.slice(0, 300))}
+                            onChange={(e) => {
+                              const value = e.target.value.slice(0, 300);
+                              setYoutube(value);
+                              clearUrlErrorIfValid("youtube", value, "youtube");
+                            }}
                             placeholder={t("editProfile.youtubeOptional")}
-                            className={inputClass}
+                            inputMode="url"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            aria-invalid={Boolean(urlErrors.youtube)}
+                            aria-describedby={urlErrors.youtube ? "youtube-url-error" : undefined}
+                            className={inputClass(Boolean(urlErrors.youtube))}
                           />
+                          {urlErrors.youtube && (
+                            <span
+                              id="youtube-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
+                              {urlErrors.youtube}
+                            </span>
+                          )}
                         </label>
                       </div>
                     </section>

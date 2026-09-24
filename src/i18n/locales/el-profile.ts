@@ -30,6 +30,16 @@ export const elProfile: Record<ProfileTranslationKey, string> = {
   "editProfile.tiktokOptional": "TikTok URL (προαιρετικό)",
   "editProfile.twitterOptional": "X (Twitter) URL (προαιρετικό)",
   "editProfile.youtubeOptional": "YouTube URL (προαιρετικό)",
+  "editProfile.invalidWebsiteUrl": "Εισάγετε ένα έγκυρο URL, π.χ. https://example.com",
+  "editProfile.invalidInstagramUrl":
+    "Εισάγετε ένα έγκυρο Instagram URL, π.χ. https://www.instagram.com/username",
+  "editProfile.invalidTiktokUrl":
+    "Εισάγετε ένα έγκυρο TikTok URL, π.χ. https://www.tiktok.com/@username",
+  "editProfile.invalidTwitterUrl": "Εισάγετε ένα έγκυρο X URL, π.χ. https://x.com/username",
+  "editProfile.invalidYoutubeUrl":
+    "Εισάγετε ένα έγκυρο YouTube URL, π.χ. https://www.youtube.com/@username",
+  "editProfile.fixHighlightedFields":
+    "Διορθώστε τα επισημασμένα πεδία URL πριν από την αποθήκευση.",
 
   "donations.loading": "Φόρτωση ρυθμίσεων δωρεών…",
   "donations.title": "Δωρεές δημιουργού",
