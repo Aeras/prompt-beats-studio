@@ -22,9 +22,7 @@ describe("Step 7 AI usage and admission hardening", () => {
       "supabase/migrations/20260924190000_ai_usage_admission_step7_hardening.sql",
     );
 
-    const duplicateGuard = migration.indexOf(
-      "created_at > now() - interval '15 seconds'",
-    );
+    const duplicateGuard = migration.indexOf("created_at > now() - interval '15 seconds'");
     const providerBudget = migration.indexOf("v_used >= _limit_per_hour");
     expect(duplicateGuard).toBeGreaterThan(-1);
     expect(providerBudget).toBeGreaterThan(duplicateGuard);
@@ -51,9 +49,7 @@ describe("Step 7 AI usage and admission hardening", () => {
     expect(usage).toContain('from("ai_usage_outbox" as never)');
     expect(usage).toContain('"flush_ai_usage_outbox" as never');
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.ai_usage_outbox");
-    expect(migration).toContain(
-      "CREATE OR REPLACE FUNCTION public.flush_ai_usage_outbox",
-    );
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.flush_ai_usage_outbox");
     expect(migration).toContain("FOR UPDATE SKIP LOCKED");
     expect(migration).toContain("INSERT INTO public.ai_usage_logs");
     expect(migration).toContain("DELETE FROM public.ai_usage_outbox");
