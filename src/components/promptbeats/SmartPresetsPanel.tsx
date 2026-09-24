@@ -67,6 +67,7 @@ export function SmartPresetsPanel({
     onApply(preset);
     if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current);
     setAppliedPresetId(preset.id);
+    setOpen(false);
     feedbackTimerRef.current = window.setTimeout(() => {
       setAppliedPresetId("");
       feedbackTimerRef.current = null;
