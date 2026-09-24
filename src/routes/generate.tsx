@@ -981,6 +981,11 @@ function GeneratePage() {
   const [now, setNow] = useState(Date.now());
   const [jobId, setJobId] = useState<string | null>(null);
   const pendingKey = useRef<string | null>(null);
+  const [requiredValidationAttempted, setRequiredValidationAttempted] = useState(false);
+  const themeRequiredRef = useRef<HTMLDivElement>(null);
+  const musicStyleRequiredRef = useRef<HTMLDivElement>(null);
+  const moodRequiredRef = useRef<HTMLDivElement>(null);
+  const languageRequiredRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1665,6 +1670,57 @@ function GeneratePage() {
     !!effectiveLanguage &&
     !validationError &&
     revisionReady;
+  type RequiredFieldKey = "theme" | "musicStyle" | "mood" | "language";
+  const missingRequiredFields: Array<{ key: RequiredFieldKey; message: string }> = [];
+  if (theme.trim().length < 3) {
+    missingRequiredFields.push({
+      key: "theme",
+      message:
+        appLanguage === "el"
+          ? "Θέμα — γράψε τουλάχιστον 3 χαρακτήρες."
+          : "Theme — enter at least 3 characters.",
+    });
+  }
+  if (!baseGenre) {
+    missingRequiredFields.push({
+      key: "musicStyle",
+      message:
+        appLanguage === "el"
+          ? "Music Style — επίλεξε τουλάχιστον ένα style ή γράψε custom style."
+          : "Music Style — choose at least one style or enter a custom style.",
+    });
+  }
+  if (!effectiveMood) {
+    missingRequiredFields.push({
+      key: "mood",
+      message:
+        appLanguage === "el"
+          ? "Mood / Vibe — επίλεξε τουλάχιστον ένα mood ή γράψε custom mood."
+          : "Mood / Vibe — choose at least one mood or enter a custom mood.",
+    });
+  }
+  if (!effectiveLanguage) {
+    missingRequiredFields.push({
+      key: "language",
+      message:
+        appLanguage === "el"
+          ? "Γλώσσα — επίλεξε γλώσσα ή συμπλήρωσε custom γλώσσα."
+          : "Language — choose a language or enter a custom language.",
+    });
+  }
+  const missingRequiredKeys = new Set(missingRequiredFields.map((field) => field.key));
+  const requiredFieldClass = (key: RequiredFieldKey) =>
+    requiredValidationAttempted && missingRequiredKeys.has(key)
+      ? "-m-2 rounded-2xl p-2 ring-1 ring-accent/70 shadow-[0_0_24px_color-mix(in_oklab,var(--accent)_32%,transparent)] transition-shadow"
+      : "";
+  const generationActionDisabled =
+    !generatorFeature.allowed ||
+    busy ||
+    checking ||
+    blocked ||
+    modelAccessLoading ||
+    generationModelAccessUnavailable ||
+    (revisionMode && !revisionReady);
 
   const pickPrimary = (setter: (fn: (prev: string[]) => string[]) => void) => (value: string) =>
     setter((prev) => [value, ...prev.slice(1).filter((x) => x !== value)]);
@@ -1773,6 +1829,7 @@ function GeneratePage() {
   };
 
   const generate = async () => {
+    if (!ready) return;
     if (!generatorFeature.allowed) {
       setStatus(t("generator.featureUnavailable"));
       return;
@@ -1878,6 +1935,31 @@ ${narrativePlan.beats
       setStatus(localizeAiError(err, "generator.failed", t));
       setBusy(false);
     }
+  };
+
+  const handleGenerateClick = () => {
+    if (!ready) {
+      setRequiredValidationAttempted(true);
+      const firstMissingKey = missingRequiredFields[0]?.key;
+      const targetRef =
+        firstMissingKey === "theme"
+          ? themeRequiredRef
+          : firstMissingKey === "musicStyle"
+            ? musicStyleRequiredRef
+            : firstMissingKey === "mood"
+              ? moodRequiredRef
+              : firstMissingKey === "language"
+                ? languageRequiredRef
+                : null;
+      if (targetRef) {
+        requestAnimationFrame(() =>
+          targetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        );
+      }
+      return;
+    }
+    setRequiredValidationAttempted(false);
+    void generate();
   };
 
   const runCheck = async () => {
@@ -2154,11 +2236,13 @@ ${narrativePlan.beats
     setApplyErrors({});
     setConfirm(null);
     setConfirmClear(false);
+    setRequiredValidationAttempted(false);
     setOpen({ title: false, tags: false, lyrics: false, note: false });
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
   const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {
+    setRequiredValidationAttempted(false);
     if (mode === "revision") {
       setRevisionMode(true);
       setAdvanced(true);
@@ -2631,7 +2715,7 @@ ${narrativePlan.beats
               />
             )}
 
-            <div>
+            <div ref={themeRequiredRef} className={requiredFieldClass("theme")}>
               {advanced ? (
                 <SectionHeader title={t("generator.theme")} onClear={() => setTheme("")} />
               ) : (
@@ -2651,7 +2735,10 @@ ${narrativePlan.beats
               </p>
             </div>
 
-            <div>
+            <div
+              ref={musicStyleRequiredRef}
+              className={requiredFieldClass("musicStyle")}
+            >
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
               {advanced ? (
                 <>
@@ -2716,7 +2803,7 @@ ${narrativePlan.beats
 
             {advanced ? (
               <>
-                <div>
+                <div ref={moodRequiredRef} className={requiredFieldClass("mood")}>
                   <SectionHeader
                     title={t("generator.mood")}
                     hint={t("generator.pickMany")}
@@ -2975,7 +3062,10 @@ ${narrativePlan.beats
                     className={fieldClass + " h-auto resize-y py-3"}
                   />
                 </div>
-                <div>
+                <div
+                  ref={languageRequiredRef}
+                  className={requiredFieldClass("language")}
+                >
                   <SectionHeader
                     title={t("generator.language")}
                     onClear={() => {
@@ -2997,7 +3087,10 @@ ${narrativePlan.beats
               </>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-3">
+                <div
+                  ref={moodRequiredRef}
+                  className={`space-y-3 ${requiredFieldClass("mood")}`}
+                >
                   <select
                     value={moods[0] ?? ""}
                     onChange={(e) => pickPrimary(setMoods)(e.target.value)}
@@ -3025,15 +3118,20 @@ ${narrativePlan.beats
                     />
                   )}
                 </div>
-                <LanguagePicker
-                  value={language}
-                  onChange={(value) => {
-                    setLanguage(value);
-                    setLanguageVariant("");
-                    if (value !== CUSTOM) setCustomLanguage("");
-                  }}
-                  ariaLabel={t("generator.language")}
-                />
+                <div
+                  ref={languageRequiredRef}
+                  className={requiredFieldClass("language")}
+                >
+                  <LanguagePicker
+                    value={language}
+                    onChange={(value) => {
+                      setLanguage(value);
+                      setLanguageVariant("");
+                      if (value !== CUSTOM) setCustomLanguage("");
+                    }}
+                    ariaLabel={t("generator.language")}
+                  />
+                </div>
               </div>
             )}
 
@@ -3059,6 +3157,25 @@ ${narrativePlan.beats
               revisionBase.data?.prompt &&
               !revisionRequest.trim() && (
                 <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>
+              )}
+            {requiredValidationAttempted &&
+              !revisionMode &&
+              missingRequiredFields.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-accent/35 bg-accent/[0.06] p-4 shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_12%,transparent)]"
+                >
+                  <p className="text-sm font-semibold text-foreground">
+                    {appLanguage === "el"
+                      ? "Συμπλήρωσε τα απαραίτητα πεδία πριν τη δημιουργία."
+                      : "Complete the required fields before generating."}
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {missingRequiredFields.map((field) => (
+                      <li key={field.key}>• {field.message}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
             <div className="space-y-2 pt-1">
@@ -3112,17 +3229,13 @@ ${narrativePlan.beats
               )}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button
-                  onClick={generate}
-                  disabled={
-                    !generatorFeature.allowed ||
-                    busy ||
-                    checking ||
-                    blocked ||
-                    !ready ||
-                    modelAccessLoading ||
-                    generationModelAccessUnavailable
-                  }
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto"
+                  onClick={handleGenerateClick}
+                  disabled={generationActionDisabled}
+                  className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
+                    ready
+                      ? "glow-neon"
+                      : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
+                  }`}
                 >
                   {busy ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
