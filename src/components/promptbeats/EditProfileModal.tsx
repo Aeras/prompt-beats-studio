@@ -131,8 +131,7 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
 
   const save = async () => {
     const nextUrlErrors: UrlErrors = {};
-    if (!isValidProfileUrl(website))
-      nextUrlErrors.website = t("editProfile.invalidWebsiteUrl");
+    if (!isValidProfileUrl(website)) nextUrlErrors.website = t("editProfile.invalidWebsiteUrl");
     if (!isValidProfileUrl(instagram, "instagram"))
       nextUrlErrors.instagram = t("editProfile.invalidInstagramUrl");
     if (!isValidProfileUrl(tiktok, "tiktok"))
@@ -357,7 +356,11 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                           className={inputClass(Boolean(urlErrors.website))}
                         />
                         {urlErrors.website && (
-                          <span id="website-url-error" className="block text-[11px] text-destructive" role="alert">
+                          <span
+                            id="website-url-error"
+                            className="block text-[11px] text-destructive"
+                            role="alert"
+                          >
                             {urlErrors.website}
                           </span>
                         )}
@@ -380,11 +383,17 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                             autoCorrect="off"
                             spellCheck={false}
                             aria-invalid={Boolean(urlErrors.instagram)}
-                            aria-describedby={urlErrors.instagram ? "instagram-url-error" : undefined}
+                            aria-describedby={
+                              urlErrors.instagram ? "instagram-url-error" : undefined
+                            }
                             className={inputClass(Boolean(urlErrors.instagram))}
                           />
                           {urlErrors.instagram && (
-                            <span id="instagram-url-error" className="block text-[11px] text-destructive" role="alert">
+                            <span
+                              id="instagram-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
                               {urlErrors.instagram}
                             </span>
                           )}
@@ -410,7 +419,11 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                             className={inputClass(Boolean(urlErrors.tiktok))}
                           />
                           {urlErrors.tiktok && (
-                            <span id="tiktok-url-error" className="block text-[11px] text-destructive" role="alert">
+                            <span
+                              id="tiktok-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
                               {urlErrors.tiktok}
                             </span>
                           )}
@@ -436,7 +449,11 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                             className={inputClass(Boolean(urlErrors.x))}
                           />
                           {urlErrors.x && (
-                            <span id="x-url-error" className="block text-[11px] text-destructive" role="alert">
+                            <span
+                              id="x-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
                               {urlErrors.x}
                             </span>
                           )}
@@ -462,7 +479,11 @@ export function EditProfileModal({ profile }: { profile: EditableProfile }) {
                             className={inputClass(Boolean(urlErrors.youtube))}
                           />
                           {urlErrors.youtube && (
-                            <span id="youtube-url-error" className="block text-[11px] text-destructive" role="alert">
+                            <span
+                              id="youtube-url-error"
+                              className="block text-[11px] text-destructive"
+                              role="alert"
+                            >
                               {urlErrors.youtube}
                             </span>
                           )}
