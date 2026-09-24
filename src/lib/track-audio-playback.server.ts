@@ -17,7 +17,9 @@ export async function hydrateTrackAudioUrls<T extends TrackAudioShape>(
   tracks: T[],
   expiresSeconds = 6 * 60 * 60,
 ): Promise<T[]> {
-  const uploadIds = [...new Set(tracks.filter((track) => track.source_type === "upload").map((track) => track.id))];
+  const uploadIds = [
+    ...new Set(tracks.filter((track) => track.source_type === "upload").map((track) => track.id)),
+  ];
   if (!uploadIds.length) return tracks;
 
   const { data, error } = await (supabaseAdmin.from("tracks") as any)
