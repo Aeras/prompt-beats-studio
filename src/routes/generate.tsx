@@ -2245,6 +2245,41 @@ ${narrativePlan.beats
     if (dismissedWhileRunning) setStatus(t("generator.clearedRunning"));
   };
 
+  const syncSharedFieldsForMode = (nextAdvanced: boolean) => {
+    if (nextAdvanced) {
+      const primaryGenre = genres[0];
+      if (primaryGenre && primaryGenre !== CUSTOM && ADVANCED_STYLES.includes(primaryGenre)) {
+        setShowStyleTags(true);
+      }
+
+      const primaryMood = moods[0];
+      if (primaryMood && primaryMood !== CUSTOM && ADVANCED_MOOD_VALUES.includes(primaryMood)) {
+        setShowMoodTags(true);
+      }
+      return;
+    }
+
+    if (customGenre.trim()) {
+      setGenres((prev) => [CUSTOM, ...prev.filter((value) => value !== CUSTOM)]);
+    } else {
+      setGenres((prev) => {
+        const basicMatch = prev.find((value) => value !== CUSTOM && GENRE_OPTIONS.includes(value));
+        if (!basicMatch) return prev;
+        return [basicMatch, ...prev.filter((value) => value !== basicMatch && value !== CUSTOM)];
+      });
+    }
+
+    if (customMood.trim()) {
+      setMoods((prev) => [CUSTOM, ...prev.filter((value) => value !== CUSTOM)]);
+    } else {
+      setMoods((prev) => {
+        const basicMatch = prev.find((value) => value !== CUSTOM && MOOD_OPTIONS.includes(value));
+        if (!basicMatch) return prev;
+        return [basicMatch, ...prev.filter((value) => value !== basicMatch && value !== CUSTOM)];
+      });
+    }
+  };
+
   const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {
     setRequiredValidationAttempted(false);
     if (mode === "revision") {
@@ -2265,8 +2300,10 @@ ${narrativePlan.beats
       return;
     }
 
+    const nextAdvanced = mode === "advanced";
+    syncSharedFieldsForMode(nextAdvanced);
     setRevisionMode(false);
-    setAdvanced(mode === "advanced");
+    setAdvanced(nextAdvanced);
     setRevisionProjectId("");
     setRevisionBasePromptId("");
     setRevisionRequest("");
@@ -2766,7 +2803,11 @@ ${narrativePlan.beats
               ) : (
                 <select
                   value={genres[0] ?? ""}
-                  onChange={(e) => pickPrimary(setGenres)(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    pickPrimary(setGenres)(value);
+                    if (value !== CUSTOM) setCustomGenre("");
+                  }}
                   aria-label={t("generator.musicStyle")}
                   className={
                     fieldClass + (genres[0] !== CUSTOM ? requiredControlClass("musicStyle") : "")
@@ -3094,7 +3135,11 @@ ${narrativePlan.beats
                 <div ref={moodRequiredRef} className="space-y-3">
                   <select
                     value={moods[0] ?? ""}
-                    onChange={(e) => pickPrimary(setMoods)(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      pickPrimary(setMoods)(value);
+                      if (value !== CUSTOM) setCustomMood("");
+                    }}
                     aria-label={t("generator.mood")}
                     className={
                       fieldClass + (moods[0] !== CUSTOM ? requiredControlClass("mood") : "")
