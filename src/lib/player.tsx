@@ -11,6 +11,7 @@ import {
 
 import type { Track } from "@/lib/tracks";
 import { incrementTrackPlay } from "@/lib/tracks.functions";
+import { getTrackPlaybackUrl } from "@/lib/track-playback.functions";
 import { activateMedia, subscribeToMediaActivation } from "@/lib/media-coordinator";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -70,6 +71,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef<string[]>([]);
   const playedRef = useRef<Set<string>>(new Set());
   const playbackCycleRef = useRef<PlaybackCycle | null>(null);
+  const playRequestRef = useRef(0);
   const nativeInstanceId = "promptbeats-native-player";
 
   const beginPlaybackCycle = useCallback((trackId: string, countPlay = true) => {
@@ -112,7 +114,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Restore lightweight UI preferences (no backend storage needed).
   useEffect(() => {
     try {
       setShuffle(localStorage.getItem("pb:shuffle") === "1");
@@ -149,7 +150,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // One audio element for the whole app so playback survives navigation.
   useEffect(() => {
     const el = new Audio();
     el.preload = "metadata";
@@ -210,18 +210,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(
     (track: Track, countPlay = true) => {
-      const el = audioRef.current;
-      if (!el || !track.audioUrl) {
-        setPlaybackError("Playback failed.");
-        return;
-      }
+      const requestId = ++playRequestRef.current;
       setPlaybackError(null);
-      beginPlaybackCycle(track.id, countPlay);
-      activateMedia({ id: nativeInstanceId, kind: "native" });
-      setCurrent(track);
-      setPosition(0);
-      el.src = track.audioUrl;
-      void el.play().catch(() => {
+
+      void (async () => {
+        let playableTrack = track;
+        if (track.sourceType === "upload") {
+          const { audioUrl } = await getTrackPlaybackUrl({ data: { trackId: track.id } });
+          playableTrack = { ...track, audioUrl };
+        }
+        if (requestId !== playRequestRef.current) return;
+
+        const el = audioRef.current;
+        if (!el || !playableTrack.audioUrl) {
+          setPlaybackError("Playback failed.");
+          return;
+        }
+        beginPlaybackCycle(playableTrack.id, countPlay);
+        activateMedia({ id: nativeInstanceId, kind: "native" });
+        setCurrent(playableTrack);
+        setPosition(0);
+        el.src = playableTrack.audioUrl;
+        void el.play().catch(() => {
+          setPlaying(false);
+          setPlaybackError("Playback failed.");
+        });
+      })().catch(() => {
+        if (requestId !== playRequestRef.current) return;
         setPlaying(false);
         setPlaybackError("Playback failed.");
       });
@@ -327,7 +342,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [current, queue, shuffle, repeat, pickShuffled, goTo, start],
   );
 
-  // Auto-advance when a track ends, honouring repeat + shuffle.
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
@@ -362,7 +376,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const isLast = i === queue.length - 1 || i === -1;
       if (isLast) {
         if (repeat === "all") goTo(queue[0]);
-        return; // repeat off: stop at the end
+        return;
       }
       goTo(queue[i + 1]);
     };
