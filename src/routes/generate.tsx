@@ -2735,10 +2735,7 @@ ${narrativePlan.beats
               </p>
             </div>
 
-            <div
-              ref={musicStyleRequiredRef}
-              className={requiredFieldClass("musicStyle")}
-            >
+            <div ref={musicStyleRequiredRef} className={requiredFieldClass("musicStyle")}>
               {!advanced && <FieldLabel>{t("generator.musicStyle")}</FieldLabel>}
               {advanced ? (
                 <>
@@ -3062,10 +3059,7 @@ ${narrativePlan.beats
                     className={fieldClass + " h-auto resize-y py-3"}
                   />
                 </div>
-                <div
-                  ref={languageRequiredRef}
-                  className={requiredFieldClass("language")}
-                >
+                <div ref={languageRequiredRef} className={requiredFieldClass("language")}>
                   <SectionHeader
                     title={t("generator.language")}
                     onClear={() => {
@@ -3087,10 +3081,7 @@ ${narrativePlan.beats
               </>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div
-                  ref={moodRequiredRef}
-                  className={`space-y-3 ${requiredFieldClass("mood")}`}
-                >
+                <div ref={moodRequiredRef} className={`space-y-3 ${requiredFieldClass("mood")}`}>
                   <select
                     value={moods[0] ?? ""}
                     onChange={(e) => pickPrimary(setMoods)(e.target.value)}
@@ -3118,10 +3109,7 @@ ${narrativePlan.beats
                     />
                   )}
                 </div>
-                <div
-                  ref={languageRequiredRef}
-                  className={requiredFieldClass("language")}
-                >
+                <div ref={languageRequiredRef} className={requiredFieldClass("language")}>
                   <LanguagePicker
                     value={language}
                     onChange={(value) => {
@@ -3158,25 +3146,23 @@ ${narrativePlan.beats
               !revisionRequest.trim() && (
                 <p className="text-xs text-red-400">{t("generator.revisionRequestRequired")}</p>
               )}
-            {requiredValidationAttempted &&
-              !revisionMode &&
-              missingRequiredFields.length > 0 && (
-                <div
-                  role="alert"
-                  className="rounded-2xl border border-accent/35 bg-accent/[0.06] p-4 shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_12%,transparent)]"
-                >
-                  <p className="text-sm font-semibold text-foreground">
-                    {appLanguage === "el"
-                      ? "Συμπλήρωσε τα απαραίτητα πεδία πριν τη δημιουργία."
-                      : "Complete the required fields before generating."}
-                  </p>
-                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {missingRequiredFields.map((field) => (
-                      <li key={field.key}>• {field.message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {requiredValidationAttempted && !revisionMode && missingRequiredFields.length > 0 && (
+              <div
+                role="alert"
+                className="rounded-2xl border border-accent/35 bg-accent/[0.06] p-4 shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_12%,transparent)]"
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {appLanguage === "el"
+                    ? "Συμπλήρωσε τα απαραίτητα πεδία πριν τη δημιουργία."
+                    : "Complete the required fields before generating."}
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {missingRequiredFields.map((field) => (
+                    <li key={field.key}>• {field.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="space-y-2 pt-1">
               {showGenerationModelSelector ? (
