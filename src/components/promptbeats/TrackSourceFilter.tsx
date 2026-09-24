@@ -8,11 +8,18 @@ export type TrackSourcePreference = "all" | "uploads" | "external";
 
 type TrackSourceLike = Track & {
   source_type?: string | null | undefined;
+  contains_explicit_lyrics?: boolean | null | undefined;
 };
 
 const ACCOUNT_KEY = "track_source_preference";
 const LOCAL_KEY = "pb:track-source-preference";
 const EVENT_KEY = "promptbeats:track-source-preference";
+
+const EXPLICIT_ACCOUNT_KEY = "hide_explicit_tracks";
+const EXPLICIT_LOCAL_KEY = "pb:hide-explicit-tracks";
+const EXPLICIT_EVENT_KEY = "promptbeats:hide-explicit-tracks";
+
+let activeExplicitPreference = false;
 
 function isPreference(value: unknown): value is TrackSourcePreference {
   return value === "all" || value === "uploads" || value === "external";
@@ -38,11 +45,86 @@ function writeLocalPreference(value: TrackSourcePreference) {
   window.dispatchEvent(new CustomEvent<TrackSourcePreference>(EVENT_KEY, { detail: value }));
 }
 
+function readLocalExplicitPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(EXPLICIT_LOCAL_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeLocalExplicitPreference(value: boolean) {
+  activeExplicitPreference = value;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(EXPLICIT_LOCAL_KEY, value ? "true" : "false");
+  } catch {
+    // Preference persistence is best-effort; the in-memory state still updates.
+  }
+  window.dispatchEvent(new CustomEvent<boolean>(EXPLICIT_EVENT_KEY, { detail: value }));
+}
+
+export function useExplicitContentPreference() {
+  const { user } = useAuth();
+  const accountValue = user?.user_metadata?.[EXPLICIT_ACCOUNT_KEY];
+  const resolved = typeof accountValue === "boolean" ? accountValue : readLocalExplicitPreference();
+  activeExplicitPreference = resolved;
+  const [hideExplicit, setHideExplicitState] = useState<boolean>(resolved);
+
+  useEffect(() => {
+    const next = typeof accountValue === "boolean" ? accountValue : readLocalExplicitPreference();
+    activeExplicitPreference = next;
+    setHideExplicitState(next);
+    if (typeof accountValue === "boolean") {
+      try {
+        window.localStorage.setItem(EXPLICIT_LOCAL_KEY, accountValue ? "true" : "false");
+      } catch {
+        // Local cache is best-effort.
+      }
+    }
+  }, [accountValue, user?.id]);
+
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const next = (event as CustomEvent<boolean>).detail;
+      if (typeof next !== "boolean") return;
+      activeExplicitPreference = next;
+      setHideExplicitState(next);
+    };
+    window.addEventListener(EXPLICIT_EVENT_KEY, sync);
+    return () => window.removeEventListener(EXPLICIT_EVENT_KEY, sync);
+  }, []);
+
+  const setHideExplicit = useCallback(
+    async (next: boolean) => {
+      activeExplicitPreference = next;
+      setHideExplicitState(next);
+      writeLocalExplicitPreference(next);
+      if (next && typeof document !== "undefined") {
+        document.querySelectorAll("audio").forEach((audio) => audio.pause());
+      }
+      if (!user) return;
+      const { error } = await supabase.auth.updateUser({ data: { [EXPLICIT_ACCOUNT_KEY]: next } });
+      if (error) throw new Error(error.message);
+    },
+    [user],
+  );
+
+  return { hideExplicit, setHideExplicit };
+}
+
 export function useTrackSourcePreference() {
   const { user } = useAuth();
   const accountValue = user?.user_metadata?.[ACCOUNT_KEY];
+  const explicitAccountValue = user?.user_metadata?.[EXPLICIT_ACCOUNT_KEY];
+  activeExplicitPreference =
+    typeof explicitAccountValue === "boolean"
+      ? explicitAccountValue
+      : readLocalExplicitPreference();
   const initial = isPreference(accountValue) ? accountValue : readLocalPreference();
   const [preference, setPreferenceState] = useState<TrackSourcePreference>(initial);
+  const [, setExplicitRevision] = useState(0);
 
   useEffect(() => {
     const next = isPreference(accountValue) ? accountValue : readLocalPreference();
@@ -56,6 +138,17 @@ export function useTrackSourcePreference() {
     };
     window.addEventListener(EVENT_KEY, sync);
     return () => window.removeEventListener(EVENT_KEY, sync);
+  }, []);
+
+  useEffect(() => {
+    const syncExplicit = (event: Event) => {
+      const next = (event as CustomEvent<boolean>).detail;
+      if (typeof next !== "boolean") return;
+      activeExplicitPreference = next;
+      setExplicitRevision((value) => value + 1);
+    };
+    window.addEventListener(EXPLICIT_EVENT_KEY, syncExplicit);
+    return () => window.removeEventListener(EXPLICIT_EVENT_KEY, syncExplicit);
   }, []);
 
   const setPreference = useCallback(
@@ -72,9 +165,22 @@ export function useTrackSourcePreference() {
   return { preference, setPreference };
 }
 
+export function shouldHideExplicitTracks(): boolean {
+  if (typeof window !== "undefined") return readLocalExplicitPreference();
+  return activeExplicitPreference;
+}
+
+export function filterExplicitTracks<T extends TrackSourceLike>(tracks: T[]): T[] {
+  if (!activeExplicitPreference && !shouldHideExplicitTracks()) return tracks;
+  return tracks.filter(
+    (track) => track.containsExplicitLyrics !== true && track.contains_explicit_lyrics !== true,
+  );
+}
+
 export function filterByTrackSource(tracks: Track[], preference: TrackSourcePreference): Track[] {
-  if (preference === "all") return tracks;
-  return tracks.filter((track) => {
+  const visibleTracks = filterExplicitTracks(tracks as TrackSourceLike[]) as Track[];
+  if (preference === "all") return visibleTracks;
+  return visibleTracks.filter((track) => {
     const sourceTrack = track as TrackSourceLike;
     const source = sourceTrack.sourceType ?? sourceTrack.source_type ?? "upload";
     const isUpload = source === "upload" || source == null;
