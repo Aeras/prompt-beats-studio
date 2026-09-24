@@ -7,6 +7,29 @@ import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
 const trackIdInput = z.object({ trackId: z.string().uuid() });
 
+export async function getAuthorizedTrackDownload(supabase: any, userId: string, trackId: string) {
+  const { data: track, error } = await supabase
+    .from("tracks")
+    .select("id, user_id, title, source_type, audio_key, is_published, allow_download")
+    .eq("id", trackId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!track || track.source_type !== "upload" || !track.audio_key)
+    throw new Error("Track audio is unavailable");
+
+  const isOwner = track.user_id === userId;
+  if (!isOwner && (!track.is_published || track.allow_download !== true))
+    throw new Error("Download is not allowed for this track");
+  if (!isSafeOwnedAudioKey(track.audio_key, track.user_id))
+    throw new Error("Invalid track audio reference");
+
+  const { getR2Client, getR2Config } = await import("@/lib/r2.server");
+  const { endpoint, bucket } = getR2Config();
+  const response = await getR2Client().fetch(`${endpoint}/${bucket}/${track.audio_key}`);
+  if (!response.ok) throw new Error(`Track download failed (${response.status})`);
+
+  return { response, title: track.title as string, audioKey: track.audio_key as string };
+}
 export const getTrackDownloadPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackIdInput.parse(input))

@@ -16,7 +16,8 @@ import {
   listPlaylists,
   toggleFavorite,
 } from "@/lib/playlists.functions";
-import { downloadTrackAudio } from "@/lib/track-download.functions";
+import { getTrackDownloadAvailability } from "@/lib/track-download.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 function fileName(title: string, mimeType: string) {
   const ext = mimeType.includes("wav") ? "wav" : "mp3";
@@ -27,13 +28,6 @@ function fileName(title: string, mimeType: string) {
       .replace(/\s+/g, " ")
       .slice(0, 100) || "promptbeats-track";
   return `${safe}.${ext}`;
-}
-
-function base64ToBlob(value: string, mimeType: string) {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return new Blob([bytes], { type: mimeType });
 }
 
 export function TrackLibraryActions({
@@ -94,12 +88,15 @@ export function TrackLibraryActions({
   const canPlaylist = Boolean(
     playlistsAccess.allowed && user && track.sourceType === "upload" && track.audioUrl,
   );
-  const canDownload = Boolean(
-    user &&
-    track.sourceType === "upload" &&
-    track.audioUrl &&
-    (track.userId === user.id || track.allowDownload === true),
-  );
+  const hasDownloadableSource = Boolean(track.sourceType === "upload" && track.audioUrl);
+  const downloadAvailability = useQuery({
+    queryKey: ["tracks", "download-availability", track.id, user?.id],
+    queryFn: () => getTrackDownloadAvailability({ data: { trackIds: [track.id] } }),
+    enabled: Boolean(user && hasDownloadableSource),
+    staleTime: 20_000,
+  });
+  const canDownload =
+    hasDownloadableSource && downloadAvailability.data?.allowed[track.id] === true;
 
   const favoriteIds = useQuery({
     queryKey: ["library", "favorite-ids", user?.id],
@@ -189,14 +186,23 @@ export function TrackLibraryActions({
   };
 
   const download = async () => {
+    if (!canDownload) return;
     setBusy("download");
     try {
-      const result = await downloadTrackAudio({ data: { trackId: track.id } });
-      const blob = base64ToBlob(result.audioBase64, result.mimeType);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Authentication is required");
+      const response = await fetch(`/api/track-download?trackId=${encodeURIComponent(track.id)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) throw new Error("Track download failed");
+      const blob = await response.blob();
+      const mimeType = response.headers.get("content-type") ?? "audio/mpeg";
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = fileName(result.title, result.mimeType);
+      anchor.download = fileName(track.title, mimeType);
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -300,11 +306,12 @@ export function TrackLibraryActions({
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
+          <DropdownMenu.Portal forceMount>
             <DropdownMenu.Content
+              forceMount
               sideOffset={6}
               align="end"
-              className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl"
+              className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl data-[state=closed]:hidden"
             >
               {favoritesAccess.allowed && (
                 <DropdownMenu.Item
@@ -323,10 +330,11 @@ export function TrackLibraryActions({
                   <ListPlus className="h-4 w-4" /> {copy.playlist}
                 </DropdownMenu.Item>
               )}
-              {canDownload && (
+              {hasDownloadableSource && (
                 <DropdownMenu.Item
+                  disabled={!canDownload || busy === "download"}
                   onSelect={() => void download()}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
                 >
                   <Download className="h-4 w-4" /> {copy.download}
                 </DropdownMenu.Item>
@@ -370,15 +378,15 @@ export function TrackLibraryActions({
             <ListPlus className="h-3.5 w-3.5" />
           </button>
         )}
-        {canDownload && (
+        {hasDownloadableSource && (
           <button
             onClick={() => void download()}
-            disabled={busy === "download"}
+            disabled={!canDownload || busy === "download"}
             aria-label={copy.download}
             title={copy.download}
             className={iconClass}
           >
-            {busy === "download" ? (
+            {busy === "download" && canDownload ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Download className="h-3.5 w-3.5" />
