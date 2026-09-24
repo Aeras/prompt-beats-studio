@@ -2265,7 +2265,7 @@ ${narrativePlan.beats
       setCustomGenre(mergedGenreText);
       setGenres([CUSTOM]);
     } else if (selectedGenres.length === 1) {
-      const [onlyGenre] = selectedGenres;
+      const onlyGenre = selectedGenres[0]!;
       if (GENRE_OPTIONS.includes(onlyGenre)) {
         setGenres([onlyGenre]);
       } else {
@@ -2280,7 +2280,7 @@ ${narrativePlan.beats
       setCustomMood(mergedMoodText);
       setMoods([CUSTOM]);
     } else if (selectedMoods.length === 1) {
-      const [onlyMood] = selectedMoods;
+      const onlyMood = selectedMoods[0]!;
       if (MOOD_OPTIONS.includes(onlyMood)) {
         setMoods([onlyMood]);
       } else {
