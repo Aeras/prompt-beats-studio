@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -6,6 +5,17 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
 const trackIdInput = z.object({ trackId: z.string().uuid() });
+
+function downloadFileName(title: string, audioKey: string) {
+  const extension = audioKey.toLowerCase().endsWith(".wav") ? "wav" : "mp3";
+  const safe =
+    title
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, " ")
+      .slice(0, 100) || "promptbeats-track";
+  return `${safe}.${extension}`;
+}
 
 export const getTrackDownloadPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -88,18 +98,20 @@ export const downloadTrackAudio = createServerFn({ method: "POST" })
     if (!isSafeOwnedAudioKey(track.audio_key, track.user_id))
       throw new Error("Invalid track audio reference");
 
-    const { getR2Client, getR2Config } = await import("@/lib/r2.server");
-    const { endpoint, bucket } = getR2Config();
-    const response = await getR2Client().fetch(`${endpoint}/${bucket}/${track.audio_key}`);
-    if (!response.ok) throw new Error(`Track download failed (${response.status})`);
+    const { buildR2ObjectUrl, getR2Client } = await import("@/lib/r2.server");
+    const fileName = downloadFileName(track.title as string, track.audio_key as string);
+    const unsignedUrl = new URL(buildR2ObjectUrl(track.audio_key));
+    unsignedUrl.searchParams.set("X-Amz-Expires", "300");
+    unsignedUrl.searchParams.set(
+      "response-content-disposition",
+      `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
+    const signedRequest = await getR2Client().sign(new Request(unsignedUrl, { method: "GET" }), {
+      aws: { signQuery: true },
+    });
 
-    const arrayBuffer = await response.arrayBuffer();
-    const mimeType =
-      response.headers.get("content-type") ||
-      (track.audio_key.endsWith(".wav") ? "audio/wav" : "audio/mpeg");
     return {
-      audioBase64: Buffer.from(arrayBuffer).toString("base64"),
-      mimeType,
-      title: track.title as string,
+      downloadUrl: signedRequest.url,
+      fileName,
     };
   });
