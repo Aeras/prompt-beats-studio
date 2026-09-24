@@ -96,6 +96,14 @@ export function TrackOwnerActions({
   if (!isOwner && !isAdmin) return null;
 
   const refresh = () => queryClient.invalidateQueries();
+  const closeInlineMenu = () => {
+    if (!inlineMenuItems || typeof document === "undefined") return;
+    requestAnimationFrame(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }),
+      );
+    });
+  };
   const openEdit = async () => {
     setError(null);
     if (isOwner) {
@@ -205,6 +213,7 @@ export function TrackOwnerActions({
       });
       await refresh();
       setEditing(false);
+      closeInlineMenu();
       setAudioFile(null);
       setCoverFile(null);
     } catch (err) {
@@ -225,6 +234,7 @@ export function TrackOwnerActions({
       await deleteTrack({ data: { id: track.id } });
       await refresh();
       setConfirming(false);
+      closeInlineMenu();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("owner.deleteFailed"));
     } finally {
@@ -241,7 +251,7 @@ export function TrackOwnerActions({
     createPortal(
       <div
         data-pb-bottom-safe="true"
-        className="fixed inset-x-0 top-0 z-[100] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6"
+        className="fixed inset-x-0 top-0 z-[130] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:inset-0 sm:items-center sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-track-title"
@@ -253,7 +263,10 @@ export function TrackOwnerActions({
             </h2>
             <button
               aria-label={t("common.close")}
-              onClick={() => setEditing(false)}
+              onClick={() => {
+                setEditing(false);
+                closeInlineMenu();
+              }}
               className="text-muted-foreground"
             >
               <X className="h-5 w-5" />
@@ -467,7 +480,10 @@ export function TrackOwnerActions({
                 {busy ? t("owner.saving") : t("owner.save")}
               </button>
               <button
-                onClick={() => setEditing(false)}
+                onClick={() => {
+                  setEditing(false);
+                  closeInlineMenu();
+                }}
                 className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground"
               >
                 {t("owner.cancel")}
@@ -484,7 +500,7 @@ export function TrackOwnerActions({
     typeof document !== "undefined" &&
     createPortal(
       <div
-        className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-[130] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-track-title"
@@ -504,7 +520,10 @@ export function TrackOwnerActions({
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("owner.confirmDelete")}
             </button>
             <button
-              onClick={() => setConfirming(false)}
+              onClick={() => {
+                setConfirming(false);
+                closeInlineMenu();
+              }}
               className="rounded-xl border border-white/10 px-4 py-3 text-sm text-muted-foreground"
             >
               {t("owner.cancel")}
@@ -569,7 +588,10 @@ export function TrackOwnerActions({
       <>
         {isOwner && (
           <DropdownMenu.Item
-            onSelect={() => void openEdit()}
+            onSelect={(event) => {
+              event.preventDefault();
+              void openEdit();
+            }}
             className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-foreground outline-none hover:bg-white/10 focus:bg-white/10"
           >
             <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -577,7 +599,10 @@ export function TrackOwnerActions({
           </DropdownMenu.Item>
         )}
         <DropdownMenu.Item
-          onSelect={() => setConfirming(true)}
+          onSelect={(event) => {
+            event.preventDefault();
+            setConfirming(true);
+          }}
           className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-destructive outline-none hover:bg-destructive/10 focus:bg-destructive/10"
         >
           <Trash2 className="h-4 w-4" />
