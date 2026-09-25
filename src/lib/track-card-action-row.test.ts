@@ -14,23 +14,30 @@ describe("Track card action row", () => {
     expect(card).toContain("<TrackLibraryActions");
     expect(card).toContain("<ShareTrackButton");
     expect(card).toContain("<ReportTrackControl");
+    expect(card).toContain("<SimilarSongsMenuItem");
+    expect(card).toContain("menuActions=");
+    expect(card).toContain("inlineActions=");
+    expect(card).toContain("menuItem");
     expect(card).toContain("bare");
   });
 
-  test("card action controls expose borderless variants", async () => {
-    const files = await Promise.all([
-      source("src/components/promptbeats/TrackLibraryActions.tsx"),
-      source("src/components/promptbeats/ShareTrackButton.tsx"),
-      source("src/components/promptbeats/ReportTrackControl.tsx"),
-      source("src/components/promptbeats/TrackOwnerActions.tsx"),
-    ]);
-    for (const content of files) {
-      expect(content).toContain("bare");
+  test("card actions stay compact while secondary actions live in one menu", async () => {
+    const libraryActions = await source("src/components/promptbeats/TrackLibraryActions.tsx");
+    const share = await source("src/components/promptbeats/ShareTrackButton.tsx");
+    const report = await source("src/components/promptbeats/ReportTrackControl.tsx");
+    const owner = await source("src/components/promptbeats/TrackOwnerActions.tsx");
+
+    for (const content of [libraryActions, share, report, owner]) {
       expect(content).toContain("focus-visible:ring");
     }
-    expect(files[0]).toContain("rounded-full border border-white/10");
-    expect(files[0]).toContain("grid h-10 w-8 place-items-center");
-    expect(files[1]).toContain("h-9 w-6");
-    expect(files[2]).toContain("h-9 w-6");
+
+    expect(libraryActions).toContain("menuActions?: ReactNode");
+    expect(libraryActions).toContain("inlineActions?: ReactNode");
+    expect(libraryActions).toContain("h-8 w-5");
+    expect(libraryActions).toContain("h-9 w-7");
+    expect(libraryActions).toContain("<MoreHorizontal");
+    expect(libraryActions).toContain("<Download");
+    expect(share).toContain("menuItem?: boolean");
+    expect(report).toContain("menuItem?: boolean");
   });
 });
