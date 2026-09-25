@@ -363,8 +363,13 @@ export function LyricsWorkspace({
         },
       });
       setCurrentBasePromptId(saved.savedPromptId);
-      setCurrentBaseVersion(saved.versionNumber);
-      setSavedVersion({ id: saved.savedPromptId, versionNumber: saved.versionNumber });
+      if (saved.versionNumber) {
+        setCurrentBaseVersion(saved.versionNumber);
+        setSavedVersion({ id: saved.savedPromptId, versionNumber: saved.versionNumber });
+      } else {
+        setCurrentBaseVersion(null);
+        setSavedVersion(null);
+      }
       setBaselineLyrics(lyrics);
       setUndoBySection({});
       await Promise.all([
@@ -432,7 +437,7 @@ export function LyricsWorkspace({
               ))}
             </select>
           )}
-          {projectId && currentBasePromptId && (
+          {currentBasePromptId && (
             <button
               type="button"
               onClick={saveAsVersion}
@@ -440,7 +445,7 @@ export function LyricsWorkspace({
               className="inline-flex h-10 items-center gap-2 rounded-xl border border-accent/40 px-3 text-xs font-semibold text-accent disabled:opacity-40"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {t("lyricsWorkspace.saveNewVersion")}
+              {projectId ? t("lyricsWorkspace.saveNewVersion") : t("common.save")}
             </button>
           )}
           <button
