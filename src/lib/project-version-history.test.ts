@@ -88,7 +88,7 @@ describe("Project Version History metadata", () => {
     );
     expect(metadata.changedSections).toEqual(
       expect.arrayContaining([
-        { sectionKey: "chorus:1", sectionLabel: "Chorus 1", changeType: "changed" },
+        { sectionKey: "chorus:1", sectionLabel: "Chorus", changeType: "changed" },
         { sectionKey: "bridge:1", sectionLabel: "Bridge", changeType: "added" },
       ]),
     );
