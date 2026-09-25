@@ -15,7 +15,6 @@ const dependentSurfaceMigration =
 const CANONICAL_KEYS = [
   "ai_generator",
   "quality_check",
-  "ai_music_lab",
   "song_analyzer",
   "lyrics_workspace",
   "lyrics_review",
@@ -46,18 +45,18 @@ function functionBlock(sql: string, name: string) {
   return sql.slice(start, next === -1 ? sql.length : next);
 }
 
-describe("Feature Access V2 — 20 features", () => {
-  test("canonical TypeScript registry contains exactly 20 unique feature keys", async () => {
+describe("Feature Access V2 — 19 features", () => {
+  test("canonical TypeScript registry contains exactly 19 unique feature keys", async () => {
     const code = await source("src/lib/feature-access.functions.ts");
     const match = code.match(/FEATURE_KEYS = \[([^\]]+)\] as const/);
     expect(match).not.toBeNull();
     const keys = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((item) => item[1]);
     expect(keys).toEqual(CANONICAL_KEYS);
-    expect(new Set(keys).size).toBe(20);
+    expect(new Set(keys).size).toBe(19);
     expect(keys.filter((key) => key === "notifications")).toHaveLength(1);
   });
 
-  test("V2 migration keeps its original ten definitions while later features are seeded separately", async () => {
+  test("V2 migration keeps its original active definitions while later features are seeded separately", async () => {
     const sql = await source(registryMigration);
     const laterKeys = [
       "smart_presets",
@@ -175,22 +174,6 @@ describe("Feature Access V2 — 20 features", () => {
     const model = server.indexOf("getModelForUser");
     expect(gate).toBeGreaterThan(-1);
     expect(model).toBeGreaterThan(gate);
-  });
-
-  test("AI Music Lab uses Feature Access instead of the former hardcoded Admin rollout gate", async () => {
-    const code = await source("src/lib/ai-music-lab.functions.ts");
-    expect(code).toContain('requireFeatureAccess(context.supabase, "ai_music_lab")');
-    expect(code).not.toContain("current_user_is_admin_level");
-    expect(code).not.toContain("async function requireAdmin");
-    const nav = await source("src/components/promptbeats/Sidebar.tsx");
-    expect(nav).toContain('useFeatureAccess("ai_music_lab")');
-  });
-
-  test("AI Music Lab internal Lyria save is independent from user Track Uploads", async () => {
-    const tracks = await source("src/lib/tracks.functions.ts");
-    expect(tracks).toContain("isInternalLyriaSave");
-    expect(tracks).toContain("lyria-temp/");
-    expect(tracks).toContain("!isInternalLyriaSave");
   });
 
   test("Song Analyzer provider path and route admission are Feature Access protected", async () => {
@@ -398,7 +381,6 @@ describe("Feature Access V2 — 20 features", () => {
     expect(sidebar).toContain('useFeatureAccess("ai_generator")');
     expect(sidebar).toContain('useFeatureAccess("lyrics_review")');
     expect(sidebar).toContain('item.id !== "studio" || generatorAccess.allowed');
-    expect(sidebar).toContain('item.id !== "musicLab" || musicLabAccess.allowed');
     expect(sidebar).toContain('item.id !== "songAnalyzer" || analyzerAccess.allowed');
     expect(sidebar).toContain('item.id !== "lyricsReview" || lyricsReviewAccess.allowed');
 

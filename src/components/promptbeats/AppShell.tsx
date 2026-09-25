@@ -35,12 +35,7 @@ const MOBILE_TABS = [
 ] as const satisfies ReadonlyArray<{
   id: Exclude<
     NavId,
-    | "songAnalyzer"
-    | "lyricsReview"
-    | "inspirationWall"
-    | "storyMap"
-    | "songUniverse"
-    | "management"
+    "songAnalyzer" | "lyricsReview" | "inspirationWall" | "storyMap" | "songUniverse" | "management"
   >;
   labelKey: TranslationKey;
 }>;

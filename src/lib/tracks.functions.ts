@@ -238,10 +238,7 @@ export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => trackInput.parse(input))
   .handler(async ({ data, context }) => {
-    const isInternalLyriaSave =
-      data.source_type === "upload" &&
-      Boolean(data.audio_key?.startsWith(`tracks/${context.userId}/lyria-temp/`));
-    if (data.source_type === "upload" && !isInternalLyriaSave) {
+    if (data.source_type === "upload") {
       await requireFeatureAccess(context.supabase, "track_uploads");
     }
     if (
