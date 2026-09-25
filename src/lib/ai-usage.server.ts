@@ -13,7 +13,6 @@ export type AiOperation =
   | "post_repair_quality_check"
   | "song_setup_assistant"
   | "song_analysis"
-  | "ai_music_lab_generation"
   | "inspiration_wall_extraction"
   | "story_map_generate"
   | "story_map_from_lyrics"
