@@ -53,6 +53,9 @@ import {
   deletePromptProject,
   updatePromptProjectCreationNotes,
   updateSavedPromptOrganization,
+  detachSavedPromptFromProject,
+  copySavedPromptToProject,
+  moveSavedPromptToProject,
 } from "@/lib/ai.functions";
 import { listFavoriteTracks } from "@/lib/playlists.functions";
 import {
@@ -80,6 +83,7 @@ import {
 } from "@/components/promptbeats/LibraryItemActionSheet";
 import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
 import { DeletePromptProjectDialog } from "@/components/promptbeats/DeletePromptProjectDialog";
+import { ProjectPromptActionMenu } from "@/components/promptbeats/ProjectPromptActionMenu";
 import {
   EditStandalonePromptDialog,
   StandalonePromptRevisionDialog,
@@ -2373,10 +2377,15 @@ function SavedPromptCard({
   const [savingEdit, setSavingEdit] = useState(false);
   const [standaloneAction, setStandaloneAction] = useState<"revision" | "lyrics" | null>(null);
   const [movingToProject, setMovingToProject] = useState(false);
+  const [projectMenuAnchor, setProjectMenuAnchor] = useState<LibraryActionMenuAnchor | null>(null);
+  const [projectActionBusy, setProjectActionBusy] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
-  const longPress = useLibraryLongPress((point) => onLongPress?.(point), !onLongPress);
+  const longPress = useLibraryLongPress((point) => {
+    if (prompt.project_id) setProjectMenuAnchor(point);
+    else onLongPress?.(point);
+  }, !prompt.project_id && !onLongPress);
   const displayVersionLabel =
     prompt.source_generation_job_id && prompt.revision_request ? null : prompt.version_label;
 
@@ -2442,6 +2451,42 @@ function SavedPromptCard({
       await refresh();
     } finally {
       setMovingToProject(false);
+    }
+  };
+
+  const detachFromProject = async () => {
+    if (!prompt.project_id || projectActionBusy) return;
+    setProjectActionBusy(true);
+    try {
+      await detachSavedPromptFromProject({ data: { id: prompt.id } });
+      await refresh();
+      setProjectMenuAnchor(null);
+    } finally {
+      setProjectActionBusy(false);
+    }
+  };
+
+  const copyToProject = async (destinationProjectId: string) => {
+    if (!prompt.project_id || projectActionBusy) return;
+    setProjectActionBusy(true);
+    try {
+      await copySavedPromptToProject({ data: { id: prompt.id, destinationProjectId } });
+      await refresh();
+      setProjectMenuAnchor(null);
+    } finally {
+      setProjectActionBusy(false);
+    }
+  };
+
+  const moveToAnotherProject = async (destinationProjectId: string) => {
+    if (!prompt.project_id || projectActionBusy) return;
+    setProjectActionBusy(true);
+    try {
+      await moveSavedPromptToProject({ data: { id: prompt.id, destinationProjectId } });
+      await refresh();
+      setProjectMenuAnchor(null);
+    } finally {
+      setProjectActionBusy(false);
     }
   };
 
@@ -2592,6 +2637,20 @@ function SavedPromptCard({
               <Trash2 className="h-3.5 w-3.5" />
             )}
           </button>
+          {prompt.project_id && (
+            <button
+              type="button"
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setProjectMenuAnchor({ x: rect.right - 8, y: rect.bottom + 6 });
+              }}
+              className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
+              aria-label={language === "el" ? "Περισσότερες επιλογές" : "More options"}
+              title={language === "el" ? "Περισσότερα" : "More"}
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
@@ -2627,7 +2686,9 @@ function SavedPromptCard({
           type="button"
           onClick={(event) => {
             const rect = event.currentTarget.getBoundingClientRect();
-            onLongPress?.({ x: rect.right - 8, y: rect.bottom + 6 });
+            const anchor = { x: rect.right - 8, y: rect.bottom + 6 };
+            if (prompt.project_id) setProjectMenuAnchor(anchor);
+            else onLongPress?.(anchor);
           }}
           className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"
           aria-label={language === "el" ? "Περισσότερες επιλογές" : "More options"}
@@ -2713,6 +2774,19 @@ function SavedPromptCard({
           {prompt.lyrics}
         </pre>
       )}
+      <ProjectPromptActionMenu
+        open={Boolean(prompt.project_id && projectMenuAnchor)}
+        anchor={projectMenuAnchor}
+        language={language}
+        title={prompt.custom_name || prompt.title || prompt.theme || t("library.untitledPrompt")}
+        currentProjectId={prompt.project_id}
+        projects={projects}
+        busy={projectActionBusy}
+        onClose={() => setProjectMenuAnchor(null)}
+        onDetach={detachFromProject}
+        onCopy={copyToProject}
+        onMove={moveToAnotherProject}
+      />
       <EditStandalonePromptDialog
         open={editing}
         language={language}

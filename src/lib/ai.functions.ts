@@ -2925,6 +2925,54 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
     };
   });
 
+export const detachSavedPromptFromProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "detach_prompt_project_version",
+      { _user_id: context.userId, _prompt_id: data.id },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true, result };
+  });
+
+export const copySavedPromptToProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), destinationProjectId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "copy_prompt_version_to_project",
+      {
+        _user_id: context.userId,
+        _prompt_id: data.id,
+        _destination_project_id: data.destinationProjectId,
+      },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true, result };
+  });
+
+export const moveSavedPromptToProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), destinationProjectId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "move_prompt_version_to_project",
+      {
+        _user_id: context.userId,
+        _prompt_id: data.id,
+        _destination_project_id: data.destinationProjectId,
+      },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true, result };
+  });
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Super Admin: server-authoritative provider/model selection.
 // The selected model is stored in a table the browser cannot read or write;
