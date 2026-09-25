@@ -48,32 +48,16 @@ describe("Settings and track source preferences", () => {
     expect(filter).toContain("surfaceLocalKey(surface)");
     expect(filter).toContain("persistence.setPreference(item)");
     expect(filter).toContain("filterByTrackSource");
-
-    for (const path of [
-      "src/routes/index.tsx",
-      "src/routes/trending.tsx",
-      "src/routes/library.tsx",
-    ]) {
-      const code = await source(path);
-      expect(code).toContain("useTrackSourcePreference");
-      expect(code).toContain("TrackSourceFilter");
-      expect(code).toContain("filterByTrackSource");
-    }
-
-    const artist = await source("src/components/promptbeats/ArtistProfileView.tsx");
-    expect(artist).toContain("useTrackSourcePreference");
-    expect(artist).toContain("TrackSourceFilter");
   });
 
-  test("Per-surface local cache wins over the removed legacy global preference", async () => {
+  test("Source filter binds to the current route immediately instead of booting as Feed", async () => {
     const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
-    const resolverStart = filter.indexOf("function resolveTrackSourcePreference(");
-    const resolverEnd = filter.indexOf("function writeLocalPreference", resolverStart);
-    const resolver = filter.slice(resolverStart, resolverEnd);
-    expect(resolver).toContain("readSurfaceLocalPreference(surface)");
-    expect(resolver.indexOf("localSurfaceValue")).toBeLessThan(
-      resolver.indexOf("isPreference(legacyAccountValue)"),
-    );
+    expect(filter).toContain("forcedSurface?: TrackSourceSurface");
+    expect(filter).toContain("const surface = forcedSurface ?? inferTrackSourceSurface()");
+    expect(filter).not.toContain('useState<TrackSourceSurface>("feed")');
+    expect(filter).not.toContain("setSurface(inferTrackSourceSurface())");
+    expect(filter).toContain("writeLocalPreference(surface, next)");
+    expect(filter).toContain("SURFACE_ACCOUNT_KEYS[surface]");
   });
 
   test("Explicit preference persists to the account and filters both normalized and DB track shapes", async () => {
