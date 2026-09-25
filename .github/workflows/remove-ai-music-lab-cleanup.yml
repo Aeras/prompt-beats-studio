@@ -86,11 +86,31 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint cleaned source
-        run: bun run lint
-
       - name: Regenerate routes and build
         run: bun run build
+
+      - name: Format changed TypeScript files
+        run: >-
+          bunx prettier --write
+          src/routes/generate.tsx
+          src/routeTree.gen.ts
+          src/lib/tracks.functions.ts
+          src/lib/feature-access.functions.ts
+          src/lib/ai-admission.server.ts
+          src/lib/ai-usage.server.ts
+          src/components/promptbeats/Sidebar.tsx
+          src/components/promptbeats/AppShell.tsx
+          src/lib/created-with.ts
+          src/lib/mobile-navigation-layout.test.ts
+          src/lib/ai-auxiliary-idempotency-f7-03.test.ts
+          src/lib/ai-usage-admission-step7.test.ts
+          src/lib/audit-hardening-20260922.test.ts
+          src/lib/security-step8.test.ts
+          src/lib/super-admin-phase-a.test.ts
+          src/lib/feature-access-v2.test.ts
+
+      - name: Lint cleaned source
+        run: bun run lint
 
       - name: Feature Access V2 test
         run: bun test src/lib/feature-access-v2.test.ts
