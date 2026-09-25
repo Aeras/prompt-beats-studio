@@ -1,0 +1,118 @@
+name: One-shot AI Music Lab cleanup
+
+on:
+  push:
+    branches:
+      - remove-ai-music-lab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: remove-ai-music-lab
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Remove remaining AI Music Lab references
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_required(path: str, old: str, new: str = ""):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected block not found in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new))
+
+          # Generator handoff and UI entry point.
+          replace_required(
+              "src/routes/generate.tsx",
+              'const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";\n',
+          )
+          replace_required(
+              "src/routes/generate.tsx",
+              '  const musicLabFeature = useFeatureAccess("ai_music_lab");\n',
+          )
+          replace_required(
+              "src/routes/generate.tsx",
+              '''  const openMusicLab = () => {\n    if (!musicLabFeature.allowed || !result || typeof window === "undefined") return;\n    window.sessionStorage.setItem(\n      AI_MUSIC_LAB_TRANSFER_KEY,\n      JSON.stringify({\n        title: result.title,\n        musicStyle: result.tags,\n        lyrics: result.lyrics,\n        productionNotes: result.note,\n      }),\n    );\n    void navigate({ to: "/ai-music-lab" });\n  };\n\n''',
+          )
+          replace_required(
+              "src/routes/generate.tsx",
+              '''              {musicLabFeature.allowed && (\n                <button\n                  onClick={openMusicLab}\n                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"\n                >\n                  <Wand2 className="h-4 w-4" />\n                  {appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}\n                </button>\n              )}\n''',
+          )
+
+          # Uploaded tracks no longer need an internal Lyria bypass.
+          replace_required(
+              "src/lib/tracks.functions.ts",
+              '''    const isInternalLyriaSave =\n      data.source_type === "upload" &&\n      Boolean(data.audio_key?.startsWith(`tracks/${context.userId}/lyria-temp/`));\n    if (data.source_type === "upload" && !isInternalLyriaSave) {\n      await requireFeatureAccess(context.supabase, "track_uploads");\n    }\n''',
+              '''    if (data.source_type === "upload") {\n      await requireFeatureAccess(context.supabase, "track_uploads");\n    }\n''',
+          )
+
+          # Keep Feature Access regression coverage aligned with the retired feature.
+          feature_test = Path("src/lib/feature-access-v2.test.ts")
+          text = feature_test.read_text()
+          for old, new in [
+              ('  "ai_music_lab",\n', ''),
+              ('describe("Feature Access V2 — 20 features"', 'describe("Feature Access V2 — 19 features"'),
+              ('test("canonical TypeScript registry contains exactly 20 unique feature keys"', 'test("canonical TypeScript registry contains exactly 19 unique feature keys"'),
+              ('expect(new Set(keys).size).toBe(20);', 'expect(new Set(keys).size).toBe(19);'),
+              ('test("V2 migration keeps its original ten definitions while later features are seeded separately"', 'test("V2 migration keeps its original active definitions while later features are seeded separately"'),
+          ]:
+              if old not in text:
+                  raise SystemExit(f"Expected Feature Access text not found: {old!r}")
+              text = text.replace(old, new)
+
+          retired_tests = [
+              '''  test("AI Music Lab uses Feature Access instead of the former hardcoded Admin rollout gate", async () => {\n    const code = await source("src/lib/ai-music-lab.functions.ts");\n    expect(code).toContain('requireFeatureAccess(context.supabase, "ai_music_lab")');\n    expect(code).not.toContain("current_user_is_admin_level");\n    expect(code).not.toContain("async function requireAdmin");\n    const nav = await source("src/components/promptbeats/Sidebar.tsx");\n    expect(nav).toContain('useFeatureAccess("ai_music_lab")');\n  });\n\n''',
+              '''  test("AI Music Lab internal Lyria save is independent from user Track Uploads", async () => {\n    const tracks = await source("src/lib/tracks.functions.ts");\n    expect(tracks).toContain("isInternalLyriaSave");\n    expect(tracks).toContain("lyria-temp/");\n    expect(tracks).toContain("!isInternalLyriaSave");\n  });\n\n''',
+          ]
+          for block in retired_tests:
+              if block not in text:
+                  raise SystemExit(f"Expected retired Feature Access test not found: {block[:100]!r}")
+              text = text.replace(block, "")
+          feature_test.write_text(text)
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # TanStack Start regenerates routeTree.gen.ts from the remaining file routes.
+      - name: Regenerate routes and build
+        run: bun run build
+
+      - name: Focused regression tests
+        run: bun test src/lib/feature-access-v2.test.ts src/lib/ai-auxiliary-idempotency-f7-03.test.ts src/lib/ai-usage-admission-step7.test.ts src/lib/mobile-navigation-layout.test.ts src/lib/security-step8.test.ts src/lib/audit-hardening-20260922.test.ts src/lib/super-admin-phase-a.test.ts
+
+      - name: Lint cleaned source
+        run: bun run lint
+
+      - name: Verify retired runtime references are gone
+        run: |
+          ! grep -R -n --exclude='20260926013500_remove_ai_music_lab.sql' --exclude-dir=.git -E 'ai_music_lab|AI Music Lab|/ai-music-lab|lyria-temp|eleven-temp|ElevenLabs Music|Google Lyria 3\.5' src supabase/migrations
+
+      - name: Commit cleanup and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/remove-ai-music-lab-cleanup.yml
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No cleanup changes to commit"
+            exit 0
+          fi
+          git commit -m "Finish removing AI Music Lab runtime traces"
+          git push origin HEAD:remove-ai-music-lab
