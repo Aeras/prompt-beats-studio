@@ -804,7 +804,7 @@ function ResultSection({
 }) {
   return (
     <div className="glass rounded-2xl p-5">
-      <div className="flex items-center gap-3">
+      <div className="hidden items-center gap-3 md:flex">
         <button
           onClick={onToggle}
           aria-expanded={open}

@@ -340,9 +340,7 @@ function LibraryPage() {
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <h1 className="font-display text-2xl font-bold md:text-3xl">{t("library.title")}</h1>
-
-        <div className="relative mt-4">
+        <div className="relative mt-1 md:mt-4">
           <div
             ref={tabStripRef}
             className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-1 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pr-0"

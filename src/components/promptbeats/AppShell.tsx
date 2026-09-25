@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Menu, ShieldAlert, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Search, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { NotificationCenter } from "@/components/promptbeats/NotificationCenter";
@@ -195,28 +195,44 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         )}
       >
         <header className="glass-strong sticky top-0 z-20 border-b">
-          <div className="relative mx-auto max-w-[1900px] px-4 py-3 md:px-8 md:py-4">
-            <div className="flex items-start gap-3">
+          <div className="mx-auto max-w-[1900px] md:px-8 md:py-4">
+            <div className="flex items-center gap-2 px-3 py-2 md:hidden">
               <button
                 aria-label={t("shell.openMenu")}
                 onClick={() => setDrawer(true)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 md:hidden"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div
-                className={cn(
-                  "min-w-0 flex-1",
-                  authenticated ? "pr-40 md:pr-44" : "pr-14 md:pr-16",
-                )}
-              >
-                {header}
+              <form action="/" method="get" className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  name="q"
+                  type="search"
+                  aria-label={t("discover.searchAria")}
+                  placeholder={t("discover.searchPlaceholder")}
+                  className="h-10 w-full rounded-full border border-white/10 bg-black/35 pl-9 pr-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_18%,transparent)]"
+                />
+              </form>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {authenticated && <ModerationCaseCenter />}
+                {authenticated && <NotificationCenter />}
+                <HelpMenu />
               </div>
             </div>
-            <div className="absolute right-4 top-3 z-10 flex items-center gap-2 md:right-8 md:top-4">
-              {authenticated && <ModerationCaseCenter />}
-              {authenticated && <NotificationCenter />}
-              <HelpMenu />
+            {header && (
+              <div className="border-t border-white/5 px-4 py-2.5 md:hidden">
+                <div className="min-w-0">{header}</div>
+              </div>
+            )}
+
+            <div className="relative hidden md:block">
+              <div className="min-w-0 pr-44">{header}</div>
+              <div className="absolute right-0 top-0 z-10 flex items-center gap-2">
+                {authenticated && <ModerationCaseCenter />}
+                {authenticated && <NotificationCenter />}
+                <HelpMenu />
+              </div>
             </div>
           </div>
         </header>
