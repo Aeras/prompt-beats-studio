@@ -9,6 +9,7 @@ type HighlightRegistryLike = {
 };
 
 type HighlightConstructor = new (...ranges: Range[]) => unknown;
+type WindowWithHighlight = typeof window & { Highlight?: HighlightConstructor };
 
 export function searchHighlightTerms(query: string): string[] {
   const trimmed = query.trim().replace(/\s+/g, " ");
@@ -85,9 +86,7 @@ export function SearchTermHighlighter() {
     if (typeof window === "undefined" || typeof CSS === "undefined") return;
 
     const registry = (CSS as typeof CSS & { highlights?: HighlightRegistryLike }).highlights;
-    const HighlightCtor = (
-      window as typeof window & { Highlight?: HighlightConstructor }
-    ).Highlight;
+    const HighlightCtor = (window as WindowWithHighlight).Highlight;
     if (!registry || !HighlightCtor) return;
 
     const root = document.querySelector<HTMLElement>("[data-pb-search-highlight-root]");
