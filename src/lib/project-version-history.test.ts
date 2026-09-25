@@ -184,4 +184,20 @@ describe("Version history writer contracts", () => {
     expect(ai).toContain("Project versions cannot be moved between projects");
     expect(ai).toContain("buildManualVersionMetadata({");
   });
+
+  test("standalone prompt assignment is serialized and does not alter normal Project revision flow", async () => {
+    const migration = await Bun.file(
+      "supabase/migrations/20260925163000_atomic_standalone_prompt_project_assignment.sql",
+    ).text();
+    const ai = await Bun.file("src/lib/ai.functions.ts").text();
+
+    expect(migration).toContain("OLD.project_id IS NULL AND NEW.project_id IS NOT NULL");
+    expect(migration).toContain("pg_advisory_xact_lock(hashtext(NEW.project_id::text))");
+    expect(migration).toContain("COALESCE(MAX(sp.version_number), 0) + 1");
+    expect(migration).toContain("NEW.parent_prompt_id := v_parent_id");
+    expect(migration).toContain("NEW.version_number := v_next_version");
+    expect(migration).toContain("BEFORE UPDATE OF project_id ON public.saved_prompts");
+    expect(ai).toContain("Project versions cannot be moved between projects");
+    expect(ai).toContain("buildProjectRevisionVersionMetadata");
+  });
 });
