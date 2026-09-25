@@ -357,4 +357,17 @@ describe("Library folders foundation", () => {
     expect(library).toContain("scrollIntoView");
     expect(library).toContain('inline: "center"');
   });
+
+  test("project deletion supports selective prompt removal with safe default", async () => {
+    const library = await source("src/routes/library.tsx");
+    const dialog = await source("src/components/promptbeats/DeletePromptProjectDialog.tsx");
+    const ai = await source("src/lib/ai.functions.ts");
+    expect(library).toContain("DeletePromptProjectDialog");
+    expect(library).toContain("deletePromptIds");
+    expect(dialog).toContain("Διαγραφή και prompts από αυτό το Project");
+    expect(dialog).toContain("Delete Project + all prompts");
+    expect(ai).toContain("deletePromptIds: z.array(z.string().uuid()).max(500).default([])");
+    expect(ai).toContain("One or more selected prompts do not belong to this project.");
+    expect(ai).toContain("deletedPromptCount");
+  });
 });

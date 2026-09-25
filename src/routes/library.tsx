@@ -79,6 +79,7 @@ import {
   type LibraryActionMenuAnchor,
 } from "@/components/promptbeats/LibraryItemActionSheet";
 import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
+import { DeletePromptProjectDialog } from "@/components/promptbeats/DeletePromptProjectDialog";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -624,6 +625,7 @@ function PromptProjectLibrary({
   const { t, language } = useI18n();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [deleteProjectDialog, setDeleteProjectDialog] = useState<PromptProject | null>(null);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -1111,19 +1113,25 @@ function PromptProjectLibrary({
       setBusy(false);
     }
   };
-  const removeProject = async (project: PromptProject) => {
-    if (
-      !window.confirm(
-        language === "el"
-          ? "Να διαγραφεί το project; Τα prompts και οι αναλύσεις θα παραμείνουν στη βιβλιοθήκη χωρίς project."
-          : "Delete this project? Its prompts and analyses will remain in your library with no project.",
-      )
-    )
-      return;
+  const removeProject = (project: PromptProject) => {
+    setDeleteProjectDialog(project);
+  };
+  const confirmRemoveProject = async (deletePromptIds: string[]) => {
+    if (!deleteProjectDialog) return;
     setBusy(true);
     try {
-      await deletePromptProject({ data: { id: project.id } });
+      await deletePromptProject({ data: { id: deleteProjectDialog.id, deletePromptIds } });
+      setDeleteProjectDialog(null);
       await refresh();
+    } catch (error) {
+      await refresh();
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : language === "el"
+            ? "Η διαγραφή του project απέτυχε."
+            : "Project deletion failed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -1185,8 +1193,21 @@ function PromptProjectLibrary({
       ? (prompts.find((item) => item.id === actionSheetItem.id) ?? null)
       : null;
 
+  const deleteDialogPrompts = deleteProjectDialog
+    ? prompts.filter((prompt) => prompt.project_id === deleteProjectDialog.id)
+    : [];
+
   return (
     <div className="mt-6 space-y-4">
+      <DeletePromptProjectDialog
+        open={Boolean(deleteProjectDialog)}
+        language={language}
+        projectName={deleteProjectDialog?.name ?? ""}
+        prompts={deleteDialogPrompts}
+        busy={busy}
+        onClose={() => setDeleteProjectDialog(null)}
+        onConfirm={confirmRemoveProject}
+      />
       <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
         <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
           {(["all", "projects", ...(showAnalyses ? (["analyses"] as const) : [])] as const).map(
