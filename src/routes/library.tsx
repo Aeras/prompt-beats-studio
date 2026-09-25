@@ -2384,6 +2384,8 @@ function SavedPromptCard({
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
       queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-contents"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-scope-search"], exact: false }),
     ]);
   const remove = async () => {
     if (!window.confirm(language === "el" ? "Να διαγραφεί αυτό το prompt;" : "Delete this prompt?"))
@@ -2434,8 +2436,13 @@ function SavedPromptCard({
 
   const move = async (projectId: string) => {
     const next = projectId || null;
-    await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: next } });
-    await refresh();
+    setMovingToProject(true);
+    try {
+      await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: next } });
+      await refresh();
+    } finally {
+      setMovingToProject(false);
+    }
   };
 
   const saveEdit = async (values: StandalonePromptEditValues) => {
@@ -2662,8 +2669,9 @@ function SavedPromptCard({
           <div className="mt-3 flex items-center gap-2">
             <select
               value={prompt.project_id ?? ""}
-              onChange={(e) => move(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"
+              onChange={(e) => void move(e.target.value)}
+              disabled={movingToProject}
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs disabled:opacity-60"
             >
               <option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>
               {projects.map((p) => (

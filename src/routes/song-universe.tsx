@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, ChevronDown, ChevronUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Orbit,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUniverseInspirationPanel";
@@ -110,13 +119,16 @@ function SongUniversePage() {
   return (
     <AppShell
       header={
-        <div>
-          <h1 className="font-display text-xl font-bold">Song Universes</h1>
-          <p className="text-xs text-muted-foreground">
-            {el
-              ? "Κοινή δημιουργική ταυτότητα για πολλά τραγούδια."
-              : "Build a shared creative world across multiple songs."}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <Orbit className="h-5 w-5 shrink-0 text-accent" />
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-bold">Song Universes</h1>
+            <p className="text-xs text-muted-foreground">
+              {el
+                ? "Κοινή δημιουργική ταυτότητα για πολλά τραγούδια."
+                : "Build a shared creative world across multiple songs."}
+            </p>
+          </div>
         </div>
       }
     >

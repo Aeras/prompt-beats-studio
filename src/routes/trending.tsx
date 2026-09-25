@@ -91,15 +91,9 @@ function TrendingPage() {
       }
     >
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
-        <div>
-          <h1 className="font-display text-2xl font-bold md:text-3xl">
-            <span className="text-gradient-neon">{t("trending.title")}</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("trending.subtitle")}</p>
-          <div className="mt-3 flex w-full items-center justify-between gap-3">
-            <TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} />
-            <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
-          </div>
+        <div className="flex w-full items-center justify-between gap-3">
+          <TrackSourceFilter value={trackSource} onChange={setTrackSource} language={language} />
+          <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
         </div>
         <div className={`mt-5 ${trackGridClassName(gridMode)}`}>
           {list.map((track) => (

@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Copy,
   Languages,
+  ListMusic,
   Loader2,
   RotateCcw,
   Save,
@@ -1001,11 +1002,14 @@ function LyricsReviewPage() {
 
 function HeaderTitle({ el }: { el: boolean }) {
   return (
-    <div>
-      <p className="font-display text-lg font-bold">Lyrics Review</p>
-      <p className="text-[11px] text-muted-foreground">
-        {el ? "Meter, Rhyme & Singability" : "Meter, Rhyme & Singability"}
-      </p>
+    <div className="flex items-center gap-2.5">
+      <ListMusic className="h-5 w-5 shrink-0 text-accent" />
+      <div className="min-w-0">
+        <p className="font-display text-lg font-bold">Lyrics Review</p>
+        <p className="text-[11px] text-muted-foreground">
+          {el ? "Meter, Rhyme & Singability" : "Meter, Rhyme & Singability"}
+        </p>
+      </div>
     </div>
   );
 }

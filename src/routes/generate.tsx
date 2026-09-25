@@ -13,9 +13,7 @@ import {
   Sparkles,
   Trash2,
   Wand2,
-  ArrowLeft,
 } from "lucide-react";
-import logoAsset from "@/assets/logo.png.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -2540,31 +2538,7 @@ ${narrativePlan.beats
     >
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
         <div className="mx-auto max-w-3xl">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> {t("generator.backToFeed")}
-          </Link>
-          <div className="mt-4 flex items-center gap-3">
-            <img
-              src={logoAsset.url}
-              alt="PromptBeats logo"
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-xl glow-neon"
-            />
-            <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold tracking-tight">
-                {t("generator.title")}
-              </h1>
-              <p className="truncate text-xs text-muted-foreground">
-                {t("generator.optimizedFor")}
-              </p>
-            </div>
-          </div>
-
-          <div className="glass-strong mt-6 space-y-4 rounded-3xl p-5 sm:p-6">
+          <div className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
             <div>
               <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>
               <p className="mb-2 text-xs text-muted-foreground">
