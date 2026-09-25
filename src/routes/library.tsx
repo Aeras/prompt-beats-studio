@@ -2149,51 +2149,25 @@ function SongAnalysisCard({
         ? `≈ ${bpm.approximate} BPM`
         : "BPM uncertain";
   const fullText = [
-    `Music Style:\
-${analysis.generator_ready.musicStyle}`,
-    `Mood:\
-${analysis.generator_ready.mood}`,
-    `BPM:\
-${bpmText} · confidence: ${bpm.confidence}\
-${bpm.notes}`,
-    `Song Structure:\
-${analysis.generator_ready.songStructure.join(" → ")}`,
-    `Instruments:\
-${analysis.generator_ready.instruments.join("\
-")}`,
-    `Production Style:\
-${analysis.generator_ready.productionStyle}`,
-    `Additional Instructions:\
-${analysis.generator_ready.additionalInstructions || "—"}`,
-    `Genre & Style:\
-${analysis.detailed_analysis.genreAndStyle}`,
-    `Mood & Emotional Arc:\
-${analysis.detailed_analysis.moodAndEmotionalArc}`,
-    `Tempo & Groove:\
-${analysis.detailed_analysis.tempoAndGroove}`,
-    `Instrumentation:\
-${analysis.detailed_analysis.instrumentation.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\
-")}`,
-    `Arrangement:\
-${analysis.detailed_analysis.arrangement}`,
-    `Song Structure:\
-${analysis.detailed_analysis.songStructure}`,
-    `Vocals:\
-${analysis.detailed_analysis.vocals}`,
-    `Production & Mix:\
-${analysis.detailed_analysis.productionAndMix.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\
-")}`,
-    `Dynamics & Energy:\
-${analysis.detailed_analysis.dynamicsAndEnergy}`,
-    `Notable Characteristics:\
-${analysis.detailed_analysis.notableCharacteristics.join("\
-")}`,
-    `Confidence / Uncertainty Notes:\
-${analysis.detailed_analysis.confidenceAndUncertaintyNotes.join("\
-")}`,
-  ].join("\
-\
-");
+    `Music Style:\n${analysis.generator_ready.musicStyle}`,
+    `Mood:\n${analysis.generator_ready.mood}`,
+    `BPM:\n${bpmText} · confidence: ${bpm.confidence}\n${bpm.notes}`,
+    `Song Structure:\n${analysis.generator_ready.songStructure.join(" → ")}`,
+    `Instruments:\n${analysis.generator_ready.instruments.join("\n")}`,
+    `Production Style:\n${analysis.generator_ready.productionStyle}`,
+    `Additional Instructions:\n${analysis.generator_ready.additionalInstructions || "—"}`,
+    `Genre & Style:\n${analysis.detailed_analysis.genreAndStyle}`,
+    `Mood & Emotional Arc:\n${analysis.detailed_analysis.moodAndEmotionalArc}`,
+    `Tempo & Groove:\n${analysis.detailed_analysis.tempoAndGroove}`,
+    `Instrumentation:\n${analysis.detailed_analysis.instrumentation.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
+    `Arrangement:\n${analysis.detailed_analysis.arrangement}`,
+    `Song Structure:\n${analysis.detailed_analysis.songStructure}`,
+    `Vocals:\n${analysis.detailed_analysis.vocals}`,
+    `Production & Mix:\n${analysis.detailed_analysis.productionAndMix.map((item) => `[${item.confidence.toUpperCase()}] ${item.observation}`).join("\n")}`,
+    `Dynamics & Energy:\n${analysis.detailed_analysis.dynamicsAndEnergy}`,
+    `Notable Characteristics:\n${analysis.detailed_analysis.notableCharacteristics.join("\n")}`,
+    `Confidence / Uncertainty Notes:\n${analysis.detailed_analysis.confidenceAndUncertaintyNotes.join("\n")}`,
+  ].join("\n\n");
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "song-analyses"], exact: false }),
@@ -2347,8 +2321,7 @@ ${analysis.detailed_analysis.confidenceAndUncertaintyNotes.join("\
               {t("songAnalyzer.instruments")}
             </p>
             <p className="mt-1 whitespace-pre-wrap">
-              {analysis.generator_ready.instruments.join("\
-")}
+              {analysis.generator_ready.instruments.join("\n")}
             </p>
           </div>
           <div>
@@ -2640,9 +2613,7 @@ function SavedPromptCard({
             <Pencil className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\
-\
-"))}
+            onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
             aria-label={t("library.copyPrompt")}
             className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
           >
@@ -2698,9 +2669,7 @@ function SavedPromptCard({
         </button>
         <button
           type="button"
-          onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\
-\
-"))}
+          onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
           className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"
           aria-label={t("library.copyPrompt")}
           title={t("library.copyPrompt")}
