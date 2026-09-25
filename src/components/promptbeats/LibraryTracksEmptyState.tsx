@@ -22,9 +22,7 @@ export function LibraryTracksEmptyState({ language }: { language: string }) {
         </div>
 
         <h2 className="relative mt-4 font-display text-xl font-bold text-foreground sm:text-2xl">
-          {greek
-            ? "Δεν έχεις ανεβάσει ακόμη κανένα τραγούδι."
-            : "You haven't added any songs yet."}
+          {greek ? "Δεν έχεις ανεβάσει ακόμη κανένα τραγούδι." : "You haven't added any songs yet."}
         </h2>
         <p className="relative mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
           {greek
