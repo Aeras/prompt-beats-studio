@@ -2,18 +2,13 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Settings, X } from "lucide-react";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
-import {
-  TrackSourceFilter,
-  useExplicitContentPreference,
-  useTrackSourcePreference,
-} from "@/components/promptbeats/TrackSourceFilter";
+import { useExplicitContentPreference } from "@/components/promptbeats/TrackSourceFilter";
 import { useExternalMediaConsent } from "@/lib/external-media-consent";
 import { useI18n } from "@/i18n";
 
 export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { language } = useI18n();
   const external = useExternalMediaConsent();
-  const source = useTrackSourcePreference();
   const explicit = useExplicitContentPreference();
   const el = language === "el";
 
@@ -128,89 +123,57 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
             <h3 className="text-sm font-semibold">
               {el ? "Προτιμήσεις περιεχομένου" : "Content preferences"}
             </h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {el
-                ? "Επιλέξτε ποια πηγή τραγουδιών θα εμφανίζεται από προεπιλογή στις λίστες. Τα φίλτρα κάθε σελίδας είναι προσωρινά."
-                : "Choose which track source is shown by default in lists. Page-level filters are temporary."}
-            </p>
-            <TrackSourceFilter
-              value={source.preference}
-              onChange={(value) => void source.setPreference(value)}
-              language={language}
-              className="mt-4"
-            />
-            <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
-              <p>
-                <strong className="text-foreground">{el ? "Όλα:" : "All:"}</strong>{" "}
-                {el ? "uploads και εξωτερικές πηγές." : "uploads and external sources."}
-              </p>
-              <p>
-                <strong className="text-foreground">Uploads:</strong>{" "}
-                {el
-                  ? "μόνο αρχεία που έχουν ανέβει στο PromptBeats."
-                  : "only files uploaded to PromptBeats."}
-              </p>
-              <p>
-                <strong className="text-foreground">External:</strong>{" "}
-                {el
-                  ? "μόνο τραγούδια από εξωτερικές πηγές."
-                  : "only tracks from external providers."}
-              </p>
-            </div>
-
-            <div className="mt-5 border-t border-white/10 pt-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h4 className="text-sm font-semibold">
-                    {el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}
-                  </h4>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {el
-                      ? "Όταν είναι ενεργό, τραγούδια που έχουν σημανθεί ως Explicit δεν εμφανίζονται στις λίστες, στα προφίλ δημιουργών ή στις σελίδες τραγουδιών."
-                      : "When enabled, tracks marked Explicit are hidden from lists, creator profiles, and track pages."}
-                  </p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    {el
-                      ? "Η επιλογή αποθηκεύεται στον λογαριασμό σας και εφαρμόζεται σε όλο το PromptBeats."
-                      : "This choice is saved to your account and applies across PromptBeats."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={explicit.hideExplicit}
-                  aria-label={el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}
-                  onClick={() => void explicit.setHideExplicit(!explicit.hideExplicit)}
-                  className={
-                    "relative mt-1 h-7 w-12 shrink-0 rounded-full border transition-colors " +
-                    (explicit.hideExplicit
-                      ? "border-accent/60 bg-accent/35"
-                      : "border-white/15 bg-white/5")
-                  }
-                >
-                  <span
-                    className={
-                      "absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " +
-                      (explicit.hideExplicit ? "translate-x-5" : "translate-x-0")
-                    }
-                  />
-                </button>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h4 className="text-sm font-semibold">
+                  {el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}
+                </h4>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {el
+                    ? "Όταν είναι ενεργό, τραγούδια που έχουν σημανθεί ως Explicit δεν εμφανίζονται στις λίστες, στα προφίλ δημιουργών ή στις σελίδες τραγουδιών."
+                    : "When enabled, tracks marked Explicit are hidden from lists, creator profiles, and track pages."}
+                </p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {el
+                    ? "Η επιλογή αποθηκεύεται στον λογαριασμό σας και εφαρμόζεται σε όλο το PromptBeats."
+                    : "This choice is saved to your account and applies across PromptBeats."}
+                </p>
               </div>
-              <p
+              <button
+                type="button"
+                role="switch"
+                aria-checked={explicit.hideExplicit}
+                aria-label={el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}
+                onClick={() => void explicit.setHideExplicit(!explicit.hideExplicit)}
                 className={
-                  "mt-3 text-xs font-semibold " +
-                  (explicit.hideExplicit ? "text-accent" : "text-muted-foreground")
+                  "relative mt-1 h-7 w-12 shrink-0 rounded-full border transition-colors " +
+                  (explicit.hideExplicit
+                    ? "border-accent/60 bg-accent/35"
+                    : "border-white/15 bg-white/5")
                 }
               >
-                {explicit.hideExplicit
-                  ? el
-                    ? "Explicit τραγούδια: κρυφά"
-                    : "Explicit tracks: hidden"
-                  : el
-                    ? "Explicit τραγούδια: εμφανίζονται"
-                    : "Explicit tracks: visible"}
-              </p>
+                <span
+                  className={
+                    "absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " +
+                    (explicit.hideExplicit ? "translate-x-5" : "translate-x-0")
+                  }
+                />
+              </button>
             </div>
+            <p
+              className={
+                "mt-3 text-xs font-semibold " +
+                (explicit.hideExplicit ? "text-accent" : "text-muted-foreground")
+              }
+            >
+              {explicit.hideExplicit
+                ? el
+                  ? "Explicit τραγούδια: κρυφά"
+                  : "Explicit tracks: hidden"
+                : el
+                  ? "Explicit τραγούδια: εμφανίζονται"
+                  : "Explicit tracks: visible"}
+            </p>
           </section>
         </div>
       </div>
