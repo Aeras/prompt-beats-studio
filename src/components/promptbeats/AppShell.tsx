@@ -18,7 +18,6 @@ export const NAV_PATHS: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
   studio: "/generate",
-  musicLab: "/ai-music-lab",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
   inspirationWall: "/inspiration-wall",
@@ -36,7 +35,6 @@ const MOBILE_TABS = [
 ] as const satisfies ReadonlyArray<{
   id: Exclude<
     NavId,
-    | "musicLab"
     | "songAnalyzer"
     | "lyricsReview"
     | "inspirationWall"
@@ -52,7 +50,6 @@ const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
 export function useActiveNav(): NavId {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (pathname.startsWith("/trending")) return "trending";
-  if (pathname.startsWith("/ai-music-lab")) return "musicLab";
   if (pathname.startsWith("/song-analyzer")) return "songAnalyzer";
   if (pathname.startsWith("/lyrics-review")) return "lyricsReview";
   if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";
