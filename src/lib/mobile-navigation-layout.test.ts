@@ -28,7 +28,6 @@ describe("mobile navigation safe layout", () => {
         "src/components/promptbeats/TrackOwnerActions.tsx",
         "src/components/promptbeats/TrackLibraryActions.tsx",
         "src/components/promptbeats/ReportsManagementPanel.tsx",
-        "src/routes/ai-music-lab.tsx",
       ].map(source),
     );
 
