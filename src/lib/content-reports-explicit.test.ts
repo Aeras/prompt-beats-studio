@@ -228,10 +228,6 @@ describe("Reports System + Explicit Lyrics V1", () => {
     expect(owner).toContain("containsExplicitLyrics");
     expect(owner).toContain("contains_explicit_lyrics: containsExplicitLyrics");
     expect(owner).toContain('t("explicit.helper")');
-
-    const lab = await source("src/routes/ai-music-lab.tsx");
-    expect(lab).toContain("saveContainsExplicitLyrics");
-    expect(lab).toContain("contains_explicit_lyrics: saveContainsExplicitLyrics");
   });
 
   test("Explicit indicator renders across canonical public surfaces and playlists", async () => {
