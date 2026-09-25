@@ -8,6 +8,8 @@ describe("Track card action row", () => {
     const card = await source("src/components/promptbeats/TrackCard.tsx");
     expect(card).toContain('data-track-actions="left"');
     expect(card).toContain('data-track-actions="right"');
+    expect(card).toContain('compact ? "gap-3" : "gap-2"');
+    expect(card).toContain('compact ? "h-9 w-8" : "h-9 w-7"');
     expect(card).toContain("<PromptContentIcon compact={compact} />");
     expect(card).toContain("<LyricsContentIcon compact={compact} />");
     expect(card).toContain("<LikeButton");
@@ -33,9 +35,9 @@ describe("Track card action row", () => {
 
     expect(libraryActions).toContain("menuActions?: ReactNode");
     expect(libraryActions).toContain("inlineActions?: ReactNode");
-    expect(libraryActions).toContain("h-8 w-5");
+    expect(libraryActions).toContain("h-9 w-8");
     expect(libraryActions).toContain("h-9 w-7");
-    expect(libraryActions).toContain("<MoreHorizontal");
+    expect(libraryActions).toContain("<MoreVertical");
     expect(libraryActions).toContain("<Download");
     expect(share).toContain("menuItem?: boolean");
     expect(report).toContain("menuItem?: boolean");
