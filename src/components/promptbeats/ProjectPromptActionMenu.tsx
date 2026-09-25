@@ -20,6 +20,8 @@ type Props = {
   onMove: (destinationProjectId: string) => Promise<void> | void;
 };
 
+const PROJECT_PROMPT_MENU_OPEN_EVENT = "pb:project-prompt-menu-open";
+
 export function ProjectPromptActionMenu({
   open,
   anchor,
@@ -35,10 +37,30 @@ export function ProjectPromptActionMenu({
 }: Props) {
   const el = language === "el";
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const instanceIdRef = useRef(`project-prompt-menu-${Math.random().toString(36).slice(2)}`);
   const [position, setPosition] = useState<LibraryActionMenuAnchor>({ x: 12, y: 12 });
   const [transferMode, setTransferMode] = useState<TransferMode>(null);
   const [destinationProjectId, setDestinationProjectId] = useState("");
   const availableProjects = projects.filter((project) => project.id !== currentProjectId);
+
+  useEffect(() => {
+    const closeWhenAnotherMenuOpens = (event: Event) => {
+      const detail = (event as CustomEvent<{ instanceId: string }>).detail;
+      if (detail?.instanceId && detail.instanceId !== instanceIdRef.current) onClose();
+    };
+    window.addEventListener(PROJECT_PROMPT_MENU_OPEN_EVENT, closeWhenAnotherMenuOpens);
+    return () =>
+      window.removeEventListener(PROJECT_PROMPT_MENU_OPEN_EVENT, closeWhenAnotherMenuOpens);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.dispatchEvent(
+      new CustomEvent(PROJECT_PROMPT_MENU_OPEN_EVENT, {
+        detail: { instanceId: instanceIdRef.current },
+      }),
+    );
+  }, [open]);
 
   useEffect(() => {
     if (!open || !anchor || typeof window === "undefined") return;
@@ -103,17 +125,22 @@ export function ProjectPromptActionMenu({
           <button
             type="button"
             aria-label={el ? "Κλείσιμο μενού" : "Close menu"}
-            className="fixed inset-0 z-[94] cursor-default bg-transparent"
+            className="fixed inset-0 z-[94] cursor-default bg-black/45 backdrop-blur-[1px] sm:bg-transparent sm:backdrop-blur-none"
             onClick={onClose}
           />
           <div
             ref={menuRef}
             role="menu"
             aria-label={el ? `Ενέργειες για ${title}` : `Actions for ${title}`}
-            className="glass-strong fixed z-[95] w-[270px] overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-1.5 shadow-2xl backdrop-blur-xl"
-            style={{ left: position.x, top: position.y }}
+            className="glass-strong fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[95] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-auto sm:w-[270px] sm:p-1.5"
+            style={
+              typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches
+                ? { left: position.x, top: position.y }
+                : undefined
+            }
             onClick={(event) => event.stopPropagation()}
           >
+            <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
             <p className="truncate px-3 py-2 text-[11px] font-semibold text-muted-foreground">
               {title}
             </p>
@@ -122,7 +149,7 @@ export function ProjectPromptActionMenu({
               role="menuitem"
               disabled={busy}
               onClick={() => void detach()}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-50 sm:py-2.5"
             >
               <FolderX className="h-4 w-4 text-accent" />
               {el ? "Αφαίρεση από το Project" : "Remove from Project"}
@@ -132,7 +159,7 @@ export function ProjectPromptActionMenu({
               role="menuitem"
               disabled={busy || availableProjects.length === 0}
               onClick={() => beginTransfer("copy")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-40"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-40 sm:py-2.5"
             >
               <Copy className="h-4 w-4 text-accent" />
               {el ? "Αντιγραφή σε άλλο Project" : "Copy to another Project"}
@@ -142,7 +169,7 @@ export function ProjectPromptActionMenu({
               role="menuitem"
               disabled={busy || availableProjects.length === 0}
               onClick={() => beginTransfer("move")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-40"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none disabled:opacity-40 sm:py-2.5"
             >
               <FolderInput className="h-4 w-4 text-accent" />
               {el ? "Μετακίνηση σε άλλο Project" : "Move to another Project"}
