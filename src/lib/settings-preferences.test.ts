@@ -5,13 +5,14 @@ async function source(path: string) {
 }
 
 describe("Settings and track source preferences", () => {
-  test("Settings is the canonical preference surface", async () => {
+  test("Settings keeps global preferences only", async () => {
     const settings = await source("src/components/promptbeats/SettingsPanel.tsx");
     expect(settings).toContain("<LanguageSelector");
     expect(settings).toContain("useExternalMediaConsent()");
-    expect(settings).toContain("useTrackSourcePreference()");
     expect(settings).toContain("useExplicitContentPreference()");
-    expect(settings).toContain("<TrackSourceFilter");
+    expect(settings).not.toContain("useTrackSourcePreference()");
+    expect(settings).not.toContain("<TrackSourceFilter");
+    expect(settings).not.toContain("ποια πηγή τραγουδιών θα εμφανίζεται από προεπιλογή");
     expect(settings).toContain("Απόκρυψη explicit τραγουδιών");
     expect(settings).toContain("Hide explicit tracks");
 
@@ -34,17 +35,24 @@ describe("Settings and track source preferences", () => {
     expect(embed).toContain('"Εξωτερικό player μπλοκαρισμένο"');
   });
 
-  test("Track source preference is account-persistent while page filters remain local state", async () => {
+  test("Track source filters persist independently for Feed, Trending, Library and Creator", async () => {
     const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
-    expect(filter).toContain("track_source_preference");
+    expect(filter).toContain('feed: "track_source_preference_feed"');
+    expect(filter).toContain('trending: "track_source_preference_trending"');
+    expect(filter).toContain('library: "track_source_preference_library"');
+    expect(filter).toContain('creator: "track_source_preference_creator"');
+    expect(filter).toContain('pathname.startsWith("/trending")');
+    expect(filter).toContain('pathname.startsWith("/library")');
+    expect(filter).toContain('pathname === "/"');
     expect(filter).toContain("supabase.auth.updateUser");
+    expect(filter).toContain("surfaceLocalKey(surface)");
+    expect(filter).toContain("persistence.setPreference(item)");
     expect(filter).toContain("filterByTrackSource");
 
     for (const path of [
       "src/routes/index.tsx",
       "src/routes/trending.tsx",
       "src/routes/library.tsx",
-      "src/components/promptbeats/PlaylistLibraryPanel.tsx",
     ]) {
       const code = await source(path);
       expect(code).toContain("useTrackSourcePreference");
