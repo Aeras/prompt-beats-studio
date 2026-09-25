@@ -16,6 +16,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Normalize patch patterns
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/prompt_projects_patch.py')
+          text = path.read_text()
+          text = text.replace('search.project!', 'search.project as string')
+          text = text.replace('search.base!', 'search.base as string')
+          path.write_text(text)
+          PY
       - name: Apply patch
         run: python .github/scripts/prompt_projects_patch.py
       - name: Check whitespace
