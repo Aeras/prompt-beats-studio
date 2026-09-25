@@ -53,10 +53,7 @@ function isOwnedElevenTempKey(key: string, userId: string) {
   return isSafeOwnedAudioKey(key, userId) && key.startsWith(`tracks/${userId}/eleven-temp/`);
 }
 
-async function deleteUnusedElevenTemp(
-  context: { supabase: any; userId: string },
-  key: string,
-) {
+async function deleteUnusedElevenTemp(context: { supabase: any; userId: string }, key: string) {
   if (!isOwnedElevenTempKey(key, context.userId)) return false;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: inUse, error } = await supabaseAdmin
@@ -97,9 +94,7 @@ export const getElevenMusicLabAccess = createServerFn({ method: "GET" })
 export const generateElevenCompositionPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({ prompt: promptSchema, durationSeconds: durationSchema })
-      .parse(input),
+    z.object({ prompt: promptSchema, durationSeconds: durationSchema }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireElevenMusicLabAccess(context);
