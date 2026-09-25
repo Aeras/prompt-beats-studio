@@ -1,0 +1,35 @@
+name: Temporary Prompt Project Assignment
+
+on:
+  push:
+    branches:
+      - fix/prompt-project-assignment
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/prompt-project-assignment
+          fetch-depth: 0
+      - name: Apply prompt assignment patch
+        run: python3 scripts/tmp-prompt-project-assignment.py
+      - name: Format changed files
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun install --frozen-lockfile
+          bunx prettier --write src/lib/ai.functions.ts src/integrations/supabase/types.ts src/routes/library.tsx src/lib/library-folders.test.ts
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/ai.functions.ts src/integrations/supabase/types.ts src/routes/library.tsx src/lib/library-folders.test.ts
+          git commit -m "Fix atomic Prompt to Project assignment"
+          git push origin HEAD:fix/prompt-project-assignment
