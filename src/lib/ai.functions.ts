@@ -2906,13 +2906,23 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
       if (touchError) throw new Error(touchError.message);
     }
 
-    const { error } = await context.supabase
+    const { data: updated, error } = await context.supabase
       .from("saved_prompts")
       .update(patch)
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id, project_id, version_number")
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!updated) throw new Error("Prompt update did not persist.");
+    if (data.project_id !== undefined && updated.project_id !== data.project_id) {
+      throw new Error("Prompt project assignment did not persist.");
+    }
+    return {
+      ok: true,
+      projectId: updated.project_id,
+      versionNumber: updated.version_number,
+    };
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
