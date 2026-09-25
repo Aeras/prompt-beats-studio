@@ -1,0 +1,50 @@
+name: Temporary Mobile Headers and Prompt Project Fix
+
+on:
+  push:
+    branches:
+      - fix/mobile-headers-and-prompt-project-move
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[mobile-header-prompt-fix applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Apply patch
+        run: python .github/scripts/fix_mobile_headers_prompt_project.py
+      - name: Format
+        run: |
+          bunx prettier --write \
+            src/routes/lyrics-review.tsx \
+            src/routes/song-universe.tsx \
+            src/routes/generate.tsx \
+            src/routes/trending.tsx \
+            src/routes/library.tsx \
+            src/lib/ai.functions.ts \
+            src/lib/mobile-page-consistency.test.ts
+          git diff --check
+      - name: Targeted tests
+        run: |
+          bun test src/lib/mobile-page-consistency.test.ts
+          bun test src/lib/library-folders.test.ts
+      - name: Build
+        run: bun run build
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit --pretty false
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Polish mobile headers and fix Prompt project assignment [mobile-header-prompt-fix applied]"
+          git push
