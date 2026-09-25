@@ -62,12 +62,18 @@ describe("Settings and track source preferences", () => {
 
   test("Persisted per-surface value remains authoritative when account metadata is stale", async () => {
     const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
-    const localIndex = filter.indexOf("const localSurfaceValue = readSurfaceLocalPreference(surface)");
-    const accountIndex = filter.indexOf("if (isPreference(surfaceAccountValue)) return surfaceAccountValue");
+    const localIndex = filter.indexOf(
+      "const localSurfaceValue = readSurfaceLocalPreference(surface)",
+    );
+    const accountIndex = filter.indexOf(
+      "if (isPreference(surfaceAccountValue)) return surfaceAccountValue",
+    );
     expect(localIndex).toBeGreaterThan(-1);
     expect(accountIndex).toBeGreaterThan(localIndex);
     expect(filter).toContain("if (!localSurfaceValue && isPreference(surfaceAccountValue)");
-    expect(filter).toContain("if (value !== persistence.preference) onChange(persistence.preference)");
+    expect(filter).toContain(
+      "if (value !== persistence.preference) onChange(persistence.preference)",
+    );
   });
 
   test("Explicit preference persists to the account and filters both normalized and DB track shapes", async () => {
