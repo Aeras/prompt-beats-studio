@@ -21,12 +21,14 @@ export function ReportTrackControl({
   isPublished,
   compact = false,
   iconOnly = true,
+  bare = false,
 }: {
   trackId: string;
   ownerId: string;
   isPublished: boolean;
   compact?: boolean;
   iconOnly?: boolean;
+  bare?: boolean;
 }) {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -246,11 +248,21 @@ export function ReportTrackControl({
         aria-label={label}
         title={label}
         className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:border-amber-300/40 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50",
-          compact ? "h-7 w-7" : iconOnly ? "h-8 w-8" : "h-9 gap-2 px-3 text-xs",
+          bare
+            ? "inline-flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50"
+            : "inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:border-amber-300/40 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50",
+          bare
+            ? compact
+              ? "h-9 w-6"
+              : "h-10 w-8"
+            : compact
+              ? "h-7 w-7"
+              : iconOnly
+                ? "h-8 w-8"
+                : "h-9 gap-2 px-3 text-xs",
         )}
       >
-        <Flag className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+        <Flag className={bare ? "h-[18px] w-[18px]" : compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
         {!iconOnly && <span>{label}</span>}
       </button>
       {modal}

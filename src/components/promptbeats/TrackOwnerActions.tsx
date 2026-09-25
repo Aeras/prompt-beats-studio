@@ -50,11 +50,13 @@ export function TrackOwnerActions({
   compact = false,
   menuMode = false,
   inlineMenuItems = false,
+  bare = false,
 }: {
   track: EditableTrack;
   compact?: boolean;
   menuMode?: boolean;
   inlineMenuItems?: boolean;
+  bare?: boolean;
 }) {
   const { t, language } = useI18n();
   const { user } = useAuth();
@@ -241,9 +243,10 @@ export function TrackOwnerActions({
       setBusy(false);
     }
   };
-  const buttonClass =
-    "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " +
-    (compact ? "h-7 w-7" : "h-8 w-8");
+  const buttonClass = bare
+    ? "grid h-10 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+    : "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " +
+      (compact ? "h-7 w-7" : "h-8 w-8");
 
   const editModal =
     editing &&
@@ -628,7 +631,7 @@ export function TrackOwnerActions({
           }}
           className={buttonClass}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className={bare ? "h-[18px] w-[18px]" : "h-4 w-4"} />
         </button>
       ) : (
         <div className="flex shrink-0 items-center gap-1.5">
