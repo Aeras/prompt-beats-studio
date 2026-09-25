@@ -68,6 +68,7 @@ jobs:
               ('test("canonical TypeScript registry contains exactly 20 unique feature keys"', 'test("canonical TypeScript registry contains exactly 19 unique feature keys"'),
               ('expect(new Set(keys).size).toBe(20);', 'expect(new Set(keys).size).toBe(19);'),
               ('test("V2 migration keeps its original ten definitions while later features are seeded separately"', 'test("V2 migration keeps its original active definitions while later features are seeded separately"'),
+              ('    expect(sidebar).toContain(\'item.id !== "musicLab" || musicLabAccess.allowed\');\n', ''),
           ]:
               if old not in text:
                   raise SystemExit(f"Expected Feature Access text not found: {old!r}")
