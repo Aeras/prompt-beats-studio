@@ -386,4 +386,20 @@ describe("Library folders foundation", () => {
     expect(generator).toContain('initiallyOpen={search.presets === "open"}');
     expect(presets).toContain("scrollIntoView");
   });
+
+  test("standalone prompts are assigned to Projects atomically and refresh every Library projection", async () => {
+    const library = await source("src/routes/library.tsx");
+    const ai = await source("src/lib/ai.functions.ts");
+    const migration = await source(
+      "supabase/migrations/20260925103000_atomic_prompt_project_assignment.sql",
+    );
+
+    expect(ai).toContain('"assign_standalone_prompt_to_project"');
+    expect(migration).toContain("pg_advisory_xact_lock");
+    expect(migration).toContain("uq_saved_prompts_project_version");
+    expect(library).toContain('["library", "folder-contents"]');
+    expect(library).toContain("projectSelection");
+    expect(library).toContain("projectSaving");
+    expect(library).toContain("setProjectSelection(previous)");
+  });
 });

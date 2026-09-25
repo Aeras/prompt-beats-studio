@@ -2364,6 +2364,9 @@ function SavedPromptCard({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [projectSaving, setProjectSaving] = useState(false);
+  const [projectSelection, setProjectSelection] = useState(prompt.project_id ?? "");
+  const [projectError, setProjectError] = useState("");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
@@ -2371,10 +2374,17 @@ function SavedPromptCard({
   const displayVersionLabel =
     prompt.source_generation_job_id && prompt.revision_request ? null : prompt.version_label;
 
+  useEffect(() => {
+    if (!projectSaving) setProjectSelection(prompt.project_id ?? "");
+  }, [projectSaving, prompt.project_id]);
+
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["library", "prompts"], exact: false }),
       queryClient.invalidateQueries({ queryKey: ["library", "prompt-projects"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-contents"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-scope-search"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["library", "folder-picker"], exact: false }),
     ]);
   const remove = async () => {
     if (!window.confirm(language === "el" ? "Να διαγραφεί αυτό το prompt;" : "Delete this prompt?"))
@@ -2432,9 +2442,26 @@ function SavedPromptCard({
   };
 
   const move = async (projectId: string) => {
-    const next = projectId || null;
-    await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: next } });
-    await refresh();
+    if (!projectId || projectSaving || prompt.project_id) return;
+    const previous = projectSelection;
+    setProjectSelection(projectId);
+    setProjectSaving(true);
+    setProjectError("");
+    try {
+      await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: projectId } });
+      await refresh();
+    } catch (error) {
+      setProjectSelection(previous);
+      setProjectError(
+        error instanceof Error
+          ? error.message
+          : language === "el"
+            ? "Η ανάθεση στο Project απέτυχε."
+            : "Could not assign this prompt to the Project.",
+      );
+    } finally {
+      setProjectSaving(false);
+    }
   };
 
   return (
@@ -2580,9 +2607,10 @@ function SavedPromptCard({
         ) : (
           <div className="mt-3 flex items-center gap-2">
             <select
-              value={prompt.project_id ?? ""}
-              onChange={(e) => move(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs"
+              value={projectSelection}
+              disabled={projectSaving || Boolean(prompt.project_id)}
+              onChange={(e) => void move(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs disabled:opacity-60"
             >
               <option value="">{language === "el" ? "Χωρίς Project" : "No Project"}</option>
               {projects.map((p) => (
@@ -2591,19 +2619,10 @@ function SavedPromptCard({
                 </option>
               ))}
             </select>
-            {prompt.project_id && (
-              <button
-                type="button"
-                aria-label={language === "el" ? "Αφαίρεση από project" : "Remove from project"}
-                title={language === "el" ? "Αφαίρεση από project" : "Remove from project"}
-                onClick={() => move("")}
-                className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
-              >
-                <FolderX className="h-4 w-4" />
-              </button>
-            )}
+            {projectSaving && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />}
           </div>
         ))}
+      {projectError && <p className="mt-2 text-xs text-red-400">{projectError}</p>}
       {(!listMode || expanded) && !compact && prompt.revision_request && (
         <div className="mt-3 rounded-xl border border-accent/20 bg-accent/[0.04] p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
