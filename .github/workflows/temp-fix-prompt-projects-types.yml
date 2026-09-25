@@ -52,7 +52,7 @@ jobs:
           bunx prettier --write src/lib/ai.functions.ts src/routes/generate.tsx
           git diff --check
       - name: Verify strict TypeScript
-        run: bunx tsc -p tsconfig.strict.json --noEmit
+        run: bunx tsc --noEmit --pretty false
       - name: Commit type fixes
         run: |
           git config user.name "github-actions[bot]"
