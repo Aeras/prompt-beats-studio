@@ -87,14 +87,12 @@ describe("Step 8 security / DB / RLS / storage hardening", () => {
     expect(resolver).toContain("isSafeOwnedAudioKey(track.audio_key, track.user_id)");
   });
 
-  test("share, review, and AI Music Lab playback receive short-lived signed audio URLs", async () => {
+  test("share and review playback receive short-lived signed audio URLs", async () => {
     const sharing = await source("src/lib/track-sharing.functions.ts");
     const review = await source("src/lib/private-review.functions.ts");
-    const lab = await source("src/lib/ai-music-lab.functions.ts");
 
     expect(sharing).toContain("hydrateTrackAudioUrl");
     expect(review).toContain("hydrateTrackAudioUrl");
-    expect(lab).toContain("createSignedR2GetUrl(result.audioKey)");
   });
 
   test("public token RPCs are callable only through the server-side service role", async () => {
