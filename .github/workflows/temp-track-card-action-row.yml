@@ -1,0 +1,50 @@
+name: Temporary Track Card Action Row
+
+on:
+  push:
+    branches:
+      - feat/track-card-single-action-row
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[track-card action-row applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Apply UI patch
+        run: python .github/scripts/track_card_action_row_patch.py
+      - name: Format
+        run: |
+          bunx prettier --write \
+            src/components/promptbeats/TrackCard.tsx \
+            src/components/promptbeats/LikeButton.tsx \
+            src/components/promptbeats/TrackLibraryActions.tsx \
+            src/components/promptbeats/ShareTrackButton.tsx \
+            src/components/promptbeats/ReportTrackControl.tsx \
+            src/components/promptbeats/TrackOwnerActions.tsx \
+            src/lib/track-card-action-row.test.ts
+          git diff --check
+      - name: Targeted tests
+        run: |
+          bun test src/lib/track-card-action-row.test.ts
+          bun test src/lib/content-reports-explicit.test.ts
+      - name: Build
+        run: bun run build
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit --pretty false
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Redesign track card action row [track-card action-row applied]"
+          git push
