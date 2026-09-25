@@ -3331,6 +3331,10 @@ export type Database = {
         Args: { _idempotency_key: string };
         Returns: undefined;
       };
+      assign_standalone_prompt_to_project: {
+        Args: { _prompt_id: string; _project_id: string };
+        Returns: Json;
+      };
       next_prompt_project_version: {
         Args: { p_project_id: string };
         Returns: number;

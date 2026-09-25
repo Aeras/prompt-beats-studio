@@ -2827,62 +2827,15 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
         throw new Error("This prompt is not assigned to a project.");
       }
 
-      const { data: targetProject, error: targetError } = await context.supabase
-        .from("prompt_projects")
-        .select("id")
-        .eq("id", data.project_id)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if (targetError) throw new Error(targetError.message);
-      if (!targetProject) throw new Error("Project not found.");
-
-      const { data: previous, error: previousError } = await context.supabase
-        .from("saved_prompts")
-        .select("id, generator_input_snapshot, lyrics")
-        .eq("project_id", data.project_id)
-        .eq("user_id", context.userId)
-        .order("version_number", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (previousError) throw new Error(previousError.message);
-
-      const { data: next, error: versionError } = await context.supabase.rpc(
-        "next_prompt_project_version",
+      const { data: assigned, error: assignError } = await context.supabase.rpc(
+        "assign_standalone_prompt_to_project",
         {
-          p_project_id: data.project_id,
+          _prompt_id: data.id,
+          _project_id: data.project_id,
         },
       );
-      if (versionError) throw new Error(versionError.message);
-      const versionNumber = Number(next ?? 1);
-
-      const currentSnapshot = generatorInputSnapshotSchema.safeParse(
-        current.generator_input_snapshot,
-      );
-      const previousSnapshot = generatorInputSnapshotSchema.safeParse(
-        previous?.generator_input_snapshot,
-      );
-      const metadata =
-        versionNumber === 1
-          ? buildInitialVersionMetadata()
-          : buildManualVersionMetadata({
-              baseSnapshot: previousSnapshot.success ? previousSnapshot.data : null,
-              desiredSnapshot: currentSnapshot.success ? currentSnapshot.data : null,
-              beforeLyrics: previous?.lyrics ?? null,
-              afterLyrics: current.lyrics,
-            });
-
-      patch.project_id = data.project_id;
-      patch.version_number = versionNumber;
-      patch.parent_prompt_id = previous?.id ?? null;
-      patch.version_change_metadata = metadata as Json;
-
-      const { error: touchError } = await context.supabase
-        .from("prompt_projects")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", data.project_id)
-        .eq("user_id", context.userId);
-      if (touchError) throw new Error(touchError.message);
+      if (assignError) throw new Error(assignError.message);
+      return { ok: true, assignment: assigned };
     }
 
     const { error } = await context.supabase
