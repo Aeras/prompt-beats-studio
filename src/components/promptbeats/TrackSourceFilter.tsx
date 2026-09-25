@@ -5,15 +5,21 @@ import type { Track } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
 export type TrackSourcePreference = "all" | "uploads" | "external";
+export type TrackSourceSurface = "feed" | "trending" | "library" | "creator";
 
 type TrackSourceLike = Track & {
   source_type?: string | null | undefined;
   contains_explicit_lyrics?: boolean | null | undefined;
 };
 
-const ACCOUNT_KEY = "track_source_preference";
-const LOCAL_KEY = "pb:track-source-preference";
-const EVENT_KEY = "promptbeats:track-source-preference";
+const LEGACY_ACCOUNT_KEY = "track_source_preference";
+const LEGACY_LOCAL_KEY = "pb:track-source-preference";
+const SURFACE_ACCOUNT_KEYS: Record<TrackSourceSurface, string> = {
+  feed: "track_source_preference_feed",
+  trending: "track_source_preference_trending",
+  library: "track_source_preference_library",
+  creator: "track_source_preference_creator",
+};
 
 const EXPLICIT_ACCOUNT_KEY = "hide_explicit_tracks";
 const EXPLICIT_LOCAL_KEY = "pb:hide-explicit-tracks";
@@ -25,24 +31,45 @@ function isPreference(value: unknown): value is TrackSourcePreference {
   return value === "all" || value === "uploads" || value === "external";
 }
 
-function readLocalPreference(): TrackSourcePreference {
+function inferTrackSourceSurface(): TrackSourceSurface {
+  if (typeof window === "undefined") return "feed";
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/trending")) return "trending";
+  if (pathname.startsWith("/library")) return "library";
+  if (pathname === "/") return "feed";
+  return "creator";
+}
+
+function surfaceLocalKey(surface: TrackSourceSurface) {
+  return `pb:track-source-preference:${surface}`;
+}
+
+function surfaceEventKey(surface: TrackSourceSurface) {
+  return `promptbeats:track-source-preference:${surface}`;
+}
+
+function readLocalPreference(surface: TrackSourceSurface): TrackSourcePreference {
   if (typeof window === "undefined") return "all";
   try {
-    const value = window.localStorage.getItem(LOCAL_KEY);
-    return isPreference(value) ? value : "all";
+    const surfaceValue = window.localStorage.getItem(surfaceLocalKey(surface));
+    if (isPreference(surfaceValue)) return surfaceValue;
+    const legacyValue = window.localStorage.getItem(LEGACY_LOCAL_KEY);
+    return isPreference(legacyValue) ? legacyValue : "all";
   } catch {
     return "all";
   }
 }
 
-function writeLocalPreference(value: TrackSourcePreference) {
+function writeLocalPreference(surface: TrackSourceSurface, value: TrackSourcePreference) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(LOCAL_KEY, value);
+    window.localStorage.setItem(surfaceLocalKey(surface), value);
   } catch {
     // Preference persistence is best-effort; the in-memory state still updates.
   }
-  window.dispatchEvent(new CustomEvent<TrackSourcePreference>(EVENT_KEY, { detail: value }));
+  window.dispatchEvent(
+    new CustomEvent<TrackSourcePreference>(surfaceEventKey(surface), { detail: value }),
+  );
 }
 
 function readLocalExplicitPreference(): boolean {
@@ -116,29 +143,51 @@ export function useExplicitContentPreference() {
 
 export function useTrackSourcePreference() {
   const { user } = useAuth();
-  const accountValue = user?.user_metadata?.[ACCOUNT_KEY];
+  const [surface, setSurface] = useState<TrackSourceSurface>("feed");
+  const surfaceAccountValue = user?.user_metadata?.[SURFACE_ACCOUNT_KEYS[surface]];
+  const legacyAccountValue = user?.user_metadata?.[LEGACY_ACCOUNT_KEY];
   const explicitAccountValue = user?.user_metadata?.[EXPLICIT_ACCOUNT_KEY];
   activeExplicitPreference =
     typeof explicitAccountValue === "boolean"
       ? explicitAccountValue
       : readLocalExplicitPreference();
-  const initial = isPreference(accountValue) ? accountValue : readLocalPreference();
+  const initial = isPreference(surfaceAccountValue)
+    ? surfaceAccountValue
+    : isPreference(legacyAccountValue)
+      ? legacyAccountValue
+      : readLocalPreference(surface);
   const [preference, setPreferenceState] = useState<TrackSourcePreference>(initial);
   const [, setExplicitRevision] = useState(0);
 
   useEffect(() => {
-    const next = isPreference(accountValue) ? accountValue : readLocalPreference();
-    setPreferenceState(next);
-  }, [accountValue, user?.id]);
+    setSurface(inferTrackSourceSurface());
+  }, []);
 
   useEffect(() => {
+    const next = isPreference(surfaceAccountValue)
+      ? surfaceAccountValue
+      : isPreference(legacyAccountValue)
+        ? legacyAccountValue
+        : readLocalPreference(surface);
+    setPreferenceState(next);
+    if (isPreference(surfaceAccountValue) && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(surfaceLocalKey(surface), surfaceAccountValue);
+      } catch {
+        // Local cache is best-effort.
+      }
+    }
+  }, [legacyAccountValue, surface, surfaceAccountValue, user?.id]);
+
+  useEffect(() => {
+    const eventKey = surfaceEventKey(surface);
     const sync = (event: Event) => {
       const next = (event as CustomEvent<TrackSourcePreference>).detail;
       if (isPreference(next)) setPreferenceState(next);
     };
-    window.addEventListener(EVENT_KEY, sync);
-    return () => window.removeEventListener(EVENT_KEY, sync);
-  }, []);
+    window.addEventListener(eventKey, sync);
+    return () => window.removeEventListener(eventKey, sync);
+  }, [surface]);
 
   useEffect(() => {
     const syncExplicit = (event: Event) => {
@@ -153,16 +202,19 @@ export function useTrackSourcePreference() {
 
   const setPreference = useCallback(
     async (next: TrackSourcePreference) => {
+      const targetSurface = inferTrackSourceSurface();
+      setSurface(targetSurface);
       setPreferenceState(next);
-      writeLocalPreference(next);
+      writeLocalPreference(targetSurface, next);
       if (!user) return;
-      const { error } = await supabase.auth.updateUser({ data: { [ACCOUNT_KEY]: next } });
+      const accountKey = SURFACE_ACCOUNT_KEYS[targetSurface];
+      const { error } = await supabase.auth.updateUser({ data: { [accountKey]: next } });
       if (error) throw new Error(error.message);
     },
     [user],
   );
 
-  return { preference, setPreference };
+  return { preference, setPreference, surface };
 }
 
 export function shouldHideExplicitTracks(): boolean {
@@ -199,6 +251,7 @@ export function TrackSourceFilter({
   language: "en" | "el";
   className?: string;
 }) {
+  const persistence = useTrackSourcePreference();
   const labels = useMemo(
     () =>
       language === "el"
@@ -218,7 +271,10 @@ export function TrackSourceFilter({
           key={item}
           type="button"
           aria-pressed={value === item}
-          onClick={() => onChange(item)}
+          onClick={() => {
+            onChange(item);
+            void persistence.setPreference(item).catch(() => undefined);
+          }}
           className={cn(
             "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
             value === item
