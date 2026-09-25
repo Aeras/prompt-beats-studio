@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  AudioLines,
   BarChart3,
   Compass,
   Flame,
@@ -33,7 +32,6 @@ export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
   { id: "trending", labelKey: "nav.trending", icon: Flame },
   { id: "studio", labelKey: "nav.studio", icon: Sparkles },
-  { id: "musicLab", labelKey: null, icon: AudioLines },
   { id: "songAnalyzer", labelKey: null, icon: ScanSearch },
   { id: "lyricsReview", labelKey: null, icon: TextSearch },
   { id: "inspirationWall", labelKey: null, icon: Lightbulb },
@@ -53,7 +51,6 @@ const NAV_TO: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
   studio: "/generate",
-  musicLab: "/ai-music-lab",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
   inspirationWall: "/inspiration-wall",
@@ -75,7 +72,6 @@ export function SidebarNav({
   const { user, profile } = useAuth();
   const { isBanned, canViewUsers } = useModeration();
   const generatorAccess = useFeatureAccess("ai_generator");
-  const musicLabAccess = useFeatureAccess("ai_music_lab");
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const lyricsReviewAccess = useFeatureAccess("lyrics_review");
   const inspirationWallAccess = useFeatureAccess("inspiration_wall");
@@ -112,7 +108,6 @@ export function SidebarNav({
         {NAV.filter(
           (item) =>
             (item.id !== "studio" || generatorAccess.allowed) &&
-            (item.id !== "musicLab" || musicLabAccess.allowed) &&
             (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
             (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
             (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
@@ -124,17 +119,15 @@ export function SidebarNav({
           const fallbackLabel =
             item.id === "songAnalyzer"
               ? "AI Song Analyzer"
-              : item.id === "musicLab"
-                ? "AI Music Lab"
-                : item.id === "lyricsReview"
-                  ? "Lyrics Review"
-                  : item.id === "inspirationWall"
-                    ? "Inspiration Wall"
-                    : item.id === "storyMap"
-                      ? "Story Map"
-                      : item.id === "songUniverse"
-                        ? "Song Universes"
-                        : item.id;
+              : item.id === "lyricsReview"
+                ? "Lyrics Review"
+                : item.id === "inspirationWall"
+                  ? "Inspiration Wall"
+                  : item.id === "storyMap"
+                    ? "Story Map"
+                    : item.id === "songUniverse"
+                      ? "Song Universes"
+                      : item.id;
           return (
             <Link
               key={item.id}

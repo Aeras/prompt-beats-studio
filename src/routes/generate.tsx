@@ -135,7 +135,6 @@ import {
 
 const JOB_STORAGE_KEY = "pb:generation-job";
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
-const AI_MUSIC_LAB_TRANSFER_KEY = "pb:ai-music-lab-package";
 const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
 
 export const Route = createFileRoute("/generate")({
@@ -837,7 +836,6 @@ function GeneratePage() {
   const generatorFeature = useFeatureAccess("ai_generator");
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
-  const musicLabFeature = useFeatureAccess("ai_music_lab");
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
   const storyMapFeature = useFeatureAccess("story_map");
   const songUniverseFeature = useFeatureAccess("song_universe");
@@ -2070,20 +2068,6 @@ ${narrativePlan.beats
     } finally {
       setSavingLibrary(false);
     }
-  };
-
-  const openMusicLab = () => {
-    if (!musicLabFeature.allowed || !result || typeof window === "undefined") return;
-    window.sessionStorage.setItem(
-      AI_MUSIC_LAB_TRANSFER_KEY,
-      JSON.stringify({
-        title: result.title,
-        musicStyle: result.tags,
-        lyrics: result.lyrics,
-        productionNotes: result.note,
-      }),
-    );
-    void navigate({ to: "/ai-music-lab" });
   };
 
   type Song = { title: string; tags: string; lyrics: string; note: string };
@@ -3496,15 +3480,6 @@ ${narrativePlan.beats
                 onChange={(v) => setResult({ ...result, note: v })}
                 rows={5}
               />
-              {musicLabFeature.allowed && (
-                <button
-                  onClick={openMusicLab}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.005] active:scale-[0.995]"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  {appLanguage === "el" ? "Άνοιγμα στο AI Music Lab" : "Open in AI Music Lab"}
-                </button>
-              )}
               {!revisionMeta && !workspaceResultSaved && (
                 <button
                   onClick={openSaveDialog}

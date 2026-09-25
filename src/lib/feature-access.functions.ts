@@ -6,7 +6,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const FEATURE_KEYS = [
   "ai_generator",
   "quality_check",
-  "ai_music_lab",
   "song_analyzer",
   "lyrics_workspace",
   "lyrics_review",

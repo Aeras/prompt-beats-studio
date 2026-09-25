@@ -122,7 +122,6 @@ describe("Super Admin Phase A", () => {
       "src/lib/admin.functions.ts",
       "src/lib/ai-model-admin.functions.ts",
       "src/lib/donation.functions.ts",
-      "src/lib/ai-music-lab.functions.ts",
       "src/lib/ai-analytics.functions.ts",
       "src/lib/generation-jobs.functions.ts",
       "src/lib/song-setup-assistant.functions.ts",
