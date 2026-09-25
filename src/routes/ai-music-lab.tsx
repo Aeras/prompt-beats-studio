@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AudioLines,
@@ -24,6 +24,7 @@ import {
   generateLyriaSong,
   getAiMusicLabAccess,
 } from "@/lib/ai-music-lab.functions";
+import { getElevenMusicLabAccess } from "@/lib/eleven-music-lab.functions";
 import { createTrack, discardUploads } from "@/lib/tracks.functions";
 import { UPLOAD_GENRES } from "@/lib/tracks";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,6 +109,12 @@ function AiMusicLabPage() {
   const access = useQuery({
     queryKey: ["ai-music-lab-access"],
     queryFn: () => getAiMusicLabAccess(),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const elevenAccess = useQuery({
+    queryKey: ["eleven-music-lab-access"],
+    queryFn: () => getElevenMusicLabAccess(),
     retry: false,
     staleTime: 60_000,
   });
@@ -338,6 +345,25 @@ function AiMusicLabPage() {
   return (
     <AppShell header={<Header copy={copy} />}>
       <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+        {elevenAccess.data?.allowed === true && (
+          <nav
+            aria-label="AI Music Lab provider"
+            className="mb-5 inline-flex rounded-xl border border-white/10 bg-black/25 p-1"
+          >
+            <span
+              aria-current="page"
+              className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-foreground"
+            >
+              Google Lyria
+            </span>
+            <Link
+              to="/ai-music-lab-eleven"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              Eleven Music
+            </Link>
+          </nav>
+        )}
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="space-y-5">
             <div className="glass rounded-2xl p-5">
