@@ -150,16 +150,17 @@ function toTrack(track: Row, handle: string): Track {
 
 const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
 type LibraryTab = (typeof TABS)[number];
+type LibrarySearch = { tab?: LibraryTab };
 
-function parseLibraryTab(value: unknown): LibraryTab {
+function parseLibraryTab(value: unknown): LibraryTab | undefined {
   return typeof value === "string" && TABS.includes(value as LibraryTab)
     ? (value as LibraryTab)
-    : "tracks";
+    : undefined;
 }
 
 export const Route = createFileRoute("/library")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: parseLibraryTab(search.tab),
+  validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
+    tab: parseLibraryTab(search["tab"]),
   }),
   head: () => ({
     meta: [
@@ -198,7 +199,6 @@ function LibraryPage() {
   const [showTabFade, setShowTabFade] = useState(false);
   const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
-  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
 
   const availableTabs = TABS.filter((item) => {
     if (item === "playlists") return playlistsAccess.allowed;
@@ -208,11 +208,13 @@ function LibraryPage() {
     return true;
   });
 
-  const tab = availableTabs.includes(requestedTab) ? requestedTab : "tracks";
+  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : "tracks";
+
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
 
   useEffect(() => {
-    if (requestedTab !== tab) {
-      void navigate({ to: "/library", search: { tab }, replace: true });
+    if (requestedTab && requestedTab !== tab) {
+      void navigate({ to: "/library", search: {}, replace: true });
     }
   }, [navigate, requestedTab, tab]);
 

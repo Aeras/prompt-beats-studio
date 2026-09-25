@@ -347,7 +347,7 @@ describe("Library folders foundation", () => {
     const library = await source("src/routes/library.tsx");
 
     expect(library).toContain("validateSearch");
-    expect(library).toContain("parseLibraryTab(search.tab)");
+    expect(library).toContain('parseLibraryTab(search["tab"])');
     expect(library).toContain("Route.useSearch()");
     expect(library).toContain("search: { tab: item }");
     expect(library).toContain("snap-x snap-mandatory");
