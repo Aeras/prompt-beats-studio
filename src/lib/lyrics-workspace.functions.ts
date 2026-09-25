@@ -41,7 +41,8 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
         .is("project_id", null)
         .select("id")
         .maybeSingle();
-      if (error || !replaced) throw new Error("The edited lyrics could not replace the standalone Prompt.");
+      if (error || !replaced)
+        throw new Error("The edited lyrics could not replace the standalone Prompt.");
       return {
         savedPromptId: replaced.id,
         projectId: null,

@@ -2588,10 +2588,46 @@ function SavedPromptCard({
         </div>
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
-        <button type="button" onClick={() => setEditing(true)} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"} title={language === "el" ? "Επεξεργασία" : "Edit"}><Pencil className="h-4 w-4" /></button>
-        <button type="button" onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={t("library.copyPrompt")} title={t("library.copyPrompt")}>{copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}</button>
-        <button type="button" onClick={remove} disabled={deleting} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-destructive disabled:opacity-50" aria-label={t("library.deletePrompt")} title={t("library.deletePrompt")}>{deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>
-        <button type="button" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); onLongPress?.({ x: rect.right - 8, y: rect.bottom + 6 }); }} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={language === "el" ? "Περισσότερες επιλογές" : "More options"} title={language === "el" ? "Περισσότερα" : "More"}><MoreHorizontal className="h-4 w-4" /></button>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"
+          aria-label={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"}
+          title={language === "el" ? "Επεξεργασία" : "Edit"}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))}
+          className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"
+          aria-label={t("library.copyPrompt")}
+          title={t("library.copyPrompt")}
+        >
+          {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={deleting}
+          className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-destructive disabled:opacity-50"
+          aria-label={t("library.deletePrompt")}
+          title={t("library.deletePrompt")}
+        >
+          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            onLongPress?.({ x: rect.right - 8, y: rect.bottom + 6 });
+          }}
+          className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent"
+          aria-label={language === "el" ? "Περισσότερες επιλογές" : "More options"}
+          title={language === "el" ? "Περισσότερα" : "More"}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
       </div>
       {listMode && (
         <button

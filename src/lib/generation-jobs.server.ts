@@ -129,7 +129,11 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
           .select("id")
           .maybeSingle();
         if (replaceError || !replaced) {
-          console.error("[generation-job] standalone revision replace failed", job.id, replaceError?.message);
+          console.error(
+            "[generation-job] standalone revision replace failed",
+            job.id,
+            replaceError?.message,
+          );
           throw new Error("The standalone Prompt could not be replaced.");
         }
         persistedResult = out.result;

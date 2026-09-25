@@ -401,5 +401,4 @@ describe("Library folders foundation", () => {
     expect(jobs).toContain("standalone revision replace failed");
     expect(jobs).toContain('.is("project_id", null)');
   });
-
 });
