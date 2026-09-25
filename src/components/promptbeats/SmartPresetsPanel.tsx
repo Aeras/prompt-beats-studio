@@ -124,7 +124,10 @@ export function SmartPresetsPanel({
   if (!featureAccess.allowed) return null;
 
   return (
-    <div ref={panelRef} className="scroll-mt-36 rounded-2xl border border-accent/25 bg-accent/[0.04] p-4">
+    <div
+      ref={panelRef}
+      className="scroll-mt-36 rounded-2xl border border-accent/25 bg-accent/[0.04] p-4"
+    >
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

@@ -846,9 +846,7 @@ function GeneratePage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
-  const [advanced, setAdvanced] = useState(
-    search.mode === "revision" || search.presets === "open",
-  );
+  const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
