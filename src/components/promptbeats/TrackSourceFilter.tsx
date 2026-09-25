@@ -73,9 +73,9 @@ function resolveTrackSourcePreference(
   surfaceAccountValue: unknown,
   legacyAccountValue: unknown,
 ): TrackSourcePreference {
-  if (isPreference(surfaceAccountValue)) return surfaceAccountValue;
   const localSurfaceValue = readSurfaceLocalPreference(surface);
   if (localSurfaceValue) return localSurfaceValue;
+  if (isPreference(surfaceAccountValue)) return surfaceAccountValue;
   if (isPreference(legacyAccountValue)) return legacyAccountValue;
   return readLegacyLocalPreference() ?? "all";
 }
@@ -176,9 +176,10 @@ export function useTrackSourcePreference(forcedSurface?: TrackSourceSurface) {
   const [, setExplicitRevision] = useState(0);
 
   useEffect(() => {
+    const localSurfaceValue = readSurfaceLocalPreference(surface);
     const next = resolveTrackSourcePreference(surface, surfaceAccountValue, legacyAccountValue);
     setPreferenceState(next);
-    if (isPreference(surfaceAccountValue) && typeof window !== "undefined") {
+    if (!localSurfaceValue && isPreference(surfaceAccountValue) && typeof window !== "undefined") {
       try {
         window.localStorage.setItem(surfaceLocalKey(surface), surfaceAccountValue);
       } catch {
@@ -267,6 +268,10 @@ export function TrackSourceFilter({
         : { all: "All", uploads: "Uploads", external: "External" },
     [language],
   );
+
+  useEffect(() => {
+    if (value !== persistence.preference) onChange(persistence.preference);
+  }, [onChange, persistence.preference, value]);
 
   return (
     <div
