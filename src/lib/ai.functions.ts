@@ -2829,13 +2829,13 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
     };
     if (data.custom_name !== undefined) patch.custom_name = data.custom_name;
     if (data.version_label !== undefined) patch.version_label = data.version_label;
-    if (data.theme !== undefined) patch.theme = data.theme;
-    if (data.genre !== undefined) patch.genre = data.genre;
-    if (data.mood !== undefined) patch.mood = data.mood;
-    if (data.language !== undefined) patch.language = data.language;
-    if (data.tags !== undefined) patch.tags = data.tags;
-    if (data.lyrics !== undefined) patch.lyrics = data.lyrics;
-    if (data.note !== undefined) patch.note = data.note;
+    if (data.theme !== undefined) patch.theme = data.theme ?? "";
+    if (data.genre !== undefined) patch.genre = data.genre ?? "";
+    if (data.mood !== undefined) patch.mood = data.mood ?? "";
+    if (data.language !== undefined) patch.language = data.language ?? "";
+    if (data.tags !== undefined) patch.tags = data.tags ?? "";
+    if (data.lyrics !== undefined) patch.lyrics = data.lyrics ?? "";
+    if (data.note !== undefined) patch.note = data.note ?? "";
 
     if (data.project_id !== undefined && data.project_id !== current.project_id) {
       if (current.project_id) {

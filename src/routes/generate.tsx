@@ -1311,7 +1311,7 @@ function GeneratePage() {
       if (job.input?.operation === "revision" && job.input.revision) {
         setRevisionMode(true);
         setAdvanced(true);
-        setRevisionProjectId(job.input.revision.projectId);
+        setRevisionProjectId(job.input.revision.projectId ?? "");
         setRevisionBasePromptId(job.input.revision.basePromptId);
         setRevisionRequest(job.input.revision.revisionRequest);
       }
@@ -2488,7 +2488,7 @@ ${narrativePlan.beats
               <LyricsWorkspace
                 song={savedWorkspaceSong}
                 projectId={search.project ?? null}
-                projectName={workspaceBase.data?.project.name ?? null}
+                projectName={workspaceBase.data?.project?.name ?? null}
                 basePromptId={search.base ?? null}
                 baseVersionNumber={savedWorkspacePrompt?.version_number ?? null}
                 onClose={closeSavedWorkspace}
