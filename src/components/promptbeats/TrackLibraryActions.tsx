@@ -34,10 +34,12 @@ export function TrackLibraryActions({
   track,
   compact = false,
   ownerActions = null,
+  bare = false,
 }: {
   track: Track;
   compact?: boolean;
   ownerActions?: ReactNode;
+  bare?: boolean;
 }) {
   const { language } = useI18n();
   const { user } = useAuth();
@@ -309,9 +311,13 @@ export function TrackLibraryActions({
           <DropdownMenu.Trigger asChild>
             <button
               aria-label="More track actions"
-              className="grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              className={
+                bare
+                  ? "grid h-9 w-6 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                  : "grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+              }
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
+              <MoreHorizontal className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
@@ -360,11 +366,14 @@ export function TrackLibraryActions({
     );
   }
 
-  const iconClass =
-    "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:border-white/5 disabled:text-muted-foreground/30 disabled:opacity-60 disabled:hover:border-white/5 disabled:hover:text-muted-foreground/30";
+  const iconClass = bare
+    ? "grid h-10 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
+    : "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:border-white/5 disabled:text-muted-foreground/30 disabled:opacity-60 disabled:hover:border-white/5 disabled:hover:text-muted-foreground/30";
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div
+        className={bare ? "flex shrink-0 items-center gap-0" : "flex shrink-0 items-center gap-1.5"}
+      >
         {favoritesAccess.allowed && (
           <button
             onClick={() => void favorite()}
@@ -376,7 +385,9 @@ export function TrackLibraryActions({
             {busy === "favorite" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Bookmark className={`h-3.5 w-3.5 ${isFavorite ? "fill-current text-accent" : ""}`} />
+              <Bookmark
+                className={`${bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} ${isFavorite ? "fill-current text-accent" : ""}`}
+              />
             )}
           </button>
         )}
@@ -387,7 +398,7 @@ export function TrackLibraryActions({
             title={copy.playlist}
             className={iconClass}
           >
-            <ListPlus className="h-3.5 w-3.5" />
+            <ListPlus className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
           </button>
         )}
         {hasDownloadableSource && (
@@ -401,7 +412,7 @@ export function TrackLibraryActions({
             {busy === "download" && canDownload ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Download className="h-3.5 w-3.5" />
+              <Download className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
             )}
           </button>
         )}

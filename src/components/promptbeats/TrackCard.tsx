@@ -270,47 +270,97 @@ export function TrackCard({
       </div>
 
       <div className={cn(compact ? "space-y-2 p-2.5" : "space-y-3 p-3")}>
-        <div className={cn("flex items-start justify-between", compact ? "gap-1.5" : "gap-3")}>
-          <div className="min-w-0">
-            <h3 className={cn("truncate font-semibold", compact ? "text-sm" : "text-base")}>
-              <Link
-                to="/track/$id"
-                params={{ id: track.id }}
-                className="relative z-10 inline-block cursor-pointer transition-colors hover:text-accent"
-              >
-                {track.title}
-              </Link>
-            </h3>
-            <p
-              className={cn("truncate text-muted-foreground", compact ? "text-[10px]" : "text-xs")}
+        <div className="min-w-0">
+          <h3 className={cn("truncate font-semibold", compact ? "text-sm" : "text-base")}>
+            <Link
+              to="/track/$id"
+              params={{ id: track.id }}
+              className="relative z-10 inline-block cursor-pointer transition-colors hover:text-accent"
             >
-              {track.userId ? (
-                <Link
-                  to="/$handle"
-                  params={{ handle: track.handle }}
-                  className="transition-colors hover:text-accent"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {track.handle}
-                </Link>
-              ) : (
-                <span>{track.handle}</span>
-              )}
-              {track.staffBadge && (
-                <>
-                  <span className="mx-1.5">·</span>
-                  <StaffBadge badge={track.staffBadge} />
-                </>
-              )}
-              {" · "}
-              {t("track.plays", { count: playCount })}
-            </p>
+              {track.title}
+            </Link>
+          </h3>
+          <p className={cn("truncate text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
+            {track.userId ? (
+              <Link
+                to="/$handle"
+                params={{ handle: track.handle }}
+                className="transition-colors hover:text-accent"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {track.handle}
+              </Link>
+            ) : (
+              <span>{track.handle}</span>
+            )}
+            {track.staffBadge && (
+              <>
+                <span className="mx-1.5">·</span>
+                <StaffBadge badge={track.staffBadge} />
+              </>
+            )}
+            {" · "}
+            {t("track.plays", { count: playCount })}
+          </p>
+        </div>
+
+        <div className={cn("flex items-center justify-between", compact ? "gap-1" : "gap-2")}>
+          <div
+            data-track-actions="left"
+            className={cn("flex min-w-0 items-center", compact ? "gap-0.5" : "gap-1")}
+          >
+            {track.prompt?.trim() && (
+              <button
+                type="button"
+                onClick={(event) => toggleContent("prompt", event.currentTarget)}
+                aria-label={
+                  activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")
+                }
+                title={activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
+                aria-pressed={activeContent === "prompt"}
+                className={cn(
+                  "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+                  compact ? "h-9 w-6" : "h-10 w-8",
+                  activeContent === "prompt" &&
+                    "text-accent drop-shadow-[0_0_7px_color-mix(in_oklab,var(--neon)_75%,transparent)]",
+                )}
+              >
+                <PromptContentIcon compact={compact} />
+              </button>
+            )}
+            {track.lyrics?.trim() && (
+              <button
+                type="button"
+                onClick={(event) => toggleContent("lyrics", event.currentTarget)}
+                aria-label={
+                  activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")
+                }
+                title={activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
+                aria-pressed={activeContent === "lyrics"}
+                className={cn(
+                  "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50",
+                  compact ? "h-9 w-6" : "h-10 w-8",
+                  activeContent === "lyrics" &&
+                    "text-violet-300 drop-shadow-[0_0_7px_rgba(196,140,255,0.8)]",
+                )}
+              >
+                <LyricsContentIcon compact={compact} />
+              </button>
+            )}
           </div>
-          <div className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-2")}>
-            <LikeButton trackId={track.id} enabled={Boolean(track.userId)} />
+
+          <div
+            data-track-actions="right"
+            className={cn(
+              "ml-auto flex min-w-0 shrink-0 items-center justify-end",
+              compact ? "gap-0" : "gap-0.5",
+            )}
+          >
+            <LikeButton trackId={track.id} enabled={Boolean(track.userId)} compact={compact} />
             <TrackLibraryActions
               track={track}
               compact={compact}
+              bare
               ownerActions={
                 compact && ownerTrack ? (
                   <TrackOwnerActions compact inlineMenuItems track={ownerTrack} />
@@ -327,63 +377,20 @@ export function TrackCard({
                 trackTitle={track.title}
                 iconOnly
                 compact={compact}
+                bare
               />
             )}
-            {!compact && ownerTrack && <TrackOwnerActions menuMode track={ownerTrack} />}
-          </div>
-        </div>
-
-        <div className={cn("flex items-center justify-between", compact ? "gap-1.5" : "gap-2")}>
-          <div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")}>
-            {track.prompt?.trim() && (
-              <button
-                type="button"
-                onClick={(event) => toggleContent("prompt", event.currentTarget)}
-                aria-label={
-                  activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")
-                }
-                title={activeContent === "prompt" ? t("track.hidePrompt") : t("track.showPrompt")}
-                aria-pressed={activeContent === "prompt"}
-                className={cn(
-                  "grid shrink-0 place-items-center rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                  compact ? "h-7 w-7" : "h-8 w-8",
-                  activeContent === "prompt"
-                    ? "border-accent/70 bg-accent/20 shadow-[0_0_14px_-4px_color-mix(in_oklab,var(--neon)_80%,transparent)]"
-                    : "border-accent/35 bg-accent/[0.07] hover:border-accent/60 hover:bg-accent/15",
-                )}
-              >
-                <PromptContentIcon compact={compact} />
-              </button>
-            )}
-            {track.lyrics?.trim() && (
-              <button
-                type="button"
-                onClick={(event) => toggleContent("lyrics", event.currentTarget)}
-                aria-label={
-                  activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")
-                }
-                title={activeContent === "lyrics" ? t("track.hideLyrics") : t("track.showLyrics")}
-                aria-pressed={activeContent === "lyrics"}
-                className={cn(
-                  "grid shrink-0 place-items-center rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                  compact ? "h-7 w-7" : "h-8 w-8",
-                  activeContent === "lyrics"
-                    ? "border-violet-300/70 bg-violet-400/15 shadow-[0_0_14px_-4px_rgba(196,140,255,0.8)]"
-                    : "border-white/12 bg-white/[0.03] hover:border-violet-300/45 hover:bg-violet-400/[0.08]",
-                )}
-              >
-                <LyricsContentIcon compact={compact} />
-              </button>
+            {!compact && ownerTrack && <TrackOwnerActions menuMode bare track={ownerTrack} />}
+            {track.userId && (
+              <ReportTrackControl
+                trackId={track.id}
+                ownerId={track.userId}
+                isPublished={track.isPublished ?? true}
+                compact={compact}
+                bare
+              />
             )}
           </div>
-          {track.userId && (
-            <ReportTrackControl
-              trackId={track.id}
-              ownerId={track.userId}
-              isPublished={track.isPublished ?? true}
-              compact={compact}
-            />
-          )}
         </div>
       </div>
       {activeContent && (

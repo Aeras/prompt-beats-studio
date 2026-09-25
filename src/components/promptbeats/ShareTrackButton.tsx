@@ -22,6 +22,7 @@ type Props = {
   trackTitle?: string;
   iconOnly?: boolean;
   compact?: boolean;
+  bare?: boolean;
 };
 
 type ShareDestination = "whatsapp" | "facebook" | "messenger" | "viber" | "telegram" | "email";
@@ -43,6 +44,7 @@ export function ShareTrackButton({
   trackTitle,
   iconOnly = false,
   compact = false,
+  bare = false,
 }: Props) {
   const { user } = useAuth();
   const sharingAccess = useFeatureAccess("sharing_public_links");
@@ -529,11 +531,13 @@ export function ShareTrackButton({
         aria-label={language === "el" ? "Κοινοποίηση" : "Share"}
         className={
           iconOnly
-            ? `grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent ${compact ? "h-7 w-7" : "h-8 w-8"}`
+            ? bare
+              ? `grid place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${compact ? "h-9 w-6" : "h-10 w-8"}`
+              : `grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent ${compact ? "h-7 w-7" : "h-8 w-8"}`
             : "inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
         }
       >
-        <Share2 className="h-4 w-4" />
+        <Share2 className={bare ? "h-[18px] w-[18px]" : "h-4 w-4"} />
         {!iconOnly && (language === "el" ? "Κοινοποίηση" : "Share")}
       </button>
       {modal}
