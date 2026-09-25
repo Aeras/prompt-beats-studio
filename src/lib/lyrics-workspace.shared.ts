@@ -97,7 +97,7 @@ export type LyricsSectionEditOutput = z.infer<typeof lyricsSectionEditOutputSche
 export type LyricsSectionEditContext = z.infer<typeof lyricsSectionContextSchema>;
 
 export const workspaceSaveInputSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().uuid().nullable(),
   basePromptId: z.string().uuid(),
   lyrics: z.string().min(1).max(12000),
   versionLabel: z.string().trim().min(1).max(120).default("Lyrics edit"),

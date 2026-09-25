@@ -80,6 +80,11 @@ import {
 } from "@/components/promptbeats/LibraryItemActionSheet";
 import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
 import { DeletePromptProjectDialog } from "@/components/promptbeats/DeletePromptProjectDialog";
+import {
+  EditStandalonePromptDialog,
+  StandalonePromptRevisionDialog,
+  type StandalonePromptEditValues,
+} from "@/components/promptbeats/PromptStandaloneDialogs";
 import { LibraryTracksEmptyState } from "@/components/promptbeats/LibraryTracksEmptyState";
 import {
   createLibraryFolder,
@@ -2364,6 +2369,10 @@ function SavedPromptCard({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [standaloneAction, setStandaloneAction] = useState<"revision" | "lyrics" | null>(null);
+  const [movingToProject, setMovingToProject] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const project = projects.find((p) => p.id === prompt.project_id);
@@ -2407,34 +2416,64 @@ function SavedPromptCard({
     await updateSavedPromptOrganization({ data: { id: prompt.id, custom_name: name || null } });
     await refresh();
   };
-  const revise = () => {
-    if (!prompt.project_id) return;
+  const openAction = (action: "revision" | "lyrics", projectId: string | null) => {
+    if (!projectId) {
+      setStandaloneAction(action);
+      return;
+    }
     void navigate({
       to: "/generate",
-      search: {
-        mode: "revision",
-        project: prompt.project_id,
-        base: prompt.id,
-      },
+      search:
+        action === "revision"
+          ? { mode: "revision" as const, project: projectId, base: prompt.id }
+          : { workspace: "lyrics" as const, project: projectId, base: prompt.id },
     });
   };
-
-  const editLyrics = () => {
-    if (!prompt.project_id) return;
-    void navigate({
-      to: "/generate",
-      search: {
-        workspace: "lyrics",
-        project: prompt.project_id,
-        base: prompt.id,
-      },
-    });
-  };
+  const revise = () => openAction("revision", prompt.project_id);
+  const editLyrics = () => openAction("lyrics", prompt.project_id);
 
   const move = async (projectId: string) => {
     const next = projectId || null;
     await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: next } });
     await refresh();
+  };
+
+  const saveEdit = async (values: StandalonePromptEditValues) => {
+    setSavingEdit(true);
+    try {
+      await updateSavedPromptOrganization({ data: { id: prompt.id, ...values } });
+      await refresh();
+      setEditing(false);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const continueStandalone = () => {
+    const action = standaloneAction;
+    if (!action) return;
+    setStandaloneAction(null);
+    void navigate({
+      to: "/generate",
+      search:
+        action === "revision"
+          ? { mode: "revision" as const, base: prompt.id }
+          : { workspace: "lyrics" as const, base: prompt.id },
+    });
+  };
+
+  const addToProjectThenContinue = async (projectId: string) => {
+    const action = standaloneAction;
+    if (!action) return;
+    setMovingToProject(true);
+    try {
+      await updateSavedPromptOrganization({ data: { id: prompt.id, project_id: projectId } });
+      await refresh();
+      setStandaloneAction(null);
+      openAction(action, projectId);
+    } finally {
+      setMovingToProject(false);
+    }
   };
 
   return (
@@ -2461,8 +2500,8 @@ function SavedPromptCard({
             {[project?.name, prompt.genre, prompt.mood].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <div className="flex shrink-0 gap-1">
-          {prompt.project_id && lyricsWorkspaceAccess.allowed && (
+        <div className="hidden shrink-0 gap-1 sm:flex">
+          {lyricsWorkspaceAccess.allowed && (
             <button
               type="button"
               onClick={editLyrics}
@@ -2473,7 +2512,7 @@ function SavedPromptCard({
               <FilePenLine className="h-3.5 w-3.5" />
             </button>
           )}
-          {prompt.project_id && generatorAccess.allowed && (
+          {generatorAccess.allowed && (
             <button
               type="button"
               onClick={revise}
@@ -2510,9 +2549,9 @@ function SavedPromptCard({
           )}
           <button
             type="button"
-            onClick={rename}
-            aria-label={language === "el" ? "Μετονομασία Prompt" : "Rename Prompt"}
-            title={language === "el" ? "Μετονομασία Prompt" : "Rename Prompt"}
+            onClick={() => setEditing(true)}
+            aria-label={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"}
+            title={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"}
             className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -2547,6 +2586,12 @@ function SavedPromptCard({
             )}
           </button>
         </div>
+      </div>
+      <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
+        <button type="button" onClick={() => setEditing(true)} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"} title={language === "el" ? "Επεξεργασία" : "Edit"}><Pencil className="h-4 w-4" /></button>
+        <button type="button" onClick={() => copy([prompt.tags, prompt.lyrics].filter(Boolean).join("\n\n"))} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={t("library.copyPrompt")} title={t("library.copyPrompt")}>{copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}</button>
+        <button type="button" onClick={remove} disabled={deleting} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-destructive disabled:opacity-50" aria-label={t("library.deletePrompt")} title={t("library.deletePrompt")}>{deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>
+        <button type="button" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); onLongPress?.({ x: rect.right - 8, y: rect.bottom + 6 }); }} className="grid min-h-11 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-accent" aria-label={language === "el" ? "Περισσότερες επιλογές" : "More options"} title={language === "el" ? "Περισσότερα" : "More"}><MoreHorizontal className="h-4 w-4" /></button>
       </div>
       {listMode && (
         <button
@@ -2624,6 +2669,23 @@ function SavedPromptCard({
           {prompt.lyrics}
         </pre>
       )}
+      <EditStandalonePromptDialog
+        open={editing}
+        language={language}
+        prompt={prompt}
+        busy={savingEdit}
+        onClose={() => setEditing(false)}
+        onSave={saveEdit}
+      />
+      <StandalonePromptRevisionDialog
+        open={Boolean(standaloneAction)}
+        language={language}
+        projects={projects}
+        busy={movingToProject}
+        onClose={() => setStandaloneAction(null)}
+        onReplace={continueStandalone}
+        onAddToProject={addToProjectThenContinue}
+      />
     </article>
   );
 }

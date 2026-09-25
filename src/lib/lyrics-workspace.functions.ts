@@ -20,8 +20,37 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "lyrics_workspace");
 
-    // Explicit ownership checks make crafted workspace URLs fail before the
-    // service-role RPC path is reached.
+    let baseQuery = context.supabase
+      .from("saved_prompts")
+      .select("id, lyrics")
+      .eq("id", data.basePromptId)
+      .eq("user_id", context.userId);
+    baseQuery = data.projectId
+      ? baseQuery.eq("project_id", data.projectId)
+      : baseQuery.is("project_id", null);
+    const { data: base, error: baseError } = await baseQuery.maybeSingle();
+    if (baseError) throw new Error(baseError.message);
+    if (!base) throw new Error("Base prompt not found.");
+
+    if (!data.projectId) {
+      const { data: replaced, error } = await context.supabase
+        .from("saved_prompts")
+        .update({ lyrics: data.lyrics, updated_at: new Date().toISOString() })
+        .eq("id", data.basePromptId)
+        .eq("user_id", context.userId)
+        .is("project_id", null)
+        .select("id")
+        .maybeSingle();
+      if (error || !replaced) throw new Error("The edited lyrics could not replace the standalone Prompt.");
+      return {
+        savedPromptId: replaced.id,
+        projectId: null,
+        versionNumber: null,
+        parentPromptId: null,
+        versionLabel: null,
+      };
+    }
+
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
       .select("id")
@@ -30,16 +59,6 @@ export const saveLyricsWorkspaceVersion = createServerFn({ method: "POST" })
       .maybeSingle();
     if (projectError) throw new Error(projectError.message);
     if (!project) throw new Error("Project not found.");
-
-    const { data: base, error: baseError } = await context.supabase
-      .from("saved_prompts")
-      .select("id, lyrics")
-      .eq("id", data.basePromptId)
-      .eq("project_id", data.projectId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (baseError) throw new Error(baseError.message);
-    if (!base) throw new Error("Base version not found.");
 
     const versionChangeMetadata = buildLyricsWorkspaceVersionMetadata({
       beforeLyrics: base.lyrics,

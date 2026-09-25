@@ -938,17 +938,17 @@ function GeneratePage() {
     queryKey: ["generator", "revision-base", user?.id, revisionProjectId, revisionBasePromptId],
     queryFn: () =>
       getPromptRevisionBase({
-        data: { projectId: revisionProjectId, basePromptId: revisionBasePromptId },
+        data: { projectId: revisionProjectId || null, basePromptId: revisionBasePromptId },
       }),
-    enabled: Boolean(user && revisionMode && revisionProjectId && revisionBasePromptId),
+    enabled: Boolean(user && revisionMode && revisionBasePromptId),
   });
   const workspaceBase = useQuery({
     queryKey: ["generator", "lyrics-workspace-base", user?.id, search.project, search.base],
     queryFn: () =>
       getPromptRevisionBase({
-        data: { projectId: search.project as string, basePromptId: search.base as string },
+        data: { projectId: search.project ?? null, basePromptId: search.base as string },
       }),
-    enabled: Boolean(user && search.workspace === "lyrics" && search.project && search.base),
+    enabled: Boolean(user && search.workspace === "lyrics" && search.base),
   });
   const [result, setResult] = useState<GeneratorResult | null>(null);
   const [quality, setQuality] = useState<QualityReport | null>(null);
@@ -1909,7 +1909,7 @@ ${narrativePlan.beats
           inputSnapshot: currentSnapshot,
           revision: revisionMode
             ? {
-                projectId: revisionProjectId,
+                projectId: revisionProjectId || null,
                 basePromptId: revisionBasePromptId,
                 revisionRequest: revisionRequest.trim(),
                 desiredSnapshot: currentSnapshot,

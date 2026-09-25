@@ -44,7 +44,7 @@ const jobInput = z.object({
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: z
     .object({
-      projectId: z.string().uuid(),
+      projectId: z.string().uuid().nullable(),
       basePromptId: z.string().uuid(),
       revisionRequest: z.string().trim().min(1).max(3000),
       desiredSnapshot: generatorInputSnapshotSchema,
@@ -198,24 +198,28 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     if (data.operation === "revision") {
       if (!clientRevision) throw new Error("Revision context is required.");
 
-      const { data: project, error: projectError } = await supabase
-        .from("prompt_projects")
-        .select("id")
-        .eq("id", clientRevision.projectId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if (projectError) throw new Error(projectError.message);
-      if (!project) throw new Error("Project not found.");
+      if (clientRevision.projectId) {
+        const { data: project, error: projectError } = await supabase
+          .from("prompt_projects")
+          .select("id")
+          .eq("id", clientRevision.projectId)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        if (projectError) throw new Error(projectError.message);
+        if (!project) throw new Error("Project not found.");
+      }
 
-      const { data: basePrompt, error: baseError } = await supabase
+      let basePromptQuery = supabase
         .from("saved_prompts")
         .select(
           "id, project_id, version_number, version_label, custom_name, title, theme, genre, mood, language, tags, lyrics, note, generator_input_snapshot",
         )
         .eq("id", clientRevision.basePromptId)
-        .eq("project_id", clientRevision.projectId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
+        .eq("user_id", context.userId);
+      basePromptQuery = clientRevision.projectId
+        ? basePromptQuery.eq("project_id", clientRevision.projectId)
+        : basePromptQuery.is("project_id", null);
+      const { data: basePrompt, error: baseError } = await basePromptQuery.maybeSingle();
       if (baseError) throw new Error(baseError.message);
       if (!basePrompt) throw new Error("Base version not found.");
 

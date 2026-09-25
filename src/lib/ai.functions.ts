@@ -2602,32 +2602,38 @@ export const getPromptRevisionBase = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.string().uuid().nullable(),
         basePromptId: z.string().uuid(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: project, error: projectError } = await context.supabase
-      .from("prompt_projects")
-      .select("id, name")
-      .eq("id", data.projectId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (projectError) throw new Error(projectError.message);
-    if (!project) throw new Error("Project not found.");
+    let project: { id: string; name: string } | null = null;
+    if (data.projectId) {
+      const { data: ownedProject, error: projectError } = await context.supabase
+        .from("prompt_projects")
+        .select("id, name")
+        .eq("id", data.projectId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (projectError) throw new Error(projectError.message);
+      if (!ownedProject) throw new Error("Project not found.");
+      project = ownedProject;
+    }
 
-    const { data: prompt, error } = await context.supabase
+    let promptQuery = context.supabase
       .from("saved_prompts")
       .select(
         "id, title, custom_name, project_id, version_number, version_label, generator_input_snapshot, parent_prompt_id, revision_request, theme, genre, mood, language, tags, lyrics, note, created_at, updated_at",
       )
       .eq("id", data.basePromptId)
-      .eq("project_id", data.projectId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
+      .eq("user_id", context.userId);
+    promptQuery = data.projectId
+      ? promptQuery.eq("project_id", data.projectId)
+      : promptQuery.is("project_id", null);
+    const { data: prompt, error } = await promptQuery.maybeSingle();
     if (error) throw new Error(error.message);
-    if (!prompt) throw new Error("Base version not found.");
+    if (!prompt) throw new Error("Base prompt not found.");
 
     const snapshot = generatorInputSnapshotSchema.safeParse(prompt.generator_input_snapshot);
     return {
@@ -2796,6 +2802,13 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
         project_id: z.string().uuid().nullable().optional(),
         version_number: z.number().int().positive().nullable().optional(),
         version_label: z.string().trim().max(120).nullable().optional(),
+        theme: z.string().max(500).nullable().optional(),
+        genre: z.string().max(500).nullable().optional(),
+        mood: z.string().max(120).nullable().optional(),
+        language: z.string().max(80).nullable().optional(),
+        tags: z.string().max(4000).nullable().optional(),
+        lyrics: z.string().max(12000).nullable().optional(),
+        note: z.string().max(6000).nullable().optional(),
       })
       .parse(input),
   )
@@ -2816,6 +2829,13 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
     };
     if (data.custom_name !== undefined) patch.custom_name = data.custom_name;
     if (data.version_label !== undefined) patch.version_label = data.version_label;
+    if (data.theme !== undefined) patch.theme = data.theme;
+    if (data.genre !== undefined) patch.genre = data.genre;
+    if (data.mood !== undefined) patch.mood = data.mood;
+    if (data.language !== undefined) patch.language = data.language;
+    if (data.tags !== undefined) patch.tags = data.tags;
+    if (data.lyrics !== undefined) patch.lyrics = data.lyrics;
+    if (data.note !== undefined) patch.note = data.note;
 
     if (data.project_id !== undefined && data.project_id !== current.project_id) {
       if (current.project_id) {
@@ -2873,6 +2893,7 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
             });
 
       patch.project_id = data.project_id;
+      patch.folder_id = null;
       patch.version_number = versionNumber;
       patch.parent_prompt_id = previous?.id ?? null;
       patch.version_change_metadata = metadata as Json;

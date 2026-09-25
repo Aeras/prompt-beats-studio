@@ -386,4 +386,20 @@ describe("Library folders foundation", () => {
     expect(generator).toContain('initiallyOpen={search.presets === "open"}');
     expect(presets).toContain("scrollIntoView");
   });
+
+  test("standalone prompts support full edit, compact mobile actions and safe revision choice", async () => {
+    const library = await source("src/routes/library.tsx");
+    const ai = await source("src/lib/ai.functions.ts");
+    const dialogs = await source("src/components/promptbeats/PromptStandaloneDialogs.tsx");
+    const jobs = await source("src/lib/generation-jobs.server.ts");
+    expect(library).toContain("EditStandalonePromptDialog");
+    expect(library).toContain("StandalonePromptRevisionDialog");
+    expect(dialogs).toContain("Συνέχεια και αντικατάσταση");
+    expect(dialogs).toContain("Προσθήκη σε Project");
+    expect(ai).toContain("patch.folder_id = null");
+    expect(ai).toContain("patch.lyrics = data.lyrics");
+    expect(jobs).toContain("standalone revision replace failed");
+    expect(jobs).toContain('.is("project_id", null)');
+  });
+
 });

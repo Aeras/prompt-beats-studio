@@ -105,45 +105,75 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         beforeLyrics: revision.baseVersion.lyrics,
         afterLyrics: out.result.lyrics,
       });
-      const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
-        _user_id: job.user_id,
-        _job_id: job.id,
-        _project_id: revision.projectId,
-        _parent_prompt_id: revision.basePromptId,
-        _revision_request: revision.revisionRequest,
-        _generator_input_snapshot: revision.desiredSnapshot,
-        _version_change_metadata: versionChangeMetadata,
-        _title: out.result.title,
-        _tags: out.result.tags,
-        _lyrics: out.result.lyrics,
-        _note: out.result.note,
-        _theme: input.theme,
-        _genre: input.genre,
-        _mood: input.mood,
-        _language: input.language,
-      });
-      if (saveError) {
-        console.error("[generation-job] revision save failed", job.id, saveError.message);
-        throw new Error("The revision version could not be saved.");
+
+      if (!revision.projectId) {
+        const { data: replaced, error: replaceError } = await db
+          .from("saved_prompts")
+          .update({
+            title: out.result.title,
+            tags: out.result.tags,
+            lyrics: out.result.lyrics,
+            note: out.result.note,
+            theme: input.theme,
+            genre: input.genre,
+            mood: input.mood,
+            language: input.language,
+            generator_input_snapshot: revision.desiredSnapshot,
+            revision_request: revision.revisionRequest,
+            version_change_metadata: versionChangeMetadata,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", revision.basePromptId)
+          .eq("user_id", job.user_id)
+          .is("project_id", null)
+          .select("id")
+          .maybeSingle();
+        if (replaceError || !replaced) {
+          console.error("[generation-job] standalone revision replace failed", job.id, replaceError?.message);
+          throw new Error("The standalone Prompt could not be replaced.");
+        }
+        persistedResult = out.result;
+      } else {
+        const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
+          _user_id: job.user_id,
+          _job_id: job.id,
+          _project_id: revision.projectId,
+          _parent_prompt_id: revision.basePromptId,
+          _revision_request: revision.revisionRequest,
+          _generator_input_snapshot: revision.desiredSnapshot,
+          _version_change_metadata: versionChangeMetadata,
+          _title: out.result.title,
+          _tags: out.result.tags,
+          _lyrics: out.result.lyrics,
+          _note: out.result.note,
+          _theme: input.theme,
+          _genre: input.genre,
+          _mood: input.mood,
+          _language: input.language,
+        });
+        if (saveError) {
+          console.error("[generation-job] revision save failed", job.id, saveError.message);
+          throw new Error("The revision version could not be saved.");
+        }
+        const meta = saved as {
+          id?: string;
+          project_id?: string;
+          version_number?: number;
+          parent_prompt_id?: string;
+        } | null;
+        if (!meta?.id || !meta.project_id || !meta.version_number || !meta.parent_prompt_id) {
+          throw new Error("The revision version could not be saved.");
+        }
+        persistedResult = {
+          ...out.result,
+          revisionMeta: {
+            savedPromptId: meta.id,
+            projectId: meta.project_id,
+            versionNumber: meta.version_number,
+            parentPromptId: meta.parent_prompt_id,
+          },
+        };
       }
-      const meta = saved as {
-        id?: string;
-        project_id?: string;
-        version_number?: number;
-        parent_prompt_id?: string;
-      } | null;
-      if (!meta?.id || !meta.project_id || !meta.version_number || !meta.parent_prompt_id) {
-        throw new Error("The revision version could not be saved.");
-      }
-      persistedResult = {
-        ...out.result,
-        revisionMeta: {
-          savedPromptId: meta.id,
-          projectId: meta.project_id,
-          versionNumber: meta.version_number,
-          parentPromptId: meta.parent_prompt_id,
-        },
-      };
     }
 
     await db
