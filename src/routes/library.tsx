@@ -159,9 +159,10 @@ function parseLibraryTab(value: unknown): LibraryTab | undefined {
 }
 
 export const Route = createFileRoute("/library")({
-  validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
-    tab: parseLibraryTab(search["tab"]),
-  }),
+  validateSearch: (search: Record<string, unknown>): LibrarySearch => {
+    const tab = parseLibraryTab(search["tab"]);
+    return tab ? { tab } : {};
+  },
   head: () => ({
     meta: [
       { title: "My Library — PromptBeats" },
