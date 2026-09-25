@@ -131,7 +131,9 @@ function Index() {
   const header = (
     <div className="flex min-w-0 items-center gap-2">
       <Compass className="h-5 w-5 shrink-0 text-accent" />
-      <span className="truncate font-display text-base font-bold md:text-lg">{t("nav.feedShort")}</span>
+      <span className="truncate font-display text-base font-bold md:text-lg">
+        {t("nav.feedShort")}
+      </span>
     </div>
   );
 
