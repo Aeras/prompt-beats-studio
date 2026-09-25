@@ -1,0 +1,78 @@
+name: One-shot generator mobile layout fix
+
+on:
+  push:
+    branches: [fix-generator-mobile-layout]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-generator-mobile-layout
+      - uses: oven-sh/setup-bun@v2
+      - name: Apply focused generator UI fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/generate.tsx')
+          s = p.read_text()
+
+          old_chip = 'className="inline-flex min-h-8 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 pl-3 pr-1.5 text-xs font-medium text-accent shadow-[0_0_12px_color-mix(in_oklab,var(--accent)_12%,transparent)]"'
+          new_chip = 'className="inline-flex min-h-7 items-center gap-0.5 rounded-full border border-accent/35 bg-accent/10 px-2.5 py-1 text-[11px] font-medium leading-none text-accent shadow-[0_0_6px_color-mix(in_oklab,var(--accent)_10%,transparent)]"'
+          if old_chip not in s:
+              raise SystemExit('selected structure chip class not found')
+          s = s.replace(old_chip, new_chip, 1)
+
+          old_x = 'className="inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none text-accent/70 transition-colors hover:bg-accent/10 hover:text-accent"'
+          new_x = 'className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] leading-none text-accent/70 transition-colors hover:bg-accent/10 hover:text-accent"'
+          if old_x not in s:
+              raise SystemExit('structure remove button class not found')
+          s = s.replace(old_x, new_x, 1)
+
+          old_story_head = 'className="flex flex-wrap items-center justify-between gap-2"'
+          new_story_head = 'className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"'
+          story_anchor = '{storyDrivenDraft && ('
+          idx = s.find(story_anchor)
+          if idx < 0:
+              raise SystemExit('story map result block not found')
+          head_idx = s.find(old_story_head, idx)
+          if head_idx < 0:
+              raise SystemExit('story map header layout not found')
+          s = s[:head_idx] + s[head_idx:].replace(old_story_head, new_story_head, 1)
+
+          old_story_text = '<p className="mt-1 text-xs text-muted-foreground">\n                        {storyDrivenDraft.summary}\n                      </p>'
+          new_story_text = '<p className="mt-1 max-w-full whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">\n                        {storyDrivenDraft.summary}\n                      </p>'
+          if old_story_text not in s:
+              raise SystemExit('story map summary text block not found')
+          s = s.replace(old_story_text, new_story_text, 1)
+
+          old_story_actions = '<div className="flex flex-wrap gap-2">'
+          action_idx = s.find(old_story_actions, head_idx)
+          if action_idx < 0:
+              raise SystemExit('story map actions layout not found')
+          s = s[:action_idx] + s[action_idx:].replace(old_story_actions, '<div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">', 1)
+
+          p.write_text(s)
+          PY
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Format
+        run: bunx prettier --write src/routes/generate.tsx
+      - name: Build
+        run: bun run build
+      - name: Mobile navigation regression
+        run: bun test src/lib/mobile-navigation-layout.test.ts
+      - name: Commit fix and remove workflow
+        run: |
+          rm .github/workflows/fix-generator-mobile-layout.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/generate.tsx .github/workflows/fix-generator-mobile-layout.yml
+          git commit -m 'Fix generator mobile structure chips and Story Map layout'
+          git push origin fix-generator-mobile-layout
