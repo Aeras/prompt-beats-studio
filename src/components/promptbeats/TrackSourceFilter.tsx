@@ -48,16 +48,36 @@ function surfaceEventKey(surface: TrackSourceSurface) {
   return `promptbeats:track-source-preference:${surface}`;
 }
 
-function readLocalPreference(surface: TrackSourceSurface): TrackSourcePreference {
-  if (typeof window === "undefined") return "all";
+function readSurfaceLocalPreference(surface: TrackSourceSurface): TrackSourcePreference | null {
+  if (typeof window === "undefined") return null;
   try {
-    const surfaceValue = window.localStorage.getItem(surfaceLocalKey(surface));
-    if (isPreference(surfaceValue)) return surfaceValue;
-    const legacyValue = window.localStorage.getItem(LEGACY_LOCAL_KEY);
-    return isPreference(legacyValue) ? legacyValue : "all";
+    const value = window.localStorage.getItem(surfaceLocalKey(surface));
+    return isPreference(value) ? value : null;
   } catch {
-    return "all";
+    return null;
   }
+}
+
+function readLegacyLocalPreference(): TrackSourcePreference | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(LEGACY_LOCAL_KEY);
+    return isPreference(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveTrackSourcePreference(
+  surface: TrackSourceSurface,
+  surfaceAccountValue: unknown,
+  legacyAccountValue: unknown,
+): TrackSourcePreference {
+  if (isPreference(surfaceAccountValue)) return surfaceAccountValue;
+  const localSurfaceValue = readSurfaceLocalPreference(surface);
+  if (localSurfaceValue) return localSurfaceValue;
+  if (isPreference(legacyAccountValue)) return legacyAccountValue;
+  return readLegacyLocalPreference() ?? "all";
 }
 
 function writeLocalPreference(surface: TrackSourceSurface, value: TrackSourcePreference) {
@@ -151,11 +171,7 @@ export function useTrackSourcePreference() {
     typeof explicitAccountValue === "boolean"
       ? explicitAccountValue
       : readLocalExplicitPreference();
-  const initial = isPreference(surfaceAccountValue)
-    ? surfaceAccountValue
-    : isPreference(legacyAccountValue)
-      ? legacyAccountValue
-      : readLocalPreference(surface);
+  const initial = resolveTrackSourcePreference(surface, surfaceAccountValue, legacyAccountValue);
   const [preference, setPreferenceState] = useState<TrackSourcePreference>(initial);
   const [, setExplicitRevision] = useState(0);
 
@@ -164,11 +180,7 @@ export function useTrackSourcePreference() {
   }, []);
 
   useEffect(() => {
-    const next = isPreference(surfaceAccountValue)
-      ? surfaceAccountValue
-      : isPreference(legacyAccountValue)
-        ? legacyAccountValue
-        : readLocalPreference(surface);
+    const next = resolveTrackSourcePreference(surface, surfaceAccountValue, legacyAccountValue);
     setPreferenceState(next);
     if (isPreference(surfaceAccountValue) && typeof window !== "undefined") {
       try {
