@@ -65,6 +65,17 @@ describe("Settings and track source preferences", () => {
     expect(artist).toContain("TrackSourceFilter");
   });
 
+  test("Per-surface local cache wins over the removed legacy global preference", async () => {
+    const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
+    const resolverStart = filter.indexOf("function resolveTrackSourcePreference(");
+    const resolverEnd = filter.indexOf("function writeLocalPreference", resolverStart);
+    const resolver = filter.slice(resolverStart, resolverEnd);
+    expect(resolver).toContain("readSurfaceLocalPreference(surface)");
+    expect(resolver.indexOf("localSurfaceValue")).toBeLessThan(
+      resolver.indexOf("isPreference(legacyAccountValue)"),
+    );
+  });
+
   test("Explicit preference persists to the account and filters both normalized and DB track shapes", async () => {
     const filter = await source("src/components/promptbeats/TrackSourceFilter.tsx");
     expect(filter).toContain('EXPLICIT_ACCOUNT_KEY = "hide_explicit_tracks"');
