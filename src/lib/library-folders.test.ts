@@ -342,4 +342,19 @@ describe("Library folders foundation", () => {
     expect(sql).toContain("duplicated_from_project_id");
     expect(sql).toContain("duplicated_from_prompt_id");
   });
+
+  test("Library tabs persist in the URL and mobile tab navigation exposes overflow affordances", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain("validateSearch");
+    expect(library).toContain('parseLibraryTab(search["tab"])');
+    expect(library).toContain("Route.useSearch()");
+    expect(library).toContain("search: { tab: item }");
+    expect(library).toContain("snap-x snap-mandatory");
+    expect(library).toContain("snap-center");
+    expect(library).toContain("showTabFade");
+    expect(library).toContain("bg-gradient-to-l from-background");
+    expect(library).toContain("scrollIntoView");
+    expect(library).toContain('inline: "center"');
+  });
 });

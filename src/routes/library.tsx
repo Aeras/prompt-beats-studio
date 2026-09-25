@@ -148,7 +148,21 @@ function toTrack(track: Row, handle: string): Track {
   };
 }
 
+const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
+type LibraryTab = (typeof TABS)[number];
+type LibrarySearch = { tab?: LibraryTab };
+
+function parseLibraryTab(value: unknown): LibraryTab | undefined {
+  return typeof value === "string" && TABS.includes(value as LibraryTab)
+    ? (value as LibraryTab)
+    : undefined;
+}
+
 export const Route = createFileRoute("/library")({
+  validateSearch: (search: Record<string, unknown>): LibrarySearch => {
+    const tab = parseLibraryTab(search["tab"]);
+    return tab ? { tab } : {};
+  },
   head: () => ({
     meta: [
       { title: "My Library — PromptBeats" },
@@ -168,9 +182,10 @@ export const Route = createFileRoute("/library")({
   component: LibraryPage,
 });
 
-const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
 function LibraryPage() {
   const { t, language } = useI18n();
+  const navigate = useNavigate();
+  const { tab: requestedTab } = Route.useSearch();
   const { user, profile, loading } = useAuth();
   const playlistsAccess = useFeatureAccess("playlists");
   const sharingAccess = useFeatureAccess("sharing_public_links");
@@ -181,10 +196,10 @@ function LibraryPage() {
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
   const { preference: defaultTrackSource } = useTrackSourcePreference();
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
-  const [tab, setTab] = useState<(typeof TABS)[number]>("tracks");
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const [showTabFade, setShowTabFade] = useState(false);
   const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
   const [promptSearch, setPromptSearch] = useState("");
-  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
 
   const availableTabs = TABS.filter((item) => {
     if (item === "playlists") return playlistsAccess.allowed;
@@ -194,9 +209,44 @@ function LibraryPage() {
     return true;
   });
 
+  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : "tracks";
+
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
+
   useEffect(() => {
-    if (!availableTabs.includes(tab)) setTab("tracks");
-  }, [availableTabs, tab]);
+    if (requestedTab && requestedTab !== tab) {
+      void navigate({ to: "/library", search: {}, replace: true });
+    }
+  }, [navigate, requestedTab, tab]);
+
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    if (!strip) return;
+    const activeTab = strip.querySelector<HTMLElement>(`[data-library-tab="${tab}"]`);
+    activeTab?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [tab, availableTabs.length]);
+
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    if (!strip) return;
+
+    const updateFade = () => {
+      setShowTabFade(strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+    };
+
+    updateFade();
+    strip.addEventListener("scroll", updateFade, { passive: true });
+    window.addEventListener("resize", updateFade);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateFade);
+    resizeObserver?.observe(strip);
+
+    return () => {
+      strip.removeEventListener("scroll", updateFade);
+      window.removeEventListener("resize", updateFade);
+      resizeObserver?.disconnect();
+    };
+  }, [availableTabs.length]);
 
   useEffect(() => {
     if (promptView === "analyses" && !analyzerAccess.allowed) {
@@ -291,21 +341,34 @@ function LibraryPage() {
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
         <h1 className="font-display text-2xl font-bold md:text-3xl">{t("library.title")}</h1>
 
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {availableTabs.map((item) => (
-            <button
-              key={item}
-              onClick={() => setTab(item)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-                tab === item
-                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
-                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-              )}
-            >
-              {tabLabel(item)}
-            </button>
-          ))}
+        <div className="relative mt-4">
+          <div
+            ref={tabStripRef}
+            className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-1 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pr-0"
+          >
+            {availableTabs.map((item) => (
+              <button
+                key={item}
+                type="button"
+                data-library-tab={item}
+                onClick={() => void navigate({ to: "/library", search: { tab: item } })}
+                className={cn(
+                  "shrink-0 snap-center rounded-full border px-4 py-1.5 text-xs transition-all",
+                  tab === item
+                    ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
+                    : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+                )}
+              >
+                {tabLabel(item)}
+              </button>
+            ))}
+          </div>
+          {showTabFade && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background via-background/85 to-transparent md:hidden"
+            />
+          )}
         </div>
 
         {tab === "tracks" && (

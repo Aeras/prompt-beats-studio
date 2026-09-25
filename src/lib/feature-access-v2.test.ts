@@ -369,7 +369,8 @@ describe("Feature Access V2 — 20 features", () => {
       expect(library).toContain(`useFeatureAccess("${key}")`);
     }
     expect(library).toContain("availableTabs");
-    expect(library).toContain('if (!availableTabs.includes(tab)) setTab("tracks")');
+    expect(library).toContain("availableTabs.includes(requestedTab)");
+    expect(library).toContain("replace: true");
     expect(library).toContain('promptView === "analyses" && !analyzerAccess.allowed');
     expect(library).toContain("enabled: Boolean(user && analyzerAccess.allowed)");
     expect(library).toContain("enabled: Boolean(user && likesAccess.allowed)");
