@@ -160,7 +160,9 @@ function ElevenMusicLabPage() {
                 rows={14}
                 maxLength={4100}
                 className={`${inputClass} resize-y font-mono text-[13px]`}
-                placeholder={el ? "Επικόλλησε το PromptBeats prompt…" : "Paste the PromptBeats prompt…"}
+                placeholder={
+                  el ? "Επικόλλησε το PromptBeats prompt…" : "Paste the PromptBeats prompt…"
+                }
               />
               <div className="mt-4 flex flex-wrap items-end gap-3">
                 <label className="min-w-40 flex-1 text-xs text-muted-foreground">
