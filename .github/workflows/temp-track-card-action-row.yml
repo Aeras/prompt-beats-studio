@@ -22,18 +22,46 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Apply UI patch
         run: python .github/scripts/track_card_action_row_patch.py
-      - name: Stabilize generated regression assertion
+      - name: Replace brittle source-format assertions
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/lib/track-card-action-row.test.ts')
-          text = p.read_text()
-          old = '    expect(files[0]).toContain(\'bare ? "grid h-10 w-8\');'
-          new = '    expect(files[0]).toContain("grid h-10 w-8 place-items-center");'
-          if old not in text:
-              raise SystemExit('expected brittle assertion was not generated')
-          p.write_text(text.replace(old, new, 1))
-          PY
+          cat > src/lib/track-card-action-row.test.ts <<'EOF'
+          import { describe, expect, test } from "bun:test";
+          import { readFile } from "node:fs/promises";
+
+          const source = (path: string) => readFile(path, "utf8");
+
+          describe("Track card action row", () => {
+            test("uses one action row with content left and utilities right", async () => {
+              const card = await source("src/components/promptbeats/TrackCard.tsx");
+              expect(card).toContain('data-track-actions="left"');
+              expect(card).toContain('data-track-actions="right"');
+              expect(card).toContain("<PromptContentIcon compact={compact} />");
+              expect(card).toContain("<LyricsContentIcon compact={compact} />");
+              expect(card).toContain("<LikeButton");
+              expect(card).toContain("<TrackLibraryActions");
+              expect(card).toContain("<ShareTrackButton");
+              expect(card).toContain("<ReportTrackControl");
+              expect(card).toContain("bare");
+            });
+
+            test("card action controls expose borderless variants", async () => {
+              const files = await Promise.all([
+                source("src/components/promptbeats/TrackLibraryActions.tsx"),
+                source("src/components/promptbeats/ShareTrackButton.tsx"),
+                source("src/components/promptbeats/ReportTrackControl.tsx"),
+                source("src/components/promptbeats/TrackOwnerActions.tsx"),
+              ]);
+              for (const content of files) {
+                expect(content).toContain("bare");
+                expect(content).toContain("focus-visible:ring");
+              }
+              expect(files[0]).toContain("rounded-full border border-white/10");
+              expect(files[0]).toContain("grid h-10 w-8 place-items-center");
+              expect(files[1]).toContain("h-9 w-6");
+              expect(files[2]).toContain("h-9 w-6");
+            });
+          });
+          EOF
       - name: Format
         run: |
           bunx prettier --write \
