@@ -161,9 +161,9 @@ export function useExplicitContentPreference() {
   return { hideExplicit, setHideExplicit };
 }
 
-export function useTrackSourcePreference() {
+export function useTrackSourcePreference(forcedSurface?: TrackSourceSurface) {
   const { user } = useAuth();
-  const [surface, setSurface] = useState<TrackSourceSurface>("feed");
+  const surface = forcedSurface ?? inferTrackSourceSurface();
   const surfaceAccountValue = user?.user_metadata?.[SURFACE_ACCOUNT_KEYS[surface]];
   const legacyAccountValue = user?.user_metadata?.[LEGACY_ACCOUNT_KEY];
   const explicitAccountValue = user?.user_metadata?.[EXPLICIT_ACCOUNT_KEY];
@@ -174,10 +174,6 @@ export function useTrackSourcePreference() {
   const initial = resolveTrackSourcePreference(surface, surfaceAccountValue, legacyAccountValue);
   const [preference, setPreferenceState] = useState<TrackSourcePreference>(initial);
   const [, setExplicitRevision] = useState(0);
-
-  useEffect(() => {
-    setSurface(inferTrackSourceSurface());
-  }, []);
 
   useEffect(() => {
     const next = resolveTrackSourcePreference(surface, surfaceAccountValue, legacyAccountValue);
@@ -214,16 +210,14 @@ export function useTrackSourcePreference() {
 
   const setPreference = useCallback(
     async (next: TrackSourcePreference) => {
-      const targetSurface = inferTrackSourceSurface();
-      setSurface(targetSurface);
       setPreferenceState(next);
-      writeLocalPreference(targetSurface, next);
+      writeLocalPreference(surface, next);
       if (!user) return;
-      const accountKey = SURFACE_ACCOUNT_KEYS[targetSurface];
+      const accountKey = SURFACE_ACCOUNT_KEYS[surface];
       const { error } = await supabase.auth.updateUser({ data: { [accountKey]: next } });
       if (error) throw new Error(error.message);
     },
-    [user],
+    [surface, user],
   );
 
   return { preference, setPreference, surface };
@@ -257,13 +251,15 @@ export function TrackSourceFilter({
   onChange,
   language,
   className,
+  surface,
 }: {
   value: TrackSourcePreference;
   onChange: (value: TrackSourcePreference) => void;
   language: "en" | "el";
   className?: string;
+  surface?: TrackSourceSurface;
 }) {
-  const persistence = useTrackSourcePreference();
+  const persistence = useTrackSourcePreference(surface);
   const labels = useMemo(
     () =>
       language === "el"
