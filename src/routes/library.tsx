@@ -205,7 +205,8 @@ function LibraryPage() {
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
-  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const { preference: defaultTrackSource, setPreference: persistTrackSource } =
+    useTrackSourcePreference("library");
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [showTabFade, setShowTabFade] = useState(false);
@@ -402,7 +403,10 @@ function LibraryPage() {
                     key={value}
                     type="button"
                     aria-pressed={trackSource === value}
-                    onClick={() => setTrackSource(value)}
+                    onClick={() => {
+                      setTrackSource(value);
+                      void persistTrackSource(value).catch(() => undefined);
+                    }}
                     className={cn(
                       "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
                       trackSource === value
