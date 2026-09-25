@@ -2998,7 +2998,7 @@ ${narrativePlan.beats
                               <span
                                 key={section.sectionId}
                                 role="listitem"
-                                className="inline-flex min-h-8 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 pl-3 pr-1.5 text-xs font-medium text-accent shadow-[0_0_12px_color-mix(in_oklab,var(--accent)_12%,transparent)]"
+                                className="inline-flex min-h-7 items-center gap-0.5 rounded-full border border-accent/35 bg-accent/10 px-2.5 py-1 text-[11px] font-medium leading-none text-accent shadow-[0_0_6px_color-mix(in_oklab,var(--accent)_10%,transparent)]"
                               >
                                 <span>{label}</span>
                                 <button
@@ -3008,7 +3008,7 @@ ${narrativePlan.beats
                                     name: label,
                                     position: section.structureIndex + 1,
                                   })}
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none text-accent/70 transition-colors hover:bg-accent/10 hover:text-accent"
+                                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] leading-none text-accent/70 transition-colors hover:bg-accent/10 hover:text-accent"
                                 >
                                   ×
                                 </button>
@@ -3332,14 +3332,14 @@ ${narrativePlan.beats
             <div className="mt-6 space-y-4 pb-16">
               {storyDrivenDraft && (
                 <div className="glass rounded-2xl p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">Story Map</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 max-w-full whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
                         {storyDrivenDraft.summary}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
                       <button
                         type="button"
                         onClick={() => setStoryMapPreviewOpen((open) => !open)}
