@@ -86,39 +86,32 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lint cleaned source
+        run: bun run lint
+
       - name: Regenerate routes and build
         run: bun run build
 
       - name: Feature Access V2 test
-        continue-on-error: true
         run: bun test src/lib/feature-access-v2.test.ts
 
       - name: Auxiliary idempotency test
-        continue-on-error: true
         run: bun test src/lib/ai-auxiliary-idempotency-f7-03.test.ts
 
       - name: Step 7 usage admission test
-        continue-on-error: true
         run: bun test src/lib/ai-usage-admission-step7.test.ts
 
       - name: Mobile navigation test
-        continue-on-error: true
         run: bun test src/lib/mobile-navigation-layout.test.ts
 
       - name: Step 8 security test
-        continue-on-error: true
         run: bun test src/lib/security-step8.test.ts
 
       - name: Audit hardening test
-        continue-on-error: true
         run: bun test src/lib/audit-hardening-20260922.test.ts
 
       - name: Super Admin test
-        continue-on-error: true
         run: bun test src/lib/super-admin-phase-a.test.ts
-
-      - name: Lint cleaned source
-        run: bun run lint
 
       - name: Verify retired runtime references are gone
         run: |
