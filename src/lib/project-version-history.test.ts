@@ -220,4 +220,30 @@ describe("Version history writer contracts", () => {
     expect(migration).toContain("OLD.project_id IS NULL AND NEW.project_id IS NOT NULL");
     expect(migration).toContain("pg_advisory_xact_lock(hashtext(NEW.project_id::text))");
   });
+
+  test("Project prompt action menu supports detach, copy and move without renumbering source versions", async () => {
+    const migration = await Bun.file(
+      "supabase/migrations/20260925181500_project_prompt_rehome_actions.sql",
+    ).text();
+    const ai = await Bun.file("src/lib/ai.functions.ts").text();
+    const library = await Bun.file("src/routes/library.tsx").text();
+    const menu = await Bun.file("src/components/promptbeats/ProjectPromptActionMenu.tsx").text();
+
+    expect(migration).toContain("detach_prompt_project_version");
+    expect(migration).toContain("copy_prompt_version_to_project");
+    expect(migration).toContain("move_prompt_version_to_project");
+    expect(migration).toContain("MAX(version_number)");
+    expect(migration).not.toContain("version_number = version_number - 1");
+    expect(migration).toContain("parent_prompt_id = v_source_parent_id");
+    expect(migration).toContain("DELETE FROM public.project_version_tracks");
+    expect(migration).toContain("UPDATE public.project_version_tracks");
+    expect(migration).toContain("lyrics_review_latest");
+    expect(ai).toContain("detachSavedPromptFromProject");
+    expect(ai).toContain("copySavedPromptToProject");
+    expect(ai).toContain("moveSavedPromptToProject");
+    expect(library).toContain("<ProjectPromptActionMenu");
+    expect(menu).toContain("Αφαίρεση από το Project");
+    expect(menu).toContain("Αντιγραφή σε άλλο Project");
+    expect(menu).toContain("Μετακίνηση σε άλλο Project");
+  });
 });
