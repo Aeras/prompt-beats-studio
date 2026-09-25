@@ -803,7 +803,7 @@ function ResultSection({
 }) {
   return (
     <div className="glass rounded-2xl p-5">
-      <div className="hidden items-center gap-3 md:flex">
+      <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
           aria-expanded={open}
@@ -2567,7 +2567,7 @@ ${narrativePlan.beats
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
               <div
                 className="flex flex-wrap items-center gap-2"
                 role="group"
@@ -2590,34 +2590,39 @@ ${narrativePlan.beats
                       onClick={() => changeGeneratorMode(mode.key)}
                       className={
                         active
-                          ? "rounded-full border border-transparent bg-gradient-neon px-4 py-1.5 text-xs font-semibold text-primary-foreground glow-neon"
-                          : "rounded-full border border-white/10 px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
+                          ? "whitespace-nowrap rounded-full border border-transparent bg-gradient-neon px-3 py-1.5 text-xs font-semibold text-primary-foreground glow-neon sm:px-4"
+                          : "whitespace-nowrap rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent sm:px-4"
                       }
                     >
                       {mode.label}
                     </button>
                   );
                 })}
-                {advanced && !revisionMode && songSetupFeature.allowed && (
-                  <button
-                    type="button"
-                    onClick={() => setSongSetupAssistantOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {t("generator.songSetupAssistant")}
-                  </button>
-                )}
               </div>
-              {canClear && !revisionMode && (
-                <button
-                  onClick={() => setConfirmClear(true)}
-                  disabled={busy || checking}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}
-                </button>
-              )}
+              {(advanced && !revisionMode && songSetupFeature.allowed) ||
+              (canClear && !revisionMode) ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {advanced && !revisionMode && songSetupFeature.allowed && (
+                    <button
+                      type="button"
+                      onClick={() => setSongSetupAssistantOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {t("generator.songSetupAssistant")}
+                    </button>
+                  )}
+                  {canClear && !revisionMode && (
+                    <button
+                      onClick={() => setConfirmClear(true)}
+                      disabled={busy || checking}
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}
+                    </button>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             {revisionMode && (
