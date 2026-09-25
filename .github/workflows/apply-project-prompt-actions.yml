@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   apply:
-    if: ${{ hashFiles('scripts/apply_project_prompt_actions_patch.py') != '' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
