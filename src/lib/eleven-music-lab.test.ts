@@ -17,8 +17,8 @@ test("Eleven Music Lab uses the official v2.5 plan and compose endpoints", async
   const server = await source("src/lib/eleven-music-lab.functions.ts");
 
   expect(server).toContain('const ELEVEN_MODEL = "music_v2_5"');
-  expect(server).toContain('`${ELEVEN_BASE_URL}/plan`');
-  expect(server).toContain('`${ELEVEN_BASE_URL}?output_format=mp3_48000_192`');
+  expect(server).toContain("`${ELEVEN_BASE_URL}/plan`");
+  expect(server).toContain("`${ELEVEN_BASE_URL}?output_format=mp3_48000_192`");
   expect(server).toContain("executeDurableAuxiliaryAiRequest");
   expect(server).toContain('operation: "ai_music_lab_generation"');
 });
