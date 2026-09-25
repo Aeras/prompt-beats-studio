@@ -80,6 +80,7 @@ import {
 } from "@/components/promptbeats/LibraryItemActionSheet";
 import { PromptBeatsFolderIcon } from "@/components/promptbeats/PromptBeatsFolderIcon";
 import { DeletePromptProjectDialog } from "@/components/promptbeats/DeletePromptProjectDialog";
+import { LibraryTracksEmptyState } from "@/components/promptbeats/LibraryTracksEmptyState";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -406,14 +407,18 @@ function LibraryPage() {
               </div>
               <TrackGridModeToggle mode={gridMode} onChange={setGridMode} className="shrink-0" />
             </div>
-            <Section
-              empty={emptyMyTracks}
-              tracks={filteredMyTracks}
-              playing={playing}
-              currentId={current?.id}
-              onPlay={(track) => play(track, myTracks)}
-              gridMode={gridMode}
-            />
+            {myTracks.length === 0 ? (
+              <LibraryTracksEmptyState language={language} />
+            ) : (
+              <Section
+                empty={emptyMyTracks}
+                tracks={filteredMyTracks}
+                playing={playing}
+                currentId={current?.id}
+                onPlay={(track) => play(track, myTracks)}
+                gridMode={gridMode}
+              />
+            )}
           </>
         )}
 

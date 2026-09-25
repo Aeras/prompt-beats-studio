@@ -370,4 +370,20 @@ describe("Library folders foundation", () => {
     expect(ai).toContain("One or more selected prompts do not belong to this project.");
     expect(ai).toContain("deletedPromptCount");
   });
+
+  test("empty Library guides first-time users to Generator and open Smart Presets", async () => {
+    const library = await source("src/routes/library.tsx");
+    const emptyState = await source("src/components/promptbeats/LibraryTracksEmptyState.tsx");
+    const generator = await source("src/routes/generate.tsx");
+    const presets = await source("src/components/promptbeats/SmartPresetsPanel.tsx");
+
+    expect(library).toContain("myTracks.length === 0");
+    expect(library).toContain("LibraryTracksEmptyState");
+    expect(emptyState).toContain('search={{ presets: "open" }}');
+    expect(emptyState).toContain("Χρειάζεσαι έμπνευση;");
+    expect(generator).toContain('presets: z.enum(["open"]).optional()');
+    expect(generator).toContain('search.presets === "open"');
+    expect(generator).toContain('initiallyOpen={search.presets === "open"}');
+    expect(presets).toContain("scrollIntoView");
+  });
 });
