@@ -205,7 +205,8 @@ function LibraryPage() {
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
-  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const { preference: defaultTrackSource, setPreference: persistTrackSource } =
+    useTrackSourcePreference("library");
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [showTabFade, setShowTabFade] = useState(false);
@@ -402,7 +403,10 @@ function LibraryPage() {
                     key={value}
                     type="button"
                     aria-pressed={trackSource === value}
-                    onClick={() => setTrackSource(value)}
+                    onClick={() => {
+                      setTrackSource(value);
+                      void persistTrackSource(value).catch(() => undefined);
+                    }}
                     className={cn(
                       "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
                       trackSource === value
@@ -1048,13 +1052,9 @@ function PromptProjectLibrary({
           data: { folderId: undoMove.id, destinationFolderId: undoMove.previousFolderId },
         });
       } else if (undoMove.kind === "project") {
-        await movePromptProjectToFolder({
-          data: { projectId: undoMove.id, destinationFolderId: undoMove.previousFolderId },
-        });
+        await movePromptProjectToFolder({ data: { projectId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
       } else {
-        await moveStandalonePromptToFolder({
-          data: { promptId: undoMove.id, destinationFolderId: undoMove.previousFolderId },
-        });
+        await moveStandalonePromptToFolder({ data: { promptId: undoMove.id, destinationFolderId: undoMove.previousFolderId } });
       }
       await refresh();
       setUndoMove(null);
@@ -2337,10 +2337,16 @@ function SongAnalysisCard({
               {t("songAnalyzer.detailed")}
             </p>
             <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-              {analysis.detailed_analysis.genreAndStyle}\n\n
-              {analysis.detailed_analysis.moodAndEmotionalArc}\n\n
-              {analysis.detailed_analysis.tempoAndGroove}\n\n
-              {analysis.detailed_analysis.arrangement}\n\n{analysis.detailed_analysis.vocals}\n\n
+              {analysis.detailed_analysis.genreAndStyle}
+              {"\n\n"}
+              {analysis.detailed_analysis.moodAndEmotionalArc}
+              {"\n\n"}
+              {analysis.detailed_analysis.tempoAndGroove}
+              {"\n\n"}
+              {analysis.detailed_analysis.arrangement}
+              {"\n\n"}
+              {analysis.detailed_analysis.vocals}
+              {"\n\n"}
               {analysis.detailed_analysis.dynamicsAndEnergy}
             </p>
           </div>
@@ -2603,7 +2609,7 @@ function SavedPromptCard({
             type="button"
             onClick={() => setEditing(true)}
             aria-label={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"}
-            title={language === "el" ? "Επεξεργασία Prompt" : "Edit Prompt"}
+            title={language === "el" ? "Επεξεργασία" : "Edit"}
             className="min-h-10 min-w-10 rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
           >
             <Pencil className="h-3.5 w-3.5" />
