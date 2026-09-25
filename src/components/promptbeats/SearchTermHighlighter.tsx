@@ -85,7 +85,9 @@ export function SearchTermHighlighter() {
     if (typeof window === "undefined" || typeof CSS === "undefined") return;
 
     const registry = (CSS as typeof CSS & { highlights?: HighlightRegistryLike }).highlights;
-    const HighlightCtor = (window as typeof window & { Highlight?: HighlightConstructor }).Highlight;
+    const HighlightCtor = (
+      window as typeof window & { Highlight?: HighlightConstructor }
+    ).Highlight;
     if (!registry || !HighlightCtor) return;
 
     const root = document.querySelector<HTMLElement>("[data-pb-search-highlight-root]");
