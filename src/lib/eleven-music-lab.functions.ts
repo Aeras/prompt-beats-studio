@@ -16,21 +16,18 @@ const ELEVEN_BASE_URL = "https://api.elevenlabs.io/v1/music";
 const promptSchema = z.string().trim().min(1).max(4100);
 const durationSchema = z.number().int().min(3).max(600).default(180);
 
-const planChunkSchema = z
-  .object({
-    text: z.string().max(20_000),
-    duration_ms: z.number().int().min(1).max(600_000),
-    positive_styles: z.array(z.string().max(500)).max(100).optional(),
-    negative_styles: z.array(z.string().max(500)).max(100).optional(),
-    context_adherence: z.string().max(50).optional(),
-  })
-  .passthrough();
+const planChunkSchema = z.object({
+  text: z.string().max(20_000),
+  duration_ms: z.number().int().min(1).max(600_000),
+  positive_styles: z.array(z.string().max(500)).max(100).optional(),
+  negative_styles: z.array(z.string().max(500)).max(100).optional(),
+  context_adherence: z.string().max(50).optional(),
+});
 
 const compositionPlanSchema = z
   .object({
     chunks: z.array(planChunkSchema).min(1).max(30),
   })
-  .passthrough()
   .superRefine((value, ctx) => {
     if (JSON.stringify(value).length > 120_000) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Composition plan is too large" });
