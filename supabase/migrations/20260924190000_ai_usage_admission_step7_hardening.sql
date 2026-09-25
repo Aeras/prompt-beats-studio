@@ -1,5 +1,5 @@
--- Step 7 hardening: cost-admission, AI Music Lab accounting support, and
--- durable recovery for usage analytics. No user-facing credit price changes.
+-- Step 7 hardening: cost-admission and durable recovery for usage analytics.
+-- No user-facing credit price changes.
 BEGIN;
 
 -- A failed analytics insert must not permanently erase provider cost evidence.
@@ -103,7 +103,7 @@ DECLARE
   v_used integer;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF _operation NOT IN ('song_setup_assistant','ai_music_lab','song_analyzer','inspiration_wall','story_map','song_universe') THEN
+  IF _operation NOT IN ('song_setup_assistant','song_analyzer','inspiration_wall','story_map','song_universe') THEN
     RAISE EXCEPTION 'invalid AI operation';
   END IF;
   IF _limit_per_hour < 1 OR _limit_per_hour > 100 THEN RAISE EXCEPTION 'invalid AI rate limit'; END IF;
