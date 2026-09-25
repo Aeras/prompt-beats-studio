@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Bookmark, Download, ListPlus, Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { Bookmark, Download, ListPlus, Loader2, MoreVertical, Plus, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -309,17 +309,21 @@ export function TrackLibraryActions({
     );
 
   const compactIconClass = bare
-    ? "grid h-8 w-5 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
+    ? "grid h-9 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
     : "grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground";
   const standardIconClass = bare
     ? "grid h-9 w-7 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
     : "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent";
   const iconClass = compact ? compactIconClass : standardIconClass;
-  const iconSize = compact ? "h-4 w-4" : "h-[17px] w-[17px]";
+  const iconSize = compact ? "h-[15px] w-[15px]" : "h-[17px] w-[17px]";
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-0">
+      <div
+        className={
+          compact ? "flex shrink-0 items-center gap-1" : "flex shrink-0 items-center gap-0"
+        }
+      >
         {hasDownloadableSource && (
           <button
             onClick={() => void download()}
@@ -342,7 +346,7 @@ export function TrackLibraryActions({
               aria-label={language === "el" ? "Περισσότερες ενέργειες" : "More track actions"}
               className={iconClass}
             >
-              <MoreHorizontal className={iconSize} />
+              <MoreVertical className={iconSize} />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
