@@ -1,6 +1,5 @@
 export type AuxiliaryAiOperation =
   | "song_setup_assistant"
-  | "ai_music_lab"
   | "song_analyzer"
   | "inspiration_wall"
   | "story_map"
