@@ -201,6 +201,25 @@ button:not(:disabled):not([data-pb-no-press="true"]):active,
     min-width: 44px;
     min-height: 44px;
   }
+
+  /* Song Structure remove controls are embedded inside compact pills. Keep
+     the pill compact instead of letting the global 44px icon target inflate it. */
+  [role="list"] > [role="listitem"] button[aria-label] {
+    min-width: 14px;
+    min-height: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* The selected Song Structure items are tags, not primary action buttons.
+   Keep the outline close to the text and the remove mark tucked beside it. */
+[role="list"] > [role="listitem"] {
+  min-height: 24px !important;
+  gap: 2px !important;
+  padding: 3px 7px !important;
+  border-color: color-mix(in oklab, var(--accent) 28%, transparent) !important;
+  box-shadow: none !important;
 }
 
 @utility aurora {
