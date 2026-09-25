@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -41,6 +41,12 @@ export function DeletePromptProjectDialog({
   const [deleteAll, setDeleteAll] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    setDeletePromptsEnabled(false);
+    setDeleteAll(false);
+    setSelectedIds(new Set());
+  }, [open, projectName]);
+
   const sortedPrompts = useMemo(
     () =>
       [...prompts].sort(
@@ -62,9 +68,6 @@ export function DeletePromptProjectDialog({
 
   const close = () => {
     if (busy) return;
-    setDeletePromptsEnabled(false);
-    setDeleteAll(false);
-    setSelectedIds(new Set());
     onClose();
   };
 
@@ -179,13 +182,17 @@ export function DeletePromptProjectDialog({
         )}
 
         <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground">
-          {selectedCount === 0
+          {sortedPrompts.length === 0
             ? language === "el"
-              ? `Θα διαγραφεί μόνο το Project. Και τα ${sortedPrompts.length} prompts θα παραμείνουν ως ανεξάρτητα Αποθηκευμένα Prompts.`
-              : `Only the Project will be deleted. All ${sortedPrompts.length} prompts will remain as standalone Saved Prompts.`
-            : language === "el"
-              ? `Θα διαγραφεί το Project και ${selectedCount} από τα ${sortedPrompts.length} prompts. Τα υπόλοιπα ${remainingCount} θα παραμείνουν στα Αποθηκευμένα Prompts.`
-              : `The Project and ${selectedCount} of ${sortedPrompts.length} prompts will be deleted. The remaining ${remainingCount} will stay in Saved Prompts.`}
+              ? "Θα διαγραφεί μόνο το Project. Το Project δεν περιέχει prompts."
+              : "Only the Project will be deleted. This Project contains no prompts."
+            : selectedCount === 0
+              ? language === "el"
+                ? `Θα διαγραφεί μόνο το Project. Και τα ${sortedPrompts.length} prompts θα παραμείνουν ως ανεξάρτητα Αποθηκευμένα Prompts.`
+                : `Only the Project will be deleted. All ${sortedPrompts.length} prompts will remain as standalone Saved Prompts.`
+              : language === "el"
+                ? `Θα διαγραφεί το Project και ${selectedCount} από τα ${sortedPrompts.length} prompts. Τα υπόλοιπα ${remainingCount} θα παραμείνουν στα Αποθηκευμένα Prompts.`
+                : `The Project and ${selectedCount} of ${sortedPrompts.length} prompts will be deleted. The remaining ${remainingCount} will stay in Saved Prompts.`}
         </p>
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
