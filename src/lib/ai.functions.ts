@@ -2742,15 +2742,48 @@ export const updatePromptProjectCreationNotes = createServerFn({ method: "POST" 
 
 export const deletePromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        deletePromptIds: z.array(z.string().uuid()).max(500).default([]),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const requestedPromptIds = Array.from(new Set(data.deletePromptIds));
+    if (requestedPromptIds.length > 0) {
+      const { data: ownedPrompts, error: promptError } = await context.supabase
+        .from("saved_prompts")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("project_id", data.id)
+        .in("id", requestedPromptIds);
+      if (promptError) throw new Error(promptError.message);
+      if ((ownedPrompts ?? []).length !== requestedPromptIds.length) {
+        throw new Error("One or more selected prompts do not belong to this project.");
+      }
+    }
+
+    const { data: deletedProject, error } = await context.supabase
       .from("prompt_projects")
       .delete()
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!deletedProject) throw new Error("Project not found.");
+
+    if (requestedPromptIds.length > 0) {
+      const { error: deletePromptError } = await context.supabase
+        .from("saved_prompts")
+        .delete()
+        .eq("user_id", context.userId)
+        .in("id", requestedPromptIds);
+      if (deletePromptError) throw new Error(deletePromptError.message);
+    }
+    return { ok: true, deletedPromptCount: requestedPromptIds.length };
   });
 
 export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
