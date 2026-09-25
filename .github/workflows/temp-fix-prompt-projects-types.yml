@@ -51,6 +51,8 @@ jobs:
           PY
           bunx prettier --write src/lib/ai.functions.ts src/routes/generate.tsx
           git diff --check
+      - name: Build generated route types
+        run: bun run build
       - name: Verify strict TypeScript
         run: bunx tsc --noEmit --pretty false
       - name: Commit type fixes
