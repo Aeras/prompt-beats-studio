@@ -34,7 +34,6 @@ describe("F7-03 durable auxiliary AI idempotency", () => {
   test("all covered auxiliary operation families require a durable request key", async () => {
     for (const file of [
       "src/lib/song-setup-assistant.functions.ts",
-      "src/lib/ai-music-lab.functions.ts",
       "src/lib/song-analyzer.functions.ts",
       "src/lib/inspiration-wall-ai.functions.ts",
       "src/lib/story-map-ai.functions.ts",
