@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 import { scoreSimilarSong, similarityTokens } from "@/lib/similar-songs.shared";
 
