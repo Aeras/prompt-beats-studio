@@ -7,6 +7,11 @@ import { scoreSimilarSong } from "@/lib/similar-songs.shared";
 const TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, created_at";
 
+type SimilarCandidate = {
+  candidate: any;
+  similarity: ReturnType<typeof scoreSimilarSong>;
+};
+
 function sanitizeTrack(track: any, viewerId?: string | null) {
   const owner = Boolean(viewerId && track.user_id === viewerId);
   return {
@@ -57,8 +62,8 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
       .limit(250);
     if (candidateError) throw new Error(candidateError.message);
 
-    const scored = (candidates ?? [])
-      .map((candidate: any) => {
+    const scored: SimilarCandidate[] = ((candidates ?? []) as any[])
+      .map((candidate: any): SimilarCandidate => {
         const candidatePrompt = candidate.prompt_is_public !== false ? (candidate.prompt ?? "") : "";
         const similarity = scoreSimilarSong(
           { prompt: sourcePrompt, genre: source.genre },
@@ -66,15 +71,17 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
         );
         return { candidate, similarity };
       })
-      .filter(({ similarity }) => similarity.score > 0)
-      .sort((a, b) => {
+      .filter((entry: SimilarCandidate) => entry.similarity.score > 0)
+      .sort((a: SimilarCandidate, b: SimilarCandidate) => {
         if (b.similarity.score !== a.similarity.score)
           return b.similarity.score - a.similarity.score;
         return String(b.candidate.created_at).localeCompare(String(a.candidate.created_at));
       })
       .slice(0, data.limit);
 
-    const userIds = [...new Set(scored.map(({ candidate }) => candidate.user_id))] as string[];
+    const userIds = [
+      ...new Set(scored.map((entry: SimilarCandidate) => entry.candidate.user_id)),
+    ] as string[];
     const profiles = new Map<string, { handle: string; displayName: string; staffBadge: string | null }>();
     if (userIds.length) {
       const { data: rows } = await publicClient
@@ -92,7 +99,8 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
     }
 
     return {
-      tracks: scored.map(({ candidate, similarity }) => {
+      tracks: scored.map((entry: SimilarCandidate) => {
+        const { candidate, similarity } = entry;
         const profile = profiles.get(candidate.user_id);
         return {
           ...sanitizeTrack(candidate, viewerId),
