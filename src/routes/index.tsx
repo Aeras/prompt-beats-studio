@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Compass } from "lucide-react";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import {
@@ -57,6 +57,11 @@ function Index() {
   const { t, language } = useI18n();
   const [genre, setGenre] = useState("All");
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const value = new URLSearchParams(window.location.search).get("q");
+    if (value) setQuery(value);
+  }, []);
   const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
@@ -124,68 +129,57 @@ function Index() {
         : t("discover.category.prompts");
 
   const header = (
-    <div className="min-w-0">
-      <div className="relative min-w-0">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("discover.searchPlaceholder")}
-          aria-label={t("discover.searchAria")}
-          className="h-11 w-full rounded-full border border-white/10 bg-black/40 pl-10 pr-4 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]"
-        />
-      </div>
-      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-8 md:px-8">
-        {(["tracks", "creators", "prompts"] as const).map((item) => (
-          <button
-            key={item}
-            onClick={() => setCategory(item)}
-            className={cn(
-              "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-              category === item
-                ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
-                : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-            )}
-          >
-            {categoryLabel(item)}
-          </button>
-        ))}
-      </div>
-      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-8 md:px-8">
-        {GENRES.map((item) => (
-          <button
-            key={item}
-            onClick={() => setGenre(item)}
-            className={cn(
-              "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-              genre === item
-                ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
-                : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-            )}
-          >
-            {localizedGenreLabel(item, t)}
-          </button>
-        ))}
-      </div>
+    <div className="flex min-w-0 items-center gap-2">
+      <Compass className="h-5 w-5 shrink-0 text-accent" />
+      <span className="truncate font-display text-base font-bold md:text-lg">
+        {t("nav.feedShort")}
+      </span>
     </div>
   );
 
   return (
     <AppShell header={header}>
+      <div className="w-full border-b border-white/5 bg-black/10 py-2">
+        <div className="flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
+          {(["tracks", "creators", "prompts"] as const).map((item) => (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
+                category === item
+                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
+                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+              )}
+            >
+              {categoryLabel(item)}
+            </button>
+          ))}
+        </div>
+        <div className="mt-1 flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
+          {GENRES.map((item) => (
+            <button
+              key={item}
+              onClick={() => setGenre(item)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
+                genre === item
+                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
+                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+              )}
+            >
+              {localizedGenreLabel(item, t)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="px-4 pt-4 md:px-8">
         <ProfileBanner />
       </div>
-      <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
+      <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-4 md:px-8 md:pb-[150px]">
         <div>
-          <h1 className="font-display text-2xl font-bold md:text-3xl">
-            <span className="text-gradient-neon">{t("discover.titleLead")}</span>{" "}
-            {t("discover.titleTail")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("discover.trackCount", { count: sourceFiltered.length })}
-          </p>
           {category !== "creators" && (
-            <div className="mt-3 flex w-full items-center justify-between gap-3">
+            <div className="flex w-full items-center justify-between gap-3">
               <TrackSourceFilter
                 value={trackSource}
                 onChange={setTrackSource}
