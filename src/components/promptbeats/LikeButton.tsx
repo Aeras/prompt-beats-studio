@@ -36,13 +36,13 @@ export function LikeButton({
       }}
       className={cn(
         "flex shrink-0 items-center justify-center text-xs transition-colors",
-        compact ? "h-9 w-6" : "h-10 min-w-8 gap-1",
+        compact ? "h-8 w-5" : "h-9 min-w-7 gap-1",
         liked ? "text-primary" : "text-muted-foreground hover:text-primary",
       )}
     >
       <Heart
         className={cn(
-          compact ? "h-[18px] w-[18px]" : "h-4 w-4",
+          compact ? "h-4 w-4" : "h-[17px] w-[17px]",
           liked && "fill-current drop-shadow-[0_0_8px_var(--neon)]",
         )}
       />

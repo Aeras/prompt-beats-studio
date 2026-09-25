@@ -34,11 +34,15 @@ export function TrackLibraryActions({
   track,
   compact = false,
   ownerActions = null,
+  menuActions = null,
+  inlineActions = null,
   bare = false,
 }: {
   track: Track;
   compact?: boolean;
   ownerActions?: ReactNode;
+  menuActions?: ReactNode;
+  inlineActions?: ReactNode;
   bare?: boolean;
 }) {
   const { language } = useI18n();
@@ -304,20 +308,41 @@ export function TrackLibraryActions({
       document.body,
     );
 
-  if (compact) {
-    return (
-      <>
+  const compactIconClass = bare
+    ? "grid h-8 w-5 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
+    : "grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground";
+  const standardIconClass = bare
+    ? "grid h-9 w-7 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
+    : "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent";
+  const iconClass = compact ? compactIconClass : standardIconClass;
+  const iconSize = compact ? "h-4 w-4" : "h-[17px] w-[17px]";
+
+  return (
+    <>
+      <div className="flex shrink-0 items-center gap-0">
+        {hasDownloadableSource && (
+          <button
+            onClick={() => void download()}
+            disabled={!canDownload || busy === "download"}
+            aria-label={canDownload ? copy.download : copy.downloadDisabled}
+            title={canDownload ? copy.download : copy.downloadDisabled}
+            className={iconClass}
+          >
+            {busy === "download" && canDownload ? (
+              <Loader2 className={`${iconSize} animate-spin`} />
+            ) : (
+              <Download className={iconSize} />
+            )}
+          </button>
+        )}
+        {inlineActions}
         <DropdownMenu.Root modal={false}>
           <DropdownMenu.Trigger asChild>
             <button
-              aria-label="More track actions"
-              className={
-                bare
-                  ? "grid h-9 w-6 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                  : "grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
-              }
+              aria-label={language === "el" ? "Περισσότερες ενέργειες" : "More track actions"}
+              className={iconClass}
             >
-              <MoreHorizontal className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
+              <MoreHorizontal className={iconSize} />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
@@ -328,94 +353,30 @@ export function TrackLibraryActions({
                 const target = event.target as HTMLElement | null;
                 if (target?.closest?.('[role="dialog"]')) event.preventDefault();
               }}
-              className="z-[120] min-w-52 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl"
+              className="z-[120] min-w-56 rounded-xl border border-white/10 bg-[#111116]/95 p-1.5 text-sm shadow-2xl backdrop-blur-xl"
             >
               {favoritesAccess.allowed && (
                 <DropdownMenu.Item
                   onSelect={() => void favorite()}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 focus:bg-white/10"
                 >
-                  <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-current text-accent" : ""}`} />{" "}
+                  <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-current text-accent" : ""}`} />
                   {isFavorite ? copy.removeFavorite : copy.addFavorite}
                 </DropdownMenu.Item>
               )}
               {canPlaylist && (
                 <DropdownMenu.Item
                   onSelect={() => setPlaylistOpen(true)}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 focus:bg-white/10"
                 >
                   <ListPlus className="h-4 w-4" /> {copy.playlist}
                 </DropdownMenu.Item>
               )}
-              {hasDownloadableSource && (
-                <DropdownMenu.Item
-                  disabled={!canDownload || busy === "download"}
-                  onSelect={() => void download()}
-                  title={canDownload ? copy.download : copy.downloadDisabled}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 data-[disabled]:cursor-not-allowed data-[disabled]:text-muted-foreground/40 data-[disabled]:opacity-60"
-                >
-                  <Download className="h-4 w-4" /> {copy.download}
-                </DropdownMenu.Item>
-              )}
+              {menuActions}
               {ownerActions}
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
-        {playlistModal}
-      </>
-    );
-  }
-
-  const iconClass = bare
-    ? "grid h-10 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
-    : "grid h-8 w-8 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:border-white/5 disabled:text-muted-foreground/30 disabled:opacity-60 disabled:hover:border-white/5 disabled:hover:text-muted-foreground/30";
-  return (
-    <>
-      <div
-        className={bare ? "flex shrink-0 items-center gap-0" : "flex shrink-0 items-center gap-1.5"}
-      >
-        {favoritesAccess.allowed && (
-          <button
-            onClick={() => void favorite()}
-            disabled={busy === "favorite"}
-            aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite}
-            title={isFavorite ? copy.removeFavorite : copy.addFavorite}
-            className={iconClass}
-          >
-            {busy === "favorite" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Bookmark
-                className={`${bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} ${isFavorite ? "fill-current text-accent" : ""}`}
-              />
-            )}
-          </button>
-        )}
-        {canPlaylist && (
-          <button
-            onClick={() => setPlaylistOpen(true)}
-            aria-label={copy.playlist}
-            title={copy.playlist}
-            className={iconClass}
-          >
-            <ListPlus className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
-          </button>
-        )}
-        {hasDownloadableSource && (
-          <button
-            onClick={() => void download()}
-            disabled={!canDownload || busy === "download"}
-            aria-label={canDownload ? copy.download : copy.downloadDisabled}
-            title={canDownload ? copy.download : copy.downloadDisabled}
-            className={iconClass}
-          >
-            {busy === "download" && canDownload ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className={bare ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />
-            )}
-          </button>
-        )}
       </div>
       {playlistModal}
     </>

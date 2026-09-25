@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { Check, Copy, Loader2, Mail, MoreHorizontal, Share2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -23,6 +24,7 @@ type Props = {
   iconOnly?: boolean;
   compact?: boolean;
   bare?: boolean;
+  menuItem?: boolean;
 };
 
 type ShareDestination = "whatsapp" | "facebook" | "messenger" | "viber" | "telegram" | "email";
@@ -45,6 +47,7 @@ export function ShareTrackButton({
   iconOnly = false,
   compact = false,
   bare = false,
+  menuItem = false,
 }: Props) {
   const { user } = useAuth();
   const sharingAccess = useFeatureAccess("sharing_public_links");
@@ -523,6 +526,21 @@ export function ShareTrackButton({
       document.body,
     );
 
+  if (menuItem) {
+    return (
+      <>
+        <DropdownMenu.Item
+          onSelect={() => openShareHub()}
+          className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 focus:bg-white/10"
+        >
+          <Share2 className="h-4 w-4" />
+          {language === "el" ? "Κοινοποίηση" : "Share"}
+        </DropdownMenu.Item>
+        {modal}
+      </>
+    );
+  }
+
   return (
     <>
       <button
@@ -532,12 +550,12 @@ export function ShareTrackButton({
         className={
           iconOnly
             ? bare
-              ? `grid place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${compact ? "h-9 w-6" : "h-10 w-8"}`
+              ? `grid place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${compact ? "h-8 w-5" : "h-9 w-7"}`
               : `grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent ${compact ? "h-7 w-7" : "h-8 w-8"}`
             : "inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
         }
       >
-        <Share2 className={bare ? "h-[18px] w-[18px]" : "h-4 w-4"} />
+        <Share2 className={bare ? "h-[17px] w-[17px]" : "h-4 w-4"} />
         {!iconOnly && (language === "el" ? "Κοινοποίηση" : "Share")}
       </button>
       {modal}

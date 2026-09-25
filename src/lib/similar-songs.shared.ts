@@ -75,7 +75,9 @@ export function scoreSimilarSong(source: SimilarityInput, candidate: SimilarityI
   const candidateTokens = similarityTokens(candidate.prompt);
   const hasPromptEvidence = sourceTokens.length >= 3 && candidateTokens.length >= 3;
   const tokenScore = hasPromptEvidence ? jaccard(sourceTokens, candidateTokens) : 0;
-  const phraseScore = hasPromptEvidence ? jaccard(bigrams(sourceTokens), bigrams(candidateTokens)) : 0;
+  const phraseScore = hasPromptEvidence
+    ? jaccard(bigrams(sourceTokens), bigrams(candidateTokens))
+    : 0;
   const sourceGenre = normalize(source.genre);
   const candidateGenre = normalize(candidate.genre);
   const genreMatch = Boolean(sourceGenre && candidateGenre && sourceGenre === candidateGenre);

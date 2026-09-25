@@ -68,7 +68,9 @@ export function SimilarSongsDialog({
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-accent">
               <Sparkles className="h-4 w-4" />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">PromptBeats Match</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">
+                PromptBeats Match
+              </p>
             </div>
             <h2 id={`similar-songs-${trackId}`} className="mt-1 font-display text-xl font-bold">
               {copy.title}

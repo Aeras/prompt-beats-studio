@@ -10,6 +10,7 @@ import {
   type ReportCategory,
 } from "@/lib/content-reports.functions";
 import { cn } from "@/lib/utils";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 function reportCategoryKey(category: ReportCategory) {
   return `report.category.${category}` as AppTranslationKey;
@@ -22,6 +23,7 @@ export function ReportTrackControl({
   compact = false,
   iconOnly = true,
   bare = false,
+  menuItem = false,
 }: {
   trackId: string;
   ownerId: string;
@@ -29,6 +31,7 @@ export function ReportTrackControl({
   compact?: boolean;
   iconOnly?: boolean;
   bare?: boolean;
+  menuItem?: boolean;
 }) {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -240,6 +243,19 @@ export function ReportTrackControl({
     );
 
   const label = t("report.action");
+  if (menuItem) {
+    return (
+      <>
+        <DropdownMenu.Item
+          onSelect={() => setOpen(true)}
+          className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-amber-100 outline-none hover:bg-white/10 focus:bg-white/10"
+        >
+          <Flag className="h-4 w-4" /> {label}
+        </DropdownMenu.Item>
+        {modal}
+      </>
+    );
+  }
   return (
     <>
       <button

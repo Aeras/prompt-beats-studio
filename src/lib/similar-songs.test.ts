@@ -5,7 +5,8 @@ import { scoreSimilarSong, similarityTokens } from "@/lib/similar-songs.shared";
 describe("similar songs scoring", () => {
   test("ranks prompt overlap above genre-only fallback", () => {
     const source = {
-      prompt: "dark cinematic rock with male vocals electric guitars orchestral strings driving drums",
+      prompt:
+        "dark cinematic rock with male vocals electric guitars orchestral strings driving drums",
       genre: "Rock",
     };
     const promptMatch = scoreSimilarSong(source, {

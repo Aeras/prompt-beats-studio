@@ -64,7 +64,8 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
 
     const scored: SimilarCandidate[] = ((candidates ?? []) as any[])
       .map((candidate: any): SimilarCandidate => {
-        const candidatePrompt = candidate.prompt_is_public !== false ? (candidate.prompt ?? "") : "";
+        const candidatePrompt =
+          candidate.prompt_is_public !== false ? (candidate.prompt ?? "") : "";
         const similarity = scoreSimilarSong(
           { prompt: sourcePrompt, genre: source.genre },
           { prompt: candidatePrompt, genre: candidate.genre },
@@ -82,7 +83,10 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
     const userIds = [
       ...new Set(scored.map((entry: SimilarCandidate) => entry.candidate.user_id)),
     ] as string[];
-    const profiles = new Map<string, { handle: string; displayName: string; staffBadge: string | null }>();
+    const profiles = new Map<
+      string,
+      { handle: string; displayName: string; staffBadge: string | null }
+    >();
     if (userIds.length) {
       const { data: rows } = await publicClient
         .from("public_profiles")

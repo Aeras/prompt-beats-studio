@@ -5,7 +5,13 @@ import { Sparkles } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { SimilarSongsDialog } from "@/components/promptbeats/SimilarSongsDialog";
 
-export function SimilarSongsMenuItem({ trackId, trackTitle }: { trackId: string; trackTitle: string }) {
+export function SimilarSongsMenuItem({
+  trackId,
+  trackTitle,
+}: {
+  trackId: string;
+  trackTitle: string;
+}) {
   const { language } = useI18n();
   const [open, setOpen] = useState(false);
   const label = language === "el" ? "Παρόμοια τραγούδια" : "Similar songs";
