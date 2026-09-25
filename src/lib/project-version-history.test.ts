@@ -201,4 +201,23 @@ describe("Version history writer contracts", () => {
     expect(ai).toContain("Project versions cannot be moved between projects");
     expect(jobs).toContain("buildProjectRevisionVersionMetadata({");
   });
+
+  test("detaching a Project version resets Project-only lineage before it can be reused", async () => {
+    const migration = await Bun.file(
+      "supabase/migrations/20260925173000_reset_detached_prompt_version_state.sql",
+    ).text();
+
+    expect(migration).toContain("OLD.project_id IS NOT NULL AND NEW.project_id IS NULL");
+    expect(migration).toContain("NEW.version_number := NULL");
+    expect(migration).toContain("NEW.version_label := NULL");
+    expect(migration).toContain("NEW.parent_prompt_id := NULL");
+    expect(migration).toContain("NEW.version_change_metadata := NULL");
+    expect(migration).toContain("NEW.version_user_note := NULL");
+    expect(migration).toContain("NEW.branch_label := NULL");
+    expect(migration).toContain("NEW.revision_request := NULL");
+    expect(migration).toContain("NEW.project_id IS NULL AND NEW.version_change_metadata IS NULL");
+    expect(migration).toContain("WHERE project_id IS NULL");
+    expect(migration).toContain("OLD.project_id IS NULL AND NEW.project_id IS NOT NULL");
+    expect(migration).toContain("pg_advisory_xact_lock(hashtext(NEW.project_id::text))");
+  });
 });
