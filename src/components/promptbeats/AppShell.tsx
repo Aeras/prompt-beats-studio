@@ -6,6 +6,7 @@ import { StudioModal } from "@/components/promptbeats/StudioModal";
 import { NotificationCenter } from "@/components/promptbeats/NotificationCenter";
 import { ModerationCaseCenter } from "@/components/promptbeats/ModerationCaseCenter";
 import { HelpMenu } from "@/components/promptbeats/HelpMenu";
+import { SearchTermHighlighter } from "@/components/promptbeats/SearchTermHighlighter";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -112,6 +113,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
 
   return (
     <div className="aurora min-h-screen bg-[#0a0a0c]">
+      <SearchTermHighlighter />
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden border-r border-white/10 bg-black/40 backdrop-blur-xl transition-[width] duration-200 ease-out motion-reduce:transition-none lg:block",
@@ -188,6 +190,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       </div>
 
       <div
+        data-pb-search-highlight-root="true"
         data-studio-layout={active === "studio" ? "true" : undefined}
         className={cn(
           "relative z-10 pb-[var(--pb-mobile-nav-offset)] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
