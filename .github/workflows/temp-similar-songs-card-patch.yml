@@ -37,7 +37,7 @@ jobs:
             src/lib/similar-songs.test.ts
           git diff --check
       - name: Run similar songs tests
-        run: bunx vitest run src/lib/similar-songs.test.ts
+        run: bun test src/lib/similar-songs.test.ts
       - name: Run track card action tests
         run: bun test src/lib/track-card-action-row.test.ts
       - name: Build
