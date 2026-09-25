@@ -1,0 +1,28 @@
+name: Temporary Mobile Header Redesign
+
+on:
+  push:
+    branches:
+      - feat/mobile-header-redesign
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/mobile-header-redesign
+          fetch-depth: 0
+      - name: Apply mobile header redesign
+        run: python3 scripts/tmp-mobile-header-redesign.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/promptbeats/AppShell.tsx src/routes/index.tsx src/routes/library.tsx src/routes/generate.tsx
+          git commit -m "Redesign compact mobile page chrome"
+          git push origin HEAD:feat/mobile-header-redesign
