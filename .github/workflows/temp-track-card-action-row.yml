@@ -20,17 +20,20 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - name: Normalize helper test assertion
+      - name: Apply UI patch
+        run: python .github/scripts/track_card_action_row_patch.py
+      - name: Stabilize generated regression assertion
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('.github/scripts/track_card_action_row_patch.py')
+          p = Path('src/lib/track-card-action-row.test.ts')
           text = p.read_text()
-          text = text.replace("expect(files[0]).toContain('bare ? \\\"grid h-10 w-8');", "expect(files[0]).toContain('grid h-10 w-8 place-items-center');")
-          p.write_text(text)
+          old = '    expect(files[0]).toContain(\'bare ? "grid h-10 w-8\');'
+          new = '    expect(files[0]).toContain("grid h-10 w-8 place-items-center");'
+          if old not in text:
+              raise SystemExit('expected brittle assertion was not generated')
+          p.write_text(text.replace(old, new, 1))
           PY
-      - name: Apply UI patch
-        run: python .github/scripts/track_card_action_row_patch.py
       - name: Format
         run: |
           bunx prettier --write \
