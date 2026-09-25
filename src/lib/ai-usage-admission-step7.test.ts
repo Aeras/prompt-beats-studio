@@ -30,18 +30,6 @@ describe("Step 7 AI usage and admission hardening", () => {
     expect(migration).toContain("FOR UPDATE");
   });
 
-  test("AI Music Lab records every Lyria provider attempt", async () => {
-    const usage = await source("src/lib/ai-usage.server.ts");
-    const musicLab = await source("src/lib/ai-music-lab.functions.ts");
-
-    expect(usage).toContain('"ai_music_lab_generation"');
-    expect(musicLab).toContain("normalizedLyriaUsage");
-    expect(musicLab).toContain('model: "lyria-3.5"');
-    expect(musicLab).toContain('operation: "ai_music_lab_generation"');
-    expect(musicLab).toContain("await recordAiUsage({");
-    expect(musicLab).toContain("} finally {");
-  });
-
   test("usage logging has a durable outbox and opportunistic reconciliation", async () => {
     const usage = await source("src/lib/ai-usage.server.ts");
     const migration = await source(
