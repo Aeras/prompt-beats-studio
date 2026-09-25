@@ -146,6 +146,7 @@ export const Route = createFileRoute("/generate")({
     workspace: z.enum(["lyrics"]).optional(),
     project: z.string().uuid().optional(),
     base: z.string().uuid().optional(),
+    presets: z.enum(["open"]).optional(),
   }),
   head: () => ({
     meta: [
@@ -845,7 +846,9 @@ function GeneratePage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const queryClient = useQueryClient();
-  const [advanced, setAdvanced] = useState(search.mode === "revision");
+  const [advanced, setAdvanced] = useState(
+    search.mode === "revision" || search.presets === "open",
+  );
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
@@ -2763,6 +2766,7 @@ ${narrativePlan.beats
                 culturalStyleId={presetCulturalStyleId}
                 onCulturalStyleChange={setPresetCulturalStyleId}
                 onApply={applySmartPreset}
+                initiallyOpen={search.presets === "open"}
               />
             )}
 

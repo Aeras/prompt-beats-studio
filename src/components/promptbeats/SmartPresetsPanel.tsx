@@ -17,6 +17,7 @@ type Props = {
   culturalStyleId: string;
   onCulturalStyleChange: (value: string) => void;
   onApply: (preset: SmartPreset) => void;
+  initiallyOpen?: boolean;
 };
 
 const categories: SmartPresetCategory[] = [
@@ -33,10 +34,12 @@ export function SmartPresetsPanel({
   culturalStyleId,
   onCulturalStyleChange,
   onApply,
+  initiallyOpen = false,
 }: Props) {
   const { t, language } = useI18n();
   const featureAccess = useFeatureAccess("smart_presets");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SmartPresetCategory | "all">("all");
   const [appliedPresetId, setAppliedPresetId] = useState("");
@@ -49,6 +52,15 @@ export function SmartPresetsPanel({
   const customCulturalStyle = culturalStyleId.startsWith("custom:")
     ? culturalStyleId.slice("custom:".length)
     : "";
+
+  useEffect(() => {
+    if (!initiallyOpen) return;
+    setOpen(true);
+    const frame = window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initiallyOpen]);
 
   useEffect(() => {
     const styleId = culturalStyleId.startsWith("custom:") ? "custom" : culturalStyleId;
@@ -112,7 +124,7 @@ export function SmartPresetsPanel({
   if (!featureAccess.allowed) return null;
 
   return (
-    <div className="rounded-2xl border border-accent/25 bg-accent/[0.04] p-4">
+    <div ref={panelRef} className="scroll-mt-36 rounded-2xl border border-accent/25 bg-accent/[0.04] p-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
