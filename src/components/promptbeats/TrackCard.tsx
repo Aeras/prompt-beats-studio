@@ -10,6 +10,7 @@ import { ShareTrackButton } from "@/components/promptbeats/ShareTrackButton";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
+import { SimilarSongsMenuItem } from "@/components/promptbeats/SimilarSongsMenuItem";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import {
   TrackContentOverlay,
@@ -320,7 +321,7 @@ export function TrackCard({
                 aria-pressed={activeContent === "prompt"}
                 className={cn(
                   "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                  compact ? "h-9 w-6" : "h-10 w-8",
+                  compact ? "h-8 w-5" : "h-9 w-7",
                   activeContent === "prompt" &&
                     "text-accent drop-shadow-[0_0_7px_color-mix(in_oklab,var(--neon)_75%,transparent)]",
                 )}
@@ -339,7 +340,7 @@ export function TrackCard({
                 aria-pressed={activeContent === "lyrics"}
                 className={cn(
                   "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50",
-                  compact ? "h-9 w-6" : "h-10 w-8",
+                  compact ? "h-8 w-5" : "h-9 w-7",
                   activeContent === "lyrics" &&
                     "text-violet-300 drop-shadow-[0_0_7px_rgba(196,140,255,0.8)]",
                 )}
@@ -351,45 +352,57 @@ export function TrackCard({
 
           <div
             data-track-actions="right"
-            className={cn(
-              "ml-auto flex min-w-0 shrink-0 items-center justify-end",
-              compact ? "gap-0" : "gap-0.5",
-            )}
+            className={cn("ml-auto flex min-w-0 shrink-0 items-center justify-end", "gap-0")}
           >
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} compact={compact} />
             <TrackLibraryActions
               track={track}
               compact={compact}
               bare
+              inlineActions={
+                !compact && track.userId ? (
+                  <ShareTrackButton
+                    trackId={track.id}
+                    ownerId={track.userId}
+                    isPublished={track.isPublished ?? true}
+                    promptIsPublic={track.promptIsPublic ?? true}
+                    lyricsIsPublic={track.lyricsIsPublic ?? true}
+                    trackTitle={track.title}
+                    iconOnly
+                    bare
+                  />
+                ) : null
+              }
+              menuActions={
+                <>
+                  <SimilarSongsMenuItem trackId={track.id} trackTitle={track.title} />
+                  {compact && track.userId && (
+                    <ShareTrackButton
+                      trackId={track.id}
+                      ownerId={track.userId}
+                      isPublished={track.isPublished ?? true}
+                      promptIsPublic={track.promptIsPublic ?? true}
+                      lyricsIsPublic={track.lyricsIsPublic ?? true}
+                      trackTitle={track.title}
+                      menuItem
+                    />
+                  )}
+                  {track.userId && (
+                    <ReportTrackControl
+                      trackId={track.id}
+                      ownerId={track.userId}
+                      isPublished={track.isPublished ?? true}
+                      menuItem
+                    />
+                  )}
+                </>
+              }
               ownerActions={
-                compact && ownerTrack ? (
-                  <TrackOwnerActions compact inlineMenuItems track={ownerTrack} />
+                ownerTrack ? (
+                  <TrackOwnerActions compact={compact} inlineMenuItems track={ownerTrack} />
                 ) : null
               }
             />
-            {track.userId && (
-              <ShareTrackButton
-                trackId={track.id}
-                ownerId={track.userId}
-                isPublished={track.isPublished ?? true}
-                promptIsPublic={track.promptIsPublic ?? true}
-                lyricsIsPublic={track.lyricsIsPublic ?? true}
-                trackTitle={track.title}
-                iconOnly
-                compact={compact}
-                bare
-              />
-            )}
-            {!compact && ownerTrack && <TrackOwnerActions menuMode bare track={ownerTrack} />}
-            {track.userId && (
-              <ReportTrackControl
-                trackId={track.id}
-                ownerId={track.userId}
-                isPublished={track.isPublished ?? true}
-                compact={compact}
-                bare
-              />
-            )}
           </div>
         </div>
       </div>
