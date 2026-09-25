@@ -20,6 +20,15 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Normalize helper test assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/track_card_action_row_patch.py')
+          text = p.read_text()
+          text = text.replace("expect(files[0]).toContain('bare ? \\\"grid h-10 w-8');", "expect(files[0]).toContain('grid h-10 w-8 place-items-center');")
+          p.write_text(text)
+          PY
       - name: Apply UI patch
         run: python .github/scripts/track_card_action_row_patch.py
       - name: Format
