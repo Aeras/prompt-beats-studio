@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+// Privacy withdrawal must remain possible even after new-link entitlement is removed.
 async function source(path: string) {
   return Bun.file(path).text();
 }
