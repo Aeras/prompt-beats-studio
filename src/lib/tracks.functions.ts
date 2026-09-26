@@ -342,18 +342,11 @@ export const updateTrack = createServerFn({ method: "POST" })
       _new_audio_key: data.new_audio_key ?? null,
       _new_cover_url: data.new_cover_url ?? null,
       _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
+      _prompt_is_public: data.prompt_is_public,
+      _lyrics_is_public: data.lyrics_is_public,
+      _contains_explicit_lyrics: data.contains_explicit_lyrics,
     } as never);
     if (error) throw new Error(error.message);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: visibilityError } = await (supabaseAdmin.from("tracks") as any)
-      .update({
-        prompt_is_public: data.prompt_is_public,
-        lyrics_is_public: data.lyrics_is_public,
-        contains_explicit_lyrics: data.contains_explicit_lyrics,
-      })
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
-    if (visibilityError) throw new Error(visibilityError.message);
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
     if (payload?.cleanup_id) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
