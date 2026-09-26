@@ -169,7 +169,7 @@ export const takeModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => reportIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: caseId, error } = await (context.supabase as any).rpc("take_moderation_case", {
+    const { data: caseId, error } = await context.supabase.rpc("take_moderation_case", {
       _report_id: data.reportId,
     });
     if (error) throw new Error(error.message);
@@ -180,7 +180,7 @@ export const getModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await (context.supabase as any).rpc("get_moderation_case", {
+    const { data: result, error } = await context.supabase.rpc("get_moderation_case", {
       _case_id: data.caseId,
     });
     if (error) throw new Error(error.message);
@@ -190,7 +190,7 @@ export const getModerationCase = createServerFn({ method: "POST" })
 export const listMyModerationCases = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase as any).rpc("list_my_moderation_cases");
+    const { data, error } = await context.supabase.rpc("list_my_moderation_cases");
     if (error) throw new Error(error.message);
     return (Array.isArray(data) ? data : []) as ModerationCaseListItem[];
   });
@@ -198,7 +198,7 @@ export const listMyModerationCases = createServerFn({ method: "GET" })
 export const getModerationCaseUnreadCount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase as any).rpc("get_moderation_case_unread_count");
+    const { data, error } = await context.supabase.rpc("get_moderation_case_unread_count");
     if (error) throw new Error(error.message);
     return { count: Number(data ?? 0) };
   });
@@ -207,7 +207,7 @@ export const markModerationCaseRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("mark_moderation_case_read", {
+    const { error } = await context.supabase.rpc("mark_moderation_case_read", {
       _case_id: data.caseId,
     });
     if (error) throw new Error(error.message);
@@ -218,14 +218,11 @@ export const sendModerationCaseMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => messageSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: id, error } = await (context.supabase as any).rpc(
-      "send_moderation_case_message",
-      {
-        _case_id: data.caseId,
-        _message_type: data.messageType,
-        _body: data.body,
-      },
-    );
+    const { data: id, error } = await context.supabase.rpc("send_moderation_case_message", {
+      _case_id: data.caseId,
+      _message_type: data.messageType,
+      _body: data.body,
+    });
     if (error) throw new Error(error.message);
     return { id: String(id) };
   });
@@ -234,7 +231,7 @@ export const addModerationCaseNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => noteSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: id, error } = await (context.supabase as any).rpc("add_moderation_case_note", {
+    const { data: id, error } = await context.supabase.rpc("add_moderation_case_note", {
       _case_id: data.caseId,
       _body: data.body,
     });
@@ -246,9 +243,9 @@ export const reassignModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => reassignSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("reassign_moderation_case", {
+    const { error } = await context.supabase.rpc("reassign_moderation_case", {
       _case_id: data.caseId,
-      _new_assignee: data.assigneeId,
+      _new_assignee: data.assigneeId ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -258,11 +255,11 @@ export const proposeInitialCaseDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decisionSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("propose_initial_case_decision", {
+    const { error } = await context.supabase.rpc("propose_initial_case_decision", {
       _case_id: data.caseId,
       _outcome: data.outcome,
       _reason: data.reason,
-      _action_summary: data.actionSummary?.trim() || null,
+      _action_summary: data.actionSummary?.trim() || undefined,
       _appeal_eligible: data.appealEligible,
     });
     if (error) throw new Error(error.message);
@@ -273,7 +270,7 @@ export const approveInitialCaseDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("approve_initial_case_decision", {
+    const { error } = await context.supabase.rpc("approve_initial_case_decision", {
       _case_id: data.caseId,
     });
     if (error) throw new Error(error.message);
@@ -284,13 +281,10 @@ export const submitModerationCaseAppeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => appealSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: id, error } = await (context.supabase as any).rpc(
-      "submit_moderation_case_appeal",
-      {
-        _case_id: data.caseId,
-        _statement: data.statement,
-      },
-    );
+    const { data: id, error } = await context.supabase.rpc("submit_moderation_case_appeal", {
+      _case_id: data.caseId,
+      _statement: data.statement,
+    });
     if (error) throw new Error(error.message);
     return { id: String(id) };
   });
@@ -299,15 +293,12 @@ export const proposeModerationCaseAppealDecision = createServerFn({ method: "POS
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decisionSchema.omit({ appealEligible: true }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc(
-      "propose_moderation_case_appeal_decision",
-      {
-        _case_id: data.caseId,
-        _outcome: data.outcome,
-        _reason: data.reason,
-        _action_summary: data.actionSummary?.trim() || null,
-      },
-    );
+    const { error } = await context.supabase.rpc("propose_moderation_case_appeal_decision", {
+      _case_id: data.caseId,
+      _outcome: data.outcome,
+      _reason: data.reason,
+      _action_summary: data.actionSummary?.trim() || undefined,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -316,12 +307,12 @@ export const finalizeModerationCaseAppeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => finalSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("finalize_moderation_case_appeal", {
+    const { error } = await context.supabase.rpc("finalize_moderation_case_appeal", {
       _case_id: data.caseId,
       _action: data.action,
-      _override_outcome: data.overrideOutcome ?? null,
-      _override_reason: data.overrideReason?.trim() || null,
-      _override_action_summary: data.overrideActionSummary?.trim() || null,
+      _override_outcome: data.overrideOutcome,
+      _override_reason: data.overrideReason?.trim() || undefined,
+      _override_action_summary: data.overrideActionSummary?.trim() || undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -331,7 +322,7 @@ export const reopenModerationCase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => caseIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("reopen_moderation_case", {
+    const { error } = await context.supabase.rpc("reopen_moderation_case", {
       _case_id: data.caseId,
     });
     if (error) throw new Error(error.message);
@@ -343,7 +334,7 @@ export type ModerationCaseAssignee = { user_id: string; role: string; label: str
 export const listModerationCaseAssignees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase as any).rpc("list_moderation_case_assignees");
+    const { data, error } = await context.supabase.rpc("list_moderation_case_assignees");
     if (error) throw new Error(error.message);
     return (Array.isArray(data) ? data : []) as ModerationCaseAssignee[];
   });
