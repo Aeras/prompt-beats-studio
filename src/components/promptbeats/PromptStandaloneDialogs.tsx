@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { draftFingerprint, useDraftAutosave } from "@/lib/draft-autosave";
+
 export type StandalonePromptEditValues = {
   custom_name: string | null;
   theme: string | null;
@@ -30,16 +33,32 @@ export function EditStandalonePromptDialog({
   onSave,
 }: EditProps) {
   const el = language === "el";
+  const { preferences, userId } = useAccountPreferences();
   const [draft, setDraft] = useState<StandalonePromptEditValues>(prompt);
+  const draftScope = `standalone-prompt:${draftFingerprint(JSON.stringify(prompt))}`;
 
   useEffect(() => {
     if (open) setDraft(prompt);
   }, [open, prompt]);
 
+  const clearDraft = useDraftAutosave({
+    ownerId: userId,
+    scope: draftScope,
+    enabled: open && preferences.autoSaveDrafts,
+    value: draft,
+    onRestore: setDraft,
+    isEmpty: (value) => JSON.stringify(value) === JSON.stringify(prompt),
+  });
+
   if (!open) return null;
 
   const field = (key: keyof StandalonePromptEditValues, value: string) =>
     setDraft((current) => ({ ...current, [key]: value || null }));
+
+  const saveDraft = async () => {
+    await onSave(draft);
+    clearDraft();
+  };
 
   return (
     <div
@@ -128,7 +147,7 @@ export function EditStandalonePromptDialog({
           <button
             type="button"
             disabled={busy}
-            onClick={() => void onSave(draft)}
+            onClick={() => void saveDraft()}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
