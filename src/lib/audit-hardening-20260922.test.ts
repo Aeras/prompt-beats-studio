@@ -109,7 +109,8 @@ describe("September 22 production audit hardening", () => {
     expect(admin).not.toContain("A default AI model must be available to all users.");
     expect(panel).not.toContain('m.accessPolicy === "all_users"');
     expect(panel).not.toContain("handleAccessPolicyChange");
-    expect(provider).toContain("const effectiveModels = [configuredDefault");
+    expect(provider).toContain("const effectiveModels = [");
+    expect(provider).toContain("configuredDefault,");
     expect(provider).toContain("defaultModel: configuredDefault.providerModelId");
   });
 
