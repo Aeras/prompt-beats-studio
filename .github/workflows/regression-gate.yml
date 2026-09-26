@@ -23,7 +23,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -138,6 +138,12 @@ jobs:
 
       - name: Mobile and tablet touch navigation tests
         run: bun test src/lib/mobile-touch-navigation.test.ts
+
+      # Keep the named suites above for fast subsystem attribution, but always run
+      # Bun's repository-wide discovery as the final test gate so newly added test
+      # files cannot silently miss CI coverage.
+      - name: Complete Bun test suite
+        run: bun test
 
       # Lint the committed source tree before the build. The Lovable build plugin can
       # materialize generated helper files during bundling; those are build artifacts,
