@@ -22,6 +22,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           aux_files = [
               "src/lib/song-setup-assistant.functions.ts",
@@ -42,26 +43,10 @@ jobs:
 
           path = Path("src/lib/ai.functions.ts")
           text = path.read_text()
-          old = '''async function consumeCreation(
-            supabase: Supa,
-            idempotencyKey: string,
-            quality: QualityReport,
-            provider: string,
-            model: string,
-          ) {
-            const { data: inserted, error } = await supabase.rpc("consume_quality_check", {
-              _idempotency_key: idempotencyKey,
-              _quality_report: quality as unknown as Json,
-              _provider: provider,
-              _model: model,
-            });
-            if (error) throw new Error("The action could not be recorded. Please try again.");
-            const parsed = z.string().uuid().safeParse(inserted);
-            if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
-            return parsed.data;
-          }
-          '''
-          new = '''async function consumeCreation(
+
+          start = text.index("async function consumeCreation(")
+          end = text.index("\n\nconst qualityCheckInput", start)
+          replacement_block = '''async function consumeCreation(
             userId: string,
             idempotencyKey: string,
             quality: QualityReport,
@@ -79,51 +64,40 @@ jobs:
             const parsed = z.string().uuid().safeParse(inserted);
             if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
             return parsed.data;
-          }
-          '''
-          if old not in text:
-              raise SystemExit("consumeCreation block did not match")
-          text = text.replace(old, new, 1)
+          }'''
+          text = text[:start] + replacement_block + text[end:]
 
-          old = '''    const { error: startedError } = await supabase.rpc("mark_quality_check_provider_started", {
-              _idempotency_key: data.idempotencyKey,
-            });
-            if (startedError) {
-              // Do not release by idempotency key here: a stale caller could race a
-              // later claimant and release that claimant's in-progress action.
-              throw new Error("The quality check could not be started. Please try again.");
-            }
-          '''
-          new = '''    const { markQualityCheckProviderStarted, releaseQualityCheck } = await import(
+          start = text.index('    const { error: startedError } = await supabase.rpc("mark_quality_check_provider_started"')
+          end = text.index("\n\n    let quality: QualityReport | null;", start)
+          provider_block = '''    const { markQualityCheckProviderStarted, releaseQualityCheck } = await import(
               "@/lib/ai-finalization.server"
             );
-            await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);
-          '''
-          if old not in text:
-              raise SystemExit("QC provider-start block did not match")
-          text = text.replace(old, new, 1)
+            await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);'''
+          text = text[:start] + provider_block + text[end:]
 
-          old_release = '''      await supabase.rpc("release_quality_check", {
-                _idempotency_key: data.idempotencyKey,
-              });'''
-          if text.count(old_release) != 2:
-              raise SystemExit(f"expected two QC release calls, found {text.count(old_release)}")
-          text = text.replace(
-              old_release,
-              '''      await releaseQualityCheck(context.userId, data.idempotencyKey);''',
+          pattern = re.compile(
+              r'\s*await supabase\.rpc\("release_quality_check", \{\s*_idempotency_key: data\.idempotencyKey,\s*\}\);'
           )
+          text, count = pattern.subn(
+              '\n      await releaseQualityCheck(context.userId, data.idempotencyKey);', text
+          )
+          if count != 2:
+              raise SystemExit(f"expected two QC release calls, found {count}")
 
-          old_consume = '''      consumedId = await consumeCreation(supabase, data.idempotencyKey, quality, provider, model);'''
-          new_consume = '''      consumedId = await consumeCreation(
+          old_consume = 'consumedId = await consumeCreation(supabase, data.idempotencyKey, quality, provider, model);'
+          if old_consume not in text:
+              raise SystemExit("QC consume call did not match")
+          text = text.replace(
+              old_consume,
+              '''consumedId = await consumeCreation(
                 context.userId,
                 data.idempotencyKey,
                 quality,
                 provider,
                 model,
-              );'''
-          if old_consume not in text:
-              raise SystemExit("QC consume call did not match")
-          text = text.replace(old_consume, new_consume, 1)
+              );''',
+              1,
+          )
           path.write_text(text)
 
           Path(".github/workflows/final-008-patcher.yml").unlink()
