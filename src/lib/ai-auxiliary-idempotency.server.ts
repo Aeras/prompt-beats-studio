@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import type { AuxiliaryAiOperation } from "@/lib/ai-admission.server";
+import {
+  completeAuxiliaryAiRequest,
+  failAuxiliaryAiRequest,
+  markAuxiliaryAiProviderStarted,
+} from "@/lib/ai-finalization.server";
 
 export const auxiliaryRequestKeySchema = z.string().uuid();
 
@@ -12,12 +17,13 @@ type Claim = {
 };
 
 /**
- * Owns the database claim for one logical auxiliary-AI action.  The provider
- * is marked as started before `execute` runs, so a crash can fail safely but
- * can never cause the same request key to launch a second paid call.
+ * Owns the database claim for one logical auxiliary-AI action. The caller-bound
+ * client may claim/read its own request, but provider-start/finalization is
+ * committed only through service-role-only server helpers.
  */
 export async function executeDurableAuxiliaryAiRequest<T>(input: {
   supabase: any;
+  userId: string;
   operation: AuxiliaryAiOperation;
   requestKey: string;
   execute: (markProviderStarted: () => Promise<void>) => Promise<T>;
@@ -49,36 +55,32 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
     let providerStarted = false;
     const markProviderStarted = async () => {
       if (providerStarted) return;
-      const { data: marked, error: markError } = await input.supabase.rpc(
-        "mark_auxiliary_ai_provider_started",
-        {
-          _operation: input.operation,
-          _request_key: input.requestKey,
-          _execution_token: executionToken,
-        },
-      );
-      if (markError || marked !== true)
-        throw new Error("The AI request could not start safely. Please try again.");
+      await markAuxiliaryAiProviderStarted({
+        userId: input.userId,
+        operation: input.operation,
+        requestKey: input.requestKey,
+        executionToken,
+      });
       providerStarted = true;
     };
 
     const result = await input.execute(markProviderStarted);
-    const { error: completeError } = await input.supabase.rpc("complete_auxiliary_ai_request", {
-      _operation: input.operation,
-      _request_key: input.requestKey,
-      _execution_token: executionToken,
-      _result: result,
+    await completeAuxiliaryAiRequest({
+      userId: input.userId,
+      operation: input.operation,
+      requestKey: input.requestKey,
+      executionToken,
+      result,
     });
-    if (completeError)
-      throw new Error("The AI result could not be saved safely. Please try again.");
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "auxiliary_ai_failed";
-    await input.supabase.rpc("fail_auxiliary_ai_request", {
-      _operation: input.operation,
-      _request_key: input.requestKey,
-      _execution_token: executionToken,
-      _error: message,
+    await failAuxiliaryAiRequest({
+      userId: input.userId,
+      operation: input.operation,
+      requestKey: input.requestKey,
+      executionToken,
+      errorMessage: message,
     });
     throw error;
   }
