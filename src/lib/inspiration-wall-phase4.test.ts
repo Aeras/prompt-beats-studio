@@ -66,7 +66,9 @@ describe("Inspiration Wall Phase 4", () => {
     expect(modal).toContain(
       "only the Creative Direction fields you chose to keep were transferred",
     );
-    expect(modal).toContain("if (!open || !prefillKey || !prefillDescription) return;");
+    expect(modal).toContain(
+      "if (!open || moderation.isLoading || !prefillKey || !prefillDescription) return;",
+    );
   });
 
   test("private Wall images are cleaned up on replacement, card deletion and Wall deletion", async () => {
