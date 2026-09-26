@@ -15,8 +15,7 @@ async function source(path: string) {
 
 const ownerId = "123e4567-e89b-42d3-a456-426614174000";
 const avatarPath = `${ownerId}/avatar-1790412345678.webp`;
-const legacySignedUrl =
-  `https://example.supabase.co/storage/v1/object/sign/avatars/${avatarPath}?token=expired-token`;
+const legacySignedUrl = `https://example.supabase.co/storage/v1/object/sign/avatars/${avatarPath}?token=expired-token`;
 
 describe("FINAL-012 private avatar access model", () => {
   test("normalizes current object paths and legacy signed URLs to one private avatar reference", () => {
@@ -24,11 +23,15 @@ describe("FINAL-012 private avatar access model", () => {
     expect(avatarOwnerId(avatarPath)).toBe(ownerId);
     expect(extractAvatarObjectPath(avatarPath)).toBe(avatarPath);
     expect(extractAvatarObjectPath(legacySignedUrl)).toBe(avatarPath);
-    expect(avatarProxyUrl(legacySignedUrl)).toBe(`/api/avatar?path=${encodeURIComponent(avatarPath)}`);
+    expect(avatarProxyUrl(legacySignedUrl)).toBe(
+      `/api/avatar?path=${encodeURIComponent(avatarPath)}`,
+    );
   });
 
   test("rendering never depends on the expiry of a persisted Supabase signed avatar URL", () => {
-    expect(getUserAvatarUrl(legacySignedUrl)).toBe(`/api/avatar?path=${encodeURIComponent(avatarPath)}`);
+    expect(getUserAvatarUrl(legacySignedUrl)).toBe(
+      `/api/avatar?path=${encodeURIComponent(avatarPath)}`,
+    );
   });
 
   test("rejects cross-bucket and malformed avatar paths", () => {
@@ -52,7 +55,9 @@ describe("FINAL-012 private avatar access model", () => {
   });
 
   test("keeps the avatars bucket private", async () => {
-    const hardening = await source("supabase/migrations/20260922120000_avatar_bucket_mime_hardening.sql");
+    const hardening = await source(
+      "supabase/migrations/20260922120000_avatar_bucket_mime_hardening.sql",
+    );
     const securityGate = await source("src/lib/security-step8.test.ts");
 
     expect(hardening).toContain("Canonical private avatar contract");
