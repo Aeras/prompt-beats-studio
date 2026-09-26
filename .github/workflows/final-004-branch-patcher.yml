@@ -1,0 +1,145 @@
+name: FINAL-004 branch patcher
+
+on:
+  push:
+    branches:
+      - fix/final-004-revocation-safety
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply FINAL-004 UI management access'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-004-revocation-safety
+          fetch-depth: 0
+
+      - name: Apply exact scoped replacements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str, count: int = 1):
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f"{path}: expected {count} occurrence(s), found {actual}: {old!r}")
+              p.write_text(text.replace(old, new, count))
+
+          # Keep the Shared Links management tab reachable even when new sharing is disabled.
+          replace(
+              "src/routes/library.tsx",
+              '  const sharingAccess = useFeatureAccess("sharing_public_links");\n',
+              "",
+          )
+          replace(
+              "src/routes/library.tsx",
+              '    if (item === "shared") return sharingAccess.allowed;\n',
+              '    if (item === "shared") return true;\n',
+          )
+          replace(
+              "src/routes/library.tsx",
+              '        {tab === "shared" && user && sharingAccess.allowed && <SharedLinksPanel />}\n',
+              '        {tab === "shared" && user && <SharedLinksPanel />}\n',
+          )
+
+          # Private Review management remains reachable, while new creation still follows Feature Access.
+          replace(
+              "src/components/promptbeats/ProjectVersionHistory.tsx",
+              '            {privateReviewFeature.allowed && versions.length > 0 && (\n',
+              '            {versions.length > 0 && (\n',
+          )
+          replace(
+              "src/components/promptbeats/ProjectVersionHistory.tsx",
+              '          language={language}\n          onClose={() => setPrivateReviewOpen(false)}\n',
+              '          canCreateNew={privateReviewFeature.allowed}\n          language={language}\n          onClose={() => setPrivateReviewOpen(false)}\n',
+          )
+
+          replace(
+              "src/routes/track.$id.tsx",
+              '''  const canOpenSongReview = Boolean(\n    track &&\n    user &&\n    track.user_id === user.id &&\n    track.source_type === "upload" &&\n    privateReviewAccess.allowed,\n  );\n''',
+              '''  const canOpenSongReview = Boolean(\n    track &&\n    user &&\n    track.user_id === user.id &&\n    track.source_type === "upload",\n  );\n''',
+          )
+          replace(
+              "src/routes/track.$id.tsx",
+              '                projectName={track.title}\n                language={language}\n',
+              '                projectName={track.title}\n                canCreateNew={privateReviewAccess.allowed}\n                language={language}\n',
+          )
+
+          # The manager becomes read/manage/close-only when entitlement is unavailable.
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '  language: string;\n  onClose: () => void;\n',
+              '  language: string;\n  canCreateNew?: boolean;\n  onClose: () => void;\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '  initialTrackId,\n  language,\n  onClose,\n',
+              '  initialTrackId,\n  language,\n  canCreateNew = true,\n  onClose,\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '  const myTracks = useQuery({\n    queryKey: ["private-review-my-tracks"],\n    queryFn: () => listMyTracks(),\n  });\n',
+              '  const myTracks = useQuery({\n    queryKey: ["private-review-my-tracks"],\n    queryFn: () => listMyTracks(),\n    enabled: canCreateNew,\n  });\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '    enabled: sourceType === "project_version" && Boolean(projectId && versionId && includeAudio),\n',
+              '    enabled:\n      canCreateNew &&\n      sourceType === "project_version" &&\n      Boolean(projectId && versionId && includeAudio),\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '  const createDisabled =\n    createMutation.isPending ||\n',
+              '  const createDisabled =\n    !canCreateNew ||\n    createMutation.isPending ||\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '        <div className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">\n',
+              '''        {!canCreateNew && (\n          <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">\n            {el\n              ? "Η δημιουργία νέων Private Review links δεν είναι διαθέσιμη αυτή τη στιγμή. Μπορείς να δεις και να κλείσεις όσα links έχεις ήδη δημιουργήσει."\n              : "Creating new Private Review links is currently unavailable. You can still view and close links you already created."}\n          </div>\n        )}\n\n        <div className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">\n''',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '          <section className="rounded-2xl border border-white/10 bg-black/20 p-4">\n            <h3 className="text-sm font-bold">{el ? "Νέο review" : "New review"}</h3>\n',
+              '          <section className="rounded-2xl border border-white/10 bg-black/20 p-4">\n            <fieldset disabled={!canCreateNew} className={!canCreateNew ? "opacity-50" : undefined}>\n            <h3 className="text-sm font-bold">{el ? "Νέο review" : "New review"}</h3>\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '            {createdToken && (\n              <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">',
+              '            {createdToken && (\n              <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">',
+          )
+          # Close the fieldset immediately before the sessions section. Use the exact unique boundary.
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '            )}\n          </section>\n\n          <section className="rounded-2xl border border-white/10 bg-black/20 p-4">\n            <h3 className="text-sm font-bold">Review sessions</h3>\n',
+              '            )}\n            </fieldset>\n          </section>\n\n          <section className="rounded-2xl border border-white/10 bg-black/20 p-4">\n            <h3 className="text-sm font-bold">Review sessions</h3>\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '                  {ownerSession.data.state === "active" && (\n',
+              '                  {canCreateNew && ownerSession.data.state === "active" && (\n',
+          )
+          replace(
+              "src/components/promptbeats/PrivateReviewManager.tsx",
+              '            {replyParentId && (\n',
+              '            {canCreateNew && replyParentId && (\n',
+          )
+          PY
+
+          rm .github/workflows/final-004-branch-patcher.yml
+
+      - name: Commit scoped UI changes
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/routes/library.tsx \
+                  'src/routes/track.$id.tsx' \
+                  src/components/promptbeats/ProjectVersionHistory.tsx \
+                  src/components/promptbeats/PrivateReviewManager.tsx \
+                  .github/workflows/final-004-branch-patcher.yml
+          git commit -m "Apply FINAL-004 UI management access"
+          git push origin HEAD:fix/final-004-revocation-safety
