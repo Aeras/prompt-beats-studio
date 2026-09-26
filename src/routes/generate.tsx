@@ -17,6 +17,7 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useAccountPreferences } from "@/lib/account-preferences";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
@@ -833,6 +834,7 @@ function ResultSection({
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
+  const { preferences: accountPreferences } = useAccountPreferences();
   const generatorFeature = useFeatureAccess("ai_generator");
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
@@ -843,6 +845,7 @@ function GeneratePage() {
   const search = Route.useSearch();
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
+  const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
@@ -983,6 +986,15 @@ function GeneratePage() {
   const musicStyleRequiredRef = useRef<HTMLDivElement>(null);
   const moodRequiredRef = useRef<HTMLDivElement>(null);
   const languageRequiredRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (defaultGeneratorModeAppliedRef.current || !user) return;
+    defaultGeneratorModeAppliedRef.current = true;
+    if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics") return;
+    // Never downgrade a mode already promoted by a handoff/recovery path. The account
+    // default only upgrades an otherwise fresh Basic Generator to Advanced.
+    if (!advanced && accountPreferences.generatorMode === "advanced") setAdvanced(true);
+  }, [accountPreferences.generatorMode, advanced, search.mode, search.presets, search.workspace, user]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

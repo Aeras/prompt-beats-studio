@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { CircleAlert, Settings, X } from "lucide-react";
 
@@ -55,7 +62,7 @@ function InfoButton({
   );
 }
 
-function InfoPopover({ children }: { children: React.ReactNode }) {
+function InfoPopover({ children }: { children: ReactNode }) {
   return (
     <div
       data-settings-info="true"
@@ -76,7 +83,7 @@ function Segmented<T extends string | boolean>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-2 flex flex-nowrap gap-2">
       {options.map((option) => {
         const active = option.value === value;
         return (
