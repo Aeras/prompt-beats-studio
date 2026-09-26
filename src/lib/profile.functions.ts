@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getSafeExternalUrl, type SupportedSocialPlatform } from "@/lib/safe-external-url";
+import { throwSafeServerError } from "@/lib/server-error";
 
 const PROFILE_COLUMNS =
   "id, handle, display_name, artist_alias, avatar_url, bio, website_url, instagram_url, tiktok_url, youtube_url, x_url, profile_completed";
@@ -53,7 +54,8 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .select(PROFILE_COLUMNS)
       .eq("id", context.userId)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError("profile:get", error, "Your profile could not be loaded. Please try again.");
     return { profile: data };
   });
 
@@ -84,7 +86,12 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .select(PROFILE_COLUMNS)
       .single();
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "profile:update",
+        error,
+        "Your profile could not be updated. Please try again.",
+      );
     return { ok: true, profile };
   });
 
@@ -206,8 +213,18 @@ export const searchPublicCreators = createServerFn({ method: "GET" })
       supabase.from("public_profiles").select(columns).ilike("display_name", pattern).limit(25),
       supabase.from("public_profiles").select(columns).ilike("handle", pattern).limit(25),
     ]);
-    if (nameResult.error) throw new Error(nameResult.error.message);
-    if (handleResult.error) throw new Error(handleResult.error.message);
+    if (nameResult.error)
+      throwSafeServerError(
+        "profile:search-name",
+        nameResult.error,
+        "Creator search could not be completed. Please try again.",
+      );
+    if (handleResult.error)
+      throwSafeServerError(
+        "profile:search-handle",
+        handleResult.error,
+        "Creator search could not be completed. Please try again.",
+      );
 
     const creators = new Map<string, PublicCreatorSearchResult>();
     for (const profile of [...(nameResult.data ?? []), ...(handleResult.data ?? [])]) {
