@@ -18,43 +18,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Patch track edit call
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/lib/tracks.functions.ts')
-          text = path.read_text()
-          old = '''      _new_audio_url: data.new_audio_url ?? null,
-      _new_audio_key: data.new_audio_key ?? null,
-      _new_cover_url: data.new_cover_url ?? null,
-      _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
-    } as never);
-    if (error) throw new Error(error.message);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: visibilityError } = await (supabaseAdmin.from("tracks") as any)
-      .update({
-        prompt_is_public: data.prompt_is_public,
-        lyrics_is_public: data.lyrics_is_public,
-        contains_explicit_lyrics: data.contains_explicit_lyrics,
-      })
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
-    if (visibilityError) throw new Error(visibilityError.message);
-'''
-          new = '''      _new_audio_url: data.new_audio_url ?? null,
-      _new_audio_key: data.new_audio_key ?? null,
-      _new_cover_url: data.new_cover_url ?? null,
-      _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
-      _prompt_is_public: data.prompt_is_public,
-      _lyrics_is_public: data.lyrics_is_public,
-      _contains_explicit_lyrics: data.contains_explicit_lyrics,
-    } as never);
-    if (error) throw new Error(error.message);
-'''
-          if old not in text:
-              if new in text:
-                  raise SystemExit(0)
-              raise SystemExit('expected FINAL-002 edit block not found')
-          path.write_text(text.replace(old, new, 1))
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnBhdGggPSBQYXRoKCJzcmMvbGliL3RyYWNrcy5mdW5jdGlvbnMudHMiKQp0ZXh0ID0gcGF0aC5yZWFkX3RleHQoKQpvbGQgPSAiIiIgICAgICBfbmV3X2F1ZGlvX3VybDogZGF0YS5uZXdfYXVkaW9fdXJsID8/IG51bGwsCiAgICAgIF9uZXdfYXVkaW9fa2V5OiBkYXRhLm5ld19hdWRpb19rZXkgPz8gbnVsbCwKICAgICAgX25ld19jb3Zlcl91cmw6IGRhdGEubmV3X2NvdmVyX3VybCA/PyBudWxsLAogICAgICBfYWxsb3dfZG93bmxvYWQ6IGRhdGEuc291cmNlX3R5cGUgPT09ICJ1cGxvYWQiID8gZGF0YS5hbGxvd19kb3dubG9hZCA9PT0gdHJ1ZSA6IGZhbHNlLAogICAgfSBhcyBuZXZlcik7CiAgICBpZiAoZXJyb3IpIHRocm93IG5ldyBFcnJvcihlcnJvci5tZXNzYWdlKTsKICAgIGNvbnN0IHsgc3VwYWJhc2VBZG1pbiB9ID0gYXdhaXQgaW1wb3J0KCJAL2ludGVncmF0aW9ucy9zdXBhYmFzZS9jbGllbnQuc2VydmVyIik7CiAgICBjb25zdCB7IGVycm9yOiB2aXNpYmlsaXR5RXJyb3IgfSA9IGF3YWl0IChzdXBhYmFzZUFkbWluLmZyb20oInRyYWNrcyIpIGFzIGFueSkKICAgICAgLnVwZGF0ZSh7CiAgICAgICAgcHJvbXB0X2lzX3B1YmxpYzogZGF0YS5wcm9tcHRfaXNfcHVibGljLAogICAgICAgIGx5cmljc19pc19wdWJsaWM6IGRhdGEubHlyaWNzX2lzX3B1YmxpYywKICAgICAgICBjb250YWluc19leHBsaWNpdF9seXJpY3M6IGRhdGEuY29udGFpbnNfZXhwbGljaXRfbHlyaWNzLAogICAgICB9KQogICAgICAuZXEoImlkIiwgZGF0YS5pZCkKICAgICAgLmVxKCJ1c2VyX2lkIiwgY29udGV4dC51c2VySWQpOwogICAgaWYgKHZpc2liaWxpdHlFcnJvcikgdGhyb3cgbmV3IEVycm9yKHZpc2liaWxpdHlFcnJvci5tZXNzYWdlKTsKIiIiCm5ldyA9ICIiIiAgICAgIF9uZXdfYXVkaW9fdXJsOiBkYXRhLm5ld19hdWRpb191cmwgPz8gbnVsbCwKICAgICAgX25ld19hdWRpb19rZXk6IGRhdGEubmV3X2F1ZGlvX2tleSA/PyBudWxsLAogICAgICBfbmV3X2NvdmVyX3VybDogZGF0YS5uZXdfY292ZXJfdXJsID8/IG51bGwsCiAgICAgIF9hbGxvd19kb3dubG9hZDogZGF0YS5zb3VyY2VfdHlwZSA9PT0gInVwbG9hZCIgPyBkYXRhLmFsbG93X2Rvd25sb2FkID09PSB0cnVlIDogZmFsc2UsCiAgICAgIF9wcm9tcHRfaXNfcHVibGljOiBkYXRhLnByb21wdF9pc19wdWJsaWMsCiAgICAgIF9seXJpY3NfaXNfcHVibGljOiBkYXRhLmx5cmljc19pc19wdWJsaWMsCiAgICAgIF9jb250YWluc19leHBsaWNpdF9seXJpY3M6IGRhdGEuY29udGFpbnNfZXhwbGljaXRfbHlyaWNzLAogICAgfSBhcyBuZXZlcik7CiAgICBpZiAoZXJyb3IpIHRocm93IG5ldyBFcnJvcihlcnJvci5tZXNzYWdlKTsKIiIiCmlmIG9sZCBub3QgaW4gdGV4dDoKICAgIGlmIG5ldyBpbiB0ZXh0OgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoMCkKICAgIHJhaXNlIFN5c3RlbUV4aXQoImV4cGVjdGVkIEZJTkFMLTAwMiBlZGl0IGJsb2NrIG5vdCBmb3VuZCIpCnBhdGgud3JpdGVfdGV4dCh0ZXh0LnJlcGxhY2Uob2xkLCBuZXcsIDEpKQo=' | base64 -d > /tmp/final002.py
+          python /tmp/final002.py
           bunx prettier --write src/lib/tracks.functions.ts src/lib/final-002-atomic-track-edit.test.ts
       - name: Commit patch if needed
         run: |
