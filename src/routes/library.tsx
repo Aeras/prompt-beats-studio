@@ -365,6 +365,7 @@ function LibraryPage() {
                 key={item}
                 type="button"
                 data-library-tab={item}
+                aria-pressed={tab === item}
                 onClick={() => void navigate({ to: "/library", search: { tab: item } })}
                 className={cn(
                   "shrink-0 snap-center rounded-full border px-4 py-1.5 text-xs transition-all",
