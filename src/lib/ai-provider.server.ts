@@ -810,9 +810,9 @@ export async function getEffectiveModelAccess(
 
   const access = override as { access_mode?: string; allowed_models?: string[] } | null;
 
-  // Explicit custom grants are authoritative for non-admin test/user accounts.
-  // Resolve them before any inherited/public fallback so a restricted global
-  // default cannot block models that were deliberately granted by an admin.
+  // Explicit grants continue to control additional selectable models. The
+  // configured operation default is a separate global entitlement and is
+  // always included, regardless of its access policy.
   if (access?.access_mode === "custom") {
     const requestedIds = sanitizeAllowedModels(access.allowed_models);
     const allowed: RegistryModel[] = [];
@@ -824,29 +824,25 @@ export async function getEffectiveModelAccess(
       allowed.push(model);
     }
 
-    if (!allowed.length) throw new Error("No AI model is available for this account.");
-    const allowedIds = allowed.map((model) => model.providerModelId);
-    const defaultModel = allowedIds.includes(configuredDefault.providerModelId)
-      ? configuredDefault.providerModelId
-      : (allowedIds[0] as AiModelId);
+    const effectiveModels = [
+      configuredDefault,
+      ...allowed.filter((model) => model.providerModelId !== configuredDefault.providerModelId),
+    ];
 
     return {
       activeModel: configuredDefault.providerModelId,
-      defaultModel,
-      availableModels: allowedIds,
-      modelOptions: toModelOptions(allowed),
+      defaultModel: configuredDefault.providerModelId,
+      availableModels: effectiveModels.map((model) => model.providerModelId),
+      modelOptions: toModelOptions(effectiveModels),
       accessMode: "custom",
     };
   }
 
-  // Inherit mode may only expose models available to every non-admin user.
-  // Restricted defaults remain available to admins and explicitly granted
-  // custom accounts, but must not become an implicit grant to inherited users.
+  // Inherit mode exposes only the global operation default. Its access policy
+  // controls manual availability elsewhere, but does not override the admin's
+  // global default choice for this operation.
   let inheritedDefault = configuredDefault;
-  if (
-    configuredDefault.accessPolicy !== "all_users" ||
-    !isModelEligibleForOperation(configuredDefault, operation)
-  ) {
+  if (!isModelEligibleForOperation(configuredDefault, operation)) {
     const available = await eligibleModelsForOperation(operation);
     const preferred = available.find(
       (model) => model.providerModelId === DEFAULT_AI_MODEL && model.accessPolicy === "all_users",
