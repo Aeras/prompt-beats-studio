@@ -122,6 +122,7 @@ describe("Settings and track source preferences", () => {
       "src/components/promptbeats/SongSetupAssistantModal.tsx",
       "src/components/promptbeats/StudioModal.tsx",
       "src/components/promptbeats/PromptStandaloneDialogs.tsx",
+      "src/components/promptbeats/TrackOwnerActions.tsx",
       "src/routes/song-universe.tsx",
       "src/routes/library.tsx",
       "src/routes/story-map.tsx",

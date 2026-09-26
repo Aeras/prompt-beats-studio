@@ -21,6 +21,8 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 
 export type EditableTrack = {
   id: string;
@@ -60,6 +62,7 @@ export function TrackOwnerActions({
 }) {
   const { t, language } = useI18n();
   const { user } = useAuth();
+  const { preferences } = useAccountPreferences();
   const { isAdmin } = useModeration();
   const uploadAccess = useFeatureAccess("track_uploads");
   const queryClient = useQueryClient();
@@ -93,6 +96,39 @@ export function TrackOwnerActions({
     track.contains_explicit_lyrics ?? false,
   );
   const [allowDownload, setAllowDownload] = useState(false);
+  const clearTrackEditDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: `track-edit:${track.id}`,
+    enabled: editing && preferences.autoSaveDrafts,
+    value: {
+      title,
+      genreOption,
+      customGenre,
+      prompt,
+      lyrics,
+      sourceUrl,
+      createdWith,
+      isPublished,
+      promptIsPublic,
+      lyricsIsPublic,
+      containsExplicitLyrics,
+      allowDownload,
+    },
+    onRestore: (draft) => {
+      setTitle(draft.title);
+      setGenreOption(draft.genreOption);
+      setCustomGenre(draft.customGenre);
+      setPrompt(draft.prompt);
+      setLyrics(draft.lyrics);
+      setSourceUrl(draft.sourceUrl);
+      setCreatedWith(draft.createdWith);
+      setIsPublished(draft.isPublished);
+      setPromptIsPublic(draft.promptIsPublic);
+      setLyricsIsPublic(draft.lyricsIsPublic);
+      setContainsExplicitLyrics(draft.containsExplicitLyrics);
+      setAllowDownload(draft.allowDownload);
+    },
+  });
 
   const isOwner = Boolean(user && track.user_id && user.id === track.user_id);
   if (!isOwner && !isAdmin) return null;
@@ -214,6 +250,7 @@ export function TrackOwnerActions({
         },
       });
       await refresh();
+      clearTrackEditDraft();
       setEditing(false);
       closeInlineMenu();
       setAudioFile(null);
@@ -234,6 +271,7 @@ export function TrackOwnerActions({
     setBusy(true);
     try {
       await deleteTrack({ data: { id: track.id } });
+      clearTrackEditDraft();
       await refresh();
       setConfirming(false);
       closeInlineMenu();
