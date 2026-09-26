@@ -1,0 +1,69 @@
+name: Temporary FINAL-002 patch
+
+on:
+  push:
+    branches:
+      - fix/final-002-atomic-track-edit
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-002-atomic-track-edit
+      - uses: oven-sh/setup-bun@v2
+      - name: Patch track edit call
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/tracks.functions.ts')
+          text = path.read_text()
+          old = '''      _new_audio_url: data.new_audio_url ?? null,
+      _new_audio_key: data.new_audio_key ?? null,
+      _new_cover_url: data.new_cover_url ?? null,
+      _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
+    } as never);
+    if (error) throw new Error(error.message);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: visibilityError } = await (supabaseAdmin.from("tracks") as any)
+      .update({
+        prompt_is_public: data.prompt_is_public,
+        lyrics_is_public: data.lyrics_is_public,
+        contains_explicit_lyrics: data.contains_explicit_lyrics,
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (visibilityError) throw new Error(visibilityError.message);
+'''
+          new = '''      _new_audio_url: data.new_audio_url ?? null,
+      _new_audio_key: data.new_audio_key ?? null,
+      _new_cover_url: data.new_cover_url ?? null,
+      _allow_download: data.source_type === "upload" ? data.allow_download === true : false,
+      _prompt_is_public: data.prompt_is_public,
+      _lyrics_is_public: data.lyrics_is_public,
+      _contains_explicit_lyrics: data.contains_explicit_lyrics,
+    } as never);
+    if (error) throw new Error(error.message);
+'''
+          if old not in text:
+              if new in text:
+                  raise SystemExit(0)
+              raise SystemExit('expected FINAL-002 edit block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          bunx prettier --write src/lib/tracks.functions.ts src/lib/final-002-atomic-track-edit.test.ts
+      - name: Commit patch if needed
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/tracks.functions.ts src/lib/final-002-atomic-track-edit.test.ts
+          git commit -m "Make owner track edits atomic"
+          git push origin HEAD:fix/final-002-atomic-track-edit
