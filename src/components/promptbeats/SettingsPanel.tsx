@@ -137,7 +137,9 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
   const save = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => {
     setSaveError("");
     void setPreference(key, value).catch((error) => {
-      setSaveError(error instanceof Error ? error.message : el ? "Η αποθήκευση απέτυχε." : "Saving failed.");
+      setSaveError(
+        error instanceof Error ? error.message : el ? "Η αποθήκευση απέτυχε." : "Saving failed.",
+      );
     });
   };
 
@@ -212,7 +214,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη γλώσσα Generator" : "Default Generator language"}
                   </h3>
-                  <InfoButton infoKey="generatorLanguage" active={info === "generatorLanguage"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="generatorLanguage"
+                    active={info === "generatorLanguage"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
                 <select
                   value={preferences.generatorLanguage}
@@ -240,7 +247,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένο Generator mode" : "Default Generator mode"}
                   </h3>
-                  <InfoButton infoKey="generatorMode" active={info === "generatorMode"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="generatorMode"
+                    active={info === "generatorMode"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
                 <Segmented
                   value={preferences.generatorMode}
@@ -264,7 +276,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
           <section className="relative py-3.5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">{el ? "Γλώσσα εφαρμογής" : "App language"}</h3>
-              <InfoButton infoKey="appLanguage" active={info === "appLanguage"} onToggle={toggleInfo} label={infoLabel} />
+              <InfoButton
+                infoKey="appLanguage"
+                active={info === "appLanguage"}
+                onToggle={toggleInfo}
+                label={infoLabel}
+              />
             </div>
             <LanguageSelector className="mt-2 border-white/10 bg-black/20" />
             {info === "appLanguage" && (
@@ -283,11 +300,18 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη καρτέλα Βιβλιοθήκης" : "Default Library tab"}
                   </h3>
-                  <InfoButton infoKey="libraryTab" active={info === "libraryTab"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="libraryTab"
+                    active={info === "libraryTab"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
                 <select
                   value={preferences.libraryTab}
-                  onChange={(event) => save("libraryTab", event.target.value as AccountPreferences["libraryTab"])}
+                  onChange={(event) =>
+                    save("libraryTab", event.target.value as AccountPreferences["libraryTab"])
+                  }
                   className={selectClass}
                 >
                   {LIBRARY_TABS.map((tab) => (
@@ -308,11 +332,22 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
               <section className="relative py-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">
-                    {el ? "Προεπιλεγμένη ορατότητα νέου τραγουδιού" : "Default new-track visibility"}
+                    {el
+                      ? "Προεπιλεγμένη ορατότητα νέου τραγουδιού"
+                      : "Default new-track visibility"}
                   </h3>
-                  <InfoButton infoKey="trackPublished" active={info === "trackPublished"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="trackPublished"
+                    active={info === "trackPublished"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
-                <Segmented value={preferences.trackPublished} options={publicPrivate} onChange={(value) => save("trackPublished", value)} />
+                <Segmented
+                  value={preferences.trackPublished}
+                  options={publicPrivate}
+                  onChange={(value) => save("trackPublished", value)}
+                />
                 {info === "trackPublished" && (
                   <InfoPopover>
                     {el
@@ -327,9 +362,18 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη ορατότητα Prompt" : "Default Prompt visibility"}
                   </h3>
-                  <InfoButton infoKey="promptPublic" active={info === "promptPublic"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="promptPublic"
+                    active={info === "promptPublic"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
-                <Segmented value={preferences.promptPublic} options={publicPrivate} onChange={(value) => save("promptPublic", value)} />
+                <Segmented
+                  value={preferences.promptPublic}
+                  options={publicPrivate}
+                  onChange={(value) => save("promptPublic", value)}
+                />
                 {info === "promptPublic" && (
                   <InfoPopover>
                     {el
@@ -344,9 +388,18 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη ορατότητα Lyrics" : "Default Lyrics visibility"}
                   </h3>
-                  <InfoButton infoKey="lyricsPublic" active={info === "lyricsPublic"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="lyricsPublic"
+                    active={info === "lyricsPublic"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
-                <Segmented value={preferences.lyricsPublic} options={publicPrivate} onChange={(value) => save("lyricsPublic", value)} />
+                <Segmented
+                  value={preferences.lyricsPublic}
+                  options={publicPrivate}
+                  onChange={(value) => save("lyricsPublic", value)}
+                />
                 {info === "lyricsPublic" && (
                   <InfoPopover>
                     {el
@@ -361,7 +414,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη δυνατότητα Download" : "Default download permission"}
                   </h3>
-                  <InfoButton infoKey="allowDownload" active={info === "allowDownload"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="allowDownload"
+                    active={info === "allowDownload"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
                 <Segmented
                   value={preferences.allowDownload}
@@ -385,11 +443,18 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   <h3 className="text-sm font-semibold">
                     {el ? "Προεπιλεγμένη μορφή Export" : "Default Export format"}
                   </h3>
-                  <InfoButton infoKey="exportFormat" active={info === "exportFormat"} onToggle={toggleInfo} label={infoLabel} />
+                  <InfoButton
+                    infoKey="exportFormat"
+                    active={info === "exportFormat"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
                 </div>
                 <select
                   value={preferences.exportFormat}
-                  onChange={(event) => save("exportFormat", event.target.value as AccountPreferences["exportFormat"])}
+                  onChange={(event) =>
+                    save("exportFormat", event.target.value as AccountPreferences["exportFormat"])
+                  }
                   className={selectClass}
                 >
                   {EXPORT_FORMATS.map((format) => (
@@ -412,13 +477,31 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
           <section className="relative py-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold">{el ? "Εξωτερικά μέσα" : "External media"}</h3>
-                <p className={"mt-1 text-xs font-semibold " + (external.enabled ? "text-accent" : "text-muted-foreground")}>
-                  {external.enabled ? (el ? "Επιτρέπονται" : "Allowed") : el ? "Μπλοκαρισμένα" : "Blocked"}
+                <h3 className="text-sm font-semibold">
+                  {el ? "Εξωτερικά μέσα" : "External media"}
+                </h3>
+                <p
+                  className={
+                    "mt-1 text-xs font-semibold " +
+                    (external.enabled ? "text-accent" : "text-muted-foreground")
+                  }
+                >
+                  {external.enabled
+                    ? el
+                      ? "Επιτρέπονται"
+                      : "Allowed"
+                    : el
+                      ? "Μπλοκαρισμένα"
+                      : "Blocked"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <InfoButton infoKey="externalMedia" active={info === "externalMedia"} onToggle={toggleInfo} label={infoLabel} />
+                <InfoButton
+                  infoKey="externalMedia"
+                  active={info === "externalMedia"}
+                  onToggle={toggleInfo}
+                  label={infoLabel}
+                />
                 <button
                   type="button"
                   role="switch"
@@ -426,10 +509,17 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   onClick={() => external.setEnabled(!external.enabled)}
                   className={
                     "relative h-7 w-12 shrink-0 rounded-full border transition-colors " +
-                    (external.enabled ? "border-accent/60 bg-accent/35" : "border-white/15 bg-white/5")
+                    (external.enabled
+                      ? "border-accent/60 bg-accent/35"
+                      : "border-white/15 bg-white/5")
                   }
                 >
-                  <span className={"absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " + (external.enabled ? "translate-x-5" : "translate-x-0")} />
+                  <span
+                    className={
+                      "absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " +
+                      (external.enabled ? "translate-x-5" : "translate-x-0")
+                    }
+                  />
                 </button>
               </div>
             </div>
@@ -445,8 +535,15 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
           <section className="relative py-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold">{el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}</h3>
-                <p className={"mt-1 text-xs font-semibold " + (explicit.hideExplicit ? "text-accent" : "text-muted-foreground")}>
+                <h3 className="text-sm font-semibold">
+                  {el ? "Απόκρυψη explicit τραγουδιών" : "Hide explicit tracks"}
+                </h3>
+                <p
+                  className={
+                    "mt-1 text-xs font-semibold " +
+                    (explicit.hideExplicit ? "text-accent" : "text-muted-foreground")
+                  }
+                >
                   {explicit.hideExplicit
                     ? el
                       ? "Explicit τραγούδια: αποκρύπτονται"
@@ -457,7 +554,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <InfoButton infoKey="explicit" active={info === "explicit"} onToggle={toggleInfo} label={infoLabel} />
+                <InfoButton
+                  infoKey="explicit"
+                  active={info === "explicit"}
+                  onToggle={toggleInfo}
+                  label={infoLabel}
+                />
                 <button
                   type="button"
                   role="switch"
@@ -466,10 +568,17 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                   onClick={() => void explicit.setHideExplicit(!explicit.hideExplicit)}
                   className={
                     "relative h-7 w-12 shrink-0 rounded-full border transition-colors " +
-                    (explicit.hideExplicit ? "border-accent/60 bg-accent/35" : "border-white/15 bg-white/5")
+                    (explicit.hideExplicit
+                      ? "border-accent/60 bg-accent/35"
+                      : "border-white/15 bg-white/5")
                   }
                 >
-                  <span className={"absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " + (explicit.hideExplicit ? "translate-x-5" : "translate-x-0")} />
+                  <span
+                    className={
+                      "absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-transform " +
+                      (explicit.hideExplicit ? "translate-x-5" : "translate-x-0")
+                    }
+                  />
                 </button>
               </div>
             </div>

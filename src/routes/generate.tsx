@@ -990,11 +990,19 @@ function GeneratePage() {
   useEffect(() => {
     if (defaultGeneratorModeAppliedRef.current || !user) return;
     defaultGeneratorModeAppliedRef.current = true;
-    if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics") return;
+    if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics")
+      return;
     // Never downgrade a mode already promoted by a handoff/recovery path. The account
     // default only upgrades an otherwise fresh Basic Generator to Advanced.
     if (!advanced && accountPreferences.generatorMode === "advanced") setAdvanced(true);
-  }, [accountPreferences.generatorMode, advanced, search.mode, search.presets, search.workspace, user]);
+  }, [
+    accountPreferences.generatorMode,
+    advanced,
+    search.mode,
+    search.presets,
+    search.workspace,
+    user,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
