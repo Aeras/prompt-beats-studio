@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { throwSafeServerError } from "@/lib/server-error";
 
 const shareLinkInput = z.object({
   trackId: z.string().uuid(),
@@ -62,7 +63,12 @@ export const createTrackShareLink = createServerFn({ method: "POST" })
       _include_prompt: data.includePrompt,
       _include_lyrics: data.includeLyrics,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:create",
+        error,
+        "The share link could not be created. Please try again.",
+      );
     return result as {
       id: string;
       token: string;
@@ -91,7 +97,12 @@ export const updateTrackShareLink = createServerFn({ method: "POST" })
       _include_prompt: data.includePrompt,
       _include_lyrics: data.includeLyrics,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:update",
+        error,
+        "The share settings could not be updated. Please try again.",
+      );
     return { ok: true as const };
   });
 
@@ -102,7 +113,12 @@ export const revokeTrackShareLink = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("revoke_track_share_link", {
       _share_id: data.shareId,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:revoke",
+        error,
+        "The share link could not be revoked. Please try again.",
+      );
     return { ok: true as const };
   });
 
@@ -114,7 +130,12 @@ export const recordTrackPublicShare = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("record_track_public_share", {
       _track_id: data.trackId,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:record-public-share",
+        error,
+        "The share could not be recorded. Please try again.",
+      );
     return { ok: true as const };
   });
 
@@ -125,7 +146,12 @@ export const getTrackShareByToken = createServerFn({ method: "GET" })
     const { data: rawResult, error } = await supabaseAdmin.rpc("get_track_share_by_token", {
       _token: data.token,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:lookup",
+        error,
+        "This shared track could not be loaded. Please try again.",
+      );
 
     const result = rawResult as TrackShareLookup;
     if (result.state === "active" && result.track) {
@@ -165,6 +191,11 @@ export const listMyShareManagement = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase.rpc("list_my_share_management");
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "track-sharing:list",
+        error,
+        "Share management could not be loaded. Please try again.",
+      );
     return { tracks: (Array.isArray(data) ? data : []) as ShareManagementTrack[] };
   });
