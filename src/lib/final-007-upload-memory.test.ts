@@ -7,7 +7,9 @@ async function source(path: string) {
 describe("FINAL-007 upload memory hardening", () => {
   test("known-length requests write directly into one bounded allocation", async () => {
     const upload = await source("src/routes/api/upload.ts");
-    expect(upload).toContain("async function readBoundedBody(request: Request, declaredLength?: number)");
+    expect(upload).toContain(
+      "async function readBoundedBody(request: Request, declaredLength?: number)",
+    );
     expect(upload).toContain("const body = new Uint8Array(declaredLength)");
     expect(upload).toContain("body.set(value, total - value.byteLength)");
     expect(upload).toContain("body = await readBoundedBody(request, declaredLength)");
