@@ -1,4 +1,4 @@
--- PromptBeats Feature Access V2 — expand canonical product feature registry
+-- PromptBeats Feature Access V2 — expand canonical registry to 14 product features
 -- and enforce cost-sensitive durable admission before credits/provider execution.
 BEGIN;
 
@@ -6,6 +6,7 @@ INSERT INTO public.feature_access_policies(feature_key,display_name,description,
 VALUES
   ('ai_generator','AI Generator','AI-powered full song generation and revision workflows.','everyone'),
   ('quality_check','Quality Check','AI-powered lyric and song Quality Check workflow.','everyone'),
+  ('ai_music_lab','AI Music Lab','AI Music Lab tools and its user-facing creation workflow.','everyone'),
   ('song_analyzer','Song Analyzer','Audio analysis, DSP analysis, and AI-assisted song analysis.','everyone'),
   ('lyrics_workspace','Lyrics Workspace','Section-based lyric editing and AI-assisted lyric section revisions.','everyone'),
   ('track_uploads','Track Uploads','Uploading new user audio tracks and associated cover artwork.','everyone'),
