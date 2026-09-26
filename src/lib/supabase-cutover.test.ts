@@ -22,13 +22,30 @@ describe("External Supabase cutover", () => {
     expect(publicClient).toContain("getServerSupabasePublicConfig");
   });
 
-  test("tracked browser environment points to the external PromptBeats Supabase project", async () => {
-    const env = await source(".env");
-    expect(env).toContain('SUPABASE_PROJECT_ID="qwlksrcsovbncmretjdt"');
-    expect(env).toContain('VITE_SUPABASE_PROJECT_ID="qwlksrcsovbncmretjdt"');
-    expect(env).toContain('SUPABASE_URL="https://qwlksrcsovbncmretjdt.supabase.co"');
-    expect(env).toContain('VITE_SUPABASE_URL="https://qwlksrcsovbncmretjdt.supabase.co"');
-    expect(env).not.toContain("mncrtljdwofnkvhmctax");
+  test("repository documents environment keys without coupling tests to production values", async () => {
+    const [example, gitignore] = await Promise.all([source(".env.example"), source(".gitignore")]);
+
+    for (const key of [
+      "EXTERNAL_SUPABASE_URL",
+      "EXTERNAL_SUPABASE_PUBLISHABLE_KEY",
+      "EXTERNAL_SUPABASE_SECRET_KEY",
+      "SUPABASE_URL",
+      "SUPABASE_PUBLISHABLE_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_PROJECT_ID",
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_PUBLISHABLE_KEY",
+      "VITE_SUPABASE_PROJECT_ID",
+    ]) {
+      expect(example).toContain(`${key}=`);
+    }
+    expect(example).toContain("YOUR_PROJECT_REF");
+    expect(example).toContain("YOUR_SUPABASE_PUBLISHABLE_KEY");
+    expect(example).toContain("YOUR_SUPABASE_SECRET_KEY");
+    expect(example).not.toContain("eyJhbGciOi");
+    expect(gitignore).toContain(".env\n");
+    expect(gitignore).toContain(".env.*");
+    expect(gitignore).toContain("!.env.example");
   });
 
   test("active runtime Supabase files do not hardcode the former Lovable project", async () => {
