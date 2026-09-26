@@ -17,8 +17,10 @@ import {
   executeDurableAuxiliaryAiRequest,
 } from "@/lib/ai-auxiliary-idempotency.server";
 
+const SONG_SETUP_DESCRIPTION_LIMIT = 2500;
+
 const setupInput = z.object({
-  description: z.string().trim().min(10).max(2500),
+  description: z.string().trim().min(10),
   targetPlatform: z.enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]]),
   model: z.string().trim().min(1).max(240).optional(),
   requestKey: auxiliaryRequestKeySchema,
@@ -105,6 +107,14 @@ export const generateSongSetup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
+
+    const { data: isSuperAdmin } = await context.supabase.rpc("current_user_is_super_admin");
+    if (isSuperAdmin !== true && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT) {
+      throw new Error(
+        `Song description must be ${SONG_SETUP_DESCRIPTION_LIMIT} characters or fewer.`,
+      );
+    }
+
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
       userId: context.userId,
