@@ -51,7 +51,7 @@ describe("Visual Arrangement Batch 3 UI", () => {
 
     expect(generate).toContain("removeSimpleStructureSection");
     expect(generate).toContain("removeArrangementSection(arrangement, sectionId)");
-    expect(generate).toContain("border-accent/50 bg-accent/15");
+    expect(generate).toContain("border-accent/35 bg-accent/10");
     expect(generate).toContain("section.sectionId");
     expect(generate).toContain("generator.removeStructure");
     expect(generate).toContain("×");
