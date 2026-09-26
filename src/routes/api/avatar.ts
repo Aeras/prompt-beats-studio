@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { avatarOwnerId, extractAvatarObjectPath, isSafeAvatarObjectPath } from "@/lib/avatar-reference";
+import {
+  avatarOwnerId,
+  extractAvatarObjectPath,
+  isSafeAvatarObjectPath,
+} from "@/lib/avatar-reference";
 
 const querySchema = z.object({ path: z.string().min(1).max(300) });
 const SIGNED_AVATAR_TTL_SECONDS = 5 * 60;
