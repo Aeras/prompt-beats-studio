@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Menu, Search, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
@@ -41,6 +41,21 @@ const MOBILE_TABS = [
 }>;
 
 const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
+const DRAWER_IDLE_MS = 2_000;
+const TOUCH_TAB_SWIPE_THRESHOLD = 72;
+const TOUCH_TAB_SWIPE_DOMINANCE = 1.25;
+const TABLET_LANDSCAPE_QUERY =
+  "(hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1366px) and (orientation: landscape)";
+const TOUCH_TAB_QUERY = "(hover: none) and (pointer: coarse) and (max-width: 1366px)";
+
+function isSwipeInteractiveTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [role="slider"], [data-swipe-ignore="true"]',
+    ),
+  );
+}
 
 export function useActiveNav(): NavId {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -60,6 +75,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [drawer, setDrawer] = useState(false);
   const [studio, setStudio] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [tabletLandscape, setTabletLandscape] = useState(false);
+  const drawerIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const active = useActiveNav();
   const { t } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
@@ -83,6 +100,98 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
     if (saved === "false") setDesktopSidebarOpen(false);
     if (saved === "true") setDesktopSidebarOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(TABLET_LANDSCAPE_QUERY);
+    const sync = () => {
+      setTabletLandscape(media.matches);
+      if (media.matches) setDrawer(false);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  const clearDrawerIdleTimer = useCallback(() => {
+    if (!drawerIdleTimerRef.current) return;
+    clearTimeout(drawerIdleTimerRef.current);
+    drawerIdleTimerRef.current = null;
+  }, []);
+
+  const scheduleDrawerAutoClose = useCallback(() => {
+    clearDrawerIdleTimer();
+    if (typeof window === "undefined" || tabletLandscape) return;
+    const coarseTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (!coarseTouch) return;
+    drawerIdleTimerRef.current = setTimeout(() => setDrawer(false), DRAWER_IDLE_MS);
+  }, [clearDrawerIdleTimer, tabletLandscape]);
+
+  useEffect(() => {
+    if (!drawer) {
+      clearDrawerIdleTimer();
+      return;
+    }
+    scheduleDrawerAutoClose();
+    return clearDrawerIdleTimer;
+  }, [clearDrawerIdleTimer, drawer, scheduleDrawerAutoClose]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || (active !== "studio" && active !== "library")) return;
+    const media = window.matchMedia(TOUCH_TAB_QUERY);
+    let startX = 0;
+    let startY = 0;
+    let eligible = false;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (!media.matches || event.touches.length !== 1 || isSwipeInteractiveTarget(event.target)) {
+        eligible = false;
+        return;
+      }
+      const touch = event.touches[0];
+      if (!touch) return;
+      if (touch.clientX <= 24 || touch.clientX >= window.innerWidth - 24) {
+        eligible = false;
+        return;
+      }
+      startX = touch.clientX;
+      startY = touch.clientY;
+      eligible = true;
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (!eligible || !media.matches || event.changedTouches.length !== 1) return;
+      eligible = false;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+      if (
+        Math.abs(deltaX) < TOUCH_TAB_SWIPE_THRESHOLD ||
+        Math.abs(deltaX) < Math.abs(deltaY) * TOUCH_TAB_SWIPE_DOMINANCE
+      )
+        return;
+
+      const selector = active === "studio" ? "[data-generator-mode]" : "[data-library-tab]";
+      const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(selector)).filter(
+        (button) => button.offsetParent !== null && !button.disabled,
+      );
+      const currentIndex = buttons.findIndex(
+        (button) => button.getAttribute("aria-pressed") === "true",
+      );
+      if (currentIndex < 0) return;
+      const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
+      if (nextIndex < 0 || nextIndex >= buttons.length) return;
+      buttons[nextIndex]?.click();
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [active]);
 
   if (lockLoading) return <AccountStatusLoading />;
   if (authenticated && lockError) return <AccountStatusUnavailable />;
@@ -108,7 +217,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       <SearchTermHighlighter />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden border-r border-white/10 bg-black/40 backdrop-blur-xl transition-[width] duration-200 ease-out motion-reduce:transition-none lg:block",
+          "fixed inset-y-0 left-0 z-30 border-r border-white/10 bg-black/40 backdrop-blur-xl transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          tabletLandscape ? "block" : "hidden lg:block",
           desktopSidebarOpen ? "w-[270px]" : "w-5",
         )}
       >
@@ -138,7 +248,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         </button>
       </aside>
 
-      <div className="fixed inset-y-0 left-0 z-30 hidden w-5 border-r border-white/10 bg-black/30 backdrop-blur-md md:block lg:hidden">
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-30 hidden w-5 border-r border-white/10 bg-black/30 backdrop-blur-md md:block lg:hidden",
+          tabletLandscape && "!hidden",
+        )}
+      >
         <button
           type="button"
           aria-label={t("shell.openMenu")}
@@ -153,6 +268,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       <div
         className={cn(
           "fixed inset-0 z-50 lg:hidden",
+          tabletLandscape && "hidden",
           drawer ? "pointer-events-auto" : "pointer-events-none",
         )}
       >
@@ -164,8 +280,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           )}
         />
         <div
+          onTouchStart={scheduleDrawerAutoClose}
+          onTouchMove={scheduleDrawerAutoClose}
+          onClick={scheduleDrawerAutoClose}
+          onScroll={scheduleDrawerAutoClose}
           className={cn(
-            "glass-strong absolute inset-y-0 left-0 w-[80%] max-w-[300px] transition-transform duration-200 ease-out motion-reduce:transition-none",
+            "glass-strong absolute inset-y-0 left-0 w-[80%] max-w-[300px] overflow-y-auto transition-transform duration-200 ease-out motion-reduce:transition-none",
             drawer ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -186,6 +306,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         data-studio-layout={active === "studio" ? "true" : undefined}
         className={cn(
           "relative z-10 pb-[var(--pb-mobile-nav-offset)] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
+          tabletLandscape && (desktopSidebarOpen ? "!pl-[270px]" : "!pl-5"),
           desktopSidebarOpen ? "lg:pl-[270px]" : "lg:pl-5",
         )}
       >

@@ -2666,6 +2666,7 @@ ${narrativePlan.beats
                     <button
                       key={mode.key}
                       type="button"
+                      data-generator-mode={mode.key}
                       aria-pressed={active}
                       onClick={() => changeGeneratorMode(mode.key)}
                       className={

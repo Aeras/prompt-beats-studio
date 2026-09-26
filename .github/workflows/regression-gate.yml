@@ -136,6 +136,9 @@ jobs:
       - name: app_role_rank hardening test
         run: bun test src/lib/app-role-rank-hardening.test.ts
 
+      - name: Mobile and tablet touch navigation tests
+        run: bun test src/lib/mobile-touch-navigation.test.ts
+
       # Lint the committed source tree before the build. The Lovable build plugin can
       # materialize generated helper files during bundling; those are build artifacts,
       # not canonical repository source and should not be treated as source-lint debt.
