@@ -205,6 +205,9 @@ export function ProjectPromptActionMenu({
 
   if (typeof document === "undefined") return null;
 
+  const desktopMenu =
+    typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches;
+
   return createPortal(
     <>
       {open && anchor && (
@@ -219,12 +222,12 @@ export function ProjectPromptActionMenu({
             ref={menuRef}
             role="menu"
             aria-label={el ? `Ενέργειες για ${title}` : `Actions for ${title}`}
-            className="glass-strong fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[95] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-auto sm:w-[270px] sm:p-1.5"
-            style={
-              typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches
-                ? { left: position.x, top: position.y }
-                : undefined
+            className={
+              desktopMenu
+                ? "glass-strong fixed z-[95] w-[270px] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-1.5 shadow-2xl backdrop-blur-xl"
+                : "glass-strong fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[95] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-2 shadow-2xl backdrop-blur-xl"
             }
+            style={desktopMenu ? { left: position.x, top: position.y } : undefined}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
