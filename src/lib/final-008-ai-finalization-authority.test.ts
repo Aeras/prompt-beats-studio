@@ -4,6 +4,7 @@ async function source(path: string) {
   return Bun.file(path).text();
 }
 
+// Provider execution and durable completion must remain server-authoritative.
 const migration = "supabase/migrations/20260926090000_final_008_ai_finalization_authority.sql";
 
 describe("FINAL-008 AI finalization authority", () => {
