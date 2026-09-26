@@ -66,6 +66,8 @@ import {
 import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 import {
   TrackSourceFilter,
   filterByTrackSource,
@@ -159,14 +161,11 @@ function toTrack(track: Row, handle: string): Track {
   };
 }
 
-const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;
-type LibraryTab = (typeof TABS)[number];
+const TABS = LIBRARY_TAB_IDS;
 type LibrarySearch = { tab?: LibraryTab };
 
 function parseLibraryTab(value: unknown): LibraryTab | undefined {
-  return typeof value === "string" && TABS.includes(value as LibraryTab)
-    ? (value as LibraryTab)
-    : undefined;
+  return isLibraryTab(value) ? value : undefined;
 }
 
 export const Route = createFileRoute("/library")({
@@ -198,6 +197,7 @@ function LibraryPage() {
   const navigate = useNavigate();
   const { tab: requestedTab } = Route.useSearch();
   const { user, profile, loading } = useAuth();
+  const { preferences: accountPreferences } = useAccountPreferences();
   const playlistsAccess = useFeatureAccess("playlists");
   const sharingAccess = useFeatureAccess("sharing_public_links");
   const favoritesAccess = useFeatureAccess("favorites");
@@ -221,7 +221,10 @@ function LibraryPage() {
     return true;
   });
 
-  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : "tracks";
+  const preferredTab = availableTabs.includes(accountPreferences.libraryTab)
+    ? accountPreferences.libraryTab
+    : "tracks";
+  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : preferredTab;
 
   useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource, tab]);
 

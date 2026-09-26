@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 
 import { CUSTOM_LANGUAGE_VALUE, getSongLanguageOptions } from "@/catalog/song-languages";
+import { useAccountPreferences } from "@/lib/account-preferences";
 import { useI18n } from "@/i18n";
 
 type Props = {
@@ -13,9 +14,11 @@ type Props = {
 
 export function LanguagePicker({ value, onChange, className = "", ariaLabel }: Props) {
   const { t, language: appLanguage } = useI18n();
+  const { preferences } = useAccountPreferences();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const selectedOptionRef = useRef<HTMLButtonElement>(null);
+  const defaultAppliedRef = useRef(false);
 
   const localized = useMemo(() => getSongLanguageOptions(appLanguage), [appLanguage]);
   const english = useMemo(() => getSongLanguageOptions("en"), []);
@@ -50,6 +53,17 @@ export function LanguagePicker({ value, onChange, className = "", ariaLabel }: P
     value === CUSTOM_LANGUAGE_VALUE
       ? t("generator.option.custom")
       : (selected?.label ?? value) || t("generator.selectLanguage");
+
+  useEffect(() => {
+    if (defaultAppliedRef.current) return;
+    if (value) {
+      defaultAppliedRef.current = true;
+      return;
+    }
+    if (!preferences.generatorLanguage) return;
+    defaultAppliedRef.current = true;
+    onChange(preferences.generatorLanguage);
+  }, [onChange, preferences.generatorLanguage, value]);
 
   useEffect(() => {
     if (!open || query) return;

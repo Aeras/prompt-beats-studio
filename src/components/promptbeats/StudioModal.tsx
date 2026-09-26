@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,11 @@ import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { readAudioDurationSeconds } from "@/lib/audio-duration";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
+import {
+  DEFAULT_ACCOUNT_PREFERENCES,
+  useAccountPreferences,
+  type AccountPreferences,
+} from "@/lib/account-preferences";
 
 type Row = {
   key: string;
@@ -35,7 +40,12 @@ type Row = {
   lyrics: string;
 };
 
-const emptyRow = (): Row => ({
+type SubmitTrackDefaults = Pick<
+  AccountPreferences,
+  "trackPublished" | "promptPublic" | "lyricsPublic" | "allowDownload"
+>;
+
+const emptyRow = (defaults: SubmitTrackDefaults = DEFAULT_ACCOUNT_PREFERENCES): Row => ({
   key: Math.random().toString(36).slice(2),
   file: null,
   cover: null,
@@ -45,10 +55,10 @@ const emptyRow = (): Row => ({
   genre: "",
   customGenre: "",
   createdWith: "",
-  isPublished: true,
-  promptIsPublic: true,
-  lyricsIsPublic: true,
-  allowDownload: false,
+  isPublished: defaults.trackPublished,
+  promptIsPublic: defaults.promptPublic,
+  lyricsIsPublic: defaults.lyricsPublic,
+  allowDownload: defaults.allowDownload,
   containsExplicitLyrics: false,
   prompt: "",
   lyrics: "",
@@ -60,13 +70,22 @@ const inputCls =
 export function StudioModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, language } = useI18n();
   const { user } = useAuth();
+  const { preferences } = useAccountPreferences();
   const { isBanned } = useModeration();
   const uploadAccess = useFeatureAccess("track_uploads");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
+  const initialDefaultsAppliedRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || initialDefaultsAppliedRef.current) return;
+    initialDefaultsAppliedRef.current = true;
+    setRows([emptyRow(preferences)]);
+    setStatus(null);
+  }, [open, preferences]);
 
   useEffect(() => {
     if (!open || uploadAccess.isLoading || uploadAccess.allowed) return;
@@ -248,7 +267,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       }
       await queryClient.invalidateQueries({ queryKey: ["tracks"] });
       setStatus(t("studio.published", { count: rows.length }));
-      setRows([emptyRow()]);
+      setRows([emptyRow(preferences)]);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : t("auth.somethingWrong"));
     } finally {
@@ -317,7 +336,8 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                         cover: null,
                         sourceUrl: "",
                         createdWith: "",
-                        allowDownload: false,
+                        allowDownload:
+                          e.target.value === "upload" ? preferences.allowDownload : false,
                       })
                     }
                     aria-label={`${t("studio.track", { number: i + 1 })} ${t("studio.audioSource")}`}
@@ -549,7 +569,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
               </section>
             ))}
             <button
-              onClick={() => setRows((rs) => [...rs, emptyRow()])}
+              onClick={() => setRows((rs) => [...rs, emptyRow(preferences)])}
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-accent/40 px-4 py-3 text-sm text-accent transition-colors hover:bg-accent/10"
             >
               <Plus className="h-4 w-4" /> {t("studio.addTrack")}
