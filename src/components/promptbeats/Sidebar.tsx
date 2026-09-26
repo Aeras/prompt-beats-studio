@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
+  ChevronRight,
   Compass,
   ExternalLink,
   Flame,
