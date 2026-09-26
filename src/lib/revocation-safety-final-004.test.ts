@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-// Privacy withdrawal stays available even when Feature Access no longer permits new exposure.
+// Privacy withdrawal remains available even when Feature Access no longer permits new exposure.
 async function source(path: string) {
   return Bun.file(path).text();
 }
