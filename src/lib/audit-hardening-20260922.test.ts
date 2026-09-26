@@ -100,17 +100,17 @@ describe("September 22 production audit hardening", () => {
     expect(analyzer).toContain("httpOptions: { timeout: 5 * 60 * 1000 }");
   });
 
-  test("default AI models must remain enabled for all users", async () => {
+  test("default AI models remain enabled and operation-compatible independent of access policy", async () => {
     const admin = await source("src/lib/ai-model-admin.functions.ts");
     const panel = await source("src/components/promptbeats/AiModelsPanel.tsx");
+    const provider = await source("src/lib/ai-provider.server.ts");
 
-    expect(admin).toContain('data.accessPolicy !== "all_users"');
-    expect(admin).toContain('model.access_policy !== "all_users"');
-    expect(admin).toContain("A default AI model must be available to all users.");
-    expect(panel).toContain('m.accessPolicy === "all_users"');
-    expect(panel).toContain("handleAccessPolicyChange");
-    expect(panel).toContain("defaultAccessProtectionGenerator");
-    expect(panel).toContain("defaultAccessProtectionQuality");
+    expect(admin).toContain('model.status === "enabled"');
+    expect(admin).not.toContain("A default AI model must be available to all users.");
+    expect(panel).not.toContain('m.accessPolicy === "all_users"');
+    expect(panel).not.toContain("handleAccessPolicyChange");
+    expect(provider).toContain("const effectiveModels = [configuredDefault");
+    expect(provider).toContain("defaultModel: configuredDefault.providerModelId");
   });
 
   test("prompt projects and song analyses expose only owner CRUD to authenticated", async () => {
