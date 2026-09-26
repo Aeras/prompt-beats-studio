@@ -8,6 +8,7 @@ import { cleanTrackStorage } from "@/lib/track-moderation.functions";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 import { normalizeExternalTrackSource, type ExternalTrackSourceType } from "@/lib/track-sources";
 import { CREATED_WITH_OPTIONS } from "@/lib/created-with";
+import { reportServerError, throwSafeServerError } from "@/lib/server-error";
 
 const createdWithSchema = z.enum(CREATED_WITH_OPTIONS);
 
@@ -138,7 +139,10 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
     .eq("moderation_status", "active")
     .order("created_at", { ascending: false })
     .limit(100);
-  if (error) return { tracks: [], error: error.message };
+  if (error) {
+    reportServerError("tracks:list-published", error);
+    return { tracks: [], error: "Tracks are temporarily unavailable. Please try again." };
+  }
 
   const ids = [...new Set((data ?? []).map((t: any) => t.user_id))] as string[];
   const handles = new Map<string, string>();
@@ -214,7 +218,12 @@ export const listMyTracks = createServerFn({ method: "GET" })
       .select(TRACK_COLUMNS)
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:list-mine",
+        error,
+        "Your tracks could not be loaded. Please try again.",
+      );
     return { tracks: data ?? [] };
   });
 
@@ -229,7 +238,12 @@ export const getMyTrackForEdit = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("moderation_status", "active")
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:get-edit",
+        error,
+        "The track could not be loaded. Please try again.",
+      );
     if (!track) throw new Error("Track not found");
     return { track };
   });
@@ -280,7 +294,12 @@ export const createTrack = createServerFn({ method: "POST" })
       })
       .select(TRACK_COLUMNS)
       .single();
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:create",
+        error,
+        "The track could not be created. Please try again.",
+      );
     return { track: row };
   });
 
@@ -346,7 +365,12 @@ export const updateTrack = createServerFn({ method: "POST" })
       _lyrics_is_public: data.lyrics_is_public,
       _contains_explicit_lyrics: data.contains_explicit_lyrics,
     } as never);
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:update",
+        error,
+        "The track could not be updated. Please try again.",
+      );
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
     if (payload?.cleanup_id) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -380,7 +404,12 @@ export const discardUploads = createServerFn({ method: "POST" })
         .select("id")
         .eq("audio_key", data.audioKey)
         .limit(1);
-      if (error) throw new Error(`Could not inspect orphan audio reference: ${error.message}`);
+      if (error)
+        throwSafeServerError(
+          "tracks:discard-audio-check",
+          error,
+          "The temporary upload could not be checked. Please try again.",
+        );
       if (!inUse?.length) audioKey = data.audioKey;
     }
 
@@ -390,7 +419,12 @@ export const discardUploads = createServerFn({ method: "POST" })
         .select("id")
         .like("cover_url", `%/track-covers/${data.coverPath}`)
         .limit(1);
-      if (error) throw new Error(`Could not inspect orphan cover reference: ${error.message}`);
+      if (error)
+        throwSafeServerError(
+          "tracks:discard-cover-check",
+          error,
+          "The temporary cover could not be checked. Please try again.",
+        );
       if (!coverInUse?.length) coverPath = data.coverPath;
     }
 
@@ -409,8 +443,10 @@ export const discardUploads = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (cleanupError || !cleanup)
-      throw new Error(
-        `Orphaned upload cleanup could not be queued: ${cleanupError?.message ?? "no cleanup id returned"}`,
+      throwSafeServerError(
+        "tracks:discard-queue",
+        cleanupError ?? new Error("Cleanup record was not returned"),
+        "The temporary upload could not be cleaned up safely. Please try again.",
       );
 
     if (coverPath) {
@@ -436,7 +472,12 @@ export const deleteTrack = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup", {
       _track_id: data.id,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:delete",
+        error,
+        "The track could not be deleted. Please try again.",
+      );
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
     if (cleanupId) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -519,7 +560,12 @@ export const listLikedTracks = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) throw new Error(error.message);
+    if (error)
+      throwSafeServerError(
+        "tracks:list-liked",
+        error,
+        "Liked tracks could not be loaded. Please try again.",
+      );
     const ids = (likes ?? []).map((l) => l.track_id);
     if (!ids.length) return { tracks: [] };
 
