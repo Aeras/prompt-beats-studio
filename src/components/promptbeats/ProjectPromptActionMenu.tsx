@@ -22,6 +22,22 @@ type Props = {
 
 const PROJECT_PROMPT_MENU_OPEN_EVENT = "pb:project-prompt-menu-open";
 
+function enabledMenuItems(container: HTMLElement | null) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
+    (item) => !item.disabled,
+  );
+}
+
+function focusableElements(container: HTMLElement | null) {
+  if (!container) return [];
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((element) => !element.hasAttribute("hidden"));
+}
+
 export function ProjectPromptActionMenu({
   open,
   anchor,
@@ -37,11 +53,14 @@ export function ProjectPromptActionMenu({
 }: Props) {
   const el = language === "el";
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const transferDialogRef = useRef<HTMLDivElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const instanceIdRef = useRef(`project-prompt-menu-${Math.random().toString(36).slice(2)}`);
   const [position, setPosition] = useState<LibraryActionMenuAnchor>({ x: 12, y: 12 });
   const [transferMode, setTransferMode] = useState<TransferMode>(null);
   const [destinationProjectId, setDestinationProjectId] = useState("");
   const availableProjects = projects.filter((project) => project.id !== currentProjectId);
+  const transferTitleId = `${instanceIdRef.current}-transfer-title`;
 
   useEffect(() => {
     const closeWhenAnotherMenuOpens = (event: Event) => {
@@ -55,12 +74,24 @@ export function ProjectPromptActionMenu({
 
   useEffect(() => {
     if (!open) return;
+    if (document.activeElement instanceof HTMLElement) {
+      restoreFocusRef.current = document.activeElement;
+    }
     window.dispatchEvent(
       new CustomEvent(PROJECT_PROMPT_MENU_OPEN_EVENT, {
         detail: { instanceId: instanceIdRef.current },
       }),
     );
+    const frame = window.requestAnimationFrame(() => enabledMenuItems(menuRef.current)[0]?.focus());
+    return () => window.cancelAnimationFrame(frame);
   }, [open]);
+
+  useEffect(() => {
+    if (open || transferMode) return;
+    const target = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    target?.focus();
+  }, [open, transferMode]);
 
   useEffect(() => {
     if (!open || !anchor || typeof window === "undefined") return;
@@ -78,15 +109,60 @@ export function ProjectPromptActionMenu({
   }, [open, transferMode]);
 
   useEffect(() => {
+    if (!transferMode) return;
+    const frame = window.requestAnimationFrame(() => {
+      transferDialogRef.current?.querySelector<HTMLSelectElement>("select")?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [transferMode]);
+
+  useEffect(() => {
     if (!open && !transferMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      if (transferMode) {
-        setTransferMode(null);
-        setDestinationProjectId("");
-      } else {
-        onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (transferMode) {
+          setTransferMode(null);
+          setDestinationProjectId("");
+        } else {
+          onClose();
+        }
+        return;
       }
+
+      if (transferMode) {
+        if (event.key !== "Tab") return;
+        const focusables = focusableElements(transferDialogRef.current);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+        return;
+      }
+
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      const items = enabledMenuItems(menuRef.current);
+      if (items.length === 0) return;
+      event.preventDefault();
+      const currentIndex = items.findIndex((item) => item === document.activeElement);
+      if (event.key === "Home") {
+        items[0]?.focus();
+        return;
+      }
+      if (event.key === "End") {
+        items[items.length - 1]?.focus();
+        return;
+      }
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const baseIndex = currentIndex >= 0 ? currentIndex : direction > 0 ? -1 : 0;
+      const nextIndex = (baseIndex + direction + items.length) % items.length;
+      items[nextIndex]?.focus();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -197,10 +273,16 @@ export function ProjectPromptActionMenu({
               setDestinationProjectId("");
             }}
           />
-          <div className="glass-strong relative z-[111] w-full max-w-md rounded-2xl border border-white/10 bg-background p-4 shadow-2xl">
+          <div
+            ref={transferDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={transferTitleId}
+            className="glass-strong relative z-[111] w-full max-w-md rounded-2xl border border-white/10 bg-background p-4 shadow-2xl"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="font-display text-base font-bold">
+                <h3 id={transferTitleId} className="font-display text-base font-bold">
                   {transferMode === "copy"
                     ? el
                       ? "Αντιγραφή σε άλλο Project"
@@ -213,6 +295,7 @@ export function ProjectPromptActionMenu({
               </div>
               <button
                 type="button"
+                aria-label={el ? "Κλείσιμο" : "Close"}
                 disabled={busy}
                 onClick={() => {
                   setTransferMode(null);
