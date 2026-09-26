@@ -68,6 +68,8 @@ describe("migration history integrity", () => {
     expect(workflow).toContain("Migration history immutability");
     expect(workflow).toContain("git diff --name-status --find-renames");
     expect(workflow).toContain("awk '$1 != \"A\" { print }'");
-    expect(workflow).toContain("Existing migration files may not be modified, deleted, copied, or renamed");
+    expect(workflow).toContain(
+      "Existing migration files may not be modified, deleted, copied, or renamed",
+    );
   });
 });
