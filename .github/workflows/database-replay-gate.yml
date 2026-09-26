@@ -1,0 +1,75 @@
+name: Database replay gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.118.0
+
+      # The historical 20260921060300 bootstrap migration intentionally promoted
+      # one already-existing verified admin account in production. A brand-new
+      # database has no auth users, so the replay gate injects an ephemeral local
+      # fixture immediately before that immutable historical migration. This file
+      # exists only inside the CI workspace and is never committed or deployed.
+      - name: Add local-only historical bootstrap fixture
+        run: |
+          cat > supabase/migrations/20260921060250_ci_super_admin_fixture.sql <<'SQL'
+          INSERT INTO auth.users (
+            id,
+            aud,
+            role,
+            email,
+            email_confirmed_at,
+            created_at,
+            updated_at,
+            raw_app_meta_data,
+            raw_user_meta_data
+          )
+          VALUES (
+            '00000000-0000-0000-0000-000000000076'::uuid,
+            'authenticated',
+            'authenticated',
+            'nikos76gr@gmail.com',
+            now(),
+            now(),
+            now(),
+            '{}'::jsonb,
+            '{}'::jsonb
+          );
+
+          DELETE FROM public.user_roles
+          WHERE user_id = '00000000-0000-0000-0000-000000000076'::uuid;
+
+          INSERT INTO public.user_roles (user_id, role, moderation_status)
+          VALUES (
+            '00000000-0000-0000-0000-000000000076'::uuid,
+            'admin'::public.app_role,
+            'active'
+          );
+          SQL
+
+      - name: Replay all migrations on a fresh local database
+        run: supabase db start
+
+      - name: Stop local Supabase database
+        if: always()
+        run: supabase stop --no-backup || true
