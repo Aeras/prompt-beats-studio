@@ -132,30 +132,10 @@ function AiModelEditor({
   const isGeneratorDefault = generatorDefault === model.providerModelId;
   const isQualityDefault = qualityDefault === model.providerModelId;
   const isAiToolsDefault = aiToolsDefault === model.providerModelId;
-  const isDefaultModel = isGeneratorDefault || isQualityDefault || isAiToolsDefault;
   const defaultRisk =
     (isGeneratorDefault && (!generatorEnabled || status !== "enabled")) ||
     (isQualityDefault && (!qualityEnabled || status !== "enabled")) ||
-    (isAiToolsDefault && (!generatorEnabled || status !== "enabled")) ||
-    (isDefaultModel && accessPolicy !== "all_users");
-
-  const defaultAccessMessage = isAiToolsDefault
-    ? language === "el"
-      ? "Το μοντέλο είναι προεπιλογή AI Tools και πρέπει να παραμένει διαθέσιμο σε όλους."
-      : "This model is the AI Tools default and must remain available to all users."
-    : isGeneratorDefault && isQualityDefault
-      ? t("aiModels.defaultAccessProtectionBoth")
-      : isGeneratorDefault
-        ? t("aiModels.defaultAccessProtectionGenerator")
-        : t("aiModels.defaultAccessProtectionQuality");
-
-  const handleAccessPolicyChange = (next: AdminAiModel["accessPolicy"]) => {
-    if (isDefaultModel && next !== "all_users") {
-      toast.error(defaultAccessMessage);
-      return;
-    }
-    setAccessPolicy(next);
-  };
+    (isAiToolsDefault && (!generatorEnabled || status !== "enabled"));
 
   const reasoningOptions: Array<[Reasoning, string]> = [
     [null, t("aiModels.providerDefault")],
@@ -235,20 +215,13 @@ function AiModelEditor({
               {t("aiModels.accessPolicy")}
               <select
                 value={accessPolicy}
-                onChange={(e) =>
-                  handleAccessPolicyChange(e.target.value as AdminAiModel["accessPolicy"])
-                }
+                onChange={(e) => setAccessPolicy(e.target.value as AdminAiModel["accessPolicy"])}
                 className="mt-1 w-full rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
               >
                 <option value="admin_only">{t("aiModels.adminOnly")}</option>
                 <option value="selected_users">{t("aiModels.selectedUsers")}</option>
                 <option value="all_users">{t("aiModels.allUsers")}</option>
               </select>
-              {isDefaultModel && (
-                <span className="mt-1 block text-[11px] text-amber-200">
-                  {defaultAccessMessage}
-                </span>
-              )}
             </label>
 
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 p-3 text-sm">
@@ -529,11 +502,7 @@ export function AiModelsPanel() {
   const generatorOptions = useMemo(
     () =>
       data?.models.filter(
-        (m) =>
-          m.status === "enabled" &&
-          m.accessPolicy === "all_users" &&
-          m.generatorCompatible &&
-          m.generatorEnabled,
+        (m) => m.status === "enabled" && m.generatorCompatible && m.generatorEnabled,
       ) ?? [],
     [data],
   );
@@ -541,11 +510,7 @@ export function AiModelsPanel() {
   const qualityOptions = useMemo(
     () =>
       data?.models.filter(
-        (m) =>
-          m.status === "enabled" &&
-          m.accessPolicy === "all_users" &&
-          m.qualityCheckCompatible &&
-          m.qualityCheckEnabled,
+        (m) => m.status === "enabled" && m.qualityCheckCompatible && m.qualityCheckEnabled,
       ) ?? [],
     [data],
   );
