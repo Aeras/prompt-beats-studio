@@ -209,6 +209,7 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
     await requireFeatureAccess(context.supabase, "inspiration_wall");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "inspiration_wall",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {

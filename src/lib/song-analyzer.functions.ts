@@ -1271,6 +1271,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
     await requireAnalyzerAccess(context);
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_analyzer",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
