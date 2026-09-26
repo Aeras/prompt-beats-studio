@@ -162,9 +162,6 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
     const disablingQuality =
       isQualityDefault &&
       (data.status !== "enabled" || !data.qualityCheckEnabled || !row.quality_check_compatible);
-    const restrictingDefaultAccess =
-      (isGeneratorDefault || isQualityDefault || isAiToolsDefault) &&
-      data.accessPolicy !== "all_users";
 
     if (disablingGenerator)
       throw new Error(
@@ -174,18 +171,6 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
       );
     if (disablingQuality)
       throw new Error("Select another Quality Check default before disabling this model.");
-    if (restrictingDefaultAccess) {
-      const usedBy = [
-        isGeneratorDefault ? "Generator" : null,
-        isQualityDefault ? "Quality Check" : null,
-        isAiToolsDefault ? "AI Tools" : null,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      throw new Error(
-        `A model used as the ${usedBy} default must remain available to all users. Select another default first.`,
-      );
-    }
 
     if (
       data.pricingStatus === "verified" &&
@@ -274,9 +259,6 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
           model.generator_compatible === true &&
           model.generator_enabled === true;
     if (!valid) throw new Error("That model is not eligible for this default.");
-    if (model.access_policy !== "all_users") {
-      throw new Error("A default AI model must be available to all users.");
-    }
 
     const key =
       data.operation === "generator"
