@@ -47,7 +47,7 @@ describe("FINAL-015 typed database and RPC boundaries", () => {
       "release_quality_check_internal",
       "consume_quality_check_internal",
     ]) {
-      expect(aiFinalization).toContain(`name: \"${rpc}\"`);
+      expect(aiFinalization).toContain(`name: "${rpc}"`);
     }
   });
 
