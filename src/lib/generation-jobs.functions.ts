@@ -394,7 +394,9 @@ export const getGenerationJob = createServerFn({ method: "POST" })
   });
 
 /**
- * Recovers the newest recent job after a refresh or a lost response.
+ * Recovers the newest active job after a refresh or a lost response.
+ * Completed jobs are recovered by their remembered job id, which prevents an
+ * older completed result from interrupting a new pre-generation planning step.
  * Dismissed jobs are never resurrected.
  */
 export const getLatestGenerationJob = createServerFn({ method: "POST" })
@@ -406,7 +408,7 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
       .select(JOB_COLUMNS)
       .eq("user_id", context.userId)
       .is("dismissed_at", null)
-      .in("status", ["pending", "processing", "completed"])
+      .in("status", ["pending", "processing"])
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(20);
