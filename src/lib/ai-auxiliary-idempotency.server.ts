@@ -44,13 +44,13 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
     throw new Error(
       claim.error || "This AI request already failed. Start a new request to try again.",
     );
-  if (
-    claim.status !== "claimed" ||
-    !auxiliaryRequestKeySchema.safeParse(claim.executionToken).success
-  )
-    throw new Error("The AI request could not be claimed. Please try again.");
 
-  const executionToken = claim.executionToken;
+  const executionTokenResult = auxiliaryRequestKeySchema.safeParse(claim.executionToken);
+  if (claim.status !== "claimed" || !executionTokenResult.success) {
+    throw new Error("The AI request could not be claimed. Please try again.");
+  }
+
+  const executionToken = executionTokenResult.data;
   try {
     let providerStarted = false;
     const markProviderStarted = async () => {
