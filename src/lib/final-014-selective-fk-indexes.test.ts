@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 
-const migrationPath =
-  "../../supabase/migrations/20260926133000_final_014_selective_fk_indexes.sql";
+const migrationPath = "../../supabase/migrations/20260926133000_final_014_selective_fk_indexes.sql";
 
 async function migration() {
   return readFile(new URL(migrationPath, import.meta.url), "utf8");
