@@ -28,7 +28,6 @@ import { Route as SongUniverseRouteImport } from './routes/song-universe'
 import { Route as StoryMapRouteImport } from './routes/story-map'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
-import { Route as ApiAvatarRouteImport } from './routes/api/avatar'
 import { Route as ApiTrackDownloadRouteImport } from './routes/api/track-download'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
@@ -136,11 +135,6 @@ const TrendingRoute = TrendingRouteImport.update({
   path: '/trending',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAvatarRoute = ApiAvatarRouteImport.update({
-  id: '/api/avatar',
-  path: '/api/avatar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiTrackDownloadRoute = ApiTrackDownloadRouteImport.update({
   id: '/api/track-download',
   path: '/api/track-download',
@@ -217,7 +211,6 @@ export interface FileRoutesByFullPath {
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
-  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -250,7 +243,6 @@ export interface FileRoutesByTo {
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
-  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -284,7 +276,6 @@ export interface FileRoutesById {
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
-  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -319,7 +310,6 @@ export interface FileRouteTypes {
     | '/story-map'
     | '/terms'
     | '/trending'
-    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -352,7 +342,6 @@ export interface FileRouteTypes {
     | '/story-map'
     | '/terms'
     | '/trending'
-    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -385,7 +374,6 @@ export interface FileRouteTypes {
     | '/story-map'
     | '/terms'
     | '/trending'
-    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -419,7 +407,6 @@ export interface RootRouteChildren {
   StoryMapRoute: typeof StoryMapRoute
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
-  ApiAvatarRoute: typeof ApiAvatarRoute
   ApiTrackDownloadRoute: typeof ApiTrackDownloadRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
@@ -568,13 +555,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrendingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/avatar': {
-      id: '/api/avatar'
-      path: '/api/avatar'
-      fullPath: '/api/avatar'
-      preLoaderRoute: typeof ApiAvatarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/track-download': {
       id: '/api/track-download'
       path: '/api/track-download'
@@ -675,7 +655,6 @@ const rootRouteChildren: RootRouteChildren = {
   StoryMapRoute: StoryMapRoute,
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
-  ApiAvatarRoute: ApiAvatarRoute,
   ApiTrackDownloadRoute: ApiTrackDownloadRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
