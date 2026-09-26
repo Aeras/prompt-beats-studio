@@ -1,0 +1,36 @@
+name: Mobile touch navigation once
+
+on:
+  push:
+    branches:
+      - feat/mobile-swipe-sidebar
+    paths:
+      - .github/workflows/mobile-touch-nav-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/mobile-swipe-sidebar
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: python scripts/mobile_touch_nav_patch.py
+      - run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/routes/generate.tsx src/routes/library.tsx src/lib/mobile-touch-navigation.test.ts .github/workflows/regression-gate.yml
+      - run: |
+          bun test src/lib/mobile-touch-navigation.test.ts
+          bun run lint
+          bunx tsc --noEmit --pretty false
+      - run: |
+          git config user.name "PromptBeats CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src .github/workflows/regression-gate.yml
+          git commit -m "Add touch swipe tabs and responsive sidebar behavior"
+          git push origin HEAD:feat/mobile-swipe-sidebar
