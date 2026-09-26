@@ -100,10 +100,7 @@ function TrackPage() {
   const canUseNativePlayer = canUseNativeTrackPlayer(track?.source_type);
   const artwork = track?.cover_url ?? (artist ? getUserAvatarUrl(artist.avatar_url) : artFallback);
   const canOpenSongReview = Boolean(
-    track &&
-    user &&
-    track.user_id === user.id &&
-    track.source_type === "upload",
+    track && user && track.user_id === user.id && track.source_type === "upload",
   );
 
   const trackId = track?.id;

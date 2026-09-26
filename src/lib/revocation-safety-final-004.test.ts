@@ -17,9 +17,21 @@ describe("FINAL-004 privacy revocation safety", () => {
   test("public share creation/update stay gated while owner listing/revocation remain available", async () => {
     const src = await source("src/lib/track-sharing.functions.ts");
 
-    const create = block(src, "export const createTrackShareLink", "export const updateTrackShareLink");
-    const update = block(src, "export const updateTrackShareLink", "export const revokeTrackShareLink");
-    const revoke = block(src, "export const revokeTrackShareLink", "export const recordTrackPublicShare");
+    const create = block(
+      src,
+      "export const createTrackShareLink",
+      "export const updateTrackShareLink",
+    );
+    const update = block(
+      src,
+      "export const updateTrackShareLink",
+      "export const revokeTrackShareLink",
+    );
+    const revoke = block(
+      src,
+      "export const revokeTrackShareLink",
+      "export const recordTrackPublicShare",
+    );
     const list = src.slice(src.indexOf("export const listMyShareManagement"));
 
     expect(create).toContain('requireFeatureAccess(context.supabase, "sharing_public_links")');
@@ -33,11 +45,31 @@ describe("FINAL-004 privacy revocation safety", () => {
   test("private review creation/replies stay gated while existing owner sessions can be listed, read and closed", async () => {
     const src = await source("src/lib/private-review.functions.ts");
 
-    const create = block(src, "export const createPrivateReviewSession", "export const createPrivateTrackReviewSession");
-    const createTrack = block(src, "export const createPrivateTrackReviewSession", "export const getPrivateReviewLinkInfo");
-    const list = block(src, "export const listMyPrivateReviewSessions", "export const getMyPrivateReviewSession");
-    const get = block(src, "export const getMyPrivateReviewSession", "export const closePrivateReviewSession");
-    const close = block(src, "export const closePrivateReviewSession", "export const addPrivateReviewCreatorReply");
+    const create = block(
+      src,
+      "export const createPrivateReviewSession",
+      "export const createPrivateTrackReviewSession",
+    );
+    const createTrack = block(
+      src,
+      "export const createPrivateTrackReviewSession",
+      "export const getPrivateReviewLinkInfo",
+    );
+    const list = block(
+      src,
+      "export const listMyPrivateReviewSessions",
+      "export const getMyPrivateReviewSession",
+    );
+    const get = block(
+      src,
+      "export const getMyPrivateReviewSession",
+      "export const closePrivateReviewSession",
+    );
+    const close = block(
+      src,
+      "export const closePrivateReviewSession",
+      "export const addPrivateReviewCreatorReply",
+    );
     const reply = src.slice(src.indexOf("export const addPrivateReviewCreatorReply"));
 
     expect(create).toContain('requireFeatureAccess(context.supabase, "private_review_links")');
@@ -64,13 +96,13 @@ describe("FINAL-004 privacy revocation safety", () => {
     expect(shared).toContain("You can still revoke any active link you already created.");
     expect(shared).toContain("disabled={!sharingAccess.allowed || updating === link.id}");
 
-    expect(history).toContain('canCreateNew={privateReviewFeature.allowed}');
-    expect(history).toContain('{versions.length > 0 && (');
-    expect(track).toContain('canCreateNew={privateReviewAccess.allowed}');
+    expect(history).toContain("canCreateNew={privateReviewFeature.allowed}");
+    expect(history).toContain("{versions.length > 0 && (");
+    expect(track).toContain("canCreateNew={privateReviewAccess.allowed}");
     expect(manager).toContain("canCreateNew?: boolean;");
     expect(manager).toContain("!canCreateNew ||");
     expect(manager).toContain("You can still view and close links you already created.");
     expect(manager).toContain('{canCreateNew && ownerSession.data.state === "active" && (');
-    expect(manager).toContain('{canCreateNew && replyParentId && (');
+    expect(manager).toContain("{canCreateNew && replyParentId && (");
   });
 });

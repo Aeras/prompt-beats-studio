@@ -207,7 +207,9 @@ export function SharedLinksPanel() {
                             type="button"
                             onClick={() => copy(link.token)}
                             className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
-                            aria-label={language === "el" ? "Αντιγραφή share link" : "Copy share link"}
+                            aria-label={
+                              language === "el" ? "Αντιγραφή share link" : "Copy share link"
+                            }
                           >
                             {copied === link.token ? (
                               <Check className="h-3.5 w-3.5 text-accent" />
@@ -222,7 +224,9 @@ export function SharedLinksPanel() {
                             onClick={() => revoke(link.id)}
                             disabled={revoking === link.id}
                             className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"
-                            aria-label={language === "el" ? "Ανάκληση share link" : "Revoke share link"}
+                            aria-label={
+                              language === "el" ? "Ανάκληση share link" : "Revoke share link"
+                            }
                           >
                             {revoking === link.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
