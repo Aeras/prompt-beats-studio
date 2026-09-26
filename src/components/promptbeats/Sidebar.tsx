@@ -1,13 +1,16 @@
 import { useState } from "react";
 import {
+  ArrowLeft,
   BarChart3,
   Compass,
+  ExternalLink,
   Flame,
   Library,
   Lightbulb,
   LogIn,
   LogOut,
   MapPinned,
+  Music2,
   Orbit,
   Plus,
   Sparkles,
@@ -60,6 +63,45 @@ const NAV_TO: Record<NavId, string> = {
   management: "/management",
 };
 
+const MUSIC_CREATION_PLATFORMS = [
+  {
+    name: "Suno",
+    url: "https://suno.com/",
+    descriptionEl: "Prompt, στίχοι και δομή για δημιουργία πλήρους τραγουδιού.",
+    descriptionEn: "Use prompts, lyrics, and song structure to create a full track.",
+  },
+  {
+    name: "Udio",
+    url: "https://www.udio.com/",
+    descriptionEl: "Prompt και custom στίχοι για δημιουργία και επεξεργασία τραγουδιού.",
+    descriptionEn: "Use prompts and custom lyrics to create and edit a song.",
+  },
+  {
+    name: "TopMediai",
+    url: "https://www.topmediai.com/app/ai-music/",
+    descriptionEl: "Στίχοι, style, mood και μουσικές οδηγίες για πλήρες τραγούδι.",
+    descriptionEn: "Use lyrics, style, mood, and musical direction for a full song.",
+  },
+  {
+    name: "Eleven Music",
+    url: "https://elevenlabs.io/music",
+    descriptionEl: "Prompt, στίχοι, όργανα και δομή για δημιουργία ολοκληρωμένου audio.",
+    descriptionEn: "Use prompts, lyrics, instruments, and structure to create complete audio.",
+  },
+  {
+    name: "Mureka",
+    url: "https://www.mureka.ai/",
+    descriptionEl: "Custom στίχοι και style με δομή Verse, Chorus και Bridge.",
+    descriptionEn: "Use custom lyrics and style with Verse, Chorus, and Bridge structure.",
+  },
+  {
+    name: "Producer.ai",
+    url: "https://www.producer.ai/",
+    descriptionEl: "Sound direction και στίχοι για δημιουργία full-length τραγουδιών.",
+    descriptionEn: "Use sound direction and lyrics to create full-length songs.",
+  },
+] as const;
+
 export function SidebarNav({
   active,
   onNavigate,
@@ -81,6 +123,7 @@ export function SidebarNav({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [externalPlatformsOpen, setExternalPlatformsOpen] = useState(false);
   const signOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -104,68 +147,141 @@ export function SidebarNav({
         </div>
       </div>
 
-      <nav className="flex flex-col gap-1">
-        {NAV.filter(
-          (item) =>
-            (item.id !== "studio" || generatorAccess.allowed) &&
-            (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
-            (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
-            (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
-            (item.id !== "storyMap" || storyMapAccess.allowed) &&
-            (item.id !== "songUniverse" || songUniverseAccess.allowed) &&
-            (!STAFF_ONLY.includes(item.id) || canViewUsers),
-        ).map((item) => {
-          const isActive = active === item.id;
-          const fallbackLabel =
-            item.id === "songAnalyzer"
-              ? "AI Song Analyzer"
-              : item.id === "lyricsReview"
-                ? "Lyrics Review"
-                : item.id === "inspirationWall"
-                  ? "Inspiration Wall"
-                  : item.id === "storyMap"
-                    ? "Story Map"
-                    : item.id === "songUniverse"
-                      ? "Song Universes"
-                      : item.id;
-          return (
-            <Link
-              key={item.id}
-              to={NAV_TO[item.id]}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
-                isActive
-                  ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-              )}
-            >
-              <item.icon
-                className={cn(
-                  "h-[18px] w-[18px] shrink-0 transition-all",
-                  isActive
-                    ? "text-primary drop-shadow-[0_0_8px_var(--neon)]"
-                    : "group-hover:text-accent",
-                )}
-              />
-              <span className="truncate">{item.labelKey ? t(item.labelKey) : fallbackLabel}</span>
-              {isActive && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      {externalPlatformsOpen ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setExternalPlatformsOpen(false)}
+            className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {language === "el" ? "Επιστροφή" : "Back"}
+          </button>
 
-      {!isBanned && (
-        <button
-          onClick={onSubmit}
-          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
-        >
-          <Plus className="h-4 w-4" />
-          {t("nav.submitTrack")}
-        </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <Music2 className="h-5 w-5 text-accent" />
+              <h2 className="font-display text-base font-bold text-foreground">
+                {language === "el" ? "Πλατφόρμες δημιουργίας μουσικής" : "Music creation platforms"}
+              </h2>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {language === "el"
+                ? "Το PromptBeats σας βοηθά να αναπτύξετε την ιδέα, τους στίχους, τη δομή και το prompt του τραγουδιού σας. Για τη δημιουργία του τελικού audio μπορείτε να συνεχίσετε σε μία εξωτερική πλατφόρμα μουσικής."
+                : "PromptBeats helps you develop your song idea, lyrics, structure, and prompt. To create the final audio, you can continue on an external music platform."}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {MUSIC_CREATION_PLATFORMS.map((platform) => (
+              <a
+                key={platform.name}
+                href={platform.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  setExternalPlatformsOpen(false);
+                  onNavigate();
+                }}
+                className="group flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3 transition-colors hover:border-accent/35 hover:bg-accent/[0.05]"
+              >
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/20 bg-accent/[0.07] text-xs font-bold text-accent">
+                  {platform.name.slice(0, 1)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">{platform.name}</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-accent" />
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                    {language === "el" ? platform.descriptionEl : platform.descriptionEn}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <nav className="flex flex-col gap-1">
+            {NAV.filter(
+              (item) =>
+                (item.id !== "studio" || generatorAccess.allowed) &&
+                (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
+                (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
+                (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
+                (item.id !== "storyMap" || storyMapAccess.allowed) &&
+                (item.id !== "songUniverse" || songUniverseAccess.allowed) &&
+                (!STAFF_ONLY.includes(item.id) || canViewUsers),
+            ).map((item) => {
+              const isActive = active === item.id;
+              const fallbackLabel =
+                item.id === "songAnalyzer"
+                  ? "AI Song Analyzer"
+                  : item.id === "lyricsReview"
+                    ? "Lyrics Review"
+                    : item.id === "inspirationWall"
+                      ? "Inspiration Wall"
+                      : item.id === "storyMap"
+                        ? "Story Map"
+                        : item.id === "songUniverse"
+                          ? "Song Universes"
+                          : item.id;
+              return (
+                <Link
+                  key={item.id}
+                  to={NAV_TO[item.id]}
+                  onClick={onNavigate}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
+                    isActive
+                      ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-[18px] w-[18px] shrink-0 transition-all",
+                      isActive
+                        ? "text-primary drop-shadow-[0_0_8px_var(--neon)]"
+                        : "group-hover:text-accent",
+                    )}
+                  />
+                  <span className="truncate">
+                    {item.labelKey ? t(item.labelKey) : fallbackLabel}
+                  </span>
+                  {isActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {!isBanned && (
+            <button
+              onClick={onSubmit}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.02] active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              {t("nav.submitTrack")}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setExternalPlatformsOpen(true)}
+            className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:border-accent/35 hover:bg-accent/[0.05] hover:text-foreground"
+          >
+            <Music2 className="h-[18px] w-[18px] shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 leading-snug">
+              {language === "el" ? "Πλατφόρμες δημιουργίας μουσικής" : "Music creation platforms"}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </button>
+        </>
       )}
+
       <div className="mt-auto">
         {user ? (
           <div className="glass flex items-center gap-3 rounded-2xl p-3">
