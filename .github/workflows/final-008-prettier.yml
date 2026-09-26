@@ -1,0 +1,39 @@
+name: FINAL-008 prettier
+
+on:
+  push:
+    branches:
+      - fix/final-008-ai-finalization-authority
+    paths:
+      - .github/workflows/final-008-prettier.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-008-ai-finalization-authority
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Format only FINAL-008 files
+        run: |
+          bunx prettier --write \
+            src/lib/ai-finalization.server.ts \
+            src/lib/ai.functions.ts \
+            src/lib/ai-auxiliary-idempotency.server.ts \
+            src/lib/final-008-ai-finalization-authority.test.ts \
+            src/lib/ai-auxiliary-idempotency-f7-03.test.ts
+          rm .github/workflows/final-008-prettier.yml
+      - name: Commit formatting
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/lib .github/workflows/final-008-prettier.yml
+          git commit -m "Format FINAL-008 files"
+          git push origin HEAD:fix/final-008-ai-finalization-authority
