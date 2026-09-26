@@ -19,6 +19,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Migration history immutability
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="$PR_BASE_SHA"
+            HEAD_SHA="$PR_HEAD_SHA"
+          else
+            BASE_SHA="$PUSH_BASE_SHA"
+            HEAD_SHA="$PUSH_HEAD_SHA"
+            if [[ "$BASE_SHA" =~ ^0+$ ]]; then
+              BASE_SHA="${HEAD_SHA}^"
+            fi
+          fi
+
+          echo "Checking migrations changed between $BASE_SHA and $HEAD_SHA"
+          CHANGES="$(git diff --name-status --find-renames "$BASE_SHA" "$HEAD_SHA" -- supabase/migrations || true)"
+          if [ -z "$CHANGES" ]; then
+            echo "No migration files changed."
+            exit 0
+          fi
+
+          echo "$CHANGES"
+          VIOLATIONS="$(printf '%s\n' "$CHANGES" | awk '$1 != "A" { print }')"
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Applied migration history is immutable. Existing migration files may not be modified, deleted, copied, or renamed. Add a new forward migration instead."
+            printf '%s\n' "$VIOLATIONS"
+            exit 1
+          fi
+
+          echo "Only new forward migration files were added."
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
