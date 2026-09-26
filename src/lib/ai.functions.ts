@@ -2231,10 +2231,9 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       };
     }
 
-    const { markQualityCheckProviderStarted, releaseQualityCheck } = await import(
-    "@/lib/ai-finalization.server"
-  );
-  await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);
+    const { markQualityCheckProviderStarted, releaseQualityCheck } =
+      await import("@/lib/ai-finalization.server");
+    await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);
 
     let quality: QualityReport | null;
     try {
@@ -2263,12 +2262,12 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     let consumedId: string;
     try {
       consumedId = await consumeCreation(
-      context.userId,
-      data.idempotencyKey,
-      quality,
-      provider,
-      model,
-    );
+        context.userId,
+        data.idempotencyKey,
+        quality,
+        provider,
+        model,
+      );
     } catch {
       // Do not release a post-provider claim: releasing it would allow a retry
       // to invoke the paid provider a second time. The idempotency row remains

@@ -57,10 +57,13 @@ export async function failAuxiliaryAiRequest(input: {
 }
 
 export async function markQualityCheckProviderStarted(userId: string, idempotencyKey: string) {
-  const { error } = await (supabaseAdmin as any).rpc("mark_quality_check_provider_started_internal", {
-    _user_id: userId,
-    _idempotency_key: idempotencyKey,
-  });
+  const { error } = await (supabaseAdmin as any).rpc(
+    "mark_quality_check_provider_started_internal",
+    {
+      _user_id: userId,
+      _idempotency_key: idempotencyKey,
+    },
+  );
   if (error) {
     throw new Error("The quality check could not be started. Please try again.");
   }
