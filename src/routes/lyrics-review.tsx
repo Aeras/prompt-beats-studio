@@ -43,6 +43,8 @@ import { replaceLyricsSection } from "@/lib/lyrics-sections";
 import type { LyricsSectionEditOutput } from "@/lib/lyrics-workspace.shared";
 import { DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
 import { cn } from "@/lib/utils";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 
 const searchSchema = z.object({
   source: z.enum(["project", "generator"]).optional(),
@@ -80,6 +82,7 @@ function LyricsReviewPage() {
   const { language: appLanguage } = useI18n();
   const el = appLanguage === "el";
   const { user, loading } = useAuth();
+  const { preferences: accountPreferences } = useAccountPreferences();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const mode = sourceMode(search);
@@ -119,6 +122,28 @@ function LyricsReviewPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const lyricsReviewDraftScope =
+    mode === "project"
+      ? `lyrics-review:project:${search.project ?? "none"}:${search.version ?? "latest"}`
+      : mode === "generator"
+        ? `lyrics-review:generator:${search.handoff ?? "none"}`
+        : "lyrics-review:standalone";
+  const clearLyricsReviewDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: lyricsReviewDraftScope,
+    enabled: Boolean(user && sourceReady && accountPreferences.autoSaveDrafts),
+    value: { title, lyrics, languageCode, manualLanguage },
+    onRestore: (draft) => {
+      setTitle(draft.title);
+      setLyrics(draft.lyrics);
+      setLanguageCode(draft.languageCode);
+      setManualLanguage(draft.manualLanguage);
+    },
+    isEmpty: (draft) =>
+      mode === "standalone"
+        ? !draft.title.trim() && !draft.lyrics.trim()
+        : draft.lyrics === baselineLyrics,
+  });
 
   const modelAccess = useQuery({
     queryKey: ["lyrics-review", "model-access"],
@@ -379,6 +404,7 @@ function LyricsReviewPage() {
           mode: saveMode,
         },
       });
+      clearLyricsReviewDraft();
       setBaselineLyrics(lyrics);
       setLastApplied(null);
       await Promise.all([
@@ -425,6 +451,7 @@ function LyricsReviewPage() {
       )
     )
       return;
+    clearLyricsReviewDraft();
     writeLyricsReviewGeneratorHandoff({
       ...generatorHandoff,
       returnMode: apply ? "apply" : "discard",
@@ -443,6 +470,7 @@ function LyricsReviewPage() {
       )
     )
       return;
+    clearLyricsReviewDraft();
     void navigate({ to: "/" });
   };
 

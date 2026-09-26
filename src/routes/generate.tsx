@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
@@ -1674,6 +1675,64 @@ function GeneratePage() {
     targetPlatform,
     generationModel: generationModel || null,
   };
+  const generatorDraftScope = revisionMode
+    ? `generator:revision:${revisionProjectId || "none"}:${revisionBasePromptId || "none"}`
+    : "generator:new";
+  const clearGeneratorDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: generatorDraftScope,
+    enabled: Boolean(user && accountPreferences.autoSaveDrafts && search.workspace !== "lyrics"),
+    value: { snapshot: currentSnapshot, revisionRequest },
+    onRestore: (draft) => {
+      const snapshot = draft.snapshot;
+      setAdvanced(snapshot.generatorMode !== "basic");
+      setTargetPlatform(snapshot.targetPlatform);
+      setTheme(snapshot.theme);
+      setGenres([...snapshot.selectedMusicStyles]);
+      setCustomGenre(snapshot.customMusicStyle);
+      setMoods([...snapshot.selectedMoods]);
+      setCustomMood(snapshot.customMood);
+      setInstruments([...snapshot.selectedInstruments]);
+      setCustomInstruments(snapshot.customInstruments);
+      setBpm(snapshot.bpmMode || "Auto");
+      setCustomBpm(snapshot.customBpm);
+      setStructure([...snapshot.songStructure]);
+      setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
+      setActiveSmartPresetId(snapshot.smartPresetId ?? "");
+      setPresetCulturalStyleId(snapshot.culturalStyleId || "");
+      setProduction(snapshot.productionStyle);
+      setInstructions(snapshot.additionalInstructions);
+      setLanguage(snapshot.language);
+      setLanguageVariant(snapshot.languageVariant ?? "");
+      setCustomLanguage(snapshot.customLanguage);
+      if (snapshot.generationModel) {
+        setGenerationModel(snapshot.generationModel);
+        setGenerationModelChosen(true);
+      }
+      setRevisionRequest(draft.revisionRequest ?? "");
+    },
+    isEmpty: (draft) => {
+      const snapshot = draft.snapshot;
+      return (
+        !snapshot.theme &&
+        snapshot.selectedMusicStyles.length === 0 &&
+        !snapshot.customMusicStyle &&
+        snapshot.selectedMoods.length === 0 &&
+        !snapshot.customMood &&
+        !snapshot.language &&
+        !snapshot.customLanguage &&
+        snapshot.selectedInstruments.length === 0 &&
+        !snapshot.customInstruments &&
+        snapshot.bpmMode === "Auto" &&
+        !snapshot.customBpm &&
+        snapshot.songStructure.length === 0 &&
+        !snapshot.productionStyle &&
+        !snapshot.additionalInstructions &&
+        !snapshot.smartPresetId &&
+        !draft.revisionRequest.trim()
+      );
+    },
+  });
   const revisionReady =
     !revisionMode ||
     (!!revisionProjectId &&
@@ -2198,6 +2257,7 @@ ${narrativePlan.beats
         setClearing(false);
       }
     }
+    clearGeneratorDraft();
     setTheme("");
     setGenres([]);
     setCustomGenre("");

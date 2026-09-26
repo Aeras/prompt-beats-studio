@@ -14,6 +14,7 @@ import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { useExplicitContentPreference } from "@/components/promptbeats/TrackSourceFilter";
 import { useExternalMediaConsent } from "@/lib/external-media-consent";
 import { useAccountPreferences, type AccountPreferences } from "@/lib/account-preferences";
+import { clearAllDraftAutosaves } from "@/lib/draft-autosave";
 import { LIBRARY_TABS } from "@/lib/library-tabs";
 import { useI18n } from "@/i18n";
 
@@ -34,6 +35,7 @@ type InfoKey =
   | "lyricsPublic"
   | "allowDownload"
   | "exportFormat"
+  | "autoSaveDrafts"
   | "externalMedia"
   | "explicit";
 
@@ -111,7 +113,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
   const { language } = useI18n();
   const external = useExternalMediaConsent();
   const explicit = useExplicitContentPreference();
-  const { preferences, setPreference, signedIn } = useAccountPreferences();
+  const { preferences, setPreference, signedIn, userId } = useAccountPreferences();
   const [info, setInfo] = useState<InfoKey | null>(null);
   const [saveError, setSaveError] = useState("");
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -141,6 +143,19 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
         error instanceof Error ? error.message : el ? "Η αποθήκευση απέτυχε." : "Saving failed.",
       );
     });
+  };
+
+  const saveAutoSaveDrafts = (value: boolean) => {
+    setSaveError("");
+    void setPreference("autoSaveDrafts", value)
+      .then(() => {
+        if (!value) clearAllDraftAutosaves(userId);
+      })
+      .catch((error) => {
+        setSaveError(
+          error instanceof Error ? error.message : el ? "Η αποθήκευση απέτυχε." : "Saving failed.",
+        );
+      });
   };
 
   const toggleInfo = (key: InfoKey) => setInfo((current) => (current === key ? null : key));
@@ -295,6 +310,35 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
 
           {signedIn && (
             <>
+              <section className="relative py-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">
+                    {el ? "Αυτόματη αποθήκευση drafts" : "Auto-save drafts"}
+                  </h3>
+                  <InfoButton
+                    infoKey="autoSaveDrafts"
+                    active={info === "autoSaveDrafts"}
+                    onToggle={toggleInfo}
+                    label={infoLabel}
+                  />
+                </div>
+                <Segmented
+                  value={preferences.autoSaveDrafts}
+                  options={[
+                    { value: true, label: el ? "Ενεργό" : "On" },
+                    { value: false, label: el ? "Ανενεργό" : "Off" },
+                  ]}
+                  onChange={saveAutoSaveDrafts}
+                />
+                {info === "autoSaveDrafts" && (
+                  <InfoPopover>
+                    {el
+                      ? "Κρατά τοπικά στον browser τις μη ολοκληρωμένες αλλαγές στα δημιουργικά editors και τις επαναφέρει μετά από refresh, κλείσιμο ή επιστροφή. Οι κανονικές αποθηκεύσεις και τα Project versions παραμένουν η επίσημη πηγή αλήθειας. Αν το απενεργοποιήσεις, διαγράφονται τα τοπικά drafts αυτής της συσκευής."
+                      : "Keeps unfinished changes locally in this browser across creative editors and restores them after refresh, closing, or returning. Explicit saves and Project versions remain the canonical source of truth. Turning this off clears local drafts on this device."}
+                  </InfoPopover>
+                )}
+              </section>
+
               <section className="relative py-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">

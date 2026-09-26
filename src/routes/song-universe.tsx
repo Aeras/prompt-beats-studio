@@ -17,6 +17,8 @@ import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUnive
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
   analyzeSongUniverseContinuity,
@@ -200,6 +202,7 @@ function UniverseEditor({
   onDeleted: () => void;
 }) {
   const { language } = useI18n();
+  const { preferences, userId } = useAccountPreferences();
   const el = language === "el";
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -207,6 +210,23 @@ function UniverseEditor({
   const [description, setDescription] = useState(universe.description ?? "");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
   const [projectId, setProjectId] = useState("");
+  useDraftAutosave({
+    ownerId: userId,
+    scope: `song-universe:${universe.id}`,
+    enabled: preferences.autoSaveDrafts,
+    value: { title, description, newItem, projectId },
+    onRestore: (draft) => {
+      setTitle(draft.title);
+      setDescription(draft.description);
+      setNewItem(draft.newItem);
+      setProjectId(draft.projectId);
+    },
+    isEmpty: (draft) =>
+      draft.title === universe.title &&
+      draft.description === (universe.description ?? "") &&
+      Object.values(draft.newItem).every((value) => !value.trim()) &&
+      !draft.projectId,
+  });
 
   const options = useQuery({
     queryKey: ["song-universe-project-options"],

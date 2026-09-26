@@ -98,4 +98,36 @@ describe("Settings and track source preferences", () => {
     expect(badge).toContain("surface.hidden = hideExplicit");
     expect(badge).toContain('data-pb-explicit-badge="true"');
   });
+
+  test("Auto-save drafts is account-backed and covers all creative editors", async () => {
+    const preferences = await source("src/lib/account-preferences.ts");
+    expect(preferences).toContain("autoSaveDrafts: boolean");
+    expect(preferences).toContain('autoSaveDrafts: "auto_save_drafts"');
+    expect(preferences).toContain("autoSaveDrafts: true");
+
+    const settings = await source("src/components/promptbeats/SettingsPanel.tsx");
+    expect(settings).toContain('"Auto-save drafts"');
+    expect(settings).toContain('"Αυτόματη αποθήκευση drafts"');
+    expect(settings).toContain("clearAllDraftAutosaves(userId)");
+
+    const helper = await source("src/lib/draft-autosave.ts");
+    expect(helper).toContain('const DRAFT_PREFIX = "pb:draft:v1"');
+    expect(helper).toContain("DEFAULT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
+    expect(helper).toContain("export function useDraftAutosave");
+
+    for (const file of [
+      "src/routes/generate.tsx",
+      "src/components/promptbeats/LyricsWorkspace.tsx",
+      "src/routes/lyrics-review.tsx",
+      "src/components/promptbeats/SongSetupAssistantModal.tsx",
+      "src/components/promptbeats/StudioModal.tsx",
+      "src/components/promptbeats/PromptStandaloneDialogs.tsx",
+      "src/routes/song-universe.tsx",
+      "src/routes/library.tsx",
+      "src/routes/story-map.tsx",
+      "src/routes/inspiration-wall.tsx",
+    ]) {
+      expect(await source(file)).toContain("useDraftAutosave");
+    }
+  });
 });

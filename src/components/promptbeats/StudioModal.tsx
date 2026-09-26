@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, X, Wand2, Loader2, Music, Plus, Trash2, ImagePlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ import {
   useAccountPreferences,
   type AccountPreferences,
 } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 
 type Row = {
   key: string;
@@ -39,6 +40,8 @@ type Row = {
   prompt: string;
   lyrics: string;
 };
+
+type RowDraft = Omit<Row, "file" | "cover">;
 
 type SubmitTrackDefaults = Pick<
   AccountPreferences,
@@ -79,6 +82,25 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const initialDefaultsAppliedRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const serializableRows = useMemo<RowDraft[]>(
+    () => rows.map(({ file: _file, cover: _cover, ...row }) => row),
+    [rows],
+  );
+  const clearStudioDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: "submit-track",
+    enabled: open && preferences.autoSaveDrafts,
+    value: serializableRows,
+    onRestore: (saved) => setRows(saved.map((row) => ({ ...row, file: null, cover: null }))),
+    isEmpty: (saved) =>
+      saved.length === 1 &&
+      !saved[0]?.sourceUrl.trim() &&
+      !saved[0]?.title.trim() &&
+      !saved[0]?.genre &&
+      !saved[0]?.customGenre.trim() &&
+      !saved[0]?.prompt.trim() &&
+      !saved[0]?.lyrics.trim(),
+  });
 
   useEffect(() => {
     if (!open || initialDefaultsAppliedRef.current) return;
@@ -267,6 +289,7 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       }
       await queryClient.invalidateQueries({ queryKey: ["tracks"] });
       setStatus(t("studio.published", { count: rows.length }));
+      clearStudioDraft();
       setRows([emptyRow(preferences)]);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : t("auth.somethingWrong"));

@@ -13,6 +13,8 @@ import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { generateSongSetup, type SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import { AI_TARGET_PLATFORM_LABEL, type AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n, type AppTranslationKey } from "@/i18n";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
@@ -93,6 +95,7 @@ export function SongSetupAssistantModal({
   prefillKey?: string | null;
 }) {
   const { language, t } = useI18n();
+  const { preferences, userId } = useAccountPreferences();
   const text = copy[language];
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState<SongSetupDraft | null>(null);
@@ -100,6 +103,17 @@ export function SongSetupAssistantModal({
   const [error, setError] = useState<string | null>(null);
   const requestKeyRef = useRef<string | null>(null);
   const aiModel = useAiModelSelection("aiTools");
+  const clearSongSetupDraft = useDraftAutosave({
+    ownerId: userId,
+    scope: `song-setup:${prefillKey ?? targetPlatform}`,
+    enabled: open && preferences.autoSaveDrafts,
+    value: { description, draft },
+    onRestore: (saved) => {
+      setDescription(saved.description);
+      setDraft(saved.draft);
+    },
+    isEmpty: (saved) => !saved.description.trim() && saved.draft === null,
+  });
 
   useEffect(() => {
     if (!open || !prefillKey || !prefillDescription) return;
@@ -133,6 +147,7 @@ export function SongSetupAssistantModal({
 
   const reset = () => {
     if (busy) return;
+    clearSongSetupDraft();
     setDescription("");
     setDraft(null);
     setError(null);
@@ -289,6 +304,7 @@ export function SongSetupAssistantModal({
               type="button"
               onClick={() => {
                 onApply(draft);
+                clearSongSetupDraft();
                 onOpenChange(false);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground glow-neon"
