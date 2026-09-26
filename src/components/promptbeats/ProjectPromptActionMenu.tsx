@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Copy, FolderInput, FolderX, Loader2, X } from "lucide-react";
 
 import type { LibraryActionMenuAnchor } from "./LibraryItemActionSheet";
@@ -97,9 +98,17 @@ export function ProjectPromptActionMenu({
     if (!open || !anchor || typeof window === "undefined") return;
     const width = 270;
     const estimatedHeight = 220;
+    const viewportPadding = 12;
+    const triggerOverlap = 8;
     setPosition({
-      x: Math.max(12, Math.min(anchor.x, window.innerWidth - width - 12)),
-      y: Math.max(12, Math.min(anchor.y, window.innerHeight - estimatedHeight - 12)),
+      x: Math.max(
+        viewportPadding,
+        Math.min(anchor.x - width + triggerOverlap, window.innerWidth - width - viewportPadding),
+      ),
+      y: Math.max(
+        viewportPadding,
+        Math.min(anchor.y, window.innerHeight - estimatedHeight - viewportPadding),
+      ),
     });
   }, [anchor, open]);
 
@@ -194,7 +203,9 @@ export function ProjectPromptActionMenu({
     setDestinationProjectId("");
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
       {open && anchor && (
         <>
@@ -358,6 +369,7 @@ export function ProjectPromptActionMenu({
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body,
   );
 }
