@@ -7,15 +7,12 @@ export async function markAuxiliaryAiProviderStarted(input: {
   requestKey: string;
   executionToken: string;
 }) {
-  const { data, error } = await (supabaseAdmin as any).rpc(
-    "mark_auxiliary_ai_provider_started_internal",
-    {
-      _user_id: input.userId,
-      _operation: input.operation,
-      _request_key: input.requestKey,
-      _execution_token: input.executionToken,
-    },
-  );
+  const { data, error } = await supabaseAdmin.rpc("mark_auxiliary_ai_provider_started_internal", {
+    _user_id: input.userId,
+    _operation: input.operation,
+    _request_key: input.requestKey,
+    _execution_token: input.executionToken,
+  });
   if (error || data !== true) {
     throw new Error("The AI request could not start safely. Please try again.");
   }
@@ -28,7 +25,7 @@ export async function completeAuxiliaryAiRequest(input: {
   executionToken: string;
   result: unknown;
 }) {
-  const { error } = await (supabaseAdmin as any).rpc("complete_auxiliary_ai_request_internal", {
+  const { error } = await supabaseAdmin.rpc("complete_auxiliary_ai_request_internal", {
     _user_id: input.userId,
     _operation: input.operation,
     _request_key: input.requestKey,
@@ -47,7 +44,7 @@ export async function failAuxiliaryAiRequest(input: {
   executionToken: string;
   errorMessage: string;
 }) {
-  await (supabaseAdmin as any).rpc("fail_auxiliary_ai_request_internal", {
+  await supabaseAdmin.rpc("fail_auxiliary_ai_request_internal", {
     _user_id: input.userId,
     _operation: input.operation,
     _request_key: input.requestKey,
@@ -57,20 +54,17 @@ export async function failAuxiliaryAiRequest(input: {
 }
 
 export async function markQualityCheckProviderStarted(userId: string, idempotencyKey: string) {
-  const { error } = await (supabaseAdmin as any).rpc(
-    "mark_quality_check_provider_started_internal",
-    {
-      _user_id: userId,
-      _idempotency_key: idempotencyKey,
-    },
-  );
+  const { error } = await supabaseAdmin.rpc("mark_quality_check_provider_started_internal", {
+    _user_id: userId,
+    _idempotency_key: idempotencyKey,
+  });
   if (error) {
     throw new Error("The quality check could not be started. Please try again.");
   }
 }
 
 export async function releaseQualityCheck(userId: string, idempotencyKey: string) {
-  await (supabaseAdmin as any).rpc("release_quality_check_internal", {
+  await supabaseAdmin.rpc("release_quality_check_internal", {
     _user_id: userId,
     _idempotency_key: idempotencyKey,
   });
@@ -83,7 +77,7 @@ export async function consumeQualityCheck(input: {
   provider: string;
   model: string;
 }) {
-  const { data, error } = await (supabaseAdmin as any).rpc("consume_quality_check_internal", {
+  const { data, error } = await supabaseAdmin.rpc("consume_quality_check_internal", {
     _user_id: input.userId,
     _idempotency_key: input.idempotencyKey,
     _quality_report: input.qualityReport,
