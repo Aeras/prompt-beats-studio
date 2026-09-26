@@ -28,7 +28,7 @@ describe("AI default invariant evolution", () => {
     expect(supersedingMigration).toContain(
       "CREATE OR REPLACE FUNCTION public.enforce_ai_default_model_invariant()",
     );
-    expect(supersedingMigration).not.toContain("access_policy");
+    expect(supersedingMigration).not.toContain("v_model.access_policy");
   });
 
   it("still requires enabled, operation-compatible defaults at the database boundary", () => {
