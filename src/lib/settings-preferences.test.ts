@@ -131,4 +131,25 @@ describe("Settings and track source preferences", () => {
       expect(await source(file)).toContain("useDraftAutosave");
     }
   });
+
+  test("Settings orders App language before Generator defaults", async () => {
+    const settings = await source("src/components/promptbeats/SettingsPanel.tsx");
+    const appLanguage = settings.indexOf('"Γλώσσα εφαρμογής"');
+    const generatorLanguage = settings.indexOf('"Προεπιλεγμένη γλώσσα Generator"');
+    const generatorMode = settings.indexOf('"Προεπιλεγμένο Generator mode"');
+    expect(appLanguage).toBeGreaterThan(-1);
+    expect(generatorLanguage).toBeGreaterThan(appLanguage);
+    expect(generatorMode).toBeGreaterThan(generatorLanguage);
+  });
+
+  test("Generator waits for persisted account mode and clears drafts only on intentional route exit", async () => {
+    const generator = await source("src/routes/generate.tsx");
+    expect(generator).toContain("signedIn: accountPreferencesReady");
+    expect(generator).toContain(
+      "if (defaultGeneratorModeAppliedRef.current || !accountPreferencesReady) return",
+    );
+    expect(generator).toContain('accountPreferences.generatorMode === "advanced"');
+    expect(generator).toContain('window.addEventListener("beforeunload", markPageUnload)');
+    expect(generator).toContain("if (!generatorPageUnloadRef.current) clearGeneratorDraft()");
+  });
 });

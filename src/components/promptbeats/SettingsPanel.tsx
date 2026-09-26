@@ -222,6 +222,26 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <div className="divide-y divide-white/10 px-4 pb-5">
+          <section className="relative py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">{el ? "Γλώσσα εφαρμογής" : "App language"}</h3>
+              <InfoButton
+                infoKey="appLanguage"
+                active={info === "appLanguage"}
+                onToggle={toggleInfo}
+                label={infoLabel}
+              />
+            </div>
+            <LanguageSelector className="mt-2 border-white/10 bg-black/20" />
+            {info === "appLanguage" && (
+              <InfoPopover>
+                {el
+                  ? "Αλλάζει τη γλώσσα του περιβάλλοντος του PromptBeats. Η επιλογή αποθηκεύεται στον λογαριασμό σου."
+                  : "Changes the PromptBeats interface language. The choice is saved to your account."}
+              </InfoPopover>
+            )}
+          </section>
+
           {signedIn && (
             <>
               <section className="relative py-3.5">
@@ -287,26 +307,6 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
               </section>
             </>
           )}
-
-          <section className="relative py-3.5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold">{el ? "Γλώσσα εφαρμογής" : "App language"}</h3>
-              <InfoButton
-                infoKey="appLanguage"
-                active={info === "appLanguage"}
-                onToggle={toggleInfo}
-                label={infoLabel}
-              />
-            </div>
-            <LanguageSelector className="mt-2 border-white/10 bg-black/20" />
-            {info === "appLanguage" && (
-              <InfoPopover>
-                {el
-                  ? "Αλλάζει τη γλώσσα του περιβάλλοντος του PromptBeats. Η επιλογή αποθηκεύεται στον λογαριασμό σου."
-                  : "Changes the PromptBeats interface language. The choice is saved to your account."}
-              </InfoPopover>
-            )}
-          </section>
 
           {signedIn && (
             <>

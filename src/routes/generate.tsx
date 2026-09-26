@@ -835,7 +835,8 @@ function ResultSection({
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
-  const { preferences: accountPreferences } = useAccountPreferences();
+  const { preferences: accountPreferences, signedIn: accountPreferencesReady } =
+    useAccountPreferences();
   const generatorFeature = useFeatureAccess("ai_generator");
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
@@ -989,20 +990,21 @@ function GeneratePage() {
   const languageRequiredRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (defaultGeneratorModeAppliedRef.current || !user) return;
+    if (defaultGeneratorModeAppliedRef.current || !accountPreferencesReady) return;
     defaultGeneratorModeAppliedRef.current = true;
     if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics")
       return;
-    // Never downgrade a mode already promoted by a handoff/recovery path. The account
-    // default only upgrades an otherwise fresh Basic Generator to Advanced.
+    // useAccountPreferences has its own auth subscription. Wait until that subscription
+    // has the signed-in user's metadata before consuming the account default; otherwise
+    // the initial fallback "basic" can win the one-time initialization race.
     if (!advanced && accountPreferences.generatorMode === "advanced") setAdvanced(true);
   }, [
     accountPreferences.generatorMode,
+    accountPreferencesReady,
     advanced,
     search.mode,
     search.presets,
     search.workspace,
-    user,
   ]);
 
   useEffect(() => {
@@ -1733,6 +1735,20 @@ function GeneratePage() {
       );
     },
   });
+  const generatorPageUnloadRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    generatorPageUnloadRef.current = false;
+    const markPageUnload = () => {
+      generatorPageUnloadRef.current = true;
+    };
+    window.addEventListener("beforeunload", markPageUnload);
+    return () => {
+      window.removeEventListener("beforeunload", markPageUnload);
+      if (!generatorPageUnloadRef.current) clearGeneratorDraft();
+    };
+  }, [clearGeneratorDraft]);
+
   const revisionReady =
     !revisionMode ||
     (!!revisionProjectId &&
