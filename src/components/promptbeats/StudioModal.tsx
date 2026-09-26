@@ -76,16 +76,15 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
-  const wasOpenRef = useRef(false);
+  const initialDefaultsAppliedRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      setRows([emptyRow(preferences)]);
-      setStatus(null);
-    }
-    wasOpenRef.current = open;
+    if (!open || initialDefaultsAppliedRef.current) return;
+    initialDefaultsAppliedRef.current = true;
+    setRows([emptyRow(preferences)]);
+    setStatus(null);
   }, [open, preferences]);
 
   useEffect(() => {
