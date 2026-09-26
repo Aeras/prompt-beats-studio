@@ -48,9 +48,13 @@ export async function uploadToR2(
 ): Promise<{ key: string; url: string }> {
   const { endpoint, bucket } = getR2Config();
   const client = getR2Client();
+  // Uint8Array is a valid Fetch body at runtime. The cast only bridges the
+  // ArrayBufferLike generic mismatch in the current TypeScript DOM typings;
+  // it deliberately keeps the existing view and does not clone the audio.
+  const requestBody = body as unknown as BodyInit;
   const res = await client.fetch(`${endpoint}/${bucket}/${key}`, {
     method: "PUT",
-    body,
+    body: requestBody,
     headers: { "content-type": contentType },
   });
   if (!res.ok) {
