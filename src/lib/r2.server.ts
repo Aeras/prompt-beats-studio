@@ -43,7 +43,7 @@ export async function createSignedR2GetUrl(key: string, expiresSeconds = 6 * 60 
 /** Uploads bytes to Cloudflare R2 and returns the canonical private object URL. */
 export async function uploadToR2(
   key: string,
-  body: ArrayBuffer,
+  body: ArrayBuffer | Uint8Array,
   contentType: string,
 ): Promise<{ key: string; url: string }> {
   const { endpoint, bucket } = getR2Config();
