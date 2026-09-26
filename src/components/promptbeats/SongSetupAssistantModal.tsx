@@ -159,7 +159,11 @@ export function SongSetupAssistantModal({
       setDraft(result.setup);
       requestKeyRef.current = null;
     } catch (err) {
-      setError(err instanceof Error && language === "en" ? err.message : text.fallbackError);
+      setError(
+        err instanceof Error && (language === "en" || isSuperAdmin)
+          ? err.message
+          : text.fallbackError,
+      );
     } finally {
       setBusy(false);
     }
