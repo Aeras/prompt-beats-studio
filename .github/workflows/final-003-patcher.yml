@@ -1,0 +1,57 @@
+name: FINAL-003 patcher
+
+on:
+  push:
+    branches:
+      - fix/final-003-legacy-ai-default-guard
+    paths:
+      - .github/workflows/final-003-patcher.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-003-legacy-ai-default-guard
+      - name: Harden legacy setter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("src/lib/ai-provider.server.ts")
+          text = path.read_text()
+          old = '''  if (
+    !registryModel ||
+    !isModelEligibleForOperation(registryModel, "generator") ||
+    !isModelEligibleForOperation(registryModel, "quality_check")
+  ) {
+    throw new Error("That AI model cannot be used as both defaults.");
+  }
+'''
+          new = '''  if (
+    !registryModel ||
+    registryModel.status !== "enabled" ||
+    registryModel.accessPolicy !== "all_users" ||
+    !isModelEligibleForOperation(registryModel, "generator") ||
+    !isModelEligibleForOperation(registryModel, "quality_check")
+  ) {
+    throw new Error(
+      "That AI model must be enabled, available to all users, and compatible with both defaults.",
+    );
+  }
+'''
+          if old not in text:
+              raise SystemExit("legacy setActiveModel guard did not match")
+          path.write_text(text.replace(old, new, 1))
+          Path(".github/workflows/final-003-patcher.yml").unlink()
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/lib/ai-provider.server.ts .github/workflows/final-003-patcher.yml
+          git commit -m "Harden legacy AI default setter"
+          git push origin HEAD:fix/final-003-legacy-ai-default-guard
