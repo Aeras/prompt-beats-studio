@@ -22,34 +22,15 @@ jobs:
         run: |
           python <<'PY'
           from pathlib import Path
+          import re
           p = Path('src/components/promptbeats/StudioModal.tsx')
           s = p.read_text()
-          old = """  const [rows, setRows] = useState<Row[]>([emptyRow()]);
-          const wasOpenRef = useRef(false);
-          const [busy, setBusy] = useState(false);
-          const [status, setStatus] = useState<string | null>(null);
-
-          useEffect(() => {
-            if (open && !wasOpenRef.current) {
-              setRows([emptyRow(preferences)]);
-              setStatus(null);
-            }
-            wasOpenRef.current = open;
-          }, [open, preferences]);"""
-          new = """  const [rows, setRows] = useState<Row[]>([emptyRow()]);
-          const initialDefaultsAppliedRef = useRef(false);
-          const [busy, setBusy] = useState(false);
-          const [status, setStatus] = useState<string | null>(null);
-
-          useEffect(() => {
-            if (!open || initialDefaultsAppliedRef.current) return;
-            initialDefaultsAppliedRef.current = true;
-            setRows([emptyRow(preferences)]);
-            setStatus(null);
-          }, [open, preferences]);"""
-          if old not in s:
-              raise SystemExit('Studio initialization anchor not found')
-          p.write_text(s.replace(old, new, 1))
+          pattern = re.compile(r'''  const \[rows, setRows\] = useState<Row\[\]>\(\[emptyRow\(\)\]\);\n  const wasOpenRef = useRef\(false\);\n  const \[busy, setBusy\] = useState\(false\);\n  const \[status, setStatus\] = useState<string \| null>\(null\);\n\n  useEffect\(\(\) => \{\n    if \(open && !wasOpenRef\.current\) \{\n      setRows\(\[emptyRow\(preferences\)\]\);\n      setStatus\(null\);\n    \}\n    wasOpenRef\.current = open;\n  \}, \[open, preferences\]\);''')
+          replacement = '  const [rows, setRows] = useState<Row[]>([emptyRow()]);\n  const initialDefaultsAppliedRef = useRef(false);\n  const [busy, setBusy] = useState(false);\n  const [status, setStatus] = useState<string | null>(null);\n\n  useEffect(() => {\n    if (!open || initialDefaultsAppliedRef.current) return;\n    initialDefaultsAppliedRef.current = true;\n    setRows([emptyRow(preferences)]);\n    setStatus(null);\n  }, [open, preferences]);'
+          s2, count = pattern.subn(replacement, s, count=1)
+          if count != 1:
+              raise SystemExit(f'Studio initialization patch count: {count}')
+          p.write_text(s2)
           PY
       - name: Commit patch
         run: |
