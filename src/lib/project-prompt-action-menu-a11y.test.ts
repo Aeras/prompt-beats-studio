@@ -9,7 +9,7 @@ describe("FINAL-013 Project Prompt action menu accessibility", () => {
   test("moves keyboard focus into the menu and supports menu-key navigation", async () => {
     const menu = await source("src/components/promptbeats/ProjectPromptActionMenu.tsx");
 
-    expect(menu).toContain('querySelectorAll<HTMLButtonElement>(\'[role="menuitem"]\')');
+    expect(menu).toContain("querySelectorAll<HTMLButtonElement>('[role=\"menuitem\"]')");
     expect(menu).toContain("enabledMenuItems(menuRef.current)[0]?.focus()");
     expect(menu).toContain('["ArrowDown", "ArrowUp", "Home", "End"]');
     expect(menu).toContain("items[nextIndex]?.focus()");
