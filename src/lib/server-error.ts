@@ -8,6 +8,13 @@ function correlationId() {
   }
 }
 
+/** Keep detailed infrastructure errors in server logs, not client responses. */
+export function reportServerError(scope: string, error: unknown): string {
+  const reference = correlationId();
+  console.error(`[PromptBeats:${scope}] ${reference}`, error);
+  return reference;
+}
+
 /**
  * Keep database/provider implementation details on the server boundary.
  * Expected validation and permission errors should still be thrown explicitly
@@ -18,7 +25,6 @@ export function throwSafeServerError(
   error: unknown,
   publicMessage = DEFAULT_PUBLIC_MESSAGE,
 ): never {
-  const reference = correlationId();
-  console.error(`[PromptBeats:${scope}] ${reference}`, error);
+  reportServerError(scope, error);
   throw new Error(publicMessage);
 }
