@@ -245,7 +245,7 @@ export const reassignModerationCase = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("reassign_moderation_case", {
       _case_id: data.caseId,
-      _new_assignee: data.assigneeId ?? undefined,
+      ...(data.assigneeId ? { _new_assignee: data.assigneeId } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -255,12 +255,13 @@ export const proposeInitialCaseDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decisionSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const actionSummary = data.actionSummary?.trim();
     const { error } = await context.supabase.rpc("propose_initial_case_decision", {
       _case_id: data.caseId,
       _outcome: data.outcome,
       _reason: data.reason,
-      _action_summary: data.actionSummary?.trim() || undefined,
       _appeal_eligible: data.appealEligible,
+      ...(actionSummary ? { _action_summary: actionSummary } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -293,11 +294,12 @@ export const proposeModerationCaseAppealDecision = createServerFn({ method: "POS
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decisionSchema.omit({ appealEligible: true }).parse(input))
   .handler(async ({ data, context }) => {
+    const actionSummary = data.actionSummary?.trim();
     const { error } = await context.supabase.rpc("propose_moderation_case_appeal_decision", {
       _case_id: data.caseId,
       _outcome: data.outcome,
       _reason: data.reason,
-      _action_summary: data.actionSummary?.trim() || undefined,
+      ...(actionSummary ? { _action_summary: actionSummary } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -307,12 +309,14 @@ export const finalizeModerationCaseAppeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => finalSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const overrideReason = data.overrideReason?.trim();
+    const overrideActionSummary = data.overrideActionSummary?.trim();
     const { error } = await context.supabase.rpc("finalize_moderation_case_appeal", {
       _case_id: data.caseId,
       _action: data.action,
-      _override_outcome: data.overrideOutcome,
-      _override_reason: data.overrideReason?.trim() || undefined,
-      _override_action_summary: data.overrideActionSummary?.trim() || undefined,
+      ...(data.overrideOutcome ? { _override_outcome: data.overrideOutcome } : {}),
+      ...(overrideReason ? { _override_reason: overrideReason } : {}),
+      ...(overrideActionSummary ? { _override_action_summary: overrideActionSummary } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
