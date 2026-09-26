@@ -219,7 +219,11 @@ export const listMyTracks = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error)
-      throwSafeServerError("tracks:list-mine", error, "Your tracks could not be loaded. Please try again.");
+      throwSafeServerError(
+        "tracks:list-mine",
+        error,
+        "Your tracks could not be loaded. Please try again.",
+      );
     return { tracks: data ?? [] };
   });
 
@@ -235,7 +239,11 @@ export const getMyTrackForEdit = createServerFn({ method: "POST" })
       .eq("moderation_status", "active")
       .maybeSingle();
     if (error)
-      throwSafeServerError("tracks:get-edit", error, "The track could not be loaded. Please try again.");
+      throwSafeServerError(
+        "tracks:get-edit",
+        error,
+        "The track could not be loaded. Please try again.",
+      );
     if (!track) throw new Error("Track not found");
     return { track };
   });
@@ -287,7 +295,11 @@ export const createTrack = createServerFn({ method: "POST" })
       .select(TRACK_COLUMNS)
       .single();
     if (error)
-      throwSafeServerError("tracks:create", error, "The track could not be created. Please try again.");
+      throwSafeServerError(
+        "tracks:create",
+        error,
+        "The track could not be created. Please try again.",
+      );
     return { track: row };
   });
 
@@ -354,7 +366,11 @@ export const updateTrack = createServerFn({ method: "POST" })
       _contains_explicit_lyrics: data.contains_explicit_lyrics,
     } as never);
     if (error)
-      throwSafeServerError("tracks:update", error, "The track could not be updated. Please try again.");
+      throwSafeServerError(
+        "tracks:update",
+        error,
+        "The track could not be updated. Please try again.",
+      );
     const payload = result as { track?: unknown; cleanup_id?: string | null } | null;
     if (payload?.cleanup_id) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -457,7 +473,11 @@ export const deleteTrack = createServerFn({ method: "POST" })
       _track_id: data.id,
     });
     if (error)
-      throwSafeServerError("tracks:delete", error, "The track could not be deleted. Please try again.");
+      throwSafeServerError(
+        "tracks:delete",
+        error,
+        "The track could not be deleted. Please try again.",
+      );
     const cleanupId = (result as { cleanup_id?: string | null } | null)?.cleanup_id ?? null;
     if (cleanupId) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -541,7 +561,11 @@ export const listLikedTracks = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(100);
     if (error)
-      throwSafeServerError("tracks:list-liked", error, "Liked tracks could not be loaded. Please try again.");
+      throwSafeServerError(
+        "tracks:list-liked",
+        error,
+        "Liked tracks could not be loaded. Please try again.",
+      );
     const ids = (likes ?? []).map((l) => l.track_id);
     if (!ids.length) return { tracks: [] };
 
