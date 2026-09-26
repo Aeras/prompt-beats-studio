@@ -4,7 +4,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.ai_auxiliary_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  operation text NOT NULL CHECK (operation IN ('song_setup_assistant','song_analyzer','inspiration_wall','story_map','song_universe')),
+  operation text NOT NULL CHECK (operation IN ('song_setup_assistant','ai_music_lab','song_analyzer','inspiration_wall','story_map','song_universe')),
   request_key uuid NOT NULL,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','completed','failed')),
   execution_token uuid,
@@ -33,7 +33,7 @@ DECLARE
   v_token uuid;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF _operation NOT IN ('song_setup_assistant','song_analyzer','inspiration_wall','story_map','song_universe') THEN RAISE EXCEPTION 'invalid AI operation'; END IF;
+  IF _operation NOT IN ('song_setup_assistant','ai_music_lab','song_analyzer','inspiration_wall','story_map','song_universe') THEN RAISE EXCEPTION 'invalid AI operation'; END IF;
   PERFORM public._lock_user_security_state(v_user);
   IF NOT public.has_valid_account_state(v_user) THEN RAISE EXCEPTION 'account is not available'; END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended('aux-ai-request:' || v_user::text || ':' || _operation || ':' || _request_key::text, 0));

@@ -12,7 +12,9 @@ ALTER TABLE public.tracks
         'Suno',
         'Udio',
         'TopMediai',
+        'Google Lyria 3.5',
         'Stable Audio',
+        'ElevenLabs Music',
         'Mureka',
         'Riffusion',
         'MusicFX',
@@ -83,8 +85,9 @@ BEGIN
       RAISE EXCEPTION 'track source cannot be changed';
     END IF;
     IF _created_with IS NOT NULL AND _created_with NOT IN (
-      'Suno', 'Udio', 'TopMediai', 'Stable Audio', 'Mureka', 'Riffusion',
-      'MusicFX', 'Boomy', 'Soundraw', 'AIVA', 'Loudly', 'Other'
+      'Suno', 'Udio', 'TopMediai', 'Google Lyria 3.5', 'Stable Audio',
+      'ElevenLabs Music', 'Mureka', 'Riffusion', 'MusicFX', 'Boomy',
+      'Soundraw', 'AIVA', 'Loudly', 'Other'
     ) THEN
       RAISE EXCEPTION 'invalid created with value';
     END IF;
