@@ -19,6 +19,7 @@ import { downloadExportDocument, downloadProjectSeparateExport } from "@/lib/exp
 import { getProjectExportSource, getPromptExportSource } from "@/lib/export-center.functions";
 import { useI18n } from "@/i18n";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useAccountPreferences } from "@/lib/account-preferences";
 import { cn } from "@/lib/utils";
 
 const formats: Array<{ value: ExportFormat; label: string; extension: string }> = [
@@ -41,8 +42,9 @@ export function ExportControl({
 }) {
   const { language } = useI18n();
   const featureAccess = useFeatureAccess("export_center");
+  const { preferences } = useAccountPreferences();
   const [open, setOpen] = useState(false);
-  const [format, setFormat] = useState<ExportFormat>("md");
+  const [format, setFormat] = useState<ExportFormat>(preferences.exportFormat);
   const [mode, setMode] = useState<ProjectExportMode>("single");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -51,8 +53,10 @@ export function ExportControl({
     if (!open) {
       setError("");
       setBusy(false);
+      return;
     }
-  }, [open]);
+    setFormat(preferences.exportFormat);
+  }, [open, preferences.exportFormat]);
 
   const isProject = kind === "project";
   const text =
