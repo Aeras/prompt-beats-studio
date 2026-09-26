@@ -11,7 +11,7 @@ export async function authenticateRunnerRequest(request: Request): Promise<Respo
   if (!token) return new Response("Unauthorized", { status: 401 });
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await (supabaseAdmin as any)
+  const { data } = await supabaseAdmin
     .from("app_settings")
     .select("value")
     .eq("key", "runner_token")
