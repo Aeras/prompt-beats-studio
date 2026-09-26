@@ -62,4 +62,14 @@ describe("migration history integrity", () => {
     expect(cleanup).toContain("WHERE created_with IN ('Google Lyria 3.5','ElevenLabs Music')");
     expect(cleanup).toContain("SET created_with = 'Other'");
   });
+
+  test("CI rejects changes to existing migration files and permits only new forward migrations", async () => {
+    const workflow = await source(".github/workflows/regression-gate.yml");
+    expect(workflow).toContain("Migration history immutability");
+    expect(workflow).toContain("git diff --name-status --find-renames");
+    expect(workflow).toContain("awk '$1 != \"A\" { print }'");
+    expect(workflow).toContain(
+      "Existing migration files may not be modified, deleted, copied, or renamed",
+    );
+  });
 });
