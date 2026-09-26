@@ -1,5 +1,7 @@
 import logoAsset from "@/assets/logo.png.asset.json";
 
+import { avatarProxyUrl } from "@/lib/avatar-reference";
+
 /**
  * Canonical user-avatar fallback for PromptBeats.
  *
@@ -9,5 +11,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 export const DEFAULT_PROMPTBEATS_AVATAR = logoAsset.url;
 
 export function getUserAvatarUrl(avatarUrl?: string | null) {
-  return avatarUrl?.trim() || DEFAULT_PROMPTBEATS_AVATAR;
+  const trimmed = avatarUrl?.trim();
+  if (!trimmed) return DEFAULT_PROMPTBEATS_AVATAR;
+  return avatarProxyUrl(trimmed) ?? trimmed;
 }
