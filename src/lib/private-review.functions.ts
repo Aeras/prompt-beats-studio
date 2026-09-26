@@ -1,7 +1,10 @@
+import { createHmac } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getServerSupabaseAdminConfig } from "@/integrations/supabase/config.server";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   PRIVATE_REVIEW_SOURCE_TYPES,
@@ -35,6 +38,20 @@ const createTrackInput = z.object({
   includePrompt: z.boolean().default(false),
   includeLyrics: z.boolean().default(false),
 });
+
+function privateReviewNetworkFingerprint(request: Request | undefined) {
+  const { secretKey } = getServerSupabaseAdminConfig();
+  const forwarded = request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+  const candidate =
+    request?.headers.get("cf-connecting-ip")?.trim() ||
+    request?.headers.get("x-real-ip")?.trim() ||
+    forwarded;
+  const day = new Date().toISOString().slice(0, 10);
+  const normalized = candidate && candidate.length <= 128 ? candidate : "network-unavailable";
+  return createHmac("sha256", secretKey)
+    .update(`private-review:${day}:${normalized}`, "utf8")
+    .digest("hex");
+}
 
 export const createPrivateReviewSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -126,15 +143,51 @@ export const joinPrivateReviewSession = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const networkHash = privateReviewNetworkFingerprint(getRequest());
+    const { data: admissionRaw, error: admissionError } = await (supabaseAdmin as any).rpc(
+      "admit_private_review_join",
+      {
+        _token: data.token,
+        _network_hash: networkHash,
+      },
+    );
+    if (admissionError) throw new Error("The review could not be opened.");
+
+    const admission = z
+      .object({ state: z.enum(["allowed", "unavailable", "closed", "rate_limited"]) })
+      .parse(admissionRaw);
+    if (admission.state === "rate_limited") {
+      throw new Error("Too many attempts. Please wait before trying again.");
+    }
+    if (admission.state === "closed") {
+      throw new Error("This review is no longer accepting feedback.");
+    }
+    if (admission.state === "unavailable") {
+      throw new Error("The review could not be opened.");
+    }
+
     const { data: raw, error } = await (supabaseAdmin as any).rpc("join_private_review_session", {
       _token: data.token,
       _display_name: data.displayName,
       _pin: data.pin || null,
     });
     if (error) {
-      if (error.message.includes("invalid pin")) throw new Error("Invalid PIN.");
-      if (error.message.includes("closed"))
+      if (error.message.includes("invalid pin")) {
+        const { error: failureError } = await (supabaseAdmin as any).rpc(
+          "record_private_review_pin_failure",
+          {
+            _token: data.token,
+            _network_hash: networkHash,
+          },
+        );
+        if (failureError) {
+          console.warn("[private-review] could not record PIN failure", failureError.message);
+        }
+        throw new Error("Invalid PIN.");
+      }
+      if (error.message.includes("closed")) {
         throw new Error("This review is no longer accepting feedback.");
+      }
       throw new Error("The review could not be opened.");
     }
     return z
@@ -197,8 +250,9 @@ export const addPrivateReviewComment = createServerFn({ method: "POST" })
       _parent_comment_id: data.parentCommentId || null,
     });
     if (error) {
-      if (error.message.includes("too many comments"))
+      if (error.message.includes("too many comments")) {
         throw new Error("Too many comments. Please wait a moment and try again.");
+      }
       if (error.message.includes("closed")) throw new Error("This review is read-only now.");
       throw new Error("The comment could not be posted.");
     }
