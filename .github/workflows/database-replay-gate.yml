@@ -1,0 +1,33 @@
+name: Database replay gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.118.0
+
+      - name: Replay all migrations on a fresh local database
+        run: supabase db start
+
+      - name: Stop local Supabase database
+        if: always()
+        run: supabase stop --no-backup || true
