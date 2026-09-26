@@ -1,0 +1,42 @@
+name: FINAL-004 formatter
+
+on:
+  push:
+    branches:
+      - fix/final-004-revocation-safety
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-004-revocation-safety
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Format scoped files
+        run: |
+          bunx prettier --write \
+            src/lib/track-sharing.functions.ts \
+            src/lib/private-review.functions.ts \
+            src/components/promptbeats/SharedLinksPanel.tsx \
+            src/components/promptbeats/PrivateReviewManager.tsx \
+            src/components/promptbeats/ProjectVersionHistory.tsx \
+            'src/routes/track.$id.tsx' \
+            src/routes/library.tsx \
+            src/lib/feature-access-v2.test.ts \
+            src/lib/revocation-safety-final-004.test.ts
+          rm .github/workflows/final-004-format.yml
+      - name: Commit formatting
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Format FINAL-004 changes"
+          git push origin HEAD:fix/final-004-revocation-safety
