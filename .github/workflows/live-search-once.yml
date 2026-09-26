@@ -27,6 +27,7 @@ jobs:
       - run: |
           bun test src/lib/live-search.test.ts
           bun run lint
+          bun run build
           bunx tsc --noEmit --pretty false
       - run: |
           git config user.name "PromptBeats CI"
@@ -34,5 +35,3 @@ jobs:
           git add src
           git commit -m "Enable live search across search surfaces"
           git push origin HEAD:feat/live-search-everywhere
-
-# retry after optional search typing fix
