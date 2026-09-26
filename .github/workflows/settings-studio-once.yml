@@ -1,0 +1,60 @@
+name: Submit Track preservation patch
+
+on:
+  push:
+    branches:
+      - feat/settings-preferences-redesign
+    paths:
+      - .github/workflows/settings-studio-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/settings-preferences-redesign
+          fetch-depth: 0
+      - name: Patch Studio initialization
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p = Path('src/components/promptbeats/StudioModal.tsx')
+          s = p.read_text()
+          old = """  const [rows, setRows] = useState<Row[]>([emptyRow()]);
+          const wasOpenRef = useRef(false);
+          const [busy, setBusy] = useState(false);
+          const [status, setStatus] = useState<string | null>(null);
+
+          useEffect(() => {
+            if (open && !wasOpenRef.current) {
+              setRows([emptyRow(preferences)]);
+              setStatus(null);
+            }
+            wasOpenRef.current = open;
+          }, [open, preferences]);"""
+          new = """  const [rows, setRows] = useState<Row[]>([emptyRow()]);
+          const initialDefaultsAppliedRef = useRef(false);
+          const [busy, setBusy] = useState(false);
+          const [status, setStatus] = useState<string | null>(null);
+
+          useEffect(() => {
+            if (!open || initialDefaultsAppliedRef.current) return;
+            initialDefaultsAppliedRef.current = true;
+            setRows([emptyRow(preferences)]);
+            setStatus(null);
+          }, [open, preferences]);"""
+          if old not in s:
+              raise SystemExit('Studio initialization anchor not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "PromptBeats CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/promptbeats/StudioModal.tsx
+          git commit -m "Preserve Submit Track drafts across reopen"
+          git push origin HEAD:feat/settings-preferences-redesign
