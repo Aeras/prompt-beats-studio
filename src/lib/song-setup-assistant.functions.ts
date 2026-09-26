@@ -38,6 +38,18 @@ export const songSetupDraftSchema = z.object({
   language: z.string().trim().min(1).max(80),
 });
 
+const superAdminSongSetupDraftSchema = z.object({
+  theme: z.string().trim().min(3),
+  musicStyle: z.string().trim().min(1),
+  mood: z.string().trim().min(1),
+  instruments: z.string().trim(),
+  bpm: z.string().trim().min(1),
+  songStructure: z.string().trim().min(1),
+  productionStyle: z.string().trim(),
+  additionalInstructions: z.string().trim(),
+  language: z.string().trim().min(1),
+});
+
 export type SongSetupDraft = z.infer<typeof songSetupDraftSchema>;
 
 const SETUP_SCHEMA: Record<string, unknown> = {
@@ -157,7 +169,7 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
           result = await caller({
             system: SYSTEM_PROMPT,
             prompt,
-            maxTokens: 1800,
+            maxTokens: isSuperAdmin === true ? 4096 : 1800,
             schema: SETUP_SCHEMA,
           });
           await recordAiUsage({
@@ -183,7 +195,10 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
               "The Song Setup Assistant returned an invalid response. Please try again.",
             );
           }
-          const setup = songSetupDraftSchema.parse(parsed);
+          const setup =
+            isSuperAdmin === true
+              ? superAdminSongSetupDraftSchema.parse(parsed)
+              : songSetupDraftSchema.parse(parsed);
 
           const bpmValid =
             setup.bpm === "Auto" ||
