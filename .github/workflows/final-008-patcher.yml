@@ -1,0 +1,137 @@
+name: FINAL-008 patcher
+
+on:
+  push:
+    branches:
+      - fix/final-008-ai-finalization-authority
+    paths:
+      - .github/workflows/final-008-patcher.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-008-ai-finalization-authority
+      - name: Patch server authority call sites
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          aux_files = [
+              "src/lib/song-setup-assistant.functions.ts",
+              "src/lib/song-analyzer.functions.ts",
+              "src/lib/inspiration-wall-ai.functions.ts",
+              "src/lib/story-map-ai.functions.ts",
+              "src/lib/song-universe-ai.functions.ts",
+          ]
+          needle = "      supabase: context.supabase,\n"
+          replacement = "      supabase: context.supabase,\n      userId: context.userId,\n"
+          for name in aux_files:
+              path = Path(name)
+              text = path.read_text()
+              count = text.count(needle)
+              if count < 1:
+                  raise SystemExit(f"expected auxiliary call site in {name}")
+              path.write_text(text.replace(needle, replacement))
+
+          path = Path("src/lib/ai.functions.ts")
+          text = path.read_text()
+          old = '''async function consumeCreation(
+            supabase: Supa,
+            idempotencyKey: string,
+            quality: QualityReport,
+            provider: string,
+            model: string,
+          ) {
+            const { data: inserted, error } = await supabase.rpc("consume_quality_check", {
+              _idempotency_key: idempotencyKey,
+              _quality_report: quality as unknown as Json,
+              _provider: provider,
+              _model: model,
+            });
+            if (error) throw new Error("The action could not be recorded. Please try again.");
+            const parsed = z.string().uuid().safeParse(inserted);
+            if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
+            return parsed.data;
+          }
+          '''
+          new = '''async function consumeCreation(
+            userId: string,
+            idempotencyKey: string,
+            quality: QualityReport,
+            provider: string,
+            model: string,
+          ) {
+            const { consumeQualityCheck } = await import("@/lib/ai-finalization.server");
+            const inserted = await consumeQualityCheck({
+              userId,
+              idempotencyKey,
+              qualityReport: quality as unknown as Json,
+              provider,
+              model,
+            });
+            const parsed = z.string().uuid().safeParse(inserted);
+            if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
+            return parsed.data;
+          }
+          '''
+          if old not in text:
+              raise SystemExit("consumeCreation block did not match")
+          text = text.replace(old, new, 1)
+
+          old = '''    const { error: startedError } = await supabase.rpc("mark_quality_check_provider_started", {
+              _idempotency_key: data.idempotencyKey,
+            });
+            if (startedError) {
+              // Do not release by idempotency key here: a stale caller could race a
+              // later claimant and release that claimant's in-progress action.
+              throw new Error("The quality check could not be started. Please try again.");
+            }
+          '''
+          new = '''    const { markQualityCheckProviderStarted, releaseQualityCheck } = await import(
+              "@/lib/ai-finalization.server"
+            );
+            await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);
+          '''
+          if old not in text:
+              raise SystemExit("QC provider-start block did not match")
+          text = text.replace(old, new, 1)
+
+          old_release = '''      await supabase.rpc("release_quality_check", {
+                _idempotency_key: data.idempotencyKey,
+              });'''
+          if text.count(old_release) != 2:
+              raise SystemExit(f"expected two QC release calls, found {text.count(old_release)}")
+          text = text.replace(
+              old_release,
+              '''      await releaseQualityCheck(context.userId, data.idempotencyKey);''',
+          )
+
+          old_consume = '''      consumedId = await consumeCreation(supabase, data.idempotencyKey, quality, provider, model);'''
+          new_consume = '''      consumedId = await consumeCreation(
+                context.userId,
+                data.idempotencyKey,
+                quality,
+                provider,
+                model,
+              );'''
+          if old_consume not in text:
+              raise SystemExit("QC consume call did not match")
+          text = text.replace(old_consume, new_consume, 1)
+          path.write_text(text)
+
+          Path(".github/workflows/final-008-patcher.yml").unlink()
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/lib .github/workflows/final-008-patcher.yml
+          git commit -m "Route AI finalization through server authority"
+          git push origin HEAD:fix/final-008-ai-finalization-authority
