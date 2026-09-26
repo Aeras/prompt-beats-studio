@@ -1,0 +1,29 @@
+name: FINAL-004 library test patcher
+
+on:
+  push:
+    branches:
+      - fix/final-004-revocation-safety
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/final-004-revocation-safety
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/final-004-library-test-patch.py
+      - name: Remove temporary helpers
+        run: rm .github/workflows/final-004-library-test-patcher.yml scripts/final-004-library-test-patch.py
+      - name: Commit aligned Library test
+        run: |
+          git config user.name "PromptBeats Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Align Library feature test with revocation safety"
+          git push origin HEAD:fix/final-004-revocation-safety
