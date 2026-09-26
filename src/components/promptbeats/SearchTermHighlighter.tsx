@@ -42,11 +42,7 @@ function rangesForQuery(root: HTMLElement, query: string): Range[] {
   let visitedTextNodes = 0;
   let node = walker.nextNode();
 
-  while (
-    node &&
-    ranges.length < MAX_RANGES &&
-    visitedTextNodes < MAX_VISITED_TEXT_NODES
-  ) {
+  while (node && ranges.length < MAX_RANGES && visitedTextNodes < MAX_VISITED_TEXT_NODES) {
     visitedTextNodes += 1;
     const parent = node.parentElement;
     const text = node.nodeValue ?? "";
