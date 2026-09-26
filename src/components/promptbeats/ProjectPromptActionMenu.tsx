@@ -366,13 +366,7 @@ export function ProjectPromptActionMenu({
                 className="inline-flex min-w-28 items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {transferMode === "copy"
-                  ? el
-                    ? "Αντιγραφή"
-                    : "Copy"
-                  : el
-                    ? "Μετακίνηση"
-                    : "Move"}
+                {transferMode === "copy" ? (el ? "Αντιγραφή" : "Copy") : el ? "Μετακίνηση" : "Move"}
               </button>
             </div>
           </div>
