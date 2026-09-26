@@ -23,14 +23,15 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: python scripts/mobile_touch_nav_patch.py
-      - run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/routes/generate.tsx src/routes/library.tsx src/lib/mobile-touch-navigation.test.ts .github/workflows/regression-gate.yml
+      - run: bunx prettier --write src/components/promptbeats/AppShell.tsx src/routes/generate.tsx src/routes/library.tsx src/lib/mobile-touch-navigation.test.ts
       - run: |
           bun test src/lib/mobile-touch-navigation.test.ts
           bun run lint
           bunx tsc --noEmit --pretty false
       - run: |
+          git checkout -- .github/workflows/regression-gate.yml
           git config user.name "PromptBeats CI"
           git config user.email "actions@users.noreply.github.com"
-          git add src .github/workflows/regression-gate.yml
+          git add src
           git commit -m "Add touch swipe tabs and responsive sidebar behavior"
           git push origin HEAD:feat/mobile-swipe-sidebar
