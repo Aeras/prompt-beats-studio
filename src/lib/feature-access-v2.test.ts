@@ -351,16 +351,12 @@ describe("Feature Access V2 — 19 features", () => {
 
   test("Library feature-owned tabs, Analyzer results and prompt actions follow effective Feature Access with safe fallback", async () => {
     const library = await source("src/routes/library.tsx");
-    for (const key of [
-      "playlists",
-      "sharing_public_links",
-      "favorites",
-      "likes",
-      "song_analyzer",
-    ]) {
+    for (const key of ["playlists", "favorites", "likes", "song_analyzer"]) {
       expect(library).toContain(`useFeatureAccess("${key}")`);
     }
     expect(library).toContain("availableTabs");
+    expect(library).toContain('if (item === "shared") return true;');
+    expect(library).toContain('{tab === "shared" && user && <SharedLinksPanel />}');
     expect(library).toContain("availableTabs.includes(requestedTab)");
     expect(library).toContain("replace: true");
     expect(library).toContain('promptView === "analyses" && !analyzerAccess.allowed');
