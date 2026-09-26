@@ -28,10 +28,10 @@ export function SharedLinksPanel() {
   const data = useQuery({
     queryKey: ["library", "shared-links"],
     queryFn: () => listMyShareManagement(),
-    enabled: sharingAccess.allowed,
   });
 
   const copy = async (token: string) => {
+    if (!sharingAccess.allowed) return;
     const url = window.location.origin + "/share/" + token;
     try {
       await navigator.clipboard.writeText(url);
@@ -63,8 +63,6 @@ export function SharedLinksPanel() {
     }
   };
 
-  if (!sharingAccess.allowed) return null;
-
   if (data.isLoading)
     return (
       <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
@@ -81,8 +79,12 @@ export function SharedLinksPanel() {
     return (
       <p className="mt-6 glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
         {language === "el"
-          ? "Δεν υπάρχουν ακόμη κοινοποιήσεις για τα τραγούδια σου."
-          : "No shares for your tracks yet."}
+          ? sharingAccess.allowed
+            ? "Δεν υπάρχουν ακόμη κοινοποιήσεις για τα τραγούδια σου."
+            : "Δεν υπάρχουν ενεργά share links για ανάκληση."
+          : sharingAccess.allowed
+            ? "No shares for your tracks yet."
+            : "There are no active share links to revoke."}
       </p>
     );
 
@@ -96,6 +98,13 @@ export function SharedLinksPanel() {
             : "Manage links you created and review aggregated sharing activity from other users."}
         </p>
       </div>
+      {!sharingAccess.allowed && (
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
+          {language === "el"
+            ? "Η δημιουργία και η αλλαγή share links δεν είναι διαθέσιμη αυτή τη στιγμή. Μπορείς όμως να ανακαλέσεις οποιοδήποτε ενεργό link έχεις ήδη δημιουργήσει."
+            : "Creating or changing share links is currently unavailable. You can still revoke any active link you already created."}
+        </div>
+      )}
       {tracks.map((track: ShareManagementTrack) => (
         <article key={track.track_id} className="glass rounded-2xl p-4 sm:p-5">
           <div className="flex items-start gap-3">
@@ -164,8 +173,8 @@ export function SharedLinksPanel() {
                               }
                               className={
                                 link.include_prompt
-                                  ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent"
-                                  : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"
+                                  ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent disabled:opacity-40"
+                                  : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground disabled:opacity-40"
                               }
                             >
                               Prompt {link.include_prompt ? "✓" : "—"}
@@ -178,8 +187,8 @@ export function SharedLinksPanel() {
                               }
                               className={
                                 link.include_lyrics
-                                  ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent"
-                                  : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground"
+                                  ? "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent disabled:opacity-40"
+                                  : "rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground disabled:opacity-40"
                               }
                             >
                               Lyrics {link.include_lyrics ? "✓" : "—"}
@@ -193,11 +202,14 @@ export function SharedLinksPanel() {
                         )}
                       </div>
                       <div className="flex gap-1">
-                        {active && (
+                        {active && sharingAccess.allowed && (
                           <button
                             type="button"
                             onClick={() => copy(link.token)}
                             className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-accent"
+                            aria-label={
+                              language === "el" ? "Αντιγραφή share link" : "Copy share link"
+                            }
                           >
                             {copied === link.token ? (
                               <Check className="h-3.5 w-3.5 text-accent" />
@@ -212,6 +224,9 @@ export function SharedLinksPanel() {
                             onClick={() => revoke(link.id)}
                             disabled={revoking === link.id}
                             className="rounded-lg border border-white/10 p-2 text-muted-foreground hover:text-destructive"
+                            aria-label={
+                              language === "el" ? "Ανάκληση share link" : "Revoke share link"
+                            }
                           >
                             {revoking === link.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -223,25 +223,34 @@ describe("Feature Access V2 — 19 features", () => {
     expect(tracks).toContain("listMyTracks");
   });
 
-  test("Sharing gates management, creation, update, analytics and revocation while preserving public token resolution", async () => {
+  test("Sharing gates new exposure but preserves owner management and revocation for privacy safety", async () => {
     const sql = await source(mutationMigration);
     expect(functionBlock(sql, "create_track_share_link")).toContain("sharing_public_links");
     expect(functionBlock(sql, "update_track_share_link")).toContain("sharing_public_links");
     expect(functionBlock(sql, "record_track_public_share")).toContain("sharing_public_links");
     expect(sql).not.toContain("CREATE OR REPLACE FUNCTION public.revoke_track_share_link");
+    expect(sql).toContain("Revocation intentionally remains ungated for privacy/safety");
 
     const server = await source("src/lib/track-sharing.functions.ts");
-    for (const name of ["listMyShareManagement", "revokeTrackShareLink"]) {
+    for (const name of ["createTrackShareLink", "updateTrackShareLink", "recordTrackPublicShare"]) {
       const start = server.indexOf(`export const ${name}`);
       const next = server.indexOf("export const", start + 20);
       expect(server.slice(start, next === -1 ? server.length : next)).toContain(
         'requireFeatureAccess(context.supabase, "sharing_public_links")',
       );
     }
+    for (const name of ["listMyShareManagement", "revokeTrackShareLink"]) {
+      const start = server.indexOf(`export const ${name}`);
+      const next = server.indexOf("export const", start + 20);
+      expect(server.slice(start, next === -1 ? server.length : next)).not.toContain(
+        "requireFeatureAccess",
+      );
+    }
 
     const management = await source("src/components/promptbeats/SharedLinksPanel.tsx");
-    expect(management).toContain("enabled: sharingAccess.allowed");
-    expect(management).toContain("if (!sharingAccess.allowed) return null");
+    expect(management).not.toContain("enabled: sharingAccess.allowed");
+    expect(management).not.toContain("if (!sharingAccess.allowed) return null");
+    expect(management).toContain("You can still revoke any active link you already created.");
   });
 
   test("Playlists reads and mutations are gated and the dependent Library surface does not query when unavailable", async () => {
@@ -342,16 +351,12 @@ describe("Feature Access V2 — 19 features", () => {
 
   test("Library feature-owned tabs, Analyzer results and prompt actions follow effective Feature Access with safe fallback", async () => {
     const library = await source("src/routes/library.tsx");
-    for (const key of [
-      "playlists",
-      "sharing_public_links",
-      "favorites",
-      "likes",
-      "song_analyzer",
-    ]) {
+    for (const key of ["playlists", "favorites", "likes", "song_analyzer"]) {
       expect(library).toContain(`useFeatureAccess("${key}")`);
     }
     expect(library).toContain("availableTabs");
+    expect(library).toContain('if (item === "shared") return true;');
+    expect(library).toContain('{tab === "shared" && user && <SharedLinksPanel />}');
     expect(library).toContain("availableTabs.includes(requestedTab)");
     expect(library).toContain("replace: true");
     expect(library).toContain('promptView === "analyses" && !analyzerAccess.allowed');

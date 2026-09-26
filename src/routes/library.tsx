@@ -200,7 +200,6 @@ function LibraryPage() {
   const { user, profile, loading } = useAuth();
   const { preferences: accountPreferences } = useAccountPreferences();
   const playlistsAccess = useFeatureAccess("playlists");
-  const sharingAccess = useFeatureAccess("sharing_public_links");
   const favoritesAccess = useFeatureAccess("favorites");
   const likesAccess = useFeatureAccess("likes");
   const analyzerAccess = useFeatureAccess("song_analyzer");
@@ -216,7 +215,7 @@ function LibraryPage() {
 
   const availableTabs = TABS.filter((item) => {
     if (item === "playlists") return playlistsAccess.allowed;
-    if (item === "shared") return sharingAccess.allowed;
+    if (item === "shared") return true;
     if (item === "favorites") return favoritesAccess.allowed;
     if (item === "likes") return likesAccess.allowed;
     return true;
@@ -444,7 +443,7 @@ function LibraryPage() {
           <PlaylistLibraryPanel userId={user.id} />
         )}
 
-        {tab === "shared" && user && sharingAccess.allowed && <SharedLinksPanel />}
+        {tab === "shared" && user && <SharedLinksPanel />}
 
         {tab === "favorites" && favoritesAccess.allowed && (
           <>

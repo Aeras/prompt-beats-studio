@@ -57,7 +57,6 @@ export const revokeTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ shareId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { error } = await (context.supabase as any).rpc("revoke_track_share_link", {
       _share_id: data.shareId,
     } as never);
@@ -160,7 +159,6 @@ export type ShareManagementTrack = {
 export const listMyShareManagement = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { data, error } = await (context.supabase as any).rpc("list_my_share_management");
     if (error) throw new Error(error.message);
     return { tracks: (Array.isArray(data) ? data : []) as ShareManagementTrack[] };
