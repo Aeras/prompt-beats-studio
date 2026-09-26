@@ -6,11 +6,32 @@ const MAX_REQUEST_BYTES = 52 * 1024 * 1024;
 const ALLOWED = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave"]);
 type MultipartFile = { name: string; type: string; bytes: Uint8Array };
 
-async function readBoundedBody(request: Request): Promise<Uint8Array> {
+async function readBoundedBody(request: Request, declaredLength?: number): Promise<Uint8Array> {
   if (!request.body) throw new Error("Upload body is missing");
   const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
   let total = 0;
+
+  if (declaredLength !== undefined) {
+    const body = new Uint8Array(declaredLength);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.byteLength;
+        if (total > MAX_REQUEST_BYTES || total > declaredLength) {
+          await reader.cancel();
+          throw new Error("Upload request is too large");
+        }
+        body.set(value, total - value.byteLength);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return total === declaredLength ? body : body.subarray(0, total);
+  }
+
+  const chunks: Uint8Array[] = [];
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -26,6 +47,7 @@ async function readBoundedBody(request: Request): Promise<Uint8Array> {
   } finally {
     reader.releaseLock();
   }
+
   const body = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
@@ -112,6 +134,7 @@ function parseMultipartFile(contentType: string, body: Uint8Array): MultipartFil
   }
   return null;
 }
+
 export const Route = createFileRoute("/api/upload")({
   server: {
     handlers: {
@@ -144,6 +167,7 @@ export const Route = createFileRoute("/api/upload")({
           );
         }
 
+        let declaredLength: number | undefined;
         const contentLength = request.headers.get("content-length");
         if (contentLength !== null) {
           if (!/^\d+$/.test(contentLength.trim())) {
@@ -151,7 +175,7 @@ export const Route = createFileRoute("/api/upload")({
               status: 400,
             });
           }
-          const declaredLength = Number(contentLength);
+          declaredLength = Number(contentLength);
           if (!Number.isSafeInteger(declaredLength) || declaredLength > MAX_REQUEST_BYTES) {
             return new Response(JSON.stringify({ error: "Upload request is too large" }), {
               status: 413,
@@ -161,7 +185,7 @@ export const Route = createFileRoute("/api/upload")({
 
         let body: Uint8Array;
         try {
-          body = await readBoundedBody(request);
+          body = await readBoundedBody(request, declaredLength);
         } catch {
           return new Response(JSON.stringify({ error: "Upload request is too large" }), {
             status: 413,
@@ -209,10 +233,9 @@ export const Route = createFileRoute("/api/upload")({
 
         const { buildObjectKey, uploadToR2 } = await import("@/lib/r2.server");
         const key = buildObjectKey(userId, parsed.name);
-        const uploadBytes = Uint8Array.from(bytes).buffer;
         const { url } = await uploadToR2(
           key,
-          uploadBytes,
+          bytes,
           type || (extension === "wav" ? "audio/wav" : "audio/mpeg"),
         );
 
