@@ -19,6 +19,11 @@ export type AccountPreferences = {
   autoSaveDrafts: boolean;
 };
 
+type AccountPreferenceState = {
+  ownerId: string | null;
+  preferences: AccountPreferences;
+};
+
 export const ACCOUNT_PREFERENCE_KEYS = {
   generatorLanguage: "default_generator_language",
   generatorMode: "default_generator_mode",
@@ -89,36 +94,50 @@ export function readAccountPreferences(metadata: Record<string, unknown> | null 
 
 export function useAccountPreferences() {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const accountPreferences = useMemo(
     () => readAccountPreferences(user?.user_metadata as Record<string, unknown> | undefined),
     [user?.user_metadata],
   );
-  const [preferences, setPreferences] = useState<AccountPreferences>(accountPreferences);
+  const [preferenceState, setPreferenceState] = useState<AccountPreferenceState>({
+    ownerId: userId,
+    preferences: accountPreferences,
+  });
 
-  useEffect(() => setPreferences(accountPreferences), [accountPreferences]);
+  // A hook instance can render once as signed-out and then receive the existing session.
+  // Do not expose that signed-out fallback for the newly resolved user while the effect
+  // below is still waiting to synchronize local optimistic state. This prevents a fresh
+  // Generator from consuming the fallback "basic" mode before persisted metadata.
+  const preferences =
+    preferenceState.ownerId === userId ? preferenceState.preferences : accountPreferences;
+
+  useEffect(
+    () => setPreferenceState({ ownerId: userId, preferences: accountPreferences }),
+    [accountPreferences, userId],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sync = (event: Event) => {
       const next = (event as CustomEvent<AccountPreferences>).detail;
-      if (next) setPreferences(next);
+      if (next) setPreferenceState({ ownerId: userId, preferences: next });
     };
     window.addEventListener(EVENT_NAME, sync);
     return () => window.removeEventListener(EVENT_NAME, sync);
-  }, []);
+  }, [userId]);
 
   const setPreference = useCallback(
     async <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => {
       if (!user) throw new Error("Sign in to save account preferences.");
       const next = { ...preferences, [key]: value };
-      setPreferences(next);
+      setPreferenceState({ ownerId: user.id, preferences: next });
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: next }));
       }
       const metadataKey = ACCOUNT_PREFERENCE_KEYS[key];
       const { error } = await supabase.auth.updateUser({ data: { [metadataKey]: value } });
       if (error) {
-        setPreferences(preferences);
+        setPreferenceState({ ownerId: user.id, preferences });
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: preferences }));
         }
@@ -128,5 +147,5 @@ export function useAccountPreferences() {
     [preferences, user],
   );
 
-  return { preferences, setPreference, signedIn: Boolean(user), userId: user?.id ?? null };
+  return { preferences, setPreference, signedIn: Boolean(user), userId };
 }

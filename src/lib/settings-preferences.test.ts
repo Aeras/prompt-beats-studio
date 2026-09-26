@@ -142,6 +142,18 @@ describe("Settings and track source preferences", () => {
     expect(generatorMode).toBeGreaterThan(generatorLanguage);
   });
 
+  test("Account preferences never expose the signed-out fallback to a newly resolved user", async () => {
+    const preferences = await source("src/lib/account-preferences.ts");
+    expect(preferences).toContain("type AccountPreferenceState");
+    expect(preferences).toContain("ownerId: userId");
+    expect(preferences).toContain(
+      "preferenceState.ownerId === userId ? preferenceState.preferences : accountPreferences",
+    );
+    expect(preferences).toContain(
+      "setPreferenceState({ ownerId: userId, preferences: accountPreferences })",
+    );
+  });
+
   test("Generator waits for persisted account mode and clears drafts only on intentional route exit", async () => {
     const generator = await source("src/routes/generate.tsx");
     expect(generator).toContain("signedIn: accountPreferencesReady");
