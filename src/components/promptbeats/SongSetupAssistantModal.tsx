@@ -10,11 +10,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
+import { useModeration } from "@/hooks/useModeration";
 import { generateSongSetup, type SongSetupDraft } from "@/lib/song-setup-assistant.functions";
 import { AI_TARGET_PLATFORM_LABEL, type AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n, type AppTranslationKey } from "@/i18n";
 import { useAccountPreferences } from "@/lib/account-preferences";
 import { useDraftAutosave } from "@/lib/draft-autosave";
+
+const SONG_SETUP_DESCRIPTION_LIMIT = 2500;
 
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_22%,transparent)]";
@@ -96,6 +99,9 @@ export function SongSetupAssistantModal({
 }) {
   const { language, t } = useI18n();
   const { preferences, userId } = useAccountPreferences();
+  const moderation = useModeration();
+  const isSuperAdmin = moderation.isSuperAdmin;
+  const descriptionLimit = isSuperAdmin ? undefined : SONG_SETUP_DESCRIPTION_LIMIT;
   const text = copy[language];
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState<SongSetupDraft | null>(null);
@@ -109,18 +115,32 @@ export function SongSetupAssistantModal({
     enabled: open && preferences.autoSaveDrafts,
     value: { description, draft },
     onRestore: (saved) => {
-      setDescription(saved.description);
+      setDescription(
+        descriptionLimit == null
+          ? saved.description
+          : saved.description.slice(0, SONG_SETUP_DESCRIPTION_LIMIT),
+      );
       setDraft(saved.draft);
     },
     isEmpty: (saved) => !saved.description.trim() && saved.draft === null,
   });
 
   useEffect(() => {
-    if (!open || !prefillKey || !prefillDescription) return;
-    setDescription(prefillDescription.slice(0, 2500));
+    if (!open || moderation.isLoading || !prefillKey || !prefillDescription) return;
+    setDescription(
+      descriptionLimit == null
+        ? prefillDescription
+        : prefillDescription.slice(0, SONG_SETUP_DESCRIPTION_LIMIT),
+    );
     setDraft(null);
     setError(null);
-  }, [open, prefillDescription, prefillKey]);
+  }, [descriptionLimit, moderation.isLoading, open, prefillDescription, prefillKey]);
+
+  useEffect(() => {
+    if (moderation.isLoading || isSuperAdmin || description.length <= SONG_SETUP_DESCRIPTION_LIMIT)
+      return;
+    setDescription((current) => current.slice(0, SONG_SETUP_DESCRIPTION_LIMIT));
+  }, [description.length, isSuperAdmin, moderation.isLoading]);
 
   const generate = async () => {
     const clean = description.trim();
@@ -208,14 +228,18 @@ export function SongSetupAssistantModal({
                     ))}
                   </select>
                 )}
-                <span className="text-[11px] text-muted-foreground">{description.length}/2500</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {descriptionLimit == null
+                    ? description.length
+                    : `${description.length}/${SONG_SETUP_DESCRIPTION_LIMIT}`}
+                </span>
               </div>
             </div>
             <textarea
               id="song-setup-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              maxLength={2500}
+              maxLength={descriptionLimit}
               rows={6}
               placeholder={text.placeholder}
               className={`${fieldClass} resize-y`}
