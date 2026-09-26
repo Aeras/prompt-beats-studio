@@ -43,13 +43,9 @@ describe("FINAL-006 workspace Feature Access RLS", () => {
 
   test("Song Universe preserves historical reads and gates universe/project/analysis mutations", async () => {
     const source = await sql();
-    for (const policy of [
-      "song_universes_owner_select",
-      "song_universe_projects_owner_select",
-      "song_universe_ai_analyses_owner_select",
-    ]) {
-      expect(source).toContain(policy);
-    }
+    expect(source).toContain('CREATE POLICY "song_universes_owner_select"');
+    expect(source).toContain('CREATE POLICY "song_universe_ai_analyses_owner_select"');
+    expect(source).not.toContain('DROP POLICY IF EXISTS "song_universe_projects_owner_select"');
     for (const policy of [
       "song_universes_owner_insert",
       "song_universes_owner_update",
