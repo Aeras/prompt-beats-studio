@@ -34,7 +34,7 @@ async function requireContactAdmission(email: string) {
   const emailHash = sha256(normalizedEmail);
   const networkHash = requestNetworkFingerprint(getRequest(), emailHash);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await (supabaseAdmin as any).rpc("admit_contact_request", {
+  const { data, error } = await supabaseAdmin.rpc("admit_contact_request", {
     _email_hash: emailHash,
     _network_hash: networkHash,
   });
