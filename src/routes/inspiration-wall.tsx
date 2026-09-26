@@ -25,6 +25,8 @@ import { InspirationWallDirectionPanel } from "@/components/promptbeats/Inspirat
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createInspirationWall,
@@ -85,6 +87,7 @@ const CARD_LABELS: Record<InspirationWallCardType, { en: string; el: string }> =
 function InspirationWallPage() {
   const { language } = useI18n();
   const { user, loading } = useAuth();
+  const { preferences } = useAccountPreferences();
   const access = useFeatureAccess("inspiration_wall");
   const queryClient = useQueryClient();
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
@@ -94,6 +97,19 @@ function InspirationWallPage() {
   const [newWallTitle, setNewWallTitle] = useState("");
   const [newWallDescription, setNewWallDescription] = useState("");
   const [newWallTheme, setNewWallTheme] = useState<InspirationWallTheme>("neon_studio");
+  const clearNewWallDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: "inspiration-wall:new",
+    enabled: newWallOpen && preferences.autoSaveDrafts,
+    value: { title: newWallTitle, description: newWallDescription, theme: newWallTheme },
+    onRestore: (draft) => {
+      setNewWallTitle(draft.title);
+      setNewWallDescription(draft.description);
+      setNewWallTheme(draft.theme);
+    },
+    isEmpty: (draft) =>
+      !draft.title.trim() && !draft.description.trim() && draft.theme === "neon_studio",
+  });
 
   const walls = useQuery({
     queryKey: ["inspiration-walls", user?.id],
@@ -131,6 +147,7 @@ function InspirationWallPage() {
         },
       });
       setSelectedWallId(created.wall.id);
+      clearNewWallDraft();
       setNewWallOpen(false);
       setNewWallTitle("");
       setNewWallDescription("");

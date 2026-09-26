@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { buildStoryMapWithAi } from "@/lib/story-map-ai.functions";
 import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import {
@@ -62,6 +64,7 @@ function StoryMapPage() {
   const { language } = useI18n();
   const el = language === "el";
   const { user, loading } = useAuth();
+  const { preferences } = useAccountPreferences();
   const access = useFeatureAccess("story_map");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -71,6 +74,17 @@ function StoryMapPage() {
   const [concept, setConcept] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const clearNewStoryMapDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: "story-map:new",
+    enabled: newOpen && preferences.autoSaveDrafts,
+    value: { title, concept },
+    onRestore: (draft) => {
+      setTitle(draft.title);
+      setConcept(draft.concept);
+    },
+    isEmpty: (draft) => !draft.title.trim() && !draft.concept.trim(),
+  });
 
   const mapsQuery = useQuery({
     queryKey: ["story-maps", user?.id],
@@ -105,6 +119,7 @@ function StoryMapPage() {
         },
       });
       setSelectedId(result.storyMap.id);
+      clearNewStoryMapDraft();
       setTitle("");
       setConcept("");
       setNewOpen(false);

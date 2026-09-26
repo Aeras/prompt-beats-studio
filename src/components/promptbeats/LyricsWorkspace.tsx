@@ -26,6 +26,8 @@ import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
 import type { AITargetPlatform } from "@/lib/ai-target-platforms";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { useAccountPreferences } from "@/lib/account-preferences";
+import { draftFingerprint, useDraftAutosave } from "@/lib/draft-autosave";
 import { StoryMapLyricsPanel } from "@/components/promptbeats/StoryMapLyricsPanel";
 
 const WORKSPACE_JOB_STORAGE_KEY = "pb:lyrics-workspace-job";
@@ -71,6 +73,7 @@ export function LyricsWorkspace({
 }: Props) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const { preferences, userId } = useAccountPreferences();
   const [lyrics, setLyrics] = useState(song.lyrics);
   const [baselineLyrics, setBaselineLyrics] = useState(song.lyrics);
   const [locked, setLocked] = useState<Set<string>>(() => new Set());
@@ -109,6 +112,22 @@ export function LyricsWorkspace({
     song.language,
     song.generatorInputSnapshot,
   );
+  const lyricsDraftScope = `lyrics-workspace:${projectId ?? "standalone"}:${
+    basePromptId ??
+    draftFingerprint(`${song.title}
+${song.lyrics}`)
+  }`;
+  const clearLyricsDraft = useDraftAutosave({
+    ownerId: userId,
+    scope: lyricsDraftScope,
+    enabled: preferences.autoSaveDrafts,
+    value: { lyrics, lastEditSummary },
+    onRestore: (draft) => {
+      setLyrics(draft.lyrics);
+      setLastEditSummary(draft.lastEditSummary || "Lyrics edit");
+    },
+    isEmpty: (draft) => draft.lyrics === baselineLyrics,
+  });
 
   useEffect(() => {
     if (!model && generatorAccess?.defaultModel) setModel(generatorAccess.defaultModel);
@@ -370,6 +389,7 @@ export function LyricsWorkspace({
         setCurrentBaseVersion(null);
         setSavedVersion(null);
       }
+      clearLyricsDraft();
       setBaselineLyrics(lyrics);
       setUndoBySection({});
       await Promise.all([
@@ -400,9 +420,11 @@ export function LyricsWorkspace({
   const closeWorkspace = () => {
     if (projectId && dirty) {
       if (!window.confirm(t("lyricsWorkspace.unsavedConfirm"))) return;
+      clearLyricsDraft();
       onClose(baselineLyrics, savedVersion);
       return;
     }
+    clearLyricsDraft();
     onClose(lyrics, savedVersion);
   };
 

@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
@@ -834,7 +835,8 @@ function ResultSection({
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
-  const { preferences: accountPreferences } = useAccountPreferences();
+  const { preferences: accountPreferences, signedIn: accountPreferencesReady } =
+    useAccountPreferences();
   const generatorFeature = useFeatureAccess("ai_generator");
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
@@ -988,20 +990,21 @@ function GeneratePage() {
   const languageRequiredRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (defaultGeneratorModeAppliedRef.current || !user) return;
+    if (defaultGeneratorModeAppliedRef.current || !accountPreferencesReady) return;
     defaultGeneratorModeAppliedRef.current = true;
     if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics")
       return;
-    // Never downgrade a mode already promoted by a handoff/recovery path. The account
-    // default only upgrades an otherwise fresh Basic Generator to Advanced.
+    // useAccountPreferences has its own auth subscription. Wait until that subscription
+    // has the signed-in user's metadata before consuming the account default; otherwise
+    // the initial fallback "basic" can win the one-time initialization race.
     if (!advanced && accountPreferences.generatorMode === "advanced") setAdvanced(true);
   }, [
     accountPreferences.generatorMode,
+    accountPreferencesReady,
     advanced,
     search.mode,
     search.presets,
     search.workspace,
-    user,
   ]);
 
   useEffect(() => {
@@ -1674,6 +1677,78 @@ function GeneratePage() {
     targetPlatform,
     generationModel: generationModel || null,
   };
+  const generatorDraftScope = revisionMode
+    ? `generator:revision:${revisionProjectId || "none"}:${revisionBasePromptId || "none"}`
+    : "generator:new";
+  const clearGeneratorDraft = useDraftAutosave({
+    ownerId: user?.id,
+    scope: generatorDraftScope,
+    enabled: Boolean(user && accountPreferences.autoSaveDrafts && search.workspace !== "lyrics"),
+    value: { snapshot: currentSnapshot, revisionRequest },
+    onRestore: (draft) => {
+      const snapshot = draft.snapshot;
+      setAdvanced(snapshot.generatorMode !== "basic");
+      setTargetPlatform(snapshot.targetPlatform);
+      setTheme(snapshot.theme);
+      setGenres([...snapshot.selectedMusicStyles]);
+      setCustomGenre(snapshot.customMusicStyle);
+      setMoods([...snapshot.selectedMoods]);
+      setCustomMood(snapshot.customMood);
+      setInstruments([...snapshot.selectedInstruments]);
+      setCustomInstruments(snapshot.customInstruments);
+      setBpm(snapshot.bpmMode || "Auto");
+      setCustomBpm(snapshot.customBpm);
+      setStructure([...snapshot.songStructure]);
+      setSongBlueprint(buildSongBlueprint(snapshot.songStructure, snapshot.songBlueprint));
+      setActiveSmartPresetId(snapshot.smartPresetId ?? "");
+      setPresetCulturalStyleId(snapshot.culturalStyleId || "");
+      setProduction(snapshot.productionStyle);
+      setInstructions(snapshot.additionalInstructions);
+      setLanguage(snapshot.language);
+      setLanguageVariant(snapshot.languageVariant ?? "");
+      setCustomLanguage(snapshot.customLanguage);
+      if (snapshot.generationModel) {
+        setGenerationModel(snapshot.generationModel);
+        setGenerationModelChosen(true);
+      }
+      setRevisionRequest(draft.revisionRequest ?? "");
+    },
+    isEmpty: (draft) => {
+      const snapshot = draft.snapshot;
+      return (
+        !snapshot.theme &&
+        snapshot.selectedMusicStyles.length === 0 &&
+        !snapshot.customMusicStyle &&
+        snapshot.selectedMoods.length === 0 &&
+        !snapshot.customMood &&
+        !snapshot.language &&
+        !snapshot.customLanguage &&
+        snapshot.selectedInstruments.length === 0 &&
+        !snapshot.customInstruments &&
+        snapshot.bpmMode === "Auto" &&
+        !snapshot.customBpm &&
+        snapshot.songStructure.length === 0 &&
+        !snapshot.productionStyle &&
+        !snapshot.additionalInstructions &&
+        !snapshot.smartPresetId &&
+        !draft.revisionRequest.trim()
+      );
+    },
+  });
+  const generatorPageUnloadRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    generatorPageUnloadRef.current = false;
+    const markPageUnload = () => {
+      generatorPageUnloadRef.current = true;
+    };
+    window.addEventListener("beforeunload", markPageUnload);
+    return () => {
+      window.removeEventListener("beforeunload", markPageUnload);
+      if (!generatorPageUnloadRef.current) clearGeneratorDraft();
+    };
+  }, [clearGeneratorDraft]);
+
   const revisionReady =
     !revisionMode ||
     (!!revisionProjectId &&
@@ -2198,6 +2273,7 @@ ${narrativePlan.beats
         setClearing(false);
       }
     }
+    clearGeneratorDraft();
     setTheme("");
     setGenres([]);
     setCustomGenre("");

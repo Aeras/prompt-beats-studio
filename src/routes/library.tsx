@@ -67,6 +67,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { useAccountPreferences } from "@/lib/account-preferences";
+import { useDraftAutosave } from "@/lib/draft-autosave";
 import { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 import {
   TrackSourceFilter,
@@ -2026,6 +2027,7 @@ function PromptProjectLibrary({
 
 function ProjectCreationNotes({ project }: { project: PromptProject }) {
   const { language } = useI18n();
+  const { preferences, userId } = useAccountPreferences();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(project.creation_notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -2039,6 +2041,15 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
     setError("");
   }, [project.id, project.creation_notes]);
 
+  const clearCreationNotesDraft = useDraftAutosave({
+    ownerId: userId,
+    scope: `project-creation-notes:${project.id}`,
+    enabled: preferences.autoSaveDrafts,
+    value: draft,
+    onRestore: setDraft,
+    isEmpty: (value) => value === (project.creation_notes ?? ""),
+  });
+
   const save = async () => {
     if (!dirty || saving) return;
     setSaving(true);
@@ -2048,6 +2059,7 @@ function ProjectCreationNotes({ project }: { project: PromptProject }) {
       await updatePromptProjectCreationNotes({
         data: { id: project.id, creationNotes: draft },
       });
+      clearCreationNotesDraft();
       await queryClient.invalidateQueries({
         queryKey: ["library", "prompt-projects"],
         exact: false,

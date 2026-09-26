@@ -16,6 +16,7 @@ export type AccountPreferences = {
   lyricsPublic: boolean;
   allowDownload: boolean;
   exportFormat: ExportFormat;
+  autoSaveDrafts: boolean;
 };
 
 export const ACCOUNT_PREFERENCE_KEYS = {
@@ -27,6 +28,7 @@ export const ACCOUNT_PREFERENCE_KEYS = {
   lyricsPublic: "default_lyrics_public",
   allowDownload: "default_allow_download",
   exportFormat: "default_export_format",
+  autoSaveDrafts: "auto_save_drafts",
 } as const;
 
 export const DEFAULT_ACCOUNT_PREFERENCES: AccountPreferences = {
@@ -38,6 +40,7 @@ export const DEFAULT_ACCOUNT_PREFERENCES: AccountPreferences = {
   lyricsPublic: true,
   allowDownload: false,
   exportFormat: "md",
+  autoSaveDrafts: true,
 };
 
 const EVENT_NAME = "promptbeats:account-preferences";
@@ -77,6 +80,10 @@ export function readAccountPreferences(metadata: Record<string, unknown> | null 
       typeof exportFormat === "string" && EXPORT_FORMATS.has(exportFormat as ExportFormat)
         ? (exportFormat as ExportFormat)
         : DEFAULT_ACCOUNT_PREFERENCES.exportFormat,
+    autoSaveDrafts: bool(
+      data[ACCOUNT_PREFERENCE_KEYS.autoSaveDrafts],
+      DEFAULT_ACCOUNT_PREFERENCES.autoSaveDrafts,
+    ),
   } satisfies AccountPreferences;
 }
 
@@ -121,5 +128,5 @@ export function useAccountPreferences() {
     [preferences, user],
   );
 
-  return { preferences, setPreference, signedIn: Boolean(user) };
+  return { preferences, setPreference, signedIn: Boolean(user), userId: user?.id ?? null };
 }
