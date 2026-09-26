@@ -195,7 +195,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
             />
           </button>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            {privateReviewFeature.allowed && versions.length > 0 && (
+            {versions.length > 0 && (
               <button
                 type="button"
                 onClick={() => setPrivateReviewOpen(true)}
@@ -736,6 +736,7 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
             version_number: version.version_number,
             version_label: version.version_label,
           }))}
+          canCreateNew={privateReviewFeature.allowed}
           language={language}
           onClose={() => setPrivateReviewOpen(false)}
         />

@@ -30,6 +30,7 @@ type Props = {
   versions?: VersionOption[];
   initialTrackId?: string;
   language: string;
+  canCreateNew?: boolean;
   onClose: () => void;
 };
 
@@ -39,6 +40,7 @@ export function PrivateReviewManager({
   versions = [],
   initialTrackId,
   language,
+  canCreateNew = true,
   onClose,
 }: Props) {
   const el = language === "el";
@@ -68,6 +70,7 @@ export function PrivateReviewManager({
   const myTracks = useQuery({
     queryKey: ["private-review-my-tracks"],
     queryFn: () => listMyTracks(),
+    enabled: canCreateNew,
   });
   const songTracks = (myTracks.data?.tracks ?? []).filter(
     (track: any) => track.source_type === "upload" && Boolean(track.audio_url),
@@ -89,7 +92,10 @@ export function PrivateReviewManager({
   const linkedTracks = useQuery({
     queryKey: ["private-review-linked-tracks", projectId, versionId],
     queryFn: () => listProjectVersionLinkedTracks({ data: { projectId: projectId!, versionId } }),
-    enabled: sourceType === "project_version" && Boolean(projectId && versionId && includeAudio),
+    enabled:
+      canCreateNew &&
+      sourceType === "project_version" &&
+      Boolean(projectId && versionId && includeAudio),
   });
 
   const ownerSession = useQuery({
@@ -197,6 +203,7 @@ export function PrivateReviewManager({
   };
 
   const createDisabled =
+    !canCreateNew ||
     createMutation.isPending ||
     (sourceType === "track"
       ? !songTrackId
@@ -227,8 +234,17 @@ export function PrivateReviewManager({
           </button>
         </div>
 
+        {!canCreateNew && (
+          <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
+            {el
+              ? "Η δημιουργία νέων Private Review links δεν είναι διαθέσιμη αυτή τη στιγμή. Μπορείς να δεις και να κλείσεις όσα links έχεις ήδη δημιουργήσει."
+              : "Creating new Private Review links is currently unavailable. You can still view and close links you already created."}
+          </div>
+        )}
+
         <div className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <fieldset disabled={!canCreateNew} className={!canCreateNew ? "opacity-50" : undefined}>
             <h3 className="text-sm font-bold">{el ? "Νέο review" : "New review"}</h3>
 
             <p className="mt-4 text-[11px] font-semibold text-muted-foreground">
@@ -541,6 +557,7 @@ export function PrivateReviewManager({
                 </button>
               </div>
             )}
+            </fieldset>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -636,7 +653,7 @@ export function PrivateReviewManager({
                   <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">
                     {comment.body}
                   </p>
-                  {ownerSession.data.state === "active" && (
+                  {canCreateNew && ownerSession.data.state === "active" && (
                     <button
                       type="button"
                       onClick={() => {
@@ -657,7 +674,7 @@ export function PrivateReviewManager({
                 </p>
               )}
             </div>
-            {replyParentId && (
+            {canCreateNew && replyParentId && (
               <div className="mt-3 rounded-xl border border-accent/20 p-3">
                 <textarea
                   value={replyBody}

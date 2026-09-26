@@ -103,8 +103,7 @@ function TrackPage() {
     track &&
     user &&
     track.user_id === user.id &&
-    track.source_type === "upload" &&
-    privateReviewAccess.allowed,
+    track.source_type === "upload",
   );
 
   const trackId = track?.id;
@@ -416,6 +415,7 @@ function TrackPage() {
               <PrivateReviewManager
                 initialTrackId={track.id}
                 projectName={track.title}
+                canCreateNew={privateReviewAccess.allowed}
                 language={language}
                 onClose={() => setReviewOpen(false)}
               />
