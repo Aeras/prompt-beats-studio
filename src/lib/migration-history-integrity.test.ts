@@ -35,9 +35,15 @@ describe("migration history integrity", () => {
       expect(historical).toContain("ai_music_lab");
     }
 
-    expect(cleanup).toContain("DELETE FROM public.feature_access_policies WHERE feature_key = 'ai_music_lab'");
-    expect(cleanup).toContain("DELETE FROM public.ai_auxiliary_requests WHERE operation = 'ai_music_lab'");
-    expect(cleanup).toContain("DELETE FROM public.ai_auxiliary_admissions WHERE operation = 'ai_music_lab'");
+    expect(cleanup).toContain(
+      "DELETE FROM public.feature_access_policies WHERE feature_key = 'ai_music_lab'",
+    );
+    expect(cleanup).toContain(
+      "DELETE FROM public.ai_auxiliary_requests WHERE operation = 'ai_music_lab'",
+    );
+    expect(cleanup).toContain(
+      "DELETE FROM public.ai_auxiliary_admissions WHERE operation = 'ai_music_lab'",
+    );
     expect(cleanup).not.toContain("'song_setup_assistant','ai_music_lab','song_analyzer'");
   });
 
