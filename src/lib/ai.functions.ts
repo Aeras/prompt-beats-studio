@@ -2096,19 +2096,20 @@ export async function runLyricsSectionEdit(
 
 /** Completes a QC claim after a validated provider response and returns its id. */
 async function consumeCreation(
-  supabase: Supa,
+  userId: string,
   idempotencyKey: string,
   quality: QualityReport,
   provider: string,
   model: string,
 ) {
-  const { data: inserted, error } = await supabase.rpc("consume_quality_check", {
-    _idempotency_key: idempotencyKey,
-    _quality_report: quality as unknown as Json,
-    _provider: provider,
-    _model: model,
+  const { consumeQualityCheck } = await import("@/lib/ai-finalization.server");
+  const inserted = await consumeQualityCheck({
+    userId,
+    idempotencyKey,
+    qualityReport: quality as unknown as Json,
+    provider,
+    model,
   });
-  if (error) throw new Error("The action could not be recorded. Please try again.");
   const parsed = z.string().uuid().safeParse(inserted);
   if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
   return parsed.data;
@@ -2230,14 +2231,9 @@ export const checkSongQuality = createServerFn({ method: "POST" })
       };
     }
 
-    const { error: startedError } = await supabase.rpc("mark_quality_check_provider_started", {
-      _idempotency_key: data.idempotencyKey,
-    });
-    if (startedError) {
-      // Do not release by idempotency key here: a stale caller could race a
-      // later claimant and release that claimant's in-progress action.
-      throw new Error("The quality check could not be started. Please try again.");
-    }
+    const { markQualityCheckProviderStarted, releaseQualityCheck } =
+      await import("@/lib/ai-finalization.server");
+    await markQualityCheckProviderStarted(context.userId, data.idempotencyKey);
 
     let quality: QualityReport | null;
     try {
@@ -2249,9 +2245,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
         ...(reasoningEffort ? { reasoningEffort } : {}),
       });
     } catch (err) {
-      await supabase.rpc("release_quality_check", {
-        _idempotency_key: data.idempotencyKey,
-      });
+      await releaseQualityCheck(context.userId, data.idempotencyKey);
       throw err;
     }
 
@@ -2259,9 +2253,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     // parsed successfully through the existing QualityReport schema. Failed,
     // incomplete, malformed, or schema-invalid responses remain uncharged.
     if (!quality) {
-      await supabase.rpc("release_quality_check", {
-        _idempotency_key: data.idempotencyKey,
-      });
+      await releaseQualityCheck(context.userId, data.idempotencyKey);
       await flushUsage(context.userId, data.generationId ?? null, records);
       const after = await usageFor(supabase, context.userId);
       return { error: "unavailable" as const, quality: null, model: null, usage: after };
@@ -2269,7 +2261,13 @@ export const checkSongQuality = createServerFn({ method: "POST" })
 
     let consumedId: string;
     try {
-      consumedId = await consumeCreation(supabase, data.idempotencyKey, quality, provider, model);
+      consumedId = await consumeCreation(
+        context.userId,
+        data.idempotencyKey,
+        quality,
+        provider,
+        model,
+      );
     } catch {
       // Do not release a post-provider claim: releasing it would allow a retry
       // to invoke the paid provider a second time. The idempotency row remains

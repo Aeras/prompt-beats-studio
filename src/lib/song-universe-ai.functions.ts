@@ -296,6 +296,7 @@ export const generateSongUniverseCreativeBible = createServerFn({ method: "POST"
     await requireFeatureAccess(context.supabase, "song_universe");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_universe",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -339,6 +340,7 @@ export const refineSongUniverseCreativeBible = createServerFn({ method: "POST" }
     await requireFeatureAccess(context.supabase, "song_universe");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_universe",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -376,6 +378,7 @@ export const analyzeSongUniverseContinuity = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_universe");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_universe",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -430,6 +433,7 @@ export const analyzeSongUniverseProjectFit = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_universe");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_universe",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {

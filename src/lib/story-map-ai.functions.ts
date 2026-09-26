@@ -268,6 +268,7 @@ export const buildStoryMapWithAi = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "story_map",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -330,6 +331,7 @@ export const planStoryDrivenGeneration = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "story_map",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -384,6 +386,7 @@ export const createStoryMapFromLyrics = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "story_map",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {
@@ -431,6 +434,7 @@ export const analyzeLyricsWithStoryMap = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "story_map");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "story_map",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {

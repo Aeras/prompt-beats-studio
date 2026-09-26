@@ -107,6 +107,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
     return executeDurableAuxiliaryAiRequest({
       supabase: context.supabase,
+      userId: context.userId,
       operation: "song_setup_assistant",
       requestKey: data.requestKey,
       execute: async (markProviderStarted) => {

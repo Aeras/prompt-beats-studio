@@ -23,12 +23,16 @@ describe("F7-03 durable auxiliary AI idempotency", () => {
     expect(migration).toContain("v_used >= 10");
   });
 
-  test("application fences the provider and records usage only inside claimed work", async () => {
+  test("application fences the provider and finalizes only through server authority", async () => {
     const helper = await source("src/lib/ai-auxiliary-idempotency.server.ts");
-    expect(helper).toContain("mark_auxiliary_ai_provider_started");
+    expect(helper).toContain('input.supabase.rpc("claim_auxiliary_ai_request"');
+    expect(helper).toContain('from "@/lib/ai-finalization.server"');
+    expect(helper).toContain("markAuxiliaryAiProviderStarted");
     expect(helper).toContain('claim.status === "completed"');
     expect(helper).toContain('claim.status === "processing"');
-    expect(helper).toContain("complete_auxiliary_ai_request");
+    expect(helper).toContain("completeAuxiliaryAiRequest");
+    expect(helper).not.toContain('input.supabase.rpc("mark_auxiliary_ai_provider_started"');
+    expect(helper).not.toContain('input.supabase.rpc("complete_auxiliary_ai_request"');
   });
 
   test("all covered auxiliary operation families require a durable request key", async () => {
