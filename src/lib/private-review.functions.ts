@@ -216,7 +216,6 @@ export const listMyPrivateReviewSessions = createServerFn({ method: "POST" })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "private_review_links");
     const { data: raw, error } = await (context.supabase as any).rpc(
       "list_my_private_review_sessions",
       {
@@ -239,7 +238,6 @@ export const getMyPrivateReviewSession = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "private_review_links");
     const { data: raw, error } = await (context.supabase as any).rpc(
       "get_my_private_review_session",
       {
@@ -255,7 +253,6 @@ export const closePrivateReviewSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ sessionId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireFeatureAccess(context.supabase, "private_review_links");
     const { error } = await (context.supabase as any).rpc("close_private_review_session", {
       _session_id: data.sessionId,
     });
