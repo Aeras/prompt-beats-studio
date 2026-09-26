@@ -1,0 +1,153 @@
+name: Settings integrations patch
+
+on:
+  push:
+    branches:
+      - feat/settings-preferences-redesign
+    paths:
+      - .github/workflows/settings-integrations-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/settings-preferences-redesign
+          fetch-depth: 0
+      - name: Apply targeted integrations
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected patch anchor not found in {path}: {old[:100]!r}")
+              text = text.replace(old, new, 1)
+              p.write_text(text)
+
+          # Settings polish: ReactNode typing and strict one-row segmented choices.
+          replace_once(
+              "src/components/promptbeats/SettingsPanel.tsx",
+              'import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";',
+              'import {\n  useEffect,\n  useMemo,\n  useRef,\n  useState,\n  type PointerEvent as ReactPointerEvent,\n  type ReactNode,\n} from "react";',
+          )
+          replace_once(
+              "src/components/promptbeats/SettingsPanel.tsx",
+              'function InfoPopover({ children }: { children: React.ReactNode }) {',
+              'function InfoPopover({ children }: { children: ReactNode }) {',
+          )
+          replace_once(
+              "src/components/promptbeats/SettingsPanel.tsx",
+              '<div className="mt-2 flex flex-wrap gap-2">',
+              '<div className="mt-2 flex flex-nowrap gap-2">',
+          )
+
+          # Generator: apply the account default only to a fresh, untouched Generator.
+          replace_once(
+              "src/routes/generate.tsx",
+              'import { useFeatureAccess } from "@/hooks/useFeatureAccess";',
+              'import { useFeatureAccess } from "@/hooks/useFeatureAccess";\nimport { useAccountPreferences } from "@/lib/account-preferences";',
+          )
+          replace_once(
+              "src/routes/generate.tsx",
+              '  const { user, loading } = useAuth();\n  const generatorFeature = useFeatureAccess("ai_generator");',
+              '  const { user, loading } = useAuth();\n  const { preferences: accountPreferences } = useAccountPreferences();\n  const generatorFeature = useFeatureAccess("ai_generator");',
+          )
+          replace_once(
+              "src/routes/generate.tsx",
+              '  const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");\n  const [revisionMode, setRevisionMode] = useState(search.mode === "revision");',
+              '  const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");\n  const defaultGeneratorModeAppliedRef = useRef(false);\n  const [revisionMode, setRevisionMode] = useState(search.mode === "revision");',
+          )
+          replace_once(
+              "src/routes/generate.tsx",
+              '  const languageRequiredRef = useRef<HTMLDivElement>(null);\n\n  useEffect(() => {\n    if (typeof window === "undefined") return;\n    const raw = window.sessionStorage.getItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);',
+              '  const languageRequiredRef = useRef<HTMLDivElement>(null);\n\n  useEffect(() => {\n    if (defaultGeneratorModeAppliedRef.current || !user) return;\n    defaultGeneratorModeAppliedRef.current = true;\n    if (search.mode === "revision" || search.presets === "open" || search.workspace === "lyrics") return;\n    // Never downgrade a mode already promoted by a handoff/recovery path. The account\n    // default only upgrades an otherwise fresh Basic Generator to Advanced.\n    if (!advanced && accountPreferences.generatorMode === "advanced") setAdvanced(true);\n  }, [accountPreferences.generatorMode, advanced, search.mode, search.presets, search.workspace, user]);\n\n  useEffect(() => {\n    if (typeof window === "undefined") return;\n    const raw = window.sessionStorage.getItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);',
+          )
+
+          # Submit Track: use account defaults whenever a fresh row is created.
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              'import { useEffect, useState } from "react";',
+              'import { useEffect, useRef, useState } from "react";',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              'import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";',
+              'import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";\nimport {\n  DEFAULT_ACCOUNT_PREFERENCES,\n  useAccountPreferences,\n  type AccountPreferences,\n} from "@/lib/account-preferences";',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              'const emptyRow = (): Row => ({',
+              'type SubmitTrackDefaults = Pick<\n  AccountPreferences,\n  "trackPublished" | "promptPublic" | "lyricsPublic" | "allowDownload"\n>;\n\nconst emptyRow = (defaults: SubmitTrackDefaults = DEFAULT_ACCOUNT_PREFERENCES): Row => ({',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '  isPublished: true,\n  promptIsPublic: true,\n  lyricsIsPublic: true,\n  allowDownload: false,',
+              '  isPublished: defaults.trackPublished,\n  promptIsPublic: defaults.promptPublic,\n  lyricsIsPublic: defaults.lyricsPublic,\n  allowDownload: defaults.allowDownload,',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '  const { user } = useAuth();\n  const { isBanned } = useModeration();',
+              '  const { user } = useAuth();\n  const { preferences } = useAccountPreferences();\n  const { isBanned } = useModeration();',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '  const [rows, setRows] = useState<Row[]>([emptyRow()]);\n  const [busy, setBusy] = useState(false);',
+              '  const [rows, setRows] = useState<Row[]>([emptyRow()]);\n  const wasOpenRef = useRef(false);\n  const [busy, setBusy] = useState(false);',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '  const [status, setStatus] = useState<string | null>(null);\n\n  useEffect(() => {\n    if (!open || uploadAccess.isLoading || uploadAccess.allowed) return;',
+              '  const [status, setStatus] = useState<string | null>(null);\n\n  useEffect(() => {\n    if (open && !wasOpenRef.current) {\n      setRows([emptyRow(preferences)]);\n      setStatus(null);\n    }\n    wasOpenRef.current = open;\n  }, [open, preferences]);\n\n  useEffect(() => {\n    if (!open || uploadAccess.isLoading || uploadAccess.allowed) return;',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '      setRows([emptyRow()]);',
+              '      setRows([emptyRow(preferences)]);',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '              onClick={() => setRows((rs) => [...rs, emptyRow()])}',
+              '              onClick={() => setRows((rs) => [...rs, emptyRow(preferences)])}',
+          )
+          replace_once(
+              "src/components/promptbeats/StudioModal.tsx",
+              '                        allowDownload: false,\n                      })',
+              '                        allowDownload:\n                          e.target.value === "upload" ? preferences.allowDownload : false,\n                      })',
+          )
+
+          # Library: share one canonical tab registry with Settings and honor the saved default.
+          replace_once(
+              "src/routes/library.tsx",
+              'import { useI18n } from "@/i18n";',
+              'import { useI18n } from "@/i18n";\nimport { useAccountPreferences } from "@/lib/account-preferences";\nimport { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";',
+          )
+          replace_once(
+              "src/routes/library.tsx",
+              'const TABS = ["tracks", "playlists", "shared", "prompts", "favorites", "likes"] as const;\ntype LibraryTab = (typeof TABS)[number];\ntype LibrarySearch = { tab?: LibraryTab };\n\nfunction parseLibraryTab(value: unknown): LibraryTab | undefined {\n  return typeof value === "string" && TABS.includes(value as LibraryTab)\n    ? (value as LibraryTab)\n    : undefined;\n}',
+              'const TABS = LIBRARY_TAB_IDS;\ntype LibrarySearch = { tab?: LibraryTab };\n\nfunction parseLibraryTab(value: unknown): LibraryTab | undefined {\n  return isLibraryTab(value) ? value : undefined;\n}',
+          )
+          replace_once(
+              "src/routes/library.tsx",
+              '  const { user, profile, loading } = useAuth();\n  const playlistsAccess = useFeatureAccess("playlists");',
+              '  const { user, profile, loading } = useAuth();\n  const { preferences: accountPreferences } = useAccountPreferences();\n  const playlistsAccess = useFeatureAccess("playlists");',
+          )
+          replace_once(
+              "src/routes/library.tsx",
+              '  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : "tracks";',
+              '  const preferredTab = availableTabs.includes(accountPreferences.libraryTab)\n    ? accountPreferences.libraryTab\n    : "tracks";\n  const tab = requestedTab && availableTabs.includes(requestedTab) ? requestedTab : preferredTab;',
+          )
+
+      - name: Commit targeted integrations
+        run: |
+          git config user.name "PromptBeats CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/promptbeats/SettingsPanel.tsx src/routes/generate.tsx src/components/promptbeats/StudioModal.tsx src/routes/library.tsx
+          git commit -m "Wire Settings defaults into product surfaces"
+          git push origin HEAD:feat/settings-preferences-redesign
