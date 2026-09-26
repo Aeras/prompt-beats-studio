@@ -33,6 +33,10 @@ function formatDuration(seconds: number | null) {
 }
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search["q"] === "string" ? search["q"].trim() : "";
+    return q ? { q } : {};
+  },
   head: () => ({
     meta: [
       { title: "PromptBeats — AI Music Prompts, Tracks & Studio" },
@@ -55,13 +59,9 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { t, language } = useI18n();
+  const { q } = Route.useSearch();
+  const query = q ?? "";
   const [genre, setGenre] = useState("All");
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const value = new URLSearchParams(window.location.search).get("q");
-    if (value) setQuery(value);
-  }, []);
   const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
   const { current, playing, play } = usePlayer();
   const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Menu, Search, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
@@ -42,6 +42,7 @@ const MOBILE_TABS = [
 
 const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
 const DRAWER_IDLE_MS = 2_000;
+const LIVE_SEARCH_DEBOUNCE_MS = 250;
 const TOUCH_TAB_SWIPE_THRESHOLD = 72;
 const TOUCH_TAB_SWIPE_DOMINANCE = 1.25;
 const TABLET_LANDSCAPE_QUERY =
@@ -76,8 +77,13 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [studio, setStudio] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [tabletLandscape, setTabletLandscape] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
   const drawerIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveSearchTouchedRef = useRef(false);
   const active = useActiveNav();
+  const currentHref = useRouterState({ select: (state) => state.location.href });
+  const navigate = useNavigate();
   const { t } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
   const {
@@ -93,6 +99,49 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
     if (!isInvalid) return;
     void supabase.auth.signOut().then(() => window.location.assign("/auth"));
   }, [isInvalid]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = new URL(currentHref, window.location.origin).searchParams.get("q") ?? "";
+    liveSearchTouchedRef.current = false;
+    setGlobalSearch((current) => (current === query ? current : query));
+  }, [currentHref]);
+
+  const runGlobalSearch = useCallback(
+    (value: string) => {
+      const query = value.trim();
+      void navigate({
+        to: "/",
+        search: query ? { q: query } : {},
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    if (!liveSearchTouchedRef.current) return;
+    if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
+    liveSearchTimerRef.current = setTimeout(() => {
+      liveSearchTouchedRef.current = false;
+      runGlobalSearch(globalSearch);
+    }, LIVE_SEARCH_DEBOUNCE_MS);
+    return () => {
+      if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
+    };
+  }, [globalSearch, runGlobalSearch]);
+
+  const handleGlobalSearchChange = (value: string) => {
+    liveSearchTouchedRef.current = true;
+    setGlobalSearch(value);
+  };
+
+  const submitGlobalSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    liveSearchTouchedRef.current = false;
+    if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
+    runGlobalSearch(globalSearch);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -320,13 +369,16 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <form action="/" method="get" className="relative min-w-0 flex-1">
+              <form onSubmit={submitGlobalSearch} className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   name="q"
                   type="search"
+                  value={globalSearch}
+                  onChange={(event) => handleGlobalSearchChange(event.target.value)}
                   aria-label={t("discover.searchAria")}
                   placeholder={t("discover.searchPlaceholder")}
+                  autoComplete="off"
                   className="h-10 w-full rounded-full border border-white/10 bg-black/35 pl-9 pr-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_18%,transparent)]"
                 />
               </form>
