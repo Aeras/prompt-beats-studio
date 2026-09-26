@@ -55,7 +55,11 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .eq("id", context.userId)
       .maybeSingle();
     if (error)
-      throwSafeServerError("profile:get", error, "Your profile could not be loaded. Please try again.");
+      throwSafeServerError(
+        "profile:get",
+        error,
+        "Your profile could not be loaded. Please try again.",
+      );
     return { profile: data };
   });
 
