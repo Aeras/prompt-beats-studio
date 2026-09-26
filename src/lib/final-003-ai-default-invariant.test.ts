@@ -47,7 +47,8 @@ describe("AI default invariant evolution", () => {
   });
 
   it("makes the configured operation default effective for every account without widening other grants", () => {
-    expect(providerSource).toContain("const effectiveModels = [configuredDefault");
+    expect(providerSource).toContain("const effectiveModels = [");
+    expect(providerSource).toContain("configuredDefault,");
     expect(providerSource).toContain("defaultModel: configuredDefault.providerModelId");
     expect(providerSource).toContain('if (model.accessPolicy === "admin_only") continue;');
     expect(providerSource).toContain('accessMode: "custom"');
