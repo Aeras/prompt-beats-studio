@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
+import { similarityVectorSchema } from "@/lib/qdrant-music-memory.functions";
 import {
   buildEnhancedStage0Evidence,
   enhancedCanonicalEvidenceSchema,
@@ -41,6 +42,7 @@ const workerOutputSchema = z
       })
       .passthrough(),
     canonical_evidence: enhancedCanonicalEvidenceSchema,
+    similarity_embedding: similarityVectorSchema.nullable().optional(),
   })
   .passthrough();
 
@@ -130,6 +132,8 @@ async function runEnhancedWorker(audioUrl: string) {
       input: {
         action: "analyze_fused",
         audio_url: audioUrl,
+        include_similarity_embedding: true,
+        similarity_embedding_contract: "promptbeats-mert95-similarity-v1",
       },
     }),
   });
@@ -218,6 +222,7 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
       return {
         stage0Evidence,
         canonicalEvidence,
+        similarityEmbedding: worker.output.similarity_embedding ?? null,
         worker: {
           engine: worker.output.engine,
           executionTimeMs: worker.executionTimeMs,
