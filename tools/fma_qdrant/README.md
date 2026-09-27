@@ -8,13 +8,14 @@ This tool prepares the full FMA Large reference corpus for PromptBeats music-sim
 
 The importer uses HTTP byte-range access (`RemoteZip`). It does **not** intentionally download `fma_large.zip` as a whole. If the upstream host does not support range access, initialization should fail instead of silently allocating 93 GiB locally.
 
-Qdrant is also the resume checkpoint. FMA track IDs are deterministic Qdrant point IDs. On restart, the importer asks Qdrant which IDs already exist and skips them, so no local checkpoint or persistent RunPod disk is required.
+Qdrant is also the resume checkpoint. FMA track IDs are deterministic Qdrant point IDs. On restart, the importer asks Qdrant which IDs already exist and skips them, so no local checkpoint or persistent RunPod disk is required. Qdrant writes are batched (32 points by default) to avoid tens of thousands of unnecessary network round trips.
 
 ## Embedding contract
 
 The canonical POC contract is `embedding_contract.json`:
 
 - model: `m-a-p/MERT-v1-95M`
+- pinned model revision: `12af15f`
 - 24 kHz mono
 - 5-second non-overlapping windows
 - last hidden state
@@ -35,7 +36,7 @@ Use a temporary GPU Pod/job with Python 3.11+ and `ffmpeg` installed. No paid pe
 ```bash
 git clone https://github.com/Aeras/prompt-beats-studio.git
 cd prompt-beats-studio
-git checkout feat/fma-qdrant-ingest
+git checkout main
 
 python -m venv .venv
 source .venv/bin/activate
