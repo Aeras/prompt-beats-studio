@@ -27,15 +27,17 @@ describe("Song Analyzer style, language and structure preservation", () => {
     expect(code).toContain("Remove nationality/regional style wording");
   });
 
-  test("Stage A and Stage B preserve full timeline coverage", async () => {
+  test("Stage A and deterministic gates preserve full timeline coverage", async () => {
     const code = await source("src/lib/song-analyzer.functions.ts");
 
     expect(code).toContain("FULL-TIMELINE SECTION COVERAGE");
     expect(code).toContain("startSeconds");
     expect(code).toContain("endSeconds");
     expect(code).toContain("Transition / Uncertain section");
+    expect(code).toContain("normalizeSectionCoverage");
     expect(code).toContain("STRUCTURE / TIMELINE COVERAGE");
     expect(code).toContain("songStructure: structure ?? result.generatorReady.songStructure");
+    expect(code).toContain("songStructure: detailedStructure ?? result.detailedAnalysis.songStructure");
   });
 
   test("generator instructions cannot invent unsupported arrangement events", async () => {
