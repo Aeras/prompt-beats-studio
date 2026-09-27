@@ -225,12 +225,19 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
         },
       });
       if (checkRequestRef.current[key] !== requestId) return;
+      if (result.status === "invalid") {
+        throw new Error(
+          language === "el"
+            ? "Το αρχείο ήχου δεν μπόρεσε να επαληθευτεί."
+            : "The audio file could not be verified.",
+        );
+      }
       setCheck(key, {
         status: result.status,
         contentHash: identity.contentHash,
         fingerprint: identity.fingerprint,
         durationSeconds: identity.durationSeconds,
-        duplicateTitle: result.duplicate?.title ?? undefined,
+        ...(result.duplicate?.title ? { duplicateTitle: result.duplicate.title } : {}),
         confirmedSimilar: false,
       });
     } catch (error) {
@@ -253,7 +260,12 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       clearCheck(row.key);
       return;
     }
-    if (!isSupportedExternalTrackUrl(row.sourceType, sourceUrl)) {
+    if (row.sourceType === "upload") {
+      clearCheck(row.key);
+      return;
+    }
+    const sourceType = row.sourceType;
+    if (!isSupportedExternalTrackUrl(sourceType, sourceUrl)) {
       setCheck(row.key, {
         status: "error",
         message:
@@ -280,20 +292,22 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     try {
       const result = await checkTrackDuplicate({
         data: {
-          sourceType: row.sourceType as "suno" | "udio",
+          sourceType,
           sourceUrl,
         },
       });
       if (checkRequestRef.current[row.key] !== requestId) return;
       setCheck(row.key, {
         status: result.status === "invalid" ? "error" : result.status,
-        duplicateTitle: result.duplicate?.title ?? undefined,
-        message:
-          result.status === "invalid"
-            ? language === "el"
-              ? "Ο σύνδεσμος δεν μπόρεσε να επαληθευτεί."
-              : "The link could not be verified."
-            : undefined,
+        ...(result.duplicate?.title ? { duplicateTitle: result.duplicate.title } : {}),
+        ...(result.status === "invalid"
+          ? {
+              message:
+                language === "el"
+                  ? "Ο σύνδεσμος δεν μπόρεσε να επαληθευτεί."
+                  : "The link could not be verified.",
+            }
+          : {}),
       });
     } catch (error) {
       if (checkRequestRef.current[row.key] !== requestId) return;
