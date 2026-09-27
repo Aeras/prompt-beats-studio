@@ -1,0 +1,7 @@
+numpy>=1.26,<3
+pandas>=2.2,<3
+requests>=2.32,<3
+remotezip>=0.12,<1
+torch>=2.4,<3
+transformers>=4.46,<5
+qdrant-client>=1.12,<2
