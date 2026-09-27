@@ -32,7 +32,7 @@ describe("Track duplicate detection", () => {
 
   test("submission UI checks the audio before exposing the remaining metadata fields", async () => {
     const code = await source("src/components/promptbeats/StudioModal.tsx");
-    const audioPicker = code.indexOf('id={`pb-audio-${r.key}`}');
+    const audioPicker = code.indexOf("id={`pb-audio-${r.key}`}");
     const gate = code.indexOf("{canContinue && (");
     const titleField = code.indexOf('placeholder={t("studio.trackTitle")}');
     expect(audioPicker).toBeGreaterThan(-1);
