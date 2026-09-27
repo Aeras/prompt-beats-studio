@@ -4,15 +4,26 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
-const MUSIC_MEMORY_COLLECTION = "promptbeats_music_memory_v1";
-const MERT_VECTOR_SIZE = 768;
-const MERT_EMBEDDING_CONTRACT = "promptbeats-mert95-similarity-v1";
+export const MUSIC_MEMORY_COLLECTION = "promptbeats_music_memory_v1";
+export const MERT_VECTOR_SIZE = 768;
+export const MERT_EMBEDDING_CONTRACT = "promptbeats-mert95-similarity-v1";
+
+export const similarityVectorSchema = z.object({
+  contract: z.literal(MERT_EMBEDDING_CONTRACT),
+  vector: z.array(z.number().finite()).length(MERT_VECTOR_SIZE),
+});
 
 const similarityInputSchema = z.object({
   vector: z.array(z.number().finite()).length(MERT_VECTOR_SIZE),
   limit: z.number().int().min(1).max(50).default(20),
   scoreThreshold: z.number().finite().min(-1).max(1).optional(),
 });
+
+export type MusicMemoryMatch = {
+  id: string | number | null;
+  score: number | null;
+  payload: Record<string, unknown>;
+};
 
 function getQdrantConfig() {
   const url = process.env["QDRANT_URL"]?.trim().replace(/\/+$/, "");
@@ -52,6 +63,59 @@ async function collectionPointCount() {
   return {
     points: payload.result?.points_count ?? null,
     indexedVectors: payload.result?.indexed_vectors_count ?? null,
+  };
+}
+
+export async function queryMusicMemoryByVector(args: {
+  vector: number[];
+  limit?: number;
+  scoreThreshold?: number;
+}): Promise<{
+  collectionName: string;
+  embeddingContract: string;
+  matches: MusicMemoryMatch[];
+}> {
+  const parsed = similarityInputSchema.parse({
+    vector: args.vector,
+    limit: args.limit ?? 20,
+    scoreThreshold: args.scoreThreshold,
+  });
+
+  const response = await qdrantRequest(`/collections/${MUSIC_MEMORY_COLLECTION}/points/query`, {
+    method: "POST",
+    body: JSON.stringify({
+      query: parsed.vector,
+      limit: parsed.limit,
+      with_payload: true,
+      with_vector: false,
+      ...(parsed.scoreThreshold == null ? {} : { score_threshold: parsed.scoreThreshold }),
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Qdrant similarity query failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 300)}` : "."}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    result?: {
+      points?: Array<{
+        id?: string | number;
+        score?: number;
+        payload?: Record<string, unknown> | null;
+      }>;
+    };
+  };
+
+  return {
+    collectionName: MUSIC_MEMORY_COLLECTION,
+    embeddingContract: MERT_EMBEDDING_CONTRACT,
+    matches: (payload.result?.points ?? []).map((point) => ({
+      id: point.id ?? null,
+      score: typeof point.score === "number" ? point.score : null,
+      payload: point.payload ?? {},
+    })),
   };
 }
 
@@ -185,41 +249,5 @@ export const queryQdrantMusicMemory = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => similarityInputSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_analyzer");
-
-    const response = await qdrantRequest(`/collections/${MUSIC_MEMORY_COLLECTION}/points/query`, {
-      method: "POST",
-      body: JSON.stringify({
-        query: data.vector,
-        limit: data.limit,
-        with_payload: true,
-        with_vector: false,
-        ...(data.scoreThreshold == null ? {} : { score_threshold: data.scoreThreshold }),
-      }),
-    });
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(
-        `Qdrant similarity query failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 300)}` : "."}`,
-      );
-    }
-
-    const payload = (await response.json()) as {
-      result?: {
-        points?: Array<{
-          id?: string | number;
-          score?: number;
-          payload?: Record<string, unknown> | null;
-        }>;
-      };
-    };
-
-    return {
-      collectionName: MUSIC_MEMORY_COLLECTION,
-      embeddingContract: MERT_EMBEDDING_CONTRACT,
-      matches: (payload.result?.points ?? []).map((point) => ({
-        id: point.id ?? null,
-        score: typeof point.score === "number" ? point.score : null,
-        payload: point.payload ?? {},
-      })),
-    };
+    return queryMusicMemoryByVector(data);
   });
