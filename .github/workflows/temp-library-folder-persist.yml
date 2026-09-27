@@ -19,44 +19,8 @@ jobs:
       - name: Patch library folder persistence
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("src/routes/library.tsx")
-          text = path.read_text()
-          old = "  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);"
-          new = '''  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
-            if (typeof window === "undefined") return null;
-            return window.sessionStorage.getItem("promptbeats:library-current-folder") || null;
-          });'''
-          if old not in text:
-              raise SystemExit("currentFolderId state marker not found")
-          text = text.replace(old, new, 1)
-          marker = '''  useEffect(() => {
-            if (typeof window === "undefined") return;
-            const media = window.matchMedia("(min-width: 768px)");'''
-          persistence = '''  useEffect(() => {
-            if (typeof window === "undefined") return;
-            const key = "promptbeats:library-current-folder";
-            if (currentFolderId) window.sessionStorage.setItem(key, currentFolderId);
-            else window.sessionStorage.removeItem(key);
-          }, [currentFolderId]);
-
-'''
-          if marker not in text:
-              raise SystemExit("desktop DnD effect marker not found")
-          text = text.replace(marker, persistence + marker, 1)
-          path.write_text(text)
-
-          test_path = Path("src/lib/library-folders.test.ts")
-          test = test_path.read_text()
-          marker = '    expect(library).toContain("folder-breadcrumbs");\n'
-          addition = '    expect(library).toContain("promptbeats:library-current-folder");\n'
-          if addition not in test:
-              if marker not in test:
-                  raise SystemExit("library folder test marker not found")
-              test = test.replace(marker, marker + addition, 1)
-          test_path.write_text(test)
-          PY
+          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKcGF0aCA9IFBhdGgoInNyYy9yb3V0ZXMvbGlicmFyeS50c3giKQp0ZXh0ID0gcGF0aC5yZWFkX3RleHQoKQoKb2xkID0gJyAgY29uc3QgW2N1cnJlbnRGb2xkZXJJZCwgc2V0Q3VycmVudEZvbGRlcklkXSA9IHVzZVN0YXRlPHN0cmluZyB8IG51bGw+KG51bGwpOycKbmV3ID0gJycnICBjb25zdCBbY3VycmVudEZvbGRlcklkLCBzZXRDdXJyZW50Rm9sZGVySWRdID0gdXNlU3RhdGU8c3RyaW5nIHwgbnVsbD4oKCkgPT4gewogICAgaWYgKHR5cGVvZiB3aW5kb3cgPT09ICJ1bmRlZmluZWQiKSByZXR1cm4gbnVsbDsKICAgIHJldHVybiB3aW5kb3cuc2Vzc2lvblN0b3JhZ2UuZ2V0SXRlbSgicHJvbXB0YmVhdHM6bGlicmFyeS1jdXJyZW50LWZvbGRlciIpIHx8IG51bGw7CiAgfSk7JycnCmlmIG9sZCBub3QgaW4gdGV4dDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoImN1cnJlbnRGb2xkZXJJZCBzdGF0ZSBtYXJrZXIgbm90IGZvdW5kIikKdGV4dCA9IHRleHQucmVwbGFjZShvbGQsIG5ldywgMSkKCm1hcmtlciA9ICcnJyAgdXNlRWZmZWN0KCgpID0+IHsKICAgIGlmICh0eXBlb2Ygd2luZG93ID09PSAidW5kZWZpbmVkIikgcmV0dXJuOwogICAgY29uc3QgbWVkaWEgPSB3aW5kb3cubWF0Y2hNZWRpYSgiKG1pbi13aWR0aDogNzY4cHgpIik7JycnCnBlcnNpc3RlbmNlID0gJycnICB1c2VFZmZlY3QoKCkgPT4gewogICAgaWYgKHR5cGVvZiB3aW5kb3cgPT09ICJ1bmRlZmluZWQiKSByZXR1cm47CiAgICBjb25zdCBrZXkgPSAicHJvbXB0YmVhdHM6bGlicmFyeS1jdXJyZW50LWZvbGRlciI7CiAgICBpZiAoY3VycmVudEZvbGRlcklkKSB3aW5kb3cuc2Vzc2lvblN0b3JhZ2Uuc2V0SXRlbShrZXksIGN1cnJlbnRGb2xkZXJJZCk7CiAgICBlbHNlIHdpbmRvdy5zZXNzaW9uU3RvcmFnZS5yZW1vdmVJdGVtKGtleSk7CiAgfSwgW2N1cnJlbnRGb2xkZXJJZF0pOwoKJycnCmlmIG1hcmtlciBub3QgaW4gdGV4dDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoImRlc2t0b3AgRG5EIGVmZmVjdCBtYXJrZXIgbm90IGZvdW5kIikKdGV4dCA9IHRleHQucmVwbGFjZShtYXJrZXIsIHBlcnNpc3RlbmNlICsgbWFya2VyLCAxKQpwYXRoLndyaXRlX3RleHQodGV4dCkKCnRlc3RfcGF0aCA9IFBhdGgoInNyYy9saWIvbGlicmFyeS1mb2xkZXJzLnRlc3QudHMiKQp0ZXN0ID0gdGVzdF9wYXRoLnJlYWRfdGV4dCgpCm1hcmtlciA9ICcgICAgZXhwZWN0KGxpYnJhcnkpLnRvQ29udGFpbigiZm9sZGVyLWJyZWFkY3J1bWJzIik7XG4nCmFkZGl0aW9uID0gJyAgICBleHBlY3QobGlicmFyeSkudG9Db250YWluKCJwcm9tcHRiZWF0czpsaWJyYXJ5LWN1cnJlbnQtZm9sZGVyIik7XG4nCmlmIGFkZGl0aW9uIG5vdCBpbiB0ZXN0OgogICAgaWYgbWFya2VyIG5vdCBpbiB0ZXN0OgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoImxpYnJhcnkgZm9sZGVyIHRlc3QgbWFya2VyIG5vdCBmb3VuZCIpCiAgICB0ZXN0ID0gdGVzdC5yZXBsYWNlKG1hcmtlciwgbWFya2VyICsgYWRkaXRpb24sIDEpCnRlc3RfcGF0aC53cml0ZV90ZXh0KHRlc3QpCg==' | base64 -d > /tmp/patch_library.py
+          python /tmp/patch_library.py
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Run folder regression test
