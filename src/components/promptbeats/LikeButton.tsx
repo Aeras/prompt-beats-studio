@@ -37,7 +37,7 @@ export function LikeButton({
       className={cn(
         "flex shrink-0 items-center justify-center text-xs transition-colors",
         compact
-          ? "h-9 w-6 -ml-3 [&+div]:-ml-1 [&+div]:gap-0 [&+div>button]:w-6"
+          ? "h-9 w-7"
           : "h-9 min-w-7 gap-1",
         liked ? "text-primary" : "text-muted-foreground hover:text-primary",
       )}
