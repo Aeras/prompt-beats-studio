@@ -3,7 +3,7 @@ export const enSongAnalyzer = {
   "songAnalyzer.admin": "Admin",
   "songAnalyzer.analyzeComplete": "Analyze a complete song",
   "songAnalyzer.zeroRetention":
-    "The source audio is used only for analysis. PromptBeats never saves it as a Track, Library item, Project asset, URL, object key, or permanent audio blob.",
+    "The source audio is used only for analysis. Enhanced analysis may place it in short-lived private transport storage so the GPU worker can read it; that temporary object is deleted after the job and is never saved as a Track, Library item, or Project asset.",
   "songAnalyzer.chooseAudio": "Choose audio file",
   "songAnalyzer.restoringAudio": "Restoring session audio…",
   "songAnalyzer.fileTypes": "MP3, WAV, M4A/MP4, AAC, OGG or FLAC · max 15 MB",
@@ -45,7 +45,7 @@ export const enSongAnalyzer = {
   "songAnalyzer.confidenceNotes": "Confidence / Uncertainty Notes",
   "songAnalyzer.saveTitle": "Save Analysis",
   "songAnalyzer.saveHelp":
-    "Save as a standalone analysis or optionally associate it with a Project. Source audio is never saved.",
+    "Save as a standalone analysis or optionally associate it with a Project. Source audio is not stored with the saved analysis.",
   "songAnalyzer.analysisName": "Analysis Name",
   "songAnalyzer.analysisNamePlaceholder": "Song Analysis",
   "songAnalyzer.project": "Project",

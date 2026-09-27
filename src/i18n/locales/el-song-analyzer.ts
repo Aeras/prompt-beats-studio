@@ -5,7 +5,7 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.admin": "Admin",
   "songAnalyzer.analyzeComplete": "Ανάλυση ολοκληρωμένου τραγουδιού",
   "songAnalyzer.zeroRetention":
-    "Το source audio χρησιμοποιείται μόνο για την ανάλυση. Το PromptBeats δεν το αποθηκεύει ποτέ ως Track, στοιχείο Library, asset Project, URL, object key ή μόνιμο audio blob.",
+    "Το source audio χρησιμοποιείται μόνο για την ανάλυση. Η enhanced ανάλυση μπορεί να το τοποθετήσει προσωρινά σε ιδιωτικό transport storage ώστε να το διαβάσει ο GPU worker· το προσωρινό object διαγράφεται μετά την ολοκλήρωση του job και δεν αποθηκεύεται ποτέ ως Track, στοιχείο Library ή asset Project.",
   "songAnalyzer.chooseAudio": "Επιλογή αρχείου ήχου",
   "songAnalyzer.restoringAudio": "Επαναφορά audio της συνεδρίας…",
   "songAnalyzer.fileTypes": "MP3, WAV, M4A/MP4, AAC, OGG ή FLAC · έως 15 MB",
@@ -47,7 +47,7 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.confidenceNotes": "Confidence / Uncertainty Notes",
   "songAnalyzer.saveTitle": "Αποθήκευση Ανάλυσης",
   "songAnalyzer.saveHelp":
-    "Αποθήκευσε standalone ή σύνδεσε προαιρετικά την ανάλυση με Project. Το source audio δεν αποθηκεύεται ποτέ.",
+    "Αποθήκευσε standalone ή σύνδεσε προαιρετικά την ανάλυση με Project. Το source audio δεν αποθηκεύεται μαζί με την αποθηκευμένη ανάλυση.",
   "songAnalyzer.analysisName": "Όνομα Ανάλυσης",
   "songAnalyzer.analysisNamePlaceholder": "Ανάλυση Τραγουδιού",
   "songAnalyzer.project": "Project",
