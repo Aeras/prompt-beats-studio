@@ -173,6 +173,15 @@ def existing_ids(client: QdrantClient, ids: list[int]) -> set[int]:
     return {int(point.id) for point in points if isinstance(point.id, int)}
 
 
+def flush_points(client: QdrantClient, points: list[PointStruct]) -> int:
+    if not points:
+        return 0
+    count = len(points)
+    client.upsert(collection_name=COLLECTION, wait=True, points=points)
+    points.clear()
+    return count
+
+
 def audio_member_candidates(track_id: int) -> list[str]:
     tid = f"{track_id:06d}"
     relative = f"{tid[:3]}/{tid}.mp3"
@@ -198,6 +207,7 @@ def build_payload(track_id: int, row: pd.Series, genre_names: dict[int, str], co
         "split": safe_text(col(row, "set", "split"), 50),
         "embedding_contract": contract["contract_id"],
         "embedding_model": contract["model"],
+        "embedding_model_revision": contract.get("model_revision"),
     }
     return {k: v for k, v in payload.items() if v not in (None, [], "")}
 
@@ -225,6 +235,7 @@ def run(args: argparse.Namespace) -> None:
     print(f"[fma] opening 93 GiB audio archive remotely; no full local download: {args.audio_url}", flush=True)
     processed = skipped = failed = 0
     failures: list[tuple[int, str]] = []
+    pending: list[PointStruct] = []
     started = time.time()
 
     with RemoteZip(args.audio_url) as rz:
@@ -248,12 +259,9 @@ def run(args: argparse.Namespace) -> None:
                     waveform = ffmpeg_decode_mono_24k(audio_bytes, int(contract["sample_rate_hz"]))
                     vector = embedder.embed(waveform)
                     payload = build_payload(track_id, row, genre_names, contract)
-                    client.upsert(
-                        collection_name=COLLECTION,
-                        wait=True,
-                        points=[PointStruct(id=track_id, vector=vector, payload=payload)],
-                    )
-                    processed += 1
+                    pending.append(PointStruct(id=track_id, vector=vector, payload=payload))
+                    if len(pending) >= args.upsert_batch:
+                        processed += flush_points(client, pending)
                 except KeyboardInterrupt:
                     raise
                 except Exception as exc:
@@ -261,14 +269,21 @@ def run(args: argparse.Namespace) -> None:
                     failures.append((track_id, str(exc)[:500]))
                     print(f"[warn] track {track_id}: {exc}", file=sys.stderr, flush=True)
 
-                total_seen = processed + skipped + failed
+                total_seen = processed + len(pending) + skipped + failed
                 if total_seen % args.progress_every == 0:
                     elapsed = max(time.time() - started, 0.001)
+                    new_total = processed + len(pending)
                     print(
-                        f"[progress] seen={total_seen:,} new={processed:,} skipped={skipped:,} failed={failed:,} "
-                        f"new_rate={processed / elapsed:.2f}/s",
+                        f"[progress] seen={total_seen:,} new={new_total:,} skipped={skipped:,} failed={failed:,} "
+                        f"new_rate={new_total / elapsed:.2f}/s",
                         flush=True,
                     )
+
+            # Persist a partial write batch at each resume boundary. At most one
+            # resume_batch needs to be re-checked after an interruption.
+            processed += flush_points(client, pending)
+
+        processed += flush_points(client, pending)
 
     print(f"[done] new={processed:,} skipped={skipped:,} failed={failed:,}", flush=True)
     if failures:
@@ -287,6 +302,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-id", type=int, default=0)
     parser.add_argument("--limit", type=int, default=0, help="0 means all tracks")
     parser.add_argument("--resume-batch", type=int, default=500)
+    parser.add_argument("--upsert-batch", type=int, default=32)
     parser.add_argument("--progress-every", type=int, default=100)
     parser.add_argument("--failure-log", default="fma_qdrant_failures.tsv")
     return parser.parse_args()
