@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
-import { similarityVectorSchema } from "@/lib/qdrant-music-memory.functions";
+import {
+  queryMusicMemoryByVector,
+  similarityVectorSchema,
+} from "@/lib/qdrant-music-memory.functions";
 import {
   buildEnhancedStage0Evidence,
   enhancedCanonicalEvidenceSchema,
@@ -14,6 +17,7 @@ const ENHANCED_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 const DEFAULT_RUNPOD_TIMEOUT_MS = 10 * 60 * 1000;
 const RUNPOD_POLL_INTERVAL_MS = 2_000;
 const TEMP_AUDIO_DELETE_ATTEMPTS = 3;
+const REFERENCE_MEMORY_LIMIT = 12;
 
 const supportedMimeTypes = [
   "audio/mpeg",
@@ -92,6 +96,56 @@ function safeRunpodError(value: unknown) {
     }
   }
   return "unknown worker error";
+}
+
+function payloadText(value: unknown, max = 300) {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function payloadStringArray(value: unknown, maxItems = 20) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, maxItems)
+    .map((item) => item.slice(0, 120));
+}
+
+async function buildReferenceMemory(vector: number[]) {
+  const result = await queryMusicMemoryByVector({
+    vector,
+    limit: REFERENCE_MEMORY_LIMIT,
+  });
+
+  const matches = result.matches.map((match) => {
+    const payload = match.payload;
+    const sourceTrackId =
+      typeof payload.source_track_id === "number" && Number.isInteger(payload.source_track_id)
+        ? payload.source_track_id
+        : null;
+    return {
+      id: match.id,
+      score: match.score,
+      sourceTrackId,
+      title: payloadText(payload.title),
+      artist: payloadText(payload.artist),
+      genreTop: payloadText(payload.genre_top, 120),
+      genres: payloadStringArray(payload.genres),
+      tags: payloadStringArray(payload.tags),
+    };
+  });
+
+  return {
+    used: matches.length > 0,
+    embeddingContract: "promptbeats-mert95-similarity-v1" as const,
+    matchCount: matches.length,
+    matches,
+    interpretationGuidance:
+      "These are nearest neighbours in the canonical MERT embedding space. Treat the neighbourhood as secondary statistical reference evidence only: use recurring genre/tag patterns to corroborate or challenge broad style families, never infer identity, never copy titles/artists into generator output, and never override direct audible evidence solely because a neighbour is close.",
+  };
 }
 
 function sleep(ms: number) {
@@ -212,17 +266,51 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
       const audioUrl = await createSignedR2GetUrl(key, 30 * 60);
       const worker = await runEnhancedWorker(audioUrl);
       const canonicalEvidence = worker.output.canonical_evidence;
-      const stage0Evidence = buildEnhancedStage0Evidence({
+      let stage0Evidence = buildEnhancedStage0Evidence({
         canonicalEvidence,
         durationSeconds: worker.output.input.duration_seconds ?? null,
         totalMs: Date.now() - startedAt,
         workerEngine: worker.output.engine,
       });
 
+      const similarityEmbedding = worker.output.similarity_embedding ?? null;
+      if (similarityEmbedding) {
+        try {
+          const referenceMemory = await buildReferenceMemory(similarityEmbedding.vector);
+          stage0Evidence = {
+            ...stage0Evidence,
+            referenceMemory,
+            limitations: [
+              ...stage0Evidence.limitations,
+              `Qdrant reference memory used ${referenceMemory.matchCount} canonical MERT nearest neighbours as secondary style evidence.`,
+            ],
+          };
+        } catch (error) {
+          console.warn("[song-analyzer] Qdrant reference-memory lookup failed; continuing without it", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+          stage0Evidence = {
+            ...stage0Evidence,
+            limitations: [
+              ...stage0Evidence.limitations,
+              "Qdrant reference-memory lookup was unavailable; final analysis continued from direct audio evidence only.",
+            ],
+          };
+        }
+      } else {
+        stage0Evidence = {
+          ...stage0Evidence,
+          limitations: [
+            ...stage0Evidence.limitations,
+            "Enhanced worker did not return the canonical MERT similarity embedding; Qdrant reference-memory retrieval was not used.",
+          ],
+        };
+      }
+
       return {
         stage0Evidence,
         canonicalEvidence,
-        similarityEmbedding: worker.output.similarity_embedding ?? null,
+        similarityEmbedding,
         worker: {
           engine: worker.output.engine,
           executionTimeMs: worker.executionTimeMs,
