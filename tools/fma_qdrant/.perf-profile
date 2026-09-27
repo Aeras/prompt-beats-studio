@@ -1,0 +1,3 @@
+track_batch=4
+inference_batch=24
+upsert_batch=64
