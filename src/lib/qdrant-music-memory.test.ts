@@ -43,6 +43,24 @@ describe("Qdrant music memory POC", () => {
     expect(code).toContain(`/points/query`);
     expect(code).toContain("with_payload: true");
     expect(code).toContain("with_vector: false");
+    expect(code).toContain("queryMusicMemoryByVector");
+  });
+
+  test("requests the canonical query embedding from the enhanced worker and uses it for reference memory", async () => {
+    const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
+    const stage0 = await source("src/lib/song-analyzer-dsp.shared.ts");
+    expect(enhanced).toContain("include_similarity_embedding: true");
+    expect(enhanced).toContain('similarity_embedding_contract: "promptbeats-mert95-similarity-v1"');
+    expect(enhanced).toContain("queryMusicMemoryByVector");
+    expect(enhanced).toContain("REFERENCE_MEMORY_LIMIT = 12");
+    expect(stage0).toContain("referenceMemory:");
+    expect(stage0).toContain('z.literal("promptbeats-mert95-similarity-v1")');
+  });
+
+  test("keeps retrieval non-fatal and explicitly reports when the worker vector is unavailable", async () => {
+    const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
+    expect(enhanced).toContain("Qdrant reference-memory lookup failed; continuing without it");
+    expect(enhanced).toContain("Enhanced worker did not return the canonical MERT similarity embedding");
   });
 
   test("ships a resumable FMA Large importer with the same embedding contract", async () => {
