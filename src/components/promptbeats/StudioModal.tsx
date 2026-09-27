@@ -501,7 +501,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
       return (
         <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          {language === "el" ? "Έλεγχος αν υπάρχει ήδη στη βιβλιοθήκη σου…" : "Checking your library for duplicates…"}
+          {language === "el"
+            ? "Έλεγχος αν υπάρχει ήδη στη βιβλιοθήκη σου…"
+            : "Checking your library for duplicates…"}
         </div>
       );
     }
@@ -549,7 +551,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
               }
               className="rounded-xl border border-amber-400/40 px-3 py-2 font-medium text-amber-100 transition-colors hover:bg-amber-400/10"
             >
-              {language === "el" ? "Είναι διαφορετική έκδοση — συνέχεια" : "It is a different version — continue"}
+              {language === "el"
+                ? "Είναι διαφορετική έκδοση — συνέχεια"
+                : "It is a different version — continue"}
             </button>
           )}
         </div>
@@ -558,7 +562,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
     return (
       <div className="rounded-2xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-xs text-destructive">
         {check.message ??
-          (language === "el" ? "Δεν ήταν δυνατός ο έλεγχος. Δοκίμασε ξανά." : "The duplicate check failed. Please try again.")}
+          (language === "el"
+            ? "Δεν ήταν δυνατός ο έλεγχος. Δοκίμασε ξανά."
+            : "The duplicate check failed. Please try again.")}
       </div>
     );
   };
@@ -644,7 +650,11 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                       aria-label={`${t("studio.track", { number: i + 1 })} ${t("studio.audioSource")}`}
                       className="mt-1.5 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none focus:border-accent/60"
                     >
-                      <option value="upload" disabled={!uploadAccess.allowed} className="bg-[#0a0a0c]">
+                      <option
+                        value="upload"
+                        disabled={!uploadAccess.allowed}
+                        className="bg-[#0a0a0c]"
+                      >
                         {t("studio.uploadFile")}
                       </option>
                       <option value="suno" className="bg-[#0a0a0c]">
@@ -718,7 +728,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                         <input
                           type="checkbox"
                           checked={r.containsExplicitLyrics}
-                          onChange={(e) => update(r.key, { containsExplicitLyrics: e.target.checked })}
+                          onChange={(e) =>
+                            update(r.key, { containsExplicitLyrics: e.target.checked })
+                          }
                           className="mt-0.5 h-4 w-4 accent-current"
                         />
                         <span>
@@ -739,7 +751,9 @@ export function StudioModal({ open, onClose }: { open: boolean; onClose: () => v
                               className="mt-0.5 h-4 w-4 accent-current"
                             />
                             <span>
-                              <span className="block text-sm font-medium">{allowDownloadLabel}</span>
+                              <span className="block text-sm font-medium">
+                                {allowDownloadLabel}
+                              </span>
                               <span className="mt-0.5 block text-xs text-muted-foreground">
                                 {allowDownloadHint}
                               </span>
