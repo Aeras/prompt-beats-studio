@@ -1,9 +1,10 @@
 import { analyzeEnhancedStage0 } from "@/lib/song-analyzer-enhanced.functions";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
-import type { z } from "zod";
-import { similarityVectorSchema } from "@/lib/qdrant-music-memory.functions";
 
-export type AnalyzerSimilarityEmbedding = z.infer<typeof similarityVectorSchema>;
+export type AnalyzerSimilarityEmbedding = {
+  contract: "promptbeats-mert95-similarity-v1";
+  vector: number[];
+};
 
 /**
  * Compatibility adapter retained so the existing Song Analyzer route does not
