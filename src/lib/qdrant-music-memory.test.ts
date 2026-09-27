@@ -25,6 +25,7 @@ describe("Qdrant music memory POC", () => {
     expect(code).toContain('MUSIC_MEMORY_COLLECTION = "promptbeats_music_memory_v1"');
     expect(code).toContain("MERT_VECTOR_SIZE = 768");
     expect(code).toContain('distance: "Cosine"');
+    expect(code).toContain('MERT_EMBEDDING_CONTRACT = "promptbeats-mert95-similarity-v1"');
   });
 
   test("uses bounded network timeouts and idempotent collection initialization", async () => {
@@ -33,5 +34,25 @@ describe("Qdrant music memory POC", () => {
     expect(code).toContain("if (exists)");
     expect(code).toContain("created: false");
     expect(code).toContain("created: true");
+  });
+
+  test("supports bounded nearest-neighbour queries without returning vectors", async () => {
+    const code = await source("src/lib/qdrant-music-memory.functions.ts");
+    expect(code).toContain(".length(MERT_VECTOR_SIZE)");
+    expect(code).toContain(".max(50)");
+    expect(code).toContain(`/points/query`);
+    expect(code).toContain("with_payload: true");
+    expect(code).toContain("with_vector: false");
+  });
+
+  test("ships a resumable FMA Large importer with the same embedding contract", async () => {
+    const importer = await source("tools/fma_qdrant/ingest_fma_large.py");
+    const contract = await source("tools/fma_qdrant/embedding_contract.json");
+    expect(importer).toContain("RemoteZip");
+    expect(importer).toContain("existing_ids");
+    expect(importer).toContain("QDRANT_URL");
+    expect(importer).toContain("QDRANT_API_KEY");
+    expect(contract).toContain('"contract_id": "promptbeats-mert95-similarity-v1"');
+    expect(contract).toContain('"vector_size": 768');
   });
 });

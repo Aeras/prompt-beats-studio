@@ -1,0 +1,16 @@
+{
+  "contract_id": "promptbeats-mert95-similarity-v1",
+  "model": "m-a-p/MERT-v1-95M",
+  "model_revision": "12af15f",
+  "sample_rate_hz": 24000,
+  "channels": 1,
+  "window_seconds": 5,
+  "window_overlap_seconds": 0,
+  "representation": "last_hidden_state",
+  "time_pooling": "mean",
+  "window_pooling": "mean",
+  "normalization": "l2",
+  "vector_size": 768,
+  "distance": "Cosine",
+  "notes": "POC contract. Audio is split into non-overlapping five-second windows, each window is mean-pooled over time, window vectors are averaged, then the track vector is L2-normalized. This matches MERT-v1's five-second pretraining context and keeps corpus/query extraction deterministic. Corpus and query tracks MUST use this exact contract and pinned model revision."
+}

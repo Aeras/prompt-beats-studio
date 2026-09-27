@@ -1,10 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
 const MUSIC_MEMORY_COLLECTION = "promptbeats_music_memory_v1";
 const MERT_VECTOR_SIZE = 768;
+const MERT_EMBEDDING_CONTRACT = "promptbeats-mert95-similarity-v1";
+
+const similarityInputSchema = z.object({
+  vector: z.array(z.number().finite()).length(MERT_VECTOR_SIZE),
+  limit: z.number().int().min(1).max(50).default(20),
+  scoreThreshold: z.number().finite().min(-1).max(1).optional(),
+});
 
 function getQdrantConfig() {
   const url = process.env["QDRANT_URL"]?.trim().replace(/\/+$/, "");
@@ -35,6 +43,18 @@ async function qdrantRequest(path: string, init?: RequestInit) {
   }
 }
 
+async function collectionPointCount() {
+  const response = await qdrantRequest(`/collections/${MUSIC_MEMORY_COLLECTION}`, { method: "GET" });
+  if (!response.ok) return null;
+  const payload = (await response.json()) as {
+    result?: { points_count?: number; indexed_vectors_count?: number };
+  };
+  return {
+    points: payload.result?.points_count ?? null,
+    indexedVectors: payload.result?.indexed_vectors_count ?? null,
+  };
+}
+
 export const getQdrantMusicMemoryStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -48,6 +68,8 @@ export const getQdrantMusicMemoryStatus = createServerFn({ method: "GET" })
         collectionName: MUSIC_MEMORY_COLLECTION,
         collectionExists: false,
         collectionCount: 0,
+        pointCount: null,
+        embeddingContract: MERT_EMBEDDING_CONTRACT,
         error: "Qdrant secrets are not configured.",
       };
     }
@@ -61,6 +83,8 @@ export const getQdrantMusicMemoryStatus = createServerFn({ method: "GET" })
           collectionName: MUSIC_MEMORY_COLLECTION,
           collectionExists: false,
           collectionCount: 0,
+          pointCount: null,
+          embeddingContract: MERT_EMBEDDING_CONTRACT,
           error: `Qdrant returned HTTP ${response.status}.`,
         };
       }
@@ -72,13 +96,18 @@ export const getQdrantMusicMemoryStatus = createServerFn({ method: "GET" })
       const names = collections
         .map((collection) => collection.name)
         .filter((name): name is string => Boolean(name));
+      const collectionExists = names.includes(MUSIC_MEMORY_COLLECTION);
+      const counts = collectionExists ? await collectionPointCount() : null;
 
       return {
         configured: true,
         reachable: true,
         collectionName: MUSIC_MEMORY_COLLECTION,
-        collectionExists: names.includes(MUSIC_MEMORY_COLLECTION),
+        collectionExists,
         collectionCount: names.length,
+        pointCount: counts?.points ?? null,
+        indexedVectorCount: counts?.indexedVectors ?? null,
+        embeddingContract: MERT_EMBEDDING_CONTRACT,
         error: null,
       };
     } catch (error) {
@@ -88,6 +117,8 @@ export const getQdrantMusicMemoryStatus = createServerFn({ method: "GET" })
         collectionName: MUSIC_MEMORY_COLLECTION,
         collectionExists: false,
         collectionCount: 0,
+        pointCount: null,
+        embeddingContract: MERT_EMBEDDING_CONTRACT,
         error:
           error instanceof Error && error.name === "AbortError"
             ? "Qdrant connection timed out."
@@ -119,6 +150,7 @@ export const initializeQdrantMusicMemory = createServerFn({ method: "POST" })
         collectionName: MUSIC_MEMORY_COLLECTION,
         vectorSize: MERT_VECTOR_SIZE,
         distance: "Cosine" as const,
+        embeddingContract: MERT_EMBEDDING_CONTRACT,
       };
     }
 
@@ -144,5 +176,50 @@ export const initializeQdrantMusicMemory = createServerFn({ method: "POST" })
       collectionName: MUSIC_MEMORY_COLLECTION,
       vectorSize: MERT_VECTOR_SIZE,
       distance: "Cosine" as const,
+      embeddingContract: MERT_EMBEDDING_CONTRACT,
+    };
+  });
+
+export const queryQdrantMusicMemory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => similarityInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireFeatureAccess(context.supabase, "song_analyzer");
+
+    const response = await qdrantRequest(`/collections/${MUSIC_MEMORY_COLLECTION}/points/query`, {
+      method: "POST",
+      body: JSON.stringify({
+        query: data.vector,
+        limit: data.limit,
+        with_payload: true,
+        with_vector: false,
+        ...(data.scoreThreshold == null ? {} : { score_threshold: data.scoreThreshold }),
+      }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `Qdrant similarity query failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 300)}` : "."}`,
+      );
+    }
+
+    const payload = (await response.json()) as {
+      result?: {
+        points?: Array<{
+          id?: string | number;
+          score?: number;
+          payload?: Record<string, unknown> | null;
+        }>;
+      };
+    };
+
+    return {
+      collectionName: MUSIC_MEMORY_COLLECTION,
+      embeddingContract: MERT_EMBEDDING_CONTRACT,
+      matches: (payload.result?.points ?? []).map((point) => ({
+        id: point.id ?? null,
+        score: typeof point.score === "number" ? point.score : null,
+        payload: point.payload ?? {},
+      })),
     };
   });
