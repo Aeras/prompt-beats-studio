@@ -132,7 +132,7 @@ const songSectionEvidenceSchema = z
     return value;
   });
 
-export const stageAEvidenceSchema = z.object({
+const stageAEvidenceSchema = z.object({
   dominantRhythmicPulse: z.object({
     observation: z.string().trim().min(1).max(1500),
     evidence: z.string().trim().min(1).max(2000),
@@ -341,20 +341,82 @@ Whenever a section contains a prominent sustained, expressive, distorted, or ove
 - bouzouki/mandolin-like instrument
 - generic melodic lead
 
-If guitar-specific indicators such as bends, vibrato, sustained distortion, pick attack, amplifier texture, or characteristic lead-guitar phrasing are audible, identify electric guitar with appropriate confidence.
+If guitar-specific indicators such as bends, vibrato, sustained distortion, pick attack, string articulation, or amplifier character are audible, prefer electric guitar or state a guitar/synth ambiguity with reduced confidence.
 
-Do not let the vocal language, cultural context, or earlier plucked-string timbre bias the identification of a later lead instrument.
+Do not force a culturally specific acoustic-string interpretation when later-section evidence is more consistent with processed electric guitar.
+
+CONFIDENCE RULE
+
+When multiple plausible instrument identities remain, lower confidence.
+
+Do not output:
+- bouzouki
+- mandolin
+- tzouras
+- electric guitar
+- synth lead
+
+with high confidence unless the evidence clearly distinguishes it from the competing hypotheses.
+
+Use explicit uncertainty when needed.
+
+TEMPORAL GROUNDING
+For claims about arrangement, instrument entrances, section changes, energy shifts, solos, or changing production texture, ground the observation in an approximate part of the track whenever possible.
+Use approximate startSeconds/endSeconds for each songSections item when you can place the boundary with reasonable confidence.
+If a boundary cannot be placed reliably, use null for that boundary rather than inventing precision.
+
+FULL-TIMELINE SECTION COVERAGE
+songSections must represent the entire audible recording in chronological order, from the opening through the ending.
+Do not silently omit a substantial interval between named sections.
+Repeated verses, choruses, bridges, breakdowns, solos, interludes, transitions, and outros must be represented as separate occurrences when they are audibly distinct.
+If a substantial interval cannot be confidently named, include a broad label such as "Transition / Uncertain section" with reduced confidence instead of leaving a gap.
+Use Stage 0 duration, when available, as a cross-check that the section evidence reaches the end of the track.
+Do not invent a verse, chorus, bridge, solo, or outro merely to fill time; preserve uncertainty explicitly.
+
+FULL-TRACK EVIDENCE COVERAGE CHECK
+Before returning the Stage A JSON, perform one final full-track pass mentally across the evidence you observed.
+
+Verify that you have not omitted:
+- a clearly recurring instrument;
+- a dominant harmonic or rhythmic layer;
+- an instrument that becomes prominent only in later sections;
+- a contrasting acoustic vs electronic layer;
+- an important playing technique;
+- a major change in instrumentation between sections;
+- a substantial timeline interval between section entries.
+
+Pay special attention to instruments that appear only in solo, bridge, breakdown, final chorus, or outro sections.
+
+Do not limit instrumentEvidence to the 3–5 dominantElements.
+dominantElements are only the most defining elements; instrumentEvidence should preserve all clearly audible musically relevant instruments with appropriate prominence and confidence.
+
+If an instrument is clearly audible in only one important section, include it and describe where it appears rather than omitting it.
+
+PRODUCTION
+Only report production/mix features that are directly audible.
+Do not infer club-ready mix, EDM drop, sidechain, filter sweep, riser, synth hook, or similar terms from polish or modernity alone.
+
+Return only the structured JSON requested by the schema.
 `.trim();
 
 const ANALYZER_SYSTEM_PROMPT = `
-You are PromptBeats Stage B: MUSICAL INTERPRETER.
+You are PromptBeats Stage B: MUSICAL INTERPRETATION / GENERATOR-READY SYNTHESIS.
 
-You receive a structured Stage A evidence object extracted from the audio.
-Your job is to interpret that evidence into a detailed musical analysis and generator-ready fields.
+You do NOT receive the source audio.
+You receive only structured Stage A audio evidence.
 
-CORE RULE
-Every specific musical claim in Stage B must be traceable to Stage A evidence.
-Do not invent instruments, effects, grooves, techniques, arrangement events, or genre cues that Stage A did not report.
+STRICT AUTHORITY RULE
+Stage A evidence is the complete musical evidence boundary.
+You MUST NOT introduce any specific musical claim that is absent from Stage A.
+
+You may interpret and summarize evidence, but you may NOT invent:
+- a new instrument
+- a new playing technique
+- a new drum pattern
+- a new production effect
+- a new groove claim
+- a new tempo interpretation
+- a new arrangement event
 
 If Stage A does not mention sidechain, Stage B cannot mention sidechain.
 If Stage A does not mention synth bass, Stage B cannot mention synth bass.
@@ -827,14 +889,14 @@ const externalValidationSchema = z.object({
   identityConfirmed: z.boolean(),
   styleAgreement: z.enum(["strong", "partial", "weak", "conflicting"]),
   tempoAgreement: z.enum(["strong", "partial", "weak", "conflicting"]),
-  referenceStyles: z.array(z.string().trim().min(1).max(800)).max(20),
-  referenceTempos: z.array(z.string().trim().min(1).max(800)).max(20),
-  instrumentationCredits: z.array(z.string().trim().min(1).max(1200)).max(20),
-  keyOrChordReferences: z.array(z.string().trim().min(1).max(1200)).max(20),
-  productionOrArrangementNotes: z.array(z.string().trim().min(1).max(1200)).max(20),
-  releaseContext: z.array(z.string().trim().min(1).max(1200)).max(20),
-  discrepancies: z.array(z.string().trim().min(1).max(1200)).max(20),
-  notes: z.array(z.string().trim().min(1).max(1200)).max(20),
+  referenceStyles: z.array(z.string().trim().min(1).max(500)).max(12),
+  referenceTempos: z.array(z.string().trim().min(1).max(300)).max(12),
+  instrumentationCredits: z.array(z.string().trim().min(1).max(1000)).max(20),
+  keyOrChordReferences: z.array(z.string().trim().min(1).max(1000)).max(20),
+  productionOrArrangementNotes: z.array(z.string().trim().min(1).max(1000)).max(20),
+  releaseContext: z.array(z.string().trim().min(1).max(1000)).max(20),
+  discrepancies: z.array(z.string().trim().min(1).max(1500)).max(20),
+  notes: z.array(z.string().trim().min(1).max(1500)).max(20),
 });
 
 type ExternalValidation = z.infer<typeof externalValidationSchema> & {
