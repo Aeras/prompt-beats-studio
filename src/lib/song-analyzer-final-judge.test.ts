@@ -34,7 +34,7 @@ describe("Song Analyzer final judge architecture", () => {
     const code = await source("src/lib/song-analyzer-final.functions.ts");
 
     expect(code).toContain("site:dzen.ru");
-    expect(code).toContain("non-Dzen independent cross-check");
+    expect(code).toContain("independent non-Dzen cross-check");
     expect(code).toContain("Search in the ORIGINAL script/language");
     expect(code).toContain("audio evidence authoritative");
   });
