@@ -1,0 +1,75 @@
+name: Temporary library folder persistence patch
+
+on:
+  push:
+    branches:
+      - fix/library-folder-refresh-persistence
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - name: Patch library folder persistence
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routes/library.tsx')
+          text = path.read_text()
+          old = '  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);'
+          new = '''  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.sessionStorage.getItem("promptbeats:library-current-folder") || null;
+  });'''
+          if old not in text:
+              raise SystemExit('currentFolderId state marker not found')
+          text = text.replace(old, new, 1)
+
+          marker = '''  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");'''
+          persistence = '''  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = "promptbeats:library-current-folder";
+    if (currentFolderId) window.sessionStorage.setItem(key, currentFolderId);
+    else window.sessionStorage.removeItem(key);
+  }, [currentFolderId]);
+
+'''
+          if marker not in text:
+              raise SystemExit('desktop DnD effect marker not found')
+          text = text.replace(marker, persistence + marker, 1)
+          path.write_text(text)
+
+          test_path = Path('src/lib/library-folders.test.ts')
+          test = test_path.read_text()
+          marker = '    expect(library).toContain("folder-breadcrumbs");\n'
+          addition = '    expect(library).toContain("promptbeats:library-current-folder");\n'
+          if addition not in test:
+              if marker not in test:
+                  raise SystemExit('library folder test marker not found')
+              test = test.replace(marker, marker + addition, 1)
+          test_path.write_text(test)
+          PY
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run folder regression test
+        run: bun test src/lib/library-folders.test.ts
+      - name: Remove temporary workflow and commit patch
+        shell: bash
+        run: |
+          rm .github/workflows/temp-library-folder-persist.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/library.tsx src/lib/library-folders.test.ts .github/workflows/temp-library-folder-persist.yml
+          git commit -m "Preserve library folder on refresh"
+          git push origin HEAD:fix/library-folder-refresh-persistence
