@@ -2,6 +2,17 @@ import { z } from "zod";
 
 const nullableMetric = z.number().finite().nullable();
 
+const referenceMemoryMatchSchema = z.object({
+  id: z.union([z.string(), z.number()]).nullable(),
+  score: z.number().finite().nullable(),
+  sourceTrackId: z.number().int().nullable(),
+  title: z.string().trim().max(300).nullable(),
+  artist: z.string().trim().max(300).nullable(),
+  genreTop: z.string().trim().max(120).nullable(),
+  genres: z.array(z.string().trim().max(120)).max(20),
+  tags: z.array(z.string().trim().max(120)).max(20),
+});
+
 export const stage0DspEvidenceSchema = z.object({
   version: z.literal("stage0-dsp-v1"),
   available: z.boolean(),
@@ -97,6 +108,15 @@ export const stage0DspEvidenceSchema = z.object({
       }),
     )
     .max(16),
+  referenceMemory: z
+    .object({
+      used: z.boolean(),
+      embeddingContract: z.literal("promptbeats-mert95-similarity-v1"),
+      matchCount: z.number().int().nonnegative(),
+      matches: z.array(referenceMemoryMatchSchema).max(20),
+      interpretationGuidance: z.string().trim().min(1).max(1500),
+    })
+    .optional(),
   limitations: z.array(z.string().trim().min(1).max(1000)).max(30),
 });
 
