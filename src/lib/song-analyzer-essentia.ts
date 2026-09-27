@@ -1,5 +1,9 @@
 import { analyzeEnhancedStage0 } from "@/lib/song-analyzer-enhanced.functions";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
+import type { z } from "zod";
+import { similarityVectorSchema } from "@/lib/qdrant-music-memory.functions";
+
+export type AnalyzerSimilarityEmbedding = z.infer<typeof similarityVectorSchema>;
 
 /**
  * Compatibility adapter retained so the existing Song Analyzer route does not
@@ -22,10 +26,13 @@ async function fileToBase64(file: File) {
   });
 }
 
-export async function analyzeStage0Essentia(
+export async function analyzeStage0EssentiaWithSimilarity(
   file: File,
   legacy: Stage0DspEvidence,
-): Promise<Stage0DspEvidence> {
+): Promise<{
+  stage0Evidence: Stage0DspEvidence;
+  similarityEmbedding: AnalyzerSimilarityEmbedding | null;
+}> {
   const startedAt = performance.now();
 
   try {
@@ -36,25 +43,38 @@ export async function analyzeStage0Essentia(
         mimeType: file.type as any,
       },
     });
-    return response.stage0Evidence;
+    return {
+      stage0Evidence: response.stage0Evidence,
+      similarityEmbedding: response.similarityEmbedding ?? null,
+    };
   } catch (error) {
     return {
-      ...legacy,
-      engine: legacy.engine ?? {
-        name: "legacy",
-        engineVersion: "promptbeats-legacy-v1",
-        methodVersion: "stage0-dsp-v1",
-        algorithms: [],
+      stage0Evidence: {
+        ...legacy,
+        engine: legacy.engine ?? {
+          name: "legacy",
+          engineVersion: "promptbeats-legacy-v1",
+          methodVersion: "stage0-dsp-v1",
+          algorithms: [],
+        },
+        processing: {
+          ...legacy.processing,
+          totalMs: Math.round((performance.now() - startedAt) * 100) / 100,
+        },
+        limitations: [
+          ...legacy.limitations,
+          "External enhanced Stage 0 unavailable; legacy browser DSP fallback used.",
+          `Enhanced worker failure: ${(error instanceof Error ? error.message : String(error)).slice(0, 500)}`,
+        ],
       },
-      processing: {
-        ...legacy.processing,
-        totalMs: Math.round((performance.now() - startedAt) * 100) / 100,
-      },
-      limitations: [
-        ...legacy.limitations,
-        "External enhanced Stage 0 unavailable; legacy browser DSP fallback used.",
-        `Enhanced worker failure: ${(error instanceof Error ? error.message : String(error)).slice(0, 500)}`,
-      ],
+      similarityEmbedding: null,
     };
   }
+}
+
+export async function analyzeStage0Essentia(
+  file: File,
+  legacy: Stage0DspEvidence,
+): Promise<Stage0DspEvidence> {
+  return (await analyzeStage0EssentiaWithSimilarity(file, legacy)).stage0Evidence;
 }
