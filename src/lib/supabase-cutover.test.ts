@@ -14,12 +14,24 @@ describe("External Supabase cutover", () => {
       source("src/lib/supabase-public.server.ts"),
     ]);
 
-    expect(config).toContain('process.env["EXTERNAL_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]');
+    expect(config).toContain('process.env["EXTERNAL_SUPABASE_URL"]');
+    expect(config).toContain('process.env["SUPABASE_URL"]');
     expect(config).toContain('process.env["EXTERNAL_SUPABASE_PUBLISHABLE_KEY"]');
+    expect(config).toContain("PREVIEW_FALLBACK_SUPABASE_URL");
+    expect(config).toContain("PREVIEW_FALLBACK_SUPABASE_PUBLISHABLE_KEY");
     expect(config).toContain('process.env["EXTERNAL_SUPABASE_SECRET_KEY"]');
+    expect(config).toContain('process.env["SUPABASE_SERVICE_ROLE_KEY"]');
     expect(middleware).toContain("getServerSupabasePublicConfig");
     expect(adminClient).toContain("getServerSupabaseAdminConfig");
     expect(publicClient).toContain("getServerSupabasePublicConfig");
+  });
+
+  test("public preview fallback never weakens the admin secret contract", async () => {
+    const config = await source("src/integrations/supabase/config.server.ts");
+
+    expect(config).toContain("PREVIEW_FALLBACK_SUPABASE_PUBLISHABLE_KEY");
+    expect(config).toContain("Missing Supabase environment variable: EXTERNAL_SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.");
+    expect(config).not.toContain("PREVIEW_FALLBACK_SUPABASE_SECRET_KEY");
   });
 
   test("repository documents environment keys without coupling tests to production values", async () => {
