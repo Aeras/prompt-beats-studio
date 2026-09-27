@@ -202,6 +202,24 @@ button:not(:disabled):not([data-pb-no-press="true"]):active,
     min-height: 44px;
   }
 
+  /* Compact track cards intentionally group Prompt/Lyrics on the left and
+     Like/Download/More on the right. The platform-wide 44px minimum was
+     overriding their explicit 28px widths and spreading every icon across
+     the card, which could push More off-screen. Keep this one action row
+     visually compact while preserving the larger global target elsewhere. */
+  article.glass.rounded-xl [data-track-actions] button[aria-label] {
+    min-width: 28px;
+    min-height: 36px;
+  }
+
+  article.glass.rounded-xl [data-track-actions="left"],
+  article.glass.rounded-xl [data-track-actions="right"],
+  article.glass.rounded-xl [data-track-actions="right"] > div {
+    width: max-content;
+    flex: 0 0 auto;
+    gap: 0;
+  }
+
   /* Song Structure remove controls are embedded inside compact pills. Keep
      the pill compact instead of letting the global 44px icon target inflate it. */
   [role="list"] > [role="listitem"] button[aria-label] {
