@@ -20,7 +20,11 @@ const duplicateInput = z.discriminatedUnion("sourceType", [
     sourceType: z.literal("upload"),
     contentHash: z.string().regex(/^[0-9a-f]{64}$/),
     fingerprint: fingerprintSchema,
-    durationSeconds: z.number().int().min(0).max(60 * 60),
+    durationSeconds: z
+      .number()
+      .int()
+      .min(0)
+      .max(60 * 60),
   }),
   z.object({
     sourceType: z.enum(["suno", "udio"]),
@@ -36,7 +40,11 @@ const uploadTrackInput = z.object({
   audio_url: z.string().url(),
   audio_key: z.string().max(500),
   created_with: z.enum(CREATED_WITH_OPTIONS),
-  duration_seconds: z.number().int().min(0).max(60 * 60),
+  duration_seconds: z
+    .number()
+    .int()
+    .min(0)
+    .max(60 * 60),
   audio_content_hash: z.string().regex(/^[0-9a-f]{64}$/),
   audio_fingerprint: fingerprintSchema,
   cover_url: z.string().url().max(1000).optional(),
@@ -180,7 +188,9 @@ export const createUploadedTrackWithIdentity = createServerFn({ method: "POST" }
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: duplicateRows, error: duplicateError } = await (supabaseAdmin.from("tracks") as any)
+    const { data: duplicateRows, error: duplicateError } = await (
+      supabaseAdmin.from("tracks") as any
+    )
       .select("id,title")
       .eq("user_id", context.userId)
       .eq("source_type", "upload")
