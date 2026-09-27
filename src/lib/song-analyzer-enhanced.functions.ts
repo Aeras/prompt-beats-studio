@@ -17,7 +17,9 @@ const ENHANCED_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 const DEFAULT_RUNPOD_TIMEOUT_MS = 10 * 60 * 1000;
 const RUNPOD_POLL_INTERVAL_MS = 2_000;
 const TEMP_AUDIO_DELETE_ATTEMPTS = 3;
+const REFERENCE_MEMORY_QUERY_LIMIT = 48;
 const REFERENCE_MEMORY_LIMIT = 12;
+const REFERENCE_MEMORY_MIN_GENRE_MATCHES = 4;
 
 const supportedMimeTypes = [
   "audio/mpeg",
@@ -114,13 +116,66 @@ function payloadStringArray(value: unknown, maxItems = 20) {
     .map((item) => item.slice(0, 120));
 }
 
+function normalizeArtistKey(artist: string | null, fallback: string | number | null) {
+  if (artist) return `artist:${artist.toLocaleLowerCase().replace(/\s+/g, " ").trim()}`;
+  return `track:${String(fallback ?? crypto.randomUUID())}`;
+}
+
+function hasUsefulStyleMetadata(match: {
+  genreTop: string | null;
+  genres: string[];
+  tags: string[];
+}) {
+  return Boolean(match.genreTop || match.genres.length || match.tags.length);
+}
+
+function buildGenreConsensus(matches: Array<{
+  genreTop: string | null;
+  genres: string[];
+}>) {
+  const counts = new Map<string, { label: string; count: number }>();
+
+  for (const match of matches) {
+    const labels = new Set(
+      [match.genreTop, ...match.genres]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .map((value) => value.trim()),
+    );
+    for (const label of labels) {
+      const key = label.toLocaleLowerCase();
+      const current = counts.get(key);
+      counts.set(key, { label: current?.label ?? label, count: (current?.count ?? 0) + 1 });
+    }
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, 10)
+    .map((item) => ({
+      label: item.label,
+      count: item.count,
+      share: matches.length ? Number((item.count / matches.length).toFixed(4)) : 0,
+    }));
+}
+
+function referenceConsensusStrength(args: {
+  matchCount: number;
+  uniqueArtistCount: number;
+  topShare: number;
+}) {
+  if (args.matchCount < REFERENCE_MEMORY_MIN_GENRE_MATCHES || args.uniqueArtistCount < 4) return "insufficient" as const;
+  if (args.topShare >= 0.7 && args.uniqueArtistCount >= 6) return "strong" as const;
+  if (args.topShare >= 0.5) return "moderate" as const;
+  return "weak" as const;
+}
+
 async function buildReferenceMemory(vector: number[]) {
   const result = await queryMusicMemoryByVector({
     vector,
-    limit: REFERENCE_MEMORY_LIMIT,
+    limit: REFERENCE_MEMORY_QUERY_LIMIT,
   });
 
-  const matches = result.matches.map((match) => {
+  const candidates = result.matches.map((match) => {
     const payload = match.payload;
     const sourceTrackId =
       typeof payload.source_track_id === "number" && Number.isInteger(payload.source_track_id)
@@ -138,13 +193,41 @@ async function buildReferenceMemory(vector: number[]) {
     };
   });
 
+  const metadataEligible = candidates.filter(hasUsefulStyleMetadata);
+  const seenArtists = new Set<string>();
+  const deduplicated = [] as typeof metadataEligible;
+  for (const match of metadataEligible) {
+    const artistKey = normalizeArtistKey(match.artist, match.sourceTrackId ?? match.id);
+    if (seenArtists.has(artistKey)) continue;
+    seenArtists.add(artistKey);
+    deduplicated.push(match);
+  }
+
+  const matches = deduplicated.slice(0, REFERENCE_MEMORY_LIMIT);
+  const genreConsensus = buildGenreConsensus(matches);
+  const uniqueArtistCount = new Set(
+    matches.map((match) => normalizeArtistKey(match.artist, match.sourceTrackId ?? match.id)),
+  ).size;
+  const topShare = genreConsensus[0]?.share ?? 0;
+  const consensusStrength = referenceConsensusStrength({
+    matchCount: matches.length,
+    uniqueArtistCount,
+    topShare,
+  });
+
   return {
     used: matches.length > 0,
     embeddingContract: "promptbeats-mert95-similarity-v1" as const,
+    candidateCount: candidates.length,
+    metadataEligibleCount: metadataEligible.length,
+    deduplicatedCount: deduplicated.length,
     matchCount: matches.length,
+    uniqueArtistCount,
+    consensusStrength,
+    genreConsensus,
     matches,
     interpretationGuidance:
-      "These are nearest neighbours in the canonical MERT embedding space. Treat the neighbourhood as secondary statistical reference evidence only: use recurring genre/tag patterns to corroborate or challenge broad style families, never infer identity, never copy titles/artists into generator output, and never override direct audible evidence solely because a neighbour is close.",
+      "REFERENCE MEMORY GUARDRAIL: Stage A must IGNORE referenceMemory when describing audible instruments, groove, vocals, tempo, arrangement, production, or other raw audio evidence. Reference memory is not audible evidence. The Final Judge may use only genreConsensus/consensusStrength as secondary corroboration after direct Stage 0 + Stage A evidence has independently supported the same broad style family. It must never introduce a new genre family, instrument, groove, tempo interpretation, vocal style, or arrangement because of neighbours. Per-match titles, artists, labels and cosine scores are diagnostic/debug context only and must not be used as votes. Even strong consensus cannot override contradictory direct audio evidence; weak/insufficient consensus should not change the primary style classification at all. Cosine score is embedding proximity, not genre probability.",
   };
 }
 
@@ -284,7 +367,7 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
             referenceMemory,
             limitations: appendLimitation(
               stage0Evidence.limitations,
-              `Qdrant reference memory used ${referenceMemory.matchCount} canonical MERT nearest neighbours as secondary style evidence.`,
+              `Qdrant reference memory retained ${referenceMemory.matchCount} artist-deduplicated, metadata-bearing neighbours from ${referenceMemory.candidateCount} candidates; consensus=${referenceMemory.consensusStrength}.`,
             ),
           };
         } catch (error) {

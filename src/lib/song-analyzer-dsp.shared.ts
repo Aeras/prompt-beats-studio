@@ -13,6 +13,12 @@ const referenceMemoryMatchSchema = z.object({
   tags: z.array(z.string().trim().max(120)).max(20),
 });
 
+const referenceMemoryGenreConsensusSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  count: z.number().int().nonnegative(),
+  share: z.number().min(0).max(1).finite(),
+});
+
 export const stage0DspEvidenceSchema = z.object({
   version: z.literal("stage0-dsp-v1"),
   available: z.boolean(),
@@ -112,9 +118,15 @@ export const stage0DspEvidenceSchema = z.object({
     .object({
       used: z.boolean(),
       embeddingContract: z.literal("promptbeats-mert95-similarity-v1"),
+      candidateCount: z.number().int().nonnegative().optional(),
+      metadataEligibleCount: z.number().int().nonnegative().optional(),
+      deduplicatedCount: z.number().int().nonnegative().optional(),
       matchCount: z.number().int().nonnegative(),
+      uniqueArtistCount: z.number().int().nonnegative().optional(),
+      consensusStrength: z.enum(["insufficient", "weak", "moderate", "strong"]).optional(),
+      genreConsensus: z.array(referenceMemoryGenreConsensusSchema).max(10).optional(),
       matches: z.array(referenceMemoryMatchSchema).max(20),
-      interpretationGuidance: z.string().trim().min(1).max(1500),
+      interpretationGuidance: z.string().trim().min(1).max(3000),
     })
     .optional(),
   limitations: z.array(z.string().trim().min(1).max(1000)).max(30),
