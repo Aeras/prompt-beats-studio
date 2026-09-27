@@ -16,13 +16,15 @@ The canonical POC contract is `embedding_contract.json`:
 
 - model: `m-a-p/MERT-v1-95M`
 - 24 kHz mono
-- 30-second non-overlapping windows
+- 5-second non-overlapping windows
 - last hidden state
-- mean over time
-- mean across windows for longer query audio
+- mean over time inside each window
+- mean across windows for the whole track
 - L2 normalization
 - 768 dimensions
 - cosine distance
+
+The five-second window matches MERT-v1's published pretraining context and avoids a very large 30-second attention sequence. FMA's 30-second clips therefore contribute roughly six window embeddings which are averaged into one track vector.
 
 **Corpus and query audio must use exactly the same contract.** The existing PromptBeats enhanced RunPod worker currently uses MERT internally for representation evidence, but its source is not stored in this repository and it does not currently return this pooled 768D vector. Do not connect Analyzer retrieval until the worker/query path emits this exact contract.
 
