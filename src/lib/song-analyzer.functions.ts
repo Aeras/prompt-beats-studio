@@ -979,6 +979,59 @@ function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, s
   return checked.data;
 }
 
+function normalizeSectionCoverage(
+  evidence: StageAEvidence,
+  durationSeconds: number | null,
+): StageAEvidence {
+  if (!evidence.songSections.length) return evidence;
+
+  const sections = evidence.songSections;
+  const maxInserted = Math.max(0, 30 - sections.length);
+  let inserted = 0;
+  const normalized: StageAEvidence["songSections"] = [];
+
+  const addGap = (startSeconds: number, endSeconds: number, location: string) => {
+    if (inserted >= maxInserted || endSeconds - startSeconds <= 12) return;
+    normalized.push({
+      label: "Transition / Uncertain section",
+      startSeconds,
+      endSeconds,
+      evidence: `Unclassified audible interval ${location}; preserved to avoid a silent timeline gap.`,
+      confidence: "low",
+    });
+    inserted += 1;
+  };
+
+  const first = sections[0];
+  if (first.startSeconds != null && first.startSeconds > 12) {
+    addGap(0, first.startSeconds, "before the first identified section");
+  }
+
+  for (let index = 0; index < sections.length; index += 1) {
+    const section = sections[index];
+    if (index > 0) {
+      const previous = sections[index - 1];
+      if (previous.endSeconds != null && section.startSeconds != null) {
+        addGap(previous.endSeconds, section.startSeconds, "between identified sections");
+      }
+    }
+    normalized.push(section);
+  }
+
+  const last = sections[sections.length - 1];
+  if (
+    durationSeconds != null &&
+    last.endSeconds != null &&
+    durationSeconds > last.endSeconds
+  ) {
+    addGap(last.endSeconds, durationSeconds, "after the final identified section");
+  }
+
+  return normalized.length === sections.length
+    ? evidence
+    : { ...evidence, songSections: normalized.slice(0, 30) };
+}
+
 async function generateAudioEvidence(args: {
   apiKey?: string;
   model: SongAnalyzerModelId;
@@ -1060,10 +1113,15 @@ async function generateAudioEvidence(args: {
     throw new Error("Gemini evidence extraction returned no JSON");
   }
 
-  const evidence = parseStructured(text, stageAEvidenceSchema, args.model, stage);
+  const parsed = parseStructured(text, stageAEvidenceSchema, args.model, stage);
+  const evidence = normalizeSectionCoverage(
+    parsed,
+    args.stage0Evidence.processing.durationSeconds,
+  );
   logStage(args.model, stage, "success", {
     dominantElements: evidence.dominantElements.length,
     instruments: evidence.instrumentEvidence.length,
+    sections: evidence.songSections.length,
   });
   return evidence;
 }
@@ -1085,6 +1143,23 @@ function evidenceDerivedStructure(evidence: StageAEvidence) {
   return labels.length ? labels.slice(0, 30) : null;
 }
 
+function formatSectionTime(seconds: number) {
+  const rounded = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function evidenceDerivedDetailedStructure(evidence: StageAEvidence) {
+  if (!evidence.songSections.length) return null;
+  return evidence.songSections
+    .map((section) => {
+      if (section.startSeconds == null || section.endSeconds == null) return section.label;
+      return `${section.label} (${formatSectionTime(section.startSeconds)}-${formatSectionTime(section.endSeconds)})`;
+    })
+    .join(" → ");
+}
+
 function clampConfidence(
   finalConfidence: "high" | "medium" | "low",
   evidenceConfidence: "high" | "medium" | "low",
@@ -1099,6 +1174,7 @@ function applyEvidenceGate(
 ): SongAnalysisResult {
   const instruments = evidenceDerivedInstruments(evidence);
   const structure = evidenceDerivedStructure(evidence);
+  const detailedStructure = evidenceDerivedDetailedStructure(evidence);
   const felt = evidence.tempo.feltTempo;
   const fallback =
     result.generatorReady.bpm.approximate ?? evidence.tempo.gridCandidates[0] ?? null;
@@ -1132,6 +1208,10 @@ function applyEvidenceGate(
           .filter(Boolean)
           .join(" "),
       },
+    },
+    detailedAnalysis: {
+      ...result.detailedAnalysis,
+      songStructure: detailedStructure ?? result.detailedAnalysis.songStructure,
     },
   };
 }
