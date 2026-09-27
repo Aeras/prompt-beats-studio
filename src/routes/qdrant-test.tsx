@@ -108,6 +108,14 @@ function QdrantTestPage() {
               label="Collection status"
               value={data?.collectionExists ? "Ready" : data?.reachable ? "Not initialized" : "Unavailable"}
             />
+            <Info
+              label="Reference tracks"
+              value={data?.pointCount == null ? "—" : data.pointCount.toLocaleString()}
+            />
+            <Info
+              label="Embedding contract"
+              value={data?.embeddingContract ?? "promptbeats-mert95-similarity-v1"}
+            />
           </div>
 
           {data?.error && <p className="mt-4 text-sm text-red-300">{data.error}</p>}
@@ -159,7 +167,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-4">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-2 text-sm font-semibold">{value}</p>
+      <p className="mt-2 break-words text-sm font-semibold">{value}</p>
     </div>
   );
 }
