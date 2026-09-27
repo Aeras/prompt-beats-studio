@@ -1,0 +1,16 @@
+{
+  "contract_id": "promptbeats-mert95-similarity-v1",
+  "model": "m-a-p/MERT-v1-95M",
+  "model_revision": "main",
+  "sample_rate_hz": 24000,
+  "channels": 1,
+  "window_seconds": 30,
+  "window_overlap_seconds": 0,
+  "representation": "last_hidden_state",
+  "time_pooling": "mean",
+  "window_pooling": "mean",
+  "normalization": "l2",
+  "vector_size": 768,
+  "distance": "Cosine",
+  "notes": "POC contract. FMA 30-second clips produce one window. Longer query audio is split into non-overlapping 30-second windows, pooled per window, averaged, then L2-normalized. Corpus and query tracks MUST use this exact contract."
+}
