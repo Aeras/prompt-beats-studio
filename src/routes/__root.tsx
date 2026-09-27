@@ -18,7 +18,7 @@ import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider, useI18n } from "@/i18n";
 
-function NotFoundComponent() {
+function NotFoundContent() {
   const { t } = useI18n();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -39,7 +39,15 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function NotFoundComponent() {
+  return (
+    <I18nProvider>
+      <NotFoundContent />
+    </I18nProvider>
+  );
+}
+
+function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   const { t } = useI18n();
@@ -72,6 +80,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <I18nProvider>
+      <ErrorContent error={error} reset={reset} />
+    </I18nProvider>
   );
 }
 
