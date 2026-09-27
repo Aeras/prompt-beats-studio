@@ -46,15 +46,21 @@ describe("Qdrant music memory POC", () => {
     expect(code).toContain("queryMusicMemoryByVector");
   });
 
-  test("requests the canonical query embedding from the enhanced worker and uses it for reference memory", async () => {
+  test("accepts the canonical query embedding from the enhanced worker and uses it for reference memory", async () => {
     const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
     const stage0 = await source("src/lib/song-analyzer-dsp.shared.ts");
-    expect(enhanced).toContain("include_similarity_embedding: true");
-    expect(enhanced).toContain('similarity_embedding_contract: "promptbeats-mert95-similarity-v1"');
+    expect(enhanced).toContain("similarity_embedding: similarityVectorSchema.nullable().optional()");
     expect(enhanced).toContain("queryMusicMemoryByVector");
     expect(enhanced).toContain("REFERENCE_MEMORY_LIMIT = 12");
     expect(stage0).toContain("referenceMemory:");
     expect(stage0).toContain('z.literal("promptbeats-mert95-similarity-v1")');
+  });
+
+  test("keeps the existing analyze_fused worker request backward compatible", async () => {
+    const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
+    expect(enhanced).toContain('action: "analyze_fused"');
+    expect(enhanced).not.toContain("include_similarity_embedding: true");
+    expect(enhanced).not.toContain("similarity_embedding_contract:");
   });
 
   test("keeps retrieval non-fatal and explicitly reports when the worker vector is unavailable", async () => {
