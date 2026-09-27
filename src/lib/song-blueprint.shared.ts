@@ -6,7 +6,10 @@ export const songBlueprintSectionSchema = z.object({
   // fields explicit before any identity-sensitive operation.
   sectionId: z.string().trim().min(1).max(120).optional(),
   structureIndex: z.number().int().min(0).max(39),
-  sectionType: z.string().trim().min(1).max(80),
+  // Song Analyzer generator-ready section labels use the same 120-character
+  // contract. Keeping Blueprint at 80 made an otherwise valid Analyzer handoff
+  // fail before a durable Generator job could even be created.
+  sectionType: z.string().trim().min(1).max(120),
   occurrence: z.number().int().positive().max(40),
   instruction: z.string().max(800).default(""),
   energy: z

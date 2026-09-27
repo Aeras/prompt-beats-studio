@@ -3,26 +3,32 @@ import { z } from "zod";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
 import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
+// A GeneratorInputSnapshot is a persistence/recovery contract, not the place
+// where account/UI authoring limits are enforced. The live Generator applies
+// its normal-user limits separately before a job is created, while admin-only
+// tools such as Song Analyzer can legitimately hand off richer descriptions.
+// Keep these bounds aligned with the largest canonical Analyzer generator-ready
+// fields so the snapshot itself never rejects an otherwise valid handoff.
 export const generatorInputSnapshotSchema = z.object({
   generatorMode: z.enum(["basic", "advanced", "revision"]),
   smartPresetId: z.string().max(80).default(""),
   culturalStyleId: z.string().max(80).default(""),
   theme: z.string().max(500).default(""),
   selectedMusicStyles: z.array(z.string().max(150)).max(24).default([]),
-  customMusicStyle: z.string().max(500).default(""),
+  customMusicStyle: z.string().max(4000).default(""),
   selectedMoods: z.array(z.string().max(120)).max(24).default([]),
-  customMood: z.string().max(120).default(""),
+  customMood: z.string().max(2000).default(""),
   language: z.string().max(80).default(""),
   languageVariant: z.string().max(80).default(""),
   customLanguage: z.string().max(80).default(""),
-  selectedInstruments: z.array(z.string().max(120)).max(40).default([]),
-  customInstruments: z.string().max(200).default(""),
+  selectedInstruments: z.array(z.string().max(1000)).max(40).default([]),
+  customInstruments: z.string().max(32000).default(""),
   bpmMode: z.string().max(40).default("Auto"),
   customBpm: z.string().max(20).default(""),
-  songStructure: z.array(z.string().max(80)).max(40).default([]),
+  songStructure: z.array(z.string().max(120)).max(40).default([]),
   songBlueprint: songBlueprintSchema,
-  productionStyle: z.string().max(2000).default(""),
-  additionalInstructions: z.string().max(2000).default(""),
+  productionStyle: z.string().max(4000).default(""),
+  additionalInstructions: z.string().max(4000).default(""),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.string().max(240).nullable().default(null),
 });
