@@ -108,6 +108,24 @@ const instrumentEvidenceSchema = z.object({
   evidence: z.string().trim().min(1).max(2000),
 });
 
+const songSectionEvidenceSchema = z
+  .object({
+    label: z.string().trim().min(1).max(120),
+    startSeconds: z.number().min(0).max(21600).nullable(),
+    endSeconds: z.number().min(0).max(21600).nullable(),
+    evidence: z.string().trim().min(1).max(1500),
+    confidence: confidenceSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.startSeconds != null &&
+      value.endSeconds != null &&
+      value.endSeconds < value.startSeconds
+    ) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid section time range" });
+    }
+  });
+
 const stageAEvidenceSchema = z.object({
   dominantRhythmicPulse: z.object({
     observation: z.string().trim().min(1).max(1500),
@@ -135,16 +153,7 @@ const stageAEvidenceSchema = z.object({
   melodicElements: z.array(evidenceClaimSchema).max(20),
   vocalCharacteristics: z.array(evidenceClaimSchema).max(20),
   arrangementChanges: z.array(evidenceClaimSchema).max(30),
-  songSections: z
-    .array(
-      z.object({
-        label: z.string().trim().min(1).max(120),
-        evidence: z.string().trim().min(1).max(1500),
-        confidence: confidenceSchema,
-      }),
-    )
-    .min(1)
-    .max(30),
+  songSections: z.array(songSectionEvidenceSchema).min(1).max(30),
   energyProgression: z.array(evidenceClaimSchema).max(20),
   productionMixEvidence: z.array(evidenceClaimSchema).max(30),
   uncertaintyNotes: z.array(z.string().trim().min(1).max(2000)).max(30),
@@ -167,6 +176,12 @@ Do not transcribe lyrics.
 EVIDENCE-FIRST RULE
 Every important musical claim must be tied to something actually audible.
 If uncertain, lower confidence and describe the uncertainty.
+
+LANGUAGE / VOCAL DELIVERY ISOLATION
+Lyrics language, accent, nationality, and singer identity are not musical-style evidence.
+You may note the audible language only as a vocal characteristic when it is clear, but never use language as evidence for a regional, national, ethnic, or genre label.
+Independently describe vocal delivery and rhythmic phrasing: sung, speech-like, rap-like, sing-rap-like, conversational, melismatic, sustained, clipped, syncopated, behind/on/ahead of the beat, or other directly audible behavior.
+Do not let the language of the words replace the musical evidence in the vocal delivery.
 
 QUANTITATIVE DSP REFERENCE
 A deterministic Stage 0 DSP object is supplied with the audio.
@@ -204,9 +219,9 @@ You must observe:
 7. dominant instruments
 8. instrument playing techniques
 9. melodic elements
-10. vocal characteristics
+10. vocal characteristics and delivery independent of lyrics language
 11. arrangement changes
-12. song sections
+12. song sections with approximate time coverage
 13. energy progression
 14. production/mix evidence
 15. uncertainty notes
@@ -341,16 +356,16 @@ Use explicit uncertainty when needed.
 
 TEMPORAL GROUNDING
 For claims about arrangement, instrument entrances, section changes, energy shifts, solos, or changing production texture, ground the observation in an approximate part of the track whenever possible.
+Use approximate startSeconds/endSeconds for each songSections item when you can place the boundary with reasonable confidence.
+If a boundary cannot be placed reliably, use null for that boundary rather than inventing precision.
 
-Use approximate temporal references such as:
-- opening / early section
-- around the first major transition
-- middle section
-- later section
-- closing section
-
-Do not invent exact timestamps if you are not confident.
-The goal is to verify that an element is actually heard in a specific part of the recording rather than inferred from the overall impression.
+FULL-TIMELINE SECTION COVERAGE
+songSections must represent the entire audible recording in chronological order, from the opening through the ending.
+Do not silently omit a substantial interval between named sections.
+Repeated verses, choruses, bridges, breakdowns, solos, interludes, transitions, and outros must be represented as separate occurrences when they are audibly distinct.
+If a substantial interval cannot be confidently named, include a broad label such as "Transition / Uncertain section" with reduced confidence instead of leaving a gap.
+Use Stage 0 duration, when available, as a cross-check that the section evidence reaches the end of the track.
+Do not invent a verse, chorus, bridge, solo, or outro merely to fill time; preserve uncertainty explicitly.
 
 FULL-TRACK EVIDENCE COVERAGE CHECK
 Before returning the Stage A JSON, perform one final full-track pass mentally across the evidence you observed.
@@ -361,7 +376,8 @@ Verify that you have not omitted:
 - an instrument that becomes prominent only in later sections;
 - a contrasting acoustic vs electronic layer;
 - an important playing technique;
-- a major change in instrumentation between sections.
+- a major change in instrumentation between sections;
+- a substantial timeline interval between section entries.
 
 Pay special attention to instruments that appear only in solo, bridge, breakdown, final chorus, or outro sections.
 
@@ -417,6 +433,13 @@ If evidence does not support a narrow genre, use a broader accurate label.
 Broad accuracy is better than narrow speculation.
 A polished or electronic element does not automatically justify Dance-Pop, EDM, Club-Pop, Slap House, Nu-Disco, or another club-oriented label.
 
+LANGUAGE / CULTURAL STYLE ISOLATION
+Lyrics language, accent, country, nationality, and artist identity are not genre/style evidence by themselves.
+Do not put a nationality or regional adjective such as Greek, Spanish, Arabic, Turkish, Balkan, Nordic, Latin, or similar wording into Music Style or genreAndStyle merely because the vocals use that language or accent.
+A regional/cultural style label requires at least TWO independent non-language musical indicators in Stage A, for example distinctive instrumentation/technique plus rhythmic, harmonic/modal, arrangement, or production evidence.
+If Stage A reports only the vocal language, keep that fact in the vocal description and nowhere in the musical style label.
+Example: Greek-language vocals do not equal Greek Pop.
+
 STYLE CONTRADICTION CHECK
 Before selecting Music Style, identify whether any dominant Stage A evidence materially contradicts the proposed label.
 
@@ -448,6 +471,13 @@ Examples of the required reasoning pattern only — never force these labels whe
 Do not use "ballad" merely because the tempo is slow or midtempo, the mood is emotive, or acoustic guitar is prominent.
 A ballad classification requires compatible arrangement, vocal, harmonic, and groove evidence, and it must not erase a conflicting or coexisting rhythmic/vocal family.
 
+RHYTHMIC / VOCAL FAMILY PRESERVATION
+Stage A intentionally avoids genre names, so infer style families from converging raw evidence rather than waiting for Stage A to name a genre.
+When Stage A contains speech-like or sing-rap-like vocal phrasing together with a materially syncopated backbeat, programmed/trap-like subdivision behavior, hip-hop-like pocket, or compatible bass phrasing, explicitly evaluate whether a hip-hop-derived family is materially present.
+Likewise evaluate other families from multiple converging rhythmic, vocal, instrumental, harmonic, and production cues.
+Do not discard a supported rhythmic/vocal family solely because the harmonic surface is acoustic, melodic, soft, emotive, or pop-accessible.
+Do not force a family from one cue; require convergence from at least TWO independent evidence categories.
+
 GENRE FAMILY ACCOUNTING GATE
 Before finalizing Music Style:
 1. Identify the primary rhythmic/groove family supported by Stage A.
@@ -455,6 +485,7 @@ Before finalizing Music Style:
 3. Identify the primary instrumental/production family supported by Stage A.
 4. If these point to more than one materially defining family, use a hybrid/crossover description.
 5. Do not allow one dominant instrument to overwrite an independently supported rhythmic or vocal style family.
+6. Do not use lyrics language or nationality as one of the evidence categories.
 
 GENERATOR-READY INSTRUMENTS
 Generator-ready Instruments must be derived directly from Stage A instrument evidence.
@@ -498,6 +529,19 @@ Supporting elements may be omitted when they do not materially affect the genera
 
 If removing an element would cause a music generator to recreate a substantially different arrangement, that element is materially defining and must be preserved.
 
+STRUCTURE / TIMELINE COVERAGE
+Generator-ready Song Structure must preserve every Stage A songSections occurrence in chronological order.
+Do not skip a repeated verse/chorus, bridge, interlude, breakdown, solo, transition, or outro that Stage A explicitly reports.
+Do not invent section names or timestamps that are absent from Stage A.
+When Stage A uses an uncertain/transition label to cover an ambiguous interval, preserve the uncertainty rather than silently deleting that interval.
+Detailed songStructure must not present a sequence with a substantial unexplained time gap between adjacent Stage A sections.
+
+ARRANGEMENT CLAIM GROUNDING
+Additional Instructions is descriptive reconstruction, not a place to redesign or improve the song.
+Every instrument entrance, harmony, shaker/percussion layer, solo, bridge behavior, filter/effect, dynamic event, and outro instruction must be traceable to Stage A evidence.
+Do not turn a low-confidence or ambiguous Stage A observation into a definite generator instruction.
+Do not add stereotypical arrangement events merely because they would fit the proposed genre.
+
 BPM
 Choose ONE generator-ready BPM value.
 Prefer Stage A felt/perceived tempo when it is musically representative.
@@ -518,6 +562,9 @@ Before returning:
 5. Lower BPM confidence if it exceeds Stage A evidence.
 6. Ensure the result belongs to the same broad musical family implied by the evidence.
 7. Verify that dominant instrumentation has not erased an independently supported rhythmic or vocal style family; use hybrid/crossover wording when multiple families materially define the track.
+8. Remove nationality/regional style wording that is supported only by lyrics language or accent.
+9. Verify that Song Structure accounts for the complete Stage A section sequence without dropping substantial intervals.
+10. Remove any Additional Instructions claim that cannot be traced directly to Stage A evidence.
 
 Do not reproduce lyrics, melodies, hooks, or protected expression.
 Return only the existing canonical Analyzer JSON schema.
@@ -780,10 +827,12 @@ const EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
         type: "OBJECT",
         properties: {
           label: { type: "STRING" },
+          startSeconds: { type: "NUMBER", nullable: true },
+          endSeconds: { type: "NUMBER", nullable: true },
           evidence: { type: "STRING" },
           confidence: { type: "STRING", enum: ["high", "medium", "low"] },
         },
-        required: ["label", "evidence", "confidence"],
+        required: ["label", "startSeconds", "endSeconds", "evidence", "confidence"],
       },
     },
     energyProgression: {
@@ -1031,6 +1080,11 @@ function evidenceDerivedInstruments(evidence: StageAEvidence) {
   return [...new Set(values)].slice(0, 30);
 }
 
+function evidenceDerivedStructure(evidence: StageAEvidence) {
+  const labels = evidence.songSections.map((section) => section.label.trim()).filter(Boolean);
+  return labels.length ? labels.slice(0, 30) : null;
+}
+
 function clampConfidence(
   finalConfidence: "high" | "medium" | "low",
   evidenceConfidence: "high" | "medium" | "low",
@@ -1044,6 +1098,7 @@ function applyEvidenceGate(
   evidence: StageAEvidence,
 ): SongAnalysisResult {
   const instruments = evidenceDerivedInstruments(evidence);
+  const structure = evidenceDerivedStructure(evidence);
   const felt = evidence.tempo.feltTempo;
   const fallback =
     result.generatorReady.bpm.approximate ?? evidence.tempo.gridCandidates[0] ?? null;
@@ -1054,6 +1109,7 @@ function applyEvidenceGate(
     generatorReady: {
       ...result.generatorReady,
       instruments: instruments.length ? instruments : result.generatorReady.instruments,
+      songStructure: structure ?? result.generatorReady.songStructure,
       bpm: {
         ...result.generatorReady.bpm,
         approximate: chosenBpm == null ? null : Math.round(chosenBpm),
