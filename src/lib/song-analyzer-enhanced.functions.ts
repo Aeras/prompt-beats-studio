@@ -148,6 +148,10 @@ async function buildReferenceMemory(vector: number[]) {
   };
 }
 
+function appendLimitation(existing: string[], message: string) {
+  return [...existing, message].slice(-30);
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -186,8 +190,6 @@ async function runEnhancedWorker(audioUrl: string) {
       input: {
         action: "analyze_fused",
         audio_url: audioUrl,
-        include_similarity_embedding: true,
-        similarity_embedding_contract: "promptbeats-mert95-similarity-v1",
       },
     }),
   });
@@ -280,10 +282,10 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
           stage0Evidence = {
             ...stage0Evidence,
             referenceMemory,
-            limitations: [
-              ...stage0Evidence.limitations,
+            limitations: appendLimitation(
+              stage0Evidence.limitations,
               `Qdrant reference memory used ${referenceMemory.matchCount} canonical MERT nearest neighbours as secondary style evidence.`,
-            ],
+            ),
           };
         } catch (error) {
           console.warn("[song-analyzer] Qdrant reference-memory lookup failed; continuing without it", {
@@ -291,19 +293,19 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
           });
           stage0Evidence = {
             ...stage0Evidence,
-            limitations: [
-              ...stage0Evidence.limitations,
+            limitations: appendLimitation(
+              stage0Evidence.limitations,
               "Qdrant reference-memory lookup was unavailable; final analysis continued from direct audio evidence only.",
-            ],
+            ),
           };
         }
       } else {
         stage0Evidence = {
           ...stage0Evidence,
-          limitations: [
-            ...stage0Evidence.limitations,
+          limitations: appendLimitation(
+            stage0Evidence.limitations,
             "Enhanced worker did not return the canonical MERT similarity embedding; Qdrant reference-memory retrieval was not used.",
-          ],
+          ),
         };
       }
 
