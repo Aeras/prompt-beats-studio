@@ -32,6 +32,7 @@ import {
   finalizeSongAnalysis,
   getSongAnalyzerFinalModelAccess,
 } from "@/lib/song-analyzer-final.functions";
+import { guardSongAnalyzerStageA } from "@/lib/song-analyzer-stage-a-guard.functions";
 import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
 import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
@@ -195,11 +196,22 @@ function SongAnalyzerPage() {
         },
       });
 
-      const finalized = await finalizeSongAnalysis({
+      const guarded = await guardSongAnalyzerStageA({
         data: {
-          initialResult: response.result,
+          audioBase64,
+          mimeType: file.type as any,
+          model: model as any,
           stage0Evidence: response.stage0Evidence,
           stageAEvidence: response.stageAEvidence,
+          initialResult: response.result,
+        },
+      });
+
+      const finalized = await finalizeSongAnalysis({
+        data: {
+          initialResult: guarded.initialResult,
+          stage0Evidence: response.stage0Evidence,
+          stageAEvidence: guarded.stageAEvidence,
           audioAnalysisModel: model as any,
           finalModel: finalModel || undefined,
           trackTitle: trackTitle.trim() || undefined,
@@ -209,7 +221,7 @@ function SongAnalyzerPage() {
 
       setResult(finalized.result);
       setStage0Evidence(response.stage0Evidence);
-      setStageAEvidence(response.stageAEvidence);
+      setStageAEvidence(guarded.stageAEvidence as StageAEvidence);
       setResultModel(response.model);
       setFinalResultModelLabel(finalized.finalModelLabel);
       completeAuxiliaryRequest("song_analyzer");
