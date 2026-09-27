@@ -12,6 +12,7 @@ import {
 const ENHANCED_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 const DEFAULT_RUNPOD_TIMEOUT_MS = 10 * 60 * 1000;
 const RUNPOD_POLL_INTERVAL_MS = 2_000;
+const TEMP_AUDIO_DELETE_ATTEMPTS = 3;
 
 const supportedMimeTypes = [
   "audio/mpeg",
@@ -96,13 +97,13 @@ function sleep(ms: number) {
 }
 
 async function fetchRunpodJson(url: string, apiKey: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${apiKey}`);
+  headers.set("Content-Type", "application/json");
+
   const response = await fetch(url, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     signal: AbortSignal.timeout(30_000),
   });
   const payload = await response.json().catch(() => null);
@@ -167,6 +168,24 @@ async function requireEnhancedAnalyzerAccess(context: { supabase: any }) {
   }
 }
 
+async function deleteTemporaryAudio(deleteFromR2: (key: string) => Promise<void>, key: string) {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= TEMP_AUDIO_DELETE_ATTEMPTS; attempt += 1) {
+    try {
+      await deleteFromR2(key);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < TEMP_AUDIO_DELETE_ATTEMPTS) await sleep(250 * attempt);
+    }
+  }
+  console.error("[song-analyzer] failed to delete temporary enhanced-analysis audio", {
+    key,
+    attempts: TEMP_AUDIO_DELETE_ATTEMPTS,
+    error: lastError instanceof Error ? lastError.message : String(lastError),
+  });
+}
+
 export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => enhancedInputSchema.parse(input))
@@ -206,12 +225,7 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
         },
       };
     } finally {
-      // Analyzer source audio is temporary transport only and is never persisted as a Track/Library asset.
-      await deleteFromR2(key).catch((error) => {
-        console.error("[song-analyzer] failed to delete temporary enhanced-analysis audio", {
-          key,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
+      // Analyzer source audio is temporary transport only and is never retained as a Track/Library asset.
+      await deleteTemporaryAudio(deleteFromR2, key);
     }
   });
