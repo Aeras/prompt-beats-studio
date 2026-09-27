@@ -424,6 +424,38 @@ A narrow style label is allowed only if it explains the dominant rhythmic feel, 
 
 If the proposed label explains only one prominent element, broaden it or use a hybrid description.
 
+HYBRID STYLE PRESERVATION
+Instrument prominence and genre identity are different signals.
+Do not let the loudest, most exposed, or most prominent instrument replace an independently supported rhythmic or vocal style family.
+A track can be acoustic- or live-instrument-led while still having a materially defining hip-hop, R&B, electronic, rock, folk, or other rhythmic/vocal foundation.
+
+Before collapsing a track into one family, independently account for:
+- drum/percussion language and pocket;
+- bass language;
+- vocal delivery and phrasing;
+- rhythmic subdivision, swing, and syncopation;
+- harmonic/instrumental surface;
+- arrangement and production texture.
+
+If two or more style families are independently and materially supported by Stage A evidence, Music Style MUST preserve them with a hybrid/crossover description rather than dropping one because another instrument is more prominent.
+Do not infer a family from a single weak cue: hybrid wording still requires converging Stage A evidence.
+
+Examples of the required reasoning pattern only — never force these labels when evidence does not support them:
+- acoustic-led instrumentation + hip-hop rhythmic/vocal evidence -> preserve both families in a hybrid/crossover description;
+- pop melodic structure + trap-derived pocket -> preserve both when both are materially supported;
+- live/acoustic surface + electronic production foundation -> preserve both when both materially define the recording.
+
+Do not use "ballad" merely because the tempo is slow or midtempo, the mood is emotive, or acoustic guitar is prominent.
+A ballad classification requires compatible arrangement, vocal, harmonic, and groove evidence, and it must not erase a conflicting or coexisting rhythmic/vocal family.
+
+GENRE FAMILY ACCOUNTING GATE
+Before finalizing Music Style:
+1. Identify the primary rhythmic/groove family supported by Stage A.
+2. Identify the primary vocal-delivery family supported by Stage A.
+3. Identify the primary instrumental/production family supported by Stage A.
+4. If these point to more than one materially defining family, use a hybrid/crossover description.
+5. Do not allow one dominant instrument to overwrite an independently supported rhythmic or vocal style family.
+
 GENERATOR-READY INSTRUMENTS
 Generator-ready Instruments must be derived directly from Stage A instrument evidence.
 Do not include vocals, FX, risers, sweeps, reverb, delay, sidechain, white noise, compression, or transition effects.
@@ -435,6 +467,7 @@ Do not over-compress a layered arrangement into generic instrument labels or a n
 When Stage A provides evidence of a broader or more specific musical identity:
 - preserve acoustic-led or live-instrument-led identity when dominant;
 - preserve clearly reported electronic layers such as pads, programmed drums, or synth bass when Stage A explicitly identifies them;
+- do not let a dominant acoustic/live instrument collapse an independently supported rhythmic or vocal identity into generic pop or ballad wording;
 - do not let one prominent electric guitar part dominate the classification if the total evidence points to a broader hybrid arrangement;
 - do not reduce a multi-layered arrangement to generic labels such as "Electric Guitar / Drum Kit / Bass" when Stage A contains more specific supported instrumentation or techniques;
 - retain important harmonic, textural, and rhythmic layers that materially define the recording;
@@ -484,6 +517,7 @@ Before returning:
 4. Broaden Music Style if it requires evidence not present in Stage A.
 5. Lower BPM confidence if it exceeds Stage A evidence.
 6. Ensure the result belongs to the same broad musical family implied by the evidence.
+7. Verify that dominant instrumentation has not erased an independently supported rhythmic or vocal style family; use hybrid/crossover wording when multiple families materially define the track.
 
 Do not reproduce lyrics, melodies, hooks, or protected expression.
 Return only the existing canonical Analyzer JSON schema.
