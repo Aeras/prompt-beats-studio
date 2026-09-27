@@ -129,6 +129,7 @@ describe("Library folders foundation", () => {
     expect(library).toContain("listLibraryFolderContents");
     expect(library).toContain("searchLibraryScope");
     expect(library).toContain("folder-breadcrumbs");
+    expect(library).toContain("promptbeats:library-current-folder");
     expect(library).toContain("Νέος Φάκελος");
     expect(library).toContain("Move Project");
     expect(library).toContain('(view === "all" || (view === "projects" && !openProject))');

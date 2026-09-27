@@ -648,7 +648,10 @@ function PromptProjectLibrary({
   const [deleteProjectDialog, setDeleteProjectDialog] = useState<PromptProject | null>(null);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.sessionStorage.getItem("promptbeats:library-current-folder") || null;
+  });
   const [folderMessage, setFolderMessage] = useState("");
   const [undoMove, setUndoMove] = useState<null | {
     kind: "folder" | "project" | "prompt";
@@ -685,6 +688,13 @@ function PromptProjectLibrary({
   }>(null);
   const q = search.trim().toLowerCase();
   const openProject = projects.find((project) => project.id === openProjectId) ?? null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = "promptbeats:library-current-folder";
+    if (currentFolderId) window.sessionStorage.setItem(key, currentFolderId);
+    else window.sessionStorage.removeItem(key);
+  }, [currentFolderId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
