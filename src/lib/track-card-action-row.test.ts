@@ -25,6 +25,7 @@ describe("Track card action row", () => {
 
   test("card actions stay compact while secondary actions live in one menu", async () => {
     const libraryActions = await source("src/components/promptbeats/TrackLibraryActions.tsx");
+    const like = await source("src/components/promptbeats/LikeButton.tsx");
     const share = await source("src/components/promptbeats/ShareTrackButton.tsx");
     const report = await source("src/components/promptbeats/ReportTrackControl.tsx");
     const owner = await source("src/components/promptbeats/TrackOwnerActions.tsx");
@@ -39,6 +40,7 @@ describe("Track card action row", () => {
     expect(libraryActions).toContain("h-9 w-7");
     expect(libraryActions).toContain("<MoreVertical");
     expect(libraryActions).toContain("<Download");
+    expect(like).toContain('"h-9 w-6 -ml-3 [&+div]:-ml-1 [&+div]:gap-0 [&+div>button]:w-6"');
     expect(share).toContain("menuItem?: boolean");
     expect(report).toContain("menuItem?: boolean");
   });
