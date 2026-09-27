@@ -108,22 +108,28 @@ const instrumentEvidenceSchema = z.object({
   evidence: z.string().trim().min(1).max(2000),
 });
 
+const tolerantSectionTimeSchema = z.preprocess(
+  (value) => (value === undefined || value === "" ? null : value),
+  z.number().min(0).max(21600).nullable(),
+).catch(null);
+
 const songSectionEvidenceSchema = z
   .object({
     label: z.string().trim().min(1).max(120),
-    startSeconds: z.number().min(0).max(21600).nullable(),
-    endSeconds: z.number().min(0).max(21600).nullable(),
+    startSeconds: tolerantSectionTimeSchema,
+    endSeconds: tolerantSectionTimeSchema,
     evidence: z.string().trim().min(1).max(1500),
     confidence: confidenceSchema,
   })
-  .superRefine((value, ctx) => {
+  .transform((value) => {
     if (
       value.startSeconds != null &&
       value.endSeconds != null &&
       value.endSeconds < value.startSeconds
     ) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid section time range" });
+      return { ...value, startSeconds: null, endSeconds: null };
     }
+    return value;
   });
 
 const stageAEvidenceSchema = z.object({
