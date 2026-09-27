@@ -14,10 +14,13 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.clearAudio": "Καθαρισμός audio",
   "songAnalyzer.optionalReference": "Προαιρετική εξωτερική επαλήθευση",
   "songAnalyzer.optionalReferenceHelp":
-    "Αν συμπληρωθούν και τα δύο πεδία, το PromptBeats ολοκληρώνει πρώτα ανεξάρτητη audio-only ανάλυση και μετά χρησιμοποιεί τίτλο και καλλιτέχνη μόνο για δευτερεύουσα επαλήθευση μέσω web references. Το audio παραμένει authoritative.",
+    "Αν συμπληρωθούν και τα δύο πεδία, η τελική ανάλυση κάνει regional web research για το ακριβές τραγούδι μετά την ανεξάρτητη audio analysis. Το audio evidence παραμένει authoritative.",
   "songAnalyzer.trackTitleOptional": "Τίτλος Τραγουδιού (προαιρετικό)",
   "songAnalyzer.artistOptional": "Καλλιτέχνης (προαιρετικό)",
-  "songAnalyzer.model": "Μοντέλο Analyzer",
+  "songAnalyzer.model": "Μοντέλο audio analysis",
+  "songAnalyzer.finalModel": "Μοντέλο τελικής ανάλυσης",
+  "songAnalyzer.finalModelHelp":
+    "Αυτό το μοντέλο λαμβάνει όλο το evidence της audio analysis μαζί με τυχόν regional web research και δημιουργεί την τελική Generator-ready ερμηνεία.",
   "songAnalyzer.analyze": "Ανάλυση Τραγουδιού",
   "songAnalyzer.analyzing": "Ανάλυση audio…",
   "songAnalyzer.empty":
