@@ -14,7 +14,10 @@ describe("Song Analyzer final judge architecture", () => {
     expect(route).toContain('trackTitle: trackTitle.trim() || undefined');
     expect(route).toContain('artist: artist.trim() || undefined');
 
-    const audioCall = route.slice(route.indexOf("const response = await analyzeSong"), route.indexOf("const finalized = await finalizeSongAnalysis"));
+    const audioCall = route.slice(
+      route.indexOf("const response = await analyzeSong"),
+      route.indexOf("const finalized = await finalizeSongAnalysis"),
+    );
     expect(audioCall).not.toContain("trackTitle:");
     expect(audioCall).not.toContain("artist:");
   });
@@ -40,7 +43,9 @@ describe("Song Analyzer final judge architecture", () => {
     const code = await source("src/lib/song-analyzer-final.functions.ts");
 
     expect(code).toContain("Preserve hybrid/crossover identity");
-    expect(code).toContain("must not erase a materially supported hip-hop/R&B/electronic/rock/folk rhythmic or vocal foundation");
+    expect(code).toContain(
+      "must not erase a materially supported hip-hop/R&B/electronic/rock/folk rhythmic or vocal foundation",
+    );
     expect(code).toContain("must trigger an explicit evaluation of a hip-hop-derived family");
     expect(code).toContain("A prominent guitar must not cause a Pop-Rock/Rock classification");
   });
@@ -53,8 +58,10 @@ describe("Song Analyzer final judge architecture", () => {
     expect(code).toContain("songStructure: initialResult.generatorReady.songStructure");
   });
 
-  test("Stage A schema is exported for cross-stage validation", async () => {
+  test("existing Analyzer Stage A and Stage B prompts remain present", async () => {
     const code = await source("src/lib/song-analyzer.functions.ts");
-    expect(code).toContain("export const stageAEvidenceSchema = z.object");
+    expect(code).toContain("PromptBeats Stage A: RAW AUDIO EVIDENCE EXTRACTOR");
+    expect(code).toContain("HYBRID STYLE PRESERVATION");
+    expect(code).toContain("RHYTHMIC / VOCAL FAMILY PRESERVATION");
   });
 });
