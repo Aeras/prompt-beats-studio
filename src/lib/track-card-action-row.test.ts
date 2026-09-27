@@ -36,7 +36,7 @@ describe("Track card action row", () => {
 
     expect(libraryActions).toContain("menuActions?: ReactNode");
     expect(libraryActions).toContain("inlineActions?: ReactNode");
-        expect(libraryActions).toContain("h-9 w-7");
+    expect(libraryActions).toContain("h-9 w-7");
     expect(libraryActions).toContain('compact ? "flex shrink-0 items-center gap-0"');
     expect(libraryActions).toContain("<MoreVertical");
     expect(libraryActions).toContain("<Download");
