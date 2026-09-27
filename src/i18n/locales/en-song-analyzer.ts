@@ -12,10 +12,13 @@ export const enSongAnalyzer = {
   "songAnalyzer.clearAudio": "Clear audio",
   "songAnalyzer.optionalReference": "Optional external reference validation",
   "songAnalyzer.optionalReferenceHelp":
-    "If both fields are provided, PromptBeats first completes an independent audio-only analysis, then uses the title and artist only for secondary web-reference validation. Audio remains authoritative.",
+    "If both fields are provided, the final analysis performs regional web research for the exact track identity after the independent audio analysis. Audio evidence remains authoritative.",
   "songAnalyzer.trackTitleOptional": "Track Title (optional)",
   "songAnalyzer.artistOptional": "Artist (optional)",
-  "songAnalyzer.model": "Analyzer model",
+  "songAnalyzer.model": "Audio analysis model",
+  "songAnalyzer.finalModel": "Final analysis model",
+  "songAnalyzer.finalModelHelp":
+    "This model receives the complete audio-analysis evidence plus optional regional web research and produces the final Generator-ready interpretation.",
   "songAnalyzer.analyze": "Analyze Song",
   "songAnalyzer.analyzing": "Analyzing audio…",
   "songAnalyzer.empty":
