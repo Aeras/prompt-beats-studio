@@ -112,13 +112,18 @@ def ffmpeg_decode_mono_24k(audio_bytes: bytes, sample_rate: int) -> np.ndarray:
 
 
 class MertEmbedder:
-    def __init__(self, contract: dict[str, Any], device: str):
+    def __init__(self, contract: dict[str, Any], device: str, inference_batch: int):
         self.contract = contract
         self.sample_rate = int(contract["sample_rate_hz"])
         self.window_samples = int(contract["window_seconds"] * self.sample_rate)
+        self.inference_batch = max(1, int(inference_batch))
         model_name = str(contract["model"])
         revision = str(contract.get("model_revision") or "main")
-        print(f"[mert] loading {model_name}@{revision} on {device}", flush=True)
+        print(
+            f"[mert] loading {model_name}@{revision} on {device} "
+            f"(window batch={self.inference_batch})",
+            flush=True,
+        )
         self.processor = Wav2Vec2FeatureExtractor.from_pretrained(model_name, revision=revision)
         self.model = AutoModel.from_pretrained(model_name, revision=revision, trust_remote_code=True)
         self.device = torch.device(device)
@@ -128,20 +133,42 @@ class MertEmbedder:
         if hidden != int(contract["vector_size"]):
             raise RuntimeError(f"MERT hidden size {hidden} does not match contract vector size {contract['vector_size']}")
 
+    def _pool_batch(self, chunks: list[np.ndarray]) -> list[torch.Tensor]:
+        """Infer equal-length windows together without padding, preserving v1 pooling."""
+        if not chunks:
+            return []
+        inputs = self.processor(chunks, sampling_rate=self.sample_rate, return_tensors="pt", padding=False)
+        input_values = inputs["input_values"].to(self.device)
+        outputs = self.model(input_values=input_values)
+        pooled = outputs.last_hidden_state.mean(dim=1).float().cpu()
+        return [row for row in pooled]
+
     @torch.inference_mode()
     def embed(self, waveform: np.ndarray) -> list[float]:
         if waveform.ndim != 1 or waveform.size == 0:
             raise ValueError("Decoded waveform is empty")
-        window_vectors: list[torch.Tensor] = []
+
+        full_windows: list[np.ndarray] = []
+        tail: np.ndarray | None = None
         for start in range(0, waveform.size, self.window_samples):
             chunk = waveform[start : start + self.window_samples]
             if chunk.size < self.sample_rate:  # ignore a final fragment shorter than one second
                 continue
-            inputs = self.processor(chunk, sampling_rate=self.sample_rate, return_tensors="pt")
-            input_values = inputs["input_values"].to(self.device)
-            outputs = self.model(input_values=input_values)
-            pooled = outputs.last_hidden_state.mean(dim=1).squeeze(0)
-            window_vectors.append(pooled.float().cpu())
+            if chunk.size == self.window_samples:
+                full_windows.append(chunk)
+            else:
+                tail = chunk
+
+        window_vectors: list[torch.Tensor] = []
+        # FMA tracks are normally ~30 s, so this turns six sequential MERT forwards
+        # into one GPU batch while leaving the embedding contract unchanged.
+        for start in range(0, len(full_windows), self.inference_batch):
+            window_vectors.extend(self._pool_batch(full_windows[start : start + self.inference_batch]))
+        # A short final window is intentionally inferred alone: no padding means its
+        # time mean is identical in semantics to the original v1 extractor.
+        if tail is not None:
+            window_vectors.extend(self._pool_batch([tail]))
+
         if not window_vectors:
             raise ValueError("Audio is too short to create a MERT vector")
         vector = torch.stack(window_vectors).mean(dim=0)
@@ -230,7 +257,7 @@ def run(args: argparse.Namespace) -> None:
     device = args.device
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    embedder = MertEmbedder(contract, device)
+    embedder = MertEmbedder(contract, device, args.inference_batch)
 
     print(f"[fma] opening 93 GiB audio archive remotely; no full local download: {args.audio_url}", flush=True)
     processed = skipped = failed = 0
@@ -285,7 +312,12 @@ def run(args: argparse.Namespace) -> None:
 
         processed += flush_points(client, pending)
 
-    print(f"[done] new={processed:,} skipped={skipped:,} failed={failed:,}", flush=True)
+    elapsed = max(time.time() - started, 0.001)
+    print(
+        f"[done] new={processed:,} skipped={skipped:,} failed={failed:,} "
+        f"elapsed={elapsed / 60:.1f}m new_rate={processed / elapsed:.2f}/s",
+        flush=True,
+    )
     if failures:
         Path(args.failure_log).write_text(
             "\n".join(f"{track_id}\t{message}" for track_id, message in failures) + "\n",
@@ -303,6 +335,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=0, help="0 means all tracks")
     parser.add_argument("--resume-batch", type=int, default=500)
     parser.add_argument("--upsert-batch", type=int, default=32)
+    parser.add_argument("--inference-batch", type=int, default=8, help="equal-length MERT windows per GPU forward")
     parser.add_argument("--progress-every", type=int, default=100)
     parser.add_argument("--failure-log", default="fma_qdrant_failures.tsv")
     return parser.parse_args()
