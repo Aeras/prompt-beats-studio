@@ -1,0 +1,60 @@
+import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+
+async function source(path: string) {
+  return readFile(new URL(`../../${path}`, import.meta.url), "utf8");
+}
+
+describe("Song Analyzer final judge architecture", () => {
+  test("keeps title and artist out of the audio analysis call and routes them to final analysis", async () => {
+    const route = await source("src/routes/song-analyzer.tsx");
+
+    expect(route).toContain("getSongAnalyzerFinalModelAccess");
+    expect(route).toContain("finalizeSongAnalysis");
+    expect(route).toContain('trackTitle: trackTitle.trim() || undefined');
+    expect(route).toContain('artist: artist.trim() || undefined');
+
+    const audioCall = route.slice(route.indexOf("const response = await analyzeSong"), route.indexOf("const finalized = await finalizeSongAnalysis"));
+    expect(audioCall).not.toContain("trackTitle:");
+    expect(audioCall).not.toContain("artist:");
+  });
+
+  test("uses the AI Tools registry for the selectable final model", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+
+    expect(code).toContain('getEffectiveModelAccess(userId, "ai_tools")');
+    expect(code).toContain('resolveAiModelForUser(userId, "ai_tools", selectedId)');
+    expect(code).toContain("modelCaller(selected.model, selected.provider)");
+  });
+
+  test("routes Russian research through Dzen with independent cross-checks", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+
+    expect(code).toContain("site:dzen.ru");
+    expect(code).toContain("non-Dzen independent cross-check");
+    expect(code).toContain("Search in the ORIGINAL script/language");
+    expect(code).toContain("audio evidence authoritative");
+  });
+
+  test("final style judge protects hybrid and hip-hop-derived identity", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+
+    expect(code).toContain("Preserve hybrid/crossover identity");
+    expect(code).toContain("must not erase a materially supported hip-hop/R&B/electronic/rock/folk rhythmic or vocal foundation");
+    expect(code).toContain("must trigger an explicit evaluation of a hip-hop-derived family");
+    expect(code).toContain("A prominent guitar must not cause a Pop-Rock/Rock classification");
+  });
+
+  test("final judge cannot overwrite audio-measured instruments, BPM or structure", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+
+    expect(code).toContain("instruments: initialResult.generatorReady.instruments");
+    expect(code).toContain("bpm: initialResult.generatorReady.bpm");
+    expect(code).toContain("songStructure: initialResult.generatorReady.songStructure");
+  });
+
+  test("Stage A schema is exported for cross-stage validation", async () => {
+    const code = await source("src/lib/song-analyzer.functions.ts");
+    expect(code).toContain("export const stageAEvidenceSchema = z.object");
+  });
+});
