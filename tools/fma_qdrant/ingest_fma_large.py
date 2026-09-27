@@ -134,46 +134,90 @@ class MertEmbedder:
             raise RuntimeError(f"MERT hidden size {hidden} does not match contract vector size {contract['vector_size']}")
 
     def _pool_batch(self, chunks: list[np.ndarray]) -> list[torch.Tensor]:
-        """Infer equal-length windows together without padding, preserving v1 pooling."""
+        """Infer equal-length windows together, reducing batch size automatically on CUDA OOM."""
         if not chunks:
             return []
-        inputs = self.processor(chunks, sampling_rate=self.sample_rate, return_tensors="pt", padding=False)
-        input_values = inputs["input_values"].to(self.device)
-        outputs = self.model(input_values=input_values)
-        pooled = outputs.last_hidden_state.mean(dim=1).float().cpu()
-        return [row for row in pooled]
+        try:
+            inputs = self.processor(chunks, sampling_rate=self.sample_rate, return_tensors="pt", padding=False)
+            input_values = inputs["input_values"].to(self.device)
+            outputs = self.model(input_values=input_values)
+            pooled = outputs.last_hidden_state.mean(dim=1).float().cpu()
+            return [row for row in pooled]
+        except torch.OutOfMemoryError:
+            if self.device.type != "cuda" or len(chunks) <= 1:
+                raise
+            torch.cuda.empty_cache()
+            middle = len(chunks) // 2
+            print(
+                f"[mert] CUDA OOM at window batch={len(chunks)}; retrying as {middle}+{len(chunks) - middle}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return self._pool_batch(chunks[:middle]) + self._pool_batch(chunks[middle:])
 
-    @torch.inference_mode()
-    def embed(self, waveform: np.ndarray) -> list[float]:
+    def _split_windows(self, waveform: np.ndarray) -> tuple[list[np.ndarray], np.ndarray | None]:
         if waveform.ndim != 1 or waveform.size == 0:
             raise ValueError("Decoded waveform is empty")
-
         full_windows: list[np.ndarray] = []
         tail: np.ndarray | None = None
         for start in range(0, waveform.size, self.window_samples):
             chunk = waveform[start : start + self.window_samples]
-            if chunk.size < self.sample_rate:  # ignore a final fragment shorter than one second
+            if chunk.size < self.sample_rate:
                 continue
             if chunk.size == self.window_samples:
                 full_windows.append(chunk)
             else:
                 tail = chunk
-
-        window_vectors: list[torch.Tensor] = []
-        # FMA tracks are normally ~30 s, so this turns six sequential MERT forwards
-        # into one GPU batch while leaving the embedding contract unchanged.
-        for start in range(0, len(full_windows), self.inference_batch):
-            window_vectors.extend(self._pool_batch(full_windows[start : start + self.inference_batch]))
-        # A short final window is intentionally inferred alone: no padding means its
-        # time mean is identical in semantics to the original v1 extractor.
-        if tail is not None:
-            window_vectors.extend(self._pool_batch([tail]))
-
-        if not window_vectors:
+        if not full_windows and tail is None:
             raise ValueError("Audio is too short to create a MERT vector")
-        vector = torch.stack(window_vectors).mean(dim=0)
-        vector = torch.nn.functional.normalize(vector, p=2, dim=0)
-        return vector.numpy().astype(np.float32).tolist()
+        return full_windows, tail
+
+    @torch.inference_mode()
+    def embed_many(self, waveforms: list[np.ndarray]) -> list[list[float]]:
+        """Embed several tracks together while preserving the exact v1 pooling contract.
+
+        Equal-length five-second windows from multiple tracks share GPU forwards.
+        Per-track time pooling, window averaging, and final L2 normalization remain
+        identical to embedding each track separately.
+        """
+        if not waveforms:
+            return []
+
+        track_windows: list[list[torch.Tensor]] = [[] for _ in waveforms]
+        full_chunks: list[np.ndarray] = []
+        owners: list[int] = []
+        tails: list[tuple[int, np.ndarray]] = []
+
+        for track_index, waveform in enumerate(waveforms):
+            full_windows, tail = self._split_windows(waveform)
+            full_chunks.extend(full_windows)
+            owners.extend([track_index] * len(full_windows))
+            if tail is not None:
+                tails.append((track_index, tail))
+
+        for start in range(0, len(full_chunks), self.inference_batch):
+            batch_chunks = full_chunks[start : start + self.inference_batch]
+            batch_owners = owners[start : start + self.inference_batch]
+            for owner, pooled in zip(batch_owners, self._pool_batch(batch_chunks), strict=True):
+                track_windows[owner].append(pooled)
+
+        # Variable-length tails are inferred separately to avoid padding changing
+        # the time mean used by the canonical embedding contract.
+        for owner, tail in tails:
+            track_windows[owner].extend(self._pool_batch([tail]))
+
+        vectors: list[list[float]] = []
+        for windows in track_windows:
+            if not windows:
+                raise ValueError("Audio is too short to create a MERT vector")
+            vector = torch.stack(windows).mean(dim=0)
+            vector = torch.nn.functional.normalize(vector, p=2, dim=0)
+            vectors.append(vector.numpy().astype(np.float32).tolist())
+        return vectors
+
+    @torch.inference_mode()
+    def embed(self, waveform: np.ndarray) -> list[float]:
+        return self.embed_many([waveform])[0]
 
 
 def ensure_collection(client: QdrantClient, contract: dict[str, Any]) -> None:
@@ -259,7 +303,11 @@ def run(args: argparse.Namespace) -> None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     embedder = MertEmbedder(contract, device, args.inference_batch)
 
-    print(f"[fma] opening 93 GiB audio archive remotely; no full local download: {args.audio_url}", flush=True)
+    print(
+        f"[fma] opening 93 GiB audio archive remotely; no full local download: {args.audio_url} "
+        f"(track batch={args.track_batch})",
+        flush=True,
+    )
     processed = skipped = failed = 0
     failures: list[tuple[int, str]] = []
     pending: list[PointStruct] = []
@@ -270,34 +318,61 @@ def run(args: argparse.Namespace) -> None:
         for offset in range(0, len(ids), args.resume_batch):
             batch_ids = ids[offset : offset + args.resume_batch]
             done = existing_ids(client, batch_ids)
-            for track_id in batch_ids:
-                if track_id in done:
-                    skipped += 1
-                    continue
-                row = tracks.loc[track_id]
-                member = next((candidate for candidate in audio_member_candidates(track_id) if candidate in names), None)
-                if member is None:
-                    failed += 1
-                    failures.append((track_id, "audio member missing"))
-                    continue
-                try:
-                    with rz.open(member) as fh:
-                        audio_bytes = fh.read()
-                    waveform = ffmpeg_decode_mono_24k(audio_bytes, int(contract["sample_rate_hz"]))
-                    vector = embedder.embed(waveform)
-                    payload = build_payload(track_id, row, genre_names, contract)
-                    pending.append(PointStruct(id=track_id, vector=vector, payload=payload))
-                    if len(pending) >= args.upsert_batch:
-                        processed += flush_points(client, pending)
-                except KeyboardInterrupt:
-                    raise
-                except Exception as exc:
-                    failed += 1
-                    failures.append((track_id, str(exc)[:500]))
-                    print(f"[warn] track {track_id}: {exc}", file=sys.stderr, flush=True)
+            missing_ids = [track_id for track_id in batch_ids if track_id not in done]
+            skipped += len(batch_ids) - len(missing_ids)
+
+            for group_start in range(0, len(missing_ids), args.track_batch):
+                group_ids = missing_ids[group_start : group_start + args.track_batch]
+                decoded: list[tuple[int, pd.Series, np.ndarray]] = []
+
+                for track_id in group_ids:
+                    row = tracks.loc[track_id]
+                    member = next((candidate for candidate in audio_member_candidates(track_id) if candidate in names), None)
+                    if member is None:
+                        failed += 1
+                        failures.append((track_id, "audio member missing"))
+                        continue
+                    try:
+                        with rz.open(member) as fh:
+                            audio_bytes = fh.read()
+                        waveform = ffmpeg_decode_mono_24k(audio_bytes, int(contract["sample_rate_hz"]))
+                        decoded.append((track_id, row, waveform))
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception as exc:
+                        failed += 1
+                        failures.append((track_id, str(exc)[:500]))
+                        print(f"[warn] track {track_id}: {exc}", file=sys.stderr, flush=True)
+
+                if decoded:
+                    try:
+                        vectors = embedder.embed_many([waveform for _, _, waveform in decoded])
+                        for (track_id, row, _), vector in zip(decoded, vectors, strict=True):
+                            payload = build_payload(track_id, row, genre_names, contract)
+                            pending.append(PointStruct(id=track_id, vector=vector, payload=payload))
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception as exc:
+                        # If a grouped GPU call fails for a non-OOM reason, retry each
+                        # track independently so one bad item does not discard the batch.
+                        print(f"[warn] grouped MERT inference failed; retrying tracks individually: {exc}", file=sys.stderr, flush=True)
+                        for track_id, row, waveform in decoded:
+                            try:
+                                vector = embedder.embed(waveform)
+                                payload = build_payload(track_id, row, genre_names, contract)
+                                pending.append(PointStruct(id=track_id, vector=vector, payload=payload))
+                            except KeyboardInterrupt:
+                                raise
+                            except Exception as item_exc:
+                                failed += 1
+                                failures.append((track_id, str(item_exc)[:500]))
+                                print(f"[warn] track {track_id}: {item_exc}", file=sys.stderr, flush=True)
+
+                if len(pending) >= args.upsert_batch:
+                    processed += flush_points(client, pending)
 
                 total_seen = processed + len(pending) + skipped + failed
-                if total_seen % args.progress_every == 0:
+                if total_seen and total_seen % args.progress_every < args.track_batch:
                     elapsed = max(time.time() - started, 0.001)
                     new_total = processed + len(pending)
                     print(
@@ -306,8 +381,6 @@ def run(args: argparse.Namespace) -> None:
                         flush=True,
                     )
 
-            # Persist a partial write batch at each resume boundary. At most one
-            # resume_batch needs to be re-checked after an interruption.
             processed += flush_points(client, pending)
 
         processed += flush_points(client, pending)
@@ -334,8 +407,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-id", type=int, default=0)
     parser.add_argument("--limit", type=int, default=0, help="0 means all tracks")
     parser.add_argument("--resume-batch", type=int, default=500)
-    parser.add_argument("--upsert-batch", type=int, default=32)
-    parser.add_argument("--inference-batch", type=int, default=8, help="equal-length MERT windows per GPU forward")
+    parser.add_argument("--upsert-batch", type=int, default=64)
+    parser.add_argument("--track-batch", type=int, default=4, help="decoded tracks grouped before MERT inference")
+    parser.add_argument("--inference-batch", type=int, default=24, help="equal-length MERT windows per GPU forward; CUDA OOM auto-splits")
     parser.add_argument("--progress-every", type=int, default=100)
     parser.add_argument("--failure-log", default="fma_qdrant_failures.tsv")
     return parser.parse_args()
