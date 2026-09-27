@@ -306,11 +306,11 @@ export function TrackCard({
         </div>
 
         <div
-          className={cn("flex w-full items-center justify-between", compact ? "gap-3" : "gap-2")}
+          className={cn("flex w-full items-center", compact ? "gap-0" : "justify-between gap-2")}
         >
           <div
             data-track-actions="left"
-            className={cn("flex shrink-0 items-center", compact ? "gap-1" : "gap-1")}
+            className={cn("flex shrink-0 items-center", compact ? "gap-0" : "gap-1")}
           >
             {track.prompt?.trim() && (
               <button
@@ -323,7 +323,7 @@ export function TrackCard({
                 aria-pressed={activeContent === "prompt"}
                 className={cn(
                   "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                  compact ? "h-9 w-8" : "h-9 w-7",
+                  compact ? "h-9 w-7" : "h-9 w-7",
                   activeContent === "prompt" &&
                     "text-accent drop-shadow-[0_0_7px_color-mix(in_oklab,var(--neon)_75%,transparent)]",
                 )}
@@ -342,7 +342,7 @@ export function TrackCard({
                 aria-pressed={activeContent === "lyrics"}
                 className={cn(
                   "grid shrink-0 place-items-center text-muted-foreground transition-all hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50",
-                  compact ? "h-9 w-8" : "h-9 w-7",
+                  compact ? "h-9 w-7" : "h-9 w-7",
                   activeContent === "lyrics" &&
                     "text-violet-300 drop-shadow-[0_0_7px_rgba(196,140,255,0.8)]",
                 )}
@@ -356,7 +356,7 @@ export function TrackCard({
             data-track-actions="right"
             className={cn(
               "ml-auto flex shrink-0 items-center justify-end",
-              compact ? "gap-1" : "gap-0",
+              compact ? "gap-0" : "gap-0",
             )}
           >
             <LikeButton trackId={track.id} enabled={Boolean(track.userId)} compact={compact} />

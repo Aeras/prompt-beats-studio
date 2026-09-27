@@ -309,7 +309,7 @@ export function TrackLibraryActions({
     );
 
   const compactIconClass = bare
-    ? "grid h-9 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
+    ? "grid h-9 w-7 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
     : "grid h-7 w-7 place-items-center rounded-full border border-white/10 text-muted-foreground";
   const standardIconClass = bare
     ? "grid h-9 w-7 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
@@ -321,7 +321,7 @@ export function TrackLibraryActions({
     <>
       <div
         className={
-          compact ? "flex shrink-0 items-center gap-1" : "flex shrink-0 items-center gap-0"
+          compact ? "flex shrink-0 items-center gap-0" : "flex shrink-0 items-center gap-0"
         }
       >
         {hasDownloadableSource && (

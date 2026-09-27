@@ -8,8 +8,8 @@ describe("Track card action row", () => {
     const card = await source("src/components/promptbeats/TrackCard.tsx");
     expect(card).toContain('data-track-actions="left"');
     expect(card).toContain('data-track-actions="right"');
-    expect(card).toContain('compact ? "gap-3" : "gap-2"');
-    expect(card).toContain('compact ? "h-9 w-8" : "h-9 w-7"');
+    expect(card).toContain('compact ? "gap-0" : "justify-between gap-2"');
+    expect(card).toContain('compact ? "h-9 w-7" : "h-9 w-7"');
     expect(card).toContain("<PromptContentIcon compact={compact} />");
     expect(card).toContain("<LyricsContentIcon compact={compact} />");
     expect(card).toContain("<LikeButton");
@@ -36,11 +36,11 @@ describe("Track card action row", () => {
 
     expect(libraryActions).toContain("menuActions?: ReactNode");
     expect(libraryActions).toContain("inlineActions?: ReactNode");
-    expect(libraryActions).toContain("h-9 w-8");
     expect(libraryActions).toContain("h-9 w-7");
+    expect(libraryActions).toContain('compact ? "flex shrink-0 items-center gap-0"');
     expect(libraryActions).toContain("<MoreVertical");
     expect(libraryActions).toContain("<Download");
-    expect(like).toContain('"h-9 w-6 -ml-3 [&+div]:-ml-1 [&+div]:gap-0 [&+div>button]:w-6"');
+    expect(like).toContain('"h-9 w-7"');
     expect(share).toContain("menuItem?: boolean");
     expect(report).toContain("menuItem?: boolean");
   });
