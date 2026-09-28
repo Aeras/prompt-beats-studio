@@ -909,9 +909,7 @@ function GeneratePage() {
   const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
-  const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(
-    null,
-  );
+  const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(null);
   const [setupIoError, setSetupIoError] = useState<string | null>(null);
   const setupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
@@ -2891,7 +2889,10 @@ ${narrativePlan.beats
                       className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <h3 id="setup-import-title" className="text-base font-semibold text-foreground">
+                      <h3
+                        id="setup-import-title"
+                        className="text-base font-semibold text-foreground"
+                      >
                         {setupIoText.import}
                       </h3>
                       <p className="text-xs text-muted-foreground">{setupIoText.confirmBody}</p>
