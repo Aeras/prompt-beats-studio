@@ -18,6 +18,7 @@ const DEFAULT_RUNPOD_TIMEOUT_MS = 10 * 60 * 1000;
 const RUNPOD_POLL_INTERVAL_MS = 2_000;
 const TEMP_AUDIO_DELETE_ATTEMPTS = 3;
 const REFERENCE_MEMORY_QUERY_LIMIT = 48;
+const REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT = 192;
 const REFERENCE_MEMORY_LIMIT = 12;
 const REFERENCE_MEMORY_MIN_GENRE_MATCHES = 4;
 
@@ -169,13 +170,8 @@ function referenceConsensusStrength(args: {
   return "weak" as const;
 }
 
-async function buildReferenceMemory(vector: number[]) {
-  const result = await queryMusicMemoryByVector({
-    vector,
-    limit: REFERENCE_MEMORY_QUERY_LIMIT,
-  });
-
-  const candidates = result.matches.map((match) => {
+function mapReferenceCandidates(result: Awaited<ReturnType<typeof queryMusicMemoryByVector>>) {
+  return result.matches.map((match) => {
     const payload = match.payload;
     const sourceTrackId =
       typeof payload.source_track_id === "number" && Number.isInteger(payload.source_track_id)
@@ -192,8 +188,25 @@ async function buildReferenceMemory(vector: number[]) {
       tags: payloadStringArray(payload.tags),
     };
   });
+}
 
-  const metadataEligible = candidates.filter(hasUsefulStyleMetadata);
+async function buildReferenceMemory(vector: number[]) {
+  let result = await queryMusicMemoryByVector({
+    vector,
+    limit: REFERENCE_MEMORY_QUERY_LIMIT,
+  });
+  let candidates = mapReferenceCandidates(result);
+  let metadataEligible = candidates.filter(hasUsefulStyleMetadata);
+
+  if (metadataEligible.length < REFERENCE_MEMORY_LIMIT) {
+    result = await queryMusicMemoryByVector({
+      vector,
+      limit: REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT,
+    });
+    candidates = mapReferenceCandidates(result);
+    metadataEligible = candidates.filter(hasUsefulStyleMetadata);
+  }
+
   const seenArtists = new Set<string>();
   const deduplicated = [] as typeof metadataEligible;
   for (const match of metadataEligible) {

@@ -274,37 +274,82 @@ function explicitMmSs(text: string) {
   return values;
 }
 
+function compactMmSsSeconds(value: number) {
+  if (!Number.isInteger(value) || value < 100) return null;
+  const minutes = Math.floor(value / 100);
+  const secondsPart = value % 100;
+  if (minutes < 1 || secondsPart >= 60) return null;
+  const seconds = minutes * 60 + secondsPart;
+  return seconds === value ? null : seconds;
+}
+
+function repairTimelineBoundary(
+  value: number | null,
+  explicit: { seconds: number; concatenated: number } | undefined,
+  durationSeconds: number,
+  compactClockMode: boolean,
+) {
+  if (value == null) return { value, corrected: false, removed: false };
+  if (
+    explicit &&
+    explicit.seconds <= durationSeconds + 0.5 &&
+    Math.abs(value - explicit.concatenated) <= 1 &&
+    Math.abs(value - explicit.seconds) > 1
+  ) {
+    return { value: explicit.seconds, corrected: true, removed: false };
+  }
+  if (compactClockMode) {
+    const decoded = compactMmSsSeconds(value);
+    if (decoded != null && decoded <= durationSeconds + 0.5) {
+      return { value: decoded, corrected: true, removed: false };
+    }
+  }
+  if (value > durationSeconds + 0.5) {
+    if (explicit && explicit.seconds <= durationSeconds + 0.5) {
+      return { value: explicit.seconds, corrected: true, removed: false };
+    }
+    return { value: null, corrected: false, removed: true };
+  }
+  return { value, corrected: false, removed: false };
+}
+
 function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | null) {
   if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return evidence;
 
+  const provenCompactCorrections = evidence.songSections.reduce((count, section) => {
+    const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
+    const values = [section.startSeconds, section.endSeconds];
+    return count + values.reduce((inner, value, index) => {
+      const timestamp = explicit[index];
+      return inner + Number(
+        value != null &&
+        timestamp != null &&
+        Math.abs(value - timestamp.concatenated) <= 1 &&
+        Math.abs(value - timestamp.seconds) > 1,
+      );
+    }, 0);
+  }, 0);
+  const compactClockMode = provenCompactCorrections >= 2;
+
   let corrections = 0;
   let removals = 0;
+  let overlapRepairs = 0;
   let previousStart: number | null = null;
 
   const songSections = evidence.songSections.map((section) => {
-    let startSeconds = section.startSeconds;
-    let endSeconds = section.endSeconds;
     let confidence = section.confidence;
-    const explicit = explicitMmSs(section.evidence);
+    const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
+    const repairedStart = repairTimelineBoundary(section.startSeconds, explicit[0], durationSeconds, compactClockMode);
+    const repairedEnd = repairTimelineBoundary(section.endSeconds, explicit[1], durationSeconds, compactClockMode);
+    let startSeconds = repairedStart.value;
+    let endSeconds = repairedEnd.value;
 
-    if (startSeconds != null && explicit[0] && Math.abs(startSeconds - explicit[0].concatenated) <= 1) {
-      startSeconds = explicit[0].seconds;
-      corrections += 1;
-      confidence = confidence === "high" ? "medium" : confidence;
+    if (repairedStart.corrected || repairedEnd.corrected) {
+      corrections += Number(repairedStart.corrected) + Number(repairedEnd.corrected);
+      if (confidence === "high") confidence = "medium";
     }
-    if (endSeconds != null && explicit[1] && Math.abs(endSeconds - explicit[1].concatenated) <= 1) {
-      endSeconds = explicit[1].seconds;
-      corrections += 1;
-      confidence = confidence === "high" ? "medium" : confidence;
-    }
-    if (startSeconds != null && startSeconds > durationSeconds + 0.5) {
-      startSeconds = null;
-      removals += 1;
-      confidence = "low";
-    }
-    if (endSeconds != null && endSeconds > durationSeconds + 0.5) {
-      endSeconds = null;
-      removals += 1;
+    if (repairedStart.removed || repairedEnd.removed) {
+      removals += Number(repairedStart.removed) + Number(repairedEnd.removed);
       confidence = "low";
     }
     if (startSeconds != null && previousStart != null && startSeconds + 0.5 < previousStart) {
@@ -322,10 +367,29 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
     return { ...section, startSeconds, endSeconds, confidence };
   });
 
+  for (let index = 1; index < songSections.length; index += 1) {
+    const previous = songSections[index - 1];
+    const current = songSections[index];
+    if (
+      previous.startSeconds != null &&
+      previous.endSeconds != null &&
+      current.startSeconds != null &&
+      previous.endSeconds > current.startSeconds + 0.5 &&
+      current.startSeconds >= previous.startSeconds
+    ) {
+      songSections[index - 1] = {
+        ...previous,
+        endSeconds: current.startSeconds,
+        confidence: previous.confidence === "high" ? "medium" : previous.confidence,
+      };
+      overlapRepairs += 1;
+    }
+  }
+
   const uncertaintyNotes = [...evidence.uncertaintyNotes];
-  if (corrections || removals) {
+  if (corrections || removals || overlapRepairs) {
     uncertaintyNotes.push(
-      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s) and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Null boundaries must remain uncertain downstream.`,
+      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s), repaired ${overlapRepairs} overlapping boundary pair(s), and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Compact mm:ss recovery mode=${compactClockMode ? "on" : "off"}. Null boundaries must remain uncertain downstream.`,
     );
   }
   return { ...evidence, songSections, uncertaintyNotes: uncertaintyNotes.slice(0, 30) };

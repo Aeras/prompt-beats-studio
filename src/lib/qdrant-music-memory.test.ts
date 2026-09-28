@@ -39,7 +39,7 @@ describe("Qdrant music memory POC", () => {
   test("supports bounded nearest-neighbour queries without returning vectors", async () => {
     const code = await source("src/lib/qdrant-music-memory.functions.ts");
     expect(code).toContain(".length(MERT_VECTOR_SIZE)");
-    expect(code).toContain(".max(50)");
+    expect(code).toContain(".max(200)");
     expect(code).toContain(`/points/query`);
     expect(code).toContain("with_payload: true");
     expect(code).toContain("with_vector: false");
@@ -59,9 +59,17 @@ describe("Qdrant music memory POC", () => {
   test("hardens reference memory against duplicate artists and metadata-empty neighbours", async () => {
     const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
     expect(enhanced).toContain("REFERENCE_MEMORY_QUERY_LIMIT = 48");
-    expect(enhanced).toContain("candidates.filter(hasUsefulStyleMetadata)");
+    expect(enhanced).toContain("metadataEligible = candidates.filter(hasUsefulStyleMetadata)");
     expect(enhanced).toContain("seenArtists.has(artistKey)");
     expect(enhanced).toContain("deduplicated.slice(0, REFERENCE_MEMORY_LIMIT)");
+  });
+
+  test("expands retrieval only when the nearest candidate set is too metadata-sparse to fill the guarded shortlist", async () => {
+    const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
+    expect(enhanced).toContain("REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT = 192");
+    expect(enhanced).toContain("metadataEligible.length < REFERENCE_MEMORY_LIMIT");
+    expect(enhanced).toContain("limit: REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT");
+    expect(enhanced).toContain("mapReferenceCandidates");
   });
 
   test("exposes structured genre consensus instead of treating raw neighbours as votes", async () => {

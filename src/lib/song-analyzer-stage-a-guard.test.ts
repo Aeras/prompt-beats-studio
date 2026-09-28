@@ -52,12 +52,24 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence");
   });
 
-  test("hardens section timestamps against mm:ss concatenation and duration overflow", async () => {
+  test("hardens section timestamps against mm:ss concatenation, overflow, and overlap", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("explicitMmSs");
-    expect(code).toContain("concatenated");
+    expect(code).toContain("repairTimelineBoundary");
+    expect(code).toContain("explicit.concatenated");
     expect(code).toContain("durationSeconds + 0.5");
-    expect(code).toContain("Deterministic timeline guard corrected");
+    expect(code).toContain("overlapRepairs");
+    expect(code).toContain("overlapping boundary pair(s)");
+    expect(code).toContain("Null boundaries must remain uncertain downstream");
+  });
+
+  test("recovers global compact mm:ss encoding only after repeated direct proof", async () => {
+    const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
+    expect(code).toContain("compactMmSsSeconds");
+    expect(code).toContain("provenCompactCorrections");
+    expect(code).toContain("compactClockMode = provenCompactCorrections >= 2");
+    expect(code).toContain("if (compactClockMode)");
+    expect(code).toContain("Compact mm:ss recovery mode=");
   });
 
   test("runs the guard before the final judge and displays guarded Stage A evidence", async () => {

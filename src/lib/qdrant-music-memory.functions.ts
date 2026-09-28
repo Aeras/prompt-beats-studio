@@ -15,7 +15,7 @@ export const similarityVectorSchema = z.object({
 
 const similarityInputSchema = z.object({
   vector: z.array(z.number().finite()).length(MERT_VECTOR_SIZE),
-  limit: z.number().int().min(1).max(50).default(20),
+  limit: z.number().int().min(1).max(200).default(20),
   scoreThreshold: z.number().finite().min(-1).max(1).optional(),
 });
 
