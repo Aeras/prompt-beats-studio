@@ -28,6 +28,20 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("Rhythmic Plucked Layer");
   });
 
+  test("uses the Demucs other stem only as conditional source-disambiguation evidence", async () => {
+    const guard = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
+    const route = await source("src/routes/song-analyzer.tsx");
+    const essentia = await source("src/lib/song-analyzer-essentia.ts");
+    expect(guard).toContain("DEMUCS OTHER-STEM PREVIEW");
+    expect(guard).toContain("use it ONLY to resolve guitar / processed-guitar / synth-pluck");
+    expect(guard).toContain("stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)");
+    expect(guard).toContain("full-mix evidence remained authoritative");
+    expect(route).toContain("consumeAnalyzerSourceStemPreview");
+    expect(route).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
+    expect(essentia).toContain("intentionally removed from the Stage 0 object");
+    expect(essentia).toContain("const { sourceStemPreview, ...cleanStage0Evidence } = transported");
+  });
+
   test("treats verification as a confidence gate rather than a genre classifier", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("You are NOT a genre classifier");
@@ -63,13 +77,22 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("Null boundaries must remain uncertain downstream");
   });
 
-  test("recovers global compact mm:ss encoding only after repeated direct proof", async () => {
+  test("uses cross-field mm:ss evidence to recover compact section boundaries conservatively", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("compactMmSsSeconds");
-    expect(code).toContain("provenCompactCorrections");
+    expect(code).toContain("collectCrossFieldClockSeconds");
+    expect(code).toContain("matchesCrossFieldClock");
+    expect(code).toContain("crossFieldConfirmed");
     expect(code).toContain("compactClockMode = provenCompactCorrections >= 2");
-    expect(code).toContain("if (compactClockMode)");
-    expect(code).toContain("Compact mm:ss recovery mode=");
+    expect(code).toContain("cross-field clock references=");
+  });
+
+  test("redacts accidental quoted multi-word lyric transcription before downstream synthesis", async () => {
+    const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
+    expect(code).toContain("sanitizeLyricTranscription");
+    expect(code).toContain("[lyrics omitted]");
+    expect(code).toContain("Stage A lyric guard redacted");
+    expect(code).toContain("musical evidence was preserved without lyric transcription");
   });
 
   test("runs the guard before the final judge and displays guarded Stage A evidence", async () => {
