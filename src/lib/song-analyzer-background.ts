@@ -72,7 +72,10 @@ function restoreSnapshot(): AnalyzerBackgroundSnapshot {
       return { ...emptySnapshot };
     }
     const parsed = JSON.parse(raw) as Partial<AnalyzerBackgroundSnapshot>;
-    if (!["running", "completed", "failed"].includes(String(parsed.status))) {
+    // Running work is recovered from the separately persisted RunPod job ID.
+    // Do not resurrect a frozen spinner after a full browser refresh.
+    if (!["completed", "failed"].includes(String(parsed.status))) {
+      window.sessionStorage.removeItem(STORAGE_KEY);
       return { ...emptySnapshot };
     }
     return {
@@ -89,7 +92,7 @@ function restoreSnapshot(): AnalyzerBackgroundSnapshot {
 function persist(value: AnalyzerBackgroundSnapshot) {
   if (typeof window === "undefined") return;
   try {
-    if (value.status === "running" || value.status === "completed" || value.status === "failed") {
+    if (value.status === "completed" || value.status === "failed") {
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     } else {
       window.sessionStorage.removeItem(STORAGE_KEY);
