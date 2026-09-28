@@ -298,6 +298,7 @@ const providerIdSchema = z.enum([
   "mistral",
   "groq",
   "openrouter",
+  "nexos",
   "together",
   "fireworks",
   "cerebras",
