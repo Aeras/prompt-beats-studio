@@ -15,6 +15,22 @@ export function consumeAnalyzerSourceStemPreview() {
   return preview;
 }
 
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientTransportError(error: unknown) {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("fetch failed") ||
+    message.includes("temporarily unavailable") ||
+    message.includes("timeout") ||
+    message.includes("timed out")
+  );
+}
+
 /**
  * Compatibility adapter retained so the existing Song Analyzer route does not
  * duplicate transport logic. Browser-side Essentia.js/WASM has been removed;
@@ -26,6 +42,10 @@ export function consumeAnalyzerSourceStemPreview() {
  * GPU worker is unavailable, because the same audio can then produce materially
  * different tempo, instrument and genre interpretations while looking like a
  * normal completed analysis.
+ *
+ * A single retry is allowed only for transient transport-style failures. This
+ * covers mobile/network hiccups without repeatedly retrying deterministic worker
+ * failures. If the enhanced path still cannot complete, analysis stops cleanly.
  *
  * The short Demucs `other` preview is transient verifier transport. It is
  * intentionally removed from the Stage 0 object before Stage A, Final Judge,
@@ -45,6 +65,25 @@ async function fileToBase64(file: File) {
   });
 }
 
+async function requestEnhancedStage0(audioBase64: string, mimeType: File["type"]) {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await analyzeEnhancedStage0({
+        data: {
+          audioBase64,
+          mimeType: mimeType as any,
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt >= 2 || !isTransientTransportError(error)) throw error;
+      await sleep(1_500);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 export async function analyzeStage0EssentiaWithSimilarity(
   file: File,
   _legacy: Stage0DspEvidence,
@@ -56,12 +95,7 @@ export async function analyzeStage0EssentiaWithSimilarity(
 
   try {
     const audioBase64 = await fileToBase64(file);
-    const response = await analyzeEnhancedStage0({
-      data: {
-        audioBase64,
-        mimeType: file.type as any,
-      },
-    });
+    const response = await requestEnhancedStage0(audioBase64, file.type);
     const transported = response.stage0Evidence as Stage0DspEvidence & {
       sourceStemPreview?: AnalyzerSourceStemPreview;
     };
