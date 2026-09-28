@@ -18,9 +18,14 @@ export function consumeAnalyzerSourceStemPreview() {
 /**
  * Compatibility adapter retained so the existing Song Analyzer route does not
  * duplicate transport logic. Browser-side Essentia.js/WASM has been removed;
- * Super Admin analysis now obtains Stage 0 evidence from the external GPU
- * worker (Demucs + Essentia + MERT + fusion). If that experimental worker is
- * unavailable, the existing deterministic browser DSP remains the fallback.
+ * Super Admin analysis obtains Stage 0 evidence from the external GPU worker
+ * (Demucs + Essentia + MERT + fusion).
+ *
+ * Enhanced Stage 0 is authoritative for the current Analyzer experiment. We do
+ * not silently continue to Stage A/Final Judge with legacy browser DSP when the
+ * GPU worker is unavailable, because the same audio can then produce materially
+ * different tempo, instrument and genre interpretations while looking like a
+ * normal completed analysis.
  *
  * The short Demucs `other` preview is transient verifier transport. It is
  * intentionally removed from the Stage 0 object before Stage A, Final Judge,
@@ -42,12 +47,11 @@ async function fileToBase64(file: File) {
 
 export async function analyzeStage0EssentiaWithSimilarity(
   file: File,
-  legacy: Stage0DspEvidence,
+  _legacy: Stage0DspEvidence,
 ): Promise<{
   stage0Evidence: Stage0DspEvidence;
   similarityEmbedding: AnalyzerSimilarityEmbedding | null;
 }> {
-  const startedAt = performance.now();
   pendingSourceStemPreview = null;
 
   try {
@@ -69,27 +73,10 @@ export async function analyzeStage0EssentiaWithSimilarity(
     };
   } catch (error) {
     pendingSourceStemPreview = null;
-    return {
-      stage0Evidence: {
-        ...legacy,
-        engine: legacy.engine ?? {
-          name: "legacy",
-          engineVersion: "promptbeats-legacy-v1",
-          methodVersion: "stage0-dsp-v1",
-          algorithms: [],
-        },
-        processing: {
-          ...legacy.processing,
-          totalMs: Math.round((performance.now() - startedAt) * 100) / 100,
-        },
-        limitations: [
-          ...legacy.limitations,
-          "External enhanced Stage 0 unavailable; legacy browser DSP fallback used.",
-          `Enhanced worker failure: ${(error instanceof Error ? error.message : String(error)).slice(0, 500)}`,
-        ],
-      },
-      similarityEmbedding: null,
-    };
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Enhanced Song Analyzer is temporarily unavailable. Analysis was stopped instead of using degraded legacy DSP. ${detail}`.slice(0, 900),
+    );
   }
 }
 
