@@ -676,8 +676,8 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     let confidence = item.confidence;
 
     if (verifierStrongEnough(verification.drumSource.confidence)) {
-      const acousticDrum = /acoustic.*drum|drum kit/.test(text);
       const programmedDrum = /drum machine|programmed.*drum|electronic.*drum/.test(text);
+      const acousticDrum = !programmedDrum && /acoustic.*drum|(?:^|\s)drum kit(?:\s|$)|live.*drum|natural.*drum/.test(text);
       if (verification.drumSource.value === "acoustic" && programmedDrum) {
         confidence = lowerConfidence(confidence, verification.drumSource.confidence);
         conflicts.push("programmed/electronic drum identity contradicted by verification");
@@ -726,6 +726,10 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     }
     return confidence === item.confidence ? item : { ...item, confidence };
   });
+
+  notes.push(
+    `Stage A drum-source verifier classified the rhythm section as ${verification.drumSource.value} with ${verification.drumSource.confidence} confidence. ${verification.drumSource.evidence}`,
+  );
 
   let dominantElements = evidence.dominantElements.map((item) => {
     const text = `${item.element} ${item.role} ${item.technique ?? ""}`.toLowerCase();
@@ -871,8 +875,10 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
         evidence: keyboard.evidence,
       }];
     }
-    notes.push(`Stage A keyboard-family verifier classified the material keyboard layer as ${keyboard.value} with ${keyboard.confidence} confidence from direct timbral cues.`);
   }
+  notes.push(
+    `Stage A keyboard-family verifier classified the material keyboard layer as ${keyboard.value} with ${keyboard.confidence} confidence. ${keyboard.evidence}${keyboard.cues.length ? ` Direct cues: ${keyboard.cues.join("; ")}` : ""}`,
+  );
 
   let vocalCharacteristics = [...evidence.vocalCharacteristics];
   const vocalDelivery = verification.vocalDelivery;
@@ -911,8 +917,12 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       confidence: cue.confidence,
     });
   }
-  if (verification.microProductionCues.some((cue) => verifierStrongEnough(cue.confidence))) {
-    notes.push("Stage A micro-production verifier preserved only directly audible tape/vinyl/filter/guitar-swell cues; absent cues were not inferred from style or mood.");
+  if (verification.microProductionCues.length) {
+    notes.push(
+      `Stage A micro-production verifier decisions: ${verification.microProductionCues.map((cue) => `${cue.value}=${cue.confidence}`).join(", ")}. Only medium/high cues are preserved as production evidence; low-confidence cues remain diagnostic only.`,
+    );
+  } else {
+    notes.push("Stage A micro-production verifier found no independently supported tape saturation, vinyl crackle, low-pass-filtered guitar, or distant electric-guitar swell cue in this pass.");
   }
 
   let tempo = evidence.tempo;
