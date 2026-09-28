@@ -50,6 +50,31 @@ describe("Song Analyzer final judge architecture", () => {
     expect(code).toContain("A prominent guitar must not cause a Pop-Rock/Rock classification");
   });
 
+  test("requires cross-family corroboration before narrow rhythm-defined genre labels", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+    expect(code).toContain("GENRE EVIDENCE QUORUM");
+    expect(code).toContain("BPM or a fast subdivision grid is NEVER sufficient by itself");
+    expect(code).toContain("at least THREE independent evidence families");
+    expect(code).toContain("half/double-time ambiguity");
+    expect(code).toContain("reject the narrow label and fall back to a broader accurate family/crossover description");
+  });
+
+  test("passes a deterministic conflict packet to the final judge", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+    expect(code).toContain("buildInterpretationGuardPacket");
+    expect(code).toContain("DETERMINISTIC INTERPRETATION GUARD PACKET");
+    expect(code).toContain("tempoAmbiguous");
+    expect(code).toContain("sourceResolverNotes");
+    expect(code).toContain("stabilityConflicts");
+  });
+
+  test("preserves unresolved instrument source alternatives", async () => {
+    const code = await source("src/lib/song-analyzer-final.functions.ts");
+    expect(code).toContain("INSTRUMENT SOURCE DISCIPLINE");
+    expect(code).toContain("rhythmic plucked layer or plucked string instrument");
+    expect(code).toContain("uncertain/mixed resolver outcomes are NOT permission to erase a plausible recurring layer");
+  });
+
   test("final judge cannot overwrite audio-measured instruments, BPM or structure", async () => {
     const code = await source("src/lib/song-analyzer-final.functions.ts");
 
