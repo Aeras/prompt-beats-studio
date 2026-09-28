@@ -98,6 +98,15 @@ const guardInputSchema = z.object({
   initialResult: songAnalysisResultSchema,
 });
 
+const rhythmicLayerValueSchema = z.enum([
+  "guitar",
+  "processed_guitar",
+  "synth_pluck",
+  "other_plucked_string",
+  "mixed",
+  "uncertain",
+]);
+
 const verifierSchema = z.object({
   drumSource: z.object({
     value: z.enum(["acoustic", "programmed", "hybrid", "uncertain"]),
@@ -119,6 +128,12 @@ const verifierSchema = z.object({
     confidence: confidenceSchema,
     evidence: z.string().trim().min(1).max(1000),
   }),
+  rhythmicLayerSource: z.object({
+    value: rhythmicLayerValueSchema,
+    confidence: confidenceSchema,
+    evidence: z.string().trim().min(1).max(1400),
+    cues: z.array(z.string().trim().min(1).max(300)).max(8),
+  }),
   feltTempo: z.object({
     bpm: z.number().min(20).max(300).nullable(),
     confidence: confidenceSchema,
@@ -127,8 +142,8 @@ const verifierSchema = z.object({
 });
 
 type Verification = z.infer<typeof verifierSchema>;
-
 type Confidence = "high" | "medium" | "low";
+type Stage0Evidence = z.infer<typeof stage0DspEvidenceSchema>;
 
 const VERIFIER_RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -169,6 +184,19 @@ const VERIFIER_RESPONSE_SCHEMA = {
       },
       required: ["value", "confidence", "evidence"],
     },
+    rhythmicLayerSource: {
+      type: "OBJECT",
+      properties: {
+        value: {
+          type: "STRING",
+          enum: ["guitar", "processed_guitar", "synth_pluck", "other_plucked_string", "mixed", "uncertain"],
+        },
+        confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        evidence: { type: "STRING" },
+        cues: { type: "ARRAY", items: { type: "STRING" } },
+      },
+      required: ["value", "confidence", "evidence", "cues"],
+    },
     feltTempo: {
       type: "OBJECT",
       properties: {
@@ -179,22 +207,26 @@ const VERIFIER_RESPONSE_SCHEMA = {
       required: ["bpm", "confidence", "evidence"],
     },
   },
-  required: ["drumSource", "bassSource", "guitarPresence", "synthPresence", "feltTempo"],
+  required: ["drumSource", "bassSource", "guitarPresence", "synthPresence", "rhythmicLayerSource", "feltTempo"],
 } as const;
 
 const VERIFIER_SYSTEM_PROMPT = `You are PromptBeats Stage A Critical Evidence Verifier.
 You hear the same source audio as the first Stage A pass. You are NOT a genre classifier.
-Independently verify only five high-impact facts that have caused run-to-run instability:
+Independently verify six high-impact facts that have caused run-to-run instability:
 1. acoustic vs programmed/hybrid drum source,
 2. electric vs synth/hybrid bass source,
 3. audible rhythm/lead guitar presence,
 4. material synthesizer presence,
-5. felt tempo / half-double-time interpretation.
+5. neutral source identity of any ambiguous recurring rhythmic pluck/strum layer,
+6. felt tempo / half-double-time interpretation.
 
-For rhythm guitar, explicitly test whether a sustained chordal strumming/comping texture is audible across meaningful sections. Listen for pick/transient attacks, repeated chordal strokes, string resonance, muting, fretting noise, and natural variation. Do not reduce a clearly recurring rhythm-guitar part to a generic plucked-string or synth label merely because acoustic-vs-clean-electric source is uncertain. Conversely, do not call a quantized pluck patch or sampled transient a guitar without direct guitar-like articulation evidence.
+NEUTRAL RHYTHMIC-LAYER RESOLVER
+When the supplied prompt says rhythmicLayerResolutionRequired=true, classify the recurring ambiguous mid/high rhythmic layer among these equal-priority possibilities: guitar, processed_guitar, synth_pluck, other_plucked_string, mixed, uncertain. Do not search for guitar preferentially. Use guitar or processed_guitar only when at least two independent guitar-like cues are audible, such as repeated chord strokes, pick/transient attacks, string resonance, fretting/muting noise, natural timing/velocity variation, or guitar-like harmonic decay. Quantized repetition, perfectly repeated envelopes, resonant synth filtering, or sequenced arpeggiation support synth_pluck. If cues conflict or are weak, use mixed or uncertain. When rhythmicLayerResolutionRequired=false, return uncertain unless an obvious layer is directly relevant to a supplied claim.
+
+For rhythm guitar, explicitly test whether a sustained chordal strumming/comping texture is audible across meaningful sections. Do not reduce a clearly recurring rhythm-guitar part to a generic plucked-string or synth label merely because acoustic-vs-clean-electric source is uncertain. Conversely, do not call a quantized pluck patch or sampled transient a guitar without direct guitar-like articulation evidence.
 
 Do not trust the first Stage A pass merely because it is supplied. Treat it as claims to test against the audio.
-Use high confidence only when direct timbre/articulation/rhythmic evidence is unmistakable. If acoustic-vs-electronic, guitar-vs-synth, or bass-source identity is ambiguous, return uncertain or hybrid rather than guessing.
+Use high confidence only when direct timbre/articulation/rhythmic evidence is unmistakable. If source identity is ambiguous, return uncertain or mixed rather than guessing.
 Do not identify artist/track, do not classify genre, and do not transcribe lyrics.
 Return only the requested JSON.`;
 
@@ -243,9 +275,7 @@ function explicitMmSs(text: string) {
 }
 
 function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | null) {
-  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return evidence;
-  }
+  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return evidence;
 
   let corrections = 0;
   let removals = 0;
@@ -267,7 +297,6 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
       corrections += 1;
       confidence = confidence === "high" ? "medium" : confidence;
     }
-
     if (startSeconds != null && startSeconds > durationSeconds + 0.5) {
       startSeconds = null;
       removals += 1;
@@ -290,7 +319,6 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
       confidence = "low";
     }
     if (startSeconds != null) previousStart = startSeconds;
-
     return { ...section, startSeconds, endSeconds, confidence };
   });
 
@@ -300,12 +328,7 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
       `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s) and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Null boundaries must remain uncertain downstream.`,
     );
   }
-
-  return {
-    ...evidence,
-    songSections,
-    uncertaintyNotes: uncertaintyNotes.slice(0, 30),
-  };
+  return { ...evidence, songSections, uncertaintyNotes: uncertaintyNotes.slice(0, 30) };
 }
 
 function isHalfDoublePair(a: number, b: number) {
@@ -313,11 +336,22 @@ function isHalfDoublePair(a: number, b: number) {
   return ratio >= 1.85 && ratio <= 2.15;
 }
 
-function reconcileVerification(evidence: StageAEvidence, verification: Verification) {
+function rhythmicLayerResolutionRequired(evidence: StageAEvidence) {
+  const texts = [
+    ...evidence.instrumentEvidence.map((item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`),
+    ...evidence.dominantElements.map((item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
+  ].map((text) => text.toLowerCase());
+  const hasGuitar = texts.some((text) => /guitar|strum|palm mut|rhythmic comp/.test(text));
+  const hasSynthPluck = texts.some((text) => /synth(?:esizer)?.*pluck|pluck.*synth|arpeggi/.test(text));
+  const explicitlyAmbiguous = texts.some((text) => /plucked (?:guitar|string)|guitar\s*\/|\/\s*(?:string|guitar)|string instrument|guitar-like|pluck(?:ed)? layer/.test(text));
+  return explicitlyAmbiguous || hasSynthPluck || (hasGuitar && hasSynthPluck);
+}
+
+function reconcileVerification(evidence: StageAEvidence, verification: Verification, stage0Evidence: Stage0Evidence) {
   const notes = [...evidence.uncertaintyNotes];
   const conflicts: string[] = [];
-
   const verifierStrongEnough = (confidence: Confidence) => confidenceRank(confidence) >= 1;
+  const layerNeedsResolution = rhythmicLayerResolutionRequired(evidence);
 
   let instrumentEvidence = evidence.instrumentEvidence.map((item) => {
     const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""}`.toLowerCase();
@@ -355,10 +389,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       const lead = /lead|solo|bend|vibrato/.test(text);
       const rhythm = /rhythm|strum|chord|palm mut/.test(text);
       const value = verification.guitarPresence.value;
-      const contradiction =
-        value === "none" ||
-        (value === "rhythm" && lead) ||
-        (value === "lead" && rhythm && !lead);
+      const contradiction = value === "none" || (value === "rhythm" && lead) || (value === "lead" && rhythm && !lead);
       if (contradiction) {
         confidence = lowerConfidence(confidence, verification.guitarPresence.confidence);
         conflicts.push("guitar role/presence contradicted by verification");
@@ -375,96 +406,118 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       confidence = lowerConfidence(confidence, verification.synthPresence.confidence);
       conflicts.push("material synthesizer identity contradicted by verification");
     }
-
     return confidence === item.confidence ? item : { ...item, confidence };
   });
 
   let dominantElements = evidence.dominantElements.map((item) => {
     const text = `${item.element} ${item.role} ${item.technique ?? ""}`.toLowerCase();
     let confidence = item.confidence;
-    if (
-      verification.guitarPresence.confidence === "high" &&
-      verification.guitarPresence.value === "none" &&
-      /guitar/.test(text)
-    ) confidence = "low";
-    if (
-      verification.synthPresence.confidence === "high" &&
-      verification.synthPresence.value === "none" &&
-      /synth/.test(text)
-    ) confidence = "low";
+    if (verification.guitarPresence.confidence === "high" && verification.guitarPresence.value === "none" && /guitar/.test(text)) confidence = "low";
+    if (verification.synthPresence.confidence === "high" && verification.synthPresence.value === "none" && /synth/.test(text)) confidence = "low";
     return confidence === item.confidence ? item : { ...item, confidence };
   });
 
+  if (layerNeedsResolution) {
+    const source = verification.rhythmicLayerSource;
+    const sourceStrong = verifierStrongEnough(source.confidence);
+    const candidateIndex = instrumentEvidence.findIndex((item) => {
+      const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
+      return /guitar|string instrument|plucked string|synth(?:esizer)?.*pluck|pluck|arpeggi|strum|comp/.test(text);
+    });
+
+    if (candidateIndex >= 0) {
+      const candidate = instrumentEvidence[candidateIndex];
+      const candidateText = `${candidate.instrument} ${candidate.technique ?? ""} ${candidate.timbre ?? ""}`.toLowerCase();
+      const firstPassGuitarCues = /guitar|strum|palm mut|chordal comp/.test(candidateText);
+      const firstPassSynthCues = /synth|arpeggi|sequenc/.test(candidateText);
+      instrumentEvidence = instrumentEvidence.map((item, index) => {
+        if (index !== candidateIndex) return item;
+        if (sourceStrong && (source.value === "guitar" || source.value === "processed_guitar")) {
+          return {
+            ...item,
+            instrument: "Rhythm Guitar",
+            role: item.role || "Harmonic and rhythmic accompaniment",
+            technique: /strum|comp|chord/i.test(item.technique ?? "") ? item.technique : "Chordal strumming / rhythmic comping",
+            timbre: [item.timbre, source.value === "processed_guitar" ? "processed/sampled guitar-like timbre" : "guitar timbre confirmed", "acoustic vs clean electric source unresolved"].filter(Boolean).join("; "),
+            confidence: item.confidence === "low" && source.confidence === "high" ? "medium" : item.confidence,
+          };
+        }
+        if (sourceStrong && source.value === "synth_pluck") {
+          if (firstPassGuitarCues && !firstPassSynthCues) {
+            return { ...item, instrument: "Rhythmic Plucked Layer", confidence: item.confidence === "high" ? "medium" : item.confidence };
+          }
+          return { ...item, instrument: "Synth Pluck / Arpeggio", confidence: item.confidence === "low" ? "medium" : item.confidence };
+        }
+        if (sourceStrong && source.value === "other_plucked_string") {
+          return { ...item, instrument: "Plucked String Instrument", confidence: item.confidence === "high" ? "medium" : item.confidence };
+        }
+        if (source.value === "mixed") {
+          return { ...item, instrument: "Rhythmic Plucked Layer", timbre: [item.timbre, "mixed guitar/synth-like source"].filter(Boolean).join("; "), confidence: item.confidence === "high" ? "medium" : item.confidence };
+        }
+        if (source.value === "uncertain") {
+          return { ...item, instrument: "Rhythmic Plucked Layer", confidence: item.confidence === "high" ? "medium" : item.confidence };
+        }
+        return item;
+      });
+    } else if (
+      source.value !== "uncertain" &&
+      source.confidence === "high" &&
+      instrumentEvidence.length < 30
+    ) {
+      if (source.value === "guitar" || source.value === "processed_guitar") {
+        instrumentEvidence = [...instrumentEvidence, {
+          instrument: "Rhythm Guitar",
+          role: "Harmonic and rhythmic accompaniment",
+          technique: "Chordal strumming / rhythmic comping",
+          timbre: source.value === "processed_guitar" ? "Processed guitar timbre; acoustic vs clean electric source unresolved" : "Guitar timbre; acoustic vs clean electric source unresolved",
+          prominence: "major",
+          confidence: "medium",
+          evidence: source.evidence,
+        }];
+      }
+    }
+
+    notes.push(
+      `Stage A neutral source resolver: ambiguous rhythmic pluck/strum layer classified as ${source.value} with ${source.confidence} confidence. This resolver is source-neutral and must not create a guitar or synth identity without direct articulation evidence.`,
+    );
+  }
+
+  const resolverSupportsGuitar =
+    !layerNeedsResolution ||
+    ((verification.rhythmicLayerSource.value === "guitar" || verification.rhythmicLayerSource.value === "processed_guitar") &&
+      verifierStrongEnough(verification.rhythmicLayerSource.confidence));
   const rhythmGuitarConfirmed =
+    resolverSupportsGuitar &&
     verifierStrongEnough(verification.guitarPresence.confidence) &&
     (verification.guitarPresence.value === "rhythm" || verification.guitarPresence.value === "both");
 
   if (rhythmGuitarConfirmed) {
     const candidateIndex = instrumentEvidence.findIndex((item) => {
       const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
-      const guitarLike = /guitar|string instrument|plucked string|pluck/.test(text);
-      const rhythmLike = /rhythm|strum|comp|chord|palm mut|accompan/.test(text);
-      return guitarLike && rhythmLike;
+      return /guitar/.test(text) && /rhythm|strum|comp|chord|palm mut|accompan/.test(text);
     });
-
     if (candidateIndex >= 0) {
       const candidate = instrumentEvidence[candidateIndex];
       const sourceSpecific = /acoustic guitar|clean electric guitar|electric guitar/.test(candidate.instrument.toLowerCase());
-      instrumentEvidence = instrumentEvidence.map((item, index) =>
-        index === candidateIndex
-          ? {
-              ...item,
-              instrument: sourceSpecific ? candidate.instrument : "Rhythm Guitar",
-              role: candidate.role || "Harmonic and rhythmic accompaniment",
-              technique:
-                candidate.technique && /strum|comp|chord/i.test(candidate.technique)
-                  ? candidate.technique
-                  : "Chordal strumming / rhythmic comping",
-              timbre: sourceSpecific
-                ? candidate.timbre
-                : [candidate.timbre, "guitar timbre confirmed; acoustic vs clean electric source unresolved"]
-                    .filter(Boolean)
-                    .join("; "),
-              confidence:
-                candidate.confidence === "low" && verification.guitarPresence.confidence === "high"
-                  ? "medium"
-                  : candidate.confidence,
-            }
-          : item,
-      );
-    } else if (verification.guitarPresence.confidence === "high" && instrumentEvidence.length < 30) {
-      instrumentEvidence = [
-        ...instrumentEvidence,
-        {
-          instrument: "Rhythm Guitar",
-          role: "Harmonic and rhythmic accompaniment",
-          technique: "Chordal strumming / rhythmic comping",
-          timbre: "Guitar timbre confirmed; acoustic vs clean electric source unresolved",
-          prominence: "major",
-          confidence: "medium",
-          evidence: verification.guitarPresence.evidence,
-        },
-      ];
+      instrumentEvidence = instrumentEvidence.map((item, index) => index === candidateIndex ? {
+        ...item,
+        instrument: sourceSpecific ? candidate.instrument : "Rhythm Guitar",
+        role: candidate.role || "Harmonic and rhythmic accompaniment",
+        technique: candidate.technique && /strum|comp|chord/i.test(candidate.technique) ? candidate.technique : "Chordal strumming / rhythmic comping",
+        timbre: sourceSpecific ? candidate.timbre : [candidate.timbre, "guitar timbre confirmed; acoustic vs clean electric source unresolved"].filter(Boolean).join("; "),
+        confidence: candidate.confidence === "low" && verification.guitarPresence.confidence === "high" ? "medium" : candidate.confidence,
+      } : item);
     }
-
     dominantElements = dominantElements.map((item) => {
       const text = `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`.toLowerCase();
-      const guitarLike = /guitar|string instrument|plucked string|pluck/.test(text);
-      const rhythmLike = /rhythm|strum|comp|chord|palm mut|accompan/.test(text);
-      if (!guitarLike || !rhythmLike) return item;
+      if (!/guitar|string instrument|plucked string|pluck/.test(text) || !/rhythm|strum|comp|chord|palm mut|accompan/.test(text)) return item;
       return {
         ...item,
         element: /guitar/.test(item.element.toLowerCase()) ? item.element : "Rhythm Guitar",
-        technique:
-          item.technique && /strum|comp|chord/i.test(item.technique)
-            ? item.technique
-            : "Chordal strumming / rhythmic comping",
+        technique: item.technique && /strum|comp|chord/i.test(item.technique) ? item.technique : "Chordal strumming / rhythmic comping",
       };
     });
-
-    notes.push(
-      `Stage A guitar guard: independent audio verification confirmed a recurring rhythm-guitar role. Preserve the strummed/comping guitar in generator-ready Instruments while leaving acoustic-vs-clean-electric source unresolved unless direct evidence distinguishes it.`,
-    );
+    notes.push("Stage A guitar guard: independent audio verification confirmed a recurring rhythm-guitar role. Preserve the strummed/comping guitar in generator-ready Instruments while leaving acoustic-vs-clean-electric source unresolved unless direct evidence distinguishes it.");
   }
 
   let tempo = evidence.tempo;
@@ -488,17 +541,15 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     }
   }
 
+  if (stage0Evidence.tempo.ambiguous) {
+    notes.push("Stage A tempo guard: Stage 0 reports a half/double-time ambiguity. The selected BPM may describe either the felt pulse or a subdivision grid; BPM alone must never determine genre family without corroborating drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence.");
+  }
+
   for (const conflict of [...new Set(conflicts)]) {
     notes.push(`Stage A stability guard: ${conflict}. Conflicting specific claims were confidence-downgraded before final interpretation.`);
   }
 
-  return {
-    ...evidence,
-    instrumentEvidence,
-    dominantElements,
-    tempo,
-    uncertaintyNotes: notes.slice(0, 30),
-  };
+  return { ...evidence, instrumentEvidence, dominantElements, tempo, uncertaintyNotes: notes.slice(0, 30) };
 }
 
 function evidenceDerivedInstruments(evidence: StageAEvidence) {
@@ -558,8 +609,10 @@ async function runVerifier(args: {
   evidence: StageAEvidence;
   durationSeconds: number | null;
 }) {
+  const layerResolutionRequired = rhythmicLayerResolutionRequired(args.evidence);
   const prompt = [
     `Measured duration: ${args.durationSeconds ?? "unknown"} seconds.`,
+    `rhythmicLayerResolutionRequired=${layerResolutionRequired}`,
     "First-pass Stage A claims to independently verify:",
     JSON.stringify({
       tempo: args.evidence.tempo,
@@ -578,19 +631,14 @@ async function runVerifier(args: {
       headers: { "Content-Type": "application/json", "x-goog-api-key": args.apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: VERIFIER_SYSTEM_PROMPT }] },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
-              { text: prompt },
-            ],
-          },
-        ],
+        contents: [{ role: "user", parts: [
+          { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
+          { text: prompt },
+        ] }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: VERIFIER_RESPONSE_SCHEMA,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 3072,
           temperature: 0,
         },
       }),
@@ -605,10 +653,7 @@ async function runVerifier(args: {
   if (candidate?.finishReason && candidate.finishReason !== "STOP") {
     throw Object.assign(new Error(`Stage A verifier stopped before completion: ${candidate.finishReason}`), { usage });
   }
-  const text = (candidate?.content?.parts ?? [])
-    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
-    .join("")
-    .trim();
+  const text = (candidate?.content?.parts ?? []).map((part: any) => (typeof part?.text === "string" ? part.text : "")).join("").trim();
   if (!text) throw Object.assign(new Error("Stage A verifier returned no JSON"), { usage });
   return { verification: verifierSchema.parse(JSON.parse(text)), usage };
 }
@@ -635,7 +680,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           durationSeconds,
         });
         usage = checked.usage;
-        evidence = reconcileVerification(evidence, checked.verification);
+        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence);
         verificationUsed = true;
         await recordAiUsage({
           userId: context.userId,
