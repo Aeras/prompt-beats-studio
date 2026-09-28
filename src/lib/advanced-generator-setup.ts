@@ -1,14 +1,11 @@
 import { z } from "zod";
 
 import { AI_TARGET_PLATFORMS } from "@/lib/ai-target-platforms";
-import { generatorInputSnapshotSchema } from "@/lib/generator-revision.shared";
 import { buildSongBlueprint, songBlueprintSectionSchema } from "@/lib/song-blueprint.shared";
 
 export const ADVANCED_SETUP_FORMAT = "promptbeats-advanced-generator";
 export const ADVANCED_SETUP_SCHEMA_VERSION = 1;
 export const ADVANCED_SETUP_MAX_BYTES = 256 * 1024;
-
-const s = generatorInputSnapshotSchema.shape;
 
 // Reuses the persisted snapshot field bounds, but every field is required and
 // unknown keys are rejected so arbitrary JSON cannot be imported.
@@ -35,7 +32,6 @@ export const advancedSetupSchema = z
     culturalStyleId: z.string().max(80),
   })
   .strict();
-void s;
 
 export type AdvancedGeneratorSetup = z.infer<typeof advancedSetupSchema>;
 
