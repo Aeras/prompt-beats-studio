@@ -715,11 +715,6 @@ export function modelCaller(model: string, providerOverride?: string): ModelCall
         endpoint: "https://api.deepseek.com/chat/completions",
         jsonMode: true,
       },
-      nexos: {
-        secret: "NEXOS_API_KEY",
-        endpoint: "https://api.nexos.ai/v1/chat/completions",
-        jsonMode: false,
-      },
       together: {
         secret: "TOGETHER_API_KEY",
         endpoint: "https://api.together.xyz/v1/chat/completions",
