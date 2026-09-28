@@ -7,11 +7,13 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Download,
   FlaskConical,
   Loader2,
   Save,
   Sparkles,
   Trash2,
+  Upload,
   Wand2,
 } from "lucide-react";
 
@@ -19,6 +21,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
 import { useDraftAutosave } from "@/lib/draft-autosave";
+import {
+  ADVANCED_SETUP_MAX_BYTES,
+  advancedSetupFilename,
+  parseAdvancedSetup,
+  serializeAdvancedSetup,
+  splitKnownValues,
+  type AdvancedGeneratorSetup,
+} from "@/lib/advanced-generator-setup";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
@@ -899,6 +909,11 @@ function GeneratePage() {
   const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
+  const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(
+    null,
+  );
+  const [setupIoError, setSetupIoError] = useState<string | null>(null);
+  const setupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
     useState<InspirationWallSongSetupHandoff | null>(null);
   const [storyMapHandoff, setStoryMapHandoff] = useState<StoryMapSongSetupHandoff | null>(null);
@@ -1871,6 +1886,132 @@ function GeneratePage() {
     setActiveSmartPresetId(preset.id);
   };
 
+  const setupIoText =
+    appLanguage === "el"
+      ? {
+          export: "Εξαγωγή setup",
+          import: "Εισαγωγή setup",
+          confirmBody: "Η εισαγωγή θα αντικαταστήσει τα τρέχοντα πεδία του Advanced Generator.",
+          confirm: "Εισαγωγή",
+          cancel: "Ακύρωση",
+          invalid: "Μη έγκυρο αρχείο setup.",
+          version: "Μη υποστηριζόμενη έκδοση αρχείου setup.",
+          size: "Το αρχείο είναι πολύ μεγάλο (έως 256 KB).",
+          read: "Δεν ήταν δυνατή η ανάγνωση του αρχείου.",
+        }
+      : {
+          export: "Export setup",
+          import: "Import setup",
+          confirmBody: "Importing will replace the current Advanced Generator fields.",
+          confirm: "Import",
+          cancel: "Cancel",
+          invalid: "Invalid setup file.",
+          version: "Unsupported setup file version.",
+          size: "File is too large (max 256 KB).",
+          read: "Could not read the file.",
+        };
+
+  const exportAdvancedSetup = () => {
+    setSetupIoError(null);
+    try {
+      const json = serializeAdvancedSetup({
+        targetPlatform,
+        theme,
+        selectedMusicStyles: genres,
+        customMusicStyle: customGenre,
+        selectedMoods: moods,
+        customMood,
+        selectedInstruments: instruments,
+        customInstruments,
+        bpmMode: bpm,
+        customBpm,
+        songStructure: structure,
+        songBlueprint: buildSongBlueprint(structure, songBlueprint),
+        productionStyle: production,
+        additionalInstructions: instructions,
+        language,
+        languageVariant,
+        customLanguage,
+        smartPresetId: activeSmartPresetId,
+        culturalStyleId: presetCulturalStyleId,
+      });
+      const url = URL.createObjectURL(new Blob([json], { type: "application/json;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = advancedSetupFilename();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      setSetupIoError(setupIoText.invalid);
+    }
+  };
+
+  const onSetupFileSelected = async (file: File | undefined) => {
+    setSetupIoError(null);
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".json")) return setSetupIoError(setupIoText.invalid);
+    if (file.size > ADVANCED_SETUP_MAX_BYTES) return setSetupIoError(setupIoText.size);
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      return setSetupIoError(setupIoText.read);
+    }
+    const parsed = parseAdvancedSetup(text);
+    if (!parsed.ok) return setSetupIoError(setupIoText[parsed.error]);
+    setPendingSetupImport(parsed.setup);
+  };
+
+  const confirmSetupImport = () => {
+    const setup = pendingSetupImport;
+    if (!setup) return;
+    const styles = splitKnownValues(
+      setup.selectedMusicStyles,
+      [...ADVANCED_STYLES, CUSTOM],
+      setup.customMusicStyle,
+    );
+    const moodSplit = splitKnownValues(
+      setup.selectedMoods,
+      [...ADVANCED_MOOD_VALUES, CUSTOM],
+      setup.customMood,
+    );
+    const inst = splitKnownValues(
+      setup.selectedInstruments,
+      [...INSTRUMENTS, CUSTOM],
+      setup.customInstruments,
+    );
+    setRequiredValidationAttempted(false);
+    setRevisionMode(false);
+    setAdvanced(true);
+    setTargetPlatform(setup.targetPlatform);
+    setTheme(setup.theme);
+    setGenres(styles.selected);
+    setCustomGenre(styles.custom);
+    setMoods(moodSplit.selected);
+    setCustomMood(moodSplit.custom);
+    setInstruments(inst.selected);
+    setCustomInstruments(inst.custom);
+    if (BPM_OPTIONS.includes(setup.bpmMode) || setup.bpmMode === "Custom") {
+      setBpm(setup.bpmMode);
+      setCustomBpm(setup.customBpm);
+    } else {
+      setBpm("Custom");
+      setCustomBpm(setup.customBpm || setup.bpmMode.slice(0, 20));
+    }
+    setStructure([...setup.songStructure]);
+    setSongBlueprint(buildSongBlueprint(setup.songStructure, setup.songBlueprint));
+    setActiveSmartPresetId(setup.smartPresetId);
+    setPresetCulturalStyleId(setup.culturalStyleId);
+    setProduction(setup.productionStyle);
+    setInstructions(setup.additionalInstructions);
+    setLanguage(setup.language);
+    setLanguageVariant(setup.languageVariant);
+    setCustomLanguage(setup.customLanguage);
+    setPendingSetupImport(null);
+  };
+
   const applySongSetup = (draft: SongSetupDraft) => {
     setAdvanced(true);
     setActiveSmartPresetId("");
@@ -2680,8 +2821,7 @@ ${narrativePlan.beats
                   );
                 })}
               </div>
-              {(advanced && !revisionMode && songSetupFeature.allowed) ||
-              (canClear && !revisionMode) ? (
+              {(advanced && !revisionMode) || (canClear && !revisionMode) ? (
                 <div className="flex flex-wrap items-center gap-2">
                   {advanced && !revisionMode && songSetupFeature.allowed && (
                     <button
@@ -2693,6 +2833,35 @@ ${narrativePlan.beats
                       {t("generator.songSetupAssistant")}
                     </button>
                   )}
+                  {advanced && !revisionMode && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={exportAdvancedSetup}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
+                      >
+                        <Download className="h-3.5 w-3.5" /> {setupIoText.export}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setupFileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
+                      >
+                        <Upload className="h-3.5 w-3.5" /> {setupIoText.import}
+                      </button>
+                      <input
+                        ref={setupFileInputRef}
+                        type="file"
+                        accept=".json,application/json"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          void onSetupFileSelected(file);
+                        }}
+                      />
+                    </>
+                  )}
                   {canClear && !revisionMode && (
                     <button
                       onClick={() => setConfirmClear(true)}
@@ -2702,8 +2871,50 @@ ${narrativePlan.beats
                       <Trash2 className="h-3.5 w-3.5" /> {t("generator.clear")}
                     </button>
                   )}
+                  {setupIoError && advanced && !revisionMode && (
+                    <p role="alert" className="w-full text-xs text-red-400">
+                      {setupIoError}
+                    </p>
+                  )}
                 </div>
               ) : null}
+              {pendingSetupImport &&
+                createPortal(
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="setup-import-title"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                    onClick={() => setPendingSetupImport(null)}
+                  >
+                    <div
+                      className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#0e0e12] p-6 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <h3 id="setup-import-title" className="text-base font-semibold text-foreground">
+                        {setupIoText.import}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{setupIoText.confirmBody}</p>
+                      <div className="flex flex-row items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPendingSetupImport(null)}
+                          className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-white/5"
+                        >
+                          {setupIoText.cancel}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmSetupImport}
+                          className="rounded-xl bg-gradient-neon px-4 py-2 text-xs font-semibold text-primary-foreground glow-neon"
+                        >
+                          {setupIoText.confirm}
+                        </button>
+                      </div>
+                    </div>
+                  </div>,
+                  document.body,
+                )}
             </div>
 
             {revisionMode && (
