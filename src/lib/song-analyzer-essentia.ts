@@ -11,7 +11,7 @@ export type AnalyzerSimilarityEmbedding = {
 };
 
 const RUNPOD_POLL_INTERVAL_MS = 2_000;
-const RUNPOD_RESUME_DEADLINE_MS = 11 * 60 * 1000;
+const RUNPOD_RESUME_DEADLINE_MS = 30 * 60 * 1000;
 const MAX_CONSECUTIVE_POLL_TRANSPORT_ERRORS = 8;
 
 let pendingSourceStemPreview: AnalyzerSourceStemPreview | null = null;
@@ -83,6 +83,9 @@ async function requestEnhancedStage0(audioBase64: string, mimeType: File["type"]
     },
   });
 
+  // RunPod's GPU execution budget is shorter than this client recovery window.
+  // The extra time exists specifically so a throttled/locked mobile tab can wake
+  // later, poll the already-finished job once, and recover its result.
   const deadline = Math.max(Date.now(), started.startedAt) + RUNPOD_RESUME_DEADLINE_MS;
   let consecutiveTransportErrors = 0;
 
