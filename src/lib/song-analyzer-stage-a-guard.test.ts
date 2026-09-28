@@ -63,6 +63,15 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("Null boundaries must remain uncertain downstream");
   });
 
+  test("recovers global compact mm:ss encoding only after repeated direct proof", async () => {
+    const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
+    expect(code).toContain("compactMmSsSeconds");
+    expect(code).toContain("provenCompactCorrections");
+    expect(code).toContain("compactClockMode = provenCompactCorrections >= 2");
+    expect(code).toContain("if (compactClockMode)");
+    expect(code).toContain("Compact mm:ss recovery mode=");
+  });
+
   test("runs the guard before the final judge and displays guarded Stage A evidence", async () => {
     const route = await source("src/routes/song-analyzer.tsx");
     expect(route).toContain("guardSongAnalyzerStageA");
