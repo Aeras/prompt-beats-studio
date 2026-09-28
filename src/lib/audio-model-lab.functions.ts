@@ -5,11 +5,13 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const AUDIO_MODEL_LAB_MAX_FILE_BYTES = 14 * 1024 * 1024;
+const QWEN_MAX_BASE64_CHARS = 10_000_000;
+const QWEN_MODEL_ID = "qwen3.8-omni-flash";
 
 export const AUDIO_MODEL_LAB_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "gemini" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "gemini" },
-  { id: "qwen-3.8-omni-flash", label: "Qwen 3.8 Omni Flash", provider: "nexos" },
+  { id: "qwen-3.8-omni-flash", label: "Qwen 3.8 Omni Flash", provider: "dashscope" },
 ] as const;
 
 export type AudioModelLabModelId = (typeof AUDIO_MODEL_LAB_MODELS)[number]["id"];
@@ -88,32 +90,35 @@ async function requireAdmin(supabase: any) {
 
 function extensionForAudio(fileName: string, mimeType: string) {
   const ext = fileName.toLowerCase().split(".").pop() ?? "";
-  if (["mp3", "wav", "flac", "ogg", "aac", "m4a", "webm", "opus"].includes(ext)) return ext;
+  if (["mp3", "wav", "aac"].includes(ext)) return ext;
   const subtype = mimeType.toLowerCase().split("/")[1]?.split(";")[0] ?? "";
   if (subtype === "mpeg") return "mp3";
-  if (subtype === "x-m4a") return "m4a";
+  if (subtype === "x-wav" || subtype === "wave") return "wav";
   return subtype || "mp3";
 }
 
-async function resolveNexosQwenModelId() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("ai_models" as never)
-    .select("provider_model_id,display_name")
-    .eq("provider", "nexos");
-  if (error) throw new Error("Could not read the installed Nexos models.");
-
-  const rows = (data ?? []) as Array<{ provider_model_id?: string; display_name?: string }>;
-  const exact = rows.find(
-    (row) => String(row.display_name ?? "").trim().toLowerCase() === "qwen 3.8 omni flash",
-  );
-  const fallback = rows.find((row) => {
-    const value = `${row.display_name ?? ""} ${row.provider_model_id ?? ""}`.toLowerCase();
-    return value.includes("qwen") && value.includes("3.8") && value.includes("omni") && value.includes("flash");
-  });
-  const id = exact?.provider_model_id ?? fallback?.provider_model_id;
-  if (!id) throw new Error("Qwen 3.8 Omni Flash is not installed from Nexos AI.");
-  return String(id);
+function dashscopeApiOrigin(): string {
+  const configured = process.env["DASHSCOPE_API_HOST"]?.trim();
+  if (!configured) throw new Error("DASHSCOPE_API_HOST is not configured.");
+  const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error("DASHSCOPE_API_HOST is invalid.");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    (parsed.pathname !== "/" && parsed.pathname !== "") ||
+    !parsed.hostname.endsWith(".eu-central-1.maas.aliyuncs.com")
+  ) {
+    throw new Error("DASHSCOPE_API_HOST must be a Frankfurt Model Studio API Host.");
+  }
+  return parsed.origin;
 }
 
 async function analyzeWithGemini(model: string, audioBase64: string, mimeType: string) {
@@ -143,17 +148,23 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
   return text;
 }
 
-async function analyzeWithNexosQwen(
+async function analyzeWithDashscopeQwen(
   audioBase64: string,
   mimeType: string,
   fileName: string,
 ) {
-  const apiKey = process.env["NEXOS_API_KEY"]?.trim();
-  if (!apiKey) throw new Error("NEXOS_API_KEY is not configured.");
-  const modelId = await resolveNexosQwenModelId();
-  const format = extensionForAudio(fileName, mimeType);
+  const apiKey = process.env["DASHSCOPE_API_KEY"]?.trim();
+  if (!apiKey) throw new Error("DASHSCOPE_API_KEY is not configured.");
+  if (audioBase64.length >= QWEN_MAX_BASE64_CHARS) {
+    throw new Error("Qwen direct Base64 audio input must be smaller than 10 MB encoded.");
+  }
 
-  const response = await fetch("https://api.nexos.ai/v1/chat/completions", {
+  const format = extensionForAudio(fileName, mimeType);
+  if (!["mp3", "wav", "aac"].includes(format)) {
+    throw new Error("Qwen direct audio test currently supports MP3, WAV, or AAC files.");
+  }
+
+  const response = await fetch(`${dashscopeApiOrigin()}/compatible-mode/v1/chat/completions`, {
     method: "POST",
     signal: AbortSignal.timeout(7 * 60 * 1000),
     headers: {
@@ -161,40 +172,36 @@ async function analyzeWithNexosQwen(
       authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: modelId,
+      model: QWEN_MODEL_ID,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: ANALYSIS_PROMPT },
             {
               type: "input_audio",
               input_audio: {
-                data: audioBase64,
+                data: `data:;base64,${audioBase64}`,
                 format,
               },
             },
+            { type: "text", text: ANALYSIS_PROMPT },
           ],
         },
       ],
+      modalities: ["text"],
       temperature: 0.15,
       max_tokens: 8192,
     }),
   });
 
   if (!response.ok) {
-    const body = (await response.text()).slice(0, 500);
-    console.warn("[audio-model-lab] Nexos audio request failed", {
+    const body = (await response.text()).slice(0, 700);
+    console.warn("[audio-model-lab] Alibaba Qwen audio request failed", {
       status: response.status,
-      model: modelId,
+      model: QWEN_MODEL_ID,
       body,
     });
-    if (response.status === 400 || response.status === 415 || response.status === 422) {
-      throw new Error(
-        `Nexos rejected direct audio input for this Qwen route (HTTP ${response.status}).`,
-      );
-    }
-    throw new Error(`Nexos audio analysis failed (HTTP ${response.status}).`);
+    throw new Error(`Alibaba Qwen audio analysis failed (HTTP ${response.status}).`);
   }
 
   const payload = (await response.json()) as {
@@ -209,8 +216,8 @@ async function analyzeWithNexosQwen(
       : Array.isArray(content)
         ? content.map((part) => part.text ?? "").join("").trim()
         : "";
-  if (!text) throw new Error("Qwen returned an empty analysis through Nexos AI.");
-  return { text, modelId };
+  if (!text) throw new Error("Qwen returned an empty analysis from Alibaba Cloud Model Studio.");
+  return text;
 }
 
 export const getAudioModelLabAccess = createServerFn({ method: "GET" })
@@ -233,13 +240,13 @@ export const analyzeAudioWithLabModel = createServerFn({ method: "POST" })
 
     const startedAt = Date.now();
     if (data.model === "qwen-3.8-omni-flash") {
-      const result = await analyzeWithNexosQwen(data.audioBase64, data.mimeType, data.fileName);
+      const text = await analyzeWithDashscopeQwen(data.audioBase64, data.mimeType, data.fileName);
       return {
         model: data.model,
         label: "Qwen 3.8 Omni Flash",
-        provider: "Nexos AI",
-        providerModelId: result.modelId,
-        text: result.text,
+        provider: "Alibaba Cloud Model Studio",
+        providerModelId: QWEN_MODEL_ID,
+        text,
         durationMs: Date.now() - startedAt,
       };
     }
