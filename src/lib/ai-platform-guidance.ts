@@ -80,11 +80,18 @@ SUNO STYLE PROMPT
 
 SUNO ADVANCED PRODUCTION ENRICHMENT — SAME GENERATION CALL
 - When the brief above contains Advanced user direction, a requested production/arrangement treatment, a detailed structure/Blueprint, additional instructions, or other clearly detailed Advanced musical direction, make the final "tags" field the complete platform-ready Music Style result in this same response.
-- Keep the Producer's Note in the requested song language exactly as required elsewhere in the prompt.
-- At the same time, select the most generator-useful production choices represented by the song and Producer's Note — for example important instrument entrances/exits, vocal character, dynamics, arrangement arc, intro/outro treatment, builds, breakdowns, ambience, production texture, space/mix character and meaningful section-specific contrasts — and incorporate the highest-value ones into "tags" in ENGLISH.
-- Do not translate or copy the Producer's Note wholesale into "tags". Condense only the production information that materially helps Suno generate the intended song.
-- Treat the existing musical identity in "tags" as essential. Add production detail only within the remaining 1000-character budget and prioritize the most important cues when space is limited.
-- If the existing Music Style already uses most of the budget, include only the highest-value production cues that fit naturally. Never exceed 1000 characters.
+- Keep the Producer's Note in the requested song language exactly as required elsewhere in the prompt. Greek songs keep the Producer's Note in Greek, Russian songs keep it in Russian, and so on.
+- The production information selected for "tags" must always be expressed in ENGLISH, regardless of the requested lyric/Producer's Note language.
+- Coordinate "tags" and the Producer's Note during this single generation. Do not make a second translation/rewrite pass and do not require another model call.
+- First establish the essential Music Style core: genre/subgenre, BPM/tempo feel, groove, key instrumentation, bass/drums, vocal character and overall production identity. Treat this core as mandatory.
+- Then identify and rank the most generator-useful production details represented by the arrangement and Producer's Note: important instrument entrances/exits, vocal treatment, dynamics, arrangement arc, intro/outro treatment, builds, breakdowns, ambience, production texture, space/mix character and meaningful section-specific contrasts.
+- Before adding those details, silently determine the current character length of the Music Style core and the remaining character budget: 1000 minus the complete current "tags" length, counting spaces, commas, punctuation and separators.
+- Add only the highest-priority production details that fit naturally inside that remaining budget. Prefer complete concise cues; never cut a word or leave a dangling/partial production instruction merely to fill the limit.
+- If a useful cue does not fit, shorten it without losing meaning or skip it and move to the next highest-priority cue. Never sacrifice the essential Music Style core just to include more Producer's Note detail.
+- Do not translate or copy the Producer's Note wholesale into "tags". Condense only production information that materially helps Suno generate the intended result.
+- Do not repeat information already present in the Music Style core with different wording merely to use more characters.
+- After composing the final "tags" value, silently count the complete value again. If it exceeds 1000 characters, remove or compress the lowest-priority added production cues until the entire value is 1000 characters or fewer.
+- If the existing Music Style core already uses most of the budget, include only the most important production cue or no additional cue at all. Never exceed 1000 characters.
 - If the brief is not using detailed Advanced direction, keep the normal concise Suno Style Prompt behavior above rather than artificially expanding it.
 
 SUNO LYRICS / DIRECTIONS
