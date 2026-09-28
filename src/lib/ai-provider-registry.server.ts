@@ -8,6 +8,7 @@ export type AiProviderId =
   | "groq"
   | "openrouter"
   | "nexos"
+  | "dashscope"
   | "together"
   | "fireworks"
   | "cerebras"
@@ -133,6 +134,20 @@ export const AI_PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
       dialect: "openai-chat",
       url: "https://api.nexos.ai/v1/chat/completions",
       jsonMode: false,
+    },
+  },
+  {
+    id: "dashscope",
+    label: "Alibaba Cloud Model Studio",
+    secretNames: ["DASHSCOPE_API_KEY"],
+    discoveryUrl:
+      "https://{workspaceId}.eu-central-1.maas.aliyuncs.com/api/v1/models?page_no=1&page_size=200&language=en-US",
+    auth: "bearer",
+    apiDialect: "openai-compatible",
+    compatibility: {
+      dialect: "openai-chat",
+      url: "https://{workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
+      jsonMode: true,
     },
   },
   {
@@ -265,7 +280,25 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function resolveProviderUrl(provider: ProviderRegistryEntry, url: string): string {
+  if (!url.includes("{workspaceId}")) return url;
+  if (provider.id !== "dashscope") throw new Error("Provider endpoint configuration is invalid.");
+  const workspaceId = process.env["DASHSCOPE_WORKSPACE_ID"]?.trim();
+  if (!workspaceId) {
+    throw new Error(
+      "Alibaba Cloud Model Studio Frankfurt requires DASHSCOPE_WORKSPACE_ID in Secrets.",
+    );
+  }
+  if (!/^[A-Za-z0-9_-]{1,160}$/.test(workspaceId)) {
+    throw new Error("DASHSCOPE_WORKSPACE_ID is invalid.");
+  }
+  return url.replace("{workspaceId}", workspaceId);
+}
+
 function getRows(provider: ProviderRegistryEntry, payload: any): any[] {
+  if (provider.id === "dashscope") {
+    return Array.isArray(payload?.output?.models) ? payload.output.models : [];
+  }
   if (provider.apiDialect === "gemini" || provider.apiDialect === "cohere") {
     return Array.isArray(payload?.models) ? payload.models : [];
   }
@@ -280,11 +313,13 @@ function normalizeModels(
   return rows
     .flatMap((row) => {
       const rawId =
-        provider.apiDialect === "gemini"
-          ? String(row?.name ?? "").replace(/^models\//, "")
-          : provider.apiDialect === "cohere"
-            ? String(row?.name ?? "")
-            : String(row?.id ?? row?.name ?? "");
+        provider.id === "dashscope"
+          ? String(row?.model ?? "")
+          : provider.apiDialect === "gemini"
+            ? String(row?.name ?? "").replace(/^models\//, "")
+            : provider.apiDialect === "cohere"
+              ? String(row?.name ?? "")
+              : String(row?.id ?? row?.name ?? "");
       if (!rawId) return [];
 
       if (provider.apiDialect === "gemini") {
@@ -292,6 +327,15 @@ function normalizeModels(
           ? row.supportedGenerationMethods
           : [];
         if (methods.length && !methods.includes("generateContent")) return [];
+      }
+
+      if (provider.id === "dashscope") {
+        const responseModalities = Array.isArray(row?.inference_metadata?.response_modality)
+          ? row.inference_metadata.response_modality.map((value: unknown) =>
+              String(value).toLowerCase(),
+            )
+          : [];
+        if (responseModalities.length && !responseModalities.includes("text")) return [];
       }
 
       const meta =
@@ -308,8 +352,16 @@ function normalizeModels(
         {
           id: rawId,
           name,
-          ownedBy: row?.owned_by == null ? null : String(row.owned_by),
+          ownedBy:
+            provider.id === "dashscope"
+              ? row?.provider == null
+                ? null
+                : String(row.provider)
+              : row?.owned_by == null
+                ? null
+                : String(row.owned_by),
           contextWindow:
+            asNumber(row?.model_info?.context_window) ??
             asNumber(row?.context_length) ??
             asNumber(row?.contextWindow) ??
             asNumber(row?.context_length_tokens),
@@ -347,7 +399,7 @@ export async function discoverProviderModels(
 
   const apiKey = providerSecret(provider);
   const headers: Record<string, string> = { accept: "application/json" };
-  let url = provider.discoveryUrl;
+  let url = resolveProviderUrl(provider, provider.discoveryUrl);
   if (provider.auth === "bearer") headers["authorization"] = `Bearer ${apiKey}`;
   if (provider.auth === "x-api-key") {
     headers["x-api-key"] = apiKey;
@@ -480,7 +532,7 @@ async function probeModel(
     let text = "";
 
     if (provider.compatibility.dialect === "openai-responses") {
-      response = await fetchWithTimeout(provider.compatibility.url, {
+      response = await fetchWithTimeout(resolveProviderUrl(provider, provider.compatibility.url), {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -503,7 +555,7 @@ async function probeModel(
             ?.join("") ?? "";
       }
     } else if (provider.compatibility.dialect === "openai-chat") {
-      response = await fetchWithTimeout(provider.compatibility.url, {
+      response = await fetchWithTimeout(resolveProviderUrl(provider, provider.compatibility.url), {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -527,7 +579,7 @@ async function probeModel(
               : "";
       }
     } else if (provider.compatibility.dialect === "anthropic") {
-      response = await fetchWithTimeout(provider.compatibility.url, {
+      response = await fetchWithTimeout(resolveProviderUrl(provider, provider.compatibility.url), {
         method: "POST",
         headers: {
           "content-type": "application/json",
