@@ -185,6 +185,18 @@ FINAL STYLE CLASSIFICATION
 - Speech-like, rap-like or sing-rap-like phrasing plus a compatible syncopated/programmed pocket and bass language must trigger an explicit evaluation of a hip-hop-derived family.
 - Prefer a broad accurate hybrid label over a narrow speculative subgenre.
 
+GENRE EVIDENCE QUORUM
+- BPM or a fast subdivision grid is NEVER sufficient by itself to establish a genre family. A measured 170-180 BPM grid may coexist with an 85-90 BPM felt pulse and must not automatically imply drum & bass, jungle, punk, double-time hip-hop, or any other high-BPM family.
+- When Stage 0 reports half/double-time ambiguity, treat both pulse interpretations as valid candidates until the musical evidence resolves the feel. Use vocal phrasing, bass phrasing, harmonic rhythm, backbeat placement, kick pattern, and arrangement to decide which pulse is musically primary.
+- Before selecting a narrow rhythm-defined style or subgenre, require corroboration from at least THREE independent evidence families among: drum-pattern language, bass behavior, vocal phrasing/delivery, harmonic rhythm/instrumental texture, arrangement, and production/mix. At least one supporting family must be drums or bass, and at least one must come from vocal/harmonic/arrangement/production evidence rather than tempo alone.
+- If a narrow label is supported mainly by tempo plus one uncertain timbral interpretation, reject the narrow label and fall back to a broader accurate family/crossover description.
+- If independent passes materially disagree on a genre-driving fact such as felt tempo, drum source/pattern, bass source, or guitar-vs-synth pluck identity, surface the disagreement and prefer a broader style label until the evidence converges.
+
+INSTRUMENT SOURCE DISCIPLINE
+- Preserve an ambiguous instrument hypothesis when the audio evidence supports a recurring musical role but not a secure source identity. Use labels such as rhythmic plucked layer or plucked string instrument rather than silently converting a guitar-like part into a synth, or a synth-like part into a guitar.
+- A source-neutral resolver result is stronger than a speculative first-pass source label, but uncertain/mixed resolver outcomes are NOT permission to erase a plausible recurring layer.
+- Instrument source uncertainty must not be used as genre evidence. For example, a clean rhythmic guitar can exist inside pop/R&B/electronic production without implying rock; a synth pluck can exist without implying EDM.
+
 WEB RESEARCH RULES
 - Use web evidence only when exact identity was confirmed.
 - Treat regional/local sources as useful context, not automatic truth.
@@ -248,6 +260,26 @@ function preserveAudioMeasuredFields(
       bpm: initialResult.generatorReady.bpm,
       songStructure: initialResult.generatorReady.songStructure,
     },
+  };
+}
+
+function buildInterpretationGuardPacket(
+  stage0Evidence: z.infer<typeof stage0DspEvidenceSchema>,
+  stageAEvidence: StageAEvidence,
+) {
+  const notes = stageAEvidence.uncertaintyNotes ?? [];
+  const sourceResolverNotes = notes.filter((note) => /neutral source resolver|guitar guard|source-family|source identity/i.test(note));
+  const stabilityConflicts = notes.filter((note) => /stability guard|contradicted|disagree/i.test(note));
+  return {
+    tempoAmbiguous: Boolean(stage0Evidence.tempo.ambiguous),
+    stage0PrimaryBpm: stage0Evidence.tempo.primaryBpm,
+    stage0HalfTimeCandidate: stage0Evidence.tempo.halfTimeCandidate,
+    stage0DoubleTimeCandidate: stage0Evidence.tempo.doubleTimeCandidate,
+    stageAFeltTempo: stageAEvidence.tempo.feltTempo,
+    stageATempoConfidence: stageAEvidence.tempo.confidence,
+    sourceResolverNotes: sourceResolverNotes.slice(0, 8),
+    stabilityConflicts: stabilityConflicts.slice(0, 8),
+    instruction: "Do not let BPM alone choose a genre. Narrow rhythm-defined labels require the genre evidence quorum. Preserve unresolved source alternatives and prefer a broader style family when genre-driving evidence conflicts.",
   };
 }
 
@@ -373,11 +405,14 @@ async function runFinalJudge(args: {
 }) {
   const selected = await resolveFinalModel(args.userId, args.requestedModel);
   const caller = modelCaller(selected.model, selected.provider);
+  const interpretationGuardPacket = buildInterpretationGuardPacket(args.stage0Evidence, args.stageAEvidence);
   const prompt = [
     "STAGE 0 SIGNAL-DERIVED EVIDENCE:",
     JSON.stringify(args.stage0Evidence),
     "\nSTAGE A GEMINI AUDIBLE EVIDENCE:",
     JSON.stringify(args.stageAEvidence),
+    "\nDETERMINISTIC INTERPRETATION GUARD PACKET:",
+    JSON.stringify(interpretationGuardPacket),
     "\nGEMINI EVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE:",
     JSON.stringify(args.initialResult),
     args.trackTitle && args.artist
@@ -386,7 +421,7 @@ async function runFinalJudge(args: {
     args.research
       ? "\nREGIONAL / WEB RESEARCH PACKET (secondary context only):\n" + JSON.stringify(args.research)
       : "\nNO EXTERNAL RESEARCH PACKET WAS AVAILABLE.",
-    "\nProduce the final canonical PromptBeats Analyzer JSON. Re-evaluate the style classification instead of merely paraphrasing the Gemini synthesis.",
+    "\nProduce the final canonical PromptBeats Analyzer JSON. Re-evaluate the style classification instead of merely paraphrasing the Gemini synthesis. Apply the genre evidence quorum before selecting a narrow rhythm-defined label.",
   ]
     .filter(Boolean)
     .join("\n");
