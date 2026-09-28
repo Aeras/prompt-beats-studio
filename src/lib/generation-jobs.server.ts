@@ -14,6 +14,7 @@
  * - Only the service-role client (server-only) writes job state.
  */
 import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/lib/ai.functions";
+import { fitMusicStyleToPlatform } from "@/lib/music-style-limits";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
@@ -94,7 +95,25 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     }
 
     const out = await runSongGeneration(input, job.user_id, job.generation_id);
-    let persistedResult: Record<string, unknown> = out.result;
+    const enforceAdvancedSunoStyleLimit =
+      input.operation === "generate" &&
+      input.targetPlatform === "suno" &&
+      input.inputSnapshot?.generatorMode === "advanced";
+    const fittedTags = enforceAdvancedSunoStyleLimit
+      ? fitMusicStyleToPlatform(out.result.tags, input.targetPlatform)
+      : out.result.tags;
+    const songResult =
+      fittedTags === out.result.tags ? out.result : { ...out.result, tags: fittedTags };
+
+    if (fittedTags.length !== out.result.tags.length) {
+      console.warn("[generation-job] Suno Advanced Music Style capped", {
+        jobId: job.id,
+        before: out.result.tags.length,
+        after: fittedTags.length,
+      });
+    }
+
+    let persistedResult: Record<string, unknown> = songResult;
 
     if (input.operation === "revision" && input.revision) {
       const revision = input.revision;
