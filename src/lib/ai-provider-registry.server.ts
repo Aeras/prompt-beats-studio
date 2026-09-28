@@ -7,6 +7,7 @@ export type AiProviderId =
   | "mistral"
   | "groq"
   | "openrouter"
+  | "nexos"
   | "together"
   | "fireworks"
   | "cerebras"
@@ -118,6 +119,19 @@ export const AI_PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
     compatibility: {
       dialect: "openai-chat",
       url: "https://openrouter.ai/api/v1/chat/completions",
+      jsonMode: false,
+    },
+  },
+  {
+    id: "nexos",
+    label: "Nexos AI",
+    secretNames: ["NEXOS_API_KEY"],
+    discoveryUrl: "https://api.nexos.ai/v1/models",
+    auth: "bearer",
+    apiDialect: "openai-compatible",
+    compatibility: {
+      dialect: "openai-chat",
+      url: "https://api.nexos.ai/v1/chat/completions",
       jsonMode: false,
     },
   },
