@@ -191,6 +191,8 @@ Independently verify only five high-impact facts that have caused run-to-run ins
 4. material synthesizer presence,
 5. felt tempo / half-double-time interpretation.
 
+For rhythm guitar, explicitly test whether a sustained chordal strumming/comping texture is audible across meaningful sections. Listen for pick/transient attacks, repeated chordal strokes, string resonance, muting, fretting noise, and natural variation. Do not reduce a clearly recurring rhythm-guitar part to a generic plucked-string or synth label merely because acoustic-vs-clean-electric source is uncertain. Conversely, do not call a quantized pluck patch or sampled transient a guitar without direct guitar-like articulation evidence.
+
 Do not trust the first Stage A pass merely because it is supplied. Treat it as claims to test against the audio.
 Use high confidence only when direct timbre/articulation/rhythmic evidence is unmistakable. If acoustic-vs-electronic, guitar-vs-synth, or bass-source identity is ambiguous, return uncertain or hybrid rather than guessing.
 Do not identify artist/track, do not classify genre, and do not transcribe lyrics.
@@ -317,7 +319,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
 
   const verifierStrongEnough = (confidence: Confidence) => confidenceRank(confidence) >= 1;
 
-  const instrumentEvidence = evidence.instrumentEvidence.map((item) => {
+  let instrumentEvidence = evidence.instrumentEvidence.map((item) => {
     const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""}`.toLowerCase();
     let confidence = item.confidence;
 
@@ -377,7 +379,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     return confidence === item.confidence ? item : { ...item, confidence };
   });
 
-  const dominantElements = evidence.dominantElements.map((item) => {
+  let dominantElements = evidence.dominantElements.map((item) => {
     const text = `${item.element} ${item.role} ${item.technique ?? ""}`.toLowerCase();
     let confidence = item.confidence;
     if (
@@ -392,6 +394,78 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     ) confidence = "low";
     return confidence === item.confidence ? item : { ...item, confidence };
   });
+
+  const rhythmGuitarConfirmed =
+    verifierStrongEnough(verification.guitarPresence.confidence) &&
+    (verification.guitarPresence.value === "rhythm" || verification.guitarPresence.value === "both");
+
+  if (rhythmGuitarConfirmed) {
+    const candidateIndex = instrumentEvidence.findIndex((item) => {
+      const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
+      const guitarLike = /guitar|string instrument|plucked string|pluck/.test(text);
+      const rhythmLike = /rhythm|strum|comp|chord|palm mut|accompan/.test(text);
+      return guitarLike && rhythmLike;
+    });
+
+    if (candidateIndex >= 0) {
+      const candidate = instrumentEvidence[candidateIndex];
+      const sourceSpecific = /acoustic guitar|clean electric guitar|electric guitar/.test(candidate.instrument.toLowerCase());
+      instrumentEvidence = instrumentEvidence.map((item, index) =>
+        index === candidateIndex
+          ? {
+              ...item,
+              instrument: sourceSpecific ? candidate.instrument : "Rhythm Guitar",
+              role: candidate.role || "Harmonic and rhythmic accompaniment",
+              technique:
+                candidate.technique && /strum|comp|chord/i.test(candidate.technique)
+                  ? candidate.technique
+                  : "Chordal strumming / rhythmic comping",
+              timbre: sourceSpecific
+                ? candidate.timbre
+                : [candidate.timbre, "guitar timbre confirmed; acoustic vs clean electric source unresolved"]
+                    .filter(Boolean)
+                    .join("; "),
+              confidence:
+                candidate.confidence === "low" && verification.guitarPresence.confidence === "high"
+                  ? "medium"
+                  : candidate.confidence,
+            }
+          : item,
+      );
+    } else if (verification.guitarPresence.confidence === "high" && instrumentEvidence.length < 30) {
+      instrumentEvidence = [
+        ...instrumentEvidence,
+        {
+          instrument: "Rhythm Guitar",
+          role: "Harmonic and rhythmic accompaniment",
+          technique: "Chordal strumming / rhythmic comping",
+          timbre: "Guitar timbre confirmed; acoustic vs clean electric source unresolved",
+          prominence: "major",
+          confidence: "medium",
+          evidence: verification.guitarPresence.evidence,
+        },
+      ];
+    }
+
+    dominantElements = dominantElements.map((item) => {
+      const text = `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`.toLowerCase();
+      const guitarLike = /guitar|string instrument|plucked string|pluck/.test(text);
+      const rhythmLike = /rhythm|strum|comp|chord|palm mut|accompan/.test(text);
+      if (!guitarLike || !rhythmLike) return item;
+      return {
+        ...item,
+        element: /guitar/.test(item.element.toLowerCase()) ? item.element : "Rhythm Guitar",
+        technique:
+          item.technique && /strum|comp|chord/i.test(item.technique)
+            ? item.technique
+            : "Chordal strumming / rhythmic comping",
+      };
+    });
+
+    notes.push(
+      `Stage A guitar guard: independent audio verification confirmed a recurring rhythm-guitar role. Preserve the strummed/comping guitar in generator-ready Instruments while leaving acoustic-vs-clean-electric source unresolved unless direct evidence distinguishes it.`,
+    );
+  }
 
   let tempo = evidence.tempo;
   const verifiedTempo = verification.feltTempo.bpm;

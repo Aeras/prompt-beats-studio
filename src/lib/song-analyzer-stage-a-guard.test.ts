@@ -24,6 +24,16 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("felt tempo changed by a half/double-time factor");
   });
 
+  test("preserves verifier-confirmed recurring rhythm guitar without forcing acoustic vs electric source", async () => {
+    const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
+    expect(code).toContain("sustained chordal strumming/comping texture");
+    expect(code).toContain("rhythmGuitarConfirmed");
+    expect(code).toContain('instrument: "Rhythm Guitar"');
+    expect(code).toContain("Chordal strumming / rhythmic comping");
+    expect(code).toContain("acoustic vs clean electric source unresolved");
+    expect(code).toContain("Stage A guitar guard:");
+  });
+
   test("hardens section timestamps against mm:ss concatenation and duration overflow", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("explicitMmSs");
