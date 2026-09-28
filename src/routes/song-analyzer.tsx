@@ -35,7 +35,10 @@ import {
 import { guardSongAnalyzerStageA } from "@/lib/song-analyzer-stage-a-guard.functions";
 import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
-import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
+import {
+  analyzeStage0Essentia,
+  consumeAnalyzerSourceStemPreview,
+} from "@/lib/song-analyzer-essentia";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 import {
   clearAnalyzerSessionAudio,
@@ -182,6 +185,7 @@ function SongAnalyzerPage() {
       ]);
       setLegacyStage0Evidence(legacyDspEvidence);
       const dspEvidence = await analyzeStage0Essentia(file, legacyDspEvidence);
+      const sourceStemPreview = consumeAnalyzerSourceStemPreview();
       setStage0Evidence(dspEvidence);
 
       // Keep title/artist completely out of the audio-analysis stages. They are
@@ -201,7 +205,9 @@ function SongAnalyzerPage() {
           audioBase64,
           mimeType: file.type as any,
           model: model as any,
-          stage0Evidence: response.stage0Evidence,
+          stage0Evidence: sourceStemPreview
+            ? { ...response.stage0Evidence, sourceStemPreview }
+            : response.stage0Evidence,
           stageAEvidence: response.stageAEvidence,
           initialResult: response.result,
         },
