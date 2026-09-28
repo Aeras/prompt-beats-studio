@@ -17,6 +17,14 @@ describe("AI model verification and update workflow", () => {
     expect(panel).toContain("updateAdminAiModel");
   });
 
+  it("supports the current xAI Grok pricing page and a reviewed Grok 4.7 fallback", () => {
+    expect(refresh).toContain("officialPricingUrl");
+    expect(refresh).toContain("docs.x.ai/developers/models/${encodeURIComponent(modelId)}");
+    expect(refresh).toContain('"grok-4.7"');
+    expect(refresh).toContain("labelledDollar");
+    expect(refresh).toContain("Cached");
+  });
+
   it("finds likely successors without treating them as automatic replacements", () => {
     expect(refresh).toContain("findLikelySuccessors");
     expect(refresh).toContain("providerFamily");
@@ -37,5 +45,23 @@ describe("AI model verification and update workflow", () => {
     expect(panel).toContain("Check all models for updates");
     expect(panel).toContain("Likely newer version:");
     expect(refresh).not.toContain("AUTO_REPLACE_MODEL");
+  });
+
+  it("keeps edit actions visible above the mobile bottom navigation", () => {
+    expect(panel).toContain("pb-[calc(5.75rem+env(safe-area-inset-bottom))]");
+    expect(panel).toContain("h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))]");
+    expect(panel).toContain("shrink-0 border-t border-white/10 bg-background/95");
+    expect(panel).toContain("pb-[calc(1rem+env(safe-area-inset-bottom))]");
+  });
+
+  it("renders localized status, health, access, pricing, and compatibility labels", () => {
+    expect(panel).toContain("statusLabel(model.status)");
+    expect(panel).toContain("healthLabel(model.healthStatus)");
+    expect(panel).toContain("accessLabel(model.accessPolicy)");
+    expect(panel).toContain("pricingLabel(model.pricingStatus)");
+    expect(panel).toContain("compatibilityLabel(result.status)");
+    expect(panel).not.toContain(">{model.status}</Pill>");
+    expect(panel).not.toContain(">{model.healthStatus}</Pill>");
+    expect(panel).not.toContain(">{model.accessPolicy}</Pill>");
   });
 });
