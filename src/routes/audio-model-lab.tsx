@@ -321,7 +321,9 @@ function AudioModelLabPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="font-display text-xl font-bold">{model.label}</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">{model.provider === "nexos" ? "Nexos AI" : "Google Gemini"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {model.provider === "dashscope" ? "Alibaba Cloud Model Studio" : "Google Gemini"}
+                      </p>
                     </div>
                     {state.status === "done" ? (
                       <button
