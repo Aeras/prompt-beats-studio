@@ -113,7 +113,9 @@ export function getAnalyzerBackgroundSnapshot() {
 
 export function subscribeAnalyzerBackground(listener: (value: AnalyzerBackgroundSnapshot) => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function clearAnalyzerBackground() {
