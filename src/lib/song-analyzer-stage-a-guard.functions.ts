@@ -223,6 +223,8 @@ Independently verify six high-impact facts that have caused run-to-run instabili
 NEUTRAL RHYTHMIC-LAYER RESOLVER
 When the supplied prompt says rhythmicLayerResolutionRequired=true, classify the recurring ambiguous mid/high rhythmic layer among these equal-priority possibilities: guitar, processed_guitar, synth_pluck, other_plucked_string, mixed, uncertain. Do not search for guitar preferentially. Use guitar or processed_guitar only when at least two independent guitar-like cues are audible, such as repeated chord strokes, pick/transient attacks, string resonance, fretting/muting noise, natural timing/velocity variation, or guitar-like harmonic decay. Quantized repetition, perfectly repeated envelopes, resonant synth filtering, or sequenced arpeggiation support synth_pluck. If cues conflict or are weak, use mixed or uncertain. When rhythmicLayerResolutionRequired=false, return uncertain unless an obvious layer is directly relevant to a supplied claim.
 
+If a DEMUCS OTHER-STEM PREVIEW is supplied, use it ONLY to resolve guitar / processed-guitar / synth-pluck / other-plucked-string / mixed / uncertain source identity and recurring guitar presence. The other stem is a residual mixture, not a solo guitar stem. Cross-check it against the full mix. It must not override full-mix evidence for drums, bass, tempo, vocals, or genre, and it must not create a guitar claim unless at least two direct guitar-like articulation cues are audible.
+
 For rhythm guitar, explicitly test whether a sustained chordal strumming/comping texture is audible across meaningful sections. Do not reduce a clearly recurring rhythm-guitar part to a generic plucked-string or synth label merely because acoustic-vs-clean-electric source is uncertain. Conversely, do not call a quantized pluck patch or sampled transient a guitar without direct guitar-like articulation evidence.
 
 Do not trust the first Stage A pass merely because it is supplied. Treat it as claims to test against the audio.
@@ -283,11 +285,32 @@ function compactMmSsSeconds(value: number) {
   return seconds === value ? null : seconds;
 }
 
+function collectCrossFieldClockSeconds(evidence: StageAEvidence) {
+  const texts = [
+    ...evidence.arrangementChanges.map((item) => `${item.claim} ${item.evidence}`),
+    ...evidence.melodicElements.map((item) => `${item.claim} ${item.evidence}`),
+    ...evidence.instrumentEvidence.map((item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
+    ...evidence.dominantElements.map((item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
+    ...evidence.energyProgression.map((item) => `${item.claim} ${item.evidence}`),
+    ...evidence.productionMixEvidence.map((item) => `${item.claim} ${item.evidence}`),
+    ...evidence.vocalCharacteristics.map((item) => `${item.claim} ${item.evidence}`),
+  ];
+  return new Set(texts.flatMap((text) => explicitMmSs(text).map((value) => value.seconds)));
+}
+
+function matchesCrossFieldClock(value: number, crossFieldClockSeconds: Set<number>) {
+  for (const seconds of crossFieldClockSeconds) {
+    if (Math.abs(value - seconds) <= 1) return true;
+  }
+  return false;
+}
+
 function repairTimelineBoundary(
   value: number | null,
   explicit: { seconds: number; concatenated: number } | undefined,
   durationSeconds: number,
   compactClockMode: boolean,
+  crossFieldClockSeconds: Set<number>,
 ) {
   if (value == null) return { value, corrected: false, removed: false };
   if (
@@ -298,11 +321,10 @@ function repairTimelineBoundary(
   ) {
     return { value: explicit.seconds, corrected: true, removed: false };
   }
-  if (compactClockMode) {
-    const decoded = compactMmSsSeconds(value);
-    if (decoded != null && decoded <= durationSeconds + 0.5) {
-      return { value: decoded, corrected: true, removed: false };
-    }
+  const decoded = compactMmSsSeconds(value);
+  const crossFieldConfirmed = decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
+  if ((compactClockMode || crossFieldConfirmed) && decoded != null && decoded <= durationSeconds + 0.5) {
+    return { value: decoded, corrected: true, removed: false };
   }
   if (value > durationSeconds + 0.5) {
     if (explicit && explicit.seconds <= durationSeconds + 0.5) {
@@ -316,17 +338,20 @@ function repairTimelineBoundary(
 function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | null) {
   if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return evidence;
 
+  const crossFieldClockSeconds = collectCrossFieldClockSeconds(evidence);
   const provenCompactCorrections = evidence.songSections.reduce((count, section) => {
     const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
     const values = [section.startSeconds, section.endSeconds];
     return count + values.reduce((inner, value, index) => {
       const timestamp = explicit[index];
-      return inner + Number(
+      const explicitMatch =
         value != null &&
         timestamp != null &&
         Math.abs(value - timestamp.concatenated) <= 1 &&
-        Math.abs(value - timestamp.seconds) > 1,
-      );
+        Math.abs(value - timestamp.seconds) > 1;
+      const decoded = value == null ? null : compactMmSsSeconds(value);
+      const crossFieldMatch = decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
+      return inner + Number(explicitMatch || crossFieldMatch);
     }, 0);
   }, 0);
   const compactClockMode = provenCompactCorrections >= 2;
@@ -339,8 +364,8 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   const songSections = evidence.songSections.map((section) => {
     let confidence = section.confidence;
     const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
-    const repairedStart = repairTimelineBoundary(section.startSeconds, explicit[0], durationSeconds, compactClockMode);
-    const repairedEnd = repairTimelineBoundary(section.endSeconds, explicit[1], durationSeconds, compactClockMode);
+    const repairedStart = repairTimelineBoundary(section.startSeconds, explicit[0], durationSeconds, compactClockMode, crossFieldClockSeconds);
+    const repairedEnd = repairTimelineBoundary(section.endSeconds, explicit[1], durationSeconds, compactClockMode, crossFieldClockSeconds);
     let startSeconds = repairedStart.value;
     let endSeconds = repairedEnd.value;
 
@@ -389,10 +414,55 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   const uncertaintyNotes = [...evidence.uncertaintyNotes];
   if (corrections || removals || overlapRepairs) {
     uncertaintyNotes.push(
-      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s), repaired ${overlapRepairs} overlapping boundary pair(s), and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Compact mm:ss recovery mode=${compactClockMode ? "on" : "off"}. Null boundaries must remain uncertain downstream.`,
+      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s), repaired ${overlapRepairs} overlapping boundary pair(s), and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Compact mm:ss recovery mode=${compactClockMode ? "on" : "off"}; cross-field clock references=${crossFieldClockSeconds.size}. Null boundaries must remain uncertain downstream.`,
     );
   }
   return { ...evidence, songSections, uncertaintyNotes: uncertaintyNotes.slice(0, 30) };
+}
+
+function redactQuotedMultiwordText(text: string, onRedaction: () => void) {
+  const patterns = [
+    /"([^"\n]{1,180})"/g,
+    /'([^'\n]{1,180})'/g,
+    /“([^”\n]{1,180})”/g,
+    /‘([^’\n]{1,180})’/g,
+  ];
+  let output = text;
+  for (const pattern of patterns) {
+    output = output.replace(pattern, (full, inner: string) => {
+      const words = inner.trim().split(/\s+/).filter(Boolean);
+      const looksLikePhrase = words.length >= 2 && /[\p{L}]/u.test(inner);
+      if (!looksLikePhrase) return full;
+      onRedaction();
+      return "[lyrics omitted]";
+    });
+  }
+  return output;
+}
+
+function sanitizeLyricTranscription(evidence: StageAEvidence) {
+  let redactions = 0;
+  const walk = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      return redactQuotedMultiwordText(value, () => {
+        redactions += 1;
+      });
+    }
+    if (Array.isArray(value)) return value.map(walk);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, walk(child)]));
+    }
+    return value;
+  };
+  const sanitized = walk(evidence) as StageAEvidence;
+  if (!redactions) return sanitized;
+  return {
+    ...sanitized,
+    uncertaintyNotes: [
+      ...sanitized.uncertaintyNotes,
+      `Stage A lyric guard redacted ${redactions} quoted multi-word lyric fragment(s); musical evidence was preserved without lyric transcription.`,
+    ].slice(0, 30),
+  };
 }
 
 function isHalfDoublePair(a: number, b: number) {
@@ -605,7 +675,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     }
   }
 
-  if (stage0Evidence.tempo.ambiguous) {
+  if (stage0Evidence.tempo?.ambiguous) {
     notes.push("Stage A tempo guard: Stage 0 reports a half/double-time ambiguity. The selected BPM may describe either the felt pulse or a subdivision grid; BPM alone must never determine genre family without corroborating drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence.");
   }
 
@@ -672,11 +742,17 @@ async function runVerifier(args: {
   mimeType: z.infer<typeof supportedMimeTypes>;
   evidence: StageAEvidence;
   durationSeconds: number | null;
+  sourceStemPreview?: Stage0Evidence["sourceStemPreview"];
 }) {
   const layerResolutionRequired = rhythmicLayerResolutionRequired(args.evidence);
+  const stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview);
   const prompt = [
     `Measured duration: ${args.durationSeconds ?? "unknown"} seconds.`,
     `rhythmicLayerResolutionRequired=${layerResolutionRequired}`,
+    `otherStemPreviewAvailable=${stemPreviewUsed}`,
+    stemPreviewUsed
+      ? `The following additional audio part is a distributed Demucs OTHER-stem preview covering windows ${args.sourceStemPreview!.windows.map((window) => `${window.startSeconds.toFixed(1)}-${window.endSeconds.toFixed(1)}s`).join(", ")}. Use it only for source disambiguation as instructed.`
+      : "No isolated other-stem preview is available for this run.",
     "First-pass Stage A claims to independently verify:",
     JSON.stringify({
       tempo: args.evidence.tempo,
@@ -688,6 +764,22 @@ async function runVerifier(args: {
     }),
   ].join("\n");
 
+  const parts: Array<Record<string, unknown>> = [
+    { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
+  ];
+  if (stemPreviewUsed && args.sourceStemPreview) {
+    parts.push({
+      text: "DEMUCS OTHER-STEM PREVIEW: residual non-vocal/non-drum/non-bass mixture sampled across the track. Use only for neutral instrument-source disambiguation.",
+    });
+    parts.push({
+      inlineData: {
+        mimeType: args.sourceStemPreview.mimeType,
+        data: args.sourceStemPreview.audioBase64,
+      },
+    });
+  }
+  parts.push({ text: prompt });
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
     {
@@ -695,10 +787,7 @@ async function runVerifier(args: {
       headers: { "Content-Type": "application/json", "x-goog-api-key": args.apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: VERIFIER_SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [
-          { inlineData: { mimeType: args.mimeType, data: args.audioBase64 } },
-          { text: prompt },
-        ] }],
+        contents: [{ role: "user", parts }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: VERIFIER_RESPONSE_SCHEMA,
@@ -719,7 +808,7 @@ async function runVerifier(args: {
   }
   const text = (candidate?.content?.parts ?? []).map((part: any) => (typeof part?.text === "string" ? part.text : "")).join("").trim();
   if (!text) throw Object.assign(new Error("Stage A verifier returned no JSON"), { usage });
-  return { verification: verifierSchema.parse(JSON.parse(text)), usage };
+  return { verification: verifierSchema.parse(JSON.parse(text)), usage, stemPreviewUsed };
 }
 
 export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
@@ -728,7 +817,8 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_analyzer");
     const durationSeconds = data.stage0Evidence.processing.durationSeconds;
-    let evidence = sanitizeTimeline(data.stageAEvidence as StageAEvidence, durationSeconds);
+    let evidence = sanitizeLyricTranscription(data.stageAEvidence as StageAEvidence);
+    evidence = sanitizeTimeline(evidence, durationSeconds);
     let verificationUsed = false;
 
     const apiKey = process.env["GEMINI_API_KEY"];
@@ -742,9 +832,19 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           mimeType: data.mimeType,
           evidence,
           durationSeconds,
+          sourceStemPreview: data.stage0Evidence.sourceStemPreview,
         });
         usage = checked.usage;
         evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence);
+        if (checked.stemPreviewUsed) {
+          evidence = {
+            ...evidence,
+            uncertaintyNotes: [
+              ...evidence.uncertaintyNotes,
+              "Stage A stem-assisted resolver used a distributed Demucs other-stem preview as secondary source-identity evidence for the ambiguous rhythmic pluck/strum layer; full-mix evidence remained authoritative for all other claims.",
+            ].slice(0, 30),
+          };
+        }
         verificationUsed = true;
         await recordAiUsage({
           userId: context.userId,
