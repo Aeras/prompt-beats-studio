@@ -146,7 +146,7 @@ export const AI_PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
     compatibility: {
       dialect: "openai-chat",
       url: "{apiHost}/compatible-mode/v1/chat/completions",
-      jsonMode: true,
+      jsonMode: false,
     },
   },
   {
@@ -235,6 +235,8 @@ export type CompatibilityResult = {
   status: CompatibilityStatus;
   generatorCompatible: boolean;
   qualityCheckCompatible: boolean;
+  generatorError?: string;
+  qualityCheckError?: string;
   contextWindow: number | null;
   installed: boolean;
 };
@@ -491,6 +493,7 @@ const QUALITY_SCHEMA = {
 function classifyHttpFailure(status: number): ProbeOutcome {
   if (
     status === 401 ||
+    status === 402 ||
     status === 403 ||
     status === 408 ||
     status === 409 ||
@@ -500,6 +503,33 @@ function classifyHttpFailure(status: number): ProbeOutcome {
     return "inconclusive";
   }
   return "unsupported";
+}
+
+function sanitizeProviderError(body: string, status: number): string {
+  const fallback = `HTTP ${status}`;
+  if (!body.trim()) return fallback;
+
+  let detail = "";
+  try {
+    const payload = JSON.parse(body) as Record<string, any>;
+    const nested = payload?.error && typeof payload.error === "object" ? payload.error : payload;
+    const code = nested?.code ?? payload?.code;
+    const message = nested?.message ?? payload?.message;
+    const requestId =
+      nested?.request_id ?? nested?.requestId ?? payload?.request_id ?? payload?.requestId;
+    detail = [code, message, requestId ? `request_id=${requestId}` : null]
+      .filter(Boolean)
+      .map(String)
+      .join(" · ");
+  } catch {
+    detail = body.replace(/\s+/g, " ").trim();
+  }
+
+  detail = detail
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted]")
+    .slice(0, 360);
+  return detail ? `${fallback} · ${detail}` : fallback;
 }
 
 function validProbeJson(text: string, operation: "generator" | "quality_check"): boolean {
@@ -574,6 +604,8 @@ async function probeModel(
             ?.join("") ?? "";
       }
     } else if (provider.compatibility.dialect === "openai-chat") {
+      const isDashscope = provider.id === "dashscope";
+      const isQwen38 = /^qwen3\.8(?:-|$)/i.test(modelId);
       response = await fetchWithTimeout(resolveProviderUrl(provider, provider.compatibility.url), {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -584,7 +616,10 @@ async function probeModel(
             { role: "user", content: prompt },
           ],
           max_tokens: 120,
-          ...(provider.compatibility.jsonMode ? { response_format: { type: "json_object" } } : {}),
+          ...(isDashscope && isQwen38 ? { reasoning_effort: "none" } : {}),
+          ...(!isDashscope && provider.compatibility.jsonMode
+            ? { response_format: { type: "json_object" } }
+            : {}),
         }),
       });
       if (response.ok) {
@@ -650,19 +685,25 @@ async function probeModel(
 
     if (!response.ok) {
       const body = await response.text();
+      const safeError = sanitizeProviderError(body, response.status);
       console.warn(
         `[ai-compatibility] ${provider.id}/${modelId}/${operation} failed (${response.status})`,
-        body.slice(0, 300),
+        safeError,
       );
-      return { outcome: classifyHttpFailure(response.status), error: `HTTP ${response.status}` };
+      return { outcome: classifyHttpFailure(response.status), error: safeError };
     }
 
     return validProbeJson(text, operation)
       ? { outcome: "passed" }
-      : { outcome: "unsupported", error: "Invalid structured JSON response." };
+      : {
+          outcome: "unsupported",
+          error: text.trim()
+            ? `Invalid structured JSON response: ${text.replace(/\s+/g, " ").slice(0, 220)}`
+            : "Invalid structured JSON response: empty model output.",
+        };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Compatibility request failed.";
-    return { outcome: "inconclusive", error: message };
+    return { outcome: "inconclusive", error: message.slice(0, 360) };
   }
 }
 
@@ -703,6 +744,8 @@ export async function testProviderModelsCompatibility(
           status,
           generatorCompatible: generator.outcome === "passed",
           qualityCheckCompatible: quality.outcome === "passed",
+          ...(generator.error ? { generatorError: generator.error } : {}),
+          ...(quality.error ? { qualityCheckError: quality.error } : {}),
           contextWindow: model.contextWindow,
           installed: model.installed,
         } satisfies CompatibilityResult;
@@ -710,6 +753,26 @@ export async function testProviderModelsCompatibility(
     );
     results.push(...batchResults);
   }
+
+  if (
+    provider.id === "dashscope" &&
+    results.length > 0 &&
+    results.every((result) => !result.generatorCompatible && !result.qualityCheckCompatible)
+  ) {
+    const first = results[0];
+    const details = [
+      first?.generatorError ? `Generator: ${first.generatorError}` : null,
+      first?.qualityCheckError ? `Quality Check: ${first.qualityCheckError}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+    throw new Error(
+      details
+        ? `Alibaba compatibility probe failed. ${details}`
+        : "Alibaba compatibility probe failed without a provider error detail.",
+    );
+  }
+
   return results;
 }
 
