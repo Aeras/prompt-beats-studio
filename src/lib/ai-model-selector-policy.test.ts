@@ -57,7 +57,8 @@ describe("AI model selector policy", () => {
     const panel = await source("src/components/promptbeats/AiModelsPanel.tsx");
     const admin = await source("src/lib/ai-model-admin.functions.ts");
     expect(panel).toContain("aiToolsDefault");
-    expect(panel).toContain('operation: "ai_tools"');
+    expect(panel).toContain('["ai_tools", t("aiModels.aiToolsDefault")');
+    expect(panel).toContain("setDefault.mutate({ operation, model: value })");
     expect(panel).toContain("isAiToolsDefault");
     expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools"])');
     expect(admin).toContain("isAiToolsDefault");

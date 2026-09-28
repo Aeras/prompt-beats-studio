@@ -16,7 +16,8 @@ describe("AI Tools default architecture", () => {
     expect(admin).toContain('readDefaultModel(supabaseAdmin, "ai_tools_default_model")');
     expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools"])');
     expect(panel).toContain('t("aiModels.aiToolsDefault")');
-    expect(panel).toContain('operation: "ai_tools"');
+    expect(panel).toContain('["ai_tools", t("aiModels.aiToolsDefault")');
+    expect(panel).toContain("setDefault.mutate({ operation, model: value })");
   });
   test("standalone AI tools use AI Tools default while Generator remains Generator-owned", async () => {
     const story = await source("src/lib/story-map-ai.functions.ts");
