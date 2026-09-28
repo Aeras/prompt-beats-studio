@@ -19,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { createPromptProject, listPromptProjects } from "@/lib/ai.functions";
 import {
-  analyzeSong,
   DEFAULT_SONG_ANALYZER_MODEL,
   getSongAnalyzerAccess,
   saveSongAnalysis,
@@ -28,18 +27,14 @@ import {
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
-import {
-  finalizeSongAnalysis,
-  getSongAnalyzerFinalModelAccess,
-} from "@/lib/song-analyzer-final.functions";
-import { guardSongAnalyzerStageA } from "@/lib/song-analyzer-stage-a-guard.functions";
-import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
-import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
-import {
-  analyzeStage0Essentia,
-  consumeAnalyzerSourceStemPreview,
-} from "@/lib/song-analyzer-essentia";
+import { getSongAnalyzerFinalModelAccess } from "@/lib/song-analyzer-final.functions";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
+import {
+  clearAnalyzerBackground,
+  getAnalyzerBackgroundSnapshot,
+  startAnalyzerBackground,
+  subscribeAnalyzerBackground,
+} from "@/lib/song-analyzer-background";
 import {
   clearAnalyzerSessionAudio,
   loadAnalyzerSessionAudio,
@@ -59,20 +54,6 @@ export const Route = createFileRoute("/song-analyzer")({
   }),
   component: SongAnalyzerPage,
 });
-
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read audio file"));
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      const comma = value.indexOf(",");
-      if (comma < 0) reject(new Error("Could not encode audio file"));
-      else resolve(value.slice(comma + 1));
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 function bpmLabel(result: SongAnalysisResult, uncertain = "Uncertain") {
   const bpm = result.generatorReady.bpm;
@@ -152,6 +133,23 @@ function SongAnalyzerPage() {
   }, []);
 
   useEffect(() => {
+    const applyBackgroundSnapshot = (background: ReturnType<typeof getAnalyzerBackgroundSnapshot>) => {
+      setBusy(background.status === "running");
+      if (background.legacyStage0Evidence) setLegacyStage0Evidence(background.legacyStage0Evidence);
+      if (background.stage0Evidence) setStage0Evidence(background.stage0Evidence);
+      if (background.stageAEvidence) setStageAEvidence(background.stageAEvidence);
+      if (background.result) setResult(background.result);
+      if (background.resultModel) setResultModel(background.resultModel);
+      if (background.finalResultModelLabel) setFinalResultModelLabel(background.finalResultModelLabel);
+      if (background.status === "failed") setError(background.error || t("songAnalyzer.analysisFailed"));
+      if (background.status === "completed") setError(null);
+    };
+
+    applyBackgroundSnapshot(getAnalyzerBackgroundSnapshot());
+    return subscribeAnalyzerBackground(applyBackgroundSnapshot);
+  }, [t]);
+
+  useEffect(() => {
     const options = finalModelAccess.data?.modelOptions ?? [];
     if (!options.length) return;
     const selectedStillAvailable = options.some((option) => option.id === finalModel);
@@ -166,11 +164,14 @@ function SongAnalyzerPage() {
     return null;
   }, [file, t]);
 
-  const analyze = async () => {
+  const analyze = () => {
     if (!file || fileError) return;
+    clearAnalyzerBackground();
     setBusy(true);
     setError(null);
     setSaved(false);
+    setResult(null);
+    setResultModel(null);
     setStage0Evidence(null);
     setLegacyStage0Evidence(null);
     setStage0DebugExpanded(false);
@@ -178,64 +179,14 @@ function SongAnalyzerPage() {
     setStageAEvidence(null);
     setStageADebugExpanded(false);
     setFinalResultModelLabel(null);
-    try {
-      const [audioBase64, legacyDspEvidence] = await Promise.all([
-        fileToBase64(file),
-        analyzeStage0Dsp(file),
-      ]);
-      setLegacyStage0Evidence(legacyDspEvidence);
-      const dspEvidence = await analyzeStage0Essentia(file, legacyDspEvidence);
-      const sourceStemPreview = consumeAnalyzerSourceStemPreview();
-      setStage0Evidence(dspEvidence);
 
-      // Keep title/artist completely out of the audio-analysis stages. They are
-      // consumed only by the final research/judge layer below.
-      const response = await analyzeSong({
-        data: {
-          requestKey: getAuxiliaryRequestKey("song_analyzer"),
-          audioBase64,
-          mimeType: file.type as any,
-          model: model as any,
-          stage0Evidence: dspEvidence,
-        },
-      });
-
-      const guarded = await guardSongAnalyzerStageA({
-        data: {
-          audioBase64,
-          mimeType: file.type as any,
-          model: model as any,
-          stage0Evidence: sourceStemPreview
-            ? { ...response.stage0Evidence, sourceStemPreview }
-            : response.stage0Evidence,
-          stageAEvidence: response.stageAEvidence,
-          initialResult: response.result,
-        },
-      });
-
-      const finalized = await finalizeSongAnalysis({
-        data: {
-          initialResult: guarded.initialResult,
-          stage0Evidence: response.stage0Evidence,
-          stageAEvidence: guarded.stageAEvidence,
-          audioAnalysisModel: model as any,
-          finalModel: finalModel || undefined,
-          trackTitle: trackTitle.trim() || undefined,
-          artist: artist.trim() || undefined,
-        },
-      });
-
-      setResult(finalized.result);
-      setStage0Evidence(response.stage0Evidence);
-      setStageAEvidence(guarded.stageAEvidence as StageAEvidence);
-      setResultModel(response.model);
-      setFinalResultModelLabel(finalized.finalModelLabel);
-      completeAuxiliaryRequest("song_analyzer");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("songAnalyzer.analysisFailed"));
-    } finally {
-      setBusy(false);
-    }
+    void startAnalyzerBackground({
+      file,
+      model,
+      finalModel: finalModel || undefined,
+      trackTitle: trackTitle.trim() || undefined,
+      artist: artist.trim() || undefined,
+    });
   };
 
   const save = async () => {
@@ -419,6 +370,7 @@ function SongAnalyzerPage() {
                 accept=".mp3,.wav,.m4a,.mp4,.aac,.ogg,.flac,audio/*"
                 onChange={(event) => {
                   const nextFile = event.target.files?.[0] ?? null;
+                  if (!clearAnalyzerBackground()) return;
                   setFile(nextFile);
                   setResult(null);
                   setStage0Evidence(null);
@@ -441,7 +393,9 @@ function SongAnalyzerPage() {
                 <p className="text-[11px] text-muted-foreground">{t("songAnalyzer.sessionKept")}</p>
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => {
+                    if (!clearAnalyzerBackground()) return;
                     setFile(null);
                     setResult(null);
                     setStage0Evidence(null);
@@ -453,7 +407,7 @@ function SongAnalyzerPage() {
                     setError(null);
                     void clearAnalyzerSessionAudio().catch(() => undefined);
                   }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:border-red-400/30 hover:text-red-300 disabled:opacity-40"
                 >
                   <Trash2 className="h-3 w-3" /> {t("songAnalyzer.clearAudio")}
                 </button>
@@ -496,7 +450,8 @@ function SongAnalyzerPage() {
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value as typeof model)}
-                className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground"
+                disabled={busy}
+                className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground disabled:opacity-50"
               >
                 {SONG_ANALYZER_MODELS.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -511,7 +466,7 @@ function SongAnalyzerPage() {
               <select
                 value={finalModel}
                 onChange={(e) => setFinalModel(e.target.value)}
-                disabled={finalModelAccess.isLoading || !(finalModelAccess.data?.modelOptions.length)}
+                disabled={busy || finalModelAccess.isLoading || !(finalModelAccess.data?.modelOptions.length)}
                 className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground disabled:opacity-50"
               >
                 {(finalModelAccess.data?.modelOptions ?? []).map((item) => (
@@ -537,13 +492,18 @@ function SongAnalyzerPage() {
               )}
               {busy ? t("songAnalyzer.analyzing") : t("songAnalyzer.analyze")}
             </button>
+            {busy && (
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                Analysis continues if you navigate elsewhere in PromptBeats or the screen is temporarily locked. Return here to see the result.
+              </p>
+            )}
             {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
           </section>
 
           <section className="space-y-5">
             {!result ? (
               <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-                {t("songAnalyzer.empty")}
+                {busy ? t("songAnalyzer.analyzing") : t("songAnalyzer.empty")}
               </div>
             ) : (
               <>
