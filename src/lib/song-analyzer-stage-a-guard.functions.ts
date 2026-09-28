@@ -117,6 +117,16 @@ const keyboardFamilyValueSchema = z.enum([
   "uncertain",
 ]);
 
+const vocalDeliveryValueSchema = z.enum([
+  "melodic_singing",
+  "conversational_singing",
+  "sing_rap",
+  "rap",
+  "spoken_word",
+  "mixed",
+  "uncertain",
+]);
+
 const microProductionCueValueSchema = z.enum([
   "tape_saturation",
   "vinyl_crackle",
@@ -155,6 +165,12 @@ const verifierSchema = z.object({
     value: keyboardFamilyValueSchema,
     confidence: confidenceSchema,
     evidence: z.string().trim().min(1).max(1200),
+    cues: z.array(z.string().trim().min(1).max(300)).max(8),
+  }),
+  vocalDelivery: z.object({
+    value: vocalDeliveryValueSchema,
+    confidence: confidenceSchema,
+    evidence: z.string().trim().min(1).max(1400),
     cues: z.array(z.string().trim().min(1).max(300)).max(8),
   }),
   microProductionCues: z.array(z.object({
@@ -238,6 +254,19 @@ const VERIFIER_RESPONSE_SCHEMA = {
       },
       required: ["value", "confidence", "evidence", "cues"],
     },
+    vocalDelivery: {
+      type: "OBJECT",
+      properties: {
+        value: {
+          type: "STRING",
+          enum: ["melodic_singing", "conversational_singing", "sing_rap", "rap", "spoken_word", "mixed", "uncertain"],
+        },
+        confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+        evidence: { type: "STRING" },
+        cues: { type: "ARRAY", items: { type: "STRING" } },
+      },
+      required: ["value", "confidence", "evidence", "cues"],
+    },
     microProductionCues: {
       type: "ARRAY",
       items: {
@@ -263,39 +292,43 @@ const VERIFIER_RESPONSE_SCHEMA = {
       required: ["bpm", "confidence", "evidence"],
     },
   },
-  required: ["drumSource", "bassSource", "guitarPresence", "synthPresence", "rhythmicLayerSource", "keyboardFamily", "microProductionCues", "feltTempo"],
+  required: ["drumSource", "bassSource", "guitarPresence", "synthPresence", "rhythmicLayerSource", "keyboardFamily", "vocalDelivery", "microProductionCues", "feltTempo"],
 } as const;
 
 const VERIFIER_SYSTEM_PROMPT = `You are PromptBeats Stage A Critical Evidence Verifier.
 You hear the same source audio as the first Stage A pass. You are NOT a genre classifier.
-Independently verify eight high-impact facts that have caused run-to-run instability or detail loss:
+Independently verify nine high-impact facts that have caused run-to-run instability or detail loss:
 1. acoustic vs programmed/hybrid drum source,
 2. electric vs synth/hybrid bass source,
 3. audible rhythm/lead guitar presence,
 4. material synthesizer presence,
 5. neutral source identity of any ambiguous recurring rhythmic pluck/strum layer,
 6. keyboard/electric-piano family when materially audible,
-7. a small set of directly audible micro-production cues,
-8. felt tempo / half-double-time interpretation.
+7. vocal-delivery family independently of lyrics language,
+8. a small set of directly audible micro-production cues,
+9. felt tempo / half-double-time interpretation.
 
 NEUTRAL RHYTHMIC-LAYER RESOLVER
 When the supplied prompt says rhythmicLayerResolutionRequired=true, classify the recurring ambiguous mid/high rhythmic layer among these equal-priority possibilities: guitar, processed_guitar, synth_pluck, other_plucked_string, mixed, uncertain. Do not search for guitar preferentially. Use guitar or processed_guitar only when at least two independent guitar-like cues are audible, such as repeated chord strokes, pick/transient attacks, string resonance, fretting/muting noise, natural timing/velocity variation, or guitar-like harmonic decay. Quantized repetition, perfectly repeated envelopes, resonant synth filtering, or sequenced arpeggiation support synth_pluck. If cues conflict or are weak, use mixed or uncertain. When rhythmicLayerResolutionRequired=false, return uncertain unless an obvious layer is directly relevant to a supplied claim.
 
-If a DEMUCS OTHER-STEM PREVIEW is supplied, use it ONLY to resolve guitar / processed-guitar / synth-pluck / other-plucked-string / mixed / uncertain source identity and recurring guitar presence. The other stem is a residual mixture, not a solo guitar stem. Cross-check it against the full mix. It must not override full-mix evidence for drums, bass, tempo, vocals, genre, keyboard family, or production cues, and it must not create a guitar claim unless at least two direct guitar-like articulation cues are audible.
+If a DEMUCS OTHER-STEM PREVIEW is supplied, it is a residual mixture, not a solo instrument. Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity. It may secondarily corroborate a keyboard-family cue or distant electric-guitar swell only when the same cue is also audible in the full mix. It must never be the sole basis for keyboard or production claims, and it must not override full-mix evidence for drums, bass, tempo, vocals, or genre.
 
 GUITAR TECHNIQUE PRESERVATION
 For a recurring guitar, separately identify source family and playing technique. Fingerpicking/arpeggiation, flat-picking, strumming, palm muting, tremolo and chordal comping are distinct. Confirming that a source is guitar is NOT permission to rewrite an already well-supported fingerpicked/arpeggiated technique as generic strumming/comping. Preserve the most specific directly audible technique.
 
 KEYBOARD / ELECTRIC-PIANO CHECK
-If a keyboard-family layer is materially audible, distinguish only when direct timbre supports it: Rhodes (bell-like tine attack, warm rounded body, soft bark when struck harder), Wurlitzer (reedier/nasal bite and growl), acoustic piano (hammer/string attack and acoustic decay), synth keys (clearly synthetic oscillator/filter behavior), pad_only, none, or uncertain. Do not call a generic warm pad Rhodes. High confidence requires multiple direct timbral cues; otherwise use uncertain.
+Actively inspect the intro, verses, choruses, bridge/breakdown and outro for keyboard-family material even if the first pass called it a generic pad or omitted it. Distinguish only when direct timbre supports it: Rhodes (bell-like tine attack, warm rounded body, soft bark when struck harder), Wurlitzer (reedier/nasal bite and growl), acoustic piano (hammer/string attack and acoustic decay), synth keys (clearly synthetic oscillator/filter behavior), pad_only, none, or uncertain. Do not call a generic warm pad Rhodes. High confidence requires multiple direct timbral cues; otherwise use uncertain.
+
+VOCAL DELIVERY CHECK
+Classify delivery independently of language, lyrical meaning, artist identity and genre expectation. Distinguish melodic_singing, conversational_singing, sing_rap, rap, spoken_word, mixed or uncertain. Evaluate pitch anchoring, syllabic density, rhythmic locking to the beat, syncopation, speech-to-song balance, bar-length cadence and whether phrases are carried primarily by melody or by rhythmic speech. Conversational singing is not automatically sing-rap. Sing-rap requires meaningful rhythmic-speech behavior alongside melodic pitch. High confidence requires multiple direct delivery cues.
 
 MICRO-PRODUCTION CHECK
-Report only directly audible instances of: tape saturation, vinyl crackle, low-pass-filtered guitar, or distant electric-guitar swells. Do not infer any of them from genre, mood, lo-fi aesthetics, or a warm mix. Return an empty array when they are not directly audible. Use high confidence only for unmistakable cues.
+Actively inspect quiet openings/endings, breakdowns and transitions as well as full sections. Report only directly audible instances of: tape saturation, vinyl crackle, low-pass-filtered guitar, or distant electric-guitar swells. Do not infer any of them from genre, mood, lo-fi aesthetics, or a warm mix. Return an empty array when they are not directly audible. Use high confidence only for unmistakable cues.
 
 For rhythm guitar, explicitly test whether a sustained chordal strumming/comping OR fingerpicked/arpeggiated texture is audible across meaningful sections. Do not reduce a clearly recurring rhythm-guitar part to a generic plucked-string or synth label merely because acoustic-vs-clean-electric source is uncertain. Conversely, do not call a quantized pluck patch or sampled transient a guitar without direct guitar-like articulation evidence.
 
 Do not trust the first Stage A pass merely because it is supplied. Treat it as claims to test against the audio.
-Use high confidence only when direct timbre/articulation/rhythmic evidence is unmistakable. If source identity is ambiguous, return uncertain or mixed rather than guessing.
+Use high confidence only when direct timbre/articulation/rhythmic evidence is unmistakable. If source identity or delivery family is ambiguous, return uncertain or mixed rather than guessing.
 Do not identify artist/track, do not classify genre, and do not transcribe lyrics.
 Return only the requested JSON.`;
 
@@ -373,8 +406,8 @@ function compactMmSsSeconds(value: number) {
   return seconds === value ? null : seconds;
 }
 
-function collectCrossFieldClockSeconds(evidence: StageAEvidence) {
-  const texts = [
+function crossFieldTexts(evidence: StageAEvidence) {
+  return [
     ...evidence.arrangementChanges.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.melodicElements.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.instrumentEvidence.map((item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
@@ -383,7 +416,32 @@ function collectCrossFieldClockSeconds(evidence: StageAEvidence) {
     ...evidence.productionMixEvidence.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.vocalCharacteristics.map((item) => `${item.claim} ${item.evidence}`),
   ];
-  return new Set(texts.flatMap((text) => explicitMmSs(text).map((value) => value.seconds)));
+}
+
+function collectCrossFieldClockSeconds(evidence: StageAEvidence) {
+  return new Set(crossFieldTexts(evidence).flatMap((text) => explicitMmSs(text).map((value) => value.seconds)));
+}
+
+function normalizedSectionKeywords(label: string) {
+  const matches = label.toLowerCase().match(/intro|verse|pre[- ]?chorus|chorus|bridge|breakdown|build(?:-?up)?|interlude|solo|outro|ending|fade|climax/g) ?? [];
+  return [...new Set(matches.map((value) => value.replace(/[- ]/g, "")))];
+}
+
+function recoverNullSectionStart(evidence: StageAEvidence, label: string, durationSeconds: number, minimumSeconds: number | null) {
+  const keywords = normalizedSectionKeywords(label);
+  if (!keywords.length) return null;
+  const candidates: number[] = [];
+  for (const text of crossFieldTexts(evidence)) {
+    const normalized = text.toLowerCase().replace(/[- ]/g, "");
+    if (!keywords.some((keyword) => normalized.includes(keyword))) continue;
+    for (const clock of explicitMmSs(text)) {
+      if (clock.seconds > durationSeconds + 0.5) continue;
+      if (minimumSeconds != null && clock.seconds + 0.5 < minimumSeconds) continue;
+      candidates.push(clock.seconds);
+    }
+  }
+  if (!candidates.length) return null;
+  return Math.min(...candidates);
 }
 
 function matchesCrossFieldClock(value: number, crossFieldClockSeconds: Set<number>) {
@@ -448,6 +506,7 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   let removals = 0;
   let overlapRepairs = 0;
   let explicitRecoveries = 0;
+  let crossFieldRecoveries = 0;
   let previousStart: number | null = null;
 
   const songSections = evidence.songSections.map((section) => {
@@ -463,6 +522,14 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
       if (previousStart == null || candidate + 0.5 >= previousStart) {
         startSeconds = candidate;
         explicitRecoveries += 1;
+        if (confidence === "high") confidence = "medium";
+      }
+    }
+    if (startSeconds == null) {
+      const recovered = recoverNullSectionStart(evidence, section.label, durationSeconds, previousStart);
+      if (recovered != null) {
+        startSeconds = recovered;
+        crossFieldRecoveries += 1;
         if (confidence === "high") confidence = "medium";
       }
     }
@@ -529,9 +596,9 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   }
 
   const uncertaintyNotes = [...evidence.uncertaintyNotes];
-  if (corrections || removals || overlapRepairs || explicitRecoveries) {
+  if (corrections || removals || overlapRepairs || explicitRecoveries || crossFieldRecoveries) {
     uncertaintyNotes.push(
-      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s), recovered ${explicitRecoveries} explicit/terminal boundary value(s), repaired ${overlapRepairs} overlapping boundary pair(s), and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Compact mm:ss recovery mode=${compactClockMode ? "on" : "off"}; cross-field clock references=${crossFieldClockSeconds.size}. Null boundaries must remain uncertain downstream.`,
+      `Deterministic timeline guard corrected ${corrections} mm:ss-to-seconds confusion(s), recovered ${explicitRecoveries} explicit/terminal boundary value(s), recovered ${crossFieldRecoveries} label-matched cross-field start boundary value(s), repaired ${overlapRepairs} overlapping boundary pair(s), and removed ${removals} boundary value(s) outside or inconsistent with the measured ${durationSeconds.toFixed(2)} s duration. Compact mm:ss recovery mode=${compactClockMode ? "on" : "off"}; cross-field clock references=${crossFieldClockSeconds.size}. Null boundaries must remain uncertain downstream.`,
     );
   }
   return { ...evidence, songSections, uncertaintyNotes: uncertaintyNotes.slice(0, 30) };
@@ -807,6 +874,28 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     notes.push(`Stage A keyboard-family verifier classified the material keyboard layer as ${keyboard.value} with ${keyboard.confidence} confidence from direct timbral cues.`);
   }
 
+  let vocalCharacteristics = [...evidence.vocalCharacteristics];
+  const vocalDelivery = verification.vocalDelivery;
+  if (verifierStrongEnough(vocalDelivery.confidence) && vocalDelivery.value !== "uncertain") {
+    const labels: Record<string, string> = {
+      melodic_singing: "Verified melodic singing delivery",
+      conversational_singing: "Verified conversational singing delivery",
+      sing_rap: "Verified sing-rap delivery",
+      rap: "Verified rap delivery",
+      spoken_word: "Verified spoken-word delivery",
+      mixed: "Verified mixed sung / rhythmic-speech delivery",
+    };
+    const existing = vocalCharacteristics.some((item) => /sing-rap|rap delivery|spoken-word|conversational singing|melodic singing|rhythmic-speech/i.test(`${item.claim} ${item.evidence}`));
+    if (!existing && vocalCharacteristics.length < 20) {
+      vocalCharacteristics.push({
+        claim: labels[vocalDelivery.value] ?? `Verified vocal delivery: ${vocalDelivery.value}`,
+        evidence: vocalDelivery.evidence,
+        confidence: vocalDelivery.confidence,
+      });
+    }
+    notes.push(`Stage A vocal-delivery verifier classified the lead delivery as ${vocalDelivery.value} with ${vocalDelivery.confidence} confidence from pitch/rhythm/speech-balance cues; this is delivery evidence, not a genre label.`);
+  }
+
   let productionMixEvidence = [...evidence.productionMixEvidence];
   const productionCueLabels: Record<string, string> = {
     tape_saturation: "Tape-like saturation / soft harmonic coloration",
@@ -855,7 +944,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     notes.push(`Stage A stability guard: ${conflict}. Conflicting specific claims were confidence-downgraded before final interpretation.`);
   }
 
-  return { ...evidence, instrumentEvidence, dominantElements, productionMixEvidence, tempo, uncertaintyNotes: notes.slice(0, 30) };
+  return { ...evidence, instrumentEvidence, dominantElements, vocalCharacteristics, productionMixEvidence, tempo, uncertaintyNotes: notes.slice(0, 30) };
 }
 
 function evidenceDerivedInstruments(evidence: StageAEvidence) {
@@ -923,7 +1012,7 @@ async function runVerifier(args: {
     `rhythmicLayerResolutionRequired=${layerResolutionRequired}`,
     `otherStemPreviewAvailable=${stemPreviewUsed}`,
     stemPreviewUsed
-      ? `The following additional audio part is a distributed Demucs OTHER-stem preview covering windows ${args.sourceStemPreview!.windows.map((window) => `${window.startSeconds.toFixed(1)}-${window.endSeconds.toFixed(1)}s`).join(", ")}. Use it only for source disambiguation as instructed.`
+      ? `The following additional audio part is a distributed Demucs OTHER-stem preview covering windows ${args.sourceStemPreview!.windows.map((window) => `${window.startSeconds.toFixed(1)}-${window.endSeconds.toFixed(1)}s`).join(", ")}. Use it only as allowed by the verifier instructions.`
       : "No isolated other-stem preview is available for this run.",
     "First-pass Stage A claims to independently verify:",
     JSON.stringify({
@@ -933,6 +1022,8 @@ async function runVerifier(args: {
       harmonicFoundation: args.evidence.harmonicFoundation,
       dominantElements: args.evidence.dominantElements,
       instrumentEvidence: args.evidence.instrumentEvidence,
+      vocalCharacteristics: args.evidence.vocalCharacteristics,
+      arrangementChanges: args.evidence.arrangementChanges,
       productionMixEvidence: args.evidence.productionMixEvidence,
     }),
   ].join("\n");
@@ -942,7 +1033,7 @@ async function runVerifier(args: {
   ];
   if (stemPreviewUsed && args.sourceStemPreview) {
     parts.push({
-      text: "DEMUCS OTHER-STEM PREVIEW: residual non-vocal/non-drum/non-bass mixture sampled across the track. Use only for neutral instrument-source disambiguation.",
+      text: "DEMUCS OTHER-STEM PREVIEW: residual non-vocal/non-drum/non-bass mixture sampled across the track. Full mix remains authoritative; use this only as secondary corroboration where explicitly allowed.",
     });
     parts.push({
       inlineData: {
@@ -964,7 +1055,7 @@ async function runVerifier(args: {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: VERIFIER_RESPONSE_SCHEMA,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 4608,
           temperature: 0,
         },
       }),
@@ -1014,7 +1105,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
             ...evidence,
             uncertaintyNotes: [
               ...evidence.uncertaintyNotes,
-              "Stage A stem-assisted resolver used a distributed Demucs other-stem preview as secondary source-identity evidence for the ambiguous rhythmic pluck/strum layer; full-mix evidence remained authoritative for all other claims.",
+              "Stage A stem-assisted resolver used a distributed Demucs other-stem preview as secondary corroboration for permitted source-detail checks; full-mix evidence remained authoritative for all musical claims.",
             ].slice(0, 30),
           };
         }
@@ -1041,7 +1132,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           ...evidence,
           uncertaintyNotes: [
             ...evidence.uncertaintyNotes,
-            "Stage A critical-evidence verification was unavailable; deterministic timeline validation still ran, but source-family stability was not independently cross-checked.",
+            "Stage A critical-evidence verification was unavailable; deterministic timeline validation still ran, but source-family and delivery stability were not independently cross-checked.",
           ].slice(0, 30),
         };
         console.warn("[song-analyzer] Stage A verifier unavailable; continuing with deterministic guard", {
