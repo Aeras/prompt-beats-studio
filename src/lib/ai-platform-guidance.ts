@@ -76,6 +76,16 @@ SUNO STYLE PROMPT
 - Write it in concise, information-dense English.
 - Describe the finished song's genre/subgenre, tempo/BPM feel, groove, instrumentation, bass, drums, vocal character, vocal arrangement, production texture, atmosphere, dynamics and arrangement arc.
 - Use concrete musical information rather than disconnected keyword spam, filler adjectives, artist names or contradictory directions.
+- The complete final Suno Style Prompt must never exceed 1000 characters, including spaces and punctuation. Do not pad it merely to approach the limit.
+
+SUNO ADVANCED PRODUCTION ENRICHMENT — SAME GENERATION CALL
+- When the brief above contains Advanced user direction, a requested production/arrangement treatment, a detailed structure/Blueprint, additional instructions, or other clearly detailed Advanced musical direction, make the final "tags" field the complete platform-ready Music Style result in this same response.
+- Keep the Producer's Note in the requested song language exactly as required elsewhere in the prompt.
+- At the same time, select the most generator-useful production choices represented by the song and Producer's Note — for example important instrument entrances/exits, vocal character, dynamics, arrangement arc, intro/outro treatment, builds, breakdowns, ambience, production texture, space/mix character and meaningful section-specific contrasts — and incorporate the highest-value ones into "tags" in ENGLISH.
+- Do not translate or copy the Producer's Note wholesale into "tags". Condense only the production information that materially helps Suno generate the intended song.
+- Treat the existing musical identity in "tags" as essential. Add production detail only within the remaining 1000-character budget and prioritize the most important cues when space is limited.
+- If the existing Music Style already uses most of the budget, include only the highest-value production cues that fit naturally. Never exceed 1000 characters.
+- If the brief is not using detailed Advanced direction, keep the normal concise Suno Style Prompt behavior above rather than artificially expanding it.
 
 SUNO LYRICS / DIRECTIONS
 - Keep the existing PromptBeats Suno lyric conventions that already work well: clear square-bracketed structural tags and concise vocal/production directions when useful.
@@ -108,6 +118,8 @@ The song was generated specifically for Udio. Evaluate platform formatting and p
 The song was generated specifically for Suno. Evaluate platform formatting and Style Prompt compatibility accordingly.
 
 - Treat the "tags" field as the Suno Style Prompt.
+- The Suno Style Prompt must be no more than 1000 characters including spaces and punctuation.
+- English production detail inside the Suno Style Prompt is correct even when the lyrics and Producer's Note use another requested language.
 - Square-bracketed structural, vocal and production directions are allowed when coherent and useful.
 - Round parentheses are allowed only for words literally intended to be sung as backing vocals, echoes, responses or ad-libs.
 - Round parentheses must not be used for non-sung structural, instrumental, vocal-performance, arrangement, production or sound-design directions.
