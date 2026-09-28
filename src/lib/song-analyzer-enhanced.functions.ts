@@ -198,7 +198,7 @@ async function buildReferenceMemory(vector: number[]) {
   let candidates = mapReferenceCandidates(result);
   let metadataEligible = candidates.filter(hasUsefulStyleMetadata);
 
-  if (metadataEligible.length < REFERENCE_MEMORY_MIN_GENRE_MATCHES) {
+  if (metadataEligible.length < REFERENCE_MEMORY_LIMIT) {
     result = await queryMusicMemoryByVector({
       vector,
       limit: REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT,
