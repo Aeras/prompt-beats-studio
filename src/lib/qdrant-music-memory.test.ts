@@ -64,10 +64,10 @@ describe("Qdrant music memory POC", () => {
     expect(enhanced).toContain("deduplicated.slice(0, REFERENCE_MEMORY_LIMIT)");
   });
 
-  test("expands retrieval only when the nearest candidate set is metadata-sparse", async () => {
+  test("expands retrieval only when the nearest candidate set is too metadata-sparse to fill the guarded shortlist", async () => {
     const enhanced = await source("src/lib/song-analyzer-enhanced.functions.ts");
     expect(enhanced).toContain("REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT = 192");
-    expect(enhanced).toContain("metadataEligible.length < REFERENCE_MEMORY_MIN_GENRE_MATCHES");
+    expect(enhanced).toContain("metadataEligible.length < REFERENCE_MEMORY_LIMIT");
     expect(enhanced).toContain("limit: REFERENCE_MEMORY_EXPANDED_QUERY_LIMIT");
     expect(enhanced).toContain("mapReferenceCandidates");
   });
