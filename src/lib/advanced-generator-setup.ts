@@ -76,8 +76,8 @@ export function parseAdvancedSetup(
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "invalid" };
   const obj = raw as Record<string, unknown>;
-  if (obj.format !== ADVANCED_SETUP_FORMAT) return { ok: false, error: "invalid" };
-  if (obj.schemaVersion !== ADVANCED_SETUP_SCHEMA_VERSION) return { ok: false, error: "version" };
+  if (obj["format"] !== ADVANCED_SETUP_FORMAT) return { ok: false, error: "invalid" };
+  if (obj["schemaVersion"] !== ADVANCED_SETUP_SCHEMA_VERSION) return { ok: false, error: "version" };
   const parsed = envelopeSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const setup = parsed.data.setup;
