@@ -1,4 +1,5 @@
 import { analyzeEnhancedStage0 } from "@/lib/song-analyzer-enhanced.functions";
+import type { AnalyzerSourceStemPreview } from "@/lib/song-analyzer-enhanced.shared";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
 export type AnalyzerSimilarityEmbedding = {
@@ -6,12 +7,24 @@ export type AnalyzerSimilarityEmbedding = {
   vector: number[];
 };
 
+let pendingSourceStemPreview: AnalyzerSourceStemPreview | null = null;
+
+export function consumeAnalyzerSourceStemPreview() {
+  const preview = pendingSourceStemPreview;
+  pendingSourceStemPreview = null;
+  return preview;
+}
+
 /**
  * Compatibility adapter retained so the existing Song Analyzer route does not
  * duplicate transport logic. Browser-side Essentia.js/WASM has been removed;
  * Super Admin analysis now obtains Stage 0 evidence from the external GPU
  * worker (Demucs + Essentia + MERT + fusion). If that experimental worker is
  * unavailable, the existing deterministic browser DSP remains the fallback.
+ *
+ * The short Demucs `other` preview is transient verifier transport. It is
+ * intentionally removed from the Stage 0 object before Stage A, Final Judge,
+ * debug rendering, or persistence can see it.
  */
 async function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -35,6 +48,7 @@ export async function analyzeStage0EssentiaWithSimilarity(
   similarityEmbedding: AnalyzerSimilarityEmbedding | null;
 }> {
   const startedAt = performance.now();
+  pendingSourceStemPreview = null;
 
   try {
     const audioBase64 = await fileToBase64(file);
@@ -44,11 +58,17 @@ export async function analyzeStage0EssentiaWithSimilarity(
         mimeType: file.type as any,
       },
     });
+    const transported = response.stage0Evidence as Stage0DspEvidence & {
+      sourceStemPreview?: AnalyzerSourceStemPreview;
+    };
+    const { sourceStemPreview, ...cleanStage0Evidence } = transported;
+    pendingSourceStemPreview = sourceStemPreview ?? null;
     return {
-      stage0Evidence: response.stage0Evidence,
+      stage0Evidence: cleanStage0Evidence as Stage0DspEvidence,
       similarityEmbedding: response.similarityEmbedding ?? null,
     };
   } catch (error) {
+    pendingSourceStemPreview = null;
     return {
       stage0Evidence: {
         ...legacy,

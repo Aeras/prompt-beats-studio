@@ -4,6 +4,14 @@ import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
 const nullableNumber = z.number().finite().nullable();
 
+export type AnalyzerSourceStemPreview = {
+  source: "demucs_other";
+  mimeType: "audio/mpeg";
+  audioBase64: string;
+  durationSeconds: number | null;
+  windows: Array<{ startSeconds: number; endSeconds: number }>;
+};
+
 const tempoSourceSchema = z
   .object({
     source: z.string().trim().min(1).max(80),
@@ -97,7 +105,8 @@ export function buildEnhancedStage0Evidence(args: {
   durationSeconds: number | null;
   totalMs: number | null;
   workerEngine?: string | null;
-}): Stage0DspEvidence {
+  sourceStemPreview?: AnalyzerSourceStemPreview;
+}): Stage0DspEvidence & { sourceStemPreview?: AnalyzerSourceStemPreview } {
   const evidence = args.canonicalEvidence;
   const primaryBpm = rounded(evidence.tempo.primary_candidate_bpm, 3);
   const alternateBpm = rounded(evidence.tempo.alternate_candidate_bpm, 3);
@@ -120,8 +129,6 @@ export function buildEnhancedStage0Evidence(args: {
     version: "stage0-dsp-v1",
     available: true,
     engine: {
-      // Keep the existing Stage0 contract discriminator for backward compatibility.
-      // methodVersion/algorithms identify that the actual computation is the external enhanced worker.
       name: "essentia",
       engineVersion: args.workerEngine || "demucs+essentia+mert+fusion",
       methodVersion: "promptbeats-runpod-enhanced-stage0-v1",
@@ -202,6 +209,7 @@ export function buildEnhancedStage0Evidence(args: {
       timeSec: rounded(item.time_seconds, 3) ?? 0,
       strength: rounded(item.novelty, 6) ?? 0,
     })),
+    ...(args.sourceStemPreview ? { sourceStemPreview: args.sourceStemPreview } : {}),
     limitations,
   };
 }

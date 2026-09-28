@@ -19,6 +19,22 @@ const referenceMemoryGenreConsensusSchema = z.object({
   share: z.number().min(0).max(1).finite(),
 });
 
+const sourceStemPreviewSchema = z.object({
+  source: z.literal("demucs_other"),
+  mimeType: z.literal("audio/mpeg"),
+  audioBase64: z.string().min(1).max(2_000_000),
+  durationSeconds: z.number().positive().finite().nullable(),
+  windows: z
+    .array(
+      z.object({
+        startSeconds: z.number().nonnegative().finite(),
+        endSeconds: z.number().nonnegative().finite(),
+      }),
+    )
+    .min(1)
+    .max(8),
+});
+
 export const stage0DspEvidenceSchema = z.object({
   version: z.literal("stage0-dsp-v1"),
   available: z.boolean(),
@@ -114,6 +130,7 @@ export const stage0DspEvidenceSchema = z.object({
       }),
     )
     .max(16),
+  sourceStemPreview: sourceStemPreviewSchema.optional(),
   referenceMemory: z
     .object({
       used: z.boolean(),

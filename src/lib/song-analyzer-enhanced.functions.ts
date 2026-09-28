@@ -39,6 +39,22 @@ const enhancedInputSchema = z.object({
   mimeType: z.enum(supportedMimeTypes),
 });
 
+const workerStemPreviewSchema = z.object({
+  source: z.literal("demucs_other"),
+  mime_type: z.literal("audio/mpeg"),
+  audio_base64: z.string().min(1).max(2_000_000),
+  duration_seconds: z.number().positive().finite().nullable(),
+  windows: z
+    .array(
+      z.object({
+        start_seconds: z.number().nonnegative().finite(),
+        end_seconds: z.number().nonnegative().finite(),
+      }),
+    )
+    .min(1)
+    .max(8),
+});
+
 const workerOutputSchema = z
   .object({
     ok: z.literal(true),
@@ -50,6 +66,11 @@ const workerOutputSchema = z
       .passthrough(),
     canonical_evidence: enhancedCanonicalEvidenceSchema,
     similarity_embedding: similarityVectorSchema.nullable().optional(),
+    stem_previews: z
+      .object({
+        other: workerStemPreviewSchema.optional(),
+      })
+      .optional(),
   })
   .passthrough();
 
@@ -364,11 +385,25 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
       const audioUrl = await createSignedR2GetUrl(key, 30 * 60);
       const worker = await runEnhancedWorker(audioUrl);
       const canonicalEvidence = worker.output.canonical_evidence;
+      const rawStemPreview = worker.output.stem_previews?.other;
+      const sourceStemPreview = rawStemPreview
+        ? {
+            source: "demucs_other" as const,
+            mimeType: "audio/mpeg" as const,
+            audioBase64: rawStemPreview.audio_base64,
+            durationSeconds: rawStemPreview.duration_seconds,
+            windows: rawStemPreview.windows.map((window) => ({
+              startSeconds: window.start_seconds,
+              endSeconds: window.end_seconds,
+            })),
+          }
+        : undefined;
       let stage0Evidence = buildEnhancedStage0Evidence({
         canonicalEvidence,
         durationSeconds: worker.output.input.duration_seconds ?? null,
         totalMs: Date.now() - startedAt,
         workerEngine: worker.output.engine,
+        sourceStemPreview,
       });
 
       const similarityEmbedding = worker.output.similarity_embedding ?? null;
