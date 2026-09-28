@@ -139,14 +139,13 @@ export const AI_PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
   {
     id: "dashscope",
     label: "Alibaba Cloud Model Studio",
-    secretNames: ["DASHSCOPE_API_KEY"],
-    discoveryUrl:
-      "https://{workspaceId}.eu-central-1.maas.aliyuncs.com/api/v1/models?page_no=1&page_size=200&language=en-US",
+    secretNames: ["DASHSCOPE_API_KEY", "DASHSCOPE_API_HOST"],
+    discoveryUrl: "{apiHost}/api/v1/models?page_no=1&page_size=200&language=en-US",
     auth: "bearer",
     apiDialect: "openai-compatible",
     compatibility: {
       dialect: "openai-chat",
-      url: "https://{workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
+      url: "{apiHost}/compatible-mode/v1/chat/completions",
       jsonMode: true,
     },
   },
@@ -280,19 +279,39 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function dashscopeApiOrigin(): string {
+  const configured = process.env["DASHSCOPE_API_HOST"]?.trim();
+  if (!configured) {
+    throw new Error("Alibaba Cloud Model Studio requires DASHSCOPE_API_HOST in Secrets.");
+  }
+
+  const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error("DASHSCOPE_API_HOST is invalid.");
+  }
+
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    (parsed.pathname !== "/" && parsed.pathname !== "") ||
+    !parsed.hostname.endsWith(".eu-central-1.maas.aliyuncs.com")
+  ) {
+    throw new Error("DASHSCOPE_API_HOST must be a Frankfurt Model Studio API Host.");
+  }
+
+  return parsed.origin;
+}
+
 function resolveProviderUrl(provider: ProviderRegistryEntry, url: string): string {
-  if (!url.includes("{workspaceId}")) return url;
+  if (!url.includes("{apiHost}")) return url;
   if (provider.id !== "dashscope") throw new Error("Provider endpoint configuration is invalid.");
-  const workspaceId = process.env["DASHSCOPE_WORKSPACE_ID"]?.trim();
-  if (!workspaceId) {
-    throw new Error(
-      "Alibaba Cloud Model Studio Frankfurt requires DASHSCOPE_WORKSPACE_ID in Secrets.",
-    );
-  }
-  if (!/^[A-Za-z0-9_-]{1,160}$/.test(workspaceId)) {
-    throw new Error("DASHSCOPE_WORKSPACE_ID is invalid.");
-  }
-  return url.replace("{workspaceId}", workspaceId);
+  return url.replace("{apiHost}", dashscopeApiOrigin());
 }
 
 function getRows(provider: ProviderRegistryEntry, payload: any): any[] {
