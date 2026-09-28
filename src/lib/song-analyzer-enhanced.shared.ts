@@ -97,7 +97,6 @@ export function buildEnhancedStage0Evidence(args: {
   durationSeconds: number | null;
   totalMs: number | null;
   workerEngine?: string | null;
-  sourceStemPreview?: Stage0DspEvidence["sourceStemPreview"];
 }): Stage0DspEvidence {
   const evidence = args.canonicalEvidence;
   const primaryBpm = rounded(evidence.tempo.primary_candidate_bpm, 3);
@@ -203,7 +202,6 @@ export function buildEnhancedStage0Evidence(args: {
       timeSec: rounded(item.time_seconds, 3) ?? 0,
       strength: rounded(item.novelty, 6) ?? 0,
     })),
-    sourceStemPreview: args.sourceStemPreview,
     limitations,
   };
 }
