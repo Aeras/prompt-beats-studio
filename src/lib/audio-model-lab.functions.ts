@@ -5,22 +5,15 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const AUDIO_MODEL_LAB_MAX_FILE_BYTES = 14 * 1024 * 1024;
-const QWEN_MAX_BASE64_CHARS = 10_000_000;
-const QWEN_MODEL_ID = "qwen3.8-omni-flash";
 
 export const AUDIO_MODEL_LAB_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "gemini" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "gemini" },
-  { id: "qwen-3.8-omni-flash", label: "Qwen 3.8 Omni Flash", provider: "dashscope" },
 ] as const;
 
 export type AudioModelLabModelId = (typeof AUDIO_MODEL_LAB_MODELS)[number]["id"];
 
-const modelSchema = z.enum([
-  "gemini-3.8-flash",
-  "gemini-3.1-pro-preview",
-  "qwen-3.8-omni-flash",
-]);
+const modelSchema = z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]);
 
 const inputSchema = z.object({
   model: modelSchema,
@@ -88,39 +81,6 @@ async function requireAdmin(supabase: any) {
   if (error || data !== true) throw new Error("Audio Model Lab is restricted to administrators.");
 }
 
-function extensionForAudio(fileName: string, mimeType: string) {
-  const ext = fileName.toLowerCase().split(".").pop() ?? "";
-  if (["mp3", "wav", "aac"].includes(ext)) return ext;
-  const subtype = mimeType.toLowerCase().split("/")[1]?.split(";")[0] ?? "";
-  if (subtype === "mpeg") return "mp3";
-  if (subtype === "x-wav" || subtype === "wave") return "wav";
-  return subtype || "mp3";
-}
-
-function dashscopeApiOrigin(): string {
-  const configured = process.env["DASHSCOPE_API_HOST"]?.trim();
-  if (!configured) throw new Error("DASHSCOPE_API_HOST is not configured.");
-  const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
-  let parsed: URL;
-  try {
-    parsed = new URL(candidate);
-  } catch {
-    throw new Error("DASHSCOPE_API_HOST is invalid.");
-  }
-  if (
-    parsed.protocol !== "https:" ||
-    parsed.username ||
-    parsed.password ||
-    parsed.search ||
-    parsed.hash ||
-    (parsed.pathname !== "/" && parsed.pathname !== "") ||
-    !parsed.hostname.endsWith(".eu-central-1.maas.aliyuncs.com")
-  ) {
-    throw new Error("DASHSCOPE_API_HOST must be a Frankfurt Model Studio API Host.");
-  }
-  return parsed.origin;
-}
-
 async function analyzeWithGemini(model: string, audioBase64: string, mimeType: string) {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
@@ -148,78 +108,6 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
   return text;
 }
 
-async function analyzeWithDashscopeQwen(
-  audioBase64: string,
-  mimeType: string,
-  fileName: string,
-) {
-  const apiKey = process.env["DASHSCOPE_API_KEY"]?.trim();
-  if (!apiKey) throw new Error("DASHSCOPE_API_KEY is not configured.");
-  if (audioBase64.length >= QWEN_MAX_BASE64_CHARS) {
-    throw new Error("Qwen direct Base64 audio input must be smaller than 10 MB encoded.");
-  }
-
-  const format = extensionForAudio(fileName, mimeType);
-  if (!["mp3", "wav", "aac"].includes(format)) {
-    throw new Error("Qwen direct audio test currently supports MP3, WAV, or AAC files.");
-  }
-
-  const response = await fetch(`${dashscopeApiOrigin()}/compatible-mode/v1/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(7 * 60 * 1000),
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: QWEN_MODEL_ID,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_audio",
-              input_audio: {
-                data: `data:;base64,${audioBase64}`,
-                format,
-              },
-            },
-            { type: "text", text: ANALYSIS_PROMPT },
-          ],
-        },
-      ],
-      modalities: ["text"],
-      temperature: 0.15,
-      max_tokens: 8192,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = (await response.text()).slice(0, 700);
-    console.warn("[audio-model-lab] Alibaba Qwen audio request failed", {
-      status: response.status,
-      model: QWEN_MODEL_ID,
-      body,
-    });
-    throw new Error(`Alibaba Qwen audio analysis failed (HTTP ${response.status}).`);
-  }
-
-  const payload = (await response.json()) as {
-    choices?: Array<{
-      message?: { content?: string | Array<{ type?: string; text?: string }> };
-    }>;
-  };
-  const content = payload.choices?.[0]?.message?.content;
-  const text =
-    typeof content === "string"
-      ? content.trim()
-      : Array.isArray(content)
-        ? content.map((part) => part.text ?? "").join("").trim()
-        : "";
-  if (!text) throw new Error("Qwen returned an empty analysis from Alibaba Cloud Model Studio.");
-  return text;
-}
-
 export const getAudioModelLabAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -239,18 +127,6 @@ export const analyzeAudioWithLabModel = createServerFn({ method: "POST" })
     }
 
     const startedAt = Date.now();
-    if (data.model === "qwen-3.8-omni-flash") {
-      const text = await analyzeWithDashscopeQwen(data.audioBase64, data.mimeType, data.fileName);
-      return {
-        model: data.model,
-        label: "Qwen 3.8 Omni Flash",
-        provider: "Alibaba Cloud Model Studio",
-        providerModelId: QWEN_MODEL_ID,
-        text,
-        durationMs: Date.now() - startedAt,
-      };
-    }
-
     const label = data.model === "gemini-3.8-flash" ? "Gemini 3.8 Flash" : "Gemini 3.1 Pro";
     const text = await analyzeWithGemini(data.model, data.audioBase64, data.mimeType);
     return {
