@@ -12,7 +12,7 @@ async function source(path: string) {
 }
 
 describe("Song Universe", () => {
-  test("Creative Bible supports Core, Flexible and Experimental identity without forcing repetition", () => {
+  test("Creative Bible supports strength and safe recurrence without forcing repetition", () => {
     const bible = songUniverseCreativeBibleSchema.parse({
       items: [
         {
@@ -28,6 +28,7 @@ describe("Song Universe", () => {
           section: "musical_identity",
           content: "Warm electric guitar",
           strength: "flexible",
+          recurrence: "frequent",
           enabled: true,
           sortOrder: 0,
         },
@@ -36,15 +37,18 @@ describe("Song Universe", () => {
           section: "vocal_identity",
           content: "One optional duet",
           strength: "experimental",
+          recurrence: "rare",
           enabled: true,
           sortOrder: 0,
         },
       ],
     });
     expect(bible.items.map((item) => item.strength)).toEqual(["core", "flexible", "experimental"]);
+    expect(bible.items[0]?.recurrence).toBe("occasional");
+    expect(bible.items[1]?.recurrence).toBe("frequent");
   });
 
-  test("Song Setup handoff is structured and explicit Project instructions retain priority", () => {
+  test("legacy Song Setup handoff remains valid while explicit Project instructions retain priority", () => {
     const handoff = songUniverseSongSetupHandoffSchema.parse({
       version: 1,
       universeId: "00000000-0000-4000-8000-000000000001",
@@ -79,9 +83,7 @@ describe("Song Universe", () => {
     });
     const context = buildSongUniverseContextText(handoff, "en");
     expect(context).toContain("Bittersweet and nocturnal");
-    expect(context).toContain(
-      "Explicit instructions for the current song always override Universe context",
-    );
+    expect(context).toContain("explicit current-song instructions override Universe recommendations");
   });
 
   test("database is private, one-primary-Universe, ownership validated and delete preserves Projects", async () => {
@@ -124,7 +126,7 @@ describe("Song Universe", () => {
     expect(generator).toContain("Using Universe Context");
   });
 
-  test("AI actions are deliberate, AI Tools-backed, usage-tracked and recognize intentional outliers without numeric scores", async () => {
+  test("AI actions are deliberate, AI Tools-backed, usage-tracked and use dedicated operation names", async () => {
     const route = await source("src/routes/song-universe.tsx");
     const ai = await source("src/lib/song-universe-ai.functions.ts");
     const admission = await source("src/lib/ai-admission.server.ts");
@@ -135,23 +137,28 @@ describe("Song Universe", () => {
     expect(ai).toContain("intentionalOutlier");
     expect(ai).toContain("Never output a numeric quality score");
     expect(ai).toContain("recordAiUsage");
+    expect(ai).toContain('operation: "universe_creative_bible_generate"');
+    expect(ai).toContain('operation: "universe_creative_bible_refine"');
     expect(admission).toContain('"song_universe"');
     expect(usage).toContain('"universe_continuity_analysis"');
     expect(usage).toContain('"universe_project_fit"');
+    expect(usage).toContain('"universe_next_song_plan"');
   });
 
-  test("Story Map summaries are read-only continuity evidence and use the Story Map ownership column", async () => {
-    const ai = await source("src/lib/song-universe-ai.functions.ts");
+  test("Story Map evidence is read-only, ownership-scoped and centralized in Project Memory", async () => {
+    const memory = await source("src/lib/song-universe-memory.server.ts");
     const functions = await source("src/lib/song-universe.functions.ts");
-    expect(ai).toContain('.from("story_maps")');
-    expect(ai).toContain(
-      "summary,progression_type,starting_state,central_change,turning_point,resolution",
-    );
-    const storyMapQueryStart = ai.indexOf('.from("story_maps")');
-    const storyMapQueryEnd = ai.indexOf("if (storyError)", storyMapQueryStart);
-    const storyMapQuery = ai.slice(storyMapQueryStart, storyMapQueryEnd);
-    expect(storyMapQuery).toContain('.eq("user_id", userId)');
+    expect(memory).toContain('.from("story_maps")');
+    expect(memory).toContain('.eq("user_id", userId)');
+    const storyMapQueryStart = memory.indexOf('.from("story_maps")');
+    const storyMapQueryEnd = memory.indexOf("if (storyError)", storyMapQueryStart);
+    const storyMapQuery = memory.slice(storyMapQueryStart, storyMapQueryEnd);
     expect(storyMapQuery).not.toContain('.eq("owner_id", userId)');
+    expect(memory).toContain("central_change");
+    expect(memory).toContain("turning_point");
+    expect(memory).toContain("resolution");
+    expect(memory).not.toContain('.from("saved_prompts").update');
+    expect(memory).not.toContain('.from("story_maps").update');
     expect(functions).not.toContain('.from("saved_prompts").update');
   });
 });

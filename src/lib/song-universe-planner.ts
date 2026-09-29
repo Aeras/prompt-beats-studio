@@ -1,6 +1,8 @@
 import type { SongUniverseType } from "@/lib/song-universe.shared";
 import type {
+  NextSongBrief,
   ProjectUniverseSummary,
+  SongUniverseDuplicateRisk,
   SongUniversePlannerContrast,
   SongUniverseUsageProfile,
 } from "@/lib/song-universe-planner.shared";
@@ -222,6 +224,122 @@ export function contrastInstruction(level: SongUniversePlannerContrast) {
   }
 }
 
+function normalizedTokens(value: string) {
+  return new Set(
+    value
+      .toLocaleLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 4),
+  );
+}
+
+function jaccard(left: Set<string>, right: Set<string>) {
+  if (left.size === 0 || right.size === 0) return 0;
+  let intersection = 0;
+  for (const token of left) if (right.has(token)) intersection += 1;
+  const union = left.size + right.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+function briefConceptText(brief: NextSongBrief) {
+  return [
+    ...brief.themesToExplore,
+    brief.recommendedMood,
+    brief.recommendedEnergy,
+    brief.recommendedSettingDirection,
+    brief.recommendedPov,
+    brief.storyProgression,
+    brief.nextNarrativeOpportunity,
+    brief.reasoningSummary,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+}
+
+function projectConceptText(summary: ProjectUniverseSummary) {
+  return [
+    summary.theme,
+    summary.narrativeSummary,
+    summary.storyMapSummary,
+    summary.centralChange,
+    summary.turningPoint,
+    summary.resolution,
+    summary.mood,
+    summary.narratorPov,
+    ...summary.majorImagery,
+    ...summary.settings,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+}
+
+export function detectNearDuplicateDirection(
+  brief: NextSongBrief,
+  summaries: ProjectUniverseSummary[],
+): SongUniverseDuplicateRisk {
+  const briefTokens = normalizedTokens(briefConceptText(brief));
+  let best: { summary: ProjectUniverseSummary; similarity: number } | null = null;
+  for (const summary of summaries) {
+    const similarity = jaccard(briefTokens, normalizedTokens(projectConceptText(summary)));
+    if (!best || similarity > best.similarity) best = { summary, similarity };
+  }
+  if (!best || best.similarity < 0.28) {
+    return { level: "none", projectId: null, projectTitle: null, similarity: null, reason: "" };
+  }
+  const level = best.similarity >= 0.48 ? "high" : "low";
+  return {
+    level,
+    projectId: best.summary.projectId,
+    projectTitle: best.summary.projectTitle,
+    similarity: Number(best.similarity.toFixed(3)),
+    reason:
+      level === "high"
+        ? "The proposed direction is semantically close to an existing track concept."
+        : "The proposed direction shares noticeable semantic material with an existing track.",
+  };
+}
+
+function normalized(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+export function validateNextSongBriefConsistency(brief: NextSongBrief) {
+  const hard = new Set([...brief.mustRespect, ...brief.identityToPreserve].map(normalized));
+  const conflicts = brief.mustAvoid.filter((item) => hard.has(normalized(item)));
+  const repeatedHardEvent = brief.eventsNotToRepeat.filter((event) =>
+    brief.storyProgression?.toLocaleLowerCase().includes(event.toLocaleLowerCase()),
+  );
+  return {
+    valid: conflicts.length === 0 && repeatedHardEvent.length === 0,
+    conflicts,
+    repeatedHardEvent,
+  };
+}
+
+export function deterministicPortfolioBalanceNotes(profile: SongUniverseUsageProfile) {
+  const notes: string[] = [];
+  const dominantBpm = profile.bpmRanges.find((item) => item.level === "heavy" || item.level === "saturated");
+  if (dominantBpm)
+    notes.push(
+      `${dominantBpm.count}/${dominantBpm.totalComparable} comparable tracks occupy ${dominantBpm.key}; consider whether another energy range would improve balance.`,
+    );
+  const dominantMood = profile.moods.find((item) => item.level === "heavy" || item.level === "saturated");
+  if (dominantMood)
+    notes.push(
+      `${dominantMood.key} is used heavily across comparable tracks; consider a contrasting emotional shade without breaking artist identity.`,
+    );
+  const dominantStructure = profile.structures.find(
+    (item) => item.level === "heavy" || item.level === "saturated",
+  );
+  if (dominantStructure)
+    notes.push("A structure family is heavily represented; consider a different arrangement shape if it serves the song.");
+  return notes;
+}
+
 export const SONG_UNIVERSE_PLANNER_BASE_RULES = [
   "Shared artist identity does not mean repeated song content.",
   "Explicit current-song instructions override Universe recommendations.",
@@ -230,4 +348,7 @@ export const SONG_UNIVERSE_PLANNER_BASE_RULES = [
   "Intentional outliers have reduced statistical influence but remain part of project memory.",
   "The Planner proposes direction; it does not write or mutate the song, Story Map, Project, or Creative Bible.",
   "Do not claim a pattern when source completeness is insufficient to support it.",
+  "Diversify song content, not artist identity.",
+  "For Song Series, advance the story and never make an already completed event the new central event.",
+  "Before returning a direction, compare it with existing project concepts and avoid a near-duplicate premise.",
 ] as const;

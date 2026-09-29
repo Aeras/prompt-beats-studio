@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -15,6 +15,7 @@ import {
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUniverseInspirationPanel";
+import { SongUniverseNextSongPlanner } from "@/components/promptbeats/SongUniverseNextSongPlanner";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
 import { useI18n } from "@/i18n";
@@ -43,9 +44,9 @@ import {
 import { songUniverseStatusLabel, songUniverseTypeLabel } from "@/lib/song-universe-labels";
 import {
   SONG_UNIVERSE_BIBLE_SECTIONS,
-  SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
   type SongUniverseBibleItem,
   type SongUniverseRecord,
+  type SongUniverseRecurrence,
   type SongUniverseStrength,
 } from "@/lib/song-universe.shared";
 
@@ -208,13 +209,13 @@ function UniverseEditor({
   const { preferences, userId } = useAccountPreferences();
   const el = language === "el";
   const locale = el ? "el" : "en";
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [title, setTitle] = useState(universe.title);
   const [description, setDescription] = useState(universe.description ?? "");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
   const [projectId, setProjectId] = useState("");
   const [actionFeedback, setActionFeedback] = useState<"saved" | "archived" | null>(null);
+  const [plannerOpen, setPlannerOpen] = useState(false);
 
   const showActionFeedback = (feedback: "saved" | "archived") => {
     setActionFeedback(feedback);
@@ -280,6 +281,7 @@ function UniverseEditor({
         section,
         content,
         strength: "flexible" as SongUniverseStrength,
+        recurrence: "occasional" as SongUniverseRecurrence,
         enabled: true,
         sortOrder: universe.creativeBible.items.filter((item) => item.section === section).length,
       },
@@ -288,27 +290,7 @@ function UniverseEditor({
     setNewItem((current) => ({ ...current, [section]: "" }));
   };
 
-  const useInSongSetup = () => {
-    const selectedItems = universe.creativeBible.items.filter((item) => item.enabled);
-    if (!selectedItems.length) return;
-    const capturedAt = new Date().toISOString();
-    const handoff = {
-      version: 1 as const,
-      universeId: universe.id,
-      universeTitle: universe.title,
-      projectId: null,
-      selectedItems,
-      contextSnapshot: {
-        universeId: universe.id,
-        universeTitle: universe.title,
-        capturedAt,
-        selectedItemIds: selectedItems.map((item) => item.id),
-        inheritedItems: selectedItems,
-      },
-    };
-    window.sessionStorage.setItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY, JSON.stringify(handoff));
-    void navigate({ to: "/generate" });
-  };
+  const useInSongSetup = () => setPlannerOpen(true);
 
   const move = (index: number, delta: -1 | 1) => {
     const target = index + delta;
@@ -442,13 +424,21 @@ function UniverseEditor({
           </select>
           <button
             onClick={useInSongSetup}
-            disabled={!universe.creativeBible.items.some((item) => item.enabled)}
-            className="rounded-xl bg-gradient-neon px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+            className="rounded-xl bg-gradient-neon px-4 py-2 text-sm font-semibold text-primary-foreground"
           >
             {el ? "Χρήση στο Song Setup" : "Use in Song Setup"}
           </button>
         </div>
       </div>
+
+      {plannerOpen && (
+        <SongUniverseNextSongPlanner
+          universe={universe}
+          projects={projects}
+          onClose={() => setPlannerOpen(false)}
+          onRefresh={refresh}
+        />
+      )}
 
       <div className="glass rounded-2xl p-5">
         <h2 className="font-display text-lg font-bold">Creative Bible</h2>
@@ -480,7 +470,7 @@ function UniverseEditor({
                         }}
                         className="min-h-16 w-full bg-transparent text-sm outline-none"
                       />
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <select
                           value={item.strength}
                           onChange={(event) => {
@@ -499,6 +489,28 @@ function UniverseEditor({
                           <option value="core">Core</option>
                           <option value="flexible">Flexible</option>
                           <option value="experimental">Experimental</option>
+                        </select>
+                        <select
+                          value={item.recurrence}
+                          onChange={(event) => {
+                            const next = universe.creativeBible.items.map((candidate) =>
+                              candidate.id === item.id
+                                ? {
+                                    ...candidate,
+                                    recurrence: event.target.value as SongUniverseRecurrence,
+                                  }
+                                : candidate,
+                            );
+                            saveBible.mutate(next);
+                          }}
+                          title={el ? "Συχνότητα χρήσης" : "Recurrence frequency"}
+                          className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs"
+                        >
+                          <option value="always">{el ? "Πάντα" : "Always"}</option>
+                          <option value="frequent">{el ? "Συχνά" : "Frequent"}</option>
+                          <option value="occasional">{el ? "Επιλεκτικά" : "Occasional"}</option>
+                          <option value="rare">{el ? "Σπάνια" : "Rare"}</option>
+                          <option value="one_off">{el ? "Μία φορά" : "One-off"}</option>
                         </select>
                         <label className="flex items-center gap-1 text-xs text-muted-foreground">
                           <input
@@ -633,7 +645,7 @@ function UniverseEditor({
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <input
                   value={project.universeRole ?? ""}
                   onChange={(event) =>
@@ -677,12 +689,28 @@ function UniverseEditor({
                           universeId: universe.id,
                           membershipId: project.id,
                           intentionalOutlier: event.target.checked,
+                          outlierPurpose: event.target.checked ? project.outlierPurpose : null,
                         },
                       }).then(refresh)
                     }
                   />{" "}
                   {el ? "Σκόπιμη απόκλιση" : "Intentional outlier"}
                 </label>
+                <input
+                  value={project.outlierPurpose ?? ""}
+                  disabled={!project.intentionalOutlier}
+                  onChange={(event) =>
+                    void updateSongUniverseProject({
+                      data: {
+                        universeId: universe.id,
+                        membershipId: project.id,
+                        outlierPurpose: event.target.value || null,
+                      },
+                    }).then(refresh)
+                  }
+                  placeholder={el ? "Σκοπός απόκλισης" : "Outlier purpose"}
+                  className="rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs disabled:opacity-40"
+                />
               </div>
             </div>
           ))}

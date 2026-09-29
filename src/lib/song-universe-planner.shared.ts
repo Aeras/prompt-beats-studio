@@ -42,7 +42,7 @@ export const projectUniverseSummarySchema = z.object({
   versionNumber: z.number().int().nonnegative().nullable().default(null),
   theme: z.string().trim().max(2000).nullable().default(null),
   genre: z.string().trim().max(1000).nullable().default(null),
-  style: z.string().trim().max(1000).nullable().default(null),
+  style: z.string().trim().max(2000).nullable().default(null),
   mood: z.string().trim().max(1000).nullable().default(null),
   bpm: z.number().min(20).max(300).nullable().default(null),
   instruments: z.array(z.string().trim().max(300)).max(50).default([]),
@@ -50,6 +50,7 @@ export const projectUniverseSummarySchema = z.object({
   structure: z.array(z.string().trim().max(200)).max(100).default([]),
   hookType: z.string().trim().max(500).nullable().default(null),
   lyricsSummary: z.string().trim().max(5000).nullable().default(null),
+  lyricsExcerpt: z.string().trim().max(6000).nullable().default(null),
   narrativeSummary: z.string().trim().max(5000).nullable().default(null),
   narratorPov: z.string().trim().max(500).nullable().default(null),
   majorImagery: z.array(z.string().trim().max(300)).max(50).default([]),
@@ -71,6 +72,8 @@ export const projectUniverseSummarySchema = z.object({
   availableSources: z.array(z.string().trim().max(100)).max(50).default([]),
   missingSources: z.array(z.string().trim().max(100)).max(50).default([]),
   sourceCompleteness: songUniverseSummaryCompletenessSchema.default("partial"),
+  versionUpdatedAt: z.string().datetime().nullable().default(null),
+  storyMapUpdatedAt: z.string().datetime().nullable().default(null),
   updatedAt: z.string().datetime().nullable().default(null),
 });
 export type ProjectUniverseSummary = z.infer<typeof projectUniverseSummarySchema>;
@@ -127,6 +130,15 @@ export const songUniverseUsageProfileSchema = z.object({
 });
 export type SongUniverseUsageProfile = z.infer<typeof songUniverseUsageProfileSchema>;
 
+export const songUniverseDuplicateRiskSchema = z.object({
+  level: z.enum(["none", "low", "high"]),
+  projectId: z.string().uuid().nullable().default(null),
+  projectTitle: z.string().trim().max(300).nullable().default(null),
+  similarity: z.number().min(0).max(1).nullable().default(null),
+  reason: z.string().trim().max(1200).default(""),
+});
+export type SongUniverseDuplicateRisk = z.infer<typeof songUniverseDuplicateRiskSchema>;
+
 export const nextSongBriefSchema = z.object({
   strategyVersion: z.string().trim().min(1).max(100),
   universeType: songUniverseTypeSchema,
@@ -145,6 +157,7 @@ export const nextSongBriefSchema = z.object({
   recommendedHookDirection: z.string().trim().max(1000).nullable().default(null),
   recommendedPov: z.string().trim().max(1000).nullable().default(null),
   recommendedSettingDirection: z.string().trim().max(1000).nullable().default(null),
+  storyState: songUniverseStoryStateSchema.nullable().default(null),
   narrativeState: z.string().trim().max(5000).nullable().default(null),
   storyProgression: z.string().trim().max(5000).nullable().default(null),
   eventsNotToRepeat: z.array(z.string().trim().max(1000)).max(30).default([]),
@@ -153,10 +166,27 @@ export const nextSongBriefSchema = z.object({
   intentionalContrast: z.array(z.string().trim().max(1000)).max(30).default([]),
   continuityNotes: z.array(z.string().trim().max(1000)).max(30).default([]),
   creativeOpportunity: z.array(z.string().trim().max(1000)).max(30).default([]),
+  portfolioBalanceNotes: z.array(z.string().trim().max(1000)).max(30).default([]),
   evidence: z.array(songUniversePlannerEvidenceSchema).max(50).default([]),
   reasoningSummary: z.string().trim().max(4000).default(""),
 });
 export type NextSongBrief = z.infer<typeof nextSongBriefSchema>;
+
+export const songUniversePlannerEditableFieldSchema = z.enum([
+  "themesToExplore",
+  "recommendedMood",
+  "recommendedEnergy",
+  "recommendedBpmDirection",
+  "recommendedStructureDirection",
+  "recommendedHookDirection",
+  "recommendedPov",
+  "recommendedSettingDirection",
+  "storyProgression",
+  "nextNarrativeOpportunity",
+]);
+export type SongUniversePlannerEditableField = z.infer<
+  typeof songUniversePlannerEditableFieldSchema
+>;
 
 export const songUniversePlannerInputSchema = z.object({
   universeType: songUniverseTypeSchema,
@@ -165,6 +195,7 @@ export const songUniversePlannerInputSchema = z.object({
   plannedTrackCount: z.number().int().min(1).max(200).nullable().default(null),
   targetPosition: z.number().int().min(0).max(199).nullable().default(null),
   contrastLevel: songUniversePlannerContrastSchema.default("balanced"),
+  pinnedFields: z.array(songUniversePlannerEditableFieldSchema).max(20).default([]),
 });
 export type SongUniversePlannerInput = z.infer<typeof songUniversePlannerInputSchema>;
 

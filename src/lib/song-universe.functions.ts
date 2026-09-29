@@ -6,8 +6,10 @@ import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   songUniverseContextSnapshotSchema,
   songUniverseCreativeBibleSchema,
+  songUniversePlannerContrastSettingSchema,
   songUniverseProjectStatusSchema,
   songUniverseStatusSchema,
+  songUniverseStoryBibleSchema,
   songUniverseTypeSchema,
   type SongUniverseCreativeBible,
   type SongUniverseProjectRecord,
@@ -21,6 +23,10 @@ const createSchema = z.object({
   description: z.string().trim().max(4000).nullable().optional().default(null),
   universeType: songUniverseTypeSchema.optional().default("other"),
   initialDirection: z.string().trim().max(4000).nullable().optional().default(null),
+  plannedTrackCount: z.number().int().min(1).max(200).nullable().optional().default(null),
+  arcDirection: z.string().trim().max(4000).nullable().optional().default(null),
+  storyBible: songUniverseStoryBibleSchema.optional().default({}),
+  plannerContrast: songUniversePlannerContrastSettingSchema.optional().default("balanced"),
 });
 
 const updateSchema = z
@@ -32,6 +38,10 @@ const updateSchema = z
     status: songUniverseStatusSchema.optional(),
     creativeBible: songUniverseCreativeBibleSchema.optional(),
     initialDirection: z.string().trim().max(4000).nullable().optional(),
+    plannedTrackCount: z.number().int().min(1).max(200).nullable().optional(),
+    arcDirection: z.string().trim().max(4000).nullable().optional(),
+    storyBible: songUniverseStoryBibleSchema.optional(),
+    plannerContrast: songUniversePlannerContrastSettingSchema.optional(),
   })
   .refine(
     (value) => Object.keys(value).some((key) => key !== "universeId"),
@@ -49,6 +59,14 @@ function mapUniverse(row: any): SongUniverseRecord {
     creativeBible: songUniverseCreativeBibleSchema.parse(row.creative_bible ?? { items: [] }),
     initialDirection: row.initial_direction ?? null,
     coverObjectKey: row.cover_object_key ?? null,
+    plannedTrackCount:
+      typeof row.planned_track_count === "number" ? row.planned_track_count : null,
+    arcDirection: row.arc_direction ?? null,
+    storyBible: songUniverseStoryBibleSchema.parse(row.story_bible ?? {}),
+    plannerContrast:
+      row.planner_contrast === "low" || row.planner_contrast === "high"
+        ? row.planner_contrast
+        : "balanced",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -65,6 +83,7 @@ function mapMembership(row: any): SongUniverseProjectRecord {
     universeRole: row.universe_role ?? null,
     projectStatus: row.project_status,
     intentionalOutlier: row.intentional_outlier === true,
+    outlierPurpose: row.outlier_purpose ?? null,
     inheritedTraits: Array.isArray(row.inherited_traits) ? row.inherited_traits : [],
     contextSnapshot: (() => {
       const parsed = songUniverseContextSnapshotSchema.safeParse(row.context_snapshot);
@@ -145,6 +164,10 @@ export const createSongUniverse = createServerFn({ method: "POST" })
         description: data.description,
         universe_type: data.universeType,
         initial_direction: data.initialDirection,
+        planned_track_count: data.plannedTrackCount,
+        arc_direction: data.arcDirection,
+        story_bible: data.storyBible,
+        planner_contrast: data.plannerContrast,
       })
       .select("*")
       .single();
@@ -166,6 +189,11 @@ export const updateSongUniverse = createServerFn({ method: "POST" })
     if (data.status !== undefined) changes["status"] = data.status;
     if (data.creativeBible !== undefined) changes["creative_bible"] = data.creativeBible;
     if (data.initialDirection !== undefined) changes["initial_direction"] = data.initialDirection;
+    if (data.plannedTrackCount !== undefined)
+      changes["planned_track_count"] = data.plannedTrackCount;
+    if (data.arcDirection !== undefined) changes["arc_direction"] = data.arcDirection;
+    if (data.storyBible !== undefined) changes["story_bible"] = data.storyBible;
+    if (data.plannerContrast !== undefined) changes["planner_contrast"] = data.plannerContrast;
     const { data: row, error } = await supabase
       .from("song_universes")
       .update(changes)
@@ -229,6 +257,7 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
         projectId: idSchema,
         universeRole: z.string().trim().max(200).nullable().optional().default(null),
         intentionalOutlier: z.boolean().optional().default(false),
+        outlierPurpose: z.string().trim().max(1000).nullable().optional().default(null),
         inheritedTraits: z.array(z.string().max(120)).max(200).optional().default([]),
       })
       .parse(input),
@@ -257,6 +286,9 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
       capturedAt: new Date().toISOString(),
       selectedItemIds: inheritedItems.map((item) => item.id),
       inheritedItems,
+      universeType: universeRow.universe_type,
+      plannedTrackCount:
+        typeof universeRow.planned_track_count === "number" ? universeRow.planned_track_count : null,
     };
     const { data: row, error } = await supabase
       .from("song_universe_projects")
@@ -266,6 +298,7 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
         position: count ?? 0,
         universe_role: data.universeRole,
         intentional_outlier: data.intentionalOutlier,
+        outlier_purpose: data.outlierPurpose,
         inherited_traits: inheritedItems.map((item) => item.id),
         context_snapshot: snapshot,
         context_snapshot_at: snapshot.capturedAt,
@@ -306,12 +339,14 @@ export const updateSongUniverseProject = createServerFn({ method: "POST" })
         universeRole: z.string().trim().max(200).nullable().optional(),
         projectStatus: songUniverseProjectStatusSchema.optional(),
         intentionalOutlier: z.boolean().optional(),
+        outlierPurpose: z.string().trim().max(1000).nullable().optional(),
       })
       .refine(
         (value) =>
           value.universeRole !== undefined ||
           value.projectStatus !== undefined ||
-          value.intentionalOutlier !== undefined,
+          value.intentionalOutlier !== undefined ||
+          value.outlierPurpose !== undefined,
         "No changes supplied.",
       )
       .parse(input),
@@ -325,6 +360,7 @@ export const updateSongUniverseProject = createServerFn({ method: "POST" })
     if (data.projectStatus !== undefined) changes["project_status"] = data.projectStatus;
     if (data.intentionalOutlier !== undefined)
       changes["intentional_outlier"] = data.intentionalOutlier;
+    if (data.outlierPurpose !== undefined) changes["outlier_purpose"] = data.outlierPurpose;
     const { data: row, error } = await supabase
       .from("song_universe_projects")
       .update(changes)
