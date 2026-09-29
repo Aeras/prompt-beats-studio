@@ -9,8 +9,8 @@ const LIBRARY_FEATURE_TABS: Partial<Record<FeatureKey, string>> = {
   likes: "likes",
 };
 
-export function shouldPreserveRequestedLibraryTab(featureKey: FeatureKey, isLoading: boolean) {
-  if (!isLoading || typeof window === "undefined") return false;
+export function shouldPreserveRequestedLibraryTab(featureKey: FeatureKey, isPending: boolean) {
+  if (!isPending || typeof window === "undefined") return false;
 
   const requestedTab = new URLSearchParams(window.location.search).get("tab");
   const featureTab = LIBRARY_FEATURE_TABS[featureKey];
@@ -19,7 +19,7 @@ export function shouldPreserveRequestedLibraryTab(featureKey: FeatureKey, isLoad
 }
 
 export function useFeatureAccess(featureKey: FeatureKey) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const query = useQuery({
     queryKey: ["feature-access", featureKey, user?.id ?? "anon"],
     queryFn: () => getMyFeatureAccess({ data: { featureKey } }),
@@ -28,12 +28,13 @@ export function useFeatureAccess(featureKey: FeatureKey) {
     refetchOnWindowFocus: "always",
   });
 
-  // A gated Library tab can be present in the URL before its access query has
-  // resolved after a hard refresh. Keep that requested tab mounted only during
-  // the pending access check so LibraryPage does not erase the URL and fall
-  // back to My Tracks. A resolved denial still wins immediately.
+  // On a hard refresh, auth can still be hydrating before the feature query is
+  // enabled. Preserve a gated Library tab from the URL through both phases so
+  // LibraryPage does not erase it and fall back to My Tracks. Once access has
+  // resolved, the authoritative result takes over immediately.
   const preserveRequestedLibraryTab =
-    query.data === undefined && shouldPreserveRequestedLibraryTab(featureKey, query.isLoading);
+    query.data === undefined &&
+    shouldPreserveRequestedLibraryTab(featureKey, authLoading || query.isLoading);
 
   return {
     isLoading: query.isLoading,
