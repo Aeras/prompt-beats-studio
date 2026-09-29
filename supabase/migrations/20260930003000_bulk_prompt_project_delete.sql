@@ -3,7 +3,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.bulk_delete_prompt_projects(_plans jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
