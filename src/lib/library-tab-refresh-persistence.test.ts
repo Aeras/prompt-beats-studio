@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 
 describe("library tab refresh persistence", () => {
-  test("gated library tabs survive the feature-access loading window", async () => {
+  test("gated library tabs survive auth and feature-access hydration", async () => {
     const hook = await readFile("src/hooks/useFeatureAccess.ts", "utf8");
     const library = await readFile("src/routes/library.tsx", "utf8");
 
@@ -11,7 +11,8 @@ describe("library tab refresh persistence", () => {
     expect(hook).toContain('likes: "likes"');
     expect(hook).toContain('window.location.pathname === "/library"');
     expect(hook).toContain('new URLSearchParams(window.location.search).get("tab")');
-    expect(hook).toContain("query.data === undefined && shouldPreserveRequestedLibraryTab");
+    expect(hook).toContain("const { user, loading: authLoading } = useAuth();");
+    expect(hook).toContain("authLoading || query.isLoading");
     expect(hook).toContain("query.data?.allowed === true || preserveRequestedLibraryTab");
 
     expect(library).toContain('const { tab: requestedTab } = Route.useSearch();');
