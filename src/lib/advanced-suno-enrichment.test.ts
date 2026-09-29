@@ -37,6 +37,21 @@ describe("Advanced Suno enrichment runtime instruction", () => {
     );
   });
 
+  test("forbids inventing or substituting instruments during faithful transfer", () => {
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      "do not add, substitute, merge, or infer an instrument",
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      "Never replace a missing element with a nearby or stylistically plausible one",
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      'stripped voice, piano and low-pad breakdown immediately before the build',
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      "Do not invent bass or omit the low pad",
+    );
+  });
+
   test("keeps existing user instructions before the internal enrichment instruction", () => {
     const input = {
       operation: "generate",
