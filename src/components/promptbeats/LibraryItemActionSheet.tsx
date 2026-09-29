@@ -9,12 +9,21 @@ import {
 } from "react";
 import { Copy, FolderInput, Pencil, Trash2 } from "lucide-react";
 
+import {
+  activateProjectBulkSelection,
+  isProjectBulkSelectionActive,
+  projectBulkSelectionIdFromElement,
+  toggleProjectBulkSelection,
+} from "@/lib/project-bulk-selection.client";
+
 export type LibraryActionMenuAnchor = { x: number; y: number };
 type PointerPoint = { x: number; y: number };
+type LongPressHandler = (point: PointerPoint, target?: HTMLElement) => void;
 
-export function useLibraryLongPress(onLongPress: (point: PointerPoint) => void, disabled = false) {
+export function useLibraryLongPress(onLongPress: LongPressHandler, disabled = false) {
   const timerRef = useRef<number | null>(null);
   const startRef = useRef<PointerPoint | null>(null);
+  const targetRef = useRef<HTMLElement | null>(null);
   const firedRef = useRef(false);
 
   const clear = () => {
@@ -23,30 +32,32 @@ export function useLibraryLongPress(onLongPress: (point: PointerPoint) => void, 
       timerRef.current = null;
     }
     startRef.current = null;
+    targetRef.current = null;
   };
 
   return {
-    onPointerDown: (event: PointerEvent) => {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
       if (disabled || event.pointerType === "mouse") return;
       firedRef.current = false;
       startRef.current = { x: event.clientX, y: event.clientY };
+      targetRef.current = event.currentTarget;
       timerRef.current = window.setTimeout(() => {
         const point = startRef.current;
         if (!point) return;
         firedRef.current = true;
-        onLongPress(point);
+        onLongPress(point, targetRef.current ?? undefined);
         if ("vibrate" in navigator) navigator.vibrate?.(12);
         clear();
       }, 550);
     },
-    onPointerMove: (event: PointerEvent) => {
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
       const start = startRef.current;
       if (!start) return;
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) clear();
     },
     onPointerUp: clear,
     onPointerCancel: clear,
-    onClickCapture: (event: MouseEvent) => {
+    onClickCapture: (event: MouseEvent<HTMLElement>) => {
       if (!firedRef.current) return;
       event.preventDefault();
       event.stopPropagation();
@@ -60,10 +71,37 @@ type LongPressButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "child
   onLongPress: (point: PointerPoint) => void;
 };
 
-export function LibraryLongPressButton({ children, onLongPress, ...props }: LongPressButtonProps) {
-  const longPress = useLibraryLongPress(onLongPress, props.disabled === true);
+export function LibraryLongPressButton({
+  children,
+  onLongPress,
+  onClick,
+  ...props
+}: LongPressButtonProps) {
+  const longPress = useLibraryLongPress((point, target) => {
+    const projectId = projectBulkSelectionIdFromElement(target ?? null);
+    if (projectId) {
+      activateProjectBulkSelection(projectId);
+      return;
+    }
+    onLongPress(point);
+  }, props.disabled === true);
+
   return (
-    <button type="button" {...props} {...longPress}>
+    <button
+      type="button"
+      {...props}
+      {...longPress}
+      onClick={(event) => {
+        const projectId = projectBulkSelectionIdFromElement(event.currentTarget);
+        if (projectId && isProjectBulkSelectionActive()) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleProjectBulkSelection(projectId);
+          return;
+        }
+        onClick?.(event);
+      }}
+    >
       {children}
     </button>
   );
