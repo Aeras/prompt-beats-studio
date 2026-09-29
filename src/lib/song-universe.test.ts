@@ -140,13 +140,18 @@ describe("Song Universe", () => {
     expect(usage).toContain('"universe_project_fit"');
   });
 
-  test("Story Map summaries are read-only continuity evidence and Universe changes do not rewrite Projects", async () => {
+  test("Story Map summaries are read-only continuity evidence and use the Story Map ownership column", async () => {
     const ai = await source("src/lib/song-universe-ai.functions.ts");
     const functions = await source("src/lib/song-universe.functions.ts");
     expect(ai).toContain('.from("story_maps")');
     expect(ai).toContain(
       "summary,progression_type,starting_state,central_change,turning_point,resolution",
     );
+    const storyMapQueryStart = ai.indexOf('.from("story_maps")');
+    const storyMapQueryEnd = ai.indexOf("if (storyError)", storyMapQueryStart);
+    const storyMapQuery = ai.slice(storyMapQueryStart, storyMapQueryEnd);
+    expect(storyMapQuery).toContain('.eq("user_id", userId)');
+    expect(storyMapQuery).not.toContain('.eq("owner_id", userId)');
     expect(functions).not.toContain('.from("saved_prompts").update');
   });
 });
