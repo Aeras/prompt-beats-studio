@@ -38,6 +38,14 @@ export const previewBulkDeletePromptProjects = createServerFn({ method: "POST" }
       throw new Error("One or more Projects were not found.");
     }
 
+    const { data: promptRows, error: promptError } = await context.supabase
+      .from("saved_prompts")
+      .select("id,project_id,title,custom_name,version_number,version_label,theme")
+      .eq("user_id", context.userId)
+      .in("project_id", projectIds)
+      .order("version_number", { ascending: true, nullsFirst: false });
+    if (promptError) throw new Error(promptError.message);
+
     const { data: memberships, error: membershipError } = await (context.supabase as any)
       .from("song_universe_projects")
       .select("project_id,song_universes!inner(id,title,owner_id)")
@@ -60,6 +68,17 @@ export const previewBulkDeletePromptProjects = createServerFn({ method: "POST" }
           id: project.id,
           name: project.name,
           universe: universeByProject.get(project.id) ?? null,
+          prompts: (promptRows ?? [])
+            .filter((prompt) => prompt.project_id === project.id)
+            .map((prompt) => ({
+              id: prompt.id,
+              projectId: prompt.project_id,
+              title: prompt.title,
+              customName: prompt.custom_name,
+              versionNumber: prompt.version_number,
+              versionLabel: prompt.version_label,
+              theme: prompt.theme,
+            })),
         };
       }),
     };
