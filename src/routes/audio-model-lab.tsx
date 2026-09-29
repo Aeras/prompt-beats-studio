@@ -84,7 +84,6 @@ function AudioModelLabPage() {
   const [states, setStates] = useState<Record<AudioModelLabModelId, LabState>>({
     "gemini-3.8-flash": { status: "idle" },
     "gemini-3.1-pro-preview": { status: "idle" },
-    "qwen-3.8-omni-flash": { status: "idle" },
   });
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -240,7 +239,6 @@ function AudioModelLabPage() {
                   setStates({
                     "gemini-3.8-flash": { status: "idle" },
                     "gemini-3.1-pro-preview": { status: "idle" },
-                    "qwen-3.8-omni-flash": { status: "idle" },
                   });
                 }}
               />
@@ -321,9 +319,7 @@ function AudioModelLabPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="font-display text-xl font-bold">{model.label}</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {model.provider === "dashscope" ? "Alibaba Cloud Model Studio" : "Google Gemini"}
-                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">Google Gemini</p>
                     </div>
                     {state.status === "done" ? (
                       <button
