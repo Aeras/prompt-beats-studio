@@ -8,6 +8,7 @@ import {
   Loader2,
   Orbit,
   Plus,
+  Save,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -213,6 +214,15 @@ function UniverseEditor({
   const [description, setDescription] = useState(universe.description ?? "");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
   const [projectId, setProjectId] = useState("");
+  const [actionFeedback, setActionFeedback] = useState<"saved" | "archived" | null>(null);
+
+  const showActionFeedback = (feedback: "saved" | "archived") => {
+    setActionFeedback(feedback);
+    window.setTimeout(() => {
+      setActionFeedback((current) => (current === feedback ? null : current));
+    }, 1800);
+  };
+
   useDraftAutosave({
     ownerId: userId,
     scope: `song-universe:${universe.id}`,
@@ -249,7 +259,10 @@ function UniverseEditor({
       updateSongUniverse({
         data: { universeId: universe.id, title, description: description || null },
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      showActionFeedback("saved");
+    },
   });
   const saveBible = useMutation({
     mutationFn: (items: SongUniverseBibleItem[]) =>
@@ -320,30 +333,46 @@ function UniverseEditor({
   return (
     <div className="space-y-5">
       <div className="glass rounded-2xl p-5">
-        <div className="flex items-start gap-3">
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent font-display text-2xl font-bold outline-none"
-          />
+        <div className="flex min-h-10 items-center justify-end gap-2">
+          {actionFeedback && (
+            <span className="mr-auto text-xs font-medium text-emerald-300" role="status">
+              {actionFeedback === "saved"
+                ? el
+                  ? "Αποθηκεύτηκε"
+                  : "Saved"
+                : el
+                  ? "Αρχειοθετήθηκε"
+                  : "Archived"}
+            </span>
+          )}
           <button
+            type="button"
             onClick={() => saveMeta.mutate()}
-            className="shrink-0 rounded-xl border border-white/10 px-4 py-2 text-sm"
+            disabled={saveMeta.isPending}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+            title={el ? "Αποθήκευση" : "Save"}
+            aria-label={el ? "Αποθήκευση" : "Save"}
           >
-            {el ? "Αποθήκευση" : "Save"}
+            {saveMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           </button>
           <button
+            type="button"
             onClick={() =>
-              updateSongUniverse({ data: { universeId: universe.id, status: "archived" } }).then(
-                refresh,
+              void updateSongUniverse({ data: { universeId: universe.id, status: "archived" } }).then(
+                async () => {
+                  await refresh();
+                  showActionFeedback("archived");
+                },
               )
             }
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:text-foreground"
             title={el ? "Αρχειοθέτηση" : "Archive"}
+            aria-label={el ? "Αρχειοθέτηση" : "Archive"}
           >
             <Archive className="h-4 w-4" />
           </button>
           <button
+            type="button"
             onClick={() => {
               if (
                 !window.confirm(
@@ -356,10 +385,17 @@ function UniverseEditor({
               void deleteSongUniverse({ data: { universeId: universe.id } }).then(onDeleted);
             }}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-red-400/20 text-red-300"
+            title={el ? "Διαγραφή" : "Delete"}
+            aria-label={el ? "Διαγραφή" : "Delete"}
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          className="mt-3 w-full bg-transparent font-display text-xl font-bold outline-none"
+        />
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
