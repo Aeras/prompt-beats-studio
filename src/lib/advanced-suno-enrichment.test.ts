@@ -52,6 +52,19 @@ describe("Advanced Suno enrichment runtime instruction", () => {
     );
   });
 
+  test("prioritizes section timing and repeated-section contrasts", () => {
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      "Do not collapse a specific First Chorus / Second Chorus / Final Chorus contrast",
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      '"before the Build", "after the Interlude", "in the second Chorus"',
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain(
+      'restrained wide first chorus; second chorus adds electric guitars and punchy live drums',
+    );
+    expect(ADVANCED_SUNO_ENRICHMENT_INSTRUCTION).toContain("repeated-section contrast");
+  });
+
   test("keeps existing user instructions before the internal enrichment instruction", () => {
     const input = {
       operation: "generate",
