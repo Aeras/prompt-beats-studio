@@ -238,7 +238,7 @@ async function loadUniverseProjectContext(supabase: any, universeId: string, use
     .select(
       "project_id,summary,progression_type,starting_state,central_change,turning_point,resolution",
     )
-    .eq("owner_id", userId)
+    .eq("user_id", userId)
     .in("project_id", projectIds);
   if (storyError) throw new Error(storyError.message);
   const storyByProject = new Map<string, any>();
