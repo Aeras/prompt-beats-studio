@@ -14,6 +14,7 @@
  * - Only the service-role client (server-only) writes job state.
  */
 import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/lib/ai.functions";
+import { withAdvancedSunoEnrichmentInstruction } from "@/lib/advanced-suno-enrichment";
 import { fitMusicStyleToPlatform } from "@/lib/music-style-limits";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 
@@ -94,7 +95,12 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       return { ran: true };
     }
 
-    const out = await runSongGeneration(input, job.user_id, job.generation_id);
+    // The large shared Generator prompt remains untouched. For normal Advanced
+    // Suno creations only, add one internal runtime instruction through the
+    // existing Additional Instructions channel so the same provider call is
+    // explicitly told to enrich Music Style from useful Producer's Note cues.
+    const runtimeInput = withAdvancedSunoEnrichmentInstruction(input);
+    const out = await runSongGeneration(runtimeInput, job.user_id, job.generation_id);
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
       input.targetPlatform === "suno" &&
