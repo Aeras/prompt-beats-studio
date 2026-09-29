@@ -39,6 +39,7 @@ import {
   updateSongUniverse,
   updateSongUniverseProject,
 } from "@/lib/song-universe.functions";
+import { songUniverseStatusLabel, songUniverseTypeLabel } from "@/lib/song-universe-labels";
 import {
   SONG_UNIVERSE_BIBLE_SECTIONS,
   SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
@@ -72,6 +73,7 @@ const sectionLabels: Record<
 function SongUniversePage() {
   const { language } = useI18n();
   const el = language === "el";
+  const locale = el ? "el" : "en";
   const access = useFeatureAccess("song_universe");
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -153,7 +155,7 @@ function SongUniversePage() {
               >
                 <div className="truncate text-sm font-medium">{universe.title}</div>
                 <div className="mt-1 text-[11px] text-muted-foreground">
-                  {universe.universeType.replaceAll("_", " ")} · {universe.status}
+                  {songUniverseTypeLabel(universe.universeType, locale)} · {songUniverseStatusLabel(universe.status, locale)}
                 </div>
               </button>
             ))}
@@ -204,6 +206,7 @@ function UniverseEditor({
   const { language } = useI18n();
   const { preferences, userId } = useAccountPreferences();
   const el = language === "el";
+  const locale = el ? "el" : "en";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [title, setTitle] = useState(universe.title);
@@ -317,23 +320,15 @@ function UniverseEditor({
   return (
     <div className="space-y-5">
       <div className="glass rounded-2xl p-5">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="w-full bg-transparent font-display text-2xl font-bold outline-none"
-            />
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder={el ? "Περιγραφή…" : "Description…"}
-              className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
-            />
-          </div>
+        <div className="flex items-start gap-3">
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent font-display text-2xl font-bold outline-none"
+          />
           <button
             onClick={() => saveMeta.mutate()}
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm"
+            className="shrink-0 rounded-xl border border-white/10 px-4 py-2 text-sm"
           >
             {el ? "Αποθήκευση" : "Save"}
           </button>
@@ -343,7 +338,7 @@ function UniverseEditor({
                 refresh,
               )
             }
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-muted-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground"
             title={el ? "Αρχειοθέτηση" : "Archive"}
           >
             <Archive className="h-4 w-4" />
@@ -360,11 +355,17 @@ function UniverseEditor({
                 return;
               void deleteSongUniverse({ data: { universeId: universe.id } }).then(onDeleted);
             }}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-red-400/20 text-red-300"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-red-400/20 text-red-300"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder={el ? "Περιγραφή…" : "Description…"}
+          className="mt-3 min-h-24 w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+        />
         <div className="mt-4 flex flex-wrap gap-2">
           <select
             value={universe.universeType}
@@ -378,11 +379,11 @@ function UniverseEditor({
             }
             className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
           >
-            <option value="album">Album</option>
-            <option value="ep">EP</option>
-            <option value="song_series">Song Series</option>
-            <option value="creative_era">Creative Era</option>
-            <option value="other">Other</option>
+            <option value="album">{songUniverseTypeLabel("album", locale)}</option>
+            <option value="ep">{songUniverseTypeLabel("ep", locale)}</option>
+            <option value="song_series">{songUniverseTypeLabel("song_series", locale)}</option>
+            <option value="creative_era">{songUniverseTypeLabel("creative_era", locale)}</option>
+            <option value="other">{songUniverseTypeLabel("other", locale)}</option>
           </select>
           <select
             value={universe.status}
@@ -396,12 +397,12 @@ function UniverseEditor({
             }
             className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
           >
-            <option value="planning">Planning</option>
-            <option value="writing">Writing</option>
-            <option value="production">Production</option>
-            <option value="review">Review</option>
-            <option value="complete">Complete</option>
-            <option value="archived">Archived</option>
+            <option value="planning">{songUniverseStatusLabel("planning", locale)}</option>
+            <option value="writing">{songUniverseStatusLabel("writing", locale)}</option>
+            <option value="production">{songUniverseStatusLabel("production", locale)}</option>
+            <option value="review">{songUniverseStatusLabel("review", locale)}</option>
+            <option value="complete">{songUniverseStatusLabel("complete", locale)}</option>
+            <option value="archived">{songUniverseStatusLabel("archived", locale)}</option>
           </select>
           <button
             onClick={useInSongSetup}
