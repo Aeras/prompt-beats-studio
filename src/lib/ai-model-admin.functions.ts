@@ -298,7 +298,6 @@ const providerIdSchema = z.enum([
   "mistral",
   "groq",
   "openrouter",
-  "dashscope",
   "together",
   "fireworks",
   "cerebras",
@@ -395,8 +394,6 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // PromptBeats currently resolves model selections by provider_model_id, so
-    // keep that identifier globally unique until model keys become composite.
     const { data: existing, error: existingError } = await supabaseAdmin
       .from("ai_models" as never)
       .select("id,provider,provider_model_id")
@@ -414,8 +411,6 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
     );
     if (!candidate) throw new Error("This model is no longer available as a candidate.");
 
-    // Re-check the selected model server-side before installation so Add never
-    // trusts a browser-carried compatibility result.
     const compatibility = await testSingleProviderModelCompatibility(data.providerId, candidate);
     if (
       compatibility.status !== "compatible" &&
@@ -481,12 +476,8 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
     };
   });
 
-const healthModelInput = z.object({
-  id: z.string().uuid(),
-});
-
+const healthModelInput = z.object({ id: z.string().uuid() });
 type HealthState = "healthy" | "degraded" | "failing";
-
 const HEALTH_PROBE_TIMEOUT_MS = 20_000;
 const PROVIDER_HEALTH_CONCURRENCY = 2;
 
@@ -496,10 +487,7 @@ async function withHealthProbeTimeout<T>(promise: Promise<T>): Promise<T> {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timeout = setTimeout(
-          () => reject(new Error("runtime_probe_timeout")),
-          HEALTH_PROBE_TIMEOUT_MS,
-        );
+        timeout = setTimeout(() => reject(new Error("runtime_probe_timeout")), HEALTH_PROBE_TIMEOUT_MS);
       }),
     ]);
   } finally {
@@ -528,9 +516,7 @@ async function runInstalledModelRuntimeProbe(
           model.generator_reasoning_effort ?? model.quality_check_reasoning_effort ?? undefined,
       }),
     );
-    if (result.stopReason !== "end_turn") {
-      return { ok: false, errorCode: "incomplete_runtime_response" };
-    }
+    if (result.stopReason !== "end_turn") return { ok: false, errorCode: "incomplete_runtime_response" };
     const text = result.text?.trim();
     if (!text) return { ok: false, errorCode: "empty_runtime_response" };
 
@@ -540,15 +526,9 @@ async function runInstalledModelRuntimeProbe(
     } catch {
       return { ok: false, errorCode: "invalid_runtime_probe_json" };
     }
-    if (
-      !payload ||
-      typeof payload !== "object" ||
-      Array.isArray(payload) ||
-      (payload as { ok?: unknown }).ok !== true
-    ) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || (payload as { ok?: unknown }).ok !== true) {
       return { ok: false, errorCode: "invalid_runtime_probe_payload" };
     }
-
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "runtime_probe_failed";
@@ -569,28 +549,9 @@ async function evaluateInstalledModelHealth(
       errorCode: runtime.errorCode,
     };
   }
-
-  if (!discoveryAvailable) {
-    return {
-      healthStatus: "degraded",
-      success: true,
-      errorCode: "provider_discovery_unavailable",
-    };
-  }
-
-  if (!discovered) {
-    return {
-      healthStatus: "degraded",
-      success: true,
-      errorCode: "not_listed_by_provider",
-    };
-  }
-
-  return {
-    healthStatus: "healthy",
-    success: true,
-    errorCode: null,
-  };
+  if (!discoveryAvailable) return { healthStatus: "degraded", success: true, errorCode: "provider_discovery_unavailable" };
+  if (!discovered) return { healthStatus: "degraded", success: true, errorCode: "not_listed_by_provider" };
+  return { healthStatus: "healthy", success: true, errorCode: null };
 }
 
 export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
@@ -599,59 +560,44 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: row, error } = await supabaseAdmin
-      .from("ai_models" as never)
-      .select("*")
-      .eq("id", data.id)
-      .maybeSingle();
+    const { data: row, error } = await supabaseAdmin.from("ai_models" as never).select("*").eq("id", data.id).maybeSingle();
     if (error || !row) throw new Error("AI model not found.");
 
     const model = row as any;
     const providerId = providerIdSchema.safeParse(model.provider);
     const now = new Date().toISOString();
-
     if (!providerId.success) {
-      await supabaseAdmin
-        .from("ai_models" as never)
-        .update({
-          last_checked_at: now,
-          last_failure_at: now,
-          last_error_code: "unsupported_provider",
-          health_status: "degraded",
-          updated_at: now,
-        } as never)
-        .eq("id", data.id);
+      await supabaseAdmin.from("ai_models" as never).update({
+        last_checked_at: now,
+        last_failure_at: now,
+        last_error_code: "unsupported_provider",
+        health_status: "degraded",
+        updated_at: now,
+      } as never).eq("id", data.id);
       return { ok: true, healthStatus: "degraded" as const, listed: null };
     }
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
     let discoveryAvailable = false;
     let discovered: any = null;
-
     try {
       const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
       const discovery = await discoverProviderModels(providerId.data, installed);
       discoveryAvailable = true;
-      discovered =
-        discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
+      discovered = discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
     } catch (error) {
       console.warn("[admin] provider discovery unavailable during model health check", error);
     }
 
     const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
-
-    await supabaseAdmin
-      .from("ai_models" as never)
-      .update({
-        ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
-        last_checked_at: now,
-        ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
-        last_error_code: health.errorCode,
-        health_status: health.healthStatus,
-        updated_at: now,
-      } as never)
-      .eq("id", data.id);
+    await supabaseAdmin.from("ai_models" as never).update({
+      ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+      last_checked_at: now,
+      ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
+      last_error_code: health.errorCode,
+      health_status: health.healthStatus,
+      updated_at: now,
+    } as never).eq("id", data.id);
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
       admin_user_id: context.userId,
@@ -669,16 +615,10 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
     });
     if (auditError) console.error("[admin] AI model health audit failed", auditError.message);
 
-    return {
-      ok: true,
-      healthStatus: health.healthStatus,
-      listed: discoveryAvailable ? Boolean(discovered) : null,
-    };
+    return { ok: true, healthStatus: health.healthStatus, listed: discoveryAvailable ? Boolean(discovered) : null };
   });
 
-const healthProviderInput = z.object({
-  providerId: providerIdSchema,
-});
+const healthProviderInput = z.object({ providerId: providerIdSchema });
 
 export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -686,22 +626,16 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: rows, error } = await supabaseAdmin
-      .from("ai_models" as never)
-      .select("*")
-      .eq("provider", data.providerId);
+    const { data: rows, error } = await supabaseAdmin.from("ai_models" as never).select("*").eq("provider", data.providerId);
     if (error) throw new Error("Could not read installed provider models.");
 
     const providerModels = (rows ?? []) as any[];
-    if (!providerModels.length)
-      return { ok: true, checked: 0, healthy: 0, degraded: 0, failing: 0 };
+    if (!providerModels.length) return { ok: true, checked: 0, healthy: 0, degraded: 0, failing: 0 };
 
     const installed = await readInstalledForDiscovery(supabaseAdmin);
     const now = new Date().toISOString();
     let discoveryAvailable = false;
     let discoveredModels: any[] = [];
-
     try {
       const { discoverProviderModels } = await import("@/lib/ai-provider-registry.server");
       const discovery = await discoverProviderModels(data.providerId, installed);
@@ -714,32 +648,23 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
     let healthy = 0;
     let degraded = 0;
     let failing = 0;
-
     for (let start = 0; start < providerModels.length; start += PROVIDER_HEALTH_CONCURRENCY) {
       const batch = providerModels.slice(start, start + PROVIDER_HEALTH_CONCURRENCY);
-      const results = await Promise.all(
-        batch.map(async (model) => {
-          const discovered = discoveryAvailable
-            ? (discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ??
-              null)
-            : null;
-          const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
-
-          await supabaseAdmin
-            .from("ai_models" as never)
-            .update({
-              ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
-              last_checked_at: now,
-              ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
-              last_error_code: health.errorCode,
-              health_status: health.healthStatus,
-              updated_at: now,
-            } as never)
-            .eq("id", model.id);
-
-          return health.healthStatus;
-        }),
-      );
+      const results = await Promise.all(batch.map(async (model) => {
+        const discovered = discoveryAvailable
+          ? (discoveredModels.find((candidate) => candidate.id === model.provider_model_id) ?? null)
+          : null;
+        const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
+        await supabaseAdmin.from("ai_models" as never).update({
+          ...(discovered ? { deprecated: discovered.deprecated === true } : {}),
+          last_checked_at: now,
+          ...(health.success ? { last_success_at: now } : { last_failure_at: now }),
+          last_error_code: health.errorCode,
+          health_status: health.healthStatus,
+          updated_at: now,
+        } as never).eq("id", model.id);
+        return health.healthStatus;
+      }));
 
       for (const healthStatus of results) {
         if (healthStatus === "healthy") healthy += 1;
