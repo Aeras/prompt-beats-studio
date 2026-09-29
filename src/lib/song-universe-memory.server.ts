@@ -301,15 +301,18 @@ export async function loadSongUniverseProjectMemory(
       : [];
     const structure = snapshot?.songStructure ?? [];
     const productionStyle = snapshot?.productionStyle?.trim() || null;
-    const majorImagery = unique(beats.map((beat) => text(beat.key_image)));
-    const motifCounts = new Map<string, number>();
-    for (const image of majorImagery) {
+    const rawImagery = beats.map((beat) => text(beat.key_image)).filter((value): value is string => Boolean(value));
+    const majorImagery = unique(rawImagery);
+    const motifCounts = new Map<string, { label: string; count: number }>();
+    for (const image of rawImagery) {
       const key = image.toLocaleLowerCase();
-      motifCounts.set(key, (motifCounts.get(key) ?? 0) + 1);
+      const current = motifCounts.get(key) ?? { label: image, count: 0 };
+      current.count += 1;
+      motifCounts.set(key, current);
     }
-    const recurringMotifs = majorImagery.filter(
-      (image) => (motifCounts.get(image.toLocaleLowerCase()) ?? 0) > 1,
-    );
+    const recurringMotifs = [...motifCounts.values()]
+      .filter((item) => item.count > 1)
+      .map((item) => item.label);
     const narrativeSummary = story
       ? [
           text(story.summary) ?? text(story.concept),
