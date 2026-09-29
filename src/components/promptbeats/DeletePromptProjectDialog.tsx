@@ -23,9 +23,12 @@ type DeletePromptProjectDialogProps = {
 };
 
 function promptLabel(prompt: ProjectPrompt) {
-  if (prompt.version_label?.trim()) return prompt.version_label.trim();
-  if (prompt.version_number != null) return `Version ${prompt.version_number}`;
-  return prompt.custom_name || prompt.title || prompt.theme || "Prompt";
+  const title = prompt.custom_name || prompt.title || prompt.theme || "Prompt";
+  const version =
+    prompt.version_number != null
+      ? `V${prompt.version_number}`
+      : prompt.version_label?.trim() || null;
+  return version ? `${title} — ${version}` : title;
 }
 
 export function DeletePromptProjectDialog({
