@@ -538,7 +538,7 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
       stageAEvidence,
       research,
       trackTitle: trackTitle ?? "",
-      artist,
+      artist: artist ?? "",
     });
 
     return {

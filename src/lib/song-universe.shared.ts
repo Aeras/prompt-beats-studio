@@ -381,10 +381,10 @@ export function buildSongUniverseContextText(
     addValue(
       "Επόμενη αφηγηματική ευκαιρία",
       "Next narrative opportunity",
-      brief.nextNarrativeOpportunity,
+      brief["nextNarrativeOpportunity"],
     );
-    addList("Σκόπιμη αντίθεση", "Intentional contrast", brief.intentionalContrast);
-    addList("Δημιουργικές ευκαιρίες", "Creative opportunities", brief.creativeOpportunity);
+    addList("Σκόπιμη αντίθεση", "Intentional contrast", brief["intentionalContrast"]);
+    addList("Δημιουργικές ευκαιρίες", "Creative opportunities", brief["creativeOpportunity"]);
   }
 
   lines.push(
