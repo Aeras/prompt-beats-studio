@@ -20,9 +20,9 @@ type AnalyzerStatus = "idle" | "running" | "completed" | "failed";
 
 type PersistedAnalysisArgs = {
   model: string;
-  finalModel?: string;
-  trackTitle?: string;
-  artist?: string;
+  finalModel?: string | undefined;
+  trackTitle?: string | undefined;
+  artist?: string | undefined;
 };
 
 export type AnalyzerBackgroundSnapshot = {
