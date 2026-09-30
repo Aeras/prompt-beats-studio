@@ -282,11 +282,12 @@ function buildInterpretationGuardPacket(
   const notes = stageAEvidence.uncertaintyNotes ?? [];
   const sourceResolverNotes = notes.filter((note) => /neutral source resolver|guitar guard|keyboard-family|micro-production|source-family|source identity/i.test(note));
   const stabilityConflicts = notes.filter((note) => /stability guard|contradicted|disagree/i.test(note));
+  const stage0Tempo = stage0Evidence.tempo;
   return {
-    tempoAmbiguous: Boolean(stage0Evidence.tempo.ambiguous),
-    stage0PrimaryBpm: stage0Evidence.tempo.primaryBpm,
-    stage0HalfTimeCandidate: stage0Evidence.tempo.halfTimeCandidate,
-    stage0DoubleTimeCandidate: stage0Evidence.tempo.doubleTimeCandidate,
+    tempoAmbiguous: Boolean(stage0Tempo?.ambiguous),
+    stage0PrimaryBpm: stage0Tempo?.primaryBpm ?? null,
+    stage0HalfTimeCandidate: stage0Tempo?.halfTimeCandidate ?? null,
+    stage0DoubleTimeCandidate: stage0Tempo?.doubleTimeCandidate ?? null,
     stageAFeltTempo: stageAEvidence.tempo.feltTempo,
     stageATempoConfidence: stageAEvidence.tempo.confidence,
     sourceResolverNotes: sourceResolverNotes.slice(0, 10),
@@ -448,7 +449,7 @@ async function runFinalJudge(args: {
       prompt,
       schema: ANALYZER_RESPONSE_SCHEMA,
       maxTokens: 8192,
-      reasoningEffort: selected.reasoningEffort,
+      ...(selected.reasoningEffort ? { reasoningEffort: selected.reasoningEffort } : {}),
     });
     usage = response.usage;
     actualProvider = response.provider;
@@ -531,7 +532,7 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
 
     const final = await runFinalJudge({
       userId: context.userId,
-      requestedModel: data.finalModel,
+      requestedModel: data.finalModel ?? null,
       initialResult: data.initialResult,
       stage0Evidence: data.stage0Evidence,
       stageAEvidence,

@@ -963,7 +963,7 @@ function logStage(model: string, stage: string, event: string, details?: unknown
   console.info("[song-analyzer]", { provider: "gemini", model, stage, event, details });
 }
 
-function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, stage: string): T {
+function parseStructured<T>(text: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>, model: string, stage: string): T {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -1009,15 +1009,16 @@ function normalizeSectionCoverage(
   };
 
   const first = sections[0];
-  if (first.startSeconds != null && first.startSeconds > 12) {
+  if (first && first.startSeconds != null && first.startSeconds > 12) {
     addGap(0, first.startSeconds, "before the first identified section");
   }
 
   for (let index = 0; index < sections.length; index += 1) {
     const section = sections[index];
+    if (!section) continue;
     if (index > 0) {
       const previous = sections[index - 1];
-      if (previous.endSeconds != null && section.startSeconds != null) {
+      if (previous && previous.endSeconds != null && section.startSeconds != null) {
         addGap(previous.endSeconds, section.startSeconds, "between identified sections");
       }
     }
@@ -1026,6 +1027,7 @@ function normalizeSectionCoverage(
 
   const last = sections[sections.length - 1];
   if (
+    last &&
     durationSeconds != null &&
     last.endSeconds != null &&
     durationSeconds > last.endSeconds
