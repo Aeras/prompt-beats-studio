@@ -66,9 +66,11 @@ const savedInput = z.object({
   version_number: z.number().int().positive().nullable().optional(),
   version_label: z.string().trim().max(120).nullable().optional(),
   generator_input_snapshot: generatorInputSnapshotSchema.nullable().optional(),
-  theme: z.string().trim().max(500).default(""),
-  genre: z.string().trim().max(500).default(""),
-  mood: z.string().trim().max(120).default(""),
+  // Persistence accepts rich Generator/Song Universe context. Normal live authoring limits
+  // are still enforced by the Generator UI and generation path before this save boundary.
+  theme: z.string().trim().max(32000).default(""),
+  genre: z.string().trim().max(32000).default(""),
+  mood: z.string().trim().max(32000).default(""),
   language: z.string().trim().max(80).default(""),
   tags: z.string().trim().max(4000).default(""),
   lyrics: z.string().trim().max(12000).default(""),
