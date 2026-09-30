@@ -398,7 +398,7 @@ export async function loadSongUniverseProjectMemory(
   });
 
   const historyUpdatedAt = maxIso(
-    [universe.updatedAt, ...summaries.flatMap((summary) => [summary.updatedAt, summary.storyMapUpdatedAt])],
+    [universe.updatedAt, ...summaries.flatMap((summary: { updatedAt: string | null; storyMapUpdatedAt: string | null }) => [summary.updatedAt, summary.storyMapUpdatedAt])],
     universe.updatedAt,
   );
 

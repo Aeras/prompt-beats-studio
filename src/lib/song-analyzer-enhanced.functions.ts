@@ -195,18 +195,18 @@ function mapReferenceCandidates(result: Awaited<ReturnType<typeof queryMusicMemo
   return result.matches.map((match) => {
     const payload = match.payload;
     const sourceTrackId =
-      typeof payload.source_track_id === "number" && Number.isInteger(payload.source_track_id)
-        ? payload.source_track_id
+      typeof payload["source_track_id"] === "number" && Number.isInteger(payload["source_track_id"])
+        ? payload["source_track_id"]
         : null;
     return {
       id: match.id,
       score: match.score,
-      sourceTrackId,
-      title: payloadText(payload.title),
-      artist: payloadText(payload.artist),
-      genreTop: payloadText(payload.genre_top, 120),
-      genres: payloadStringArray(payload.genres),
-      tags: payloadStringArray(payload.tags),
+      sourceTrackId: typeof sourceTrackId === "number" ? sourceTrackId : null,
+      title: payloadText(payload["title"]),
+      artist: payloadText(payload["artist"]),
+      genreTop: payloadText(payload["genre_top"], 120),
+      genres: payloadStringArray(payload["genres"]),
+      tags: payloadStringArray(payload["tags"]),
     };
   });
 }

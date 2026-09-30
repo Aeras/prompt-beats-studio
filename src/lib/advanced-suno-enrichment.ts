@@ -2,7 +2,7 @@ type AdvancedSunoRuntimeInput = {
   operation: string;
   targetPlatform: string;
   instructions: string;
-  inputSnapshot?: { generatorMode?: string } | null;
+  inputSnapshot?: { generatorMode?: string } | null | undefined;
 };
 
 export const ADVANCED_SUNO_ENRICHMENT_INSTRUCTION = `PROMPTBEATS INTERNAL MODE — ADVANCED SUNO

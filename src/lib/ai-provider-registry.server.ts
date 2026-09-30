@@ -428,11 +428,12 @@ function sanitizeProviderError(body: string, status: number): string {
   let detail = "";
   try {
     const payload = JSON.parse(body) as Record<string, any>;
-    const nested = payload?.error && typeof payload.error === "object" ? payload.error : payload;
-    const code = nested?.code ?? payload?.code;
-    const message = nested?.message ?? payload?.message;
+    const nested =
+      payload?.["error"] && typeof payload["error"] === "object" ? payload["error"] : payload;
+    const code = nested?.["code"] ?? payload?.["code"];
+    const message = nested?.["message"] ?? payload?.["message"];
     const requestId =
-      nested?.request_id ?? nested?.requestId ?? payload?.request_id ?? payload?.requestId;
+      nested?.["request_id"] ?? nested?.["requestId"] ?? payload?.["request_id"] ?? payload?.["requestId"];
     detail = [code, message, requestId ? `request_id=${requestId}` : null]
       .filter(Boolean)
       .map(String)

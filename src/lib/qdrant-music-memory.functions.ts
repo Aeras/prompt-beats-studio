@@ -19,10 +19,18 @@ const similarityInputSchema = z.object({
   scoreThreshold: z.number().finite().min(-1).max(1).optional(),
 });
 
+export type MusicMemoryJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | MusicMemoryJsonValue[]
+  | { [key: string]: MusicMemoryJsonValue };
+
 export type MusicMemoryMatch = {
   id: string | number | null;
   score: number | null;
-  payload: Record<string, unknown>;
+  payload: Record<string, MusicMemoryJsonValue>;
 };
 
 function getQdrantConfig() {
@@ -68,8 +76,8 @@ async function collectionPointCount() {
 
 export async function queryMusicMemoryByVector(args: {
   vector: number[];
-  limit?: number;
-  scoreThreshold?: number;
+  limit?: number | undefined;
+  scoreThreshold?: number | undefined;
 }): Promise<{
   collectionName: string;
   embeddingContract: string;
@@ -114,7 +122,7 @@ export async function queryMusicMemoryByVector(args: {
     matches: (payload.result?.points ?? []).map((point) => ({
       id: point.id ?? null,
       score: typeof point.score === "number" ? point.score : null,
-      payload: point.payload ?? {},
+      payload: (point.payload ?? {}) as Record<string, MusicMemoryJsonValue>,
     })),
   };
 }
