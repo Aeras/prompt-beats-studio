@@ -14,7 +14,7 @@ import {
   isProjectBulkSelectionActive,
   projectBulkSelectionIdFromElement,
   toggleProjectBulkSelection,
-} from "@/lib/project-bulk-selection.client";
+} from "@/lib/project-bulk-selection";
 
 export type LibraryActionMenuAnchor = { x: number; y: number };
 type PointerPoint = { x: number; y: number };

@@ -14,7 +14,7 @@ import {
   getProjectBulkSelectionSnapshot,
   selectAllVisibleProjects,
   subscribeProjectBulkSelection,
-} from "@/lib/project-bulk-selection.client";
+} from "@/lib/project-bulk-selection";
 import { useI18n } from "@/i18n";
 
 export function ProjectBulkSelectionController({ controllerId }: { controllerId: string }) {
