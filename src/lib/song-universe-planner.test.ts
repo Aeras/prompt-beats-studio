@@ -5,6 +5,7 @@ import {
   buildDeterministicUsageProfile,
   contrastInstruction,
   getSongUniverseStrategy,
+  shouldPreserveBibleItemAsIdentity,
 } from "./song-universe-planner";
 import {
   SONG_UNIVERSE_PLANNER_PHILOSOPHY,
@@ -12,6 +13,7 @@ import {
   nextSongBriefSchema,
   projectUniverseSummarySchema,
 } from "./song-universe-planner.shared";
+import { songUniverseBibleItemSchema } from "./song-universe.shared";
 
 function summary(input: Partial<ReturnType<typeof projectUniverseSummarySchema.parse>> & { projectId: string; projectTitle: string; position: number }) {
   return projectUniverseSummarySchema.parse(input);
@@ -35,6 +37,40 @@ describe("Song Universe 2 planner foundation", () => {
     expect(series.headline).toBe("Continue the world, advance the story.");
     expect(series.preserve).toContain("Story Canon");
     expect(series.narrativeProgressionRequired).toBe(true);
+  });
+
+  test("Core Things-to-Avoid stays a constraint and never becomes identityToPreserve", () => {
+    const thingsToAvoid = songUniverseBibleItemSchema.parse({
+      id: "avoid-heavy-trap",
+      section: "things_to_avoid",
+      content: "Heavy trap aesthetic",
+      strength: "core",
+      recurrence: "always",
+      enabled: true,
+      sortOrder: 0,
+    });
+    const coreIdentity = songUniverseBibleItemSchema.parse({
+      id: "identity-guitar",
+      section: "musical_identity",
+      content: "Guitar-led identity",
+      strength: "core",
+      recurrence: "frequent",
+      enabled: true,
+      sortOrder: 0,
+    });
+    const corePalette = songUniverseBibleItemSchema.parse({
+      id: "palette-core",
+      section: "emotional_palette",
+      content: "Intimate emotional palette",
+      strength: "core",
+      recurrence: "frequent",
+      enabled: true,
+      sortOrder: 0,
+    });
+
+    expect(shouldPreserveBibleItemAsIdentity(thingsToAvoid)).toBe(false);
+    expect(shouldPreserveBibleItemAsIdentity(coreIdentity)).toBe(true);
+    expect(shouldPreserveBibleItemAsIdentity(corePalette)).toBe(true);
   });
 
   test("intentional outliers have reduced deterministic usage influence", () => {

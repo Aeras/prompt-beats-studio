@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCurrentUserAiModelAccess } from "@/lib/ai.functions";
+import { shouldShowAiModelSelector } from "@/lib/ai-model-selector-policy.shared";
 
 type ModelBucket = "generator" | "qualityCheck" | "aiTools";
 type ModelOption = {
@@ -45,7 +46,7 @@ export function useAiModelSelection(bucket: ModelBucket, filter?: OptionsFilter)
     options,
     selectedModel,
     setSelectedModel,
-    showSelector: options.length > 1,
+    showSelector: shouldShowAiModelSelector(options.length),
     unavailable: access.isSuccess && options.length === 0,
   };
 }

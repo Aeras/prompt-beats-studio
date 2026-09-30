@@ -1,16 +1,35 @@
 import { describe, expect, test } from "bun:test";
 
+import { shouldShowAiModelSelector } from "./ai-model-selector-policy.shared";
+
 async function source(path: string) {
   return Bun.file(path).text();
 }
 
 describe("AI model selector policy", () => {
+  test("selector is hidden with one effective model and visible with two or more", () => {
+    expect(shouldShowAiModelSelector(0)).toBe(false);
+    expect(shouldShowAiModelSelector(1)).toBe(false);
+    expect(shouldShowAiModelSelector(2)).toBe(true);
+    expect(shouldShowAiModelSelector(4)).toBe(true);
+  });
+
   test("shared selection hook hides the selector unless multiple effective models exist", async () => {
     const hook = await source("src/hooks/useAiModelSelection.ts");
     expect(hook).toContain('type ModelBucket = "generator" | "qualityCheck" | "aiTools"');
-    expect(hook).toContain("showSelector: options.length > 1");
+    expect(hook).toContain("shouldShowAiModelSelector(options.length)");
     expect(hook).toContain("!options.some((option) => option.id === selectedModel)");
     expect(hook).toContain("setSelectedModel(eligibleDefault)");
+  });
+
+  test("Next Song Planner renders the shared selector only when showSelector is true", async () => {
+    const planner = await source("src/components/promptbeats/SongUniverseNextSongPlanner.tsx");
+    expect(planner).toContain('useAiModelSelection("aiTools")');
+    expect(planner).toContain("aiModel.showSelector &&");
+    expect(planner).toContain("value={aiModel.selectedModel}");
+    expect(planner).toContain("aiModel.setSelectedModel(event.target.value)");
+    expect(planner).toContain("aiModel.options.map((option)");
+    expect(planner).toContain("model: aiModel.selectedModel || null");
   });
 
   test("standalone AI tools pass the selected AI Tools model to server functions", async () => {
