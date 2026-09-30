@@ -16,6 +16,7 @@ import {
   detectNearDuplicateDirection,
   deterministicPortfolioBalanceNotes,
   getSongUniverseStrategy,
+  shouldPreserveBibleItemAsIdentity,
   validateNextSongBriefConsistency,
 } from "@/lib/song-universe-planner";
 import {
@@ -25,11 +26,96 @@ import {
   type NextSongBrief,
   type SongUniverseDuplicateRisk,
 } from "@/lib/song-universe-planner.shared";
-import { songUniverseAnalysisSchema, songUniverseBibleItemKind } from "@/lib/song-universe.shared";
+import { songUniverseAnalysisSchema } from "@/lib/song-universe.shared";
 
 const idSchema = z.string().uuid();
 const optionalModelSchema = z.string().trim().max(240).nullable().optional();
 const PLANNER_SCHEMA_VERSION = "next-song-brief:v1";
+
+type PlannerFallbackReasonCode =
+  | "provider_failure"
+  | "max_tokens"
+  | "json_parse_failure"
+  | "schema_validation_failure"
+  | "consistency_failure"
+  | "consistency_failure_after_retry"
+  | "duplicate_retry_failure"
+  | "unknown_planner_failure";
+
+type PlannerFallbackReason = {
+  code: PlannerFallbackReasonCode;
+  stage: string;
+  message: string;
+  retryCount: number;
+};
+
+class PlannerRuntimeError extends Error {
+  constructor(
+    readonly code: PlannerFallbackReasonCode,
+    readonly stage: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "PlannerRuntimeError";
+  }
+}
+
+function safeFallbackMessage(code: PlannerFallbackReasonCode) {
+  switch (code) {
+    case "provider_failure":
+      return "The selected AI model could not complete the Planner request.";
+    case "max_tokens":
+      return "The Planner response reached its output limit before completion.";
+    case "json_parse_failure":
+      return "The Planner returned JSON that could not be parsed.";
+    case "schema_validation_failure":
+      return "The Planner response did not match the required Next Song Brief structure.";
+    case "consistency_failure":
+      return "The Planner returned an internally contradictory direction.";
+    case "consistency_failure_after_retry":
+      return "The Planner remained internally contradictory after one retry.";
+    case "duplicate_retry_failure":
+      return "The Planner remained too close to an existing project after one retry.";
+    default:
+      return "The semantic Planner failed and the reduced deterministic fallback was used.";
+  }
+}
+
+function classifyFallbackReason(
+  cause: unknown,
+  stage: string,
+  retryCount: number,
+): PlannerFallbackReason {
+  if (cause instanceof PlannerRuntimeError) {
+    return {
+      code: cause.code,
+      stage: cause.stage,
+      message: safeFallbackMessage(cause.code),
+      retryCount,
+    };
+  }
+  if (cause instanceof z.ZodError) {
+    return {
+      code: "schema_validation_failure",
+      stage,
+      message: safeFallbackMessage("schema_validation_failure"),
+      retryCount,
+    };
+  }
+  if (cause instanceof SyntaxError) {
+    return {
+      code: "json_parse_failure",
+      stage,
+      message: safeFallbackMessage("json_parse_failure"),
+      retryCount,
+    };
+  }
+  const code: PlannerFallbackReasonCode =
+    stage === "provider_call" || stage === "retry_provider_call"
+      ? "provider_failure"
+      : "unknown_planner_failure";
+  return { code, stage, message: safeFallbackMessage(code), retryCount };
+}
 
 const STORY_STATE_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
@@ -246,9 +332,22 @@ async function callPlannerModel(input: {
     actualProvider = result.provider;
     actualModel = result.model;
     if (result.stopReason === "max_tokens") {
-      throw new Error("The Song Universe Planner response was incomplete. Please retry.");
+      throw new PlannerRuntimeError(
+        "max_tokens",
+        "provider_response",
+        "The Song Universe Planner response was incomplete. Please retry.",
+      );
     }
-    const value = normalizeAiValue(JSON.parse(cleanJsonText(result.text)));
+    let value: unknown;
+    try {
+      value = normalizeAiValue(JSON.parse(cleanJsonText(result.text)));
+    } catch (cause) {
+      throw new PlannerRuntimeError(
+        "json_parse_failure",
+        "json_parse",
+        cause instanceof Error ? cause.message : "Planner JSON parse failed.",
+      );
+    }
     success = true;
     return {
       value,
@@ -284,14 +383,16 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 
 function buildHardConstraints(memory: Awaited<ReturnType<typeof loadSongUniverseProjectMemory>>) {
   const identityToPreserve = memory.universe.creativeBible.items
+    .filter(shouldPreserveBibleItemAsIdentity)
+    .map((item) => item.content);
+  const always = memory.universe.creativeBible.items
     .filter(
       (item) =>
         item.enabled &&
-        (songUniverseBibleItemKind(item.section) === "identity" || item.strength === "core"),
+        item.recurrence === "always" &&
+        item.section !== "things_to_avoid" &&
+        item.section !== "allowed_deviations",
     )
-    .map((item) => item.content);
-  const always = memory.universe.creativeBible.items
-    .filter((item) => item.enabled && item.recurrence === "always")
     .map((item) => item.content);
   const mustAvoid = memory.universe.creativeBible.items
     .filter((item) => item.enabled && item.section === "things_to_avoid")
@@ -657,6 +758,9 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
         );
 
         let fallback = false;
+        let fallbackReason: PlannerFallbackReason | null = null;
+        let failureStage = "provider_call";
+        let retryCount = 0;
         let model: string | null = null;
         let provider: string | null = null;
         let modelLabel: string | null = null;
@@ -670,6 +774,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
         };
 
         try {
+          failureStage = "provider_call";
           const first = await callPlannerModel({
             userId: context.userId,
             requestedModel: data.model ?? null,
@@ -689,6 +794,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
           model = first.model;
           provider = first.provider;
           modelLabel = first.modelLabel;
+          failureStage = "schema_validation";
           brief = parsePlannerResult(first.value, {
             universeType: memory.universe.universeType,
             strategyVersion: strategy.version,
@@ -698,9 +804,11 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
           brief = applyPinnedFields(brief, data.previousBrief, data.pinnedFields);
           brief = applyCanonicalConstraints(brief, memory);
           duplicateRisk = detectNearDuplicateDirection(brief, memory.summaries);
+          failureStage = "consistency_validation";
           const consistency = validateNextSongBriefConsistency(brief);
 
           if (duplicateRisk.level === "high" || !consistency.valid) {
+            retryCount = 1;
             const retryReason = [
               duplicateRisk.level === "high"
                 ? `The first direction was too close to ${duplicateRisk.projectTitle ?? "an existing project"}. Create a materially different central premise while preserving identity.`
@@ -714,6 +822,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
             ]
               .filter(Boolean)
               .join(" ");
+            failureStage = "retry_provider_call";
             const second = await callPlannerModel({
               userId: context.userId,
               requestedModel: data.model ?? null,
@@ -733,6 +842,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
             model = second.model;
             provider = second.provider;
             modelLabel = second.modelLabel;
+            failureStage = "retry_schema_validation";
             brief = parsePlannerResult(second.value, {
               universeType: memory.universe.universeType,
               strategyVersion: strategy.version,
@@ -742,13 +852,29 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
             brief = applyPinnedFields(brief, data.previousBrief, data.pinnedFields);
             brief = applyCanonicalConstraints(brief, memory);
             duplicateRisk = detectNearDuplicateDirection(brief, memory.summaries);
+            failureStage = "consistency_after_retry";
             const secondConsistency = validateNextSongBriefConsistency(brief);
             if (!secondConsistency.valid) {
-              throw new Error("Planner returned a contradictory direction after retry.");
+              throw new PlannerRuntimeError(
+                "consistency_failure_after_retry",
+                failureStage,
+                "Planner returned a contradictory direction after retry.",
+              );
+            }
+            if (duplicateRisk.level === "high") {
+              throw new PlannerRuntimeError(
+                "duplicate_retry_failure",
+                "duplicate_check_after_retry",
+                "Planner remained too close to an existing project after retry.",
+              );
             }
           }
         } catch (cause) {
-          console.error("[song-universe-planner] reduced fallback used", cause);
+          fallbackReason = classifyFallbackReason(cause, failureStage, retryCount);
+          console.error("[song-universe-planner] reduced fallback used", {
+            ...fallbackReason,
+            cause,
+          });
           fallback = true;
           brief = buildFallbackBrief(memory, {
             targetRole: data.targetRole,
@@ -777,6 +903,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
             planned_track_count: memory.universe.plannedTrackCount,
             contrast_level: contrastLevel,
             source_completeness: memory.overallCompleteness,
+            fallback_diagnostics: fallbackReason,
             brief,
           })
           .select("id")
@@ -788,6 +915,7 @@ export const planNextSongUniverseDirection = createServerFn({ method: "POST" })
           brief,
           duplicateRisk,
           fallback,
+          fallbackReason,
           model,
           provider,
           modelLabel,
