@@ -104,6 +104,12 @@ export function SongUniverseNextSongPlanner({
     historyFingerprint: string;
     plannerSchemaVersion: string;
     fallback: boolean;
+    fallbackReason: {
+      code: string;
+      stage: string;
+      message: string;
+      retryCount: number;
+    } | null;
     trackCount: number;
     plannedTrackCount: number | null;
     overallCompleteness: string;
@@ -149,7 +155,11 @@ export function SongUniverseNextSongPlanner({
       parsedCount != null &&
       (!Number.isInteger(parsedCount) || parsedCount < 1 || parsedCount > 200)
     ) {
-      throw new Error(el ? "Ο προγραμματισμένος αριθμός tracks πρέπει να είναι 1–200." : "Planned track count must be 1–200.");
+      throw new Error(
+        el
+          ? "Ο προγραμματισμένος αριθμός tracks πρέπει να είναι 1–200."
+          : "Planned track count must be 1–200.",
+      );
     }
     await updateSongUniverse({
       data: {
@@ -189,6 +199,7 @@ export function SongUniverseNextSongPlanner({
         historyFingerprint: result.historyFingerprint,
         plannerSchemaVersion: result.plannerSchemaVersion,
         fallback: result.fallback,
+        fallbackReason: result.fallbackReason,
         trackCount: result.trackCount,
         plannedTrackCount: result.plannedTrackCount,
         overallCompleteness: result.overallCompleteness,
@@ -242,7 +253,10 @@ export function SongUniverseNextSongPlanner({
           targetRole: targetRole.trim() || null,
         },
       };
-      window.sessionStorage.setItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY, JSON.stringify(handoff));
+      window.sessionStorage.setItem(
+        SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
+        JSON.stringify(handoff),
+      );
       void navigate({ to: "/generate" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -303,6 +317,24 @@ export function SongUniverseNextSongPlanner({
           <X className="h-4 w-4" />
         </button>
       </div>
+
+      {aiModel.showSelector && (
+        <label className="mt-4 block max-w-sm text-xs text-muted-foreground">
+          {el ? "Μοντέλο AI" : "AI model"}
+          <select
+            aria-label={el ? "Μοντέλο AI" : "AI model"}
+            value={aiModel.selectedModel}
+            onChange={(event) => aiModel.setSelectedModel(event.target.value)}
+            className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-foreground"
+          >
+            {aiModel.options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <label className="text-xs text-muted-foreground">
@@ -446,10 +478,19 @@ export function SongUniverseNextSongPlanner({
             )}
             {planMeta.fallback && (
               <span className="rounded-full border border-amber-400/30 px-2 py-1 text-amber-200">
-                {el ? "Reduced Planner fallback" : "Reduced Planner fallback"}
+                Reduced Planner fallback
               </span>
             )}
           </div>
+
+          {planMeta.fallback && planMeta.fallbackReason && (
+            <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-100">
+              <div className="font-semibold">
+                {el ? "Αιτία fallback" : "Fallback reason"}: {planMeta.fallbackReason.code}
+              </div>
+              <div className="mt-1 text-amber-100/80">{planMeta.fallbackReason.message}</div>
+            </div>
+          )}
 
           {planMeta.duplicateRisk.level !== "none" && (
             <div
@@ -466,7 +507,13 @@ export function SongUniverseNextSongPlanner({
 
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-display text-base font-bold">
-              {isSeries ? (el ? "Next Chapter Direction" : "Next Chapter Direction") : el ? "Next Song Direction" : "Next Song Direction"}
+              {isSeries
+                ? el
+                  ? "Next Chapter Direction"
+                  : "Next Chapter Direction"
+                : el
+                  ? "Next Song Direction"
+                  : "Next Song Direction"}
             </h3>
             <button
               type="button"
@@ -509,11 +556,14 @@ export function SongUniverseNextSongPlanner({
 
           <div className="rounded-xl border border-white/10 bg-black/15 p-4">
             <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {el ? "Κατεύθυνση που μπορείς να επεξεργαστείς / κλειδώσεις" : "Editable / pinnable direction"}
+              {el
+                ? "Κατεύθυνση που μπορείς να επεξεργαστείς / κλειδώσεις"
+                : "Editable / pinnable direction"}
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {EDITABLE_FIELDS.filter(
-                (item) => isSeries || !["storyProgression", "nextNarrativeOpportunity"].includes(item.key),
+                (item) =>
+                  isSeries || !["storyProgression", "nextNarrativeOpportunity"].includes(item.key),
               ).map((item) => (
                 <label key={item.key} className="text-xs text-muted-foreground">
                   <span className="flex items-center justify-between gap-2">
@@ -527,7 +577,13 @@ export function SongUniverseNextSongPlanner({
                           : "border-white/10 text-muted-foreground"
                       }`}
                     >
-                      {pinnedFields.has(item.key) ? (el ? "Κλειδωμένο" : "Pinned") : el ? "Κλείδωμα" : "Pin"}
+                      {pinnedFields.has(item.key)
+                        ? el
+                          ? "Κλειδωμένο"
+                          : "Pinned"
+                        : el
+                          ? "Κλείδωμα"
+                          : "Pin"}
                     </button>
                   </span>
                   {editing ? (
@@ -559,7 +615,9 @@ export function SongUniverseNextSongPlanner({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
             {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {el ? "Χρήση αυτής της κατεύθυνσης στο Song Setup" : "Use this direction in Song Setup"}
+            {el
+              ? "Χρήση αυτής της κατεύθυνσης στο Song Setup"
+              : "Use this direction in Song Setup"}
           </button>
         </div>
       )}
