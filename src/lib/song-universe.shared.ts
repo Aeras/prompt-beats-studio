@@ -354,30 +354,30 @@ export function buildSongUniverseContextText(
       "",
       el ? "ΕΓΚΕΚΡΙΜΕΝΗ ΚΑΤΕΥΘΥΝΣΗ ΕΠΟΜΕΝΟΥ ΤΡΑΓΟΥΔΙΟΥ" : "APPROVED NEXT SONG DIRECTION",
     );
-    addList("Διατήρησε", "Preserve", brief.identityToPreserve);
-    addList("Υποχρεωτικά σεβάσου", "Must respect", brief.mustRespect);
-    addList("Εξερεύνησε", "Explore", brief.themesToExplore);
+    addList("Διατήρησε", "Preserve", brief["identityToPreserve"]);
+    addList("Υποχρεωτικά σεβάσου", "Must respect", brief["mustRespect"]);
+    addList("Εξερεύνησε", "Explore", brief["themesToExplore"]);
     addList(
       "Προτίμησε να μην επαναλάβεις — θέματα",
       "Prefer not to repeat — themes",
-      brief.preferNotToRepeatThemes,
+      brief["preferNotToRepeatThemes"],
     );
     addList(
       "Προτίμησε να μην επαναλάβεις — μοτίβα",
       "Prefer not to repeat — motifs",
-      brief.preferNotToRepeatMotifs,
+      brief["preferNotToRepeatMotifs"],
     );
-    addList("Απέφυγε υποχρεωτικά", "Must avoid", brief.mustAvoid);
-    addValue("Προτεινόμενη διάθεση", "Recommended mood", brief.recommendedMood);
-    addValue("Προτεινόμενη ενέργεια", "Recommended energy", brief.recommendedEnergy);
-    addValue("Κατεύθυνση BPM", "BPM direction", brief.recommendedBpmDirection);
-    addValue("Κατεύθυνση δομής", "Structure direction", brief.recommendedStructureDirection);
-    addValue("Κατεύθυνση hook", "Hook direction", brief.recommendedHookDirection);
-    addValue("Οπτική / POV", "Point of view", brief.recommendedPov);
-    addValue("Κατεύθυνση σκηνικού", "Setting direction", brief.recommendedSettingDirection);
-    addValue("Κατάσταση αφήγησης", "Narrative state", brief.narrativeState);
-    addValue("Εξέλιξη ιστορίας", "Story progression", brief.storyProgression);
-    addList("Γεγονότα που δεν επαναλαμβάνονται", "Events not to repeat", brief.eventsNotToRepeat);
+    addList("Απέφυγε υποχρεωτικά", "Must avoid", brief["mustAvoid"]);
+    addValue("Προτεινόμενη διάθεση", "Recommended mood", brief["recommendedMood"]);
+    addValue("Προτεινόμενη ενέργεια", "Recommended energy", brief["recommendedEnergy"]);
+    addValue("Κατεύθυνση BPM", "BPM direction", brief["recommendedBpmDirection"]);
+    addValue("Κατεύθυνση δομής", "Structure direction", brief["recommendedStructureDirection"]);
+    addValue("Κατεύθυνση hook", "Hook direction", brief["recommendedHookDirection"]);
+    addValue("Οπτική / POV", "Point of view", brief["recommendedPov"]);
+    addValue("Κατεύθυνση σκηνικού", "Setting direction", brief["recommendedSettingDirection"]);
+    addValue("Κατάσταση αφήγησης", "Narrative state", brief["narrativeState"]);
+    addValue("Εξέλιξη ιστορίας", "Story progression", brief["storyProgression"]);
+    addList("Γεγονότα που δεν επαναλαμβάνονται", "Events not to repeat", brief["eventsNotToRepeat"]);
     addValue(
       "Επόμενη αφηγηματική ευκαιρία",
       "Next narrative opportunity",
