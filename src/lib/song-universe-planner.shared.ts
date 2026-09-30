@@ -72,9 +72,11 @@ export const projectUniverseSummarySchema = z.object({
   availableSources: z.array(z.string().trim().max(100)).max(50).default([]),
   missingSources: z.array(z.string().trim().max(100)).max(50).default([]),
   sourceCompleteness: songUniverseSummaryCompletenessSchema.default("partial"),
-  versionUpdatedAt: z.string().datetime().nullable().default(null),
-  storyMapUpdatedAt: z.string().datetime().nullable().default(null),
-  updatedAt: z.string().datetime().nullable().default(null),
+  // Supabase/Postgres timestamptz values are valid ISO datetimes with explicit offsets
+  // (for example +00:00), so accept both Z and offset forms at the Project Memory boundary.
+  versionUpdatedAt: z.string().datetime({ offset: true }).nullable().default(null),
+  storyMapUpdatedAt: z.string().datetime({ offset: true }).nullable().default(null),
+  updatedAt: z.string().datetime({ offset: true }).nullable().default(null),
 });
 export type ProjectUniverseSummary = z.infer<typeof projectUniverseSummarySchema>;
 
