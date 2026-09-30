@@ -1,4 +1,8 @@
-import type { SongUniverseType } from "@/lib/song-universe.shared";
+import {
+  songUniverseBibleItemKind,
+  type SongUniverseBibleItem,
+  type SongUniverseType,
+} from "@/lib/song-universe.shared";
 import type {
   NextSongBrief,
   ProjectUniverseSummary,
@@ -134,6 +138,15 @@ export const SONG_UNIVERSE_STRATEGIES: Record<SongUniverseType, SongUniverseStra
 
 export function getSongUniverseStrategy(type: SongUniverseType) {
   return SONG_UNIVERSE_STRATEGIES[type];
+}
+
+export function shouldPreserveBibleItemAsIdentity(
+  item: Pick<SongUniverseBibleItem, "enabled" | "section" | "strength">,
+) {
+  if (!item.enabled) return false;
+  const kind = songUniverseBibleItemKind(item.section);
+  if (kind === "constraint" || kind === "deviation") return false;
+  return kind === "identity" || item.strength === "core";
 }
 
 const outlierWeight = (summary: ProjectUniverseSummary) => (summary.intentionalOutlier ? 0.25 : 1);
