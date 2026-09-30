@@ -94,6 +94,25 @@ export type SongUniverseStoryBible = z.infer<typeof songUniverseStoryBibleSchema
 export const emptySongUniverseStoryBible = (): SongUniverseStoryBible =>
   songUniverseStoryBibleSchema.parse({});
 
+export type SongUniverseJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SongUniverseJsonValue[]
+  | { [key: string]: SongUniverseJsonValue };
+
+const songUniverseJsonValueSchema: z.ZodType<SongUniverseJsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(songUniverseJsonValueSchema),
+    z.record(songUniverseJsonValueSchema),
+  ]),
+);
+
 export const songUniverseContextSnapshotSchema = z.object({
   universeId: z.string().uuid(),
   universeTitle: z.string().trim().min(1).max(160),
@@ -105,7 +124,7 @@ export const songUniverseContextSnapshotSchema = z.object({
   plannerPlanId: z.string().uuid().nullable().optional().default(null),
   plannerStrategyVersion: z.string().max(100).nullable().optional().default(null),
   plannerSchemaVersion: z.string().max(100).nullable().optional().default(null),
-  approvedNextSongBrief: z.record(z.unknown()).nullable().optional().default(null),
+  approvedNextSongBrief: z.record(songUniverseJsonValueSchema).nullable().optional().default(null),
   plannedTrackCount: z.number().int().min(1).max(200).nullable().optional().default(null),
   targetPosition: z.number().int().min(0).max(199).nullable().optional().default(null),
   targetRole: z.string().trim().max(200).nullable().optional().default(null),
@@ -131,7 +150,7 @@ const songUniverseSongSetupHandoffV2Schema = z
     universeType: songUniverseTypeSchema,
     projectId: z.string().uuid().nullable(),
     selectedItems: z.array(songUniverseBibleItemSchema).max(200),
-    approvedNextSongBrief: z.record(z.unknown()),
+    approvedNextSongBrief: z.record(songUniverseJsonValueSchema),
     contextSnapshot: songUniverseContextSnapshotSchema,
   })
   .strict();

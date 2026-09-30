@@ -1112,7 +1112,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           sourceStemPreview: data.stage0Evidence.sourceStemPreview,
         });
         usage = checked.usage;
-        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence);
+        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence) ?? evidence;
         if (checked.stemPreviewUsed) {
           evidence = {
             ...evidence,
