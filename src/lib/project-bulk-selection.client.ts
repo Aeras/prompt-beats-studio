@@ -101,5 +101,5 @@ export function isProjectBulkSelectionActive() {
 export function projectBulkSelectionIdFromElement(element: Element | null) {
   const article = element?.closest("article");
   const marker = article?.querySelector<HTMLElement>("[data-pb-project-bulk-id]");
-  return marker?.dataset.pbProjectBulkId ?? null;
+  return marker?.dataset["pbProjectBulkId"] ?? null;
 }

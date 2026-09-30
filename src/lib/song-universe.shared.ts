@@ -94,6 +94,25 @@ export type SongUniverseStoryBible = z.infer<typeof songUniverseStoryBibleSchema
 export const emptySongUniverseStoryBible = (): SongUniverseStoryBible =>
   songUniverseStoryBibleSchema.parse({});
 
+export type SongUniverseJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SongUniverseJsonValue[]
+  | { [key: string]: SongUniverseJsonValue };
+
+const songUniverseJsonValueSchema: z.ZodType<SongUniverseJsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(songUniverseJsonValueSchema),
+    z.record(songUniverseJsonValueSchema),
+  ]),
+);
+
 export const songUniverseContextSnapshotSchema = z.object({
   universeId: z.string().uuid(),
   universeTitle: z.string().trim().min(1).max(160),
@@ -105,7 +124,7 @@ export const songUniverseContextSnapshotSchema = z.object({
   plannerPlanId: z.string().uuid().nullable().optional().default(null),
   plannerStrategyVersion: z.string().max(100).nullable().optional().default(null),
   plannerSchemaVersion: z.string().max(100).nullable().optional().default(null),
-  approvedNextSongBrief: z.record(z.unknown()).nullable().optional().default(null),
+  approvedNextSongBrief: z.record(songUniverseJsonValueSchema).nullable().optional().default(null),
   plannedTrackCount: z.number().int().min(1).max(200).nullable().optional().default(null),
   targetPosition: z.number().int().min(0).max(199).nullable().optional().default(null),
   targetRole: z.string().trim().max(200).nullable().optional().default(null),
@@ -131,7 +150,7 @@ const songUniverseSongSetupHandoffV2Schema = z
     universeType: songUniverseTypeSchema,
     projectId: z.string().uuid().nullable(),
     selectedItems: z.array(songUniverseBibleItemSchema).max(200),
-    approvedNextSongBrief: z.record(z.unknown()),
+    approvedNextSongBrief: z.record(songUniverseJsonValueSchema),
     contextSnapshot: songUniverseContextSnapshotSchema,
   })
   .strict();
@@ -335,37 +354,37 @@ export function buildSongUniverseContextText(
       "",
       el ? "ΕΓΚΕΚΡΙΜΕΝΗ ΚΑΤΕΥΘΥΝΣΗ ΕΠΟΜΕΝΟΥ ΤΡΑΓΟΥΔΙΟΥ" : "APPROVED NEXT SONG DIRECTION",
     );
-    addList("Διατήρησε", "Preserve", brief.identityToPreserve);
-    addList("Υποχρεωτικά σεβάσου", "Must respect", brief.mustRespect);
-    addList("Εξερεύνησε", "Explore", brief.themesToExplore);
+    addList("Διατήρησε", "Preserve", brief["identityToPreserve"]);
+    addList("Υποχρεωτικά σεβάσου", "Must respect", brief["mustRespect"]);
+    addList("Εξερεύνησε", "Explore", brief["themesToExplore"]);
     addList(
       "Προτίμησε να μην επαναλάβεις — θέματα",
       "Prefer not to repeat — themes",
-      brief.preferNotToRepeatThemes,
+      brief["preferNotToRepeatThemes"],
     );
     addList(
       "Προτίμησε να μην επαναλάβεις — μοτίβα",
       "Prefer not to repeat — motifs",
-      brief.preferNotToRepeatMotifs,
+      brief["preferNotToRepeatMotifs"],
     );
-    addList("Απέφυγε υποχρεωτικά", "Must avoid", brief.mustAvoid);
-    addValue("Προτεινόμενη διάθεση", "Recommended mood", brief.recommendedMood);
-    addValue("Προτεινόμενη ενέργεια", "Recommended energy", brief.recommendedEnergy);
-    addValue("Κατεύθυνση BPM", "BPM direction", brief.recommendedBpmDirection);
-    addValue("Κατεύθυνση δομής", "Structure direction", brief.recommendedStructureDirection);
-    addValue("Κατεύθυνση hook", "Hook direction", brief.recommendedHookDirection);
-    addValue("Οπτική / POV", "Point of view", brief.recommendedPov);
-    addValue("Κατεύθυνση σκηνικού", "Setting direction", brief.recommendedSettingDirection);
-    addValue("Κατάσταση αφήγησης", "Narrative state", brief.narrativeState);
-    addValue("Εξέλιξη ιστορίας", "Story progression", brief.storyProgression);
-    addList("Γεγονότα που δεν επαναλαμβάνονται", "Events not to repeat", brief.eventsNotToRepeat);
+    addList("Απέφυγε υποχρεωτικά", "Must avoid", brief["mustAvoid"]);
+    addValue("Προτεινόμενη διάθεση", "Recommended mood", brief["recommendedMood"]);
+    addValue("Προτεινόμενη ενέργεια", "Recommended energy", brief["recommendedEnergy"]);
+    addValue("Κατεύθυνση BPM", "BPM direction", brief["recommendedBpmDirection"]);
+    addValue("Κατεύθυνση δομής", "Structure direction", brief["recommendedStructureDirection"]);
+    addValue("Κατεύθυνση hook", "Hook direction", brief["recommendedHookDirection"]);
+    addValue("Οπτική / POV", "Point of view", brief["recommendedPov"]);
+    addValue("Κατεύθυνση σκηνικού", "Setting direction", brief["recommendedSettingDirection"]);
+    addValue("Κατάσταση αφήγησης", "Narrative state", brief["narrativeState"]);
+    addValue("Εξέλιξη ιστορίας", "Story progression", brief["storyProgression"]);
+    addList("Γεγονότα που δεν επαναλαμβάνονται", "Events not to repeat", brief["eventsNotToRepeat"]);
     addValue(
       "Επόμενη αφηγηματική ευκαιρία",
       "Next narrative opportunity",
-      brief.nextNarrativeOpportunity,
+      brief["nextNarrativeOpportunity"],
     );
-    addList("Σκόπιμη αντίθεση", "Intentional contrast", brief.intentionalContrast);
-    addList("Δημιουργικές ευκαιρίες", "Creative opportunities", brief.creativeOpportunity);
+    addList("Σκόπιμη αντίθεση", "Intentional contrast", brief["intentionalContrast"]);
+    addList("Δημιουργικές ευκαιρίες", "Creative opportunities", brief["creativeOpportunity"]);
   }
 
   lines.push(

@@ -488,8 +488,8 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   const provenCompactCorrections = evidence.songSections.reduce((count, section) => {
     const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
     const values = [section.startSeconds, section.endSeconds];
-    return count + values.reduce((inner, value, index) => {
-      const timestamp = explicit[index];
+    return count + values.reduce((inner: number, value, index) => {
+      const timestamp = explicit?.[index];
       const explicitMatch =
         value != null &&
         timestamp != null &&
@@ -568,6 +568,7 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   for (let index = 1; index < songSections.length; index += 1) {
     const previous = songSections[index - 1];
     const current = songSections[index];
+    if (!previous || !current) continue;
     if (
       previous.startSeconds != null &&
       previous.endSeconds != null &&
@@ -749,6 +750,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
 
     if (candidateIndex >= 0) {
       const candidate = instrumentEvidence[candidateIndex];
+      if (!candidate) return;
       const candidateText = `${candidate.instrument} ${candidate.technique ?? ""} ${candidate.timbre ?? ""}`.toLowerCase();
       const firstPassGuitarCues = /guitar|strum|palm mut|chordal comp|fingerpick|arpeggi|picked/.test(candidateText);
       const firstPassSynthCues = /synth|sequenc/.test(candidateText);
@@ -824,6 +826,7 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     });
     if (candidateIndex >= 0) {
       const candidate = instrumentEvidence[candidateIndex];
+      if (!candidate) return;
       const sourceSpecific = /acoustic guitar|clean electric guitar|electric guitar/.test(candidate.instrument.toLowerCase());
       instrumentEvidence = instrumentEvidence.map((item, index) => index === candidateIndex ? {
         ...item,
@@ -1109,7 +1112,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           sourceStemPreview: data.stage0Evidence.sourceStemPreview,
         });
         usage = checked.usage;
-        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence);
+        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence) ?? evidence;
         if (checked.stemPreviewUsed) {
           evidence = {
             ...evidence,
