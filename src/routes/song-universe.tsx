@@ -735,6 +735,7 @@ function UniverseAiPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refineInstruction, setRefineInstruction] = useState("");
+  const [copiedResult, setCopiedResult] = useState<"continuity" | "fit" | null>(null);
   const [fit, setFit] = useState<{
     projectName: string;
     strongMatches: string[];
@@ -761,6 +762,63 @@ function UniverseAiPanel({
   const applyBible = async (creativeBible: SongUniverseRecord["creativeBible"]) => {
     await updateSongUniverse({ data: { universeId: universe.id, creativeBible } });
     await onRefresh();
+  };
+
+  const listBlock = (title: string, items: string[]) =>
+    `${title}\n${items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "—"}`;
+
+  const copyText = async (kind: "continuity" | "fit", value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedResult(kind);
+      window.setTimeout(() => {
+        setCopiedResult((current) => (current === kind ? null : current));
+      }, 1600);
+    } catch {
+      setError(el ? "Η αντιγραφή απέτυχε." : "Copy failed.");
+    }
+  };
+
+  const copyContinuity = async () => {
+    const analysis = latest.data?.analysis;
+    if (!analysis) return;
+    const motifItems = analysis.motifUsage.map((motif) =>
+      motif.note
+        ? `${motif.motif} · ${motif.usage} — ${motif.note}`
+        : `${motif.motif} · ${motif.usage}`,
+    );
+    await copyText(
+      "continuity",
+      [
+        listBlock(el ? "Σύνοψη" : "Summary", [analysis.summary]),
+        listBlock(el ? "Ισχυρή συνοχή" : "Strong continuity", analysis.strongContinuity),
+        listBlock(el ? "Πιθανή επανάληψη" : "Possible repetition", analysis.possibleRepetition),
+        listBlock(
+          el ? "Υποχρησιμοποιημένες κατευθύνσεις" : "Underused directions",
+          analysis.underusedDirections,
+        ),
+        listBlock(el ? "Διαφοροποίηση" : "Diversity", analysis.diversityNotes),
+        listBlock("Motif Usage", motifItems),
+        listBlock(
+          el ? "Σκόπιμες αποκλίσεις" : "Intentional outliers",
+          analysis.intentionalOutliers,
+        ),
+        listBlock(el ? "Δημιουργικές ευκαιρίες" : "Creative opportunities", analysis.opportunities),
+      ].join("\n\n"),
+    );
+  };
+
+  const copyFit = async () => {
+    if (!fit) return;
+    await copyText(
+      "fit",
+      [
+        `${el ? "Project" : "Project"}\n${fit.projectName}`,
+        listBlock(el ? "Ισχυρές αντιστοιχίες" : "Strong matches", fit.strongMatches),
+        listBlock(el ? "Διαφορές" : "Differences", fit.differences),
+        `${el ? "Ερμηνεία" : "Interpretation"}\n${fit.interpretation || "—"}`,
+      ].join("\n\n"),
+    );
   };
 
   return (
@@ -904,45 +962,62 @@ function UniverseAiPanel({
       )}
 
       {latest.data?.analysis && (
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          <Insight title={el ? "Σύνοψη" : "Summary"} items={[latest.data.analysis.summary]} />
-          <Insight
-            title={el ? "Ισχυρή συνοχή" : "Strong continuity"}
-            items={latest.data.analysis.strongContinuity}
-          />
-          <Insight
-            title={el ? "Πιθανή επανάληψη" : "Possible repetition"}
-            items={latest.data.analysis.possibleRepetition}
-          />
-          <Insight
-            title={el ? "Υποχρησιμοποιημένες κατευθύνσεις" : "Underused directions"}
-            items={latest.data.analysis.underusedDirections}
-          />
-          <Insight
-            title={el ? "Διαφοροποίηση" : "Diversity"}
-            items={latest.data.analysis.diversityNotes}
-          />
-          <Insight
-            title={el ? "Δημιουργικές ευκαιρίες" : "Creative opportunities"}
-            items={latest.data.analysis.opportunities}
-          />
-          <div className="rounded-xl border border-white/10 bg-black/20 p-3 lg:col-span-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Motif Usage
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {latest.data.analysis.motifUsage.map((motif) => (
-                <span
-                  key={`${motif.motif}-${motif.usage}`}
-                  title={motif.note}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs"
-                >
-                  {motif.motif} · {motif.usage}
-                </span>
-              ))}
-              {latest.data.analysis.motifUsage.length === 0 && (
-                <span className="text-xs text-muted-foreground">—</span>
-              )}
+        <div className="mt-5">
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void copyContinuity()}
+              className="rounded-lg border border-white/10 px-3 py-2 text-xs text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+            >
+              {copiedResult === "continuity"
+                ? el
+                  ? "Αντιγράφηκε"
+                  : "Copied"
+                : el
+                  ? "Αντιγραφή όλων"
+                  : "Copy all"}
+            </button>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Insight title={el ? "Σύνοψη" : "Summary"} items={[latest.data.analysis.summary]} />
+            <Insight
+              title={el ? "Ισχυρή συνοχή" : "Strong continuity"}
+              items={latest.data.analysis.strongContinuity}
+            />
+            <Insight
+              title={el ? "Πιθανή επανάληψη" : "Possible repetition"}
+              items={latest.data.analysis.possibleRepetition}
+            />
+            <Insight
+              title={el ? "Υποχρησιμοποιημένες κατευθύνσεις" : "Underused directions"}
+              items={latest.data.analysis.underusedDirections}
+            />
+            <Insight
+              title={el ? "Διαφοροποίηση" : "Diversity"}
+              items={latest.data.analysis.diversityNotes}
+            />
+            <Insight
+              title={el ? "Δημιουργικές ευκαιρίες" : "Creative opportunities"}
+              items={latest.data.analysis.opportunities}
+            />
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3 lg:col-span-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Motif Usage
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {latest.data.analysis.motifUsage.map((motif) => (
+                  <span
+                    key={`${motif.motif}-${motif.usage}`}
+                    title={motif.note}
+                    className="rounded-full border border-white/10 px-3 py-1 text-xs"
+                  >
+                    {motif.motif} · {motif.usage}
+                  </span>
+                ))}
+                {latest.data.analysis.motifUsage.length === 0 && (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -984,7 +1059,22 @@ function UniverseAiPanel({
           </div>
           {fit && (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-4">
-              <div className="text-sm font-semibold">{fit.projectName}</div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold">{fit.projectName}</div>
+                <button
+                  type="button"
+                  onClick={() => void copyFit()}
+                  className="rounded-lg border border-white/10 px-3 py-2 text-xs text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+                >
+                  {copiedResult === "fit"
+                    ? el
+                      ? "Αντιγράφηκε"
+                      : "Copied"
+                    : el
+                      ? "Αντιγραφή όλων"
+                      : "Copy all"}
+                </button>
+              </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <Insight
                   title={el ? "Ισχυρές αντιστοιχίες" : "Strong matches"}
