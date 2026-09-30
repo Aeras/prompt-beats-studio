@@ -19,7 +19,7 @@ const tempoSourceSchema = z
     raw_confidence: nullableNumber.optional(),
     beat_count: z.number().int().nonnegative().optional(),
   })
-  .passthrough();
+  .strip();
 
 const tonalCandidateSchema = z
   .object({
@@ -29,7 +29,7 @@ const tonalCandidateSchema = z
     source_count: z.number().int().nonnegative(),
     sources: z.array(z.string().trim().min(1).max(80)).max(12),
   })
-  .passthrough();
+  .strip();
 
 const sectionCandidateSchema = z
   .object({
@@ -38,7 +38,7 @@ const sectionCandidateSchema = z
     cosine_similarity_to_previous: z.number().finite().optional(),
     edge_proximity: z.boolean().optional(),
   })
-  .passthrough();
+  .strip();
 
 export const enhancedCanonicalEvidenceSchema = z
   .object({
@@ -76,7 +76,7 @@ export const enhancedCanonicalEvidenceSchema = z
       tonal: z.string().trim().max(2000),
     }),
   })
-  .passthrough();
+  .strip();
 
 export type EnhancedCanonicalEvidence = z.infer<typeof enhancedCanonicalEvidenceSchema>;
 
@@ -105,7 +105,7 @@ export function buildEnhancedStage0Evidence(args: {
   durationSeconds: number | null;
   totalMs: number | null;
   workerEngine?: string | null;
-  sourceStemPreview?: AnalyzerSourceStemPreview;
+  sourceStemPreview?: AnalyzerSourceStemPreview | undefined;
 }): Stage0DspEvidence & { sourceStemPreview?: AnalyzerSourceStemPreview } {
   const evidence = args.canonicalEvidence;
   const primaryBpm = rounded(evidence.tempo.primary_candidate_bpm, 3);
