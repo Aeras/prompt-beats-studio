@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { SettingsPanel } from "@/components/promptbeats/SettingsPanel";
+import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 
 export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
@@ -328,15 +329,20 @@ export function SidebarNav({
             </button>
           </div>
         ) : (
-          <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10">
-              <LogIn className="h-4 w-4 text-muted-foreground" />
+          <div className="space-y-2">
+            <Link to="/auth" className="glass flex items-center gap-3 rounded-2xl p-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10">
+                <LogIn className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{t("nav.signIn")}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p>
+              </div>
+            </Link>
+            <div className="flex justify-start px-1">
+              <LanguageSelector compact />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{t("nav.signIn")}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{t("nav.signInHint")}</p>
-            </div>
-          </Link>
+          </div>
         )}
       </div>
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
