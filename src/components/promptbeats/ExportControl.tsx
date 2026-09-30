@@ -24,7 +24,7 @@ import {
   registerBulkSelectableProject,
   subscribeProjectBulkSelection,
   toggleProjectBulkSelection,
-} from "@/lib/project-bulk-selection.client";
+} from "@/lib/project-bulk-selection";
 import { useI18n } from "@/i18n";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
