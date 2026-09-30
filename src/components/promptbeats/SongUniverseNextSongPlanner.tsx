@@ -99,6 +99,7 @@ export function SongUniverseNextSongPlanner({
   const [busy, setBusy] = useState<"plan" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [brief, setBrief] = useState<NextSongBrief | null>(null);
+  const [copiedBrief, setCopiedBrief] = useState(false);
   const [planMeta, setPlanMeta] = useState<{
     planId: string;
     historyFingerprint: string;
@@ -194,6 +195,7 @@ export function SongUniverseNextSongPlanner({
       });
       completeAuxiliaryRequest(scope);
       setBrief(result.brief);
+      setCopiedBrief(false);
       setPlanMeta({
         planId: result.planId,
         historyFingerprint: result.historyFingerprint,
@@ -286,6 +288,78 @@ export function SongUniverseNextSongPlanner({
     if (!brief) return "";
     const value = brief[field];
     return Array.isArray(value) ? value.join("\n") : typeof value === "string" ? value : "";
+  };
+
+  const copyListBlock = (title: string, items: string[]) =>
+    `${title}\n${items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "—"}`;
+
+  const copyTextBlock = (title: string, value: string | null | undefined) =>
+    `${title}\n${value?.trim() || "—"}`;
+
+  const copyBrief = async () => {
+    if (!brief || !planMeta) return;
+
+    const title = isSeries ? "Next Chapter Direction" : "Next Song Direction";
+    const metadata = [
+      `${el ? "Tracks" : "Tracks"}: ${planMeta.trackCount}${planMeta.plannedTrackCount ? ` / ${planMeta.plannedTrackCount}` : ""}`,
+      `${el ? "Δεδομένα" : "Data"}: ${planMeta.overallCompleteness}`,
+      planMeta.modelLabel ? `${el ? "Μοντέλο" : "Model"}: ${planMeta.modelLabel}` : null,
+    ].filter((item): item is string => Boolean(item));
+
+    const blocks = [
+      title,
+      metadata.join("\n"),
+      copyListBlock(el ? "Διατήρησε" : "Keep", brief.identityToPreserve),
+      copyListBlock(el ? "Υποχρεωτικά σεβάσου" : "Must respect", brief.mustRespect),
+      copyListBlock(el ? "Εξερεύνησε" : "Explore", brief.themesToExplore),
+      copyListBlock(
+        el ? "Προτίμησε να μην επαναλάβεις" : "Prefer not to repeat",
+        [...brief.preferNotToRepeatThemes, ...brief.preferNotToRepeatMotifs],
+      ),
+      ...(brief.mustAvoid.length > 0
+        ? [copyListBlock(el ? "Must avoid" : "Must avoid", brief.mustAvoid)]
+        : []),
+      copyListBlock(el ? "Portfolio balance" : "Portfolio balance", brief.portfolioBalanceNotes),
+      ...(isSeries
+        ? [
+            copyTextBlock(el ? "Story so far" : "Story so far", brief.narrativeState),
+            copyListBlock(el ? "Μην επαναλάβεις" : "Do not repeat", brief.eventsNotToRepeat),
+            copyTextBlock(el ? "Εξέλιξη" : "Story progression", brief.storyProgression),
+            copyTextBlock(
+              el ? "Επόμενη αφηγηματική ευκαιρία" : "Next chapter opportunity",
+              brief.nextNarrativeOpportunity,
+            ),
+          ]
+        : []),
+      ...EDITABLE_FIELDS.filter(
+        (item) => isSeries || !["storyProgression", "nextNarrativeOpportunity"].includes(item.key),
+      ).map((item) => copyTextBlock(el ? item.el : item.en, editableValue(item.key))),
+      copyListBlock(el ? "Γιατί" : "Why", brief.evidence.map((item) => item.statement)),
+      copyTextBlock(el ? "Σύνοψη reasoning" : "Reasoning summary", brief.reasoningSummary),
+    ];
+
+    if (planMeta.fallback && planMeta.fallbackReason) {
+      blocks.splice(
+        2,
+        0,
+        `${el ? "Αιτία fallback" : "Fallback reason"}: ${planMeta.fallbackReason.code}\n${planMeta.fallbackReason.message}`,
+      );
+    }
+    if (planMeta.duplicateRisk.level !== "none") {
+      blocks.splice(
+        2,
+        0,
+        `${el ? "Έλεγχος ομοιότητας" : "Similarity check"}\n${planMeta.duplicateRisk.reason}${planMeta.duplicateRisk.projectTitle ? ` — ${planMeta.duplicateRisk.projectTitle}` : ""}`,
+      );
+    }
+
+    try {
+      await navigator.clipboard.writeText(blocks.join("\n\n"));
+      setCopiedBrief(true);
+      window.setTimeout(() => setCopiedBrief(false), 1600);
+    } catch {
+      setError(el ? "Η αντιγραφή απέτυχε." : "Copy failed.");
+    }
   };
 
   return (
@@ -505,7 +579,7 @@ export function SongUniverseNextSongPlanner({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-display text-base font-bold">
               {isSeries
                 ? el
@@ -515,14 +589,23 @@ export function SongUniverseNextSongPlanner({
                   ? "Next Song Direction"
                   : "Next Song Direction"}
             </h3>
-            <button
-              type="button"
-              onClick={() => setEditing((current) => !current)}
-              className="flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs"
-            >
-              {editing ? <Check className="h-3.5 w-3.5" /> : <Edit3 className="h-3.5 w-3.5" />}
-              {editing ? (el ? "Τέλος" : "Done") : el ? "Επεξεργασία" : "Edit"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copyBrief()}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+              >
+                {copiedBrief ? (el ? "Αντιγράφηκε" : "Copied") : el ? "Αντιγραφή όλων" : "Copy all"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing((current) => !current)}
+                className="flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs"
+              >
+                {editing ? <Check className="h-3.5 w-3.5" /> : <Edit3 className="h-3.5 w-3.5" />}
+                {editing ? (el ? "Τέλος" : "Done") : el ? "Επεξεργασία" : "Edit"}
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
