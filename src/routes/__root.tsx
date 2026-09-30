@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -17,6 +17,10 @@ import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider, useI18n } from "@/i18n";
+import { useAuth } from "@/hooks/useAuth";
+import logoAsset from "@/assets/logo.png.asset.json";
+
+const DEVELOPMENT_NOTICE_STORAGE_KEY = "pb:development-preview-notice:v1";
 
 function NotFoundContent() {
   const { t } = useI18n();
@@ -141,12 +145,134 @@ function RootComponent() {
       <I18nProvider>
         <PlayerProvider>
           <Outlet />
+          <DevelopmentPreviewNotice />
           <StandaloneLanguageControl />
           <GlobalPlayerBar />
           <Toaster />
         </PlayerProvider>
       </I18nProvider>
     </QueryClientProvider>
+  );
+}
+
+function DevelopmentPreviewNotice() {
+  const { user, loading } = useAuth();
+  const { language } = useI18n();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (user) {
+      setOpen(false);
+      return;
+    }
+
+    try {
+      setOpen(window.localStorage.getItem(DEVELOPMENT_NOTICE_STORAGE_KEY) !== "acknowledged");
+    } catch {
+      setOpen(true);
+    }
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  if (!open || loading || user) return null;
+
+  const copy =
+    language === "el"
+      ? {
+          badge: "Έκδοση ανάπτυξης",
+          title: "Το PromptBeats βρίσκεται σε στάδιο ανάπτυξης και δοκιμών",
+          body: "Το PromptBeats εξελίσσεται ενεργά. Ορισμένες λειτουργίες ενδέχεται να αλλάζουν, να μην είναι ακόμη πλήρως διαθέσιμες ή να παρουσιάζουν προσωρινή αστάθεια.",
+          detail:
+            "Η πρόσβαση παρέχεται αυτή τη στιγμή για δοκιμή και αξιολόγηση των διαθέσιμων λειτουργιών. Μπορείτε να συνεχίσετε στην πλατφόρμα και, εφόσον το επιθυμείτε, να δημιουργήσετε λογαριασμό.",
+          continue: "Συνέχεια",
+          leave: "Αποχώρηση",
+        }
+      : {
+          badge: "Development preview",
+          title: "PromptBeats is currently in development and testing",
+          body: "PromptBeats is actively evolving. Some features may change, may not yet be fully available, or may occasionally be unstable.",
+          detail:
+            "Access is currently provided for testing and evaluation of the available features. You can continue to the platform and create an account if you wish.",
+          continue: "Continue",
+          leave: "Leave",
+        };
+
+  const acknowledge = () => {
+    try {
+      window.localStorage.setItem(DEVELOPMENT_NOTICE_STORAGE_KEY, "acknowledged");
+    } catch {
+      /* Continue even when storage is unavailable. */
+    }
+    setOpen(false);
+  };
+
+  const leave = () => {
+    window.location.replace("about:blank");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="development-preview-title"
+      aria-describedby="development-preview-description"
+    >
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-[#0d0d11]/95 shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+        <div className="h-1 w-full bg-gradient-neon" />
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col items-center text-center">
+            <img
+              src={logoAsset.url}
+              alt="PromptBeats logo"
+              width={72}
+              height={72}
+              className="h-[72px] w-[72px] rounded-2xl glow-neon"
+            />
+            <div className="mt-4 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              {copy.badge}
+            </div>
+            <h2
+              id="development-preview-title"
+              className="mt-4 max-w-md font-display text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
+            >
+              {copy.title}
+            </h2>
+            <div id="development-preview-description" className="mt-4 space-y-3">
+              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.body}</p>
+              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.detail}</p>
+            </div>
+          </div>
+
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={leave}
+              className="order-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-white/20 hover:bg-white/[0.06] hover:text-foreground sm:order-1"
+            >
+              {copy.leave}
+            </button>
+            <button
+              type="button"
+              onClick={acknowledge}
+              autoFocus
+              className="order-1 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon transition-transform hover:scale-[1.01] active:scale-[0.98] sm:order-2"
+            >
+              {copy.continue}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
