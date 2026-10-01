@@ -191,9 +191,9 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
 
       const panel = drawerPanelRef.current;
       if (!panel) return;
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE_SELECTOR)).filter(
-        (element) => element.offsetParent !== null,
-      );
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE_SELECTOR),
+      ).filter((element) => element.offsetParent !== null);
       if (focusable.length === 0) {
         event.preventDefault();
         panel.focus();
