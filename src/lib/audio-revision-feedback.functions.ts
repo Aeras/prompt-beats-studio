@@ -1,10 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   audioRevisionFeedbackInputSchema,
   buildAudioRevisionRequest,
 } from "@/lib/audio-revision-feedback.shared";
+
+const feedbackColumns =
+  "id, project_id, source_version_prompt_id, source_track_id, keep_text, change_text, revision_brief, created_revision_prompt_id";
+
+function sameFeedbackContext(
+  feedback: Record<string, unknown>,
+  data: { projectId: string; versionId: string; trackId: string },
+) {
+  return (
+    feedback.project_id === data.projectId &&
+    feedback.source_version_prompt_id === data.versionId &&
+    feedback.source_track_id === data.trackId
+  );
+}
 
 export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -38,16 +53,17 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
     }
 
     const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
-    const columns =
-      "id, project_id, source_version_prompt_id, source_track_id, keep_text, change_text, revision_brief";
-    const { data: existing, error: existingError } = await table
-      .select(columns)
-      .eq("user_id", context.userId)
-      .eq("idempotency_key", data.idempotencyKey)
-      .maybeSingle();
-    if (existingError) throw new Error(existingError.message);
+    const findExisting = async () => {
+      const { data: existing, error } = await table
+        .select(feedbackColumns)
+        .eq("user_id", context.userId)
+        .eq("idempotency_key", data.idempotencyKey)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return existing as Record<string, unknown> | null;
+    };
 
-    let feedback = existing;
+    let feedback = await findExisting();
     if (!feedback) {
       const { data: inserted, error: insertError } = await table
         .insert({
@@ -61,18 +77,19 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
           revision_brief: data.revisionBrief || null,
           imported_evidence: [],
         })
-        .select(columns)
+        .select(feedbackColumns)
         .single();
-      if (insertError) throw new Error(insertError.message);
-      feedback = inserted;
+
+      if (insertError) {
+        if (insertError.code !== "23505") throw new Error(insertError.message);
+        feedback = await findExisting();
+      } else {
+        feedback = inserted as Record<string, unknown>;
+      }
     }
 
     if (!feedback) throw new Error("The audio revision feedback could not be saved.");
-    if (
-      feedback.project_id !== data.projectId ||
-      feedback.source_version_prompt_id !== data.versionId ||
-      feedback.source_track_id !== data.trackId
-    ) {
+    if (!sameFeedbackContext(feedback, data)) {
       throw new Error("The audio revision request conflicts with an earlier retry.");
     }
 
@@ -83,10 +100,79 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
     });
 
     return {
-      feedbackId: feedback.id as string,
-      projectId: feedback.project_id as string,
-      versionId: feedback.source_version_prompt_id as string,
-      trackId: feedback.source_track_id as string,
+      feedbackId: String(feedback.id),
+      projectId: String(feedback.project_id),
+      versionId: String(feedback.source_version_prompt_id),
+      trackId: String(feedback.source_track_id),
       revisionRequest,
+      createdRevisionPromptId:
+        feedback.created_revision_prompt_id == null
+          ? null
+          : String(feedback.created_revision_prompt_id),
     };
+  });
+
+export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        feedbackId: z.string().uuid(),
+        revisionPromptId: z.string().uuid(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
+    const { data: feedback, error: feedbackError } = await table
+      .select("id, project_id, source_version_prompt_id, created_revision_prompt_id")
+      .eq("id", data.feedbackId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (feedbackError) throw new Error(feedbackError.message);
+    if (!feedback) throw new Error("Audio revision feedback not found.");
+
+    if (feedback.created_revision_prompt_id) {
+      if (feedback.created_revision_prompt_id !== data.revisionPromptId) {
+        throw new Error("This audio revision feedback is already linked to another revision.");
+      }
+      return { ok: true as const, revisionPromptId: data.revisionPromptId };
+    }
+
+    const { data: revision, error: revisionError } = await (supabaseAdmin.from("saved_prompts") as any)
+      .select("id, user_id, project_id, parent_prompt_id")
+      .eq("id", data.revisionPromptId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (revisionError) throw new Error(revisionError.message);
+    if (
+      !revision ||
+      revision.project_id !== feedback.project_id ||
+      revision.parent_prompt_id !== feedback.source_version_prompt_id
+    ) {
+      throw new Error("The created revision does not belong to this audio revision request.");
+    }
+
+    const { data: updated, error: updateError } = await table
+      .update({ created_revision_prompt_id: data.revisionPromptId })
+      .eq("id", data.feedbackId)
+      .eq("user_id", context.userId)
+      .is("created_revision_prompt_id", null)
+      .select("id")
+      .maybeSingle();
+    if (updateError) throw new Error(updateError.message);
+    if (!updated) {
+      const { data: current, error: currentError } = await table
+        .select("created_revision_prompt_id")
+        .eq("id", data.feedbackId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (currentError) throw new Error(currentError.message);
+      if (current?.created_revision_prompt_id !== data.revisionPromptId) {
+        throw new Error("The audio revision feedback could not be linked to the created revision.");
+      }
+    }
+
+    return { ok: true as const, revisionPromptId: data.revisionPromptId };
   });
