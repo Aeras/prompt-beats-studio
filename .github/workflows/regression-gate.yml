@@ -190,6 +190,12 @@ jobs:
       - name: Complete Bun test suite
         run: bun test
 
+      # Some repository-wide tests materialize this migration-history fixture while
+      # validating generated GitHub links. It is intentionally not canonical source;
+      # make sure the test artifact cannot leak into the subsequent source lint pass.
+      - name: Clean generated migration-history test fixture
+        run: rm -f src/lib/__tests__/migration-history-integrity.test.ts
+
       # Lint the committed source tree before the build. The Lovable build plugin can
       # materialize generated helper files during bundling; those are build artifacts,
       # not canonical repository source and should not be treated as source-lint debt.
