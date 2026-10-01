@@ -21,7 +21,9 @@ describe("Song Analyzer Stage A grounding guard", () => {
   test("uses a neutral ambiguous pluck/strum resolver instead of a guitar-biased detector", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("NEUTRAL RHYTHMIC-LAYER RESOLVER");
-    expect(code).toContain('"guitar", "processed_guitar", "synth_pluck", "other_plucked_string", "mixed", "uncertain"');
+    expect(code).toContain(
+      '"guitar", "processed_guitar", "synth_pluck", "other_plucked_string", "mixed", "uncertain"',
+    );
     expect(code).toContain("at least two independent guitar-like cues");
     expect(code).toContain("Do not search for guitar preferentially");
     expect(code).toContain("rhythmicLayerResolutionRequired");
@@ -33,13 +35,17 @@ describe("Song Analyzer Stage A grounding guard", () => {
     const background = await source("src/lib/song-analyzer-background.ts");
     const essentia = await source("src/lib/song-analyzer-essentia.ts");
     expect(guard).toContain("DEMUCS OTHER-STEM PREVIEW");
-    expect(guard).toContain("Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity");
+    expect(guard).toContain(
+      "Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity",
+    );
     expect(guard).toContain("stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)");
     expect(guard).toContain("full-mix evidence remained authoritative");
     expect(background).toContain("consumeAnalyzerSourceStemPreview");
     expect(background).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
     expect(essentia).toContain("pendingSourceStemPreview = sourceStemPreview ?? null");
-    expect(essentia).toContain("const { sourceStemPreview, ...cleanStage0Evidence } = transported");
+    expect(essentia).toContain(
+      "const { sourceStemPreview, ...cleanStage0Evidence } = transported",
+    );
   });
 
   test("treats verification as a confidence gate rather than a genre classifier", async () => {
@@ -51,7 +57,9 @@ describe("Song Analyzer Stage A grounding guard", () => {
 
   test("preserves verifier-confirmed recurring rhythm guitar without forcing acoustic vs electric source", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
-    expect(code).toContain("For rhythm guitar, explicitly test whether a sustained chordal strumming/comping OR fingerpicked/arpeggiated texture is audible across meaningful sections");
+    expect(code).toContain(
+      "For rhythm guitar, explicitly test whether a sustained chordal strumming/comping OR fingerpicked/arpeggiated texture is audible across meaningful sections",
+    );
     expect(code).toContain("rhythmGuitarConfirmed");
     expect(code).toContain('instrument: "Rhythm Guitar"');
     expect(code).toContain("Chordal strumming / rhythmic comping");
@@ -63,7 +71,9 @@ describe("Song Analyzer Stage A grounding guard", () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("Stage A tempo guard:");
     expect(code).toContain("BPM alone must never determine genre family");
-    expect(code).toContain("drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence");
+    expect(code).toContain(
+      "drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence",
+    );
   });
 
   test("hardens section timestamps against mm:ss concatenation, overflow, and overlap", async () => {
@@ -101,7 +111,9 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(background).toContain("guardSongAnalyzerStageA");
     expect(background).toContain("initialResult: guarded.initialResult");
     expect(background).toContain("stageAEvidence: guarded.stageAEvidence");
-    expect(route).toContain("if (background.stageAEvidence) setStageAEvidence(background.stageAEvidence)");
+    expect(route).toContain(
+      "if (background.stageAEvidence) setStageAEvidence(background.stageAEvidence)",
+    );
     expect(background.indexOf("const guarded = await guardSongAnalyzerStageA")).toBeLessThan(
       background.indexOf("const finalized = await finalizeSongAnalysis"),
     );
