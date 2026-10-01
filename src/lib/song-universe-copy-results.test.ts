@@ -9,11 +9,14 @@ describe("Song Universe AI result copy actions", () => {
   test("continuity and Project Fit expose copy-all actions", async () => {
     const code = await source("src/routes/song-universe.tsx");
 
-    expect(code).toContain('const [copiedResult, setCopiedResult] = useState<"continuity" | "fit" | null>(null)');
+    expect(code).toContain(
+      'const [copiedResult, setCopiedResult] = useState<"continuity" | "fit" | null>(null)',
+    );
     expect(code).toContain("navigator.clipboard.writeText(value)");
     expect(code).toContain("copyContinuity");
     expect(code).toContain("copyFit");
-    expect(code).toContain('el ? "Αντιγραφή όλων" : "Copy all"');
+    expect(code).toContain('"Αντιγραφή όλων"');
+    expect(code).toContain('"Copy all"');
   });
 
   test("continuity copy includes every structured analysis section", async () => {
