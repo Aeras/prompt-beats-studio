@@ -75,7 +75,10 @@ export function PersonalLibrarySearch({ className }: Props) {
   };
 
   return (
-    <section className={cn("glass rounded-2xl p-4", className)} aria-label={el ? "Αναζήτηση στη δουλειά μου" : "Search my work"}>
+    <section
+      className={cn("glass rounded-2xl p-4", className)}
+      aria-label={el ? "Αναζήτηση στη δουλειά μου" : "Search my work"}
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">{el ? "Αναζήτηση στη δουλειά μου" : "Search my work"}</span>
@@ -83,7 +86,11 @@ export function PersonalLibrarySearch({ className }: Props) {
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder={el ? "Βρες τραγούδι, Project, prompt, ανάλυση..." : "Find a track, Project, prompt, analysis..."}
+            placeholder={
+              el
+                ? "Βρες τραγούδι, Project, prompt, ανάλυση..."
+                : "Find a track, Project, prompt, analysis..."
+            }
             maxLength={120}
             className="h-10 w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-accent/60"
           />
@@ -132,9 +139,15 @@ export function PersonalLibrarySearch({ className }: Props) {
           {search.isLoading ? (
             <p className="text-sm text-muted-foreground">{el ? "Αναζήτηση..." : "Searching..."}</p>
           ) : search.isError ? (
-            <p className="text-sm text-destructive">{el ? "Η αναζήτηση απέτυχε." : "Search failed."}</p>
+            <p className="text-sm text-destructive">
+              {el ? "Η αναζήτηση απέτυχε." : "Search failed."}
+            </p>
           ) : results.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{el ? "Δεν βρέθηκε κάτι στη δουλειά σου." : "Nothing in your work matched this search."}</p>
+            <p className="text-sm text-muted-foreground">
+              {el
+                ? "Δεν βρέθηκε κάτι στη δουλειά σου."
+                : "Nothing in your work matched this search."}
+            </p>
           ) : (
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {results.map((result) => (
@@ -151,7 +164,9 @@ export function PersonalLibrarySearch({ className }: Props) {
                     </span>
                   </div>
                   {result.subtitle && (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{result.subtitle}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {result.subtitle}
+                    </p>
                   )}
                 </button>
               ))}
