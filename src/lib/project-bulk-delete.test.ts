@@ -5,7 +5,7 @@ const source = (path: string) => Bun.file(new URL(path, ROOT)).text();
 
 describe("Project bulk deletion", () => {
   test("database operation is one invoker-rights transaction with ownership validation", async () => {
-    const sql = await source("supabase/migrations/20260930003000_bulk_prompt_project_delete.sql");
+    const sql = await source("supabase/migrations/20260929215330_bulk_prompt_project_delete.sql");
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.bulk_delete_prompt_projects(_plans jsonb)");
     expect(sql).toContain("SECURITY INVOKER");
     expect(sql).toContain("auth.uid()");
