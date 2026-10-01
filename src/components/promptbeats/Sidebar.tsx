@@ -36,7 +36,7 @@ import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
 export const NAV = [
   { id: "discover", labelKey: "nav.discover", icon: Compass },
   { id: "trending", labelKey: "nav.trending", icon: Flame },
-  { id: "studio", labelKey: "nav.studio", icon: Sparkles },
+  { id: "studio", labelKey: null, icon: Sparkles },
   { id: "songAnalyzer", labelKey: null, icon: ScanSearch },
   { id: "lyricsReview", labelKey: null, icon: TextSearch },
   { id: "inspirationWall", labelKey: null, icon: Lightbulb },
@@ -55,7 +55,7 @@ const STAFF_ONLY: NavId[] = ["management"];
 const NAV_TO: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
-  studio: "/generate",
+  studio: "/create",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
   inspirationWall: "/inspiration-wall",
@@ -218,17 +218,21 @@ export function SidebarNav({
             ).map((item) => {
               const isActive = active === item.id;
               const fallbackLabel =
-                item.id === "songAnalyzer"
-                  ? "AI Song Analyzer"
-                  : item.id === "lyricsReview"
-                    ? "Lyrics Review"
-                    : item.id === "inspirationWall"
-                      ? "Inspiration Wall"
-                      : item.id === "storyMap"
-                        ? "Story Map"
-                        : item.id === "songUniverse"
-                          ? "Song Universes"
-                          : item.id;
+                item.id === "studio"
+                  ? language === "el"
+                    ? "Δημιουργία"
+                    : "Create"
+                  : item.id === "songAnalyzer"
+                    ? "AI Song Analyzer"
+                    : item.id === "lyricsReview"
+                      ? "Lyrics Review"
+                      : item.id === "inspirationWall"
+                        ? "Inspiration Wall"
+                        : item.id === "storyMap"
+                          ? "Story Map"
+                          : item.id === "songUniverse"
+                            ? "Song Universes"
+                            : item.id;
               return (
                 <Link
                   key={item.id}
