@@ -8,15 +8,19 @@ async function source(path: string) {
 describe("Song Analyzer final judge architecture", () => {
   test("keeps title and artist out of the audio analysis call and routes them to final analysis", async () => {
     const route = await source("src/routes/song-analyzer.tsx");
+    const background = await source("src/lib/song-analyzer-background.ts");
 
     expect(route).toContain("getSongAnalyzerFinalModelAccess");
-    expect(route).toContain("finalizeSongAnalysis");
+    expect(route).toContain("startAnalyzerBackground");
     expect(route).toContain('trackTitle: trackTitle.trim() || undefined');
     expect(route).toContain('artist: artist.trim() || undefined');
+    expect(background).toContain("finalizeSongAnalysis");
+    expect(background).toContain('trackTitle: args.trackTitle?.trim() || undefined');
+    expect(background).toContain('artist: args.artist?.trim() || undefined');
 
-    const audioCall = route.slice(
-      route.indexOf("const response = await analyzeSong"),
-      route.indexOf("const finalized = await finalizeSongAnalysis"),
+    const audioCall = background.slice(
+      background.indexOf("const response = await analyzeSong"),
+      background.indexOf("const guarded = await guardSongAnalyzerStageA"),
     );
     expect(audioCall).not.toContain("trackTitle:");
     expect(audioCall).not.toContain("artist:");

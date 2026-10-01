@@ -30,15 +30,15 @@ describe("Song Analyzer Stage A grounding guard", () => {
 
   test("uses the Demucs other stem only as conditional source-disambiguation evidence", async () => {
     const guard = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
-    const route = await source("src/routes/song-analyzer.tsx");
+    const background = await source("src/lib/song-analyzer-background.ts");
     const essentia = await source("src/lib/song-analyzer-essentia.ts");
     expect(guard).toContain("DEMUCS OTHER-STEM PREVIEW");
-    expect(guard).toContain("use it ONLY to resolve guitar / processed-guitar / synth-pluck");
+    expect(guard).toContain("Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity");
     expect(guard).toContain("stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)");
     expect(guard).toContain("full-mix evidence remained authoritative");
-    expect(route).toContain("consumeAnalyzerSourceStemPreview");
-    expect(route).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
-    expect(essentia).toContain("intentionally removed from the Stage 0 object");
+    expect(background).toContain("consumeAnalyzerSourceStemPreview");
+    expect(background).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
+    expect(essentia).toContain("pendingSourceStemPreview = sourceStemPreview ?? null");
     expect(essentia).toContain("const { sourceStemPreview, ...cleanStage0Evidence } = transported");
   });
 
@@ -51,7 +51,7 @@ describe("Song Analyzer Stage A grounding guard", () => {
 
   test("preserves verifier-confirmed recurring rhythm guitar without forcing acoustic vs electric source", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
-    expect(code).toContain("sustained chordal strumming/comping texture");
+    expect(code).toContain("For rhythm guitar, explicitly test whether a sustained chordal strumming/comping OR fingerpicked/arpeggiated texture is audible across meaningful sections");
     expect(code).toContain("rhythmGuitarConfirmed");
     expect(code).toContain('instrument: "Rhythm Guitar"');
     expect(code).toContain("Chordal strumming / rhythmic comping");
@@ -97,10 +97,14 @@ describe("Song Analyzer Stage A grounding guard", () => {
 
   test("runs the guard before the final judge and displays guarded Stage A evidence", async () => {
     const route = await source("src/routes/song-analyzer.tsx");
-    expect(route).toContain("guardSongAnalyzerStageA");
-    expect(route).toContain("initialResult: guarded.initialResult");
-    expect(route).toContain("stageAEvidence: guarded.stageAEvidence");
-    expect(route).toContain("setStageAEvidence(guarded.stageAEvidence as StageAEvidence)");
+    const background = await source("src/lib/song-analyzer-background.ts");
+    expect(background).toContain("guardSongAnalyzerStageA");
+    expect(background).toContain("initialResult: guarded.initialResult");
+    expect(background).toContain("stageAEvidence: guarded.stageAEvidence");
+    expect(route).toContain("if (background.stageAEvidence) setStageAEvidence(background.stageAEvidence)");
+    expect(background.indexOf("const guarded = await guardSongAnalyzerStageA")).toBeLessThan(
+      background.indexOf("const finalized = await finalizeSongAnalysis"),
+    );
   });
 
   test("keeps verification failure non-fatal", async () => {
