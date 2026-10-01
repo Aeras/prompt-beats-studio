@@ -11,7 +11,9 @@ describe("Song Analyzer detail preservation", () => {
     expect(code).toContain("preservesSpecificGuitarTechnique");
     expect(code).toContain("fingerpick|arpeggi");
     expect(code).toContain("joinUniqueDescriptors");
-    expect(code).toContain("NOT permission to rewrite an already well-supported fingerpicked/arpeggiated technique as generic strumming/comping");
+    expect(code).toContain(
+      "NOT permission to rewrite an already well-supported fingerpicked/arpeggiated technique as generic strumming/comping",
+    );
   });
 
   test("verifies keyboard family without treating a generic pad as Rhodes", async () => {
@@ -32,7 +34,9 @@ describe("Song Analyzer detail preservation", () => {
     expect(code).toContain('"vinyl_crackle"');
     expect(code).toContain('"low_pass_filtered_guitar"');
     expect(code).toContain('"distant_electric_guitar_swell"');
-    expect(code).toContain("Do not infer any of them from genre, mood, lo-fi aesthetics, or a warm mix");
+    expect(code).toContain(
+      "Do not infer any of them from genre, mood, lo-fi aesthetics, or a warm mix",
+    );
   });
 
   test("recovers explicit late-section clocks and terminal outro boundaries conservatively", async () => {
@@ -48,6 +52,8 @@ describe("Song Analyzer detail preservation", () => {
     expect(code).toContain("Do NOT require overt rapping, aggressive 808s, trap hats");
     expect(code).toContain("Melodic alternative hip-hop can use intimate sung/sing-rap delivery");
     expect(code).toContain("must not be misused to erase a broader hybrid family");
-    expect(code).toContain("preserve the crossover explicitly instead of collapsing it to only indie/acoustic pop");
+    expect(code).toContain(
+      "preserve the crossover explicitly instead of collapsing it to only indie/acoustic pop",
+    );
   });
 });
