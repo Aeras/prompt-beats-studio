@@ -43,7 +43,7 @@ describe("Song Analyzer detail preservation", () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("explicitRecoveries");
     expect(code).toContain("recovered ${explicitRecoveries} explicit/terminal boundary value(s)");
-    expect(code).toContain('/outro|ending|fade/i');
+    expect(code).toContain("/outro|ending|fade/i");
     expect(code).toContain("endSeconds: durationSeconds");
   });
 
