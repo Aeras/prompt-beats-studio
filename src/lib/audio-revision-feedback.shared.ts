@@ -4,6 +4,7 @@ export const AUDIO_REVISION_HANDOFF_KEY = "pb:audio-revision-handoff";
 
 export const audioRevisionFeedbackInputSchema = z
   .object({
+    idempotencyKey: z.string().uuid(),
     projectId: z.string().uuid(),
     versionId: z.string().uuid(),
     trackId: z.string().uuid(),
@@ -17,7 +18,9 @@ export const audioRevisionFeedbackInputSchema = z
 
 export type AudioRevisionFeedbackInput = z.infer<typeof audioRevisionFeedbackInputSchema>;
 
-export function buildAudioRevisionRequest(input: Pick<AudioRevisionFeedbackInput, "keep" | "change" | "revisionBrief">) {
+export function buildAudioRevisionRequest(
+  input: Pick<AudioRevisionFeedbackInput, "keep" | "change" | "revisionBrief">,
+) {
   const parts: string[] = [];
   if (input.keep.trim()) parts.push(`KEEP:\n${input.keep.trim()}`);
   if (input.change.trim()) parts.push(`CHANGE:\n${input.change.trim()}`);
