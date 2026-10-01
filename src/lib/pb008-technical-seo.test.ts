@@ -23,10 +23,11 @@ describe("PB-008 technical SEO and public discoverability", () => {
 
   test("Track metadata is canonical, public-safe, and shares route eligibility", async () => {
     const route = await source("src/routes/track.$id.tsx");
-    expect(route).toContain('canonicalLink(`/track/${encodeURIComponent(track.id)}`)');
-    expect(route).toContain('robotsContent("index")');
-    expect(route).not.toContain("track.prompt}");
-    expect(route).not.toContain("track.lyrics}");
+    const head = route.slice(route.indexOf("head:"), route.indexOf("component: TrackPage"));
+    expect(head).toContain('canonicalLink(`/track/${encodeURIComponent(track.id)}`)');
+    expect(head).toContain('robotsContent("index")');
+    expect(head).not.toContain("track.prompt");
+    expect(head).not.toContain("track.lyrics");
   });
 
   test("creator vanity route applies exact thin/indexable threshold", async () => {
