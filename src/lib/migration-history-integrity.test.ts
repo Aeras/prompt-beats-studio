@@ -63,23 +63,18 @@ describe("migration history integrity", () => {
     expect(cleanup).toContain("SET created_with = 'Other'");
   });
 
-  test("CI rejects applied migration changes outside the exact production-history reconciliation allowlist", async () => {
+  test("CI permits only new forward migration files after production-history reconciliation", async () => {
     const workflow = await source(".github/workflows/regression-gate.yml");
     expect(workflow).toContain("Migration history immutability");
     expect(workflow).toContain("git diff --name-status --find-renames");
-    expect(workflow).toContain('$1 == "A" { next }');
-    expect(workflow).toContain(
-      '$2 == "supabase/migrations/20260929234500_song_universe_2_core.sql" && $3 == "supabase/migrations/20260929210439_song_universe_2_core.sql"',
-    );
-    expect(workflow).toContain(
-      '$2 == "supabase/migrations/20260930003000_song_universe_2_trigger_execute_hardening.sql" && $3 == "supabase/migrations/20260929210730_song_universe_2_trigger_execute_hardening.sql"',
-    );
-    expect(workflow).toContain(
-      '$2 == "supabase/migrations/20260930003000_bulk_prompt_project_delete.sql" && $3 == "supabase/migrations/20260929215330_bulk_prompt_project_delete.sql"',
-    );
-    expect(workflow).toContain("NF > 0 { print }");
+    expect(workflow).toContain("awk '$1 != \"A\" { print }'");
+    expect(workflow).not.toContain("Temporary, exact allowlist");
+    expect(workflow).not.toContain("20260929234500_song_universe_2_core.sql");
+    expect(workflow).not.toContain("20260930003000_song_universe_2_trigger_execute_hardening.sql");
+    expect(workflow).not.toContain("20260930003000_bulk_prompt_project_delete.sql");
     expect(workflow).toContain(
       "Existing migration files may not be modified, deleted, copied, or renamed",
     );
+    expect(workflow).toContain("Only new forward migration files were added.");
   });
 });
