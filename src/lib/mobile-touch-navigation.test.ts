@@ -66,7 +66,9 @@ describe("mobile and tablet touch navigation", () => {
   test("compact destructive card controls require confirmation and a reliable touch area", async () => {
     const wall = await source("src/routes/inspiration-wall.tsx");
     expect(wall).toContain('aria-label={language === "el" ? "Διαγραφή κάρτας" : "Delete card"}');
-    expect(wall).toContain('language === "el" ? "Διαγραφή αυτής της κάρτας;" : "Delete this card?"');
+    expect(wall).toContain(
+      'language === "el" ? "Διαγραφή αυτής της κάρτας;" : "Delete this card?"',
+    );
     expect(wall).toContain("min-h-11 min-w-11");
     expect(wall).toContain("focus-visible:ring-2");
   });
