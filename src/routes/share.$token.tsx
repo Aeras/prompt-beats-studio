@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 
 import { getTrackShareByToken } from "@/lib/track-sharing.functions";
+import { robotsContent } from "@/lib/seo-policy";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
@@ -12,33 +12,37 @@ import artFallback from "@/assets/art-3.jpg";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const Route = createFileRoute("/share/$token")({
-  head: () => ({
-    meta: [
-      { title: "Shared Track — PromptBeats" },
-      { name: "description", content: "Listen to a track shared from PromptBeats." },
-      { property: "og:type", content: "music.song" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  loader: ({ params }) => getTrackShareByToken({ data: { token: params.token } }),
+  head: ({ loaderData }) => {
+    const active = loaderData?.state === "active" ? loaderData : null;
+    const artistName = active?.artist
+      ? active.artist.artist_alias ||
+        active.artist.display_name ||
+        active.artist.handle ||
+        "PromptBeats creator"
+      : null;
+    const title = active ? `${active.track.title} — Shared from PromptBeats` : "Shared Track — PromptBeats";
+    const description = active
+      ? `Listen to ${active.track.title}${artistName ? ` by ${artistName}` : ""}, shared from PromptBeats.`
+      : "Listen to a track shared from PromptBeats.";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { name: "robots", content: robotsContent("token") },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "music.song" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+    };
+  },
   component: SharedTrackPage,
 });
 
 function SharedTrackPage() {
-  const { token } = Route.useParams();
   const { language } = useI18n();
-  const { data, isLoading } = useQuery({
-    queryKey: ["shared-track", token],
-    queryFn: () => getTrackShareByToken({ data: { token } }),
-    retry: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="aurora min-h-screen bg-[#0a0a0c] p-6 text-center text-sm text-muted-foreground">
-        {language === "el" ? "Φόρτωση..." : "Loading..."}
-      </div>
-    );
-  }
+  const data = Route.useLoaderData();
 
   if (!data || data.state === "unavailable") {
     return (
