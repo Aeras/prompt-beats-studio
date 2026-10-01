@@ -32,7 +32,10 @@ export const Route = createFileRoute("/")({
         { title: "PromptBeats — AI-Assisted Songwriting & Song Development" },
         { name: "description", content: description },
         { name: "robots", content: robotsContent("index") },
-        { property: "og:title", content: "PromptBeats — AI-Assisted Songwriting & Song Development" },
+        {
+          property: "og:title",
+          content: "PromptBeats — AI-Assisted Songwriting & Song Development",
+        },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         ...(ogUrl ? [{ property: "og:url", content: ogUrl }] : []),

@@ -257,7 +257,9 @@ function DevelopmentPreviewNotice() {
             </h2>
             <div id="development-preview-description" className="mt-4 space-y-3">
               <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.body}</p>
-              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.detail}</p>
+              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
+                {copy.detail}
+              </p>
             </div>
           </div>
 

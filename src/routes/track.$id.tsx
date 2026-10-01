@@ -32,7 +32,8 @@ export const Route = createFileRoute("/track/$id")({
   head: ({ loaderData }) => {
     if (!loaderData) return {};
     const { track, artist } = loaderData;
-    const artistName = artist.artist_alias || artist.display_name || artist.handle || "PromptBeats creator";
+    const artistName =
+      artist.artist_alias || artist.display_name || artist.handle || "PromptBeats creator";
     const title = `${track.title} by ${artistName} — PromptBeats`;
     const description = `Explore ${track.title} by ${artistName}, a public track shared on PromptBeats, an AI-assisted songwriting and song development platform.`;
     const canonical = canonicalLink(`/track/${encodeURIComponent(track.id)}`);
@@ -343,7 +344,11 @@ function TrackPage() {
                   onClick={() => prompt.copy(track.prompt)}
                   className="flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
                 >
-                  {prompt.copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {prompt.copied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                   {prompt.copied ? t("trackDetail.copied") : t("trackDetail.copy")}
                 </button>
               </div>
@@ -368,7 +373,11 @@ function TrackPage() {
                   onClick={() => lyrics.copy(track.lyrics)}
                   className="flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent/20"
                 >
-                  {lyrics.copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {lyrics.copied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                   {lyrics.copied ? t("trackDetail.copied") : t("trackDetail.copy")}
                 </button>
               </div>

@@ -21,7 +21,9 @@ export const Route = createFileRoute("/share/$token")({
         active.artist.handle ||
         "PromptBeats creator"
       : null;
-    const title = active ? `${active.track.title} — Shared from PromptBeats` : "Shared Track — PromptBeats";
+    const title = active
+      ? `${active.track.title} — Shared from PromptBeats`
+      : "Shared Track — PromptBeats";
     const description = active
       ? `Listen to ${active.track.title}${artistName ? ` by ${artistName}` : ""}, shared from PromptBeats.`
       : "Listen to a track shared from PromptBeats.";
