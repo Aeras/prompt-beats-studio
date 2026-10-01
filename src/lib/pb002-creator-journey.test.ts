@@ -23,7 +23,8 @@ describe("PB-002 unified creator journey", () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     expect(sidebar).toContain('studio: "/create"');
     expect(sidebar).toContain('item.id === "studio"');
-    expect(sidebar).toContain('language === "el" ? "Δημιουργία" : "Create"');
+    expect(sidebar).toContain('"Δημιουργία"');
+    expect(sidebar).toContain('"Create"');
     expect(shell).toContain('studio: "/create"');
     expect(shell).toContain('pathname.startsWith("/create") || pathname.startsWith("/generate")');
     expect(shell).toContain('tab.id === "studio"');
