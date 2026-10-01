@@ -450,6 +450,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
             (tab) => {
               const item = NAV.find((n) => n.id === tab.id)!;
               const isActive = active === tab.id;
+              const label =
+                tab.id === "studio"
+                  ? language === "el"
+                    ? "Δημιουργία"
+                    : "Create"
+                  : t(tab.labelKey);
               return (
                 <Link
                   key={tab.id}
@@ -465,7 +471,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
                       isActive && "drop-shadow-[0_0_8px_var(--neon)]",
                     )}
                   />
-                  {tab.id === "studio" ? (language === "el" ? "Δημιουργία" : "Create") : t(tab.labelKey)}
+                  {label}
                 </Link>
               );
             },
