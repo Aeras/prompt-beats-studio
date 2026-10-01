@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FilePenLine, FolderOpen, ScanSearch, Sparkles } from "lucide-react";
+import { ArrowRight, FilePenLine, FolderOpen, RotateCcw, ScanSearch, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -54,6 +54,21 @@ function CreatePage() {
       to: "/library" as const,
       search: { tab: "prompts" as const },
     },
+    generatorAccess.allowed
+      ? {
+          key: "audio-revision",
+          icon: RotateCcw,
+          title: el ? "Revision από πραγματικό audio" : "Revise from real audio",
+          body: el
+            ? "Επίλεξε Project Version και linked audio αποτέλεσμα, δήλωσε τι θέλεις να κρατήσεις και τι να αλλάξεις και συνέχισε στον υπάρχοντα Generator revision flow."
+            : "Choose a Project Version and linked audio result, state what to keep and what to change, then continue through the existing Generator revision flow.",
+          handoff: el
+            ? "Μεταφορά: Version + Audio + Keep/Change → Revision"
+            : "Handoff: Version + Audio + Keep/Change → Revision",
+          to: "/audio-revision" as const,
+          search: {},
+        }
+      : null,
     lyricsReviewAccess.allowed
       ? {
           key: "review-lyrics",
@@ -88,7 +103,7 @@ function CreatePage() {
     title: string;
     body: string;
     handoff: string;
-    to: "/generate" | "/library" | "/lyrics-review" | "/song-analyzer";
+    to: "/generate" | "/library" | "/audio-revision" | "/lyrics-review" | "/song-analyzer";
     search: Record<string, string>;
   }>;
 
