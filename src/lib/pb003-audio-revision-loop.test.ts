@@ -70,7 +70,9 @@ describe("PB-003 Prompt to Audio to Revision loop", () => {
     expect(sql).toContain(
       "REVOKE ALL ON TABLE public.project_audio_revision_feedback FROM PUBLIC, anon, authenticated",
     );
-    expect(sql).toContain("GRANT ALL ON TABLE public.project_audio_revision_feedback TO service_role");
+    expect(sql).toContain(
+      "GRANT ALL ON TABLE public.project_audio_revision_feedback TO service_role",
+    );
   });
 
   test("server creation revalidates linked audio and handles a concurrent idempotency retry", async () => {
