@@ -13,7 +13,8 @@ describe("Song Universe AI result copy actions", () => {
     expect(code).toContain("navigator.clipboard.writeText(value)");
     expect(code).toContain("copyContinuity");
     expect(code).toContain("copyFit");
-    expect(code).toContain('el ? "Αντιγραφή όλων" : "Copy all"');
+    expect(code).toContain('"Αντιγραφή όλων"');
+    expect(code).toContain('"Copy all"');
   });
 
   test("continuity copy includes every structured analysis section", async () => {
