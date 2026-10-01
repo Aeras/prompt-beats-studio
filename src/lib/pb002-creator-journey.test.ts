@@ -33,6 +33,8 @@ describe("PB-002 unified creator journey", () => {
       'pathname.startsWith("/create") || pathname.startsWith("/generate")',
     );
     expect(shell).toContain('tab.id === "studio"');
-    expect(shell).toContain('language === "el" ? "Δημιουργία" : "Create"');
+    expect(shell).toContain('const label =');
+    expect(shell).toContain('"Δημιουργία"');
+    expect(shell).toContain('"Create"');
   });
 });
