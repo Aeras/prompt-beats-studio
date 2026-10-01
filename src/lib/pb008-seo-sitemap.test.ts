@@ -4,7 +4,7 @@ import { buildSitemapXml, escapeXml } from "./seo-sitemap.shared";
 
 describe("PB-008 sitemap XML safety", () => {
   test("escapes XML metacharacters", () => {
-    expect(escapeXml(`https://example.test/a?x=1&y=<tag>\"'`)).toBe(
+    expect(escapeXml(`https://example.test/a?x=1&y=<tag>"'`)).toBe(
       "https://example.test/a?x=1&amp;y=&lt;tag&gt;&quot;&apos;",
     );
   });
