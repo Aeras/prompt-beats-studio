@@ -83,7 +83,9 @@ describe("Song Universe", () => {
     });
     const context = buildSongUniverseContextText(handoff, "en");
     expect(context).toContain("Bittersweet and nocturnal");
-    expect(context).toContain("explicit current-song instructions override Universe recommendations");
+    expect(context).toContain(
+      "explicit current-song instructions override Universe recommendations",
+    );
   });
 
   test("database is private, one-primary-Universe, ownership validated and delete preserves Projects", async () => {
@@ -114,8 +116,11 @@ describe("Song Universe", () => {
     expect(sidebar).toContain('id: "songUniverse"');
     expect(sidebar).toContain('songUniverse: "/song-universe"');
     expect(shell).toContain('songUniverse: "/song-universe"');
-    const mobileTabs = shell.slice(shell.indexOf("const MOBILE_TABS"), shell.indexOf("] as const", shell.indexOf("const MOBILE_TABS")));
-    expect(mobileTabs).not.toContain('songUniverse');
+    const mobileTabs = shell.slice(
+      shell.indexOf("const MOBILE_TABS"),
+      shell.indexOf("] as const", shell.indexOf("const MOBILE_TABS")),
+    );
+    expect(mobileTabs).not.toContain("songUniverse");
     expect(mobileTabs).not.toContain('domain: "songUniverse"');
   });
 
