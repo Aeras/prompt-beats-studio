@@ -26,10 +26,7 @@ describe("PB-007 Home recent Project", () => {
   test("returns null when no eligible Project exists", () => {
     expect(selectHomeRecentProject([], [])).toBeNull();
     expect(
-      selectHomeRecentProject(
-        [version("detached", null, 1, "2026-10-01T12:00:00Z")],
-        [projectA],
-      ),
+      selectHomeRecentProject([version("detached", null, 1, "2026-10-01T12:00:00Z")], [projectA]),
     ).toBeNull();
   });
 
