@@ -756,6 +756,9 @@ function WallCard({
   };
 
   const remove = async () => {
+    if (!window.confirm(language === "el" ? "Διαγραφή αυτής της κάρτας;" : "Delete this card?"))
+      return;
+
     await deleteInspirationWallCard({ data: { cardId: card.id } });
     await onRefresh();
   };
@@ -923,7 +926,7 @@ function WallCard({
           <button
             type="button"
             onClick={() => void remove()}
-            className="grid h-7 w-7 place-items-center rounded-lg hover:bg-red-500/10 hover:text-red-500"
+            className="grid h-7 w-7 min-h-11 min-w-11 place-items-center rounded-lg hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
             aria-label={language === "el" ? "Διαγραφή κάρτας" : "Delete card"}
           >
             <Trash2 className="h-3.5 w-3.5" />

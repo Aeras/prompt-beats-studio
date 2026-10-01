@@ -282,8 +282,8 @@ export function TrackOwnerActions({
     }
   };
   const buttonClass = bare
-    ? "grid h-10 w-8 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-    : "grid place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent " +
+    ? "grid h-10 w-8 min-h-11 min-w-11 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+    : "grid min-h-11 min-w-11 place-items-center rounded-full border border-white/10 text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 " +
       (compact ? "h-7 w-7" : "h-8 w-8");
 
   const editModal =
