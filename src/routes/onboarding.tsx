@@ -9,8 +9,10 @@ import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { AVATAR_ACCEPT, validateAvatarFile } from "@/lib/avatar-upload";
+import { postAuthDestination, validateNextIntentSearch } from "@/lib/auth-continuation";
 
 export const Route = createFileRoute("/onboarding")({
+  validateSearch: validateNextIntentSearch,
   head: () => ({
     meta: [
       { title: "Set Up Your Artist Profile — PromptBeats" },
@@ -33,6 +35,7 @@ const inputClass =
 
 function Onboarding() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const { t } = useI18n();
   const { user, profile, loading } = useAuth();
   const [alias, setAlias] = useState("");
@@ -50,8 +53,8 @@ function Onboarding() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth", replace: true });
-  }, [loading, user, navigate]);
+    if (!loading && !user) navigate({ to: "/auth", search: next ? { next } : {}, replace: true });
+  }, [loading, user, navigate, next]);
 
   useEffect(() => {
     if (!user) return;
@@ -119,7 +122,7 @@ function Onboarding() {
             : {}),
         },
       });
-      navigate({ to: "/", replace: true });
+      navigate({ to: postAuthDestination(next), replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("onboarding.saveError"));
       setBusy(false);

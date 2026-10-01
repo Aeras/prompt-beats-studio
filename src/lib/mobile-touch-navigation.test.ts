@@ -49,6 +49,21 @@ describe("mobile and tablet touch navigation", () => {
     expect(shell).toContain("focus-visible:ring-2");
   });
 
+  test("mobile navigation keeps the four permanent primary domains", async () => {
+    const shell = await source("src/components/promptbeats/AppShell.tsx");
+    const mobileTabs = shell.slice(
+      shell.indexOf("const MOBILE_TABS"),
+      shell.indexOf("const DESKTOP_SIDEBAR_STORAGE_KEY"),
+    );
+    expect(mobileTabs).toContain('domain: "home"');
+    expect(mobileTabs).toContain('domain: "create"');
+    expect(mobileTabs).toContain('domain: "discover"');
+    expect(mobileTabs).toContain('domain: "library"');
+    expect(mobileTabs).not.toContain('domain: "trending"');
+    expect(shell).toContain("getPrimaryDomain");
+    expect(shell).toContain("primaryDomain === tab.domain");
+  });
+
   test("coarse-pointer menu controls use a reliable touch target without enlarging glyphs", async () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     expect(shell).toContain("min-h-11 min-w-11");

@@ -6,6 +6,7 @@ import {
   Compass,
   ExternalLink,
   Flame,
+  Home,
   Library,
   Lightbulb,
   LogIn,
@@ -32,17 +33,19 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { SettingsPanel } from "@/components/promptbeats/SettingsPanel";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
+import type { PrimaryDomain } from "@/lib/primary-navigation";
 
 export const NAV = [
+  { id: "home", labelKey: "nav.home", icon: Home },
+  { id: "studio", labelKey: "nav.create", icon: Sparkles },
   { id: "discover", labelKey: "nav.discover", icon: Compass },
+  { id: "library", labelKey: "nav.library", icon: Library },
   { id: "trending", labelKey: "nav.trending", icon: Flame },
-  { id: "studio", labelKey: null, icon: Sparkles },
   { id: "songAnalyzer", labelKey: null, icon: ScanSearch },
   { id: "lyricsReview", labelKey: null, icon: TextSearch },
   { id: "inspirationWall", labelKey: null, icon: Lightbulb },
   { id: "storyMap", labelKey: null, icon: MapPinned },
   { id: "songUniverse", labelKey: null, icon: Orbit },
-  { id: "library", labelKey: "nav.library", icon: Library },
   { id: "management", labelKey: "nav.management", icon: BarChart3 },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -52,8 +55,23 @@ export const NAV = [
 
 export type NavId = (typeof NAV)[number]["id"];
 const STAFF_ONLY: NavId[] = ["management"];
+const PRIMARY_NAV_IDS: NavId[] = ["home", "studio", "discover", "library"];
+const CREATE_TOOL_NAV_IDS: NavId[] = [
+  "songAnalyzer",
+  "lyricsReview",
+  "inspirationWall",
+  "storyMap",
+  "songUniverse",
+];
+const PRIMARY_NAV_DOMAINS: Partial<Record<NavId, PrimaryDomain>> = {
+  home: "home",
+  studio: "create",
+  discover: "discover",
+  library: "library",
+};
 const NAV_TO: Record<NavId, string> = {
-  discover: "/",
+  home: "/",
+  discover: "/discover",
   trending: "/trending",
   studio: "/create",
   songAnalyzer: "/song-analyzer",
@@ -106,16 +124,17 @@ const MUSIC_CREATION_PLATFORMS = [
 
 export function SidebarNav({
   active,
+  primaryDomain,
   onNavigate,
   onSubmit,
 }: {
   active: NavId;
+  primaryDomain: PrimaryDomain | null;
   onNavigate: () => void;
   onSubmit: () => void;
 }) {
   const { user, profile } = useAuth();
   const { isBanned, canViewUsers } = useModeration();
-  const generatorAccess = useFeatureAccess("ai_generator");
   const analyzerAccess = useFeatureAccess("song_analyzer");
   const lyricsReviewAccess = useFeatureAccess("lyrics_review");
   const inspirationWallAccess = useFeatureAccess("inspiration_wall");
@@ -126,6 +145,50 @@ export function SidebarNav({
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [externalPlatformsOpen, setExternalPlatformsOpen] = useState(false);
+  const isVisible = (item: (typeof NAV)[number]) =>
+    (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
+    (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
+    (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
+    (item.id !== "storyMap" || storyMapAccess.allowed) &&
+    (item.id !== "songUniverse" || songUniverseAccess.allowed) &&
+    (!STAFF_ONLY.includes(item.id) || canViewUsers);
+  const renderNavItem = (item: (typeof NAV)[number], primary = false) => {
+    const isActive = primary ? primaryDomain === PRIMARY_NAV_DOMAINS[item.id] : active === item.id;
+    const fallbackLabel =
+      item.id === "songAnalyzer"
+        ? "AI Song Analyzer"
+        : item.id === "lyricsReview"
+          ? "Lyrics Review"
+          : item.id === "inspirationWall"
+            ? "Inspiration Wall"
+            : item.id === "storyMap"
+              ? "Story Map"
+              : item.id === "songUniverse"
+                ? "Song Universes"
+                : item.id;
+    return (
+      <Link
+        key={item.id}
+        to={NAV_TO[item.id]}
+        onClick={onNavigate}
+        className={cn(
+          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
+          isActive
+            ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+        )}
+      >
+        <item.icon
+          className={cn(
+            "h-[18px] w-[18px] shrink-0 transition-all",
+            isActive ? "text-primary drop-shadow-[0_0_8px_var(--neon)]" : "group-hover:text-accent",
+          )}
+        />
+        <span className="truncate">{item.labelKey ? t(item.labelKey) : fallbackLabel}</span>
+        {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />}
+      </Link>
+    );
+  };
   const signOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -206,63 +269,36 @@ export function SidebarNav({
       ) : (
         <>
           <nav className="flex flex-col gap-1">
-            {NAV.filter(
-              (item) =>
-                (item.id !== "studio" || generatorAccess.allowed) &&
-                (item.id !== "songAnalyzer" || analyzerAccess.allowed) &&
-                (item.id !== "lyricsReview" || lyricsReviewAccess.allowed) &&
-                (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
-                (item.id !== "storyMap" || storyMapAccess.allowed) &&
-                (item.id !== "songUniverse" || songUniverseAccess.allowed) &&
-                (!STAFF_ONLY.includes(item.id) || canViewUsers),
-            ).map((item) => {
-              const isActive = active === item.id;
-              const fallbackLabel =
-                item.id === "studio"
-                  ? language === "el"
-                    ? "Δημιουργία"
-                    : "Create"
-                  : item.id === "songAnalyzer"
-                    ? "AI Song Analyzer"
-                    : item.id === "lyricsReview"
-                      ? "Lyrics Review"
-                      : item.id === "inspirationWall"
-                        ? "Inspiration Wall"
-                        : item.id === "storyMap"
-                          ? "Story Map"
-                          : item.id === "songUniverse"
-                            ? "Song Universes"
-                            : item.id;
-              return (
-                <Link
-                  key={item.id}
-                  to={NAV_TO[item.id]}
-                  onClick={onNavigate}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
-                    isActive
-                      ? "glass text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "h-[18px] w-[18px] shrink-0 transition-all",
-                      isActive
-                        ? "text-primary drop-shadow-[0_0_8px_var(--neon)]"
-                        : "group-hover:text-accent",
-                    )}
-                  />
-                  <span className="truncate">
-                    {item.labelKey ? t(item.labelKey) : fallbackLabel}
-                  </span>
-                  {isActive && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent glow-electric" />
-                  )}
-                </Link>
-              );
-            })}
+            {NAV.filter((item) => PRIMARY_NAV_IDS.includes(item.id) && isVisible(item)).map(
+              (item) => renderNavItem(item, true),
+            )}
           </nav>
+
+          <div className="space-y-1">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {t("nav.discover")}
+            </p>
+            <nav className="flex flex-col gap-1">
+              {NAV.filter((item) => item.id === "trending" && isVisible(item)).map((item) =>
+                renderNavItem(item),
+              )}
+            </nav>
+          </div>
+
+          <div className="space-y-1">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {t("nav.createTools")}
+            </p>
+            <nav className="flex flex-col gap-1">
+              {NAV.filter((item) => CREATE_TOOL_NAV_IDS.includes(item.id) && isVisible(item)).map(
+                (item) => renderNavItem(item),
+              )}
+            </nav>
+          </div>
+
+          {NAV.filter((item) => STAFF_ONLY.includes(item.id) && isVisible(item)).map((item) =>
+            renderNavItem(item),
+          )}
 
           {!isBanned && (
             <button

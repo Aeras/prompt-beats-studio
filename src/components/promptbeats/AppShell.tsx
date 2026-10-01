@@ -9,13 +9,18 @@ import { HelpMenu } from "@/components/promptbeats/HelpMenu";
 import { SearchTermHighlighter } from "@/components/promptbeats/SearchTermHighlighter";
 import { cn } from "@/lib/utils";
 import { useAccountLock } from "@/hooks/useAccountLock";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
 import type { TranslationKey } from "@/i18n/locales/en";
+import {
+  getPrimaryDomain,
+  PRIMARY_DOMAIN_PATHS,
+  type PrimaryDomain,
+} from "@/lib/primary-navigation";
 
 export const NAV_PATHS: Record<NavId, string> = {
-  discover: "/",
+  home: "/",
+  discover: "/discover",
   trending: "/trending",
   studio: "/create",
   songAnalyzer: "/song-analyzer",
@@ -28,15 +33,13 @@ export const NAV_PATHS: Record<NavId, string> = {
 };
 
 const MOBILE_TABS = [
-  { id: "discover", labelKey: "nav.feedShort" },
-  { id: "trending", labelKey: "nav.trending" },
-  { id: "studio", labelKey: "nav.studioShort" },
-  { id: "library", labelKey: "nav.libraryShort" },
+  { id: "home", domain: "home", labelKey: "nav.homeShort" },
+  { id: "studio", domain: "create", labelKey: "nav.createShort" },
+  { id: "discover", domain: "discover", labelKey: "nav.discoverShort" },
+  { id: "library", domain: "library", labelKey: "nav.libraryShort" },
 ] as const satisfies ReadonlyArray<{
-  id: Exclude<
-    NavId,
-    "songAnalyzer" | "lyricsReview" | "inspirationWall" | "storyMap" | "songUniverse" | "management"
-  >;
+  id: "home" | "studio" | "discover" | "library";
+  domain: PrimaryDomain;
   labelKey: TranslationKey;
 }>;
 
@@ -61,16 +64,23 @@ function isSwipeInteractiveTarget(target: EventTarget | null) {
 
 export function useActiveNav(): NavId {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname === "/") return "home";
+  if (pathname.startsWith("/discover")) return "discover";
   if (pathname.startsWith("/trending")) return "trending";
   if (pathname.startsWith("/song-analyzer")) return "songAnalyzer";
   if (pathname.startsWith("/lyrics-review")) return "lyricsReview";
   if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";
   if (pathname.startsWith("/story-map")) return "storyMap";
   if (pathname.startsWith("/song-universe")) return "songUniverse";
-  if (pathname.startsWith("/create") || pathname.startsWith("/generate")) return "studio";
+  if (
+    pathname.startsWith("/create") ||
+    pathname.startsWith("/generate") ||
+    pathname.startsWith("/audio-revision")
+  )
+    return "studio";
   if (pathname.startsWith("/library")) return "library";
   if (pathname.startsWith("/management")) return "management";
-  return "discover";
+  return "home";
 }
 
 export function AppShell({ header, children }: { header?: ReactNode; children: ReactNode }) {
@@ -85,10 +95,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const liveSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveSearchTouchedRef = useRef(false);
   const active = useActiveNav();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const primaryDomain = getPrimaryDomain(pathname);
   const currentHref = useRouterState({ select: (state) => state.location.href });
   const navigate = useNavigate();
   const { t, language } = useI18n();
-  const generatorAccess = useFeatureAccess("ai_generator");
   const {
     isLocked,
     isInvalid,
@@ -114,7 +125,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
     (value: string) => {
       const query = value.trim();
       void navigate({
-        to: "/",
+        to: "/discover",
         search: query ? { q: query } : {},
         replace: true,
       });
@@ -308,7 +319,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           )}
         >
           <div className="h-full w-[270px]">
-            <SidebarNav active={active} onNavigate={() => setDrawer(false)} onSubmit={openStudio} />
+            <SidebarNav
+              active={active}
+              primaryDomain={primaryDomain}
+              onNavigate={() => setDrawer(false)}
+              onSubmit={openStudio}
+            />
           </div>
         </div>
         <button
@@ -381,7 +397,12 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
             <X className="h-5 w-5 md:hidden" />
             <ChevronLeft className="hidden h-5 w-5 md:block" />
           </button>
-          <SidebarNav active={active} onNavigate={() => setDrawer(false)} onSubmit={openStudio} />
+          <SidebarNav
+            active={active}
+            primaryDomain={primaryDomain}
+            onNavigate={() => setDrawer(false)}
+            onSubmit={openStudio}
+          />
         </div>
       </div>
 
@@ -483,37 +504,30 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
         className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
         <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
-          {MOBILE_TABS.filter((tab) => tab.id !== "studio" || generatorAccess.allowed).map(
-            (tab) => {
-              const item = NAV.find((n) => n.id === tab.id)!;
-              const isActive = active === tab.id;
-              const label =
-                tab.id === "studio"
-                  ? language === "el"
-                    ? "Δημιουργία"
-                    : "Create"
-                  : t(tab.labelKey);
-              return (
-                <Link
-                  key={tab.id}
-                  to={NAV_PATHS[tab.id]}
-                  aria-current={isActive ? "page" : undefined}
+          {MOBILE_TABS.map((tab) => {
+            const item = NAV.find((n) => n.id === tab.id)!;
+            const isActive = primaryDomain === tab.domain;
+            const label = t(tab.labelKey);
+            return (
+              <Link
+                key={tab.id}
+                to={PRIMARY_DOMAIN_PATHS[tab.domain]}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/70",
+                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
+                )}
+              >
+                <item.icon
                   className={cn(
-                    "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/70",
-                    isActive ? "text-primary font-semibold" : "text-muted-foreground",
+                    "h-[18px] w-[18px]",
+                    isActive && "drop-shadow-[0_0_8px_var(--neon)]",
                   )}
-                >
-                  <item.icon
-                    className={cn(
-                      "h-[18px] w-[18px]",
-                      isActive && "drop-shadow-[0_0_8px_var(--neon)]",
-                    )}
-                  />
-                  {label}
-                </Link>
-              );
-            },
-          )}
+                />
+                {label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
 
