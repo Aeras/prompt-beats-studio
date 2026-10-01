@@ -116,7 +116,9 @@ describe("Song Universe 2 end-to-end contracts", () => {
     expect(context).toContain("Friendship");
     expect(context).toContain("Romantic loss");
     expect(context).toContain("Explore 116–130 BPM");
-    expect(context).toContain("explicit current-song instructions override Universe recommendations");
+    expect(context).toContain(
+      "explicit current-song instructions override Universe recommendations",
+    );
   });
 
   test("near-duplicate guard detects a strongly repeated premise", () => {
@@ -125,7 +127,8 @@ describe("Song Universe 2 end-to-end contracts", () => {
       projectTitle: "Existing",
       position: 0,
       theme: "late night breakup after a phone call in an empty city",
-      narrativeSummary: "A lover receives a phone call and ends a relationship while driving through the empty city at night.",
+      narrativeSummary:
+        "A lover receives a phone call and ends a relationship while driving through the empty city at night.",
       mood: "melancholic",
     });
     const brief = nextSongBriefSchema.parse({
@@ -134,7 +137,8 @@ describe("Song Universe 2 end-to-end contracts", () => {
       themesToExplore: ["late night breakup after a phone call"],
       recommendedMood: "melancholic",
       recommendedSettingDirection: "empty city at night",
-      reasoningSummary: "A lover ends a relationship after a phone call while driving through an empty city.",
+      reasoningSummary:
+        "A lover ends a relationship after a phone call while driving through an empty city.",
     });
     const risk = detectNearDuplicateDirection(brief, [summary]);
     expect(risk.level).toBe("high");
@@ -166,7 +170,9 @@ describe("Song Universe 2 end-to-end contracts", () => {
         structure: ["Verse", "Chorus", "Verse", "Chorus"],
       }),
     );
-    const { buildDeterministicUsageProfile } = require("./song-universe-planner") as typeof import("./song-universe-planner");
+    const { buildDeterministicUsageProfile } = require(
+      "./song-universe-planner",
+    ) as typeof import("./song-universe-planner");
     const notes = deterministicPortfolioBalanceNotes(buildDeterministicUsageProfile(summaries));
     expect(notes.join(" ")).toContain("86–100 BPM");
     expect(notes.join(" ")).toContain("Melancholic");
@@ -177,8 +183,10 @@ describe("Song Universe 2 end-to-end contracts", () => {
     expect(route).toContain("SongUniverseNextSongPlanner");
     expect(route).toContain("setPlannerOpen(true)");
     expect(route).not.toContain("version: 1 as const");
-    expect(route).not.toContain("window.sessionStorage.setItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY");
-    expect(route).toContain("recurrence: \"occasional\"");
+    expect(route).not.toContain(
+      "window.sessionStorage.setItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY",
+    );
+    expect(route).toContain('recurrence: "occasional"');
     expect(route).toContain("outlierPurpose");
   });
 
@@ -203,7 +211,9 @@ describe("Song Universe 2 end-to-end contracts", () => {
   });
 
   test("migration persists v2 planning controls with RLS", async () => {
-    const migration = await source("supabase/migrations/20260929210439_song_universe_2_core.sql");
+    const migration = await source(
+      "supabase/migrations/20260929210439_song_universe_2_core.sql",
+    );
     expect(migration).toContain("planned_track_count");
     expect(migration).toContain("story_bible");
     expect(migration).toContain("outlier_purpose");
