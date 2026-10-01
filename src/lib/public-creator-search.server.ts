@@ -37,7 +37,11 @@ export async function searchEligiblePublicCreators(
   }
 
   const unique = new Map<string, EligiblePublicCreatorSearchResult>();
-  for (const row of [...(handles.data ?? []), ...(displayNames.data ?? []), ...(aliases.data ?? [])]) {
+  for (const row of [
+    ...(handles.data ?? []),
+    ...(displayNames.data ?? []),
+    ...(aliases.data ?? []),
+  ]) {
     if (row?.id && row?.handle && !unique.has(row.id)) {
       unique.set(row.id, row as EligiblePublicCreatorSearchResult);
     }
