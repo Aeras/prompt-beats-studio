@@ -23,7 +23,9 @@ describe("PB-002 unified creator journey", () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
 
     expect(sidebar).toContain('{ id: "studio", labelKey: "nav.create", icon: Sparkles }');
-    expect(sidebar).toContain('const PRIMARY_NAV_IDS: NavId[] = ["home", "studio", "discover", "library"]');
+    expect(sidebar).toContain(
+      'const PRIMARY_NAV_IDS: NavId[] = ["home", "studio", "discover", "library"]',
+    );
     expect(sidebar).toContain('studio: "create"');
     expect(sidebar).toContain('studio: "/create"');
 
