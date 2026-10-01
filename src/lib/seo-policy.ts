@@ -50,10 +50,7 @@ export function canonicalUrl(pathname: string, config = getSeoRuntimeConfig()): 
   return url.toString();
 }
 
-export function robotsContent(
-  policy: SeoIndexPolicy,
-  config = getSeoRuntimeConfig(),
-): string {
+export function robotsContent(policy: SeoIndexPolicy, config = getSeoRuntimeConfig()): string {
   if (!config.indexingEnabled) return "noindex,nofollow";
   switch (policy) {
     case "index":
