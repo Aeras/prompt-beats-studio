@@ -1,268 +1,222 @@
-import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Compass } from "lucide-react";
-import { AppShell } from "@/components/promptbeats/AppShell";
-import { TrackCard } from "@/components/promptbeats/TrackCard";
-import {
-  TrackGridModeToggle,
-  trackGridClassName,
-  useTrackGridMode,
-} from "@/components/promptbeats/TrackGridView";
-import { StaffBadge } from "@/components/promptbeats/StaffBadge";
-import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
-import { GENRES, type Track } from "@/lib/tracks";
-import { usePlayer } from "@/lib/player";
-import { listPublishedTracks } from "@/lib/tracks.functions";
-import { searchPublicCreators, type PublicCreatorSearchResult } from "@/lib/profile.functions";
-import artFallback from "@/assets/art-3.jpg";
-import { cn } from "@/lib/utils";
-import { useI18n } from "@/i18n";
-import { localizedGenreLabel } from "@/i18n/ui-catalog";
-import { getUserAvatarUrl } from "@/lib/user-avatar";
-import {
-  TrackSourceFilter,
-  filterByTrackSource,
-  useTrackSourcePreference,
-  type TrackSourcePreference,
-} from "@/components/promptbeats/TrackSourceFilter";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { FolderOpen, Home, Sparkles } from "lucide-react";
 
-function formatDuration(seconds: number | null) {
-  if (!seconds) return "--:--";
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
+import { AppShell } from "@/components/promptbeats/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
+import { getHomeRecentProject } from "@/lib/home.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { q?: string } => {
     const q = typeof search["q"] === "string" ? search["q"].trim() : "";
     return q ? { q } : {};
   },
+  beforeLoad: ({ search }) => {
+    if (!search.q) return;
+    throw redirect({
+      to: "/discover",
+      search: { q: search.q },
+      replace: true,
+    });
+  },
   head: () => ({
     meta: [
-      { title: "PromptBeats — AI Music Prompts, Tracks & Studio" },
+      { title: "PromptBeats — Create, Continue & Discover" },
       {
         name: "description",
-        content:
-          "Discover AI-generated tracks, copy the exact prompts behind them, and craft your own lyrics in the PromptBeats studio.",
+        content: "Start a song, continue your latest Project, or explore music and prompts on PromptBeats.",
       },
-      { property: "og:title", content: "PromptBeats — AI Music Prompts, Tracks & Studio" },
+      { property: "og:title", content: "PromptBeats — Creator Home" },
       {
         property: "og:description",
-        content: "Share AI music, copy prompts, and build your next track in a neon studio.",
+        content: "Create, continue a Project, or discover music and prompts on PromptBeats.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Index,
+  component: HomePage,
 });
 
-function Index() {
-  const { t, language } = useI18n();
-  const { q } = Route.useSearch();
-  const query = q ?? "";
-  const [genre, setGenre] = useState("All");
-  const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
-  const { current, playing, play } = usePlayer();
-  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
-  const { preference: defaultTrackSource } = useTrackSourcePreference();
-  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
-  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
-
-  const { data } = useQuery({
-    queryKey: ["tracks", "published"],
-    queryFn: () => listPublishedTracks(),
+function HomePage() {
+  const { language } = useI18n();
+  const { user, loading } = useAuth();
+  const el = language === "el";
+  const recentProject = useQuery({
+    queryKey: ["home", "recent-project"],
+    queryFn: () => getHomeRecentProject(),
+    enabled: !loading && Boolean(user),
+    staleTime: 30_000,
   });
-  const {
-    data: creatorData,
-    isLoading: creatorsLoading,
-    error: creatorsError,
-  } = useQuery({
-    queryKey: ["public-creators", query],
-    queryFn: () => searchPublicCreators({ data: { query } }),
-    enabled: category === "creators" && query.trim().length > 0,
-  });
-
-  const creatorNames = new Map(
-    (data?.tracks ?? []).map((track: any) => [track.id, track.creator_name ?? ""]),
-  );
-  const uploaded: Track[] = (data?.tracks ?? []).map((track: any) => ({
-    id: track.id,
-    userId: track.user_id,
-    title: track.title,
-    handle: track.handle,
-    genre: track.genre,
-    art: track.cover_url ?? track.art_url ?? artFallback,
-    duration: formatDuration(track.duration_seconds),
-    plays: String(track.plays),
-    prompt: track.prompt,
-    lyrics: track.lyrics,
-    audioUrl: track.audio_url,
-    audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
-    sourceType: track.source_type as Track["sourceType"],
-    sourceId: track.source_id,
-    createdWith: track.created_with,
-    allowDownload: track.allow_download === true,
-    durationSeconds: track.duration_seconds,
-    containsExplicitLyrics: track.contains_explicit_lyrics === true,
-    staffBadge: track.staff_badge,
-  }));
-
-  const sourceFiltered = filterByTrackSource(uploaded, trackSource);
-  const list = sourceFiltered.filter(
-    (track) =>
-      (genre === "All" || track.genre === genre) &&
-      (category === "creators" ||
-        (category === "prompts"
-          ? track.prompt
-          : track.title + track.handle + (creatorNames.get(track.id) ?? "") + track.prompt
-        )
-          .toLowerCase()
-          .includes(query.toLowerCase())),
-  );
-  const onPlay = (track: Track) => play(track, list);
-  const categoryLabel = (item: "tracks" | "creators" | "prompts") =>
-    item === "tracks"
-      ? t("discover.category.tracks")
-      : item === "creators"
-        ? t("discover.category.creators")
-        : t("discover.category.prompts");
 
   const header = (
     <div className="flex min-w-0 items-center gap-2">
-      <Compass className="h-5 w-5 shrink-0 text-accent" />
+      <Home className="h-5 w-5 shrink-0 text-accent" />
       <span className="truncate font-display text-base font-bold md:text-lg">
-        {t("nav.feedShort")}
+        {el ? "Αρχική" : "Home"}
       </span>
     </div>
   );
 
   return (
     <AppShell header={header}>
-      <div className="w-full border-b border-white/5 bg-black/10 py-2">
-        <div className="flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
-          {(["tracks", "creators", "prompts"] as const).map((item) => (
-            <button
-              key={item}
-              onClick={() => setCategory(item)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-                category === item
-                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
-                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-              )}
-            >
-              {categoryLabel(item)}
-            </button>
-          ))}
-        </div>
-        <div className="mt-1 flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
-          {GENRES.map((item) => (
-            <button
-              key={item}
-              onClick={() => setGenre(item)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
-                genre === item
-                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
-                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
-              )}
-            >
-              {localizedGenreLabel(item, t)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="px-4 pt-4 md:px-8">
-        <ProfileBanner />
-      </div>
-      <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-4 md:px-8 md:pb-[150px]">
-        <div>
-          {category !== "creators" && (
-            <div className="flex w-full items-center justify-between gap-3">
-              <TrackSourceFilter
-                value={trackSource}
-                onChange={setTrackSource}
-                language={language}
-              />
-              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
-            </div>
-          )}
-        </div>
-        <div
-          className={`mt-5 ${category === "creators" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : trackGridClassName(gridMode)}`}
-        >
-          {category === "creators"
-            ? (creatorData?.creators ?? []).map((creator) => (
-                <CreatorCard key={creator.id} creator={creator} />
-              ))
-            : list.map((track) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  isPlaying={playing && current?.id === track.id}
-                  onPlay={onPlay}
-                  viewMode={gridMode}
-                />
-              ))}
-        </div>
-        {category === "creators" ? (
-          creatorsLoading ? (
-            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              {t("discover.searchingCreators")}
-            </p>
-          ) : creatorsError ? (
-            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-red-300">
-              {t("discover.creatorSearchError")}
-            </p>
-          ) : query.trim() && (creatorData?.creators.length ?? 0) === 0 ? (
-            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              {t("discover.noCreatorMatches")}
-            </p>
-          ) : !query.trim() ? (
-            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              {t("discover.creatorSearchHint")}
-            </p>
-          ) : null
-        ) : uploaded.length === 0 ? (
-          <div className="glass mt-6 rounded-2xl p-8 text-center">
-            <p className="text-sm font-medium text-foreground">{t("discover.noTracks")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{t("discover.noTracksHint")}</p>
+      <main className="mx-auto w-full max-w-5xl px-4 pb-[180px] pt-8 md:px-8 md:pb-[120px] md:pt-12">
+        {loading ? (
+          <div className="glass rounded-3xl p-8 text-sm text-muted-foreground" aria-live="polite">
+            {el ? "Φόρτωση..." : "Loading..."}
           </div>
-        ) : list.length === 0 ? (
-          <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-            {t("discover.noFilterMatches")}
-          </p>
-        ) : null}
+        ) : user ? (
+          <AuthenticatedHome
+            el={el}
+            recentProject={recentProject.data ?? null}
+            recentLoading={recentProject.isLoading}
+            recentError={recentProject.isError}
+          />
+        ) : (
+          <GuestHome el={el} />
+        )}
       </main>
     </AppShell>
   );
 }
 
-function CreatorCard({ creator }: { creator: PublicCreatorSearchResult }) {
-  const { t } = useI18n();
-  const name =
-    creator.display_name || creator.artist_alias || creator.handle || t("discover.creatorFallback");
+function GuestHome({ el }: { el: boolean }) {
   return (
-    <Link
-      to="/$handle"
-      params={{ handle: `@${creator.handle}` }}
-      className="glass flex items-center gap-3 rounded-2xl p-4 transition-colors hover:border-primary/40"
-    >
-      <img
-        src={getUserAvatarUrl(creator.avatar_url)}
-        alt={`${name} avatar`}
-        width={56}
-        height={56}
-        className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-primary/40"
-      />
-      <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <p className="truncate font-display text-sm font-semibold">{name}</p>
-          <StaffBadge badge={creator.staff_badge} />
+    <section className="space-y-6">
+      <div className="glass-strong rounded-3xl p-6 sm:p-8 md:p-10">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10">
+          <Sparkles className="h-6 w-6 text-accent" />
         </div>
-        <p className="truncate text-xs text-muted-foreground">@{creator.handle}</p>
+        <h1 className="mt-6 max-w-2xl font-display text-3xl font-bold tracking-tight sm:text-4xl">
+          {el ? "Ξεκίνα το επόμενο τραγούδι σου." : "Start your next song."}
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          {el
+            ? "Ανάπτυξε την ιδέα, τους στίχους, τη δομή και το prompt σου σε ένα δημιουργικό workflow."
+            : "Develop your idea, lyrics, structure, and prompt in one creative workflow."}
+        </p>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link
+            to="/auth"
+            search={{ next: "create" }}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+          >
+            {el ? "Ξεκίνα δημιουργία" : "Start creating"}
+          </Link>
+          <Link
+            to="/discover"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+          >
+            {el ? "Ανακάλυψε μουσική" : "Explore Discover"}
+          </Link>
+        </div>
       </div>
-    </Link>
+    </section>
+  );
+}
+
+function AuthenticatedHome({
+  el,
+  recentProject,
+  recentLoading,
+  recentError,
+}: {
+  el: boolean;
+  recentProject: Awaited<ReturnType<typeof getHomeRecentProject>> | null;
+  recentLoading: boolean;
+  recentError: boolean;
+}) {
+  return (
+    <section className="space-y-6">
+      <div className="glass-strong rounded-3xl p-6 sm:p-8">
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          {el ? "Τι θέλεις να δημιουργήσεις σήμερα;" : "What do you want to create today?"}
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          {el
+            ? "Ξεκίνα κάτι νέο ή συνέχισε το πιο πρόσφατο Project σου."
+            : "Start something new or continue your most recent Project."}
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            to="/create"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground glow-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+          >
+            {el ? "Νέα δημιουργία" : "Start creating"}
+          </Link>
+          <Link
+            to="/discover"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+          >
+            {el ? "Discover" : "Discover"}
+          </Link>
+        </div>
+      </div>
+
+      {recentLoading ? (
+        <div className="glass rounded-2xl p-5 text-sm text-muted-foreground" aria-live="polite">
+          {el ? "Εύρεση πρόσφατου Project..." : "Finding your recent Project..."}
+        </div>
+      ) : recentError ? (
+        <div className="glass rounded-2xl p-5 text-sm text-muted-foreground">
+          {el
+            ? "Δεν ήταν δυνατή η φόρτωση του πρόσφατου Project. Μπορείς να συνεχίσεις από τη Βιβλιοθήκη."
+            : "Your recent Project could not be loaded. You can still continue from Library."}
+        </div>
+      ) : recentProject ? (
+        <article className="glass rounded-2xl p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.03]">
+              <FolderOpen className="h-5 w-5 text-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {el ? "Πρόσφατο Project" : "Recent Project"}
+              </p>
+              <h2 className="mt-1 truncate font-display text-xl font-bold">
+                {recentProject.projectName}
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {recentProject.versionLabel ||
+                  (el
+                    ? `Έκδοση ${recentProject.versionNumber}`
+                    : `Version ${recentProject.versionNumber}`)}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  to="/library"
+                  search={{ tab: "prompts" }}
+                  aria-label={
+                    el
+                      ? `Συνέχισε το Project ${recentProject.projectName}`
+                      : `Continue Project ${recentProject.projectName}`
+                  }
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                >
+                  {el ? "Συνέχισε το Project" : "Continue Project"}
+                </Link>
+                <Link
+                  to="/library"
+                  search={{ tab: "prompts" }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                >
+                  {el ? "Όλα τα Projects" : "View all Projects"}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </article>
+      ) : (
+        <div className="glass rounded-2xl p-5 sm:p-6">
+          <p className="text-sm font-semibold">{el ? "Δεν έχεις Project ακόμη." : "No Projects yet."}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {el
+              ? "Μπορείς να ξεκινήσεις μια νέα δημιουργία χωρίς να χρειάζεται πρώτα να φτιάξεις Project."
+              : "You can start creating without creating a Project first."}
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
