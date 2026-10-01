@@ -35,8 +35,6 @@ describe("PB-007 auth continuation", () => {
     expect(authCallbackUrl("https://promptbeats.app", "create")).toBe(
       "https://promptbeats.app/auth?next=create",
     );
-    expect(authCallbackUrl("https://promptbeats.app", undefined)).toBe(
-      "https://promptbeats.app",
-    );
+    expect(authCallbackUrl("https://promptbeats.app", undefined)).toBe("https://promptbeats.app");
   });
 });
