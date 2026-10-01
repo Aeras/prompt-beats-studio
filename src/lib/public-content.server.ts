@@ -13,7 +13,7 @@ const PUBLIC_PROFILE_COLUMNS =
 const PUBLIC_TRACK_COLUMNS =
   "id, user_id, title, genre, prompt, lyrics, prompt_is_public, lyrics_is_public, contains_explicit_lyrics, audio_url, audio_type, source_type, source_url, source_id, created_with, allow_download, art_url, cover_url, duration_seconds, plays, is_published, moderation_status, created_at";
 
-type PublicProfile = {
+export type PublicProfileProjection = {
   id: string;
   handle: string | null;
   display_name: string | null;
@@ -30,10 +30,10 @@ type PublicProfile = {
 
 type PublicAccountState = {
   eligible: boolean;
-  profile: PublicProfile | null;
+  profile: PublicProfileProjection | null;
 };
 
-export type PublicTrackProjection = Record<string, unknown> & {
+export type PublicTrackProjection = {
   id: string;
   user_id: string;
   title: string;
@@ -42,13 +42,25 @@ export type PublicTrackProjection = Record<string, unknown> & {
   lyrics: string;
   prompt_is_public: boolean | null;
   lyrics_is_public: boolean | null;
+  contains_explicit_lyrics: boolean | null;
+  audio_url: string | null;
+  audio_type: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  source_id: string | null;
+  created_with: string | null;
+  allow_download: boolean | null;
+  art_url: string | null;
+  cover_url: string | null;
+  duration_seconds: number | null;
+  plays: number | null;
   is_published: boolean;
   moderation_status: string;
   created_at: string | null;
 };
 
 export type PublicCreatorProjection = {
-  profile: PublicProfile;
+  profile: PublicProfileProjection;
   tracks: PublicTrackProjection[];
   state: Exclude<CreatorPublicState, "unavailable">;
 };
@@ -63,24 +75,20 @@ async function getPublicAccountStates(userIds: string[]): Promise<Map<string, Pu
   if (ids.length === 0) return result;
 
   const [profilesResult, rolesResult, privateResult] = await Promise.all([
-    (supabaseAdmin.from("public_profiles") as any)
-      .select(PUBLIC_PROFILE_COLUMNS)
-      .in("id", ids),
+    (supabaseAdmin.from("public_profiles") as any).select(PUBLIC_PROFILE_COLUMNS).in("id", ids),
     (supabaseAdmin.from("user_roles") as any)
       .select("user_id, moderation_status")
       .in("user_id", ids),
-    (supabaseAdmin.from("profile_private") as any)
-      .select("user_id, is_banned")
-      .in("user_id", ids),
+    (supabaseAdmin.from("profile_private") as any).select("user_id, is_banned").in("user_id", ids),
   ]);
 
   if (profilesResult.error || rolesResult.error || privateResult.error) {
     throw new Error("Public eligibility could not be resolved.");
   }
 
-  const profiles = new Map<string, PublicProfile>();
+  const profiles = new Map<string, PublicProfileProjection>();
   for (const profile of profilesResult.data ?? []) {
-    if (profile?.id) profiles.set(profile.id, profile as PublicProfile);
+    if (profile?.id) profiles.set(profile.id, profile as PublicProfileProjection);
   }
   const moderationByUser = new Map<string, string | null>();
   for (const role of rolesResult.data ?? []) {
@@ -111,7 +119,7 @@ function projectEligibleTrack(track: any): PublicTrackProjection {
 
 export async function resolveEligiblePublicTrack(trackId: string): Promise<{
   track: PublicTrackProjection;
-  artist: PublicProfile;
+  artist: PublicProfileProjection;
 } | null> {
   const { data: track, error } = await (supabaseAdmin.from("tracks") as any)
     .select(PUBLIC_TRACK_COLUMNS)
@@ -136,11 +144,13 @@ export async function resolveEligiblePublicTrack(trackId: string): Promise<{
 }
 
 export async function listEligiblePublicTracks(limit = 100): Promise<
-  Array<PublicTrackProjection & {
-    handle: string;
-    creator_name: string;
-    staff_badge: string | null;
-  }>
+  Array<
+    PublicTrackProjection & {
+      handle: string;
+      creator_name: string;
+      staff_badge: string | null;
+    }
+  >
 > {
   const boundedLimit = Math.max(1, Math.min(limit, 100));
   const { data: tracks, error } = await (supabaseAdmin.from("tracks") as any)
@@ -187,7 +197,7 @@ async function loadCreatorTracks(userId: string): Promise<PublicTrackProjection[
 }
 
 async function resolvePublicCreatorFromProfile(
-  profile: PublicProfile | null,
+  profile: PublicProfileProjection | null,
 ): Promise<PublicCreatorProjection | null> {
   if (!profile?.id) return null;
   const account = (await getPublicAccountStates([profile.id])).get(profile.id);
@@ -210,7 +220,7 @@ export async function resolvePublicCreatorByHandle(
     .eq("handle", handle)
     .maybeSingle();
   if (error) throw new Error("Public creator could not be resolved.");
-  return resolvePublicCreatorFromProfile((profile as PublicProfile | null) ?? null);
+  return resolvePublicCreatorFromProfile((profile as PublicProfileProjection | null) ?? null);
 }
 
 export async function resolvePublicCreatorById(
@@ -221,7 +231,7 @@ export async function resolvePublicCreatorById(
     .eq("id", creatorId)
     .maybeSingle();
   if (error) throw new Error("Public creator could not be resolved.");
-  return resolvePublicCreatorFromProfile((profile as PublicProfile | null) ?? null);
+  return resolvePublicCreatorFromProfile((profile as PublicProfileProjection | null) ?? null);
 }
 
 export async function filterEligiblePublicCreatorIds(userIds: string[]): Promise<Set<string>> {
