@@ -14,18 +14,12 @@ export type CreatorPublicState = "unavailable" | "thin" | "indexable";
 
 export function isPublicAccountEligible(input: PublicAccountEligibilityInput): boolean {
   return (
-    input.moderationStatus === "active" &&
-    input.isBanned === false &&
-    Boolean(input.handle?.trim())
+    input.moderationStatus === "active" && input.isBanned === false && Boolean(input.handle?.trim())
   );
 }
 
 export function isPublicTrackEligible(input: PublicTrackEligibilityInput): boolean {
-  return (
-    input.isPublished === true &&
-    input.moderationStatus === "active" &&
-    input.creatorEligible
-  );
+  return input.isPublished === true && input.moderationStatus === "active" && input.creatorEligible;
 }
 
 export function creatorPublicState(
@@ -36,12 +30,14 @@ export function creatorPublicState(
   return eligiblePublicTrackCount > 0 ? "indexable" : "thin";
 }
 
-export function sanitizePublicTrackText<T extends {
-  prompt?: string | null;
-  lyrics?: string | null;
-  prompt_is_public?: boolean | null;
-  lyrics_is_public?: boolean | null;
-}>(track: T): T & { prompt: string; lyrics: string } {
+export function sanitizePublicTrackText<
+  T extends {
+    prompt?: string | null;
+    lyrics?: string | null;
+    prompt_is_public?: boolean | null;
+    lyrics_is_public?: boolean | null;
+  },
+>(track: T): T & { prompt: string; lyrics: string } {
   return {
     ...track,
     prompt: track.prompt_is_public !== false ? (track.prompt ?? "") : "",
