@@ -240,3 +240,39 @@ export async function filterEligiblePublicCreatorIds(userIds: string[]): Promise
     [...states.entries()].filter(([, state]) => state.eligible).map(([userId]) => userId),
   );
 }
+
+export async function listEligiblePublicSitemapIdentities(limit = 5000): Promise<{
+  trackIds: string[];
+  creatorHandles: string[];
+}> {
+  const boundedLimit = Math.max(1, Math.min(limit, 5000));
+  const { data: tracks, error } = await (supabaseAdmin.from("tracks") as any)
+    .select("id, user_id, is_published, moderation_status")
+    .eq("is_published", true)
+    .eq("moderation_status", "active")
+    .order("created_at", { ascending: false })
+    .limit(boundedLimit);
+  if (error) throw new Error("Public sitemap identities could not be loaded.");
+
+  const rows = (tracks ?? []).filter((track: any) => track?.id && track?.user_id);
+  const states = await getPublicAccountStates(rows.map((track: any) => track.user_id));
+  const eligibleRows = rows.filter((track: any) => {
+    const account = states.get(track.user_id);
+    return isPublicTrackEligible({
+      isPublished: track.is_published,
+      moderationStatus: track.moderation_status,
+      creatorEligible: account?.eligible === true,
+    });
+  });
+
+  const trackIds = eligibleRows.map((track: any) => track.id as string);
+  const creatorHandles = [
+    ...new Set(
+      eligibleRows.flatMap((track: any) => {
+        const handle = states.get(track.user_id)?.profile?.handle;
+        return handle ? [handle] : [];
+      }),
+    ),
+  ];
+  return { trackIds, creatorHandles };
+}
