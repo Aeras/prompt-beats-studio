@@ -20,7 +20,9 @@ export const Route = createFileRoute("/sitemap.xml")({
 
         const { trackIds, creatorHandles } = await listEligiblePublicSitemapIdentities();
         const urls = [
-          ...PUBLIC_STATIC_PATHS.map((path) => new URL(path, `${config.canonicalOrigin}/`).toString()),
+          ...PUBLIC_STATIC_PATHS.map((path) =>
+            new URL(path, `${config.canonicalOrigin}/`).toString(),
+          ),
           ...trackIds.map((id) =>
             new URL(`/track/${encodeURIComponent(id)}`, `${config.canonicalOrigin}/`).toString(),
           ),
