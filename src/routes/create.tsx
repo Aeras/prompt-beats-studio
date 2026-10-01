@@ -1,5 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FilePenLine, FolderOpen, ScanSearch, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  FilePenLine,
+  FolderOpen,
+  ScanSearch,
+  Sparkles,
+} from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -34,7 +40,9 @@ function CreatePage() {
           body: el
             ? "Πήγαινε στον Generator με καθαρό context. Μπορείς να δουλέψεις standalone και να αποθηκεύσεις σε Project όταν το θελήσεις."
             : "Open the Generator with a clean context. You can work standalone and save to a Project when you choose.",
-          handoff: el ? "Μεταφορά: νέο song setup → Generator" : "Handoff: new song setup → Generator",
+          handoff: el
+            ? "Μεταφορά: νέο song setup → Generator"
+            : "Handoff: new song setup → Generator",
           to: "/generate" as const,
           search: {},
         }
@@ -46,7 +54,9 @@ function CreatePage() {
       body: el
         ? "Άνοιξε τα αποθηκευμένα Projects και συνέχισε από το υπάρχον Project Version, χωρίς να δημιουργείται δεύτερο σύστημα εκδόσεων."
         : "Open your saved Projects and continue from the existing Project Version without creating a second version system.",
-      handoff: el ? "Μεταφορά: Project context → Βιβλιοθήκη / Projects" : "Handoff: Project context → Library / Projects",
+      handoff: el
+        ? "Μεταφορά: Project context → Βιβλιοθήκη / Projects"
+        : "Handoff: Project context → Library / Projects",
       to: "/library" as const,
       search: { tab: "prompts" as const },
     },
@@ -58,7 +68,9 @@ function CreatePage() {
           body: el
             ? "Άνοιξε το Lyrics Review. Όταν ξεκινάς από Project, το Project/Version context παραμένει ο canonical σύνδεσμος."
             : "Open Lyrics Review. When entering from a Project, Project/Version context remains the canonical link.",
-          handoff: el ? "Μεταφορά: στίχοι / Project context → Lyrics Review" : "Handoff: lyrics / Project context → Lyrics Review",
+          handoff: el
+            ? "Μεταφορά: στίχοι / Project context → Lyrics Review"
+            : "Handoff: lyrics / Project context → Lyrics Review",
           to: "/lyrics-review" as const,
           search: {},
         }
@@ -71,7 +83,9 @@ function CreatePage() {
           body: el
             ? "Πήγαινε στον Song Analyzer για audio που θέλεις να εξετάσεις και, όπου χρειάζεται, σύνδεσέ το με το σωστό Project."
             : "Open Song Analyzer for audio you want to inspect and, when needed, connect it to the correct Project.",
-          handoff: el ? "Μεταφορά: audio → Song Analyzer" : "Handoff: audio → Song Analyzer",
+          handoff: el
+            ? "Μεταφορά: audio → Song Analyzer"
+            : "Handoff: audio → Song Analyzer",
           to: "/song-analyzer" as const,
           search: {},
         }
@@ -90,9 +104,13 @@ function CreatePage() {
     <AppShell
       header={
         <div>
-          <h1 className="font-display text-xl font-bold">{el ? "Δημιουργία" : "Create"}</h1>
+          <h1 className="font-display text-xl font-bold">
+            {el ? "Δημιουργία" : "Create"}
+          </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {el ? "Ξεκίνα κάτι νέο ή συνέχισε εκεί που σταμάτησες." : "Start something new or continue where you left off."}
+            {el
+              ? "Ξεκίνα κάτι νέο ή συνέχισε εκεί που σταμάτησες."
+              : "Start something new or continue where you left off."}
           </p>
         </div>
       }
@@ -101,7 +119,7 @@ function CreatePage() {
         <section className="glass-strong rounded-3xl p-6 sm:p-8">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-              {el ? "Song journey" : "Song journey"}
+              Song journey
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">
               {el ? "Τι θέλεις να κάνεις τώρα;" : "What do you want to do now?"}
@@ -130,8 +148,12 @@ function CreatePage() {
                       <h3 className="font-display text-lg font-semibold">{action.title}</h3>
                       <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{action.body}</p>
-                    <p className="mt-3 text-xs font-medium text-accent/90">{action.handoff}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {action.body}
+                    </p>
+                    <p className="mt-3 text-xs font-medium text-accent/90">
+                      {action.handoff}
+                    </p>
                   </div>
                 </div>
               </Link>
