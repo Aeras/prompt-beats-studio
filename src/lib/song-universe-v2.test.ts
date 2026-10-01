@@ -203,7 +203,7 @@ describe("Song Universe 2 end-to-end contracts", () => {
   });
 
   test("migration persists v2 planning controls with RLS", async () => {
-    const migration = await source("supabase/migrations/20260929234500_song_universe_2_core.sql");
+    const migration = await source("supabase/migrations/20260929210439_song_universe_2_core.sql");
     expect(migration).toContain("planned_track_count");
     expect(migration).toContain("story_bible");
     expect(migration).toContain("outlier_purpose");
