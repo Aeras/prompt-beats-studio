@@ -26,7 +26,8 @@ export const Route = createFileRoute("/")({
       { title: "PromptBeats — Create, Continue & Discover" },
       {
         name: "description",
-        content: "Start a song, continue your latest Project, or explore music and prompts on PromptBeats.",
+        content:
+          "Start a song, continue your latest Project, or explore music and prompts on PromptBeats.",
       },
       { property: "og:title", content: "PromptBeats — Creator Home" },
       {
@@ -210,7 +211,9 @@ function AuthenticatedHome({
         </article>
       ) : (
         <div className="glass rounded-2xl p-5 sm:p-6">
-          <p className="text-sm font-semibold">{el ? "Δεν έχεις Project ακόμη." : "No Projects yet."}</p>
+          <p className="text-sm font-semibold">
+            {el ? "Δεν έχεις Project ακόμη." : "No Projects yet."}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {el
               ? "Μπορείς να ξεκινήσεις μια νέα δημιουργία χωρίς να χρειάζεται πρώτα να φτιάξεις Project."
