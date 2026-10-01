@@ -116,7 +116,7 @@ describe("Song Universe 2 end-to-end contracts", () => {
     expect(context).toContain("Friendship");
     expect(context).toContain("Romantic loss");
     expect(context).toContain("Explore 116–130 BPM");
-    expect(context).toContain("Explicit current-song instructions override Universe recommendations");
+    expect(context).toContain("explicit current-song instructions override Universe recommendations");
   });
 
   test("near-duplicate guard detects a strongly repeated premise", () => {

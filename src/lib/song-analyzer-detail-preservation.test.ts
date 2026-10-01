@@ -11,7 +11,7 @@ describe("Song Analyzer detail preservation", () => {
     expect(code).toContain("preservesSpecificGuitarTechnique");
     expect(code).toContain("fingerpick|arpeggi");
     expect(code).toContain("joinUniqueDescriptors");
-    expect(code).toContain("do not rewrite fingerpicking into strumming");
+    expect(code).toContain("NOT permission to rewrite an already well-supported fingerpicked/arpeggiated technique as generic strumming/comping");
   });
 
   test("verifies keyboard family without treating a generic pad as Rhodes", async () => {
@@ -32,7 +32,7 @@ describe("Song Analyzer detail preservation", () => {
     expect(code).toContain('"vinyl_crackle"');
     expect(code).toContain('"low_pass_filtered_guitar"');
     expect(code).toContain('"distant_electric_guitar_swell"');
-    expect(code).toContain("absent cues were not inferred from style or mood");
+    expect(code).toContain("Do not infer any of them from genre, mood, lo-fi aesthetics, or a warm mix");
   });
 
   test("recovers explicit late-section clocks and terminal outro boundaries conservatively", async () => {
