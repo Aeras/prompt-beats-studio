@@ -27,7 +27,9 @@ export const getHomeRecentProject = createServerFn({ method: "GET" })
     const versionCandidates = (versions ?? []) as HomeVersionCandidate[];
     if (versionCandidates.length === 0) return null;
 
-    const projectIds = [...new Set(versionCandidates.flatMap((version) => version.project_id ?? []))];
+    const projectIds = [
+      ...new Set(versionCandidates.flatMap((version) => version.project_id ?? [])),
+    ];
     if (projectIds.length === 0) return null;
 
     const { data: projects, error: projectsError } = await context.supabase
@@ -38,8 +40,5 @@ export const getHomeRecentProject = createServerFn({ method: "GET" })
 
     if (projectsError) throw new Error(projectsError.message);
 
-    return selectHomeRecentProject(
-      versionCandidates,
-      (projects ?? []) as HomeProjectCandidate[],
-    );
+    return selectHomeRecentProject(versionCandidates, (projects ?? []) as HomeProjectCandidate[]);
   });
