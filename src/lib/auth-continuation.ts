@@ -1,7 +1,10 @@
 export type AuthNextIntent = "create";
 
-export type AuthRouteSearch = {
+export type NextIntentSearch = {
   next?: AuthNextIntent;
+};
+
+export type AuthRouteSearch = NextIntentSearch & {
   reset?: "1";
 };
 
@@ -9,11 +12,16 @@ export function parseAuthNextIntent(value: unknown): AuthNextIntent | undefined 
   return value === "create" ? "create" : undefined;
 }
 
-export function validateAuthRouteSearch(search: Record<string, unknown>): AuthRouteSearch {
+export function validateNextIntentSearch(search: Record<string, unknown>): NextIntentSearch {
   const next = parseAuthNextIntent(search["next"]);
+  return next ? { next } : {};
+}
+
+export function validateAuthRouteSearch(search: Record<string, unknown>): AuthRouteSearch {
+  const nextSearch = validateNextIntentSearch(search);
   const reset = search["reset"] === "1" ? "1" : undefined;
   return {
-    ...(next ? { next } : {}),
+    ...nextSearch,
     ...(reset ? { reset } : {}),
   };
 }
