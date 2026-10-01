@@ -1,0 +1,62 @@
+import { createServerFn } from "@tanstack/react-start";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  audioRevisionFeedbackInputSchema,
+  buildAudioRevisionRequest,
+} from "@/lib/audio-revision-feedback.shared";
+
+export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => audioRevisionFeedbackInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: relation, error: relationError } = await (context.supabase as any)
+      .from("project_version_tracks")
+      .select("track_id")
+      .eq("user_id", context.userId)
+      .eq("project_id", data.projectId)
+      .eq("version_prompt_id", data.versionId)
+      .eq("track_id", data.trackId)
+      .maybeSingle();
+    if (relationError) throw new Error(relationError.message);
+    if (!relation) throw new Error("The selected audio result is no longer linked to this version.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: track, error: trackError } = await (supabaseAdmin.from("tracks") as any)
+      .select("id, user_id, source_type, moderation_status")
+      .eq("id", data.trackId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (trackError) throw new Error(trackError.message);
+    if (!track || track.source_type !== "upload" || track.moderation_status !== "active") {
+      throw new Error("The selected audio result is not available for revision.");
+    }
+
+    const revisionRequest = buildAudioRevisionRequest(data);
+    if (!revisionRequest || revisionRequest.length > 3000) {
+      throw new Error("The revision direction is too long.");
+    }
+
+    const { data: feedback, error } = await (supabaseAdmin.from("project_audio_revision_feedback") as any)
+      .insert({
+        user_id: context.userId,
+        project_id: data.projectId,
+        source_version_prompt_id: data.versionId,
+        source_track_id: data.trackId,
+        keep_text: data.keep,
+        change_text: data.change,
+        revision_brief: data.revisionBrief || null,
+        imported_evidence: [],
+      })
+      .select("id, project_id, source_version_prompt_id, source_track_id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    return {
+      feedbackId: feedback.id as string,
+      projectId: feedback.project_id as string,
+      versionId: feedback.source_version_prompt_id as string,
+      trackId: feedback.source_track_id as string,
+      revisionRequest,
+    };
+  });
