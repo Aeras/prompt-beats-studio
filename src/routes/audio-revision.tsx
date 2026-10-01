@@ -153,11 +153,7 @@ function AudioRevisionPage() {
       return;
     }
 
-    if (
-      current.status !== "completed" ||
-      !feedbackId ||
-      finalizingJob.current === current.jobId
-    ) {
+    if (current.status !== "completed" || !feedbackId || finalizingJob.current === current.jobId) {
       return;
     }
 
@@ -221,11 +217,7 @@ function AudioRevisionPage() {
     const prompt = base.data?.prompt;
     const defaultModel = modelAccess.data?.generator.defaultModel;
     if (!prompt || !defaultModel) {
-      setError(
-        el
-          ? "Το revision context δεν είναι ακόμη έτοιμο."
-          : "Revision context is not ready yet.",
-      );
+      setError(el ? "Το revision context δεν είναι ακόμη έτοιμο." : "Revision context is not ready yet.");
       return;
     }
 
@@ -268,8 +260,12 @@ function AudioRevisionPage() {
         snapshot.selectedInstruments,
         snapshot.customInstruments,
       );
-      const theme = String(prompt.theme || snapshot.theme || "").trim().slice(0, 500);
-      const genre = String(prompt.genre || musicStyle).trim().slice(0, 500);
+      const theme = String(prompt.theme || snapshot.theme || "")
+        .trim()
+        .slice(0, 500);
+      const genre = String(prompt.genre || musicStyle)
+        .trim()
+        .slice(0, 500);
       const effectiveMood = mood.trim().slice(0, 120);
       const effectiveLanguage = String(
         prompt.language || snapshot.customLanguage || snapshot.language,
@@ -393,9 +389,7 @@ function AudioRevisionPage() {
             </label>
 
             <label className="space-y-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                {el ? "Έκδοση" : "Version"}
-              </span>
+              <span className="font-semibold text-foreground">{el ? "Έκδοση" : "Version"}</span>
               <select
                 value={versionId}
                 onChange={(event) => resetAfterVersion(event.target.value)}
