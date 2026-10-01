@@ -1,14 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildDeterministicUsageProfile,
   detectNearDuplicateDirection,
   deterministicPortfolioBalanceNotes,
   validateNextSongBriefConsistency,
 } from "./song-universe-planner";
-import {
-  nextSongBriefSchema,
-  projectUniverseSummarySchema,
-} from "./song-universe-planner.shared";
+import { nextSongBriefSchema, projectUniverseSummarySchema } from "./song-universe-planner.shared";
 import {
   buildSongUniverseContextText,
   songUniverseCreativeBibleSchema,
@@ -170,9 +168,6 @@ describe("Song Universe 2 end-to-end contracts", () => {
         structure: ["Verse", "Chorus", "Verse", "Chorus"],
       }),
     );
-    const { buildDeterministicUsageProfile } = require(
-      "./song-universe-planner",
-    ) as typeof import("./song-universe-planner");
     const notes = deterministicPortfolioBalanceNotes(buildDeterministicUsageProfile(summaries));
     expect(notes.join(" ")).toContain("86–100 BPM");
     expect(notes.join(" ")).toContain("Melancholic");
@@ -211,9 +206,7 @@ describe("Song Universe 2 end-to-end contracts", () => {
   });
 
   test("migration persists v2 planning controls with RLS", async () => {
-    const migration = await source(
-      "supabase/migrations/20260929210439_song_universe_2_core.sql",
-    );
+    const migration = await source("supabase/migrations/20260929210439_song_universe_2_core.sql");
     expect(migration).toContain("planned_track_count");
     expect(migration).toContain("story_bible");
     expect(migration).toContain("outlier_purpose");
