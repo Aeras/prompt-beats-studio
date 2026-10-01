@@ -56,15 +56,18 @@ describe("mobile and tablet touch navigation", () => {
     expect(shell).toContain('className="h-5 w-5 md:hidden"');
   });
 
-  test("library horizontal tab overflow has an explicit visual cue", async () => {
+  test("library horizontal tab overflow keeps its explicit responsive visual cue", async () => {
     const library = await source("src/routes/library.tsx");
-    expect(library).toContain('data-library-overflow-cue="true"');
-    expect(library).toContain("pointer-events-none absolute inset-y-0 right-0");
+    expect(library).toContain("showTabFade");
+    expect(library).toContain("bg-gradient-to-l from-background");
+    expect(library).toContain("scrollIntoView");
   });
 
-  test("compact destructive card controls keep confirmation semantics and gain touch area", async () => {
+  test("compact destructive card controls require confirmation and a reliable touch area", async () => {
     const wall = await source("src/routes/inspiration-wall.tsx");
     expect(wall).toContain('aria-label={language === "el" ? "Διαγραφή κάρτας" : "Delete card"}');
+    expect(wall).toContain('language === "el" ? "Διαγραφή αυτής της κάρτας;" : "Delete this card?"');
     expect(wall).toContain("min-h-11 min-w-11");
+    expect(wall).toContain("focus-visible:ring-2");
   });
 });
