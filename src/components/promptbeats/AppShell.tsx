@@ -17,7 +17,7 @@ import type { TranslationKey } from "@/i18n/locales/en";
 export const NAV_PATHS: Record<NavId, string> = {
   discover: "/",
   trending: "/trending",
-  studio: "/generate",
+  studio: "/create",
   songAnalyzer: "/song-analyzer",
   lyricsReview: "/lyrics-review",
   inspirationWall: "/inspiration-wall",
@@ -66,7 +66,7 @@ export function useActiveNav(): NavId {
   if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";
   if (pathname.startsWith("/story-map")) return "storyMap";
   if (pathname.startsWith("/song-universe")) return "songUniverse";
-  if (pathname.startsWith("/generate")) return "studio";
+  if (pathname.startsWith("/create") || pathname.startsWith("/generate")) return "studio";
   if (pathname.startsWith("/library")) return "library";
   if (pathname.startsWith("/management")) return "management";
   return "discover";
@@ -84,7 +84,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const active = useActiveNav();
   const currentHref = useRouterState({ select: (state) => state.location.href });
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const generatorAccess = useFeatureAccess("ai_generator");
   const {
     isLocked,
@@ -465,7 +465,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
                       isActive && "drop-shadow-[0_0_8px_var(--neon)]",
                     )}
                   />
-                  {t(tab.labelKey)}
+                  {tab.id === "studio" ? (language === "el" ? "Δημιουργία" : "Create") : t(tab.labelKey)}
                 </Link>
               );
             },
