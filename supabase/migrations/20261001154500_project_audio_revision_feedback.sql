@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.project_audio_revision_feedback (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  idempotency_key uuid NOT NULL,
   project_id uuid NOT NULL REFERENCES public.prompt_projects(id) ON DELETE CASCADE,
   source_version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE,
   source_track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE,
@@ -22,7 +23,9 @@ CREATE TABLE IF NOT EXISTS public.project_audio_revision_feedback (
   CONSTRAINT project_audio_revision_feedback_has_direction
     CHECK (char_length(btrim(keep_text)) > 0 OR char_length(btrim(change_text)) > 0),
   CONSTRAINT project_audio_revision_feedback_evidence_array
-    CHECK (jsonb_typeof(imported_evidence) = 'array')
+    CHECK (jsonb_typeof(imported_evidence) = 'array'),
+  CONSTRAINT project_audio_revision_feedback_user_idempotency_unique
+    UNIQUE (user_id, idempotency_key)
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_audio_revision_feedback_source
