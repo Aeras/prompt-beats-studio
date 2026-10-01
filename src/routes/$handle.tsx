@@ -44,6 +44,18 @@ export const Route = createFileRoute("/$handle")({
 function VanityArtistPage() {
   const creator = Route.useLoaderData();
   const clean = creator.profile.handle || "creator";
+  const profile = { ...creator.profile, handle: clean };
+  const tracks = creator.tracks.map((track) => ({
+    ...track,
+    audio_url: track.audio_url ?? "",
+    audio_type: track.audio_type ?? "upload",
+    source_type: track.source_type ?? "upload",
+    allow_download: track.allow_download ?? false,
+    prompt_is_public: track.prompt_is_public !== false,
+    lyrics_is_public: track.lyrics_is_public !== false,
+    contains_explicit_lyrics: track.contains_explicit_lyrics === true,
+    created_at: track.created_at ?? undefined,
+  }));
 
   return (
     <AppShell
@@ -54,7 +66,7 @@ function VanityArtistPage() {
       }
     >
       <div className="[&>div]:min-h-0 [&>div]:bg-transparent [&>div]:px-4 [&>div]:py-6 md:[&>div]:px-8 md:[&>div]:py-8 [&>div>div]:max-w-[1400px] [&>div>div>a:first-child]:hidden">
-        <ArtistProfileView profile={creator.profile} tracks={creator.tracks} isLoading={false} />
+        <ArtistProfileView profile={profile} tracks={tracks} isLoading={false} />
       </div>
     </AppShell>
   );
