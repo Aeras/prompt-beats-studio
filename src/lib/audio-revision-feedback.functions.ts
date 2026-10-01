@@ -37,20 +37,41 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       throw new Error("The revision direction is too long.");
     }
 
-    const { data: feedback, error } = await (supabaseAdmin.from("project_audio_revision_feedback") as any)
-      .insert({
-        user_id: context.userId,
-        project_id: data.projectId,
-        source_version_prompt_id: data.versionId,
-        source_track_id: data.trackId,
-        keep_text: data.keep,
-        change_text: data.change,
-        revision_brief: data.revisionBrief || null,
-        imported_evidence: [],
-      })
+    const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
+    const { data: existing, error: existingError } = await table
       .select("id, project_id, source_version_prompt_id, source_track_id")
-      .single();
-    if (error) throw new Error(error.message);
+      .eq("user_id", context.userId)
+      .eq("idempotency_key", data.idempotencyKey)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+
+    const feedback = existing
+      ? existing
+      : (
+          await table
+            .insert({
+              user_id: context.userId,
+              idempotency_key: data.idempotencyKey,
+              project_id: data.projectId,
+              source_version_prompt_id: data.versionId,
+              source_track_id: data.trackId,
+              keep_text: data.keep,
+              change_text: data.change,
+              revision_brief: data.revisionBrief || null,
+              imported_evidence: [],
+            })
+            .select("id, project_id, source_version_prompt_id, source_track_id")
+            .single()
+        ).data;
+
+    if (!feedback) throw new Error("The audio revision feedback could not be saved.");
+    if (
+      feedback.project_id !== data.projectId ||
+      feedback.source_version_prompt_id !== data.versionId ||
+      feedback.source_track_id !== data.trackId
+    ) {
+      throw new Error("The audio revision request conflicts with an earlier retry.");
+    }
 
     return {
       feedbackId: feedback.id as string,
