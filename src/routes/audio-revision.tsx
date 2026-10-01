@@ -217,7 +217,9 @@ function AudioRevisionPage() {
     const prompt = base.data?.prompt;
     const defaultModel = modelAccess.data?.generator.defaultModel;
     if (!prompt || !defaultModel) {
-      setError(el ? "Το revision context δεν είναι ακόμη έτοιμο." : "Revision context is not ready yet.");
+      setError(
+        el ? "Το revision context δεν είναι ακόμη έτοιμο." : "Revision context is not ready yet.",
+      );
       return;
     }
 
