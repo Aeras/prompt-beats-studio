@@ -29,7 +29,13 @@ CREATE TABLE IF NOT EXISTS public.project_audio_revision_feedback (
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_audio_revision_feedback_source
-  ON public.project_audio_revision_feedback(user_id, project_id, source_version_prompt_id, source_track_id, created_at DESC);
+  ON public.project_audio_revision_feedback(
+    user_id,
+    project_id,
+    source_version_prompt_id,
+    source_track_id,
+    created_at DESC
+  );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_audio_revision_feedback_created_revision
   ON public.project_audio_revision_feedback(created_revision_prompt_id)
