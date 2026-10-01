@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { getHomeRecentProject } from "@/lib/home.functions";
 import type { HomeRecentProject } from "@/lib/home-recent-project.shared";
+import { canonicalLink, canonicalUrl, robotsContent } from "@/lib/seo-policy";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { q?: string } => {
@@ -21,23 +22,25 @@ export const Route = createFileRoute("/")({
       replace: true,
     });
   },
-  head: () => ({
-    meta: [
-      { title: "PromptBeats — Create, Continue & Discover" },
-      {
-        name: "description",
-        content:
-          "Start a song, continue your latest Project, or explore music and prompts on PromptBeats.",
-      },
-      { property: "og:title", content: "PromptBeats — Creator Home" },
-      {
-        property: "og:description",
-        content: "Create, continue a Project, or discover music and prompts on PromptBeats.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => {
+    const canonical = canonicalLink("/");
+    const ogUrl = canonicalUrl("/");
+    const description =
+      "PromptBeats is an AI-assisted songwriting and song development platform for developing ideas, lyrics, structure, style, mood, instrumentation, production direction, and song Projects.";
+    return {
+      meta: [
+        { title: "PromptBeats — AI-Assisted Songwriting & Song Development" },
+        { name: "description", content: description },
+        { name: "robots", content: robotsContent("index") },
+        { property: "og:title", content: "PromptBeats — AI-Assisted Songwriting & Song Development" },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        ...(ogUrl ? [{ property: "og:url", content: ogUrl }] : []),
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: canonical ? [canonical] : [],
+    };
+  },
   component: HomePage,
 });
 
