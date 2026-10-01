@@ -248,7 +248,7 @@ function PlaylistRow({
         <button
           onClick={onDelete}
           aria-label={language === "el" ? "Διαγραφή λίστας" : "Delete playlist"}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
+          className="grid h-9 w-9 min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60"
         >
           <Trash2 className="h-4 w-4" />
         </button>

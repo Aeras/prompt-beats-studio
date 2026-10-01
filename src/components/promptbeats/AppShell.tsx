@@ -41,13 +41,14 @@ const MOBILE_TABS = [
 }>;
 
 const DESKTOP_SIDEBAR_STORAGE_KEY = "pb:desktop-sidebar-open";
-const DRAWER_IDLE_MS = 2_000;
 const LIVE_SEARCH_DEBOUNCE_MS = 250;
 const TOUCH_TAB_SWIPE_THRESHOLD = 72;
 const TOUCH_TAB_SWIPE_DOMINANCE = 1.25;
 const TABLET_LANDSCAPE_QUERY =
   "(hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1366px) and (orientation: landscape)";
 const TOUCH_TAB_QUERY = "(hover: none) and (pointer: coarse) and (max-width: 1366px)";
+const DRAWER_FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function isSwipeInteractiveTarget(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
@@ -78,7 +79,9 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [tabletLandscape, setTabletLandscape] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
-  const drawerIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drawerPanelRef = useRef<HTMLDivElement | null>(null);
+  const drawerCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRestoreFocusRef = useRef<HTMLElement | null>(null);
   const liveSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveSearchTouchedRef = useRef(false);
   const active = useActiveNav();
@@ -162,28 +165,55 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
     return () => media.removeEventListener("change", sync);
   }, []);
 
-  const clearDrawerIdleTimer = useCallback(() => {
-    if (!drawerIdleTimerRef.current) return;
-    clearTimeout(drawerIdleTimerRef.current);
-    drawerIdleTimerRef.current = null;
+  const openDrawer = useCallback(() => {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      drawerRestoreFocusRef.current = document.activeElement;
+    }
+    setDrawer(true);
   }, []);
-
-  const scheduleDrawerAutoClose = useCallback(() => {
-    clearDrawerIdleTimer();
-    if (typeof window === "undefined" || tabletLandscape) return;
-    const coarseTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-    if (!coarseTouch) return;
-    drawerIdleTimerRef.current = setTimeout(() => setDrawer(false), DRAWER_IDLE_MS);
-  }, [clearDrawerIdleTimer, tabletLandscape]);
 
   useEffect(() => {
     if (!drawer) {
-      clearDrawerIdleTimer();
+      const restoreTarget = drawerRestoreFocusRef.current;
+      drawerRestoreFocusRef.current = null;
+      restoreTarget?.focus();
       return;
     }
-    scheduleDrawerAutoClose();
-    return clearDrawerIdleTimer;
-  }, [clearDrawerIdleTimer, drawer, scheduleDrawerAutoClose]);
+
+    drawerCloseButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDrawer(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const panel = drawerPanelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE_SELECTOR),
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [drawer]);
 
   useEffect(() => {
     if (typeof window === "undefined" || (active !== "studio" && active !== "library")) return;
@@ -286,7 +316,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           aria-label={desktopSidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
           aria-expanded={desktopSidebarOpen}
           onClick={toggleDesktopSidebar}
-          className="absolute right-0 top-5 z-40 grid h-8 w-8 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color] duration-200 ease-out hover:border-accent/40 hover:text-accent motion-reduce:transition-none"
+          className="absolute right-0 top-5 z-40 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color] duration-200 ease-out hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 motion-reduce:transition-none"
         >
           <ChevronLeft
             className={cn(
@@ -307,14 +337,19 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           type="button"
           aria-label={t("shell.openMenu")}
           aria-expanded={drawer}
-          onClick={() => setDrawer(true)}
-          className="absolute right-0 top-5 grid h-8 w-8 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-colors duration-200 hover:border-accent/40 hover:text-accent"
+          onClick={openDrawer}
+          className="absolute right-0 top-5 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-colors duration-200 hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
       <div
+        role="dialog"
+        aria-modal={drawer ? true : undefined}
+        aria-label={language === "el" ? "Κύριο μενού" : "Main menu"}
+        aria-hidden={!drawer}
+        inert={!drawer}
         className={cn(
           "fixed inset-0 z-50 lg:hidden",
           tabletLandscape && "hidden",
@@ -329,19 +364,19 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           )}
         />
         <div
-          onTouchStart={scheduleDrawerAutoClose}
-          onTouchMove={scheduleDrawerAutoClose}
-          onClick={scheduleDrawerAutoClose}
-          onScroll={scheduleDrawerAutoClose}
+          ref={drawerPanelRef}
+          tabIndex={-1}
           className={cn(
             "glass-strong absolute inset-y-0 left-0 w-[80%] max-w-[300px] overflow-y-auto transition-transform duration-200 ease-out motion-reduce:transition-none",
             drawer ? "translate-x-0" : "-translate-x-full",
           )}
         >
           <button
+            ref={drawerCloseButtonRef}
+            type="button"
             aria-label={t("shell.closeMenu")}
             onClick={() => setDrawer(false)}
-            className="absolute right-3 top-4 text-muted-foreground transition-colors hover:text-accent"
+            className="absolute right-1.5 top-1.5 grid min-h-11 min-w-11 place-items-center rounded-full text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
           >
             <X className="h-5 w-5 md:hidden" />
             <ChevronLeft className="hidden h-5 w-5 md:block" />
@@ -363,9 +398,11 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
           <div className="mx-auto max-w-[1900px] md:px-8 md:py-4">
             <div className="flex items-center gap-2 px-3 py-2 md:hidden">
               <button
+                type="button"
                 aria-label={t("shell.openMenu")}
-                onClick={() => setDrawer(true)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20"
+                aria-expanded={drawer}
+                onClick={openDrawer}
+                className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -460,9 +497,10 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
                 <Link
                   key={tab.id}
                   to={NAV_PATHS[tab.id]}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px]",
-                    isActive ? "text-primary" : "text-muted-foreground",
+                    "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/70",
+                    isActive ? "text-primary font-semibold" : "text-muted-foreground",
                   )}
                 >
                   <item.icon
