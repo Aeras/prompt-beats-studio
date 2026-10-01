@@ -157,7 +157,9 @@ function AudioRevisionPage() {
       return;
     }
 
-    if (!current.result || !("revisionMeta" in current.result) || !current.result.revisionMeta) {
+    const revisionMeta =
+      current.result && "revisionMeta" in current.result ? current.result.revisionMeta : null;
+    if (!revisionMeta) {
       setBusy(false);
       setJobId(null);
       setError(
@@ -172,13 +174,13 @@ function AudioRevisionPage() {
     void completeAudioRevisionFeedback({
       data: {
         feedbackId,
-        revisionPromptId: current.result.revisionMeta.savedPromptId,
+        revisionPromptId: revisionMeta.savedPromptId,
       },
     })
       .then(() => {
         setCreatedRevision({
-          id: current.result!.revisionMeta!.savedPromptId,
-          versionNumber: current.result!.revisionMeta!.versionNumber,
+          id: revisionMeta.savedPromptId,
+          versionNumber: revisionMeta.versionNumber,
         });
         setBusy(false);
         setJobId(null);
