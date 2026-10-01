@@ -28,3 +28,12 @@ export const getEligiblePublicCreatorById = createServerFn({ method: "GET" })
     const { resolvePublicCreatorById } = await import("@/lib/public-content.server");
     return resolvePublicCreatorById(data.id);
   });
+
+export const searchEligiblePublicCreatorsFn = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) =>
+    z.object({ query: z.string().trim().min(1).max(80) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { searchEligiblePublicCreators } = await import("@/lib/public-creator-search.server");
+    return { creators: await searchEligiblePublicCreators(data.query) };
+  });
