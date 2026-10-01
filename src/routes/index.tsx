@@ -6,6 +6,7 @@ import { AppShell } from "@/components/promptbeats/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { getHomeRecentProject } from "@/lib/home.functions";
+import type { HomeRecentProject } from "@/lib/home-recent-project.shared";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { q?: string } => {
@@ -123,7 +124,7 @@ function AuthenticatedHome({
   recentError,
 }: {
   el: boolean;
-  recentProject: Awaited<ReturnType<typeof getHomeRecentProject>> | null;
+  recentProject: HomeRecentProject | null;
   recentLoading: boolean;
   recentError: boolean;
 }) {
@@ -149,7 +150,7 @@ function AuthenticatedHome({
             to="/discover"
             className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
           >
-            {el ? "Discover" : "Discover"}
+            Discover
           </Link>
         </div>
       </div>
