@@ -10,9 +10,7 @@ describe("PB-004 privileged RPC authorization", () => {
       "supabase/migrations/20261001194000_pb004_revoke_legacy_set_user_banned.sql",
     );
 
-    expect(migration).toContain(
-      "REVOKE ALL ON FUNCTION public.set_user_banned(uuid, boolean)",
-    );
+    expect(migration).toContain("REVOKE ALL ON FUNCTION public.set_user_banned(uuid, boolean)");
     expect(migration).toContain("FROM PUBLIC, anon, authenticated");
     expect(migration).toContain(
       "GRANT EXECUTE ON FUNCTION public.set_user_banned(uuid, boolean) TO service_role",
