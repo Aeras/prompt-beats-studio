@@ -173,9 +173,7 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
         .maybeSingle();
       if (currentError) throw new Error(currentError.message);
       if (current?.created_revision_prompt_id !== data.revisionPromptId) {
-        throw new Error(
-          "The audio revision feedback could not be linked to the created revision.",
-        );
+        throw new Error("The audio revision feedback could not be linked to the created revision.");
       }
     }
 
