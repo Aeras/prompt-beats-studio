@@ -13,7 +13,7 @@ describe("PB-008 technical SEO and public discoverability", () => {
     expect(route).toContain("throw notFound()");
     expect(route).not.toContain("getPublicTrackById");
     expect(server).toContain('.eq("is_published", true)');
-    expect(server).toContain('moderationStatus: track.moderation_status');
+    expect(server).toContain("moderationStatus: track.moderation_status");
     expect(server).toContain("creatorEligible: account.eligible");
     expect(server).toContain('select("user_id, moderation_status")');
     expect(server).toContain('select("user_id, is_banned")');
@@ -24,7 +24,7 @@ describe("PB-008 technical SEO and public discoverability", () => {
   test("Track metadata is canonical, public-safe, and shares route eligibility", async () => {
     const route = await source("src/routes/track.$id.tsx");
     const head = route.slice(route.indexOf("head:"), route.indexOf("component: TrackPage"));
-    expect(head).toContain('canonicalLink(`/track/${encodeURIComponent(track.id)}`)');
+    expect(head).toContain("canonicalLink(`/track/${encodeURIComponent(track.id)}`)");
     expect(head).toContain('robotsContent("index")');
     expect(head).not.toContain("track.prompt");
     expect(head).not.toContain("track.lyrics");
