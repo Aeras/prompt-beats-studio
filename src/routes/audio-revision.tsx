@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Loader2, Music2, RotateCcw } from "lucide-react";
@@ -127,10 +127,7 @@ function AudioRevisionPage() {
   const projectRows = projects.data?.projects ?? [];
   const versionRows = versions.data?.prompts ?? [];
   const trackRows = tracks.data?.tracks ?? [];
-  const selectedTrack = useMemo(
-    () => trackRows.find((track) => track.track_id === trackId) ?? null,
-    [trackId, trackRows],
-  );
+  const selectedTrack = trackRows.find((track) => track.track_id === trackId) ?? null;
 
   const snapshotResult = generatorInputSnapshotSchema.safeParse(
     base.data?.prompt.generator_input_snapshot,
@@ -156,7 +153,11 @@ function AudioRevisionPage() {
       return;
     }
 
-    if (current.status !== "completed" || !feedbackId || finalizingJob.current === current.jobId) {
+    if (
+      current.status !== "completed" ||
+      !feedbackId ||
+      finalizingJob.current === current.jobId
+    ) {
       return;
     }
 
@@ -220,7 +221,11 @@ function AudioRevisionPage() {
     const prompt = base.data?.prompt;
     const defaultModel = modelAccess.data?.generator.defaultModel;
     if (!prompt || !defaultModel) {
-      setError(el ? "Το revision context δεν είναι ακόμη έτοιμο." : "Revision context is not ready yet.");
+      setError(
+        el
+          ? "Το revision context δεν είναι ακόμη έτοιμο."
+          : "Revision context is not ready yet.",
+      );
       return;
     }
 
@@ -257,7 +262,8 @@ function AudioRevisionPage() {
         joinSnapshotValues(snapshot.selectedMusicStyles, snapshot.customMusicStyle) ||
         String(prompt.genre ?? "");
       const mood =
-        joinSnapshotValues(snapshot.selectedMoods, snapshot.customMood) || String(prompt.mood ?? "");
+        joinSnapshotValues(snapshot.selectedMoods, snapshot.customMood) ||
+        String(prompt.mood ?? "");
       const instruments = joinSnapshotValues(
         snapshot.selectedInstruments,
         snapshot.customInstruments,
@@ -343,7 +349,11 @@ function AudioRevisionPage() {
 
   const directionReady = Boolean(keep.trim() || change.trim());
   const loadingContext =
-    projects.isLoading || versions.isLoading || tracks.isLoading || base.isLoading || modelAccess.isLoading;
+    projects.isLoading ||
+    versions.isLoading ||
+    tracks.isLoading ||
+    base.isLoading ||
+    modelAccess.isLoading;
   const canSubmit =
     Boolean(projectId && versionId && trackId && directionReady && hasCanonicalSnapshot) &&
     Boolean(modelAccess.data?.generator.defaultModel) &&
@@ -383,7 +393,9 @@ function AudioRevisionPage() {
             </label>
 
             <label className="space-y-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{el ? "Έκδοση" : "Version"}</span>
+              <span className="font-semibold text-foreground">
+                {el ? "Έκδοση" : "Version"}
+              </span>
               <select
                 value={versionId}
                 onChange={(event) => resetAfterVersion(event.target.value)}
@@ -393,7 +405,8 @@ function AudioRevisionPage() {
                 <option value="">{el ? "Επίλεξε Version" : "Select Version"}</option>
                 {versionRows.map((version) => (
                   <option key={version.id} value={version.id}>
-                    V{version.version_number ?? "?"} · {version.title || version.version_label || "Untitled"}
+                    V{version.version_number ?? "?"} ·{" "}
+                    {version.title || version.version_label || "Untitled"}
                   </option>
                 ))}
               </select>
@@ -462,7 +475,12 @@ function AudioRevisionPage() {
                 </div>
               </div>
               {selectedTrack.audio_url && (
-                <audio className="mt-3 w-full" controls preload="metadata" src={selectedTrack.audio_url} />
+                <audio
+                  className="mt-3 w-full"
+                  controls
+                  preload="metadata"
+                  src={selectedTrack.audio_url}
+                />
               )}
             </div>
           )}
@@ -496,7 +514,9 @@ function AudioRevisionPage() {
             <label className="space-y-2">
               <span className="text-sm font-semibold text-amber-300">Change</span>
               <p className="text-xs text-muted-foreground">
-                {el ? "Τι θέλεις να αλλάξει στην επόμενη έκδοση;" : "What should change in the next version?"}
+                {el
+                  ? "Τι θέλεις να αλλάξει στην επόμενη έκδοση;"
+                  : "What should change in the next version?"}
               </p>
               <textarea
                 value={change}
@@ -608,7 +628,11 @@ function AudioRevisionPage() {
             onClick={submit}
             className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowRight className="h-4 w-4" />
+            )}
             {el ? "Δημιουργία revision από αυτό" : "Create revision from this"}
           </button>
         </section>
