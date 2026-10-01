@@ -14,7 +14,13 @@ describe("Live search", () => {
     expect(shell).toContain("onSubmit={submitGlobalSearch}");
     expect(shell).not.toContain('<form action="/" method="get"');
 
-    const discover = await source("src/routes/index.tsx");
+    const home = await source("src/routes/index.tsx");
+    expect(home).toContain("validateSearch: (search: Record<string, unknown>): { q?: string }");
+    expect(home).toContain("beforeLoad: ({ search }) => {");
+    expect(home).toContain('to: "/discover"');
+    expect(home).toContain("search: { q: search.q }");
+
+    const discover = await source("src/routes/discover.tsx");
     expect(discover).toContain("validateSearch: (search: Record<string, unknown>): { q?: string }");
     expect(discover).toContain("const { q } = Route.useSearch()");
     expect(discover).toContain('const query = q ?? ""');

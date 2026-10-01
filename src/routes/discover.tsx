@@ -1,0 +1,268 @@
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Compass } from "lucide-react";
+import { AppShell } from "@/components/promptbeats/AppShell";
+import { TrackCard } from "@/components/promptbeats/TrackCard";
+import {
+  TrackGridModeToggle,
+  trackGridClassName,
+  useTrackGridMode,
+} from "@/components/promptbeats/TrackGridView";
+import { StaffBadge } from "@/components/promptbeats/StaffBadge";
+import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
+import { GENRES, type Track } from "@/lib/tracks";
+import { usePlayer } from "@/lib/player";
+import { listPublishedTracks } from "@/lib/tracks.functions";
+import { searchPublicCreators, type PublicCreatorSearchResult } from "@/lib/profile.functions";
+import artFallback from "@/assets/art-3.jpg";
+import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
+import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
+import {
+  TrackSourceFilter,
+  filterByTrackSource,
+  useTrackSourcePreference,
+  type TrackSourcePreference,
+} from "@/components/promptbeats/TrackSourceFilter";
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) return "--:--";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export const Route = createFileRoute("/discover")({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search["q"] === "string" ? search["q"].trim() : "";
+    return q ? { q } : {};
+  },
+  head: () => ({
+    meta: [
+      { title: "Discover — PromptBeats" },
+      {
+        name: "description",
+        content:
+          "Discover AI-generated tracks, creators, and the prompts behind them on PromptBeats.",
+      },
+      { property: "og:title", content: "Discover — PromptBeats" },
+      {
+        property: "og:description",
+        content: "Discover AI music, creators, prompts, and tracks on PromptBeats.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Discover,
+});
+
+function Discover() {
+  const { t, language } = useI18n();
+  const { q } = Route.useSearch();
+  const query = q ?? "";
+  const [genre, setGenre] = useState("All");
+  const [category, setCategory] = useState<"tracks" | "creators" | "prompts">("tracks");
+  const { current, playing, play } = usePlayer();
+  const { mode: gridMode, setMode: setGridMode } = useTrackGridMode();
+  const { preference: defaultTrackSource } = useTrackSourcePreference();
+  const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
+  useEffect(() => setTrackSource(defaultTrackSource), [defaultTrackSource]);
+
+  const { data } = useQuery({
+    queryKey: ["tracks", "published"],
+    queryFn: () => listPublishedTracks(),
+  });
+  const {
+    data: creatorData,
+    isLoading: creatorsLoading,
+    error: creatorsError,
+  } = useQuery({
+    queryKey: ["public-creators", query],
+    queryFn: () => searchPublicCreators({ data: { query } }),
+    enabled: category === "creators" && query.trim().length > 0,
+  });
+
+  const creatorNames = new Map(
+    (data?.tracks ?? []).map((track: any) => [track.id, track.creator_name ?? ""]),
+  );
+  const uploaded: Track[] = (data?.tracks ?? []).map((track: any) => ({
+    id: track.id,
+    userId: track.user_id,
+    title: track.title,
+    handle: track.handle,
+    genre: track.genre,
+    art: track.cover_url ?? track.art_url ?? artFallback,
+    duration: formatDuration(track.duration_seconds),
+    plays: String(track.plays),
+    prompt: track.prompt,
+    lyrics: track.lyrics,
+    audioUrl: track.audio_url,
+    audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
+    sourceType: track.source_type as Track["sourceType"],
+    sourceId: track.source_id,
+    createdWith: track.created_with,
+    allowDownload: track.allow_download === true,
+    durationSeconds: track.duration_seconds,
+    containsExplicitLyrics: track.contains_explicit_lyrics === true,
+    staffBadge: track.staff_badge,
+  }));
+
+  const sourceFiltered = filterByTrackSource(uploaded, trackSource);
+  const list = sourceFiltered.filter(
+    (track) =>
+      (genre === "All" || track.genre === genre) &&
+      (category === "creators" ||
+        (category === "prompts"
+          ? track.prompt
+          : track.title + track.handle + (creatorNames.get(track.id) ?? "") + track.prompt
+        )
+          .toLowerCase()
+          .includes(query.toLowerCase())),
+  );
+  const onPlay = (track: Track) => play(track, list);
+  const categoryLabel = (item: "tracks" | "creators" | "prompts") =>
+    item === "tracks"
+      ? t("discover.category.tracks")
+      : item === "creators"
+        ? t("discover.category.creators")
+        : t("discover.category.prompts");
+
+  const header = (
+    <div className="flex min-w-0 items-center gap-2">
+      <Compass className="h-5 w-5 shrink-0 text-accent" />
+      <span className="truncate font-display text-base font-bold md:text-lg">
+        {t("nav.discoverShort")}
+      </span>
+    </div>
+  );
+
+  return (
+    <AppShell header={header}>
+      <div className="w-full border-b border-white/5 bg-black/10 py-2">
+        <div className="flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
+          {(["tracks", "creators", "prompts"] as const).map((item) => (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
+                category === item
+                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
+                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+              )}
+            >
+              {categoryLabel(item)}
+            </button>
+          ))}
+        </div>
+        <div className="mt-1 flex w-full gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-8">
+          {GENRES.map((item) => (
+            <button
+              key={item}
+              onClick={() => setGenre(item)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-1.5 text-xs transition-all",
+                genre === item
+                  ? "border-transparent bg-gradient-neon font-semibold text-primary-foreground glow-neon"
+                  : "border-white/10 text-muted-foreground hover:border-accent/50 hover:text-accent",
+              )}
+            >
+              {localizedGenreLabel(item, t)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-4 pt-4 md:px-8">
+        <ProfileBanner />
+      </div>
+      <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-4 md:px-8 md:pb-[150px]">
+        <div>
+          {category !== "creators" && (
+            <div className="flex w-full items-center justify-between gap-3">
+              <TrackSourceFilter
+                value={trackSource}
+                onChange={setTrackSource}
+                language={language}
+              />
+              <TrackGridModeToggle mode={gridMode} onChange={setGridMode} />
+            </div>
+          )}
+        </div>
+        <div
+          className={`mt-5 ${category === "creators" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : trackGridClassName(gridMode)}`}
+        >
+          {category === "creators"
+            ? (creatorData?.creators ?? []).map((creator) => (
+                <CreatorCard key={creator.id} creator={creator} />
+              ))
+            : list.map((track) => (
+                <TrackCard
+                  key={track.id}
+                  track={track}
+                  isPlaying={playing && current?.id === track.id}
+                  onPlay={onPlay}
+                  viewMode={gridMode}
+                />
+              ))}
+        </div>
+        {category === "creators" ? (
+          creatorsLoading ? (
+            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+              {t("discover.searchingCreators")}
+            </p>
+          ) : creatorsError ? (
+            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-red-300">
+              {t("discover.creatorSearchError")}
+            </p>
+          ) : query.trim() && (creatorData?.creators.length ?? 0) === 0 ? (
+            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+              {t("discover.noCreatorMatches")}
+            </p>
+          ) : !query.trim() ? (
+            <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+              {t("discover.creatorSearchHint")}
+            </p>
+          ) : null
+        ) : uploaded.length === 0 ? (
+          <div className="glass mt-6 rounded-2xl p-8 text-center">
+            <p className="text-sm font-medium text-foreground">{t("discover.noTracks")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("discover.noTracksHint")}</p>
+          </div>
+        ) : list.length === 0 ? (
+          <p className="glass mt-6 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+            {t("discover.noFilterMatches")}
+          </p>
+        ) : null}
+      </main>
+    </AppShell>
+  );
+}
+
+function CreatorCard({ creator }: { creator: PublicCreatorSearchResult }) {
+  const { t } = useI18n();
+  const name =
+    creator.display_name || creator.artist_alias || creator.handle || t("discover.creatorFallback");
+  return (
+    <Link
+      to="/$handle"
+      params={{ handle: `@${creator.handle}` }}
+      className="glass flex items-center gap-3 rounded-2xl p-4 transition-colors hover:border-primary/40"
+    >
+      <img
+        src={getUserAvatarUrl(creator.avatar_url)}
+        alt={`${name} avatar`}
+        width={56}
+        height={56}
+        className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-primary/40"
+      />
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <p className="truncate font-display text-sm font-semibold">{name}</p>
+          <StaffBadge badge={creator.staff_badge} />
+        </div>
+        <p className="truncate text-xs text-muted-foreground">@{creator.handle}</p>
+      </div>
+    </Link>
+  );
+}

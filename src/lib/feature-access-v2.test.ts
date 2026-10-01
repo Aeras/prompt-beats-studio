@@ -381,18 +381,39 @@ describe("Feature Access V2 — 19 features", () => {
     }
   });
 
-  test("Feature-owned navigation entries disappear when the main feature is unavailable", async () => {
+  test("primary Create stays permanent while specialized feature-owned navigation remains gated", async () => {
     const sidebar = await source("src/components/promptbeats/Sidebar.tsx");
-    expect(sidebar).toContain('useFeatureAccess("ai_generator")');
+
+    // PB-007: Create is a permanent primary domain, not an ai_generator-gated nav item.
+    expect(sidebar).toContain('id: "studio"');
+    expect(sidebar).toContain('labelKey: "nav.create"');
+    expect(sidebar).not.toContain('useFeatureAccess("ai_generator")');
+    expect(sidebar).not.toContain('item.id !== "studio" || generatorAccess.allowed');
+
+    // Specialized tools remain independently feature-gated.
+    expect(sidebar).toContain('useFeatureAccess("song_analyzer")');
     expect(sidebar).toContain('useFeatureAccess("lyrics_review")');
-    expect(sidebar).toContain('item.id !== "studio" || generatorAccess.allowed');
+    expect(sidebar).toContain('useFeatureAccess("inspiration_wall")');
+    expect(sidebar).toContain('useFeatureAccess("story_map")');
+    expect(sidebar).toContain('useFeatureAccess("song_universe")');
     expect(sidebar).toContain('item.id !== "songAnalyzer" || analyzerAccess.allowed');
     expect(sidebar).toContain('item.id !== "lyricsReview" || lyricsReviewAccess.allowed');
+    expect(sidebar).toContain('item.id !== "inspirationWall" || inspirationWallAccess.allowed');
+    expect(sidebar).toContain('item.id !== "storyMap" || storyMapAccess.allowed');
+    expect(sidebar).toContain('item.id !== "songUniverse" || songUniverseAccess.allowed');
 
     const shell = await source("src/components/promptbeats/AppShell.tsx");
-    expect(shell).toContain('useFeatureAccess("ai_generator")');
-    expect(shell).toContain('tab.id !== "studio" || generatorAccess.allowed');
+
+    // Permanent primary Create remains in mobile navigation.
+    expect(shell).toContain('domain: "create"');
+    expect(shell).not.toContain('tab.id !== "studio" || generatorAccess.allowed');
+
+    // Existing specialized deep links remain valid.
+    expect(shell).toContain('songAnalyzer: "/song-analyzer"');
     expect(shell).toContain('lyricsReview: "/lyrics-review"');
+    expect(shell).toContain('inspirationWall: "/inspiration-wall"');
+    expect(shell).toContain('storyMap: "/story-map"');
+    expect(shell).toContain('songUniverse: "/song-universe"');
   });
 
   test("existing four feature integrations remain present", async () => {

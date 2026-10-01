@@ -9,8 +9,14 @@ import { sendWelcomeEmail } from "@/lib/email.functions";
 import { checkSignupAvailability, checkSignupRegistration } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { LEGAL_VERSION } from "@/lib/legal-documents";
+import {
+  authCallbackUrl,
+  postAuthDestination,
+  validateAuthRouteSearch,
+} from "@/lib/auth-continuation";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: validateAuthRouteSearch,
   head: () => ({
     meta: [
       { title: "Sign in to PromptBeats — Share AI Music & Prompts" },
@@ -35,6 +41,7 @@ type ResetStage = "none" | "request" | "sent" | "update" | "done";
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next, reset } = Route.useSearch();
   const { t, language } = useI18n();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -103,14 +110,13 @@ function AuthPage() {
     let active = true;
     const recoveryInUrl =
       typeof window !== "undefined" &&
-      (new URLSearchParams(window.location.search).get("reset") === "1" ||
-        window.location.hash.includes("type=recovery"));
+      (reset === "1" || window.location.hash.includes("type=recovery"));
 
     if (recoveryInUrl) setResetStage("update");
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      if (data.session && !recoveryInUrl) navigate({ to: "/" });
+      if (data.session && !recoveryInUrl) navigate({ to: postAuthDestination(next) });
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
@@ -125,7 +131,7 @@ function AuthPage() {
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, next, reset]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +157,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: authCallbackUrl(window.location.origin, next),
             data: {
               handle: cleanHandle,
               display_name: alias.trim(),
@@ -169,7 +175,7 @@ function AuthPage() {
           } catch {
             /* email failure must not block signup */
           }
-          navigate({ to: "/onboarding" });
+          navigate({ to: "/onboarding", search: next ? { next } : {} });
         } else {
           setSignupSuccess(true);
         }
@@ -182,7 +188,7 @@ function AuthPage() {
           }
           throw new Error(t("auth.signinUnavailable"));
         }
-        navigate({ to: "/" });
+        navigate({ to: postAuthDestination(next) });
       }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : t("auth.somethingWrong"));
@@ -255,7 +261,7 @@ function AuthPage() {
     setBusy(true);
     setMessage(null);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: authCallbackUrl(window.location.origin, next),
     });
     if (result.error) {
       setMessage(t("auth.googleFailed"));
@@ -268,7 +274,7 @@ function AuthPage() {
     } catch {
       /* ignore */
     }
-    navigate({ to: "/" });
+    navigate({ to: postAuthDestination(next) });
   };
 
   if (resetStage !== "none") {
