@@ -9,8 +9,8 @@ describe("PB-007 routing and Home contract", () => {
   test("Discover owns the existing public discovery behavior", async () => {
     const discover = await source("src/routes/discover.tsx");
     expect(discover).toContain('createFileRoute("/discover")');
-    expect(discover).toContain("listPublishedTracks");
-    expect(discover).toContain("searchPublicCreators");
+    expect(discover).toContain("listEligiblePublicTracksFn");
+    expect(discover).toContain("searchEligiblePublicCreatorsFn");
     expect(discover).toContain('category === "prompts"');
   });
 
@@ -20,8 +20,8 @@ describe("PB-007 routing and Home contract", () => {
     expect(home).toContain('to: "/discover"');
     expect(home).toContain("replace: true");
     expect(home).toContain("getHomeRecentProject");
-    expect(home).not.toContain("listPublishedTracks");
-    expect(home).not.toContain("searchPublicCreators");
+    expect(home).not.toContain("listEligiblePublicTracksFn");
+    expect(home).not.toContain("searchEligiblePublicCreatorsFn");
   });
 
   test("guest creation and Project continuation use approved semantic destinations", async () => {
