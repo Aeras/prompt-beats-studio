@@ -114,7 +114,9 @@ describe("Song Universe", () => {
     expect(sidebar).toContain('id: "songUniverse"');
     expect(sidebar).toContain('songUniverse: "/song-universe"');
     expect(shell).toContain('songUniverse: "/song-universe"');
-    expect(shell).toContain('| "songUniverse"');
+    const mobileTabs = shell.slice(shell.indexOf("const MOBILE_TABS"), shell.indexOf("] as const", shell.indexOf("const MOBILE_TABS")));
+    expect(mobileTabs).not.toContain('songUniverse');
+    expect(mobileTabs).not.toContain('domain: "songUniverse"');
   });
 
   test("Generator consumes Universe handoff through canonical Song Setup instead of a second generator", async () => {
