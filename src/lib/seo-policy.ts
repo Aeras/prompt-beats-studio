@@ -36,8 +36,8 @@ export function resolveSeoRuntimeConfig(input: {
 
 export function getSeoRuntimeConfig(): SeoRuntimeConfig {
   return resolveSeoRuntimeConfig({
-    canonicalOrigin: import.meta.env.VITE_PROMPTBEATS_CANONICAL_ORIGIN,
-    indexingEnabled: import.meta.env.VITE_PROMPTBEATS_INDEXING_ENABLED,
+    canonicalOrigin: import.meta.env["VITE_PROMPTBEATS_CANONICAL_ORIGIN"],
+    indexingEnabled: import.meta.env["VITE_PROMPTBEATS_INDEXING_ENABLED"],
   });
 }
 
