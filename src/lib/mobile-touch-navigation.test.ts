@@ -70,4 +70,18 @@ describe("mobile and tablet touch navigation", () => {
     expect(wall).toContain("min-h-11 min-w-11");
     expect(wall).toContain("focus-visible:ring-2");
   });
+
+  test("shared track-owner action buttons keep compact glyphs inside touch-safe hit areas", async () => {
+    const ownerActions = await source("src/components/promptbeats/TrackOwnerActions.tsx");
+    expect(ownerActions).toContain("min-h-11 min-w-11");
+    expect(ownerActions).toContain("focus-visible:ring-2");
+    expect(ownerActions).toContain("setConfirming(true)");
+  });
+
+  test("playlist delete keeps its confirmation flow and a touch-safe hit area", async () => {
+    const playlists = await source("src/components/promptbeats/PlaylistLibraryPanel.tsx");
+    expect(playlists).toContain("setConfirmDeleteId(playlist.id)");
+    expect(playlists).toContain("min-h-11 min-w-11");
+    expect(playlists).toContain("focus-visible:ring-2");
+  });
 });
