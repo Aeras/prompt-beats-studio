@@ -72,4 +72,16 @@ describe("PB-005 personal retrieval", () => {
     expect(typeBlock).not.toContain('"likes"');
     expect(typeBlock).not.toContain('"favorites"');
   });
+
+  test("Library exposes the personal retrieval surface above its existing taxonomy", async () => {
+    const library = await source("src/routes/library.tsx");
+
+    expect(library).toContain(
+      'import { PersonalLibrarySearch } from "@/components/promptbeats/PersonalLibrarySearch";',
+    );
+    expect(library).toContain("<PersonalLibrarySearch");
+    expect(library.indexOf("<PersonalLibrarySearch")).toBeLessThan(
+      library.indexOf("data-library-tab={item}"),
+    );
+  });
 });
