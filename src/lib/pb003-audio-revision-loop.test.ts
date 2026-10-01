@@ -18,7 +18,9 @@ describe("PB-003 Prompt to Audio to Revision loop", () => {
     expect(sql).toContain(
       "source_version_prompt_id uuid NOT NULL REFERENCES public.saved_prompts(id) ON DELETE CASCADE",
     );
-    expect(sql).toContain("source_track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE");
+    expect(sql).toContain(
+      "source_track_id uuid NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE",
+    );
     expect(sql).not.toContain("audio_url text");
     expect(sql).not.toContain("audio_key text");
   });
@@ -62,7 +64,9 @@ describe("PB-003 Prompt to Audio to Revision loop", () => {
       "supabase/migrations/20261001154500_project_audio_revision_feedback.sql",
     );
 
-    expect(sql).toContain("ALTER TABLE public.project_audio_revision_feedback ENABLE ROW LEVEL SECURITY");
+    expect(sql).toContain(
+      "ALTER TABLE public.project_audio_revision_feedback ENABLE ROW LEVEL SECURITY",
+    );
     expect(sql).toContain(
       "REVOKE ALL ON TABLE public.project_audio_revision_feedback FROM PUBLIC, anon, authenticated",
     );
