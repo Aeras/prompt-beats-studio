@@ -1,11 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  FilePenLine,
-  FolderOpen,
-  ScanSearch,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, FilePenLine, FolderOpen, ScanSearch, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -83,9 +77,7 @@ function CreatePage() {
           body: el
             ? "Πήγαινε στον Song Analyzer για audio που θέλεις να εξετάσεις και, όπου χρειάζεται, σύνδεσέ το με το σωστό Project."
             : "Open Song Analyzer for audio you want to inspect and, when needed, connect it to the correct Project.",
-          handoff: el
-            ? "Μεταφορά: audio → Song Analyzer"
-            : "Handoff: audio → Song Analyzer",
+          handoff: el ? "Μεταφορά: audio → Song Analyzer" : "Handoff: audio → Song Analyzer",
           to: "/song-analyzer" as const,
           search: {},
         }
@@ -104,9 +96,7 @@ function CreatePage() {
     <AppShell
       header={
         <div>
-          <h1 className="font-display text-xl font-bold">
-            {el ? "Δημιουργία" : "Create"}
-          </h1>
+          <h1 className="font-display text-xl font-bold">{el ? "Δημιουργία" : "Create"}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {el
               ? "Ξεκίνα κάτι νέο ή συνέχισε εκεί που σταμάτησες."
@@ -151,9 +141,7 @@ function CreatePage() {
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                       {action.body}
                     </p>
-                    <p className="mt-3 text-xs font-medium text-accent/90">
-                      {action.handoff}
-                    </p>
+                    <p className="mt-3 text-xs font-medium text-accent/90">{action.handoff}</p>
                   </div>
                 </div>
               </Link>
