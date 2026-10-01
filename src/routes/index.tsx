@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { getHomeRecentProject } from "@/lib/home.functions";
 import type { HomeRecentProject } from "@/lib/home-recent-project.shared";
-import { canonicalLink, canonicalUrl, robotsContent } from "@/lib/seo-policy";
+import { canonicalLink, canonicalUrl, robotsContent, safeJsonLd } from "@/lib/seo-policy";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { q?: string } => {
@@ -39,6 +39,21 @@ export const Route = createFileRoute("/")({
         { name: "twitter:card", content: "summary_large_image" },
       ],
       links: canonical ? [canonical] : [],
+      scripts: ogUrl
+        ? [
+            {
+              type: "application/ld+json",
+              children: safeJsonLd({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "PromptBeats",
+                url: ogUrl,
+                description:
+                  "PromptBeats is an AI-assisted songwriting and song development platform.",
+              }),
+            },
+          ]
+        : [],
     };
   },
   component: HomePage,
