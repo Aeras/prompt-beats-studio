@@ -32,37 +32,40 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       throw new Error("The selected audio result is not available for revision.");
     }
 
-    const revisionRequest = buildAudioRevisionRequest(data);
-    if (!revisionRequest || revisionRequest.length > 3000) {
+    const requestedRevision = buildAudioRevisionRequest(data);
+    if (!requestedRevision || requestedRevision.length > 3000) {
       throw new Error("The revision direction is too long.");
     }
 
     const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
+    const columns =
+      "id, project_id, source_version_prompt_id, source_track_id, keep_text, change_text, revision_brief";
     const { data: existing, error: existingError } = await table
-      .select("id, project_id, source_version_prompt_id, source_track_id")
+      .select(columns)
       .eq("user_id", context.userId)
       .eq("idempotency_key", data.idempotencyKey)
       .maybeSingle();
     if (existingError) throw new Error(existingError.message);
 
-    const feedback = existing
-      ? existing
-      : (
-          await table
-            .insert({
-              user_id: context.userId,
-              idempotency_key: data.idempotencyKey,
-              project_id: data.projectId,
-              source_version_prompt_id: data.versionId,
-              source_track_id: data.trackId,
-              keep_text: data.keep,
-              change_text: data.change,
-              revision_brief: data.revisionBrief || null,
-              imported_evidence: [],
-            })
-            .select("id, project_id, source_version_prompt_id, source_track_id")
-            .single()
-        ).data;
+    let feedback = existing;
+    if (!feedback) {
+      const { data: inserted, error: insertError } = await table
+        .insert({
+          user_id: context.userId,
+          idempotency_key: data.idempotencyKey,
+          project_id: data.projectId,
+          source_version_prompt_id: data.versionId,
+          source_track_id: data.trackId,
+          keep_text: data.keep,
+          change_text: data.change,
+          revision_brief: data.revisionBrief || null,
+          imported_evidence: [],
+        })
+        .select(columns)
+        .single();
+      if (insertError) throw new Error(insertError.message);
+      feedback = inserted;
+    }
 
     if (!feedback) throw new Error("The audio revision feedback could not be saved.");
     if (
@@ -72,6 +75,12 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
     ) {
       throw new Error("The audio revision request conflicts with an earlier retry.");
     }
+
+    const revisionRequest = buildAudioRevisionRequest({
+      keep: String(feedback.keep_text ?? ""),
+      change: String(feedback.change_text ?? ""),
+      revisionBrief: String(feedback.revision_brief ?? ""),
+    });
 
     return {
       feedbackId: feedback.id as string,
