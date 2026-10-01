@@ -1,12 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  FilePenLine,
-  FolderOpen,
-  RotateCcw,
-  ScanSearch,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, FilePenLine, FolderOpen, RotateCcw, ScanSearch, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
