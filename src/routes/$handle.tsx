@@ -54,7 +54,7 @@ function VanityArtistPage() {
     prompt_is_public: track.prompt_is_public !== false,
     lyrics_is_public: track.lyrics_is_public !== false,
     contains_explicit_lyrics: track.contains_explicit_lyrics === true,
-    created_at: track.created_at ?? undefined,
+    created_at: track.created_at ?? "",
   }));
 
   return (
