@@ -58,11 +58,11 @@ describe("PB-008 SEO policy", () => {
   });
 
   test("JSON-LD serialization blocks script breakout and line-separator hazards", () => {
-    const encoded = safeJsonLd({ value: "</script><script>\u2028\u2029\"" });
+    const encoded = safeJsonLd({ value: '</script><script>\u2028\u2029"' });
     expect(encoded).not.toContain("<");
     expect(encoded).toContain("\\u003c/script>");
     expect(encoded).toContain("\\u2028");
     expect(encoded).toContain("\\u2029");
-    expect(JSON.parse(encoded)).toEqual({ value: "</script><script>\u2028\u2029\"" });
+    expect(JSON.parse(encoded)).toEqual({ value: '</script><script>\u2028\u2029"' });
   });
 });
