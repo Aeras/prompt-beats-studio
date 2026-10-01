@@ -10,8 +10,19 @@ import {
 const feedbackColumns =
   "id, project_id, source_version_prompt_id, source_track_id, keep_text, change_text, revision_brief, created_revision_prompt_id";
 
+type AudioRevisionFeedbackRow = {
+  id: string;
+  project_id: string;
+  source_version_prompt_id: string;
+  source_track_id: string;
+  keep_text: string;
+  change_text: string;
+  revision_brief: string | null;
+  created_revision_prompt_id: string | null;
+};
+
 function sameFeedbackContext(
-  feedback: Record<string, unknown>,
+  feedback: AudioRevisionFeedbackRow,
   data: { projectId: string; versionId: string; trackId: string },
 ) {
   return (
@@ -53,7 +64,7 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       throw new Error("The revision direction is too long.");
     }
 
-    const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
+    const table = (supabaseAdmin as any).from("project_audio_revision_feedback");
     const findExisting = async () => {
       const { data: existing, error } = await table
         .select(feedbackColumns)
@@ -61,7 +72,7 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
         .eq("idempotency_key", data.idempotencyKey)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return existing as Record<string, unknown> | null;
+      return existing as AudioRevisionFeedbackRow | null;
     };
 
     let feedback = await findExisting();
@@ -85,7 +96,7 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
         if (insertError.code !== "23505") throw new Error(insertError.message);
         feedback = await findExisting();
       } else {
-        feedback = inserted as Record<string, unknown>;
+        feedback = inserted as AudioRevisionFeedbackRow;
       }
     }
 
@@ -95,21 +106,18 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
     }
 
     const revisionRequest = buildAudioRevisionRequest({
-      keep: String(feedback.keep_text ?? ""),
-      change: String(feedback.change_text ?? ""),
-      revisionBrief: String(feedback.revision_brief ?? ""),
+      keep: feedback.keep_text,
+      change: feedback.change_text,
+      revisionBrief: feedback.revision_brief ?? "",
     });
 
     return {
-      feedbackId: String(feedback.id),
-      projectId: String(feedback.project_id),
-      versionId: String(feedback.source_version_prompt_id),
-      trackId: String(feedback.source_track_id),
+      feedbackId: feedback.id,
+      projectId: feedback.project_id,
+      versionId: feedback.source_version_prompt_id,
+      trackId: feedback.source_track_id,
       revisionRequest,
-      createdRevisionPromptId:
-        feedback.created_revision_prompt_id == null
-          ? null
-          : String(feedback.created_revision_prompt_id),
+      createdRevisionPromptId: feedback.created_revision_prompt_id,
     };
   });
 
@@ -125,7 +133,7 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const table = supabaseAdmin.from("project_audio_revision_feedback") as any;
+    const table = (supabaseAdmin as any).from("project_audio_revision_feedback");
     const { data: feedback, error: feedbackError } = await table
       .select("id, project_id, source_version_prompt_id, created_revision_prompt_id")
       .eq("id", data.feedbackId)
