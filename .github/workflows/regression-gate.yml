@@ -56,18 +56,7 @@ jobs:
           # PR #307. These three renames restore filenames to migration identities
           # already recorded in production Supabase. Every other non-additive change
           # remains blocked by this guard.
-          VIOLATIONS="$(printf '%s\n' "$CHANGES" | awk '
-            $1 == "A" { next }
-            $1 ~ /^R[0-9]+$/ && (
-              ($2 == "supabase/migrations/20260929234500_song_universe_2_core.sql" &&
-               $3 == "supabase/migrations/20260929210439_song_universe_2_core.sql") ||
-              ($2 == "supabase/migrations/20260929210730_bulk_prompt_project_delete.sql" &&
-               $3 == "supabase/migrations/20260929215330_bulk_prompt_project_delete.sql") ||
-              ($2 == "supabase/migrations/20260929234600_song_universe_2_trigger_execute_hardening.sql" &&
-               $3 == "supabase/migrations/20260929210730_song_universe_2_trigger_execute_hardening.sql")
-            ) { next }
-            NF > 0 { print }
-          ')"
+          VIOLATIONS="$(printf '%s\n' "$CHANGES" | awk '$1 == "A" { next } $1 ~ /^R[0-9]+$/ && (($2 == "supabase/migrations/20260929234500_song_universe_2_core.sql" && $3 == "supabase/migrations/20260929210439_song_universe_2_core.sql") || ($2 == "supabase/migrations/20260930003000_song_universe_2_trigger_execute_hardening.sql" && $3 == "supabase/migrations/20260929210730_song_universe_2_trigger_execute_hardening.sql") || ($2 == "supabase/migrations/20260930003000_bulk_prompt_project_delete.sql" && $3 == "supabase/migrations/20260929215330_bulk_prompt_project_delete.sql")) { next } NF > 0 { print }')"
           if [ -n "$VIOLATIONS" ]; then
             echo "::error::Applied migration history is immutable. Existing migration files may not be modified, deleted, copied, or renamed. Add a new forward migration instead."
             printf '%s\n' "$VIOLATIONS"
