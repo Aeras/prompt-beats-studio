@@ -21,15 +21,17 @@ describe("PB-002 unified creator journey", () => {
   test("navigation presents Create while legacy Generator deep links remain active", async () => {
     const sidebar = await source("src/components/promptbeats/Sidebar.tsx");
     const shell = await source("src/components/promptbeats/AppShell.tsx");
+
+    expect(sidebar).toContain('{ id: "studio", labelKey: "nav.create", icon: Sparkles }');
+    expect(sidebar).toContain('const PRIMARY_NAV_IDS: NavId[] = ["home", "studio", "discover", "library"]');
+    expect(sidebar).toContain('studio: "create"');
     expect(sidebar).toContain('studio: "/create"');
-    expect(sidebar).toContain('item.id === "studio"');
-    expect(sidebar).toContain('"Δημιουργία"');
-    expect(sidebar).toContain('"Create"');
+
     expect(shell).toContain('studio: "/create"');
-    expect(shell).toContain('pathname.startsWith("/create") || pathname.startsWith("/generate")');
-    expect(shell).toContain('tab.id === "studio"');
-    expect(shell).toContain("const label =");
-    expect(shell).toContain('"Δημιουργία"');
-    expect(shell).toContain('"Create"');
+    expect(shell).toContain('pathname.startsWith("/create")');
+    expect(shell).toContain('pathname.startsWith("/generate")');
+    expect(shell).toContain('pathname.startsWith("/audio-revision")');
+    expect(shell).toContain('{ id: "studio", domain: "create", labelKey: "nav.createShort" }');
+    expect(shell).toContain("const label = t(tab.labelKey)");
   });
 });
