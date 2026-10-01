@@ -93,6 +93,7 @@ import {
   type StandalonePromptEditValues,
 } from "@/components/promptbeats/PromptStandaloneDialogs";
 import { LibraryTracksEmptyState } from "@/components/promptbeats/LibraryTracksEmptyState";
+import { PersonalLibrarySearch } from "@/components/promptbeats/PersonalLibrarySearch";
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -354,6 +355,7 @@ function LibraryPage() {
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1600px] px-4 pb-[220px] pt-6 md:px-8 md:pb-[150px]">
+        <PersonalLibrarySearch className="mt-4" />
         <div className="relative mt-1 md:mt-4">
           <div
             ref={tabStripRef}
