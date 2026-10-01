@@ -151,6 +151,6 @@ describe("PB-003 Prompt to Audio to Revision loop", () => {
 
     expect(create).toContain('key: "audio-revision"');
     expect(create).toContain('to: "/audio-revision" as const');
-    expect(create).toContain("Audio → Revision");
+    expect(create).toContain("Version + Audio + Keep/Change → Revision");
   });
 });
