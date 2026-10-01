@@ -12,11 +12,11 @@ describe("Song Analyzer final judge architecture", () => {
 
     expect(route).toContain("getSongAnalyzerFinalModelAccess");
     expect(route).toContain("startAnalyzerBackground");
-    expect(route).toContain('trackTitle: trackTitle.trim() || undefined');
-    expect(route).toContain('artist: artist.trim() || undefined');
+    expect(route).toContain("trackTitle: trackTitle.trim() || undefined");
+    expect(route).toContain("artist: artist.trim() || undefined");
     expect(background).toContain("finalizeSongAnalysis");
-    expect(background).toContain('trackTitle: args.trackTitle?.trim() || undefined');
-    expect(background).toContain('artist: args.artist?.trim() || undefined');
+    expect(background).toContain("trackTitle: args.trackTitle?.trim() || undefined");
+    expect(background).toContain("artist: args.artist?.trim() || undefined");
 
     const audioCall = background.slice(
       background.indexOf("const response = await analyzeSong"),
