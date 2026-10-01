@@ -13,7 +13,11 @@ describe("PB-008 shared public eligibility", () => {
       isPublicAccountEligible({ moderationStatus: "active", isBanned: false, handle: "creator" }),
     ).toBe(true);
     expect(
-      isPublicAccountEligible({ moderationStatus: "suspended", isBanned: false, handle: "creator" }),
+      isPublicAccountEligible({
+        moderationStatus: "suspended",
+        isBanned: false,
+        handle: "creator",
+      }),
     ).toBe(false);
     expect(
       isPublicAccountEligible({ moderationStatus: "active", isBanned: true, handle: "creator" }),
