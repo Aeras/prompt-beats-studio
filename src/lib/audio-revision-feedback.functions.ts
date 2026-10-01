@@ -34,7 +34,8 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       .eq("track_id", data.trackId)
       .maybeSingle();
     if (relationError) throw new Error(relationError.message);
-    if (!relation) throw new Error("The selected audio result is no longer linked to this version.");
+    if (!relation)
+      throw new Error("The selected audio result is no longer linked to this version.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: track, error: trackError } = await (supabaseAdmin.from("tracks") as any)
@@ -140,7 +141,9 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
       return { ok: true as const, revisionPromptId: data.revisionPromptId };
     }
 
-    const { data: revision, error: revisionError } = await (supabaseAdmin.from("saved_prompts") as any)
+    const { data: revision, error: revisionError } = await (
+      supabaseAdmin.from("saved_prompts") as any
+    )
       .select("id, user_id, project_id, parent_prompt_id")
       .eq("id", data.revisionPromptId)
       .eq("user_id", context.userId)
@@ -170,7 +173,9 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
         .maybeSingle();
       if (currentError) throw new Error(currentError.message);
       if (current?.created_revision_prompt_id !== data.revisionPromptId) {
-        throw new Error("The audio revision feedback could not be linked to the created revision.");
+        throw new Error(
+          "The audio revision feedback could not be linked to the created revision.",
+        );
       }
     }
 
