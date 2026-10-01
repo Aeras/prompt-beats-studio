@@ -9,11 +9,11 @@ describe("Song Analyzer Stage A grounding guard", () => {
   test("adds an independent audio verification pass for unstable source-family claims", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("Stage A Critical Evidence Verifier");
-    expect(code).toContain('drumSource: z.object');
-    expect(code).toContain('bassSource: z.object');
-    expect(code).toContain('guitarPresence: z.object');
-    expect(code).toContain('synthPresence: z.object');
-    expect(code).toContain('rhythmicLayerSource: z.object');
+    expect(code).toContain("drumSource: z.object");
+    expect(code).toContain("bassSource: z.object");
+    expect(code).toContain("guitarPresence: z.object");
+    expect(code).toContain("synthPresence: z.object");
+    expect(code).toContain("rhythmicLayerSource: z.object");
     expect(code).toContain("temperature: 0");
     expect(code).toContain("reconcileVerification");
   });
@@ -38,14 +38,14 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(guard).toContain(
       "Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity",
     );
-    expect(guard).toContain("stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)");
+    expect(guard).toContain(
+      "stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)",
+    );
     expect(guard).toContain("full-mix evidence remained authoritative");
     expect(background).toContain("consumeAnalyzerSourceStemPreview");
     expect(background).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
     expect(essentia).toContain("pendingSourceStemPreview = sourceStemPreview ?? null");
-    expect(essentia).toContain(
-      "const { sourceStemPreview, ...cleanStage0Evidence } = transported",
-    );
+    expect(essentia).toContain("const { sourceStemPreview, ...cleanStage0Evidence } = transported");
   });
 
   test("treats verification as a confidence gate rather than a genre classifier", async () => {
