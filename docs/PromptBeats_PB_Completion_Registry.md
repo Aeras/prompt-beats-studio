@@ -32,6 +32,10 @@ Initial registry backfill verified against the `main` history through PB-009 mer
 - PR: #311
 - Merged main SHA: `cbe1ddabe345b821ff1955f80b16809d1ccca2fc`
 - Verification: PASS — Regression, Browser Quality, and Database Replay passed; post-merge verification completed and the production migration was applied as version `20261001163739`.
+- Follow-up completed: 2026-10-02 — Added private Outcome Evaluation and Revision Intent state, hardened canonical revision completion/recovery, introduced the proposal-only AI revision-intent translator with durable auxiliary execution and 24-hour transient proposal retention, and integrated the flow into the linked-audio Project Version surface while preserving the manual Audio Revision path.
+- Follow-up PR: #319
+- Follow-up merged main SHA: `67a06a2e38bed9a3fb36b847bc2cede443137c99`
+- Follow-up verification: PASS — Regression #1085, Browser Quality #358, and Database Replay #407 all passed on the final exact head; all five production migrations were applied successfully; Lovable publish completed successfully and reported `ready` on the merged SHA.
 
 ## PB-004 — Privileged RPC authorization hardening
 
