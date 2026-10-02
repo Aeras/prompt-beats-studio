@@ -19,7 +19,7 @@ describe("PB-007 routing and Home contract", () => {
     expect(home).toContain('createFileRoute("/")');
     expect(home).toContain('to: "/discover"');
     expect(home).toContain("replace: true");
-    expect(home).toContain("getHomeRecentProject");
+    expect(home).toContain("getHomeResume");
     expect(home).not.toContain("listEligiblePublicTracksFn");
     expect(home).not.toContain("searchEligiblePublicCreatorsFn");
   });
@@ -29,7 +29,7 @@ describe("PB-007 routing and Home contract", () => {
     expect(home).toContain('to="/auth"');
     expect(home).toContain('search={{ next: "create" }}');
     expect(home).toContain('to="/library"');
-    expect(home).toContain('search={{ tab: "prompts" }}');
+    expect(home).toContain('search={{ tab: "prompts", project: item.id }}');
     expect(home).not.toContain('to="/generate"');
   });
 
