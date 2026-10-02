@@ -41,7 +41,9 @@ export function ProjectVersionAudioOutcomeIntentPanel({ projectId, versionId, la
   if (tracks.error || outcomes.error) {
     return (
       <p className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
-        {el ? "Το ιδιωτικό audio feedback δεν φορτώθηκε." : "Private audio feedback could not be loaded."}
+        {el
+          ? "Το ιδιωτικό audio feedback δεν φορτώθηκε."
+          : "Private audio feedback could not be loaded."}
       </p>
     );
   }
