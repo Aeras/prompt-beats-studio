@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
+import {
+  parseExplicitObjectSelection,
+  preserveExplicitObjectSearch,
+} from "@/lib/pb007-followup-deep-link";
 import { SongUniverseInspirationPanel } from "@/components/promptbeats/SongUniverseInspirationPanel";
 import { SongUniverseNextSongPlanner } from "@/components/promptbeats/SongUniverseNextSongPlanner";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -50,7 +54,13 @@ import {
   type SongUniverseStrength,
 } from "@/lib/song-universe.shared";
 
-export const Route = createFileRoute("/song-universe")({ component: SongUniversePage });
+export const Route = createFileRoute("/song-universe")({
+  validateSearch: (search: Record<string, unknown>): { universe?: string } => {
+    const universe = preserveExplicitObjectSearch(search["universe"]);
+    return universe !== undefined ? { universe } : {};
+  },
+  component: SongUniversePage,
+});
 
 type UniverseProject = Awaited<ReturnType<typeof getSongUniverse>>["projects"][number];
 type UniverseProjectOption = { id: string; name: string; updatedAt: string; linked: boolean };
@@ -78,7 +88,12 @@ function SongUniversePage() {
   const locale = el ? "el" : "en";
   const access = useFeatureAccess("song_universe");
   const qc = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { universe } = Route.useSearch();
+  const selection = parseExplicitObjectSelection(universe);
+  const selectedId = selection.mode === "valid" ? selection.id : null;
+  const selectUniverse = (id: string) =>
+    navigate({ to: "/song-universe", search: { universe: id } });
 
   const list = useQuery({
     queryKey: ["song-universes"],
@@ -100,7 +115,7 @@ function SongUniversePage() {
         },
       }),
     onSuccess: async (result) => {
-      setSelectedId(result.universe.id);
+      await selectUniverse(result.universe.id);
       await qc.invalidateQueries({ queryKey: ["song-universes"] });
     },
   });
@@ -152,12 +167,13 @@ function SongUniversePage() {
               <button
                 key={universe.id}
                 type="button"
-                onClick={() => setSelectedId(universe.id)}
+                onClick={() => void selectUniverse(universe.id)}
                 className={`w-full rounded-xl border px-3 py-3 text-left ${selectedId === universe.id ? "border-primary/50 bg-primary/10" : "border-white/10 bg-black/20"}`}
               >
                 <div className="truncate text-sm font-medium">{universe.title}</div>
                 <div className="mt-1 text-[11px] text-muted-foreground">
-                  {songUniverseTypeLabel(universe.universeType, locale)} · {songUniverseStatusLabel(universe.status, locale)}
+                  {songUniverseTypeLabel(universe.universeType, locale)} ·{" "}
+                  {songUniverseStatusLabel(universe.status, locale)}
                 </div>
               </button>
             ))}
@@ -172,7 +188,16 @@ function SongUniversePage() {
         </aside>
 
         <section className="min-w-0">
-          {!selectedId ? (
+          {selection.mode === "invalid" ||
+          (selection.mode === "valid" &&
+            !selected.isLoading &&
+            (selected.isError ||
+              selected.data?.universe.id !== selectedId ||
+              selected.data?.universe.status === "archived")) ? (
+            <div className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
+              {el ? "Αυτό το Universe δεν είναι διαθέσιμο." : "This Universe is unavailable."}
+            </div>
+          ) : !selectedId ? (
             <div className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
               {el
                 ? "Επίλεξε ένα Universe ή δημιούργησε καινούργιο."
@@ -182,10 +207,11 @@ function SongUniversePage() {
             <div className="glass rounded-2xl p-8 text-sm text-muted-foreground">Loading…</div>
           ) : (
             <UniverseEditor
+              key={selectedId}
               universe={selected.data.universe}
               projects={selected.data.projects}
               onDeleted={() => {
-                setSelectedId(null);
+                void navigate({ to: "/song-universe", search: {} });
                 void qc.invalidateQueries({ queryKey: ["song-universes"] });
               }}
             />
@@ -335,17 +361,21 @@ function UniverseEditor({
             title={el ? "Αποθήκευση" : "Save"}
             aria-label={el ? "Αποθήκευση" : "Save"}
           >
-            {saveMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saveMeta.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
           </button>
           <button
             type="button"
             onClick={() =>
-              void updateSongUniverse({ data: { universeId: universe.id, status: "archived" } }).then(
-                async () => {
-                  await refresh();
-                  showActionFeedback("archived");
-                },
-              )
+              void updateSongUniverse({
+                data: { universeId: universe.id, status: "archived" },
+              }).then(async () => {
+                await refresh();
+                showActionFeedback("archived");
+              })
             }
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:text-foreground"
             title={el ? "Αρχειοθέτηση" : "Archive"}

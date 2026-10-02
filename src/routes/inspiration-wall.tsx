@@ -5,7 +5,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Image as ImageIcon,
@@ -51,8 +51,16 @@ import {
   optimizeInspirationWallImage,
 } from "@/lib/inspiration-wall-image";
 import { cn } from "@/lib/utils";
+import {
+  parseExplicitObjectSelection,
+  preserveExplicitObjectSearch,
+} from "@/lib/pb007-followup-deep-link";
 
 export const Route = createFileRoute("/inspiration-wall")({
+  validateSearch: (search: Record<string, unknown>): { wall?: string } => {
+    const wall = preserveExplicitObjectSearch(search["wall"]);
+    return wall !== undefined ? { wall } : {};
+  },
   head: () => ({
     meta: [
       { title: "Inspiration Wall — PromptBeats" },
@@ -90,7 +98,12 @@ function InspirationWallPage() {
   const { preferences } = useAccountPreferences();
   const access = useFeatureAccess("inspiration_wall");
   const queryClient = useQueryClient();
-  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { wall: wallSearch } = Route.useSearch();
+  const selection = parseExplicitObjectSelection(wallSearch);
+  const selectedWallId = selection.mode === "valid" ? selection.id : null;
+  const suppressGenericSelection = useRef(false);
+  const selectWall = (id: string) => navigate({ to: "/inspiration-wall", search: { wall: id } });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newWallOpen, setNewWallOpen] = useState(false);
@@ -118,9 +131,15 @@ function InspirationWallPage() {
   });
 
   useEffect(() => {
+    if (selection.mode !== "absent") {
+      suppressGenericSelection.current = false;
+      return;
+    }
     const firstWall = walls.data?.walls?.[0];
-    if (!selectedWallId && firstWall) setSelectedWallId(firstWall.id);
-  }, [selectedWallId, walls.data?.walls]);
+    if (user && access.allowed && !suppressGenericSelection.current && firstWall) {
+      void navigate({ to: "/inspiration-wall", search: { wall: firstWall.id }, replace: true });
+    }
+  }, [access.allowed, navigate, selection.mode, user, wallSearch, walls.data?.walls]);
 
   const wall = useQuery({
     queryKey: ["inspiration-wall", selectedWallId],
@@ -146,7 +165,7 @@ function InspirationWallPage() {
           selectedTheme: newWallTheme,
         },
       });
-      setSelectedWallId(created.wall.id);
+      await selectWall(created.wall.id);
       clearNewWallDraft();
       setNewWallOpen(false);
       setNewWallTitle("");
@@ -173,7 +192,8 @@ function InspirationWallPage() {
     setBusy(true);
     try {
       await deleteInspirationWall({ data: { wallId: selectedWallId } });
-      setSelectedWallId(null);
+      suppressGenericSelection.current = true;
+      await navigate({ to: "/inspiration-wall", search: {} });
       await refresh(null);
     } finally {
       setBusy(false);
@@ -254,7 +274,7 @@ function InspirationWallPage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSelectedWallId(item.id)}
+                  onClick={() => void selectWall(item.id)}
                   className={cn(
                     "min-w-[180px] rounded-2xl border px-3 py-3 text-left transition-colors xl:min-w-0",
                     selectedWallId === item.id
@@ -292,8 +312,9 @@ function InspirationWallPage() {
                 {error}
               </div>
             )}
-            {selectedWallId && wall.data?.wall ? (
+            {selectedWallId && wall.data?.wall.id === selectedWallId && !wall.isError ? (
               <WallWorkspace
+                key={selectedWallId}
                 wall={wall.data.wall}
                 cards={wall.data.cards}
                 trackLinks={wall.data.trackLinks}
@@ -304,8 +325,20 @@ function InspirationWallPage() {
               />
             ) : (
               <div className="glass flex min-h-[60vh] items-center justify-center rounded-3xl p-8 text-center text-sm text-muted-foreground">
-                {wall.isLoading ? (
+                {selection.mode === "invalid" ? (
+                  language === "el" ? (
+                    "Αυτό το Inspiration Wall δεν είναι διαθέσιμο."
+                  ) : (
+                    "This Inspiration Wall is unavailable."
+                  )
+                ) : wall.isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
+                ) : selection.mode === "valid" ? (
+                  language === "el" ? (
+                    "Αυτό το Inspiration Wall δεν είναι διαθέσιμο."
+                  ) : (
+                    "This Inspiration Wall is unavailable."
+                  )
                 ) : language === "el" ? (
                   "Επίλεξε ή δημιούργησε ένα Inspiration Wall."
                 ) : (

@@ -95,6 +95,11 @@ import {
 import { LibraryTracksEmptyState } from "@/components/promptbeats/LibraryTracksEmptyState";
 import { PersonalLibrarySearch } from "@/components/promptbeats/PersonalLibrarySearch";
 import {
+  parseExplicitObjectSelection,
+  preserveExplicitObjectSearch,
+  type ExplicitObjectSelection,
+} from "@/lib/pb007-followup-deep-link";
+import {
   createLibraryFolder,
   deleteLibraryFolder,
   duplicatePromptProjectToFolder,
@@ -164,7 +169,7 @@ function toTrack(track: Row, handle: string): Track {
 }
 
 const TABS = LIBRARY_TAB_IDS;
-type LibrarySearch = { tab?: LibraryTab };
+type LibrarySearch = { tab?: LibraryTab; project?: string };
 
 function parseLibraryTab(value: unknown): LibraryTab | undefined {
   return isLibraryTab(value) ? value : undefined;
@@ -173,7 +178,8 @@ function parseLibraryTab(value: unknown): LibraryTab | undefined {
 export const Route = createFileRoute("/library")({
   validateSearch: (search: Record<string, unknown>): LibrarySearch => {
     const tab = parseLibraryTab(search["tab"]);
-    return tab ? { tab } : {};
+    const project = preserveExplicitObjectSearch(search["project"]);
+    return { ...(tab ? { tab } : {}), ...(project !== undefined ? { project } : {}) };
   },
   head: () => ({
     meta: [
@@ -197,7 +203,8 @@ export const Route = createFileRoute("/library")({
 function LibraryPage() {
   const { t, language } = useI18n();
   const navigate = useNavigate();
-  const { tab: requestedTab } = Route.useSearch();
+  const { tab: requestedTab, project: projectSearch } = Route.useSearch();
+  const projectSelection = parseExplicitObjectSelection(projectSearch);
   const { user, profile, loading } = useAuth();
   const { preferences: accountPreferences } = useAccountPreferences();
   const playlistsAccess = useFeatureAccess("playlists");
@@ -508,6 +515,7 @@ function LibraryPage() {
             onViewChange={setPromptView}
             search={promptSearch}
             onSearchChange={setPromptSearch}
+            projectSelection={projectSelection}
           />
         )}
       </main>
@@ -633,6 +641,7 @@ function PromptProjectLibrary({
   onViewChange,
   search,
   onSearchChange,
+  projectSelection,
 }: {
   prompts: SavedPrompt[];
   projects: PromptProject[];
@@ -643,13 +652,20 @@ function PromptProjectLibrary({
   onViewChange: (view: "all" | "projects" | "analyses") => void;
   search: string;
   onSearchChange: (value: string) => void;
+  projectSelection: ExplicitObjectSelection;
 }) {
   const { t, language } = useI18n();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [deleteProjectDialog, setDeleteProjectDialog] = useState<PromptProject | null>(null);
   const [promptDisplayMode, setPromptDisplayMode] = useState<"expanded" | "list">("list");
-  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const openProjectId = projectSelection.mode === "valid" ? projectSelection.id : null;
+  const setOpenProjectId = (id: string | null) =>
+    navigate({
+      to: "/library",
+      search: id === null ? { tab: "prompts" } : { tab: "prompts", project: id },
+    });
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return window.sessionStorage.getItem("promptbeats:library-current-folder") || null;
@@ -1153,6 +1169,7 @@ function PromptProjectLibrary({
     setBusy(true);
     try {
       await deletePromptProject({ data: { id: deleteProjectDialog.id, deletePromptIds } });
+      if (deleteProjectDialog.id === openProjectId) await setOpenProjectId(null);
       setDeleteProjectDialog(null);
       await refresh();
     } catch (error) {
@@ -1228,6 +1245,25 @@ function PromptProjectLibrary({
   const deleteDialogPrompts = deleteProjectDialog
     ? prompts.filter((prompt) => prompt.project_id === deleteProjectDialog.id)
     : [];
+
+  if (projectSelection.mode !== "absent" && !openProject) {
+    return (
+      <div className="glass mt-6 space-y-3 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+        <p>
+          {projectSelection.mode === "valid" && loading
+            ? language === "el"
+              ? "Φόρτωση..."
+              : "Loading..."
+            : language === "el"
+              ? "Αυτό το Project δεν είναι διαθέσιμο."
+              : "This Project is unavailable."}
+        </p>
+        <button type="button" onClick={() => void setOpenProjectId(null)} className="text-accent">
+          ← Projects
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6 space-y-4">
@@ -1347,7 +1383,8 @@ function PromptProjectLibrary({
         </div>
       )}
 
-      {view === "all" || (view === "projects" && !openProject) ? (
+      {projectSelection.mode === "absent" &&
+      (view === "all" || (view === "projects" && !openProject)) ? (
         <div className="space-y-4">
           <div className="glass flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl px-3 py-2 text-xs [scrollbar-width:none]">
             <button
@@ -1445,7 +1482,7 @@ function PromptProjectLibrary({
                         return;
                       }
                       if (result.item_type === "project") {
-                        setOpenProjectId(result.item_id);
+                        void setOpenProjectId(result.item_id);
                         onSearchChange("");
                         onViewChange("projects");
                         return;
@@ -1615,7 +1652,7 @@ function PromptProjectLibrary({
                       >
                         <LibraryLongPressButton
                           onClick={() => {
-                            setOpenProjectId(project.id);
+                            void setOpenProjectId(project.id);
                             onSearchChange("");
                             onViewChange("projects");
                           }}
@@ -1754,7 +1791,7 @@ function PromptProjectLibrary({
             </>
           )}
         </div>
-      ) : view === "analyses" ? (
+      ) : projectSelection.mode === "absent" && view === "analyses" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredAnalyses.map((analysis) => (
             <SongAnalysisCard key={analysis.id} analysis={analysis} projects={projects} />
@@ -1785,7 +1822,7 @@ function PromptProjectLibrary({
                       <button
                         type="button"
                         onClick={() => {
-                          setOpenProjectId(null);
+                          void setOpenProjectId(null);
                           onSearchChange("");
                         }}
                         className="mb-3 text-xs font-semibold text-accent"

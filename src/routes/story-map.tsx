@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
+import {
+  parseExplicitObjectSelection,
+  preserveExplicitObjectSearch,
+} from "@/lib/pb007-followup-deep-link";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAiModelSelection } from "@/hooks/useAiModelSelection";
@@ -48,6 +52,10 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/story-map")({
+  validateSearch: (search: Record<string, unknown>): { map?: string } => {
+    const map = preserveExplicitObjectSearch(search["map"]);
+    return map !== undefined ? { map } : {};
+  },
   head: () => ({
     meta: [
       { title: "Story Map — PromptBeats" },
@@ -68,7 +76,11 @@ function StoryMapPage() {
   const access = useFeatureAccess("story_map");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { map } = Route.useSearch();
+  const selection = parseExplicitObjectSelection(map);
+  const selectedId = selection.mode === "valid" ? selection.id : null;
+  const suppressGenericSelection = useRef(false);
+  const selectMap = (id: string) => navigate({ to: "/story-map", search: { map: id } });
   const [newOpen, setNewOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [concept, setConcept] = useState("");
@@ -98,9 +110,15 @@ function StoryMapPage() {
   });
 
   useEffect(() => {
-    if (!selectedId && mapsQuery.data?.storyMaps?.[0])
-      setSelectedId(mapsQuery.data.storyMaps[0].id);
-  }, [mapsQuery.data?.storyMaps, selectedId]);
+    if (selection.mode !== "absent") {
+      suppressGenericSelection.current = false;
+      return;
+    }
+    const firstMap = mapsQuery.data?.storyMaps?.[0];
+    if (user && access.allowed && !suppressGenericSelection.current && firstMap) {
+      void navigate({ to: "/story-map", search: { map: firstMap.id }, replace: true });
+    }
+  }, [access.allowed, map, mapsQuery.data?.storyMaps, navigate, selection.mode, user]);
 
   const refresh = async (id = selectedId) => {
     await queryClient.invalidateQueries({ queryKey: ["story-maps", user?.id] });
@@ -118,7 +136,7 @@ function StoryMapPage() {
           concept: concept.trim(),
         },
       });
-      setSelectedId(result.storyMap.id);
+      await selectMap(result.storyMap.id);
       clearNewStoryMapDraft();
       setTitle("");
       setConcept("");
@@ -209,7 +227,7 @@ function StoryMapPage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => void selectMap(item.id)}
                   className={cn(
                     "min-w-[190px] rounded-2xl border px-3 py-3 text-left xl:min-w-0",
                     selectedId === item.id
@@ -237,14 +255,16 @@ function StoryMapPage() {
           </aside>
 
           <section className="min-w-0">
-            {mapQuery.data?.storyMap ? (
+            {selectedId && mapQuery.data?.storyMap.id === selectedId && !mapQuery.isError ? (
               <StoryMapWorkspace
+                key={selectedId}
                 storyMap={mapQuery.data.storyMap}
                 language={el ? "el" : "en"}
                 onRefresh={() => refresh(selectedId)}
                 onError={setError}
                 onDeleted={async () => {
-                  setSelectedId(null);
+                  suppressGenericSelection.current = true;
+                  await navigate({ to: "/story-map", search: {} });
                   await refresh(null);
                 }}
                 onUseInSongSetup={(handoff) => {
@@ -258,8 +278,20 @@ function StoryMapPage() {
               />
             ) : (
               <div className="glass flex min-h-[60vh] items-center justify-center rounded-3xl text-sm text-muted-foreground">
-                {mapQuery.isLoading ? (
+                {selection.mode === "invalid" ? (
+                  el ? (
+                    "Αυτό το Story Map δεν είναι διαθέσιμο."
+                  ) : (
+                    "This Story Map is unavailable."
+                  )
+                ) : mapQuery.isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
+                ) : selection.mode === "valid" ? (
+                  el ? (
+                    "Αυτό το Story Map δεν είναι διαθέσιμο."
+                  ) : (
+                    "This Story Map is unavailable."
+                  )
                 ) : el ? (
                   "Επίλεξε ή δημιούργησε Story Map."
                 ) : (
