@@ -2,7 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { AudioOutcomeIntentControls } from "@/components/promptbeats/AudioOutcomeIntentControls";
-import { listAudioOutcomeEvaluations } from "@/lib/audio-outcome.functions";
+import {
+  listAudioOutcomeEvaluations,
+  type AudioOutcomeEvaluation,
+} from "@/lib/audio-outcome.functions";
 import { listProjectVersionLinkedTracks } from "@/lib/project-version-tracks.functions";
 
 type Props = {
@@ -50,8 +53,9 @@ export function ProjectVersionAudioOutcomeIntentPanel({ projectId, versionId, la
 
   const rows = tracks.data?.tracks ?? [];
   if (rows.length === 0) return null;
-  const evaluations = new Map(
-    (outcomes.data?.evaluations ?? []).map((evaluation) => [evaluation.trackId, evaluation]),
+  const outcomeRows = (outcomes.data?.evaluations ?? []) as AudioOutcomeEvaluation[];
+  const evaluations = new Map<string, AudioOutcomeEvaluation>(
+    outcomeRows.map((evaluation) => [evaluation.trackId, evaluation]),
   );
 
   return (
