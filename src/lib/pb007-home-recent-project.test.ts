@@ -91,11 +91,14 @@ describe("PB-007 Home recent Project", () => {
     const source = await readFile("src/lib/home.functions.ts", "utf8");
 
     expect(source).toContain("requireSupabaseAuth");
-    expect(source).toContain('.eq("user_id", context.userId)');
+    expect(source).toContain("resolveRecentProject(context.supabase, context.userId)");
+    expect(source).toContain('.eq("user_id", userId)');
     expect(source).toContain('.order("created_at", { ascending: false })');
     expect(source).toContain("HOME_RECENT_VERSION_CANDIDATE_LIMIT = 24");
+    expect(source).toContain(".limit(HOME_RECENT_VERSION_CANDIDATE_LIMIT)");
     expect(source).not.toContain("supabaseAdmin");
     expect(source).not.toContain("service_role");
+    expect(source).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(source).not.toContain("updated_at");
   });
 });
