@@ -3,13 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Check,
-  Copy,
   Globe,
   Instagram,
   Music,
-  Play,
-  Pause,
   Share2,
   ShieldBan,
   Twitter,
@@ -19,28 +15,21 @@ import {
 import { usePlayer } from "@/lib/player";
 import { DonationMethods } from "@/components/promptbeats/DonationMethods";
 import { FollowCreatorControl } from "@/components/promptbeats/FollowCreatorControl";
-import { LikeButton } from "@/components/promptbeats/LikeButton";
-import { TrackOwnerActions } from "@/components/promptbeats/TrackOwnerActions";
-import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
-import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
-import { TrackLibraryActions } from "@/components/promptbeats/TrackLibraryActions";
+import { TrackCard } from "@/components/promptbeats/TrackCard";
 import type { Track as PlayerTrack } from "@/lib/tracks";
 import { EditProfileModal } from "@/components/promptbeats/EditProfileModal";
 import { useModeration } from "@/hooks/useModeration";
 import { ACCOUNT_BLOCK_REASONS, getUserBanStatus, setUserBanned } from "@/lib/moderation.functions";
 import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { getSafeExternalUrl } from "@/lib/safe-external-url";
-import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import {
   TrackGridModeToggle,
   trackGridClassName,
   useTrackGridMode,
 } from "@/components/promptbeats/TrackGridView";
-import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
-import { cn } from "@/lib/utils";
 import artFallback from "@/assets/art-3.jpg";
 import { useI18n } from "@/i18n";
-import { localizedAccountReasonLabel, localizedGenreLabel } from "@/i18n/ui-catalog";
+import { localizedAccountReasonLabel } from "@/i18n/ui-catalog";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
   TrackSourceFilter,
@@ -87,29 +76,6 @@ type Track = {
   contains_explicit_lyrics?: boolean;
   created_at?: string;
 };
-
-function CopyPromptButton({ prompt }: { prompt: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      aria-label={t("library.copyPrompt")}
-      title={t("library.copyPrompt")}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(prompt);
-        } catch {
-          /* clipboard unavailable */
-        }
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      }}
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-accent/40 bg-accent/10 text-accent transition-colors hover:bg-accent/20"
-    >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
 
 function SocialLinks({ profile }: { profile: Profile }) {
   const { t } = useI18n();
@@ -340,7 +306,6 @@ export function ArtistProfileView({
     const isUpload = track.source_type === "upload" || track.source_type == null;
     return trackSource === "uploads" ? isUpload : !isUpload;
   });
-  const compact = gridMode === "compact";
   const missingLabel = notFoundLabel ?? t("profile.notFound");
 
   return (
@@ -412,24 +377,19 @@ export function ArtistProfileView({
               )}
               <div className={trackGridClassName(gridMode)}>
                 {visibleTracks.map((track) => {
-                  const embedUrl = getTrackEmbedUrl(track.source_type, track.source_id);
-                  const canUseNativePlayer = canUseNativeTrackPlayer(track.source_type);
-                  const largeArtwork =
-                    track.cover_url ?? track.art_url ?? profile.avatar_url ?? artFallback;
-                  const nativeTrack: PlayerTrack = {
+                  const cardTrack: PlayerTrack = {
                     id: track.id,
                     userId: track.user_id,
                     title: track.title,
-                    handle: `@${profile.handle}`,
+                    handle: profile.handle,
                     genre: track.genre,
-                    art: largeArtwork,
+                    art: track.cover_url ?? track.art_url ?? profile.avatar_url ?? artFallback,
                     duration: "--:--",
                     plays: "0",
                     prompt: track.prompt ?? "",
                     lyrics: track.lyrics ?? "",
                     audioUrl: track.audio_url,
-                    audioType:
-                      track.audio_type === "link" ? ("link" as const) : ("upload" as const),
+                    audioType: track.audio_type === "link" ? "link" : "upload",
                     sourceType: track.source_type as PlayerTrack["sourceType"],
                     sourceId: track.source_id,
                     createdWith: (track.created_with as PlayerTrack["createdWith"]) ?? null,
@@ -437,157 +397,18 @@ export function ArtistProfileView({
                     durationSeconds: track.duration_seconds ?? null,
                     containsExplicitLyrics: track.contains_explicit_lyrics === true,
                     isPublished: track.is_published ?? true,
+                    promptIsPublic: track.prompt_is_public ?? true,
+                    lyricsIsPublic: track.lyrics_is_public ?? true,
+                    staffBadge: profile.staff_badge ?? null,
                   };
-                  const isPlaying = current?.id === track.id && playing;
                   return (
-                    <article
+                    <TrackCard
                       key={track.id}
-                      className={cn(
-                        "glass space-y-3 rounded-2xl p-4",
-                        compact && "space-y-2 rounded-xl p-2.5",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Music
-                          className={cn(
-                            "shrink-0 text-accent",
-                            compact ? "h-3.5 w-3.5" : "h-4 w-4",
-                          )}
-                        />
-                        <Link
-                          to="/track/$id"
-                          params={{ id: track.id }}
-                          className={cn(
-                            "truncate font-semibold hover:text-accent",
-                            compact ? "text-xs" : "text-sm",
-                          )}
-                        >
-                          {track.title}
-                        </Link>
-                        {track.contains_explicit_lyrics === true && (
-                          <ExplicitBadge compact={compact} />
-                        )}
-                        {track.prompt ? <CopyPromptButton prompt={track.prompt} /> : null}
-                        <LikeButton trackId={track.id} />
-                        <TrackLibraryActions track={nativeTrack} compact={compact} />
-                        <ReportTrackControl
-                          trackId={track.id}
-                          ownerId={track.user_id}
-                          isPublished={track.is_published ?? true}
-                          compact={compact}
-                        />
-                        <TrackOwnerActions
-                          compact
-                          track={{
-                            id: track.id,
-                            user_id: track.user_id,
-                            title: track.title,
-                            genre: track.genre,
-                            prompt: track.prompt ?? "",
-                            lyrics: track.lyrics ?? "",
-                            audio_url: track.audio_url,
-                            audio_type: track.audio_type,
-                            source_type: track.source_type,
-                            source_url: track.source_url,
-                            is_published: track.is_published ?? true,
-                            prompt_is_public: track.prompt_is_public ?? true,
-                            lyrics_is_public: track.lyrics_is_public ?? true,
-                            contains_explicit_lyrics: track.contains_explicit_lyrics === true,
-                          }}
-                        />
-                      </div>
-                      <p
-                        className={cn(
-                          "uppercase tracking-widest text-muted-foreground",
-                          compact ? "text-[8px]" : "text-[10px]",
-                        )}
-                      >
-                        {localizedGenreLabel(track.genre, t)}
-                      </p>
-                      {compact ? (
-                        <div className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-black/30">
-                          <Link
-                            to="/track/$id"
-                            params={{ id: track.id }}
-                            aria-label={t("track.open", { title: track.title })}
-                            className="block h-full"
-                          >
-                            <img
-                              src={profile.avatar_url ?? artFallback}
-                              alt=""
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          </Link>
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
-                          {embedUrl ? (
-                            <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">
-                              {track.source_type}
-                            </span>
-                          ) : canUseNativePlayer ? (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                play(nativeTrack, []);
-                              }}
-                              aria-label={
-                                isPlaying
-                                  ? t("track.pause", { title: track.title })
-                                  : t("track.play", { title: track.title })
-                              }
-                              className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon"
-                            >
-                              {isPlaying ? (
-                                <Pause className="h-4 w-4" />
-                              ) : (
-                                <Play className="ml-0.5 h-4 w-4" />
-                              )}
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : embedUrl ? (
-                        <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                          <img src={artFallback} alt="" className="h-full w-full object-cover" />
-                          <ExternalTrackEmbed
-                            sourceType={track.source_type}
-                            sourceId={track.source_id}
-                            title={t("track.player", { title: track.title })}
-                          />
-                        </div>
-                      ) : canUseNativePlayer ? (
-                        <div className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                          <Link
-                            to="/track/$id"
-                            params={{ id: track.id }}
-                            aria-label={t("track.open", { title: track.title })}
-                            className="block h-full w-full"
-                          >
-                            <img
-                              src={largeArtwork}
-                              alt=""
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          </Link>
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                          <button
-                            type="button"
-                            onClick={() => play(nativeTrack, [])}
-                            aria-label={
-                              isPlaying
-                                ? t("track.pause", { title: track.title })
-                                : t("track.play", { title: track.title })
-                            }
-                            className="absolute bottom-3 right-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon transition-transform hover:scale-105 active:scale-95"
-                          >
-                            {isPlaying ? (
-                              <Pause className="h-5 w-5" />
-                            ) : (
-                              <Play className="ml-0.5 h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-                      ) : null}
-                    </article>
+                      track={cardTrack}
+                      viewMode={gridMode}
+                      isPlaying={playing && current?.id === track.id}
+                      onPlay={(selectedTrack) => play(selectedTrack, [])}
+                    />
                   );
                 })}
               </div>
