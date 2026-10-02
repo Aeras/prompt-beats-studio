@@ -15,7 +15,9 @@ describe("PB-003 follow-up outcome, intent and AI contracts", () => {
 
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.project_audio_outcome_evaluations");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.project_audio_revision_intents");
-    expect(sql).toContain("UNIQUE (user_id, project_id, source_version_prompt_id, source_track_id)");
+    expect(sql).toContain(
+      "UNIQUE (user_id, project_id, source_version_prompt_id, source_track_id)",
+    );
     expect(sql).toContain("WHERE status = 'draft'");
     expect(sql).toContain("lock_version integer NOT NULL DEFAULT 0");
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
