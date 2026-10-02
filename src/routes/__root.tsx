@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PlayerProvider, usePlayer } from "@/lib/player";
 import { PlayerBar } from "@/components/promptbeats/PlayerBar";
 import { LanguageSelector } from "@/components/promptbeats/LanguageSelector";
+import { ExternalPlaybackProvider } from "@/components/promptbeats/ExternalPlaybackProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider, useI18n } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
@@ -152,11 +153,13 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <PlayerProvider>
-          <Outlet />
-          <DevelopmentPreviewNotice />
-          <StandaloneLanguageControl />
-          <GlobalPlayerBar />
-          <Toaster />
+          <ExternalPlaybackProvider>
+            <Outlet />
+            <DevelopmentPreviewNotice />
+            <StandaloneLanguageControl />
+            <GlobalPlayerBar />
+            <Toaster />
+          </ExternalPlaybackProvider>
         </PlayerProvider>
       </I18nProvider>
     </QueryClientProvider>
