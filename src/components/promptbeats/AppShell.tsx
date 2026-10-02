@@ -289,10 +289,10 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   if (authenticated && isInvalid) return <AccountSessionExpired />;
   if (authenticated && isLocked) return <AccountLockedScreen reason={reason} />;
 
-  const openStudio = useCallback(() => {
+  const openStudio = () => {
     setStudio(true);
     setDrawer(false);
-  }, []);
+  };
 
   const toggleDesktopSidebar = () => {
     setDesktopSidebarOpen((open) => {
