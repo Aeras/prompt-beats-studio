@@ -16,6 +16,7 @@ import {
   auxiliaryRequestKeySchema,
   executeDurableAuxiliaryAiRequest,
 } from "@/lib/ai-auxiliary-idempotency.server";
+import { getSongSetupRoleFlags } from "@/lib/song-setup-role.server";
 
 const SONG_SETUP_DESCRIPTION_LIMIT = 2500;
 
@@ -134,9 +135,8 @@ export const generateSongSetup = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
 
-    const { data: isAdminLevel } = await context.supabase.rpc("current_user_is_admin_level");
-    const { data: isSuperAdmin } = await context.supabase.rpc("current_user_is_super_admin");
-    if (isSuperAdmin !== true && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT) {
+    const { isAdminLevel, isSuperAdmin } = await getSongSetupRoleFlags(context.supabase);
+    if (!isSuperAdmin && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT) {
       throw new Error(
         `Song description must be ${SONG_SETUP_DESCRIPTION_LIMIT} characters or fewer.`,
       );
@@ -184,7 +184,7 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
           result = await caller({
             system: SYSTEM_PROMPT,
             prompt,
-            maxTokens: isSuperAdmin === true ? 4096 : 1800,
+            maxTokens: isSuperAdmin ? 4096 : 1800,
             schema: SETUP_SCHEMA,
           });
           await recordAiUsage({
@@ -210,12 +210,11 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
               "The Song Setup Assistant returned an invalid response. Please try again.",
             );
           }
-          const setup =
-            isSuperAdmin === true
-              ? superAdminSongSetupDraftSchema.parse(parsed)
-              : isAdminLevel === true
-                ? adminSongSetupDraftSchema.parse(parsed)
-                : songSetupDraftSchema.parse(parsed);
+          const setup = isSuperAdmin
+            ? superAdminSongSetupDraftSchema.parse(parsed)
+            : isAdminLevel
+              ? adminSongSetupDraftSchema.parse(parsed)
+              : songSetupDraftSchema.parse(parsed);
 
           const bpmValid =
             setup.bpm === "Auto" ||
