@@ -22,7 +22,8 @@ export type AiOperation =
   | "universe_creative_bible_refine"
   | "universe_continuity_analysis"
   | "universe_project_fit"
-  | "universe_next_song_plan";
+  | "universe_next_song_plan"
+  | "audio_revision_intent";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
