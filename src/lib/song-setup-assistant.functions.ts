@@ -38,6 +38,20 @@ export const songSetupDraftSchema = z.object({
   language: z.string().trim().min(1).max(80),
 });
 
+// PB-009: normal admins bypass only the four Advanced authoring ceilings.
+// Unrelated Song Setup constraints remain identical to the normal schema.
+const adminSongSetupDraftSchema = z.object({
+  theme: z.string().trim().min(3),
+  musicStyle: z.string().trim().min(1),
+  mood: z.string().trim().min(1),
+  instruments: z.string().trim(),
+  bpm: z.string().trim().min(1).max(8),
+  songStructure: z.string().trim().min(1).max(600),
+  productionStyle: z.string().trim().max(2000),
+  additionalInstructions: z.string().trim().max(2000),
+  language: z.string().trim().min(1).max(80),
+});
+
 const superAdminSongSetupDraftSchema = z.object({
   theme: z.string().trim().min(3),
   musicStyle: z.string().trim().min(1),
@@ -120,6 +134,7 @@ export const generateSongSetup = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "ai_generator");
     await requireFeatureAccess(context.supabase, "song_setup_assistant");
 
+    const { data: isAdminLevel } = await context.supabase.rpc("current_user_is_admin_level");
     const { data: isSuperAdmin } = await context.supabase.rpc("current_user_is_super_admin");
     if (isSuperAdmin !== true && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT) {
       throw new Error(
@@ -198,7 +213,9 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
           const setup =
             isSuperAdmin === true
               ? superAdminSongSetupDraftSchema.parse(parsed)
-              : songSetupDraftSchema.parse(parsed);
+              : isAdminLevel === true
+                ? adminSongSetupDraftSchema.parse(parsed)
+                : songSetupDraftSchema.parse(parsed);
 
           const bpmValid =
             setup.bpm === "Auto" ||
