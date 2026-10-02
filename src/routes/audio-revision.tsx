@@ -399,7 +399,8 @@ function AudioRevisionPage() {
   };
 
   const directionReady = Boolean(keep.trim() || change.trim());
-  const directionWithinLimits = keep.length <= 900 && change.length <= 1200 && revisionBrief.length <= 600;
+  const directionWithinLimits =
+    keep.length <= 900 && change.length <= 1200 && revisionBrief.length <= 600;
   const loadingContext =
     projects.isLoading ||
     versions.isLoading ||
@@ -409,7 +410,14 @@ function AudioRevisionPage() {
     (Boolean(intentId) && intent.isLoading);
   const intentReady = !intentId || Boolean(intentRecord && intentRecord.status === "draft");
   const canSubmit =
-    Boolean(projectId && versionId && trackId && directionReady && directionWithinLimits && hasCanonicalSnapshot) &&
+    Boolean(
+      projectId &&
+        versionId &&
+        trackId &&
+        directionReady &&
+        directionWithinLimits &&
+        hasCanonicalSnapshot,
+    ) &&
     Boolean(modelAccess.data?.generator.defaultModel) &&
     intentReady &&
     !busy &&
@@ -466,7 +474,8 @@ function AudioRevisionPage() {
                 <option value="">{el ? "Επίλεξε Version" : "Select Version"}</option>
                 {versionRows.map((version) => (
                   <option key={version.id} value={version.id}>
-                    V{version.version_number ?? "?"} · {version.title || version.version_label || "Untitled"}
+                    V{version.version_number ?? "?"} ·{" "}
+                    {version.title || version.version_label || "Untitled"}
                   </option>
                 ))}
               </select>
