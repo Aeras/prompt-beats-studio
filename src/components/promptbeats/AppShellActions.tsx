@@ -13,7 +13,9 @@ export function AppShellActionsProvider({
   actions: AppShellActions;
   children: ReactNode;
 }) {
-  return <AppShellActionsContext.Provider value={actions}>{children}</AppShellActionsContext.Provider>;
+  return (
+    <AppShellActionsContext.Provider value={actions}>{children}</AppShellActionsContext.Provider>
+  );
 }
 
 export function useAppShellActions(): AppShellActions {
