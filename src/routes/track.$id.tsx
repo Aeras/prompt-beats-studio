@@ -18,9 +18,14 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import artFallback from "@/assets/art-3.jpg";
 import { getEligiblePublicTrack } from "@/lib/public-content.functions";
+import { isCreatedWith } from "@/lib/created-with";
 import { usePlayer } from "@/lib/player";
 import { canonicalLink, canonicalUrl, robotsContent } from "@/lib/seo-policy";
-import { canUseNativeTrackPlayer, getTrackEmbedUrl } from "@/lib/track-sources";
+import {
+  canUseNativeTrackPlayer,
+  getTrackEmbedUrl,
+  type PersistedTrackSourceType,
+} from "@/lib/track-sources";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 
 export const Route = createFileRoute("/track/$id")({
@@ -93,6 +98,8 @@ function TrackPage() {
   const { user } = useAuth();
   const privateReviewAccess = useFeatureAccess("private_review_links");
   const { track, artist } = Route.useLoaderData();
+  const createdWith = isCreatedWith(track.created_with) ? track.created_with : null;
+  const sourceType = (track.source_type ?? "upload") as PersistedTrackSourceType;
   const queryClient = useQueryClient();
   const { play, current, playing } = usePlayer();
   const prompt = useCopy();
@@ -141,11 +148,11 @@ function TrackPage() {
         plays: String(track.plays ?? 0),
         prompt: track.prompt,
         lyrics: track.lyrics,
-        audioUrl: track.audio_url,
+        audioUrl: track.audio_url ?? "",
         audioType: track.audio_type === "link" ? "link" : "upload",
-        sourceType: track.source_type,
+        sourceType,
         sourceId: track.source_id,
-        createdWith: track.created_with,
+        createdWith,
         allowDownload: track.allow_download === true,
         durationSeconds: track.duration_seconds,
         containsExplicitLyrics: track.contains_explicit_lyrics === true,
@@ -292,15 +299,15 @@ function TrackPage() {
                     plays: String(playCount),
                     prompt: track.prompt,
                     lyrics: track.lyrics,
-                    audioUrl: track.audio_url,
+                    audioUrl: track.audio_url ?? "",
                     audioType: track.audio_type === "link" ? "link" : "upload",
-                    isPublished: track.is_published,
-                    promptIsPublic: track.prompt_is_public,
-                    lyricsIsPublic: track.lyrics_is_public,
+                    isPublished: track.is_published === true,
+                    promptIsPublic: track.prompt_is_public !== false,
+                    lyricsIsPublic: track.lyrics_is_public !== false,
                     containsExplicitLyrics: track.contains_explicit_lyrics === true,
-                    sourceType: track.source_type,
+                    sourceType,
                     sourceId: track.source_id,
-                    createdWith: track.created_with,
+                    createdWith,
                     allowDownload: track.allow_download === true,
                   }}
                 />
@@ -312,14 +319,14 @@ function TrackPage() {
                     genre: track.genre,
                     prompt: track.prompt,
                     lyrics: track.lyrics,
-                    audio_url: track.audio_url,
-                    audio_type: track.audio_type,
-                    source_type: track.source_type,
+                    audio_url: track.audio_url ?? "",
+                    audio_type: track.audio_type ?? "upload",
+                    source_type: sourceType,
                     source_url: track.source_url,
-                    created_with: track.created_with,
-                    is_published: track.is_published,
-                    prompt_is_public: track.prompt_is_public,
-                    lyrics_is_public: track.lyrics_is_public,
+                    created_with: createdWith,
+                    is_published: track.is_published === true,
+                    prompt_is_public: track.prompt_is_public !== false,
+                    lyrics_is_public: track.lyrics_is_public !== false,
                     contains_explicit_lyrics: track.contains_explicit_lyrics === true,
                   }}
                 />

@@ -22,6 +22,7 @@ import {
 import { useI18n } from "@/i18n";
 import { localizedGenreLabel } from "@/i18n/ui-catalog";
 import { usePlayer } from "@/lib/player";
+import { isCreatedWith } from "@/lib/created-with";
 import {
   listEligiblePublicTracksFn,
   searchEligiblePublicCreatorsFn,
@@ -115,11 +116,11 @@ function Discover() {
     plays: String(track.plays),
     prompt: track.prompt,
     lyrics: track.lyrics,
-    audioUrl: track.audio_url,
+    audioUrl: track.audio_url ?? "",
     audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
     sourceType: track.source_type as Track["sourceType"],
     sourceId: track.source_id,
-    createdWith: track.created_with,
+    createdWith: isCreatedWith(track.created_with) ? track.created_with : null,
     allowDownload: track.allow_download === true,
     durationSeconds: track.duration_seconds,
     containsExplicitLyrics: track.contains_explicit_lyrics === true,

@@ -266,11 +266,11 @@ export async function listEligiblePublicSitemapIdentities(limit = 5000): Promise
   });
 
   const trackIds = eligibleRows.map((track: any) => track.id as string);
-  const creatorHandles = [
-    ...new Set(
-      eligibleRows.flatMap((track: any) => {
+  const creatorHandles: string[] = [
+    ...new Set<string>(
+      eligibleRows.flatMap((track: any): string[] => {
         const handle = states.get(track.user_id)?.profile?.handle;
-        return handle ? [handle] : [];
+        return typeof handle === "string" && handle ? [handle] : [];
       }),
     ),
   ];
