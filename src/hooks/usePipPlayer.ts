@@ -641,8 +641,7 @@ function drawBrandGlyph(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillStyle = gradient;
   ctx.shadowColor = "rgba(169,75,255,0.45)";
   ctx.shadowBlur = 9;
-  for (let index = 0; index < heights.length; index += 1) {
-    const h = heights[index];
+  for (const [index, h] of heights.entries()) {
     ctx.beginPath();
     ctx.roundRect(x + (index - 2) * 14 - 4, y - h / 2, 8, h, 4);
     ctx.fill();
