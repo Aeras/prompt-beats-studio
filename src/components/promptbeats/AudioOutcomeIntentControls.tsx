@@ -55,9 +55,9 @@ export function AudioOutcomeIntentControls({
   const [change, setChange] = useState("");
   const [brief, setBrief] = useState("");
   const [unresolved, setUnresolved] = useState<UnresolvedRevisionSuggestion[]>([]);
-  const [proposal, setProposal] = useState<
-    Awaited<ReturnType<typeof translateAudioRevisionIntent>> | null
-  >(null);
+  const [proposal, setProposal] = useState<Awaited<
+    ReturnType<typeof translateAudioRevisionIntent>
+  > | null>(null);
   const hydratedIntentId = useRef<string | null>(null);
 
   useEffect(() => {
