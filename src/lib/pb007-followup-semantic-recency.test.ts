@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 
-const MIGRATION =
-  "supabase/migrations/20261002054500_pb007_followup_semantic_recency.sql";
+const MIGRATION = "supabase/migrations/20261002054500_pb007_followup_semantic_recency.sql";
 
 async function migrationSource() {
   return readFile(MIGRATION, "utf8");
@@ -26,7 +25,9 @@ describe("PB-007 follow-up semantic recency", () => {
     expect(sql).toContain("max(p.updated_at)");
     expect(sql).toContain("max(b.updated_at)");
     expect(sql).toContain("max(c.updated_at)");
-    expect(sql).not.toMatch(/SET creative_updated_at = now\(\)\s*WHERE .*creative_updated_at IS NULL/s);
+    expect(sql).not.toMatch(
+      /SET creative_updated_at = now\(\)\s*WHERE .*creative_updated_at IS NULL/s,
+    );
     expect(sql).not.toContain("inspiration_wall_track_links_semantic");
     expect(sql).toContain(
       "Pre-migration semantic recency is best-effort. Qualifying post-migration writes are exact.",
@@ -57,11 +58,7 @@ describe("PB-007 follow-up semantic recency", () => {
 
   test("child propagation is statement-level and compares only semantic fields", async () => {
     const sql = await migrationSource();
-    for (const table of [
-      "song_universe_projects",
-      "story_map_beats",
-      "inspiration_wall_cards",
-    ]) {
+    for (const table of ["song_universe_projects", "story_map_beats", "inspiration_wall_cards"]) {
       expect(sql).toContain(`AFTER INSERT ON public.${table}`);
       expect(sql).toContain(`AFTER DELETE ON public.${table}`);
       expect(sql).toContain(`AFTER UPDATE ON public.${table}`);
