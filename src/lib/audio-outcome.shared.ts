@@ -2,12 +2,7 @@ import { z } from "zod";
 
 export const AUDIO_OUTCOME_NOTE_MAX = 1000;
 
-export const audioOutcomeLevelSchema = z.enum([
-  "not_met",
-  "partially_met",
-  "mostly_met",
-  "met",
-]);
+export const audioOutcomeLevelSchema = z.enum(["not_met", "partially_met", "mostly_met", "met"]);
 
 export const audioOutcomeSourceSchema = z.object({
   projectId: z.string().uuid(),
