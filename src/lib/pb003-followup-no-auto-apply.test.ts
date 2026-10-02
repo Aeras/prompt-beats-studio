@@ -11,6 +11,8 @@ describe("PB-003 follow-up acceptance boundary", () => {
     expect(ui).toContain("const acceptProposal = () =>");
     expect(ui).toContain("onClick={acceptProposal}");
     expect(ui).toContain("setKeep(proposal.proposal.keep)");
-    expect(ui).not.toContain("updateAudioRevisionIntent({\n        data: {\n          acceptedKeep: proposal");
+    expect(ui).not.toContain(
+      "updateAudioRevisionIntent({\n        data: {\n          acceptedKeep: proposal",
+    );
   });
 });
