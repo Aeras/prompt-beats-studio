@@ -56,8 +56,8 @@ describe("PB-010 — shared TrackCard external playback contract", () => {
   test("mobile player hides bottom nav and reserves content clearance", async () => {
     const provider = await source("src/components/promptbeats/ExternalPlaybackProvider.tsx");
     expect(provider).toContain("MOBILE_QUERY");
-    expect(provider).toContain('[data-pb-mobile-nav=\\"true\\"]');
-    expect(provider).toContain('[data-pb-search-highlight-root=\\"true\\"]');
+    expect(provider).toContain('[data-pb-mobile-nav="true"]');
+    expect(provider).toContain('[data-pb-search-highlight-root="true"]');
     expect(provider).toContain('mobileNav.style.display = "none"');
     expect(provider).toContain("appContent.style.paddingBottom");
     expect(provider).toContain("--pb-external-player-clearance");
