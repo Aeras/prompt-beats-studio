@@ -412,11 +412,11 @@ function AudioRevisionPage() {
   const canSubmit =
     Boolean(
       projectId &&
-        versionId &&
-        trackId &&
-        directionReady &&
-        directionWithinLimits &&
-        hasCanonicalSnapshot,
+      versionId &&
+      trackId &&
+      directionReady &&
+      directionWithinLimits &&
+      hasCanonicalSnapshot,
     ) &&
     Boolean(modelAccess.data?.generator.defaultModel) &&
     intentReady &&
