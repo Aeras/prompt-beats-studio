@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { activateMedia } from "@/lib/media-coordinator";
 
 type Options = {
   art: string | undefined;
@@ -9,33 +10,80 @@ type Options = {
   audioElement: HTMLAudioElement | null;
 };
 
+type ProofConfig = {
+  fps: 8 | 10 | 12;
+  width: 500 | 600 | 1000;
+  height: 700 | 840 | 1400;
+};
+
+type PipGeometry = { width: number; height: number } | null;
+
+const NATIVE_INSTANCE_ID = "promptbeats-native-player";
+const TWO_PI = Math.PI * 2;
+const VINYL_RAD_PER_SECOND = 0.72;
+
+function proofConfig(): ProofConfig {
+  if (typeof window === "undefined") return { fps: 10, width: 500, height: 700 };
+  const params = new URLSearchParams(window.location.search);
+  const fpsRaw = Number(params.get("pbPipFps"));
+  const sizeRaw = Number(params.get("pbPipSize"));
+  const fps: ProofConfig["fps"] = fpsRaw === 8 || fpsRaw === 12 ? fpsRaw : 10;
+  if (sizeRaw === 600) return { fps, width: 600, height: 840 };
+  if (sizeRaw === 1000) return { fps, width: 1000, height: 1400 };
+  return { fps, width: 500, height: 700 };
+}
+
+function playbackProgress(audio: HTMLAudioElement | null) {
+  if (!audio) return 0;
+  const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+  if (duration <= 0) return 0;
+  return Math.min(1, Math.max(0, audio.currentTime / duration));
+}
+
+function vinylAngle(audio: HTMLAudioElement | null) {
+  const seconds = audio?.currentTime ?? 0;
+  return (seconds * VINYL_RAD_PER_SECOND) % TWO_PI;
+}
+
 /**
- * HTML5 <audio> can't enter Picture-in-Picture, so we paint a realistic,
- * top-down turntable / vinyl record player onto a portrait canvas, capture that
- * as a video stream, and put THAT video into PiP. The record spins only while
- * the track is playing and the tonearm (needle) sweeps from the outer edge
- * toward the center label in sync with playback progress.
+ * PB-011 isolated Family A proof renderer.
+ *
+ * This branch intentionally proves lifecycle, time-based motion, live progress,
+ * system PiP play/pause synchronization and cleanup. It is NOT the final
+ * Neon Graphite visual implementation and must not be merged as product code.
  */
 export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const syncing = useRef(false);
+  const timerRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const pipWindowRef = useRef<PictureInPictureWindow | null>(null);
+  const pipResizeCleanupRef = useRef<(() => void) | null>(null);
+  const carrierSyncRef = useRef(false);
   const playingRef = useRef(playing);
-  const rotationRef = useRef(0);
+  const configRef = useRef<ProofConfig>(proofConfig());
+  const renderCountRef = useRef(0);
+  const lastRenderAtRef = useRef<number | null>(null);
+  const longestGapRef = useRef(0);
   const [pipActive, setPipActive] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [pipGeometry, setPipGeometry] = useState<PipGeometry>(null);
 
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
 
   useEffect(() => {
-    setSupported(typeof document !== "undefined" && "pictureInPictureEnabled" in document);
+    setSupported(
+      typeof document !== "undefined" &&
+        document.pictureInPictureEnabled === true &&
+        typeof HTMLVideoElement !== "undefined" &&
+        "requestPictureInPicture" in HTMLVideoElement.prototype,
+    );
   }, []);
 
-  // Load cover art (crossOrigin so the canvas stays untainted / capturable).
   useEffect(() => {
     if (!art) {
       imgRef.current = null;
@@ -56,319 +104,344 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     };
   }, [art]);
 
-  // Turntable draw loop.
-  useEffect(() => {
+  const stopSchedulers = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    rafRef.current = null;
+    timerRef.current = null;
+  }, []);
+
+  const disposeStream = useCallback(() => {
+    const video = videoRef.current;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (video?.srcObject) video.srcObject = null;
+  }, []);
+
+  const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // High-res portrait canvas — exact absolute dimensions.
-    const W = (canvas.width = 1000);
-    const H = (canvas.height = 1400);
-    const CX = 500;
-    const CY = 550;
-    const DISC_RADIUS = 420; // fixed absolute radius -> perfectly round
-    const LABEL_RADIUS = 140;
-    const CENTER_HOLE_RADIUS = 5;
-    const PIVOT = { x: 880, y: 150 };
+    const config = configRef.current;
+    if (canvas.width !== config.width) canvas.width = config.width;
+    if (canvas.height !== config.height) canvas.height = config.height;
 
-    const draw = () => {
-      // Premium light-silver deck background.
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-      bgGradient.addColorStop(0, "#F3F4F6");
-      bgGradient.addColorStop(1, "#D1D5DB");
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, W, H);
+    const W = config.width;
+    const H = config.height;
+    const compact = Boolean(pipGeometry && pipGeometry.width > 0 && pipGeometry.width < 300);
+    const scale = W / 500;
+    const CX = W / 2;
+    const CY = compact ? H * 0.36 : H * 0.38;
+    const discRadius = Math.min(W * (compact ? 0.31 : 0.34), H * 0.26);
+    const labelRadius = discRadius * 0.32;
+    const progress = playbackProgress(audioElement);
+    const angle = vinylAngle(audioElement);
 
-      // Subtle brushed-metal highlight across the upper deck.
-      ctx.save();
-      ctx.globalAlpha = 0.08;
-      ctx.fillStyle = "#FFFFFF";
+    const now = performance.now();
+    const previous = lastRenderAtRef.current;
+    if (previous !== null) longestGapRef.current = Math.max(longestGapRef.current, now - previous);
+    lastRenderAtRef.current = now;
+    renderCountRef.current += 1;
+
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#111827");
+    bg.addColorStop(1, "#020617");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.shadowColor = "rgba(34,211,238,0.28)";
+    ctx.shadowBlur = 18 * scale;
+    ctx.beginPath();
+    ctx.arc(CX, CY, discRadius, 0, TWO_PI);
+    ctx.fillStyle = "#050505";
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(angle);
+    ctx.strokeStyle = "rgba(255,255,255,0.13)";
+    ctx.lineWidth = Math.max(1, scale);
+    for (let i = 1; i <= 4; i += 1) {
       ctx.beginPath();
-      ctx.ellipse(CX, CY * 0.35, W * 0.65, H * 0.22, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Update rotation while playing.
-      if (playingRef.current) {
-        rotationRef.current += 0.018;
-      }
-
-      // --- Vinyl disc (with deep drop shadow) ---
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 40;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 15;
-      ctx.beginPath();
-      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fill();
-      ctx.restore();
-
-      // Subtle outer rim highlight.
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 2;
+      ctx.arc(0, 0, labelRadius + ((discRadius - labelRadius) * i) / 5, 0, TWO_PI);
       ctx.stroke();
-      ctx.restore();
+    }
 
-      // Spinning content: label, grooves, sheen.
-      ctx.save();
-      ctx.translate(CX, CY);
-      ctx.rotate(rotationRef.current);
-
-      // Concentric groove rings.
-      ctx.strokeStyle = "#1f1f1f";
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 5; i++) {
-        const r = LABEL_RADIUS + (DISC_RADIUS - LABEL_RADIUS) * ((i + 1) / 6);
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Center label (clipped circle with cover art).
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, LABEL_RADIUS, 0, Math.PI * 2);
-      ctx.clip();
-
-      const img = imgRef.current;
-      if (img && img.width > 0 && img.height > 0) {
-        const scale = Math.max((LABEL_RADIUS * 2) / img.width, (LABEL_RADIUS * 2) / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      } else {
-        ctx.fillStyle = "#1f1f1f";
-        ctx.fillRect(-LABEL_RADIUS, -LABEL_RADIUS, LABEL_RADIUS * 2, LABEL_RADIUS * 2);
-        ctx.fillStyle = "#555555";
-        ctx.beginPath();
-        ctx.arc(0, 0, 16, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-
-      // Center spindle hole.
-      ctx.beginPath();
-      ctx.arc(0, 0, CENTER_HOLE_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#111111";
-      ctx.fill();
-
-      // Glossy sheen across the vinyl.
-      ctx.beginPath();
-      ctx.arc(0, 0, DISC_RADIUS, 0, Math.PI * 2);
-      const sheen = ctx.createLinearGradient(-DISC_RADIUS, -DISC_RADIUS, DISC_RADIUS, DISC_RADIUS);
-      sheen.addColorStop(0, "rgba(255,255,255,0.08)");
-      sheen.addColorStop(0.45, "rgba(255,255,255,0)");
-      sheen.addColorStop(0.55, "rgba(255,255,255,0)");
-      sheen.addColorStop(1, "rgba(255,255,255,0.04)");
-      ctx.fillStyle = sheen;
-      ctx.fill();
-
-      ctx.restore(); // undo disc rotation
-
-      // --- Tonearm (needle) ---
-      const currentTime = audioElement?.currentTime ?? 0;
-      const duration =
-        audioElement?.duration && Number.isFinite(audioElement.duration)
-          ? audioElement.duration
-          : 0;
-      const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
-
-      // Needle tip sweeps from outer groove to inner groove area.
-      const startAngle = -Math.PI / 4; // -45°
-      const endAngle = (-Math.PI * 5) / 9; // -100°
-      const outerR = DISC_RADIUS - 16;
-      const innerR = LABEL_RADIUS + 34;
-      const needleRadius = outerR - progress * (outerR - innerR);
-      const needleAngle = startAngle + progress * (endAngle - startAngle);
-      const tipX = CX + needleRadius * Math.cos(needleAngle);
-      const tipY = CY + needleRadius * Math.sin(needleAngle);
-
-      const armAngle = Math.atan2(tipY - PIVOT.y, tipX - PIVOT.x);
-      const armLength = Math.hypot(tipX - PIVOT.x, tipY - PIVOT.y);
-
-      // Pivot base (sleek metallic cylinder).
-      const baseGradient = ctx.createRadialGradient(
-        PIVOT.x - 4,
-        PIVOT.y - 4,
-        4,
-        PIVOT.x,
-        PIVOT.y,
-        22,
-      );
-      baseGradient.addColorStop(0, "#F3F4F6");
-      baseGradient.addColorStop(0.5, "#9CA3AF");
-      baseGradient.addColorStop(1, "#374151");
-      ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 22, 0, Math.PI * 2);
-      ctx.fillStyle = baseGradient;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.25)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Pivot top highlight ring.
-      ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 14, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Counterweight.
-      ctx.save();
-      ctx.translate(PIVOT.x, PIVOT.y);
-      ctx.rotate(armAngle + Math.PI / 2);
-      const cwGradient = ctx.createLinearGradient(-10, -26, 10, 14);
-      cwGradient.addColorStop(0, "#4B5563");
-      cwGradient.addColorStop(0.5, "#9CA3AF");
-      cwGradient.addColorStop(1, "#1F2937");
-      ctx.fillStyle = cwGradient;
-      ctx.beginPath();
-      ctx.roundRect(-10, -26, 20, 40, 6);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.35)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
-
-      // Metallic tonearm (thick, with white highlight line).
-      const armGradient = ctx.createLinearGradient(PIVOT.x, PIVOT.y, tipX, tipY);
-      armGradient.addColorStop(0, "#6B7280");
-      armGradient.addColorStop(0.5, "#E5E7EB");
-      armGradient.addColorStop(1, "#4B5563");
-
-      ctx.save();
-      ctx.strokeStyle = armGradient;
-      ctx.lineWidth = 11;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(PIVOT.x, PIVOT.y);
-      ctx.lineTo(tipX, tipY);
-      ctx.stroke();
-      // White metallic shine line.
-      ctx.strokeStyle = "rgba(255,255,255,0.75)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(
-        PIVOT.x + Math.cos(armAngle + Math.PI / 2) * 2,
-        PIVOT.y + Math.sin(armAngle + Math.PI / 2) * 2,
-      );
-      ctx.lineTo(
-        tipX + Math.cos(armAngle + Math.PI / 2) * 2,
-        tipY + Math.sin(armAngle + Math.PI / 2) * 2,
-      );
-      ctx.stroke();
-      ctx.restore();
-
-      // Headshell / cartridge (rectangular, resting on grooves).
-      const headshellLen = 44;
-      const headshellW = 16;
-      ctx.save();
-      ctx.translate(tipX, tipY);
-      ctx.rotate(armAngle);
-      // Cartridge body.
-      const cartGradient = ctx.createLinearGradient(-headshellW / 2, 0, headshellW / 2, 0);
-      cartGradient.addColorStop(0, "#111827");
-      cartGradient.addColorStop(0.5, "#374151");
-      cartGradient.addColorStop(1, "#1F2937");
-      ctx.fillStyle = cartGradient;
-      ctx.beginPath();
-      ctx.roundRect(-headshellW / 2, -headshellLen / 2, headshellW, headshellLen, 5);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // Stylus tip glow.
-      ctx.shadowColor = "rgba(251,191,36,0.9)";
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = "#FBBF24";
-      ctx.beginPath();
-      ctx.arc(0, headshellLen / 2 + 3, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // --- Bold centered typography at bottom ---
-      ctx.shadowBlur = 0;
-      ctx.textAlign = "center";
-
+    ctx.beginPath();
+    ctx.arc(0, 0, labelRadius, 0, TWO_PI);
+    ctx.clip();
+    const img = imgRef.current;
+    if (img && img.width > 0 && img.height > 0) {
+      const imageScale = Math.max((labelRadius * 2) / img.width, (labelRadius * 2) / img.height);
+      const drawW = img.width * imageScale;
+      const drawH = img.height * imageScale;
+      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
       ctx.fillStyle = "#111827";
-      ctx.font = "bold 76px sans-serif";
-      ctx.fillText(truncate(ctx, title ?? "", 900), 500, 1180);
+      ctx.fillRect(-labelRadius, -labelRadius, labelRadius * 2, labelRadius * 2);
+      ctx.fillStyle = "#22d3ee";
+      ctx.font = `${Math.round(24 * scale)}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PB", 0, 0);
+    }
+    ctx.restore();
 
-      if (subtitle) {
-        ctx.fillStyle = "#4B5563";
-        ctx.font = "50px sans-serif";
-        const handle = subtitle.startsWith("@") ? subtitle : `@${subtitle}`;
-        ctx.fillText(truncate(ctx, handle, 900), 500, 1270);
+    // Temporary high-contrast proof marker so rotation is measurable on screen recordings.
+    const markerRadius = discRadius * 0.78;
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(angle);
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath();
+    ctx.arc(markerRadius, 0, 7 * scale, 0, TWO_PI);
+    ctx.fill();
+    ctx.restore();
+
+    // Simplified tonearm: static identity cue only for this proof.
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 6 * scale;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(W * 0.86, H * 0.12);
+    ctx.lineTo(W * 0.72, CY - discRadius * 0.35);
+    ctx.stroke();
+
+    const titleY = compact ? H * 0.69 : H * 0.70;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = `700 ${Math.round((compact ? 24 : 28) * scale)}px sans-serif`;
+    ctx.fillText(truncate(ctx, title ?? "", W * 0.86), CX, titleY);
+    if (subtitle) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `${Math.round((compact ? 16 : 18) * scale)}px sans-serif`;
+      const creator = subtitle.startsWith("@") ? subtitle : `@${subtitle}`;
+      ctx.fillText(truncate(ctx, creator, W * 0.82), CX, titleY + 34 * scale);
+    }
+
+    const barX = W * 0.1;
+    const barY = compact ? H * 0.82 : H * 0.84;
+    const barW = W * 0.8;
+    const barH = Math.max(5 * scale, 4);
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, barH / 2);
+    ctx.fill();
+    if (progress > 0) {
+      const fill = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+      fill.addColorStop(0, "#22d3ee");
+      fill.addColorStop(0.5, "#3b82f6");
+      fill.addColorStop(1, "#d946ef");
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, Math.max(barH, barW * progress), barH, barH / 2);
+      ctx.fill();
+    }
+
+    if (!compact) {
+      const current = audioElement?.currentTime ?? 0;
+      const duration = audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
+      ctx.font = `${Math.round(13 * scale)}px monospace`;
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "left";
+      ctx.fillText(formatTime(current), barX, barY + 28 * scale);
+      ctx.textAlign = "right";
+      ctx.fillText(formatTime(duration), barX + barW, barY + 28 * scale);
+    }
+
+    // Proof diagnostics; intentionally not part of production visual design.
+    ctx.textAlign = "left";
+    ctx.font = `${Math.round(11 * scale)}px monospace`;
+    ctx.fillStyle = "rgba(148,163,184,0.75)";
+    ctx.fillText(
+      `PB-011 PROOF ${config.fps}fps ${config.width}x${config.height} ${document.visibilityState}`,
+      W * 0.04,
+      H * 0.965,
+    );
+  }, [audioElement, pipGeometry, subtitle, title]);
+
+  // Draw exactly one preparation/current-state frame while PiP is inactive or paused.
+  useEffect(() => {
+    drawFrame();
+  }, [art, drawFrame, playing]);
+
+  useEffect(() => {
+    stopSchedulers();
+    if (!pipActive || !playing) {
+      drawFrame();
+      return;
+    }
+
+    const interval = 1000 / configRef.current.fps;
+    let lastVisibleDraw = 0;
+
+    const visibleTick = (timestamp: number) => {
+      if (timestamp - lastVisibleDraw >= interval - 2) {
+        drawFrame();
+        lastVisibleDraw = timestamp;
       }
-
-      rafRef.current = requestAnimationFrame(draw);
+      rafRef.current = requestAnimationFrame(visibleTick);
     };
 
-    rafRef.current = requestAnimationFrame(draw);
+    const hiddenTick = () => {
+      drawFrame();
+      timerRef.current = window.setTimeout(hiddenTick, interval);
+    };
+
+    const startForVisibility = () => {
+      stopSchedulers();
+      if (!pipActive || !playingRef.current) {
+        drawFrame();
+        return;
+      }
+      if (document.visibilityState === "hidden") {
+        hiddenTick();
+      } else {
+        rafRef.current = requestAnimationFrame(visibleTick);
+      }
+    };
+
+    startForVisibility();
+    document.addEventListener("visibilitychange", startForVisibility);
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+      document.removeEventListener("visibilitychange", startForVisibility);
+      stopSchedulers();
     };
-  }, [title, subtitle, audioElement]);
+  }, [drawFrame, pipActive, playing, stopSchedulers]);
 
-  // Keep the dummy video's state aligned with the audio element.
+  const resumeRealAudio = useCallback(() => {
+    const audio = audioElement;
+    if (!audio || !audio.paused) return;
+    activateMedia({ id: NATIVE_INSTANCE_ID, kind: "native" });
+    void audio.play().catch(() => undefined);
+  }, [audioElement]);
+
+  const pauseRealAudio = useCallback(() => {
+    const audio = audioElement;
+    if (!audio || audio.paused) return;
+    audio.pause();
+  }, [audioElement]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const session = navigator.mediaSession;
+    try {
+      session.setActionHandler("play", resumeRealAudio);
+      session.setActionHandler("pause", pauseRealAudio);
+    } catch {
+      return;
+    }
+    return () => {
+      try {
+        session.setActionHandler("play", null);
+        session.setActionHandler("pause", null);
+      } catch {
+        // Media Session support can vary by runtime.
+      }
+    };
+  }, [pauseRealAudio, resumeRealAudio]);
+
+  // Keep the muted carrier video aligned with real audio without making it playback authority.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !pipActive) return;
-    syncing.current = true;
-    if (playing && video.paused) void video.play().catch(() => {});
+    carrierSyncRef.current = true;
+    if (playing && video.paused) void video.play().catch(() => undefined);
     if (!playing && !video.paused) video.pause();
-    const id = setTimeout(() => {
-      syncing.current = false;
-    }, 0);
-    return () => clearTimeout(id);
+    const id = window.setTimeout(() => {
+      carrierSyncRef.current = false;
+    }, 50);
+    return () => window.clearTimeout(id);
   }, [playing, pipActive]);
 
   const onVideoPlay = useCallback(() => {
-    if (syncing.current) return;
-    if (!playingRef.current) toggle();
-  }, [toggle]);
+    if (carrierSyncRef.current) return;
+    resumeRealAudio();
+  }, [resumeRealAudio]);
 
   const onVideoPause = useCallback(() => {
-    if (syncing.current) return;
-    if (playingRef.current) toggle();
-  }, [toggle]);
+    if (carrierSyncRef.current) return;
+    pauseRealAudio();
+  }, [pauseRealAudio]);
+
+  const cleanupPipWindow = useCallback(() => {
+    pipResizeCleanupRef.current?.();
+    pipResizeCleanupRef.current = null;
+    pipWindowRef.current = null;
+    setPipGeometry(null);
+  }, []);
+
+  const closeProofSession = useCallback(() => {
+    stopSchedulers();
+    cleanupPipWindow();
+    const video = videoRef.current;
+    if (video && !video.paused) {
+      carrierSyncRef.current = true;
+      video.pause();
+      window.setTimeout(() => {
+        carrierSyncRef.current = false;
+      }, 50);
+    }
+    disposeStream();
+    if (typeof console !== "undefined") {
+      console.info("[PB-011 proof] session closed", {
+        renders: renderCountRef.current,
+        longestGapMs: Math.round(longestGapRef.current),
+      });
+    }
+    renderCountRef.current = 0;
+    lastRenderAtRef.current = null;
+    longestGapRef.current = 0;
+  }, [cleanupPipWindow, disposeStream, stopSchedulers]);
 
   const togglePip = useCallback(async () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!canvas || !video) return;
+    if (!canvas || !video || !supported) return;
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
         return;
       }
-      if (!video.srcObject) {
-        video.srcObject = canvas.captureStream(30);
-      }
-      video.muted = true;
-      await video.play();
-      await video.requestPictureInPicture();
-    } catch {
-      /* PiP unsupported or blocked */
-    }
-  }, []);
 
-  // Native events (incl. play/pause from the OS PiP window).
+      drawFrame();
+      disposeStream();
+      const stream = canvas.captureStream(configRef.current.fps);
+      streamRef.current = stream;
+      video.srcObject = stream;
+      video.muted = true;
+      carrierSyncRef.current = true;
+      await video.play();
+      const pipWindow = await video.requestPictureInPicture();
+      pipWindowRef.current = pipWindow;
+      const updateGeometry = () => setPipGeometry({ width: pipWindow.width, height: pipWindow.height });
+      updateGeometry();
+      pipWindow.addEventListener("resize", updateGeometry);
+      pipResizeCleanupRef.current = () => pipWindow.removeEventListener("resize", updateGeometry);
+      window.setTimeout(() => {
+        carrierSyncRef.current = false;
+      }, 50);
+    } catch (error) {
+      carrierSyncRef.current = false;
+      disposeStream();
+      if (typeof console !== "undefined") console.warn("[PB-011 proof] PiP request failed", error);
+    }
+  }, [disposeStream, drawFrame, supported]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onEnter = () => setPipActive(true);
+    const onEnter = () => {
+      setPipActive(true);
+      drawFrame();
+    };
     const onLeave = () => {
       setPipActive(false);
-      video.pause();
+      closeProofSession();
     };
     video.addEventListener("play", onVideoPlay);
     video.addEventListener("pause", onVideoPause);
@@ -380,7 +453,14 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       video.removeEventListener("enterpictureinpicture", onEnter);
       video.removeEventListener("leavepictureinpicture", onLeave);
     };
-  }, [onVideoPlay, onVideoPause]);
+  }, [closeProofSession, drawFrame, onVideoPause, onVideoPlay]);
+
+  useEffect(
+    () => () => {
+      closeProofSession();
+    },
+    [closeProofSession],
+  );
 
   return { canvasRef, videoRef, pipActive, supported, togglePip };
 }
@@ -390,4 +470,11 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   let out = text;
   while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) out = out.slice(0, -1);
   return `${out}…`;
+}
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
