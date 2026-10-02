@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import type { FeatureKey } from "@/lib/feature-access.functions";
 import {
   selectHomeRecentProject,
@@ -18,7 +20,12 @@ import {
 const HOME_RECENT_VERSION_CANDIDATE_LIMIT = 24;
 const HOME_RESUME_SOURCE_TIMEOUT_MS = 2_500;
 
-async function resolveRecentProject(supabase: any, userId: string): Promise<HomeRecentProject | null> {
+type AuthenticatedSupabaseClient = SupabaseClient<Database>;
+
+async function resolveRecentProject(
+  supabase: AuthenticatedSupabaseClient,
+  userId: string,
+): Promise<HomeRecentProject | null> {
   const { data: versions, error: versionsError } = await supabase
     .from("saved_prompts")
     .select("id, project_id, version_number, version_label, created_at")
@@ -46,7 +53,10 @@ async function resolveRecentProject(supabase: any, userId: string): Promise<Home
   return selectHomeRecentProject(versionCandidates, (projects ?? []) as HomeProjectCandidate[]);
 }
 
-async function canUseFeature(supabase: any, featureKey: FeatureKey): Promise<boolean> {
+async function canUseFeature(
+  supabase: AuthenticatedSupabaseClient,
+  featureKey: FeatureKey,
+): Promise<boolean> {
   const { data, error } = await supabase.rpc("current_user_can_use_feature", {
     _feature_key: featureKey,
   });
@@ -55,7 +65,7 @@ async function canUseFeature(supabase: any, featureKey: FeatureKey): Promise<boo
 }
 
 async function resolveFeatureCandidate(
-  supabase: any,
+  supabase: AuthenticatedSupabaseClient,
   userId: string,
   type: Exclude<HomeResumeType, "project">,
   featureKey: FeatureKey,
@@ -116,7 +126,7 @@ export const getHomeRecentProject = createServerFn({ method: "GET" })
 export const getHomeResume = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HomeResumeResult> => {
-    const supabase = context.supabase as any;
+    const { supabase } = context;
     const sources: Array<{ type: HomeResumeType; promise: Promise<HomeResumeItem | null> }> = [
       {
         type: "project",
