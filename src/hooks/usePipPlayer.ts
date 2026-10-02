@@ -131,7 +131,7 @@ export function usePipPlayer({ title, subtitle, playing, audioElement }: Options
 
     const vinyl = {
       x: width * 0.51,
-      y: height * 0.40,
+      y: height * 0.4,
       radius: height * 0.34,
     };
 
@@ -370,7 +370,14 @@ function drawPanel(ctx: CanvasRenderingContext2D, width: number, height: number)
   ctx.roundRect(12, 12, width - 24, height - 24, 52);
   ctx.fill();
 
-  const purpleGlow = ctx.createRadialGradient(width * 0.11, height * 0.72, 0, width * 0.11, height * 0.72, width * 0.34);
+  const purpleGlow = ctx.createRadialGradient(
+    width * 0.11,
+    height * 0.72,
+    0,
+    width * 0.11,
+    height * 0.72,
+    width * 0.34,
+  );
   purpleGlow.addColorStop(0, "rgba(179,45,255,0.34)");
   purpleGlow.addColorStop(0.45, "rgba(124,59,237,0.18)");
   purpleGlow.addColorStop(1, "rgba(124,59,237,0)");
@@ -379,7 +386,14 @@ function drawPanel(ctx: CanvasRenderingContext2D, width: number, height: number)
   ctx.roundRect(12, 12, width - 24, height - 24, 52);
   ctx.fill();
 
-  const blueGlow = ctx.createRadialGradient(width * 0.59, height * 0.05, 0, width * 0.59, height * 0.05, width * 0.42);
+  const blueGlow = ctx.createRadialGradient(
+    width * 0.59,
+    height * 0.05,
+    0,
+    width * 0.59,
+    height * 0.05,
+    width * 0.42,
+  );
   blueGlow.addColorStop(0, "rgba(0,198,255,0.24)");
   blueGlow.addColorStop(0.52, "rgba(36,99,235,0.1)");
   blueGlow.addColorStop(1, "rgba(36,99,235,0)");
@@ -463,7 +477,14 @@ function drawVinyl(
   ctx.translate(cx, cy);
   ctx.rotate(angle);
 
-  const record = ctx.createRadialGradient(-radius * 0.18, -radius * 0.22, radius * 0.04, 0, 0, radius);
+  const record = ctx.createRadialGradient(
+    -radius * 0.18,
+    -radius * 0.22,
+    radius * 0.04,
+    0,
+    0,
+    radius,
+  );
   record.addColorStop(0, "#283146");
   record.addColorStop(0.2, "#121722");
   record.addColorStop(0.48, "#080b12");
@@ -594,7 +615,12 @@ function drawTonearm(ctx: CanvasRenderingContext2D, cx: number, cy: number, radi
     ctx.fill();
   }
 
-  const pivotGradient = ctx.createLinearGradient(pivotX - 25, pivotY - 25, pivotX + 25, pivotY + 25);
+  const pivotGradient = ctx.createLinearGradient(
+    pivotX - 25,
+    pivotY - 25,
+    pivotX + 25,
+    pivotY + 25,
+  );
   pivotGradient.addColorStop(0, "#f1f4f9");
   pivotGradient.addColorStop(0.35, "#2b3340");
   pivotGradient.addColorStop(0.7, "#0b0f16");
