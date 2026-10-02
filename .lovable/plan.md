@@ -1,72 +1,29 @@
-# Build diagnosis — after the Linked Audio Results work
+# Publishing branch `pb010-ui-ux-quality-audit` (commit cc5bf6b)
 
-## Status change since the last check
+## Answer
 
-The earlier publish blocker in `src/routes/library.tsx` (the unclosed `? :` at line 976) is
-**gone** — the source has since synced and that branch is now well-formed, with the analyses
-list rendering in its own branch at line 981. The bundler's "Crawling result not available"
-was only fallout from that parse error and no longer applies.
+**Yes for a branch, no for pinning an arbitrary commit SHA directly.**
 
-The build now fails on type errors instead: **318 errors**, none of them fatal parse errors.
+Lovable publishes the project state that is currently synced with the project's **active GitHub branch** — it has no "publish this commit SHA" option.
 
-## Errors in the files you named
+- **Branch:** Supported. Switch the project's GitHub sync to `pb010-ui-ux-quality-audit` (Project Settings → GitHub branch switch, one dashboard action). Lovable pulls that branch's tip into the project; Publish then deploys exactly that state.
+- **Exact commit `cc5bf6b`:** Not directly supported. If the branch tip has moved past that commit, create a pointer branch at it on GitHub (e.g. `pb010-publish-cc5bf6b` → `cc5bf6b68edb726eb0743a72e2ab32dae001f240`), switch the synced branch to it, and publish. The deployed tree then equals that commit exactly.
 
-### src/components/promptbeats/ProjectVersionLinkedTracks.tsx — 2 errors (new, from this work)
+## Verification notes (read-only, already done)
 
-1. **Line 46** — `TS2375`: the object returned by `toPlayerTrack` is not assignable to `Track`
-   under `exactOptionalPropertyTypes`. Cause: `audioUrl: track.audio_url ?? undefined`
-   produces `string | undefined`, while `Track.audioUrl` is declared `audioUrl?: string`
-   (optional, but not allowed to be explicitly `undefined`).
-   *Minimal fix:* omit the key instead of setting it to `undefined` —
-   `...(track.audio_url ? { audioUrl: track.audio_url } : {})`.
+- Docs confirm: sync is one-branch-at-a-time; branch switching is supported; there is no publish-from-arbitrary-commit feature.
+- The sandbox's Lovable-side git mirror only tracks `main` (plus `_agent-publish` and two `lovable-backup-main-*` branches). The `pb010...` branch is not visible from the sandbox, so its existence and whether its tip still equals `cc5bf6b` must be confirmed on GitHub before publishing.
 
-2. **Line 172** — `TS7006`: `Parameter 'track' implicitly has an 'any' type` in
-   `rows.map((track) => ...)`. Cause: `rows` comes from `listLinkableProjectTracks`, whose
-   handler in `src/lib/project-version-tracks.functions.ts` (lines 121–141) queries through
-   `(supabaseAdmin.from("tracks") as any)` and maps with `(track: any)`, so the whole returned
-   `tracks` array degrades to `any`.
-   *Minimal fix:* give the mapped result an explicit element type in the server function —
-   declare a small `LinkableTrack` type and annotate the mapped array — which types `rows`
-   and removes the implicit `any` at the call site.
+## Execution steps (only if approved)
 
-### ProjectVersionHistory.tsx, ProjectVersionCompare.tsx, src/lib/player.tsx
+1. On GitHub, confirm `pb010-ui-ux-quality-audit` exists and check whether its tip is `cc5bf6b`. If the tip has moved, create `pb010-publish-cc5bf6b` at `cc5bf6b`.
+2. In Lovable Project Settings, switch the GitHub sync to the chosen branch; wait for the sync so the preview serves the branch state.
+3. Verify the preview reflects the branch (spot-check the pb010 UI/UX changes).
+4. Publish (deploy) with the branch checked out.
+5. Switch the GitHub sync back to `main` afterwards so normal two-way sync and the PB release flow resume.
 
-**No errors.** These three are clean.
+## Caveats
 
-### src/lib/project-version-tracks.functions.ts
-
-No errors reported directly, but its `as any` query/mapping is the root cause of the
-implicit-any above.
-
-### src/routes/library.tsx — 9 errors (pre-existing, unrelated to linked audio)
-
-- Lines 162, 227, 238 (x2), 245 (x2): `Track[]` vs
-  `{ sourceType?: string | null; source_type?: string | null }[]` round-tripping through
-  `filterByTrackSource` — the helper's parameter type loses the `Track` shape, so the filtered
-  result can't go back into `Section`. *Minimal fix:* make `filterByTrackSource` generic
-  (`<T extends { sourceType?: ...; source_type?: ... }>(items: T[]): T[]`).
-- Lines 503, 506: `TS4111` — `target.dataset.libraryFolderDropId` /
-  `...DropPath` must use bracket access: `target.dataset["libraryFolderDropId"]`.
-- Line 1033: `TS2375` — props passed to the action menu include explicitly `undefined`
-  handlers under `exactOptionalPropertyTypes`. *Minimal fix:* widen those prop types with
-  `| undefined`, or omit the keys when unset.
-
-## The rest of the 318
-
-Pre-existing strict-mode debt, unchanged by this feature. Largest clusters:
-
-- `ModerationCaseThread.tsx` — 49 (all downstream of one server function returning an untyped
-  `payload`; typing that return collapses nearly all of them)
-- `PlaylistLibraryPanel.tsx` — 19
-- `src/routes/index.tsx` — 11
-- `admin.functions.ts` — 8, `song-analyzer-essentia.worker.ts` — 7, `ai.functions.ts` — 6
-- Test files (`*.test.ts`) — `Cannot find module 'bun:test'`; the test runner types are not in
-  the tsconfig `types` list
-
-## Database
-
-No migration or schema change is required for any of these errors.
-
-## Scope
-
-Diagnosis only — no files, commits, configuration, secrets, database, or deployments changed.
+- Publishing a branch bypasses the repo's release gates (regression, browser quality, database replay) that the PB registry requires for `main` — this ships unmerged code to https://promptbeats.app.
+- While the synced branch is not `main`, chat edits land on that branch and two-way sync with `main` is paused until switched back.
+- The local sandbox cannot itself perform the branch switch or push branches; steps 1–2 are dashboard/GitHub actions.
