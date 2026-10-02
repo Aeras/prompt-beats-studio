@@ -2,30 +2,44 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Compass } from "lucide-react";
+
+import artFallback from "@/assets/art-3.jpg";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
+import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import {
   TrackGridModeToggle,
   trackGridClassName,
   useTrackGridMode,
 } from "@/components/promptbeats/TrackGridView";
-import { StaffBadge } from "@/components/promptbeats/StaffBadge";
-import { ProfileBanner } from "@/components/promptbeats/ProfileBanner";
-import { GENRES, type Track } from "@/lib/tracks";
-import { usePlayer } from "@/lib/player";
-import { listPublishedTracks } from "@/lib/tracks.functions";
-import { searchPublicCreators, type PublicCreatorSearchResult } from "@/lib/profile.functions";
-import artFallback from "@/assets/art-3.jpg";
-import { cn } from "@/lib/utils";
-import { useI18n } from "@/i18n";
-import { localizedGenreLabel } from "@/i18n/ui-catalog";
-import { getUserAvatarUrl } from "@/lib/user-avatar";
 import {
   TrackSourceFilter,
   filterByTrackSource,
   useTrackSourcePreference,
   type TrackSourcePreference,
 } from "@/components/promptbeats/TrackSourceFilter";
+import { useI18n } from "@/i18n";
+import { localizedGenreLabel } from "@/i18n/ui-catalog";
+import { usePlayer } from "@/lib/player";
+import { isCreatedWith } from "@/lib/created-with";
+import {
+  listEligiblePublicTracksFn,
+  searchEligiblePublicCreatorsFn,
+} from "@/lib/public-content.functions";
+import { canonicalLink, canonicalUrl, robotsContent } from "@/lib/seo-policy";
+import { GENRES, type Track } from "@/lib/tracks";
+import { cn } from "@/lib/utils";
+import { getUserAvatarUrl } from "@/lib/user-avatar";
+
+type PublicCreatorSearchResult = {
+  id: string;
+  handle: string;
+  display_name: string | null;
+  artist_alias: string | null;
+  avatar_url: string | null;
+  staff_badge: string | null;
+};
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -37,23 +51,28 @@ export const Route = createFileRoute("/discover")({
     const q = typeof search["q"] === "string" ? search["q"].trim() : "";
     return q ? { q } : {};
   },
-  head: () => ({
-    meta: [
-      { title: "Discover — PromptBeats" },
-      {
-        name: "description",
-        content:
-          "Discover AI-generated tracks, creators, and the prompts behind them on PromptBeats.",
-      },
-      { property: "og:title", content: "Discover — PromptBeats" },
-      {
-        property: "og:description",
-        content: "Discover AI music, creators, prompts, and tracks on PromptBeats.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  loaderDeps: ({ search }) => ({ q: search.q }),
+  loader: ({ deps }) => ({ hasQuery: Boolean(deps.q) }),
+  head: ({ loaderData }) => {
+    const hasQuery = loaderData?.hasQuery === true;
+    const canonical = canonicalLink("/discover");
+    const ogUrl = canonicalUrl("/discover");
+    const description =
+      "Discover public tracks and creators on PromptBeats, an AI-assisted songwriting and song development platform.";
+    return {
+      meta: [
+        { title: "Discover — PromptBeats" },
+        { name: "description", content: description },
+        { name: "robots", content: robotsContent(hasQuery ? "noindex-follow" : "index") },
+        { property: "og:title", content: "Discover — PromptBeats" },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        ...(ogUrl ? [{ property: "og:url", content: ogUrl }] : []),
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: canonical ? [canonical] : [],
+    };
+  },
   component: Discover,
 });
 
@@ -71,7 +90,7 @@ function Discover() {
 
   const { data } = useQuery({
     queryKey: ["tracks", "published"],
-    queryFn: () => listPublishedTracks(),
+    queryFn: () => listEligiblePublicTracksFn(),
   });
   const {
     data: creatorData,
@@ -79,14 +98,14 @@ function Discover() {
     error: creatorsError,
   } = useQuery({
     queryKey: ["public-creators", query],
-    queryFn: () => searchPublicCreators({ data: { query } }),
+    queryFn: () => searchEligiblePublicCreatorsFn({ data: { query } }),
     enabled: category === "creators" && query.trim().length > 0,
   });
 
   const creatorNames = new Map(
-    (data?.tracks ?? []).map((track: any) => [track.id, track.creator_name ?? ""]),
+    (data?.tracks ?? []).map((track) => [track.id, track.creator_name ?? ""]),
   );
-  const uploaded: Track[] = (data?.tracks ?? []).map((track: any) => ({
+  const uploaded: Track[] = (data?.tracks ?? []).map((track) => ({
     id: track.id,
     userId: track.user_id,
     title: track.title,
@@ -97,11 +116,11 @@ function Discover() {
     plays: String(track.plays),
     prompt: track.prompt,
     lyrics: track.lyrics,
-    audioUrl: track.audio_url,
+    audioUrl: track.audio_url ?? "",
     audioType: (track.audio_type === "link" ? "link" : "upload") as "link" | "upload",
     sourceType: track.source_type as Track["sourceType"],
     sourceId: track.source_id,
-    createdWith: track.created_with,
+    createdWith: isCreatedWith(track.created_with) ? track.created_with : null,
     allowDownload: track.allow_download === true,
     durationSeconds: track.duration_seconds,
     containsExplicitLyrics: track.contains_explicit_lyrics === true,

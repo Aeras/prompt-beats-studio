@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider, useI18n } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import logoAsset from "@/assets/logo.png.asset.json";
+import { robotsContent } from "@/lib/seo-policy";
 
 const DEVELOPMENT_NOTICE_STORAGE_KEY = "pb:development-preview-notice:v1";
 
@@ -101,9 +102,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "PromptBeats" },
-      { name: "description", content: "AI music sharing platform and prompt studio." },
+      {
+        name: "description",
+        content: "PromptBeats is an AI-assisted songwriting and song development platform.",
+      },
+      { name: "robots", content: robotsContent("noindex") },
       { property: "og:title", content: "PromptBeats" },
-      { property: "og:description", content: "AI music sharing platform and prompt studio." },
+      {
+        property: "og:description",
+        content: "AI-assisted songwriting and song development platform.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -249,7 +257,9 @@ function DevelopmentPreviewNotice() {
             </h2>
             <div id="development-preview-description" className="mt-4 space-y-3">
               <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.body}</p>
-              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">{copy.detail}</p>
+              <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
+                {copy.detail}
+              </p>
             </div>
           </div>
 

@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 
-import { getPublicArtistByHandle } from "@/lib/profile.functions";
+import { getEligiblePublicCreatorByHandle } from "@/lib/public-content.functions";
+import { canonicalLink, canonicalUrl, robotsContent } from "@/lib/seo-policy";
 import { ArtistProfileView } from "@/components/promptbeats/ArtistProfileView";
 import { AppShell } from "@/components/promptbeats/AppShell";
 
@@ -9,29 +9,53 @@ export const Route = createFileRoute("/$handle")({
   beforeLoad: ({ params }) => {
     if (!params.handle.startsWith("@")) throw notFound();
   },
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.handle} — Creator on PromptBeats` },
-      {
-        name: "description",
-        content: `Listen to AI tracks by ${params.handle}, copy their prompts and support their work on PromptBeats.`,
-      },
-      { property: "og:title", content: `${params.handle} on PromptBeats` },
-      { property: "og:description", content: `AI tracks and prompt recipes by ${params.handle}.` },
-      { property: "og:type", content: "profile" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  loader: async ({ params }) => {
+    const clean = params.handle.replace(/^@/, "");
+    const creator = await getEligiblePublicCreatorByHandle({ data: { handle: clean } });
+    if (!creator) throw notFound();
+    return creator;
+  },
+  head: ({ loaderData }) => {
+    if (!loaderData) return {};
+    const profile = loaderData.profile;
+    const handle = profile.handle || "creator";
+    const name = profile.artist_alias || profile.display_name || `@${handle}`;
+    const indexable = loaderData.state === "indexable";
+    const canonical = indexable ? canonicalLink(`/@${encodeURIComponent(handle)}`) : null;
+    const ogUrl = indexable ? canonicalUrl(`/@${encodeURIComponent(handle)}`) : null;
+    const description = `${name} is a songwriting creator on PromptBeats, an AI-assisted songwriting and song development platform.`;
+    return {
+      meta: [
+        { title: `${name} — Creator on PromptBeats` },
+        { name: "description", content: description },
+        { name: "robots", content: robotsContent(indexable ? "index" : "noindex-follow") },
+        { property: "og:title", content: `${name} on PromptBeats` },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "profile" },
+        ...(ogUrl ? [{ property: "og:url", content: ogUrl }] : []),
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: canonical ? [canonical] : [],
+    };
+  },
   component: VanityArtistPage,
 });
 
 function VanityArtistPage() {
-  const { handle } = Route.useParams();
-  const clean = handle.replace(/^@/, "");
-  const { data, isLoading } = useQuery({
-    queryKey: ["public-artist-handle", clean],
-    queryFn: () => getPublicArtistByHandle({ data: { handle: clean } }),
-  });
+  const creator = Route.useLoaderData();
+  const clean = creator.profile.handle || "creator";
+  const profile = { ...creator.profile, handle: clean };
+  const tracks = creator.tracks.map((track) => ({
+    ...track,
+    audio_url: track.audio_url ?? "",
+    audio_type: track.audio_type ?? "upload",
+    source_type: track.source_type ?? "upload",
+    allow_download: track.allow_download ?? false,
+    prompt_is_public: track.prompt_is_public !== false,
+    lyrics_is_public: track.lyrics_is_public !== false,
+    contains_explicit_lyrics: track.contains_explicit_lyrics === true,
+    created_at: track.created_at ?? "",
+  }));
 
   return (
     <AppShell
@@ -42,11 +66,7 @@ function VanityArtistPage() {
       }
     >
       <div className="[&>div]:min-h-0 [&>div]:bg-transparent [&>div]:px-4 [&>div]:py-6 md:[&>div]:px-8 md:[&>div]:py-8 [&>div>div]:max-w-[1400px] [&>div>div>a:first-child]:hidden">
-        <ArtistProfileView
-          profile={data?.profile ?? null}
-          tracks={data?.tracks ?? []}
-          isLoading={isLoading}
-        />
+        <ArtistProfileView profile={profile} tracks={tracks} isLoading={false} />
       </div>
     </AppShell>
   );
