@@ -138,7 +138,7 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
       if (mobileNav) mobileNav.style.display = originalNavDisplay;
       if (appContent) appContent.style.paddingBottom = originalContentPaddingBottom;
       root.style.setProperty("--pb-external-player-clearance", "0px");
-      delete body.dataset.pbExternalPlaybackOpen;
+      delete body.dataset["pbExternalPlaybackOpen"];
     };
 
     const syncLayoutState = () => {
@@ -146,7 +146,7 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
         restoreMobilePage();
         return;
       }
-      body.dataset.pbExternalPlaybackOpen = "true";
+      body.dataset["pbExternalPlaybackOpen"] = "true";
       const height = Math.ceil(panelRef.current.getBoundingClientRect().height);
       const clearance = height + 12;
       root.style.setProperty("--pb-external-player-clearance", `${clearance}px`);
