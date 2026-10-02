@@ -17,6 +17,7 @@ import {
   completeAudioRevisionFeedback,
   createAudioRevisionFeedback,
 } from "@/lib/audio-revision-feedback.functions";
+import { getAudioRevisionIntent } from "@/lib/audio-revision-intent.functions";
 import { generatorInputSnapshotSchema } from "@/lib/generator-revision.shared";
 import {
   getGenerationJob,
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/audio-revision")({
     project: z.string().uuid().optional(),
     version: z.string().uuid().optional(),
     track: z.string().uuid().optional(),
+    intent: z.string().uuid().optional(),
   }),
   head: () => ({
     meta: [
@@ -56,9 +58,10 @@ function AudioRevisionPage() {
   const el = language === "el";
   const navigate = useNavigate();
   const search = Route.useSearch();
+  const intentId = search.intent ?? null;
   const feedbackKey = useRef(crypto.randomUUID());
-  const generationKey = useRef(crypto.randomUUID());
   const finalizingJob = useRef<string | null>(null);
+  const hydratedIntent = useRef<string | null>(null);
 
   const [projectId, setProjectId] = useState(search.project ?? "");
   const [versionId, setVersionId] = useState(search.version ?? "");
@@ -81,9 +84,9 @@ function AudioRevisionPage() {
   }, [loading, navigate, user]);
 
   useEffect(() => {
-    if (busy || jobId) return;
+    if (busy || jobId || intentId) return;
     feedbackKey.current = crypto.randomUUID();
-  }, [busy, change, jobId, keep, projectId, revisionBrief, trackId, versionId]);
+  }, [busy, change, intentId, jobId, keep, projectId, revisionBrief, trackId, versionId]);
 
   const projects = useQuery({
     queryKey: ["audio-revision", "projects", user?.id],
@@ -115,6 +118,20 @@ function AudioRevisionPage() {
     enabled: Boolean(user),
   });
 
+  const intent = useQuery({
+    queryKey: ["audio-revision", "intent", intentId, projectId, versionId, trackId],
+    queryFn: () =>
+      getAudioRevisionIntent({
+        data: {
+          projectId,
+          versionId,
+          trackId,
+          intentId: intentId as string,
+        },
+      }),
+    enabled: Boolean(user && intentId && projectId && versionId && trackId),
+  });
+
   const job = useQuery({
     queryKey: ["audio-revision", "job", jobId],
     queryFn: () => getGenerationJob({ data: { jobId: jobId as string } }),
@@ -128,6 +145,29 @@ function AudioRevisionPage() {
   const versionRows = versions.data?.prompts ?? [];
   const trackRows = tracks.data?.tracks ?? [];
   const selectedTrack = trackRows.find((track) => track.track_id === trackId) ?? null;
+  const intentRecord = intent.data?.intent ?? null;
+
+  useEffect(() => {
+    if (!intentId || intent.isLoading) return;
+    if (!intentRecord) {
+      setError(
+        el
+          ? "Το Revision Intent δεν αντιστοιχεί σε αυτό το Project, Version και Track."
+          : "The Revision Intent does not match this Project, Version and Track.",
+      );
+      return;
+    }
+    if (hydratedIntent.current === intentRecord.id) return;
+    hydratedIntent.current = intentRecord.id;
+    setKeep(intentRecord.acceptedKeep);
+    setChange(intentRecord.acceptedChange);
+    setRevisionBrief(intentRecord.acceptedRevisionBrief);
+    setBriefOpen(Boolean(intentRecord.acceptedRevisionBrief));
+    if (intentRecord.feedbackId) setFeedbackId(intentRecord.feedbackId);
+    if (intentRecord.createdRevisionPromptId) {
+      setCreatedRevision({ id: intentRecord.createdRevisionPromptId, versionNumber: 0 });
+    }
+  }, [el, intent.isLoading, intentId, intentRecord]);
 
   const snapshotResult = generatorInputSnapshotSchema.safeParse(
     base.data?.prompt.generator_input_snapshot,
@@ -141,7 +181,6 @@ function AudioRevisionPage() {
     if (current.status === "failed" || current.status === "cancelled") {
       setBusy(false);
       setJobId(null);
-      generationKey.current = crypto.randomUUID();
       setError(
         current.status === "failed"
           ? current.error ||
@@ -185,6 +224,7 @@ function AudioRevisionPage() {
         setBusy(false);
         setJobId(null);
         setError(null);
+        void intent.refetch();
       })
       .catch((cause) => {
         setBusy(false);
@@ -197,7 +237,7 @@ function AudioRevisionPage() {
               : "The revision was created but could not be linked to the audio feedback.",
         );
       });
-  }, [el, feedbackId, job.data?.job, jobId]);
+  }, [el, feedbackId, intent, job.data?.job, jobId]);
 
   const resetAfterProject = (nextProjectId: string) => {
     setProjectId(nextProjectId);
@@ -225,6 +265,15 @@ function AudioRevisionPage() {
       return;
     }
 
+    if (keep.length > 900 || change.length > 1200 || revisionBrief.length > 600) {
+      setError(
+        el
+          ? "Η κατεύθυνση του revision υπερβαίνει τα επιτρεπτά όρια. Επεξεργάσου το κείμενο πριν συνεχίσεις."
+          : "The revision direction exceeds the allowed limits. Edit it before continuing.",
+      );
+      return;
+    }
+
     setBusy(true);
     setCreatedRevision(null);
     setError(null);
@@ -235,6 +284,7 @@ function AudioRevisionPage() {
           projectId,
           versionId,
           trackId,
+          revisionIntentId: intentId,
           keep,
           change,
           revisionBrief,
@@ -245,6 +295,7 @@ function AudioRevisionPage() {
       if (feedback.createdRevisionPromptId) {
         setCreatedRevision({ id: feedback.createdRevisionPromptId, versionNumber: 0 });
         setBusy(false);
+        void intent.refetch();
         return;
       }
 
@@ -287,7 +338,7 @@ function AudioRevisionPage() {
 
       const response = await startGenerationJob({
         data: {
-          idempotencyKey: generationKey.current,
+          idempotencyKey: feedback.feedbackId,
           targetPlatform: snapshot.targetPlatform,
           theme,
           genre,
@@ -348,16 +399,29 @@ function AudioRevisionPage() {
   };
 
   const directionReady = Boolean(keep.trim() || change.trim());
+  const directionWithinLimits =
+    keep.length <= 900 && change.length <= 1200 && revisionBrief.length <= 600;
   const loadingContext =
     projects.isLoading ||
     versions.isLoading ||
     tracks.isLoading ||
     base.isLoading ||
-    modelAccess.isLoading;
+    modelAccess.isLoading ||
+    (Boolean(intentId) && intent.isLoading);
+  const intentReady = !intentId || Boolean(intentRecord && intentRecord.status === "draft");
   const canSubmit =
-    Boolean(projectId && versionId && trackId && directionReady && hasCanonicalSnapshot) &&
+    Boolean(
+      projectId &&
+      versionId &&
+      trackId &&
+      directionReady &&
+      directionWithinLimits &&
+      hasCanonicalSnapshot,
+    ) &&
     Boolean(modelAccess.data?.generator.defaultModel) &&
-    !busy;
+    intentReady &&
+    !busy &&
+    !createdRevision;
 
   return (
     <AppShell
@@ -374,13 +438,20 @@ function AudioRevisionPage() {
     >
       <main className="mx-auto w-full max-w-4xl space-y-5 px-4 py-8 sm:px-6 lg:px-8">
         <section className="glass-strong rounded-3xl p-5 sm:p-7">
+          {intentId && (
+            <p className="mb-4 rounded-xl border border-accent/20 bg-accent/[0.04] p-3 text-xs text-muted-foreground">
+              {el
+                ? "Revision Intent: η αποδεκτή κατεύθυνση φορτώνεται ιδιωτικά από τον server. Μπορείς να την ελέγξεις πριν ξεκινήσεις· τίποτα δεν εκτελείται αυτόματα."
+                : "Revision Intent: the accepted direction is loaded privately from the server. Review it before starting; nothing runs automatically."}
+            </p>
+          )}
           <div className="grid gap-4 md:grid-cols-3">
             <label className="space-y-2 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">Project</span>
               <select
                 value={projectId}
                 onChange={(event) => resetAfterProject(event.target.value)}
-                disabled={busy}
+                disabled={busy || Boolean(intentId)}
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-foreground outline-none focus:border-accent/40 disabled:opacity-45"
               >
                 <option value="">{el ? "Επίλεξε Project" : "Select Project"}</option>
@@ -397,7 +468,7 @@ function AudioRevisionPage() {
               <select
                 value={versionId}
                 onChange={(event) => resetAfterVersion(event.target.value)}
-                disabled={!projectId || versions.isLoading || busy}
+                disabled={!projectId || versions.isLoading || busy || Boolean(intentId)}
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-foreground outline-none focus:border-accent/40 disabled:opacity-45"
               >
                 <option value="">{el ? "Επίλεξε Version" : "Select Version"}</option>
@@ -417,7 +488,7 @@ function AudioRevisionPage() {
               <select
                 value={trackId}
                 onChange={(event) => setTrackId(event.target.value)}
-                disabled={!versionId || tracks.isLoading || busy}
+                disabled={!versionId || tracks.isLoading || busy || Boolean(intentId)}
                 className="h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-foreground outline-none focus:border-accent/40 disabled:opacity-45"
               >
                 <option value="">{el ? "Επίλεξε linked Track" : "Select linked Track"}</option>
@@ -493,8 +564,8 @@ function AudioRevisionPage() {
               </p>
               <textarea
                 value={keep}
-                onChange={(event) => setKeep(event.target.value.slice(0, 900))}
-                disabled={busy}
+                onChange={(event) => setKeep(event.target.value)}
+                disabled={busy || Boolean(createdRevision)}
                 maxLength={900}
                 rows={6}
                 placeholder={
@@ -518,8 +589,8 @@ function AudioRevisionPage() {
               </p>
               <textarea
                 value={change}
-                onChange={(event) => setChange(event.target.value.slice(0, 1200))}
-                disabled={busy}
+                onChange={(event) => setChange(event.target.value)}
+                disabled={busy || Boolean(createdRevision)}
                 maxLength={1200}
                 rows={6}
                 placeholder={
@@ -538,7 +609,7 @@ function AudioRevisionPage() {
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || Boolean(createdRevision)}
               onClick={() => setBriefOpen((value) => !value)}
               className="inline-flex items-center gap-2 text-xs font-semibold text-accent disabled:opacity-50"
             >
@@ -554,8 +625,8 @@ function AudioRevisionPage() {
             {briefOpen && (
               <textarea
                 value={revisionBrief}
-                onChange={(event) => setRevisionBrief(event.target.value.slice(0, 600))}
-                disabled={busy}
+                onChange={(event) => setRevisionBrief(event.target.value)}
+                disabled={busy || Boolean(createdRevision)}
                 maxLength={600}
                 rows={4}
                 placeholder={

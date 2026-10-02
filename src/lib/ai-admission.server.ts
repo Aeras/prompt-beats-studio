@@ -1,5 +1,10 @@
 export type AuxiliaryAiOperation =
-  "song_setup_assistant" | "song_analyzer" | "inspiration_wall" | "story_map" | "song_universe";
+  | "song_setup_assistant"
+  | "song_analyzer"
+  | "inspiration_wall"
+  | "story_map"
+  | "song_universe"
+  | "audio_revision_intent";
 
 const AUXILIARY_AI_LIMIT_PER_HOUR = 10;
 

@@ -6,15 +6,17 @@ import {
   audioRevisionFeedbackInputSchema,
   buildAudioRevisionRequest,
 } from "@/lib/audio-revision-feedback.shared";
+import { assertCurrentAudioRevisionSource } from "@/lib/audio-revision-source.server";
 
 const feedbackColumns =
-  "id, project_id, source_version_prompt_id, source_track_id, keep_text, change_text, revision_brief, created_revision_prompt_id";
+  "id, project_id, source_version_prompt_id, source_track_id, revision_intent_id, keep_text, change_text, revision_brief, created_revision_prompt_id";
 
 type AudioRevisionFeedbackRow = {
   id: string;
   project_id: string;
   source_version_prompt_id: string;
   source_track_id: string;
+  revision_intent_id: string | null;
   keep_text: string;
   change_text: string;
   revision_brief: string | null;
@@ -23,49 +25,35 @@ type AudioRevisionFeedbackRow = {
 
 function sameFeedbackContext(
   feedback: AudioRevisionFeedbackRow,
-  data: { projectId: string; versionId: string; trackId: string },
+  data: { projectId: string; versionId: string; trackId: string; revisionIntentId?: string | null },
 ) {
   return (
     feedback.project_id === data.projectId &&
     feedback.source_version_prompt_id === data.versionId &&
-    feedback.source_track_id === data.trackId
+    feedback.source_track_id === data.trackId &&
+    feedback.revision_intent_id === (data.revisionIntentId ?? null)
   );
+}
+
+async function markIntentCompleted(supabaseAdmin: any, userId: string, intentId: string | null) {
+  if (!intentId) return;
+  const { error } = await supabaseAdmin
+    .from("project_audio_revision_intents")
+    .update({ status: "completed" })
+    .eq("id", intentId)
+    .eq("user_id", userId)
+    .eq("status", "draft");
+  if (error) throw new Error(error.message);
 }
 
 export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => audioRevisionFeedbackInputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: relation, error: relationError } = await (context.supabase as any)
-      .from("project_version_tracks")
-      .select("track_id")
-      .eq("user_id", context.userId)
-      .eq("project_id", data.projectId)
-      .eq("version_prompt_id", data.versionId)
-      .eq("track_id", data.trackId)
-      .maybeSingle();
-    if (relationError) throw new Error(relationError.message);
-    if (!relation)
-      throw new Error("The selected audio result is no longer linked to this version.");
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: track, error: trackError } = await (supabaseAdmin.from("tracks") as any)
-      .select("id, user_id, source_type, moderation_status")
-      .eq("id", data.trackId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (trackError) throw new Error(trackError.message);
-    if (!track || track.source_type !== "upload" || track.moderation_status !== "active") {
-      throw new Error("The selected audio result is not available for revision.");
-    }
-
-    const requestedRevision = buildAudioRevisionRequest(data);
-    if (!requestedRevision || requestedRevision.length > 3000) {
-      throw new Error("The revision direction is too long.");
-    }
-
     const table = (supabaseAdmin as any).from("project_audio_revision_feedback");
-    const findExisting = async () => {
+
+    const findByIdempotency = async () => {
       const { data: existing, error } = await table
         .select(feedbackColumns)
         .eq("user_id", context.userId)
@@ -75,7 +63,82 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       return existing as AudioRevisionFeedbackRow | null;
     };
 
-    let feedback = await findExisting();
+    const findByIntent = async () => {
+      if (!data.revisionIntentId) return null;
+      const { data: existing, error } = await table
+        .select(feedbackColumns)
+        .eq("user_id", context.userId)
+        .eq("revision_intent_id", data.revisionIntentId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return existing as AudioRevisionFeedbackRow | null;
+    };
+
+    let feedback = (await findByIntent()) ?? (await findByIdempotency());
+    if (feedback?.created_revision_prompt_id) {
+      if (!sameFeedbackContext(feedback, data)) {
+        throw new Error("The audio revision request conflicts with an earlier retry.");
+      }
+      await markIntentCompleted(supabaseAdmin as any, context.userId, feedback.revision_intent_id);
+      return {
+        feedbackId: feedback.id,
+        projectId: feedback.project_id,
+        versionId: feedback.source_version_prompt_id,
+        trackId: feedback.source_track_id,
+        revisionRequest: buildAudioRevisionRequest({
+          keep: feedback.keep_text,
+          change: feedback.change_text,
+          revisionBrief: feedback.revision_brief ?? "",
+        }),
+        createdRevisionPromptId: feedback.created_revision_prompt_id,
+      };
+    }
+
+    await assertCurrentAudioRevisionSource({
+      supabase: context.supabase,
+      userId: context.userId,
+      projectId: data.projectId,
+      versionId: data.versionId,
+      trackId: data.trackId,
+    });
+
+    let direction = {
+      keep: data.keep,
+      change: data.change,
+      revisionBrief: data.revisionBrief,
+    };
+
+    if (data.revisionIntentId) {
+      const { data: intent, error: intentError } = await (supabaseAdmin as any)
+        .from("project_audio_revision_intents")
+        .select(
+          "id, project_id, source_version_prompt_id, source_track_id, status, accepted_keep_text, accepted_change_text, accepted_revision_brief",
+        )
+        .eq("id", data.revisionIntentId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (intentError) throw new Error(intentError.message);
+      if (
+        !intent ||
+        intent.project_id !== data.projectId ||
+        intent.source_version_prompt_id !== data.versionId ||
+        intent.source_track_id !== data.trackId ||
+        intent.status !== "draft"
+      ) {
+        throw new Error("Revision intent does not match this audio revision request.");
+      }
+      direction = {
+        keep: intent.accepted_keep_text ?? "",
+        change: intent.accepted_change_text ?? "",
+        revisionBrief: intent.accepted_revision_brief ?? "",
+      };
+    }
+
+    const requestedRevision = buildAudioRevisionRequest(direction);
+    if (!requestedRevision || requestedRevision.length > 3000) {
+      throw new Error("The revision direction is too long.");
+    }
+
     if (!feedback) {
       const { data: inserted, error: insertError } = await table
         .insert({
@@ -84,9 +147,10 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
           project_id: data.projectId,
           source_version_prompt_id: data.versionId,
           source_track_id: data.trackId,
-          keep_text: data.keep,
-          change_text: data.change,
-          revision_brief: data.revisionBrief || null,
+          revision_intent_id: data.revisionIntentId ?? null,
+          keep_text: direction.keep,
+          change_text: direction.change,
+          revision_brief: direction.revisionBrief || null,
           imported_evidence: [],
         })
         .select(feedbackColumns)
@@ -94,7 +158,7 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
 
       if (insertError) {
         if (insertError.code !== "23505") throw new Error(insertError.message);
-        feedback = await findExisting();
+        feedback = (await findByIntent()) ?? (await findByIdempotency());
       } else {
         feedback = inserted as AudioRevisionFeedbackRow;
       }
@@ -105,18 +169,16 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
       throw new Error("The audio revision request conflicts with an earlier retry.");
     }
 
-    const revisionRequest = buildAudioRevisionRequest({
-      keep: feedback.keep_text,
-      change: feedback.change_text,
-      revisionBrief: feedback.revision_brief ?? "",
-    });
-
     return {
       feedbackId: feedback.id,
       projectId: feedback.project_id,
       versionId: feedback.source_version_prompt_id,
       trackId: feedback.source_track_id,
-      revisionRequest,
+      revisionRequest: buildAudioRevisionRequest({
+        keep: feedback.keep_text,
+        change: feedback.change_text,
+        revisionBrief: feedback.revision_brief ?? "",
+      }),
       createdRevisionPromptId: feedback.created_revision_prompt_id,
     };
   });
@@ -124,18 +186,15 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
 export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        feedbackId: z.string().uuid(),
-        revisionPromptId: z.string().uuid(),
-      })
-      .parse(input),
+    z.object({ feedbackId: z.string().uuid(), revisionPromptId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const table = (supabaseAdmin as any).from("project_audio_revision_feedback");
     const { data: feedback, error: feedbackError } = await table
-      .select("id, project_id, source_version_prompt_id, created_revision_prompt_id")
+      .select(
+        "id, project_id, source_version_prompt_id, revision_intent_id, created_revision_prompt_id",
+      )
       .eq("id", data.feedbackId)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -146,6 +205,7 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
       if (feedback.created_revision_prompt_id !== data.revisionPromptId) {
         throw new Error("This audio revision feedback is already linked to another revision.");
       }
+      await markIntentCompleted(supabaseAdmin as any, context.userId, feedback.revision_intent_id);
       return { ok: true as const, revisionPromptId: data.revisionPromptId };
     }
 
@@ -185,5 +245,6 @@ export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
       }
     }
 
+    await markIntentCompleted(supabaseAdmin as any, context.userId, feedback.revision_intent_id);
     return { ok: true as const, revisionPromptId: data.revisionPromptId };
   });

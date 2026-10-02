@@ -77,15 +77,17 @@ describe("PB-003 Prompt to Audio to Revision loop", () => {
 
   test("server creation revalidates linked audio and handles a concurrent idempotency retry", async () => {
     const server = await source("src/lib/audio-revision-feedback.functions.ts");
+    const sourceGuard = await source("src/lib/audio-revision-source.server.ts");
 
-    expect(server).toContain('.from("project_version_tracks")');
-    expect(server).toContain('.eq("user_id", context.userId)');
-    expect(server).toContain('.eq("version_prompt_id", data.versionId)');
-    expect(server).toContain('.eq("track_id", data.trackId)');
-    expect(server).toContain('track.source_type !== "upload"');
-    expect(server).toContain('track.moderation_status !== "active"');
+    expect(server).toContain("assertCurrentAudioRevisionSource");
+    expect(sourceGuard).toContain('.from("project_version_tracks")');
+    expect(sourceGuard).toContain('.eq("user_id", input.userId)');
+    expect(sourceGuard).toContain('.eq("version_prompt_id", input.versionId)');
+    expect(sourceGuard).toContain('.eq("track_id", input.trackId)');
+    expect(sourceGuard).toContain('track.source_type !== "upload"');
+    expect(sourceGuard).toContain('track.moderation_status !== "active"');
     expect(server).toContain('insertError.code !== "23505"');
-    expect(server).toContain("findExisting");
+    expect(server).toContain("findByIdempotency");
   });
 
   test("completion verifies owner, Project and parent lineage before binding feedback to a new Version", async () => {

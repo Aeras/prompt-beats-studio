@@ -6,6 +6,7 @@ export const audioRevisionFeedbackInputSchema = z
     projectId: z.string().uuid(),
     versionId: z.string().uuid(),
     trackId: z.string().uuid(),
+    revisionIntentId: z.string().uuid().nullable().optional().default(null),
     keep: z.string().trim().max(900).default(""),
     change: z.string().trim().max(1200).default(""),
     revisionBrief: z.string().trim().max(600).default(""),
