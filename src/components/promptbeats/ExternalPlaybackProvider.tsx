@@ -127,7 +127,9 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
     const body = document.body;
     const media = window.matchMedia(MOBILE_QUERY);
     const mobileNav = document.querySelector<HTMLElement>('[data-pb-mobile-nav="true"]');
-    const appContent = document.querySelector<HTMLElement>('[data-pb-search-highlight-root="true"]');
+    const appContent = document.querySelector<HTMLElement>(
+      '[data-pb-search-highlight-root="true"]',
+    );
     const originalNavDisplay = mobileNav?.style.display ?? "";
     const originalContentPaddingBottom = appContent?.style.paddingBottom ?? "";
 
@@ -183,7 +185,10 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
     const panel = panelRef.current;
     if (!drag || drag.pointerId !== event.pointerId || !panel) return;
     const rect = panel.getBoundingClientRect();
-    const maxX = Math.max(DESKTOP_PANEL_MARGIN, window.innerWidth - rect.width - DESKTOP_PANEL_MARGIN);
+    const maxX = Math.max(
+      DESKTOP_PANEL_MARGIN,
+      window.innerWidth - rect.width - DESKTOP_PANEL_MARGIN,
+    );
     const maxY = Math.max(
       DESKTOP_PANEL_MARGIN,
       window.innerHeight - rect.height - DESKTOP_PANEL_MARGIN,
