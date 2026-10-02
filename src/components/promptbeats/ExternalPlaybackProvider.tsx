@@ -126,19 +126,31 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
     const root = document.documentElement;
     const body = document.body;
     const media = window.matchMedia(MOBILE_QUERY);
+    const mobileNav = document.querySelector<HTMLElement>('[data-pb-mobile-nav="true"]');
+    const appContent = document.querySelector<HTMLElement>('[data-pb-search-highlight-root="true"]');
+    const originalNavDisplay = mobileNav?.style.display ?? "";
+    const originalContentPaddingBottom = appContent?.style.paddingBottom ?? "";
+
+    const restoreMobilePage = () => {
+      if (mobileNav) mobileNav.style.display = originalNavDisplay;
+      if (appContent) appContent.style.paddingBottom = originalContentPaddingBottom;
+      root.style.setProperty("--pb-external-player-clearance", "0px");
+      delete body.dataset.pbExternalPlaybackOpen;
+    };
 
     const syncLayoutState = () => {
       if (!request || !media.matches || !panelRef.current) {
-        root.style.setProperty("--pb-external-player-clearance", "0px");
-        if (!request) delete body.dataset.pbExternalPlaybackOpen;
+        restoreMobilePage();
         return;
       }
       body.dataset.pbExternalPlaybackOpen = "true";
       const height = Math.ceil(panelRef.current.getBoundingClientRect().height);
-      root.style.setProperty("--pb-external-player-clearance", `${height + 12}px`);
+      const clearance = height + 12;
+      root.style.setProperty("--pb-external-player-clearance", `${clearance}px`);
+      if (mobileNav) mobileNav.style.display = "none";
+      if (appContent) appContent.style.paddingBottom = `${clearance}px`;
     };
 
-    if (request) body.dataset.pbExternalPlaybackOpen = "true";
     syncLayoutState();
     const observer = new ResizeObserver(syncLayoutState);
     if (panelRef.current) observer.observe(panelRef.current);
@@ -149,8 +161,7 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
       observer.disconnect();
       media.removeEventListener("change", syncLayoutState);
       window.removeEventListener("resize", syncLayoutState);
-      root.style.setProperty("--pb-external-player-clearance", "0px");
-      delete body.dataset.pbExternalPlaybackOpen;
+      restoreMobilePage();
     };
   }, [request]);
 
