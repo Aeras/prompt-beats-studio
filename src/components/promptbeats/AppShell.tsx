@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Menu, Search, ShieldAlert, X } from "lucide-react";
 import { SidebarNav, NAV, type NavId } from "@/components/promptbeats/Sidebar";
 import { StudioModal } from "@/components/promptbeats/StudioModal";
+import { AppShellActionsProvider } from "@/components/promptbeats/AppShellActions";
 import { NotificationCenter } from "@/components/promptbeats/NotificationCenter";
 import { ModerationCaseCenter } from "@/components/promptbeats/ModerationCaseCenter";
 import { HelpMenu } from "@/components/promptbeats/HelpMenu";
@@ -288,10 +289,10 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   if (authenticated && isInvalid) return <AccountSessionExpired />;
   if (authenticated && isLocked) return <AccountLockedScreen reason={reason} />;
 
-  const openStudio = () => {
+  const openStudio = useCallback(() => {
     setStudio(true);
     setDrawer(false);
-  };
+  }, []);
 
   const toggleDesktopSidebar = () => {
     setDesktopSidebarOpen((open) => {
@@ -303,22 +304,101 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   };
 
   return (
-    <div className="aurora min-h-screen bg-[#0a0a0c]">
-      <SearchTermHighlighter />
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-30 border-r border-white/10 bg-black/40 backdrop-blur-xl transition-[width] duration-200 ease-out motion-reduce:transition-none",
-          tabletLandscape ? "block" : "hidden lg:block",
-          desktopSidebarOpen ? "w-[270px]" : "w-5",
-        )}
-      >
-        <div
+    <AppShellActionsProvider actions={{ openTrackSubmission: openStudio }}>
+      <div className="aurora min-h-screen bg-[#0a0a0c]">
+        <SearchTermHighlighter />
+        <aside
           className={cn(
-            "h-full overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none",
-            desktopSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0",
+            "fixed inset-y-0 left-0 z-30 border-r border-white/10 bg-black/40 backdrop-blur-xl transition-[width] duration-200 ease-out motion-reduce:transition-none",
+            tabletLandscape ? "block" : "hidden lg:block",
+            desktopSidebarOpen ? "w-[270px]" : "w-5",
           )}
         >
-          <div className="h-full w-[270px]">
+          <div
+            className={cn(
+              "h-full overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none",
+              desktopSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0",
+            )}
+          >
+            <div className="h-full w-[270px]">
+              <SidebarNav
+                active={active}
+                primaryDomain={primaryDomain}
+                onNavigate={() => setDrawer(false)}
+                onSubmit={openStudio}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label={desktopSidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
+            aria-expanded={desktopSidebarOpen}
+            onClick={toggleDesktopSidebar}
+            className="absolute right-0 top-5 z-40 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color] duration-200 ease-out hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 motion-reduce:transition-none"
+          >
+            <ChevronLeft
+              className={cn(
+                "h-4 w-4 transition-transform duration-200 ease-out motion-reduce:transition-none",
+                !desktopSidebarOpen && "rotate-180",
+              )}
+            />
+          </button>
+        </aside>
+
+        <div
+          className={cn(
+            "fixed inset-y-0 left-0 z-30 hidden w-5 border-r border-white/10 bg-black/30 backdrop-blur-md md:block lg:hidden",
+            tabletLandscape && "!hidden",
+          )}
+        >
+          <button
+            type="button"
+            aria-label={t("shell.openMenu")}
+            aria-expanded={drawer}
+            onClick={openDrawer}
+            className="absolute right-0 top-5 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-colors duration-200 hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div
+          role="dialog"
+          aria-modal={drawer ? true : undefined}
+          aria-label={language === "el" ? "Κύριο μενού" : "Main menu"}
+          aria-hidden={!drawer}
+          inert={!drawer}
+          className={cn(
+            "fixed inset-0 z-50 lg:hidden",
+            tabletLandscape && "hidden",
+            drawer ? "pointer-events-auto" : "pointer-events-none",
+          )}
+        >
+          <div
+            onClick={() => setDrawer(false)}
+            className={cn(
+              "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200 ease-out motion-reduce:transition-none",
+              drawer ? "opacity-100" : "opacity-0",
+            )}
+          />
+          <div
+            ref={drawerPanelRef}
+            tabIndex={-1}
+            className={cn(
+              "glass-strong absolute inset-y-0 left-0 w-[80%] max-w-[300px] overflow-y-auto transition-transform duration-200 ease-out motion-reduce:transition-none",
+              drawer ? "translate-x-0" : "-translate-x-full",
+            )}
+          >
+            <button
+              ref={drawerCloseButtonRef}
+              type="button"
+              aria-label={t("shell.closeMenu")}
+              onClick={() => setDrawer(false)}
+              className="absolute right-1.5 top-1.5 grid min-h-11 min-w-11 place-items-center rounded-full text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+            >
+              <X className="h-5 w-5 md:hidden" />
+              <ChevronLeft className="hidden h-5 w-5 md:block" />
+            </button>
             <SidebarNav
               active={active}
               primaryDomain={primaryDomain}
@@ -327,212 +407,135 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
             />
           </div>
         </div>
-        <button
-          type="button"
-          aria-label={desktopSidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
-          aria-expanded={desktopSidebarOpen}
-          onClick={toggleDesktopSidebar}
-          className="absolute right-0 top-5 z-40 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-[color,background-color] duration-200 ease-out hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 motion-reduce:transition-none"
-        >
-          <ChevronLeft
-            className={cn(
-              "h-4 w-4 transition-transform duration-200 ease-out motion-reduce:transition-none",
-              !desktopSidebarOpen && "rotate-180",
-            )}
-          />
-        </button>
-      </aside>
 
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden w-5 border-r border-white/10 bg-black/30 backdrop-blur-md md:block lg:hidden",
-          tabletLandscape && "!hidden",
-        )}
-      >
-        <button
-          type="button"
-          aria-label={t("shell.openMenu")}
-          aria-expanded={drawer}
-          onClick={openDrawer}
-          className="absolute right-0 top-5 grid min-h-11 min-w-11 translate-x-1/2 place-items-center rounded-full border border-white/10 bg-[#111116]/95 text-muted-foreground shadow-lg transition-colors duration-200 hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div
-        role="dialog"
-        aria-modal={drawer ? true : undefined}
-        aria-label={language === "el" ? "Κύριο μενού" : "Main menu"}
-        aria-hidden={!drawer}
-        inert={!drawer}
-        className={cn(
-          "fixed inset-0 z-50 lg:hidden",
-          tabletLandscape && "hidden",
-          drawer ? "pointer-events-auto" : "pointer-events-none",
-        )}
-      >
         <div
-          onClick={() => setDrawer(false)}
+          data-pb-search-highlight-root="true"
+          data-studio-layout={active === "studio" ? "true" : undefined}
           className={cn(
-            "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200 ease-out motion-reduce:transition-none",
-            drawer ? "opacity-100" : "opacity-0",
-          )}
-        />
-        <div
-          ref={drawerPanelRef}
-          tabIndex={-1}
-          className={cn(
-            "glass-strong absolute inset-y-0 left-0 w-[80%] max-w-[300px] overflow-y-auto transition-transform duration-200 ease-out motion-reduce:transition-none",
-            drawer ? "translate-x-0" : "-translate-x-full",
+            "relative z-10 pb-[var(--pb-mobile-nav-offset)] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
+            tabletLandscape && (desktopSidebarOpen ? "!pl-[270px]" : "!pl-5"),
+            desktopSidebarOpen ? "lg:pl-[270px]" : "lg:pl-5",
           )}
         >
-          <button
-            ref={drawerCloseButtonRef}
-            type="button"
-            aria-label={t("shell.closeMenu")}
-            onClick={() => setDrawer(false)}
-            className="absolute right-1.5 top-1.5 grid min-h-11 min-w-11 place-items-center rounded-full text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-          >
-            <X className="h-5 w-5 md:hidden" />
-            <ChevronLeft className="hidden h-5 w-5 md:block" />
-          </button>
-          <SidebarNav
-            active={active}
-            primaryDomain={primaryDomain}
-            onNavigate={() => setDrawer(false)}
-            onSubmit={openStudio}
-          />
+          <header className="glass-strong sticky top-0 z-20 border-b">
+            <div className="mx-auto max-w-[1900px] md:px-8 md:py-4">
+              <div className="flex items-center gap-2 px-3 py-2 md:hidden">
+                <button
+                  type="button"
+                  aria-label={t("shell.openMenu")}
+                  aria-expanded={drawer}
+                  onClick={openDrawer}
+                  className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <form onSubmit={submitGlobalSearch} className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    name="q"
+                    type="search"
+                    value={globalSearch}
+                    onChange={(event) => handleGlobalSearchChange(event.target.value)}
+                    aria-label={t("discover.searchAria")}
+                    placeholder={t("discover.searchPlaceholder")}
+                    autoComplete="off"
+                    className="h-10 w-full rounded-full border border-white/10 bg-black/35 pl-9 pr-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_18%,transparent)]"
+                  />
+                </form>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {authenticated && <ModerationCaseCenter />}
+                  {authenticated && <NotificationCenter />}
+                  <HelpMenu />
+                </div>
+              </div>
+              {header && (
+                <div className="border-t border-white/5 px-4 py-2.5 md:hidden">
+                  <div className="min-w-0">{header}</div>
+                </div>
+              )}
+
+              <div className="relative hidden md:block">
+                <div className="min-w-0 pr-44">{header}</div>
+                <div className="absolute right-0 top-0 z-10 flex items-center gap-2">
+                  {authenticated && <ModerationCaseCenter />}
+                  {authenticated && <NotificationCenter />}
+                  <HelpMenu />
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {children}
         </div>
-      </div>
 
-      <div
-        data-pb-search-highlight-root="true"
-        data-studio-layout={active === "studio" ? "true" : undefined}
-        className={cn(
-          "relative z-10 pb-[var(--pb-mobile-nav-offset)] transition-[padding-left] duration-200 ease-out motion-reduce:transition-none sm:pb-0 md:pl-5",
-          tabletLandscape && (desktopSidebarOpen ? "!pl-[270px]" : "!pl-5"),
-          desktopSidebarOpen ? "lg:pl-[270px]" : "lg:pl-5",
-        )}
-      >
-        <header className="glass-strong sticky top-0 z-20 border-b">
-          <div className="mx-auto max-w-[1900px] md:px-8 md:py-4">
-            <div className="flex items-center gap-2 px-3 py-2 md:hidden">
-              <button
-                type="button"
-                aria-label={t("shell.openMenu")}
-                aria-expanded={drawer}
-                onClick={openDrawer}
-                className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <form onSubmit={submitGlobalSearch} className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  name="q"
-                  type="search"
-                  value={globalSearch}
-                  onChange={(event) => handleGlobalSearchChange(event.target.value)}
-                  aria-label={t("discover.searchAria")}
-                  placeholder={t("discover.searchPlaceholder")}
-                  autoComplete="off"
-                  className="h-10 w-full rounded-full border border-white/10 bg-black/35 pl-9 pr-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--neon)_18%,transparent)]"
-                />
-              </form>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {authenticated && <ModerationCaseCenter />}
-                {authenticated && <NotificationCenter />}
-                <HelpMenu />
-              </div>
-            </div>
-            {header && (
-              <div className="border-t border-white/5 px-4 py-2.5 md:hidden">
-                <div className="min-w-0">{header}</div>
-              </div>
-            )}
+        <style>{`
+          @media (min-width: 1280px) {
+            [data-studio-layout="true"] > div > div {
+              display: grid;
+              width: 100%;
+              max-width: none;
+              grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr);
+              column-gap: 1.5rem;
+              align-items: start;
+            }
 
-            <div className="relative hidden md:block">
-              <div className="min-w-0 pr-44">{header}</div>
-              <div className="absolute right-0 top-0 z-10 flex items-center gap-2">
-                {authenticated && <ModerationCaseCenter />}
-                {authenticated && <NotificationCenter />}
-                <HelpMenu />
-              </div>
-            </div>
-          </div>
-        </header>
+            [data-studio-layout="true"] > div > div > a,
+            [data-studio-layout="true"] > div > div > a + div {
+              grid-column: 1 / -1;
+            }
 
-        {children}
-      </div>
+            [data-studio-layout="true"] > div > div > :nth-child(3) {
+              grid-column: 1;
+            }
 
-      <style>{`
-        @media (min-width: 1280px) {
-          [data-studio-layout="true"] > div > div {
-            display: grid;
-            width: 100%;
-            max-width: none;
-            grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr);
-            column-gap: 1.5rem;
-            align-items: start;
+            [data-studio-layout="true"] > div > div > :nth-child(n + 4) {
+              grid-column: 2;
+              grid-row: 3;
+              position: sticky;
+              top: 6rem;
+              max-height: calc(100vh - 7rem);
+              overflow-y: auto;
+              padding-right: 0.25rem;
+              scrollbar-gutter: stable;
+            }
           }
+        `}</style>
 
-          [data-studio-layout="true"] > div > div > a,
-          [data-studio-layout="true"] > div > div > a + div {
-            grid-column: 1 / -1;
-          }
-
-          [data-studio-layout="true"] > div > div > :nth-child(3) {
-            grid-column: 1;
-          }
-
-          [data-studio-layout="true"] > div > div > :nth-child(n + 4) {
-            grid-column: 2;
-            grid-row: 3;
-            position: sticky;
-            top: 6rem;
-            max-height: calc(100vh - 7rem);
-            overflow-y: auto;
-            padding-right: 0.25rem;
-            scrollbar-gutter: stable;
-          }
-        }
-      `}</style>
-
-      <nav
-        data-pb-mobile-nav="true"
-        className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden"
-      >
-        <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
-          {MOBILE_TABS.map((tab) => {
-            const item = NAV.find((n) => n.id === tab.id)!;
-            const isActive = primaryDomain === tab.domain;
-            const label = t(tab.labelKey);
-            return (
-              <Link
-                key={tab.id}
-                to={PRIMARY_DOMAIN_PATHS[tab.domain]}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/70",
-                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
-                )}
-              >
-                <item.icon
+        <nav
+          data-pb-mobile-nav="true"
+          className="glass-strong fixed inset-x-0 bottom-0 z-30 flex min-h-[var(--pb-mobile-nav-content-height)] items-center border-t pb-[env(safe-area-inset-bottom)] sm:hidden"
+        >
+          <div className="grid h-full w-full grid-flow-col auto-cols-fr items-center">
+            {MOBILE_TABS.map((tab) => {
+              const item = NAV.find((n) => n.id === tab.id)!;
+              const isActive = primaryDomain === tab.domain;
+              const label = t(tab.labelKey);
+              return (
+                <Link
+                  key={tab.id}
+                  to={PRIMARY_DOMAIN_PATHS[tab.domain]}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "h-[18px] w-[18px]",
-                    isActive && "drop-shadow-[0_0_8px_var(--neon)]",
+                    "flex min-h-[var(--pb-mobile-nav-content-height)] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/70",
+                    isActive ? "text-primary font-semibold" : "text-muted-foreground",
                   )}
-                />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+                >
+                  <item.icon
+                    className={cn(
+                      "h-[18px] w-[18px]",
+                      isActive && "drop-shadow-[0_0_8px_var(--neon)]",
+                    )}
+                  />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
 
-      <StudioModal open={studio} onClose={() => setStudio(false)} />
-    </div>
+        <StudioModal open={studio} onClose={() => setStudio(false)} />
+      </div>
+    </AppShellActionsProvider>
   );
 }
 
