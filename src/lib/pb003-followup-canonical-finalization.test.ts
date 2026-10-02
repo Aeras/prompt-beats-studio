@@ -12,7 +12,9 @@ describe("PB-003 follow-up canonical finalization hardening", () => {
   test("forward migration separates current source eligibility from historical child binding", async () => {
     const sql = await source(HARDENING_MIGRATION);
 
-    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.validate_project_audio_revision_feedback()");
+    expect(sql).toContain(
+      "CREATE OR REPLACE FUNCTION public.validate_project_audio_revision_feedback()",
+    );
     expect(sql).toContain("requires_current_source_eligibility boolean := false");
     expect(sql).toContain("IF TG_OP = 'INSERT' THEN");
     expect(sql).toContain("requires_current_source_eligibility := true");
