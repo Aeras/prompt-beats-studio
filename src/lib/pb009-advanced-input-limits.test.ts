@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseAdvancedSetup, serializeAdvancedSetup, type AdvancedGeneratorSetup } from "./advanced-generator-setup";
-import { assertGenerationInputLimits, type GeneratorInputLimitSubject } from "./generator-input-limits";
+import {
+  parseAdvancedSetup,
+  serializeAdvancedSetup,
+  type AdvancedGeneratorSetup,
+} from "./advanced-generator-setup";
+import {
+  assertGenerationInputLimits,
+  type GeneratorInputLimitSubject,
+} from "./generator-input-limits";
 
 function subject(patch: Partial<GeneratorInputLimitSubject> = {}): GeneratorInputLimitSubject {
   return {
@@ -55,7 +62,10 @@ async function source(path: string) {
 describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
   test("Advanced non-admin exact boundaries are 500 / 150 / 120 / 200", () => {
     expectAccepted(subject({ theme: "t".repeat(500) }));
-    expectRejected(subject({ theme: "t".repeat(501) }), "Theme must be 500 characters or fewer.");
+    expectRejected(
+      subject({ theme: "t".repeat(501) }),
+      "Theme must be 500 characters or fewer.",
+    );
 
     expectAccepted(subject({ baseMusicStyle: "s".repeat(150) }));
     expectRejected(
@@ -64,7 +74,10 @@ describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
     );
 
     expectAccepted(subject({ mood: "m".repeat(120) }));
-    expectRejected(subject({ mood: "m".repeat(121) }), "Mood must be 120 characters or fewer.");
+    expectRejected(
+      subject({ mood: "m".repeat(121) }),
+      "Mood must be 120 characters or fewer.",
+    );
 
     expectAccepted(subject({ instruments: "i".repeat(200) }));
     expectRejected(
@@ -85,18 +98,44 @@ describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
   });
 
   test("Revision preserves the existing composed-direction policy", () => {
-    expectAccepted(subject({ operation: "revision", baseMusicStyle: "s".repeat(500), genre: "g".repeat(500) }));
+    expectAccepted(
+      subject({
+        operation: "revision",
+        baseMusicStyle: "s".repeat(500),
+        genre: "g".repeat(500),
+      }),
+    );
     expectRejected(
-      subject({ operation: "revision", baseMusicStyle: "s".repeat(500), genre: "g".repeat(501) }),
+      subject({
+        operation: "revision",
+        baseMusicStyle: "s".repeat(500),
+        genre: "g".repeat(501),
+      }),
       "The composed music direction must be 500 characters or fewer.",
     );
   });
 
   test("Basic limits remain unchanged", () => {
-    expectAccepted(subject({ advanced: false, theme: "t".repeat(300), genre: "g".repeat(400), mood: "m".repeat(60) }));
-    expectRejected(subject({ advanced: false, theme: "t".repeat(301) }), "Theme must be 300 characters or fewer.");
-    expectRejected(subject({ advanced: false, genre: "g".repeat(401) }), "Music Style must be 400 characters or fewer.");
-    expectRejected(subject({ advanced: false, mood: "m".repeat(61) }), "Mood must be 60 characters or fewer.");
+    expectAccepted(
+      subject({
+        advanced: false,
+        theme: "t".repeat(300),
+        genre: "g".repeat(400),
+        mood: "m".repeat(60),
+      }),
+    );
+    expectRejected(
+      subject({ advanced: false, theme: "t".repeat(301) }),
+      "Theme must be 300 characters or fewer.",
+    );
+    expectRejected(
+      subject({ advanced: false, genre: "g".repeat(401) }),
+      "Music Style must be 400 characters or fewer.",
+    );
+    expectRejected(
+      subject({ advanced: false, mood: "m".repeat(61) }),
+      "Mood must be 60 characters or fewer.",
+    );
   });
 
   test("role matrix keeps user/moderator/senior moderator limited and admin/super_admin bypassed", () => {
@@ -137,23 +176,28 @@ describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
 
   test("Generator keeps field-specific Advanced errors and unchanged Custom BPM 40-260 validation", async () => {
     const route = await source("src/routes/generate.tsx");
-    const advancedBranch = route.slice(route.indexOf(": advanced"), route.indexOf("const currentSnapshot"));
+    const advancedBranch = route.slice(
+      route.indexOf(": advanced"),
+      route.indexOf("const currentSnapshot"),
+    );
     expect(advancedBranch).toContain('t("generator.musicStyleTooLong"');
     expect(advancedBranch).toContain('t("generator.instrumentsTooLong"');
     expect(route).toContain("bpmNumber < 40 || bpmNumber > 260");
-    expect(route).toContain('min={40}');
-    expect(route).toContain('max={260}');
+    expect(route).toContain("min={40}");
+    expect(route).toContain("max={260}");
   });
 
   test("Song Setup uses admin-level bypass only for PB-009 fields and keeps super-admin-only policies", async () => {
     const setup = await source("src/lib/song-setup-assistant.functions.ts");
-    expect(setup).toContain('rpc("current_user_is_admin_level")');
-    expect(setup).toContain('rpc("current_user_is_super_admin")');
-    expect(setup).toContain("isAdminLevel === true");
+    const roleHelper = await source("src/lib/song-setup-role.server.ts");
+
+    expect(roleHelper).toContain('rpc("current_user_is_admin_level")');
+    expect(roleHelper).toContain('rpc("current_user_is_super_admin")');
+    expect(setup).toContain("getSongSetupRoleFlags(context.supabase)");
     expect(setup).toContain("adminSongSetupDraftSchema.parse(parsed)");
     expect(setup).toContain("superAdminSongSetupDraftSchema.parse(parsed)");
-    expect(setup).toContain("isSuperAdmin === true ? 4096 : 1800");
-    expect(setup).toContain("isSuperAdmin !== true && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT");
+    expect(setup).toContain("isSuperAdmin ? 4096 : 1800");
+    expect(setup).toContain("!isSuperAdmin && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT");
 
     const adminSchema = setup.slice(
       setup.indexOf("const adminSongSetupDraftSchema"),
