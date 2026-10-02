@@ -54,8 +54,10 @@ export function ProjectVersionAudioOutcomeIntentPanel({ projectId, versionId, la
   const rows = tracks.data?.tracks ?? [];
   if (rows.length === 0) return null;
   const outcomeRows = (outcomes.data?.evaluations ?? []) as AudioOutcomeEvaluation[];
-  const evaluations = new Map<string, AudioOutcomeEvaluation>(
-    outcomeRows.map((evaluation) => [evaluation.trackId, evaluation]),
+  const evaluations: Map<string, AudioOutcomeEvaluation> = new Map(
+    outcomeRows.map(
+      (evaluation): [string, AudioOutcomeEvaluation] => [evaluation.trackId, evaluation],
+    ),
   );
 
   return (
