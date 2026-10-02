@@ -21,6 +21,26 @@ const HOME_RECENT_VERSION_CANDIDATE_LIMIT = 24;
 const HOME_RESUME_SOURCE_TIMEOUT_MS = 2_500;
 
 type AuthenticatedSupabaseClient = SupabaseClient<Database>;
+type WithCreativeRecency<T extends { Row: object; Insert: object; Update: object }> = T & {
+  Row: T["Row"] & { creative_updated_at: string };
+  Insert: T["Insert"] & { creative_updated_at?: string };
+  Update: T["Update"] & { creative_updated_at?: string };
+};
+type HomeResumeDatabase = Database & {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      song_universes: WithCreativeRecency<Database["public"]["Tables"]["song_universes"]>;
+      story_maps: WithCreativeRecency<Database["public"]["Tables"]["story_maps"]>;
+      inspiration_walls: WithCreativeRecency<Database["public"]["Tables"]["inspiration_walls"]>;
+    };
+  };
+};
+type HomeResumeSupabaseClient = SupabaseClient<HomeResumeDatabase>;
+type HomeFeatureCandidate = {
+  id: string;
+  title: string;
+  creative_updated_at: string;
+};
 
 async function resolveRecentProject(
   supabase: AuthenticatedSupabaseClient,
@@ -64,6 +84,19 @@ async function canUseFeature(
   return data === true;
 }
 
+function toHomeResumeItem(
+  type: Exclude<HomeResumeType, "project">,
+  data: HomeFeatureCandidate | null,
+): HomeResumeItem | null {
+  if (!data?.id || !data.title || !data.creative_updated_at) return null;
+  return {
+    type,
+    id: data.id,
+    title: data.title,
+    recency: data.creative_updated_at,
+  };
+}
+
 async function resolveFeatureCandidate(
   supabase: AuthenticatedSupabaseClient,
   userId: string,
@@ -73,29 +106,51 @@ async function resolveFeatureCandidate(
 ): Promise<HomeResumeItem | null> {
   if (!(await canUseFeature(supabase, featureKey))) return null;
 
-  let query = supabase
-    .from(table)
+  // PB-007 adds creative_updated_at before the checked-in generated Supabase
+  // snapshot is refreshed. Keep the schema delta explicit and narrow here,
+  // matching the existing strongly typed migration-drift boundary pattern.
+  const homeSupabase = supabase as unknown as HomeResumeSupabaseClient;
+
+  if (table === "song_universes") {
+    const { data, error } = await homeSupabase
+      .from("song_universes")
+      .select("id, title, creative_updated_at")
+      .eq("owner_id", userId)
+      .neq("status", "archived")
+      .not("creative_updated_at", "is", null)
+      .order("creative_updated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return toHomeResumeItem(type, data);
+  }
+
+  if (table === "story_maps") {
+    const { data, error } = await homeSupabase
+      .from("story_maps")
+      .select("id, title, creative_updated_at")
+      .eq("user_id", userId)
+      .not("creative_updated_at", "is", null)
+      .order("creative_updated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return toHomeResumeItem(type, data);
+  }
+
+  const { data, error } = await homeSupabase
+    .from("inspiration_walls")
     .select("id, title, creative_updated_at")
-    .eq(table === "story_maps" ? "user_id" : "owner_id", userId)
-    .not("creative_updated_at", "is", null);
-
-  if (table === "song_universes") query = query.neq("status", "archived");
-
-  const { data, error } = await query
+    .eq("owner_id", userId)
+    .not("creative_updated_at", "is", null)
     .order("creative_updated_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
-
   if (error) throw new Error(error.message);
-  if (!data?.id || !data?.title || !data?.creative_updated_at) return null;
-
-  return {
-    type,
-    id: data.id,
-    title: data.title,
-    recency: data.creative_updated_at,
-  };
+  return toHomeResumeItem(type, data);
 }
 
 function withSourceTimeout<T>(promise: Promise<T>, source: HomeResumeType): Promise<T> {
