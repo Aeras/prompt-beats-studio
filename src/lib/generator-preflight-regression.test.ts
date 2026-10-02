@@ -43,9 +43,13 @@ describe("Generator durable preflight snapshot", () => {
   });
 
   test("does not redefine live Generator authoring limits", async () => {
-    const source = await Bun.file("src/lib/generation-jobs.functions.ts").text();
-    expect(source).toContain('if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.")');
-    expect(source).toContain('if (input.theme.length > 300) throw new Error("Theme must be 300 characters or fewer.")');
-    expect(source).toContain('if (input.instruments.length > 200)');
+    const source = await Bun.file("src/lib/generator-input-limits.ts").text();
+    expect(source).toContain(
+      'if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.")',
+    );
+    expect(source).toContain(
+      'if (input.theme.length > 300) throw new Error("Theme must be 300 characters or fewer.")',
+    );
+    expect(source).toContain("if (input.instruments.length > 200)");
   });
 });

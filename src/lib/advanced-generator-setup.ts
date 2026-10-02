@@ -7,18 +7,22 @@ export const ADVANCED_SETUP_FORMAT = "promptbeats-advanced-generator";
 export const ADVANCED_SETUP_SCHEMA_VERSION = 1;
 export const ADVANCED_SETUP_MAX_BYTES = 256 * 1024;
 
-// Reuses the persisted snapshot field bounds, but every field is required and
-// unknown keys are rejected so arbitrary JSON cannot be imported.
+// File-format safety ceilings are intentionally broader than PB-009's
+// role-aware authoring limits. A valid file is not authorization to generate
+// oversized fields; generation admission remains authoritative.
+const SETUP_TEXT_SAFETY_MAX = 32_000;
+const SETUP_VALUE_SAFETY_MAX = 1_000;
+
 export const advancedSetupSchema = z
   .object({
     targetPlatform: z.enum(AI_TARGET_PLATFORMS),
-    theme: z.string().max(500),
-    selectedMusicStyles: z.array(z.string().max(150)).max(24),
+    theme: z.string().max(SETUP_TEXT_SAFETY_MAX),
+    selectedMusicStyles: z.array(z.string().max(SETUP_VALUE_SAFETY_MAX)).max(24),
     customMusicStyle: z.string().max(4000),
-    selectedMoods: z.array(z.string().max(120)).max(24),
+    selectedMoods: z.array(z.string().max(SETUP_VALUE_SAFETY_MAX)).max(24),
     customMood: z.string().max(2000),
-    selectedInstruments: z.array(z.string().max(1000)).max(40),
-    customInstruments: z.string().max(32000),
+    selectedInstruments: z.array(z.string().max(SETUP_VALUE_SAFETY_MAX)).max(40),
+    customInstruments: z.string().max(SETUP_TEXT_SAFETY_MAX),
     bpmMode: z.string().max(40),
     customBpm: z.string().max(20),
     songStructure: z.array(z.string().max(120)).max(40),
@@ -74,10 +78,14 @@ export function parseAdvancedSetup(
   } catch {
     return { ok: false, error: "invalid" };
   }
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "invalid" };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "invalid" };
+  }
   const obj = raw as Record<string, unknown>;
   if (obj["format"] !== ADVANCED_SETUP_FORMAT) return { ok: false, error: "invalid" };
-  if (obj["schemaVersion"] !== ADVANCED_SETUP_SCHEMA_VERSION) return { ok: false, error: "version" };
+  if (obj["schemaVersion"] !== ADVANCED_SETUP_SCHEMA_VERSION) {
+    return { ok: false, error: "version" };
+  }
   const parsed = envelopeSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const setup = parsed.data.setup;

@@ -13,6 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
+import { assertGenerationInputLimits } from "@/lib/generator-input-limits";
 import {
   diffGeneratorSnapshots,
   generatorInputSnapshotSchema,
@@ -52,25 +53,6 @@ const jobInput = z.object({
     .nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
 });
-
-function assertGenerationInputLimits(input: z.infer<typeof jobInput>, isAdmin: boolean) {
-  if (isAdmin) return;
-  if (input.advanced || input.operation === "revision") {
-    const musicStyleLimit = input.operation === "revision" ? 500 : 150;
-    if (input.theme.length > 500) throw new Error("Theme must be 500 characters or fewer.");
-    if (!input.baseMusicStyle || input.baseMusicStyle.length > musicStyleLimit)
-      throw new Error(`Music Style must be ${musicStyleLimit} characters or fewer.`);
-    if (input.genre.length > 500)
-      throw new Error("The composed music direction must be 500 characters or fewer.");
-    if (input.mood.length > 120) throw new Error("Mood must be 120 characters or fewer.");
-    if (input.instruments.length > 200)
-      throw new Error("Instruments must be 200 characters or fewer.");
-    return;
-  }
-  if (input.theme.length > 300) throw new Error("Theme must be 300 characters or fewer.");
-  if (input.genre.length > 400) throw new Error("Music Style must be 400 characters or fewer.");
-  if (input.mood.length > 60) throw new Error("Mood must be 60 characters or fewer.");
-}
 
 const revisionMetaShape = z.object({
   savedPromptId: z.string().uuid(),
