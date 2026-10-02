@@ -51,4 +51,16 @@ describe("PB-010 — shared TrackCard external playback contract", () => {
     expect(embed).toContain("allowExternalMedia");
     expect(embed).toContain("providerUrl && providerName");
   });
+
+  test("creator Profile converges on the canonical TrackCard without a duplicate player stack", async () => {
+    const profile = await source("src/components/promptbeats/ArtistProfileView.tsx");
+    expect(profile).toContain('import { TrackCard } from "@/components/promptbeats/TrackCard"');
+    expect(profile).toContain("<TrackCard");
+    expect(profile).toContain("viewMode={gridMode}");
+    expect(profile).toContain("promptIsPublic: track.prompt_is_public ?? true");
+    expect(profile).toContain("lyricsIsPublic: track.lyrics_is_public ?? true");
+    expect(profile).not.toContain("<ExternalTrackEmbed");
+    expect(profile).not.toContain("<TrackOwnerActions");
+    expect(profile).not.toContain("<TrackLibraryActions");
+  });
 });
