@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HandleRouteImport } from './routes/$handle'
+import { Route as AudioModelLabRouteImport } from './routes/audio-model-lab'
+import { Route as AudioRevisionRouteImport } from './routes/audio-revision'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CopyrightIpRouteImport } from './routes/copyright-ip'
+import { Route as CreateRouteImport } from './routes/create'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as EmailLogoRouteImport } from './routes/email-logo'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as HelpRouteImport } from './routes/help'
@@ -23,11 +27,15 @@ import { Route as LyricsReviewRouteImport } from './routes/lyrics-review'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as QdrantTestRouteImport } from './routes/qdrant-test'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
 import { Route as SongUniverseRouteImport } from './routes/song-universe'
 import { Route as StoryMapRouteImport } from './routes/story-map'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
+import { Route as ApiAvatarRouteImport } from './routes/api/avatar'
 import { Route as ApiTrackDownloadRouteImport } from './routes/api/track-download'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
@@ -50,6 +58,16 @@ const HandleRoute = HandleRouteImport.update({
   path: '/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AudioModelLabRoute = AudioModelLabRouteImport.update({
+  id: '/audio-model-lab',
+  path: '/audio-model-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AudioRevisionRoute = AudioRevisionRouteImport.update({
+  id: '/audio-revision',
+  path: '/audio-revision',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -63,6 +81,16 @@ const ContactRoute = ContactRouteImport.update({
 const CopyrightIpRoute = CopyrightIpRouteImport.update({
   id: '/copyright-ip',
   path: '/copyright-ip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmailLogoRoute = EmailLogoRouteImport.update({
@@ -110,6 +138,21 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QdrantTestRoute = QdrantTestRouteImport.update({
+  id: '/qdrant-test',
+  path: '/qdrant-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
   id: '/song-analyzer',
   path: '/song-analyzer',
@@ -133,6 +176,11 @@ const TermsRoute = TermsRouteImport.update({
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
   path: '/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAvatarRoute = ApiAvatarRouteImport.update({
+  id: '/api/avatar',
+  path: '/api/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTrackDownloadRoute = ApiTrackDownloadRouteImport.update({
@@ -194,9 +242,13 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/audio-model-lab': typeof AudioModelLabRoute
+  '/audio-revision': typeof AudioRevisionRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/copyright-ip': typeof CopyrightIpRoute
+  '/create': typeof CreateRoute
+  '/discover': typeof DiscoverRoute
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
@@ -206,11 +258,15 @@ export interface FileRoutesByFullPath {
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/qdrant-test': typeof QdrantTestRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -226,9 +282,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/audio-model-lab': typeof AudioModelLabRoute
+  '/audio-revision': typeof AudioRevisionRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/copyright-ip': typeof CopyrightIpRoute
+  '/create': typeof CreateRoute
+  '/discover': typeof DiscoverRoute
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
@@ -238,11 +298,15 @@ export interface FileRoutesByTo {
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/qdrant-test': typeof QdrantTestRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -259,9 +323,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$handle': typeof HandleRoute
+  '/audio-model-lab': typeof AudioModelLabRoute
+  '/audio-revision': typeof AudioRevisionRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/copyright-ip': typeof CopyrightIpRoute
+  '/create': typeof CreateRoute
+  '/discover': typeof DiscoverRoute
   '/email-logo': typeof EmailLogoRoute
   '/generate': typeof GenerateRoute
   '/help': typeof HelpRoute
@@ -271,11 +339,15 @@ export interface FileRoutesById {
   '/management': typeof ManagementRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/qdrant-test': typeof QdrantTestRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
@@ -293,9 +365,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$handle'
+    | '/audio-model-lab'
+    | '/audio-revision'
     | '/auth'
     | '/contact'
     | '/copyright-ip'
+    | '/create'
+    | '/discover'
     | '/email-logo'
     | '/generate'
     | '/help'
@@ -305,11 +381,15 @@ export interface FileRouteTypes {
     | '/management'
     | '/onboarding'
     | '/privacy'
+    | '/qdrant-test'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/song-analyzer'
     | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
+    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -325,9 +405,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$handle'
+    | '/audio-model-lab'
+    | '/audio-revision'
     | '/auth'
     | '/contact'
     | '/copyright-ip'
+    | '/create'
+    | '/discover'
     | '/email-logo'
     | '/generate'
     | '/help'
@@ -337,11 +421,15 @@ export interface FileRouteTypes {
     | '/management'
     | '/onboarding'
     | '/privacy'
+    | '/qdrant-test'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/song-analyzer'
     | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
+    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -357,9 +445,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$handle'
+    | '/audio-model-lab'
+    | '/audio-revision'
     | '/auth'
     | '/contact'
     | '/copyright-ip'
+    | '/create'
+    | '/discover'
     | '/email-logo'
     | '/generate'
     | '/help'
@@ -369,11 +461,15 @@ export interface FileRouteTypes {
     | '/management'
     | '/onboarding'
     | '/privacy'
+    | '/qdrant-test'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/song-analyzer'
     | '/song-universe'
     | '/story-map'
     | '/terms'
     | '/trending'
+    | '/api/avatar'
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
@@ -390,9 +486,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HandleRoute: typeof HandleRoute
+  AudioModelLabRoute: typeof AudioModelLabRoute
+  AudioRevisionRoute: typeof AudioRevisionRoute
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   CopyrightIpRoute: typeof CopyrightIpRoute
+  CreateRoute: typeof CreateRoute
+  DiscoverRoute: typeof DiscoverRoute
   EmailLogoRoute: typeof EmailLogoRoute
   GenerateRoute: typeof GenerateRoute
   HelpRoute: typeof HelpRoute
@@ -402,11 +502,15 @@ export interface RootRouteChildren {
   ManagementRoute: typeof ManagementRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
+  QdrantTestRoute: typeof QdrantTestRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SongAnalyzerRoute: typeof SongAnalyzerRoute
   SongUniverseRoute: typeof SongUniverseRoute
   StoryMapRoute: typeof StoryMapRoute
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
+  ApiAvatarRoute: typeof ApiAvatarRoute
   ApiTrackDownloadRoute: typeof ApiTrackDownloadRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
@@ -436,6 +540,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audio-model-lab': {
+      id: '/audio-model-lab'
+      path: '/audio-model-lab'
+      fullPath: '/audio-model-lab'
+      preLoaderRoute: typeof AudioModelLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audio-revision': {
+      id: '/audio-revision'
+      path: '/audio-revision'
+      fullPath: '/audio-revision'
+      preLoaderRoute: typeof AudioRevisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -455,6 +573,20 @@ declare module '@tanstack/react-router' {
       path: '/copyright-ip'
       fullPath: '/copyright-ip'
       preLoaderRoute: typeof CopyrightIpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/email-logo': {
@@ -520,6 +652,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/qdrant-test': {
+      id: '/qdrant-test'
+      path: '/qdrant-test'
+      fullPath: '/qdrant-test'
+      preLoaderRoute: typeof QdrantTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/song-analyzer': {
       id: '/song-analyzer'
       path: '/song-analyzer'
@@ -553,6 +706,13 @@ declare module '@tanstack/react-router' {
       path: '/trending'
       fullPath: '/trending'
       preLoaderRoute: typeof TrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/avatar': {
+      id: '/api/avatar'
+      path: '/api/avatar'
+      fullPath: '/api/avatar'
+      preLoaderRoute: typeof ApiAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/track-download': {
@@ -638,9 +798,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HandleRoute: HandleRoute,
+  AudioModelLabRoute: AudioModelLabRoute,
+  AudioRevisionRoute: AudioRevisionRoute,
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   CopyrightIpRoute: CopyrightIpRoute,
+  CreateRoute: CreateRoute,
+  DiscoverRoute: DiscoverRoute,
   EmailLogoRoute: EmailLogoRoute,
   GenerateRoute: GenerateRoute,
   HelpRoute: HelpRoute,
@@ -650,11 +814,15 @@ const rootRouteChildren: RootRouteChildren = {
   ManagementRoute: ManagementRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
+  QdrantTestRoute: QdrantTestRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SongAnalyzerRoute: SongAnalyzerRoute,
   SongUniverseRoute: SongUniverseRoute,
   StoryMapRoute: StoryMapRoute,
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
+  ApiAvatarRoute: ApiAvatarRoute,
   ApiTrackDownloadRoute: ApiTrackDownloadRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
