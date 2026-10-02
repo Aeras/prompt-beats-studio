@@ -62,10 +62,7 @@ async function source(path: string) {
 describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
   test("Advanced non-admin exact boundaries are 500 / 150 / 120 / 200", () => {
     expectAccepted(subject({ theme: "t".repeat(500) }));
-    expectRejected(
-      subject({ theme: "t".repeat(501) }),
-      "Theme must be 500 characters or fewer.",
-    );
+    expectRejected(subject({ theme: "t".repeat(501) }), "Theme must be 500 characters or fewer.");
 
     expectAccepted(subject({ baseMusicStyle: "s".repeat(150) }));
     expectRejected(
@@ -74,10 +71,7 @@ describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
     );
 
     expectAccepted(subject({ mood: "m".repeat(120) }));
-    expectRejected(
-      subject({ mood: "m".repeat(121) }),
-      "Mood must be 120 characters or fewer.",
-    );
+    expectRejected(subject({ mood: "m".repeat(121) }), "Mood must be 120 characters or fewer.");
 
     expectAccepted(subject({ instruments: "i".repeat(200) }));
     expectRejected(
@@ -197,7 +191,9 @@ describe("PB-009 — Advanced Generator Input Limits Consistency", () => {
     expect(setup).toContain("adminSongSetupDraftSchema.parse(parsed)");
     expect(setup).toContain("superAdminSongSetupDraftSchema.parse(parsed)");
     expect(setup).toContain("isSuperAdmin ? 4096 : 1800");
-    expect(setup).toContain("!isSuperAdmin && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT");
+    expect(setup).toContain(
+      "!isSuperAdmin && data.description.length > SONG_SETUP_DESCRIPTION_LIMIT",
+    );
 
     const adminSchema = setup.slice(
       setup.indexOf("const adminSongSetupDraftSchema"),
