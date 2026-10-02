@@ -9,7 +9,7 @@ describe("PB-003 follow-up handoff and recovery", () => {
   test("Audio Revision accepts private Intent ID only and keeps manual path", async () => {
     const route = await source("src/routes/audio-revision.tsx");
 
-    expect(route).toContain('intent: z.string().uuid().optional()');
+    expect(route).toContain("intent: z.string().uuid().optional()");
     expect(route).toContain("getAudioRevisionIntent");
     expect(route).toContain("revisionIntentId: intentId");
     expect(route).toContain("idempotencyKey: feedback.feedbackId");
