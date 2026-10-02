@@ -12,6 +12,7 @@ import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { SimilarSongsMenuItem } from "@/components/promptbeats/SimilarSongsMenuItem";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
+import { useExternalPlayback } from "@/components/promptbeats/ExternalPlaybackProvider";
 import {
   TrackContentOverlay,
   type TrackContentKind,
@@ -102,6 +103,7 @@ export function TrackCard({
   viewMode?: TrackGridMode;
 }) {
   const { t, language } = useI18n();
+  const { openExternalPlayback } = useExternalPlayback();
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
   const [contentAnchor, setContentAnchor] = useState<Pick<
     DOMRect,
@@ -207,12 +209,11 @@ export function TrackCard({
           />
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-        {embedUrl && (
+        {embedUrl && !compact && (
           <ExternalTrackEmbed
             sourceType={track.sourceType}
             sourceId={track.sourceId}
             title={t("track.player", { title: track.title })}
-            compact={compact}
           />
         )}
         <div
@@ -242,9 +243,32 @@ export function TrackCard({
           )}
         </div>
         {compact && embedUrl && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">
-            {track.sourceType}
-          </span>
+          <>
+            <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white/90">
+              {track.sourceType}
+            </span>
+            <button
+              type="button"
+              onClick={(event) =>
+                openExternalPlayback({
+                  trackId: track.id,
+                  title: track.title,
+                  sourceType: track.sourceType,
+                  sourceId: track.sourceId,
+                  returnFocusElement: event.currentTarget,
+                })
+              }
+              aria-label={
+                language === "el"
+                  ? `Αναπαραγωγή ${track.title} με εξωτερικό player`
+                  : `Play ${track.title} with external player`
+              }
+              title={language === "el" ? "Αναπαραγωγή εξωτερικά" : "Play externally"}
+              className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-gradient-neon text-primary-foreground glow-neon transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 active:scale-95"
+            >
+              <Play className="ml-0.5 h-4 w-4" />
+            </button>
+          </>
         )}
         {!embedUrl && canUseNativePlayer && (
           <button
