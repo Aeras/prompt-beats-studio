@@ -15,7 +15,9 @@ describe("library tab refresh persistence", () => {
     expect(hook).toContain("authLoading || query.isLoading");
     expect(hook).toContain("query.data?.allowed === true || preserveRequestedLibraryTab");
 
-    expect(library).toContain('const { tab: requestedTab } = Route.useSearch();');
+    expect(library).toContain(
+      'const { tab: requestedTab, project: projectSearch } = Route.useSearch();',
+    );
     expect(library).toContain('onClick={() => void navigate({ to: "/library", search: { tab: item } })}');
   });
 });
