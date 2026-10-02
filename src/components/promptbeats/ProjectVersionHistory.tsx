@@ -24,6 +24,7 @@ import {
   type VersionChangeMetadata,
 } from "@/lib/project-version-history.shared";
 import { cn } from "@/lib/utils";
+import { ProjectVersionAudioOutcomeIntentPanel } from "@/components/promptbeats/ProjectVersionAudioOutcomeIntentPanel";
 import { ProjectVersionCompare } from "@/components/promptbeats/ProjectVersionCompare";
 import { ProjectVersionLinkedTracks } from "@/components/promptbeats/ProjectVersionLinkedTracks";
 import { PrivateReviewManager } from "@/components/promptbeats/PrivateReviewManager";
@@ -717,6 +718,11 @@ export function ProjectVersionHistory({ projectId, projectName, language }: Prop
                     </div>
                   )}
                   <ProjectVersionLinkedTracks
+                    projectId={projectId}
+                    versionId={prompt.id}
+                    language={language}
+                  />
+                  <ProjectVersionAudioOutcomeIntentPanel
                     projectId={projectId}
                     versionId={prompt.id}
                     language={language}
