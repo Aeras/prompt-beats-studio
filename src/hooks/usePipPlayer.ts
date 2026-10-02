@@ -42,7 +42,8 @@ function playbackProgress(audio: HTMLAudioElement | null) {
 }
 
 function vinylAngle(audio: HTMLAudioElement | null) {
-  return (((audio?.currentTime ?? 0) * VINYL_RAD_PER_SECOND) % TWO_PI + TWO_PI) % TWO_PI;
+  const angle = ((audio?.currentTime ?? 0) * VINYL_RAD_PER_SECOND) % TWO_PI;
+  return angle < 0 ? angle + TWO_PI : angle;
 }
 
 /**
@@ -235,20 +236,16 @@ export function usePipPlayer({ art, title, subtitle, playing, audioElement }: Op
       fill.addColorStop(1, "#d946ef");
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.roundRect(
-        barX,
-        barY,
-        Math.max(barHeight, barWidth * progress),
-        barHeight,
-        barHeight / 2,
-      );
+      ctx.roundRect(barX, barY, Math.max(barHeight, barWidth * progress), barHeight, barHeight / 2);
       ctx.fill();
     }
 
     if (!compact) {
       const currentTime = audioElement?.currentTime ?? 0;
       const duration =
-        audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
+        audioElement?.duration && Number.isFinite(audioElement.duration)
+          ? audioElement.duration
+          : 0;
       ctx.font = `${Math.round(13 * scale)}px monospace`;
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "left";
