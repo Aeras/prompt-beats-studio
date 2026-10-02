@@ -7,7 +7,7 @@ async function source(path: string) {
 describe("PB-010 — shared TrackCard external playback contract", () => {
   test("application root owns one shared external playback provider", async () => {
     const root = await source("src/routes/__root.tsx");
-    expect(root).toContain('import { ExternalPlaybackProvider }');
+    expect(root).toContain("import { ExternalPlaybackProvider }");
     expect(root).toContain("<ExternalPlaybackProvider>");
     expect(root).toContain("</ExternalPlaybackProvider>");
   });
