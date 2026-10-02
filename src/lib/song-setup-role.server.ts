@@ -1,10 +1,8 @@
-type SongSetupRoleClient = {
-  rpc: (
-    fn: "current_user_is_admin_level" | "current_user_is_super_admin",
-  ) => PromiseLike<{ data: boolean | null }>;
-};
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function getSongSetupRoleFlags(supabase: SongSetupRoleClient) {
+import type { Database } from "@/integrations/supabase/types";
+
+export async function getSongSetupRoleFlags(supabase: SupabaseClient<Database>) {
   const [{ data: isAdminLevel }, { data: isSuperAdmin }] = await Promise.all([
     supabase.rpc("current_user_is_admin_level"),
     supabase.rpc("current_user_is_super_admin"),
