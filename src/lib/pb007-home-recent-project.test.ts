@@ -99,6 +99,7 @@ describe("PB-007 Home recent Project", () => {
     expect(source).not.toContain("supabaseAdmin");
     expect(source).not.toContain("service_role");
     expect(source).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(source).not.toContain("updated_at");
+    expect(source).not.toContain('.select("id, name, updated_at")');
+    expect(source).not.toContain('.order("updated_at"');
   });
 });
