@@ -125,6 +125,7 @@ export function ExternalPlaybackProvider({ children }: { children: ReactNode }) 
     if (typeof window === "undefined" || typeof document === "undefined") return;
     const root = document.documentElement;
     const body = document.body;
+    if (!root || !body) return;
     const media = window.matchMedia(MOBILE_QUERY);
     const mobileNav = document.querySelector<HTMLElement>('[data-pb-mobile-nav="true"]');
     const appContent = document.querySelector<HTMLElement>(
