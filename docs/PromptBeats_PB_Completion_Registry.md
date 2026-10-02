@@ -94,3 +94,12 @@ Initial registry backfill verified against the `main` history through PB-009 mer
 - PR: #318
 - Merged main SHA: `5138924f1822d0e939adffdc96191c88170e3dc1`
 - Verification: PASS — Regression, Browser Quality, and Database Replay passed on the final head; Lovable published successfully and reported ready on the merged SHA.
+
+## PB-010 — UI/UX design quality audit and external playback convergence
+
+- Status: COMPLETED
+- Completed: 2026-10-02
+- Summary: Converged creator Profile rendering onto the canonical TrackCard, preserved object-specific Project / Prompt / Version / Linked Audio semantics and PB-003 Outcome / Revision Intent, and introduced shared responsive external playback behavior: Compact tracks use one shared expanded Suno/Udio surface, mobile uses a persistent non-modal bottom player with navigation clearance, and desktop uses a compact draggable floating player while Standard cards retain inline playback.
+- PR: #320
+- Merged main SHA: `09be6a9e7e16be8c78bdcc3518fcea53771ab48c`
+- Verification: PASS — Regression #1105, Browser Quality #378, and Database Replay #427 all passed on final exact head `990763ebd2790da6a57327e8b5d332a6f79fc5ec`; the PR was merged successfully and `main` was verified at the merge SHA.
