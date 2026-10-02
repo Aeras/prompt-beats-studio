@@ -88,10 +88,13 @@ function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   return (
     <I18nProvider>
-      <ErrorContent error={error} reset={reset} />
+      <ErrorContent
+        error={error instanceof Error ? error : new Error(String(error))}
+        reset={reset}
+      />
     </I18nProvider>
   );
 }
