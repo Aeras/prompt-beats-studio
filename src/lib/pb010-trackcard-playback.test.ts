@@ -34,14 +34,45 @@ describe("PB-010 — shared TrackCard external playback contract", () => {
     expect(provider).toContain('activation.kind === "native"');
   });
 
-  test("surface has one-owner replacement, mobile Back and focus-return contracts", async () => {
+  test("surface has one-owner replacement, mobile Back, Escape and focus-return contracts", async () => {
     const provider = await source("src/components/promptbeats/ExternalPlaybackProvider.tsx");
     expect(provider).toContain("requestRef.current = nextRequest");
     expect(provider).toContain("setRequest(nextRequest)");
     expect(provider).toContain("window.history.pushState");
     expect(provider).toContain('window.addEventListener("popstate"');
+    expect(provider).toContain('event.key !== "Escape"');
     expect(provider).toContain("returnFocusElement?.focus()");
-    expect(provider).toContain("onCloseAutoFocus={(event) => event.preventDefault()}");
+  });
+
+  test("external player is non-modal and does not close from outside clicks", async () => {
+    const provider = await source("src/components/promptbeats/ExternalPlaybackProvider.tsx");
+    expect(provider).toContain('aria-modal="false"');
+    expect(provider).toContain('data-pb-external-playback="true"');
+    expect(provider).toContain('aria-label="Close external player"');
+    expect(provider).not.toContain("onOpenChange");
+    expect(provider).not.toContain("DialogContent");
+  });
+
+  test("mobile player hides bottom nav and reserves content clearance", async () => {
+    const provider = await source("src/components/promptbeats/ExternalPlaybackProvider.tsx");
+    expect(provider).toContain("MOBILE_QUERY");
+    expect(provider).toContain('[data-pb-mobile-nav=\\"true\\"]');
+    expect(provider).toContain('[data-pb-search-highlight-root=\\"true\\"]');
+    expect(provider).toContain('mobileNav.style.display = "none"');
+    expect(provider).toContain("appContent.style.paddingBottom");
+    expect(provider).toContain("--pb-external-player-clearance");
+  });
+
+  test("desktop player defaults bottom-right and supports pointer dragging", async () => {
+    const provider = await source("src/components/promptbeats/ExternalPlaybackProvider.tsx");
+    expect(provider).toContain("sm:bottom-3 sm:right-3");
+    expect(provider).toContain("sm:w-[min(460px,calc(100vw-1.5rem))]");
+    expect(provider).toContain("handleDragStart");
+    expect(provider).toContain("handleDragMove");
+    expect(provider).toContain("handleDragEnd");
+    expect(provider).toContain("setPointerCapture");
+    expect(provider).toContain("releasePointerCapture");
+    expect(provider).toContain("sm:cursor-move");
   });
 
   test("consent still gates iframe creation and provider fallback remains", async () => {
