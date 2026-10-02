@@ -2,15 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Globe,
-  Instagram,
-  Music,
-  Share2,
-  ShieldBan,
-  Twitter,
-  Youtube,
-} from "lucide-react";
+import { Globe, Instagram, Music, Share2, ShieldBan, Twitter, Youtube } from "lucide-react";
 
 import { usePlayer } from "@/lib/player";
 import { DonationMethods } from "@/components/promptbeats/DonationMethods";
