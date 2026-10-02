@@ -102,9 +102,13 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     if (sourceError) throw new Error(sourceError.message);
-    const snapshot = generatorInputSnapshotSchema.safeParse(sourceVersion?.generator_input_snapshot);
+    const snapshot = generatorInputSnapshotSchema.safeParse(
+      sourceVersion?.generator_input_snapshot,
+    );
     if (!snapshot.success || snapshot.data.songStructure.length === 0) {
-      throw new Error("The source version does not have canonical structure context for AI interpretation.");
+      throw new Error(
+        "The source version does not have canonical structure context for AI interpretation.",
+      );
     }
 
     return executeDurableAuxiliaryAiRequest({
@@ -118,7 +122,9 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
           structure,
         )
           .map((section) => `${section.index}: ${section.label} (occurrence ${section.occurrence})`)
-          .join("\n")}\n\nTranslate the request into concise reviewable Keep / Change / Revision Brief suggestions. Section suggestions must use only the canonical indexes and exact labels above.`;
+          .join(
+            "\n",
+          )}\n\nTranslate the request into concise reviewable Keep / Change / Revision Brief suggestions. Section suggestions must use only the canonical indexes and exact labels above.`;
 
         const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
         const { recordAiUsage } = await import("@/lib/ai-usage.server");
@@ -150,7 +156,9 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
           try {
             parsed = JSON.parse(result.text);
           } catch {
-            throw new Error("The AI interpretation returned an invalid response. Please try again.");
+            throw new Error(
+              "The AI interpretation returned an invalid response. Please try again.",
+            );
           }
           const proposal = audioRevisionIntentProposalSchema.parse(parsed);
           const sections = validateAudioRevisionSectionSuggestions(structure, proposal);
