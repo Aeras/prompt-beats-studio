@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { activateMedia } from "@/lib/media-coordinator";
 
 type Options = {
@@ -41,25 +42,20 @@ function playbackProgress(audio: HTMLAudioElement | null) {
 }
 
 function vinylAngle(audio: HTMLAudioElement | null) {
-  const seconds = audio?.currentTime ?? 0;
-  return (seconds * VINYL_RAD_PER_SECOND) % TWO_PI;
+  return (((audio?.currentTime ?? 0) * VINYL_RAD_PER_SECOND) % TWO_PI + TWO_PI) % TWO_PI;
 }
 
 /**
  * PB-011 isolated Family A proof renderer.
- *
- * This branch intentionally proves lifecycle, time-based motion, live progress,
- * system PiP play/pause synchronization and cleanup. It is NOT the final
- * Neon Graphite visual implementation and must not be merged as product code.
+ * This is diagnostic proof code, not the final Neon Graphite implementation.
  */
-export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
+export function usePipPlayer({ art, title, subtitle, playing, audioElement }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const pipWindowRef = useRef<PictureInPictureWindow | null>(null);
   const pipResizeCleanupRef = useRef<(() => void) | null>(null);
   const carrierSyncRef = useRef(false);
   const playingRef = useRef(playing);
@@ -120,54 +116,55 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
 
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
     const config = configRef.current;
     if (canvas.width !== config.width) canvas.width = config.width;
     if (canvas.height !== config.height) canvas.height = config.height;
 
-    const W = config.width;
-    const H = config.height;
-    const compact = Boolean(pipGeometry && pipGeometry.width > 0 && pipGeometry.width < 300);
-    const scale = W / 500;
-    const CX = W / 2;
-    const CY = compact ? H * 0.36 : H * 0.38;
-    const discRadius = Math.min(W * (compact ? 0.31 : 0.34), H * 0.26);
+    const width = config.width;
+    const height = config.height;
+    const compact = Boolean(pipGeometry && pipGeometry.width < 300);
+    const scale = width / 500;
+    const cx = width / 2;
+    const cy = compact ? height * 0.36 : height * 0.38;
+    const discRadius = Math.min(width * (compact ? 0.31 : 0.34), height * 0.26);
     const labelRadius = discRadius * 0.32;
     const progress = playbackProgress(audioElement);
     const angle = vinylAngle(audioElement);
 
     const now = performance.now();
     const previous = lastRenderAtRef.current;
-    if (previous !== null) longestGapRef.current = Math.max(longestGapRef.current, now - previous);
+    if (previous !== null) {
+      longestGapRef.current = Math.max(longestGapRef.current, now - previous);
+    }
     lastRenderAtRef.current = now;
     renderCountRef.current += 1;
 
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, "#111827");
-    bg.addColorStop(1, "#020617");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
+    const background = ctx.createLinearGradient(0, 0, 0, height);
+    background.addColorStop(0, "#111827");
+    background.addColorStop(1, "#020617");
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
 
     ctx.save();
     ctx.shadowColor = "rgba(34,211,238,0.28)";
     ctx.shadowBlur = 18 * scale;
     ctx.beginPath();
-    ctx.arc(CX, CY, discRadius, 0, TWO_PI);
+    ctx.arc(cx, cy, discRadius, 0, TWO_PI);
     ctx.fillStyle = "#050505";
     ctx.fill();
     ctx.restore();
 
     ctx.save();
-    ctx.translate(CX, CY);
+    ctx.translate(cx, cy);
     ctx.rotate(angle);
     ctx.strokeStyle = "rgba(255,255,255,0.13)";
     ctx.lineWidth = Math.max(1, scale);
-    for (let i = 1; i <= 4; i += 1) {
+    for (let index = 1; index <= 4; index += 1) {
       ctx.beginPath();
-      ctx.arc(0, 0, labelRadius + ((discRadius - labelRadius) * i) / 5, 0, TWO_PI);
+      ctx.arc(0, 0, labelRadius + ((discRadius - labelRadius) * index) / 5, 0, TWO_PI);
       ctx.stroke();
     }
 
@@ -177,9 +174,9 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     const img = imgRef.current;
     if (img && img.width > 0 && img.height > 0) {
       const imageScale = Math.max((labelRadius * 2) / img.width, (labelRadius * 2) / img.height);
-      const drawW = img.width * imageScale;
-      const drawH = img.height * imageScale;
-      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+      const drawWidth = img.width * imageScale;
+      const drawHeight = img.height * imageScale;
+      ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     } else {
       ctx.fillStyle = "#111827";
       ctx.fillRect(-labelRadius, -labelRadius, labelRadius * 2, labelRadius * 2);
@@ -191,80 +188,85 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     }
     ctx.restore();
 
-    // Temporary high-contrast proof marker so rotation is measurable on screen recordings.
-    const markerRadius = discRadius * 0.78;
+    // Diagnostic marker makes time-based rotation measurable in a screen recording.
     ctx.save();
-    ctx.translate(CX, CY);
+    ctx.translate(cx, cy);
     ctx.rotate(angle);
     ctx.fillStyle = "#f59e0b";
     ctx.beginPath();
-    ctx.arc(markerRadius, 0, 7 * scale, 0, TWO_PI);
+    ctx.arc(discRadius * 0.78, 0, 7 * scale, 0, TWO_PI);
     ctx.fill();
     ctx.restore();
 
-    // Simplified tonearm: static identity cue only for this proof.
+    // Simplified static tonearm for proof identity only.
     ctx.strokeStyle = "#94a3b8";
     ctx.lineWidth = 6 * scale;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(W * 0.86, H * 0.12);
-    ctx.lineTo(W * 0.72, CY - discRadius * 0.35);
+    ctx.moveTo(width * 0.86, height * 0.12);
+    ctx.lineTo(width * 0.72, cy - discRadius * 0.35);
     ctx.stroke();
 
-    const titleY = compact ? H * 0.69 : H * 0.70;
+    const titleY = compact ? height * 0.69 : height * 0.7;
     ctx.textAlign = "center";
     ctx.fillStyle = "#f8fafc";
     ctx.font = `700 ${Math.round((compact ? 24 : 28) * scale)}px sans-serif`;
-    ctx.fillText(truncate(ctx, title ?? "", W * 0.86), CX, titleY);
+    ctx.fillText(truncate(ctx, title ?? "", width * 0.86), cx, titleY);
     if (subtitle) {
       ctx.fillStyle = "#94a3b8";
       ctx.font = `${Math.round((compact ? 16 : 18) * scale)}px sans-serif`;
       const creator = subtitle.startsWith("@") ? subtitle : `@${subtitle}`;
-      ctx.fillText(truncate(ctx, creator, W * 0.82), CX, titleY + 34 * scale);
+      ctx.fillText(truncate(ctx, creator, width * 0.82), cx, titleY + 34 * scale);
     }
 
-    const barX = W * 0.1;
-    const barY = compact ? H * 0.82 : H * 0.84;
-    const barW = W * 0.8;
-    const barH = Math.max(5 * scale, 4);
+    const barX = width * 0.1;
+    const barY = compact ? height * 0.82 : height * 0.84;
+    const barWidth = width * 0.8;
+    const barHeight = Math.max(5 * scale, 4);
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.beginPath();
-    ctx.roundRect(barX, barY, barW, barH, barH / 2);
+    ctx.roundRect(barX, barY, barWidth, barHeight, barHeight / 2);
     ctx.fill();
+
     if (progress > 0) {
-      const fill = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+      const fill = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
       fill.addColorStop(0, "#22d3ee");
       fill.addColorStop(0.5, "#3b82f6");
       fill.addColorStop(1, "#d946ef");
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.roundRect(barX, barY, Math.max(barH, barW * progress), barH, barH / 2);
+      ctx.roundRect(
+        barX,
+        barY,
+        Math.max(barHeight, barWidth * progress),
+        barHeight,
+        barHeight / 2,
+      );
       ctx.fill();
     }
 
     if (!compact) {
-      const current = audioElement?.currentTime ?? 0;
-      const duration = audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
+      const currentTime = audioElement?.currentTime ?? 0;
+      const duration =
+        audioElement?.duration && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
       ctx.font = `${Math.round(13 * scale)}px monospace`;
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "left";
-      ctx.fillText(formatTime(current), barX, barY + 28 * scale);
+      ctx.fillText(formatTime(currentTime), barX, barY + 28 * scale);
       ctx.textAlign = "right";
-      ctx.fillText(formatTime(duration), barX + barW, barY + 28 * scale);
+      ctx.fillText(formatTime(duration), barX + barWidth, barY + 28 * scale);
     }
 
-    // Proof diagnostics; intentionally not part of production visual design.
     ctx.textAlign = "left";
     ctx.font = `${Math.round(11 * scale)}px monospace`;
     ctx.fillStyle = "rgba(148,163,184,0.75)";
     ctx.fillText(
       `PB-011 PROOF ${config.fps}fps ${config.width}x${config.height} ${document.visibilityState}`,
-      W * 0.04,
-      H * 0.965,
+      width * 0.04,
+      height * 0.965,
     );
   }, [audioElement, pipGeometry, subtitle, title]);
 
-  // Draw exactly one preparation/current-state frame while PiP is inactive or paused.
   useEffect(() => {
     drawFrame();
   }, [art, drawFrame, playing]);
@@ -298,11 +300,8 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         drawFrame();
         return;
       }
-      if (document.visibilityState === "hidden") {
-        hiddenTick();
-      } else {
-        rafRef.current = requestAnimationFrame(visibleTick);
-      }
+      if (document.visibilityState === "hidden") hiddenTick();
+      else rafRef.current = requestAnimationFrame(visibleTick);
     };
 
     startForVisibility();
@@ -340,12 +339,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
         session.setActionHandler("play", null);
         session.setActionHandler("pause", null);
       } catch {
-        // Media Session support can vary by runtime.
+        // Media Session support varies by runtime.
       }
     };
   }, [pauseRealAudio, resumeRealAudio]);
 
-  // Keep the muted carrier video aligned with real audio without making it playback authority.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !pipActive) return;
@@ -371,7 +369,6 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
   const cleanupPipWindow = useCallback(() => {
     pipResizeCleanupRef.current?.();
     pipResizeCleanupRef.current = null;
-    pipWindowRef.current = null;
     setPipGeometry(null);
   }, []);
 
@@ -387,12 +384,10 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       }, 50);
     }
     disposeStream();
-    if (typeof console !== "undefined") {
-      console.info("[PB-011 proof] session closed", {
-        renders: renderCountRef.current,
-        longestGapMs: Math.round(longestGapRef.current),
-      });
-    }
+    console.info("[PB-011 proof] session closed", {
+      renders: renderCountRef.current,
+      longestGapMs: Math.round(longestGapRef.current),
+    });
     renderCountRef.current = 0;
     lastRenderAtRef.current = null;
     longestGapRef.current = 0;
@@ -402,6 +397,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video || !supported) return;
+
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
@@ -417,8 +413,9 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
       carrierSyncRef.current = true;
       await video.play();
       const pipWindow = await video.requestPictureInPicture();
-      pipWindowRef.current = pipWindow;
-      const updateGeometry = () => setPipGeometry({ width: pipWindow.width, height: pipWindow.height });
+      const updateGeometry = () => {
+        setPipGeometry({ width: pipWindow.width, height: pipWindow.height });
+      };
       updateGeometry();
       pipWindow.addEventListener("resize", updateGeometry);
       pipResizeCleanupRef.current = () => pipWindow.removeEventListener("resize", updateGeometry);
@@ -428,7 +425,7 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
     } catch (error) {
       carrierSyncRef.current = false;
       disposeStream();
-      if (typeof console !== "undefined") console.warn("[PB-011 proof] PiP request failed", error);
+      console.warn("[PB-011 proof] PiP request failed", error);
     }
   }, [disposeStream, drawFrame, supported]);
 
@@ -467,9 +464,11 @@ export function usePipPlayer({ art, title, subtitle, playing, toggle, audioEleme
 
 function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
-  let out = text;
-  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) out = out.slice(0, -1);
-  return `${out}…`;
+  let output = text;
+  while (output.length > 1 && ctx.measureText(`${output}…`).width > maxWidth) {
+    output = output.slice(0, -1);
+  }
+  return `${output}…`;
 }
 
 function formatTime(seconds: number) {
