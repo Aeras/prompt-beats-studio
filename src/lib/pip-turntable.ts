@@ -1,6 +1,6 @@
 // One composition, scaled as video by native PiP. Never rendered in the page UI.
-export const PIP_WIDTH = 1200;
-export const PIP_HEIGHT = 900;
+export const PIP_WIDTH = 1000;
+export const PIP_HEIGHT = 780;
 export const DISC = { x: 500, y: 400, radius: 290 };
 export const ARM_PIVOT = { x: 960, y: 150 };
 export const ARM_LENGTH = 500;
@@ -60,9 +60,12 @@ export function drawPipTurntable(
   playback: PipPlayback,
   rotation: number,
 ) {
+  // Crop the transparent asset padding, not the turntable or its text area.
+  ctx.save();
+  ctx.translate(-100, -60);
   ctx.fillStyle = "#050713";
-  ctx.fillRect(0, 0, PIP_WIDTH, PIP_HEIGHT);
-  ctx.drawImage(assets.shell, 0, 0, PIP_WIDTH, PIP_HEIGHT);
+  ctx.fillRect(0, 0, 1200, 900);
+  ctx.drawImage(assets.shell, 0, 0, 1200, 900);
   ctx.save();
   ctx.translate(DISC.x, DISC.y);
   ctx.rotate(rotation);
@@ -91,4 +94,5 @@ export function drawPipTurntable(
   ctx.fillStyle = "#b8b6d6";
   ctx.font = "30px sans-serif";
   ctx.fillText(truncatePipText(ctx, playback.creator, 920), 600, 795);
+  ctx.restore();
 }

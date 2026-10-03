@@ -86,7 +86,8 @@ describe("PiP-only turntable", () => {
       ["Title", 600, 750],
       ["@creator", 600, 795],
     ]);
-    expect(PIP_WIDTH / PIP_HEIGHT).toBe(4 / 3);
+    expect(PIP_WIDTH).toBe(1000);
+    expect(PIP_HEIGHT).toBe(780);
   });
   test("only native hidden video PiP uses renderer; background rendering has no rAF dependency", async () => {
     const hook = await readFile(new URL("../hooks/usePipPlayer.ts", import.meta.url), "utf8");
@@ -96,6 +97,10 @@ describe("PiP-only turntable", () => {
       "utf8",
     );
     expect(hook).toContain("video.requestPictureInPicture()");
+    expect(hook).toContain('session.setActionHandler("play", () =>');
+    expect(hook).toContain('session.setActionHandler("pause", () =>');
+    expect(hook).toContain('session.setActionHandler("play", null)');
+    expect(hook).toContain('session.setActionHandler("pause", null)');
     expect(hook).toContain("canvas.captureStream(30)");
     expect(hook).toContain("captureTrack?.requestFrame?.()");
     expect(hook).not.toContain("requestAnimationFrame(");

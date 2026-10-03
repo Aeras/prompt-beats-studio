@@ -52,6 +52,7 @@ export function usePipPlayer(options: Options) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cleanupEvents = useRef<(() => void) | null>(null);
+  const cleanupMediaSession = useRef<(() => void) | null>(null);
   const activeRef = useRef(false);
   const openingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -74,6 +75,8 @@ export function usePipPlayer(options: Options) {
   }, [snapshot]);
   const stopRendering = useCallback(() => {
     activeRef.current = false;
+    cleanupMediaSession.current?.();
+    cleanupMediaSession.current = null;
     workerRef.current?.terminate();
     workerRef.current = null;
     if (timerRef.current !== null) clearInterval(timerRef.current);
@@ -109,6 +112,8 @@ export function usePipPlayer(options: Options) {
       });
     }
     sendPlayback();
+    if (activeRef.current && "mediaSession" in navigator)
+      navigator.mediaSession.playbackState = options.playing ? "playing" : "paused";
     const video = videoRef.current;
     if (!video || !activeRef.current) return;
     if (options.playing && video.paused) {
@@ -189,6 +194,23 @@ export function usePipPlayer(options: Options) {
       };
       expectedEvent.current = "play";
       await video.play();
+      // Canvas MediaStreams need explicit Media Session actions for native PiP controls.
+      if ("mediaSession" in navigator) {
+        const session = navigator.mediaSession;
+        const previousState = session.playbackState;
+        cleanupMediaSession.current = () => {
+          session.setActionHandler("play", null);
+          session.setActionHandler("pause", null);
+          session.playbackState = previousState;
+        };
+        session.setActionHandler("play", () => {
+          if (activeRef.current && !snapshot().playing) latest.current.toggle();
+        });
+        session.setActionHandler("pause", () => {
+          if (activeRef.current && snapshot().playing) latest.current.toggle();
+        });
+        session.playbackState = snapshot().playing ? "playing" : "paused";
+      }
       await video.requestPictureInPicture();
       if (!mountedRef.current) {
         stopRendering();
