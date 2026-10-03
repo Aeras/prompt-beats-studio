@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import shellUrl from "@/assets/pip/shell.png";
+import vinylUrl from "@/assets/pip/vinyl.png";
+import labelUrl from "@/assets/pip/label.png";
+import tonearmUrl from "@/assets/pip/tonearm.png";
+import {
+  advanceRotation,
+  drawPipTurntable,
+  PIP_HEIGHT,
+  PIP_WIDTH,
+  type PipAssets,
+  type PipPlayback,
+} from "@/lib/pip-turntable";
 
 type Options = {
+  // Caller compatibility only: song cover art is never drawn in PiP.
   art: string | undefined;
   title: string | undefined;
   subtitle: string | undefined;
@@ -9,385 +22,250 @@ type Options = {
   audioElement: HTMLAudioElement | null;
 };
 
-/**
- * HTML5 <audio> can't enter Picture-in-Picture, so we paint a realistic,
- * top-down turntable / vinyl record player onto a portrait canvas, capture that
- * as a video stream, and put THAT video into PiP. The record spins only while
- * the track is playing and the tonearm (needle) sweeps from the outer edge
- * toward the center label in sync with playback progress.
- */
-export function usePipPlayer({ art, title, subtitle, playing, toggle, audioElement }: Options) {
+function loadAssets(): Promise<Record<keyof PipAssets, HTMLImageElement>> {
+  const entries = Object.entries({
+    shell: shellUrl,
+    vinyl: vinylUrl,
+    label: labelUrl,
+    tonearm: tonearmUrl,
+  });
+  return Promise.all(
+    entries.map(
+      ([key, url]) =>
+        new Promise<[string, HTMLImageElement]>((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve([key, image]);
+          image.onerror = () => reject(new Error(`Unable to load PiP ${key}`));
+          image.src = url;
+        }),
+    ),
+  ).then((loaded) => Object.fromEntries(loaded) as Record<keyof PipAssets, HTMLImageElement>);
+}
+
+/** Hidden canvas -> video stream -> native PiP. No page-level visual component. */
+export function usePipPlayer(options: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const syncing = useRef(false);
-  const playingRef = useRef(playing);
-  const rotationRef = useRef(0);
+  const latest = useRef(options);
+  const assetsRef = useRef<ReturnType<typeof loadAssets> | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const cleanupEvents = useRef<(() => void) | null>(null);
+  const activeRef = useRef(false);
+  const openingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const expectedEvent = useRef<"play" | "pause" | null>(null);
   const [pipActive, setPipActive] = useState(false);
   const [supported, setSupported] = useState(false);
 
-  useEffect(() => {
-    playingRef.current = playing;
-  }, [playing]);
-
-  useEffect(() => {
-    setSupported(typeof document !== "undefined" && "pictureInPictureEnabled" in document);
+  const snapshot = useCallback((): PipPlayback => {
+    const { audioElement, title, subtitle, playing } = latest.current;
+    return {
+      title: title ?? "",
+      creator: subtitle ? (subtitle.startsWith("@") ? subtitle : `@${subtitle}`) : "",
+      currentTime: audioElement?.currentTime ?? 0,
+      duration: audioElement?.duration ?? 0,
+      playing: audioElement ? !audioElement.paused && !audioElement.ended : playing,
+    };
   }, []);
-
-  // Load cover art (crossOrigin so the canvas stays untainted / capturable).
-  useEffect(() => {
-    if (!art) {
-      imgRef.current = null;
-      return;
-    }
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      imgRef.current = img;
-    };
-    img.onerror = () => {
-      imgRef.current = null;
-    };
-    img.src = art;
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [art]);
-
-  // Turntable draw loop.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // High-res portrait canvas — exact absolute dimensions.
-    const W = (canvas.width = 1000);
-    const H = (canvas.height = 1400);
-    const CX = 500;
-    const CY = 550;
-    const DISC_RADIUS = 420; // fixed absolute radius -> perfectly round
-    const LABEL_RADIUS = 140;
-    const CENTER_HOLE_RADIUS = 5;
-    const PIVOT = { x: 880, y: 150 };
-
-    const draw = () => {
-      // Premium light-silver deck background.
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-      bgGradient.addColorStop(0, "#F3F4F6");
-      bgGradient.addColorStop(1, "#D1D5DB");
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, W, H);
-
-      // Subtle brushed-metal highlight across the upper deck.
-      ctx.save();
-      ctx.globalAlpha = 0.08;
-      ctx.fillStyle = "#FFFFFF";
-      ctx.beginPath();
-      ctx.ellipse(CX, CY * 0.35, W * 0.65, H * 0.22, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Update rotation while playing.
-      if (playingRef.current) {
-        rotationRef.current += 0.018;
-      }
-
-      // --- Vinyl disc (with deep drop shadow) ---
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 40;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 15;
-      ctx.beginPath();
-      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fill();
-      ctx.restore();
-
-      // Subtle outer rim highlight.
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(CX, CY, DISC_RADIUS, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-
-      // Spinning content: label, grooves, sheen.
-      ctx.save();
-      ctx.translate(CX, CY);
-      ctx.rotate(rotationRef.current);
-
-      // Concentric groove rings.
-      ctx.strokeStyle = "#1f1f1f";
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 5; i++) {
-        const r = LABEL_RADIUS + (DISC_RADIUS - LABEL_RADIUS) * ((i + 1) / 6);
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Center label (clipped circle with cover art).
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, LABEL_RADIUS, 0, Math.PI * 2);
-      ctx.clip();
-
-      const img = imgRef.current;
-      if (img && img.width > 0 && img.height > 0) {
-        const scale = Math.max((LABEL_RADIUS * 2) / img.width, (LABEL_RADIUS * 2) / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      } else {
-        ctx.fillStyle = "#1f1f1f";
-        ctx.fillRect(-LABEL_RADIUS, -LABEL_RADIUS, LABEL_RADIUS * 2, LABEL_RADIUS * 2);
-        ctx.fillStyle = "#555555";
-        ctx.beginPath();
-        ctx.arc(0, 0, 16, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-
-      // Center spindle hole.
-      ctx.beginPath();
-      ctx.arc(0, 0, CENTER_HOLE_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#111111";
-      ctx.fill();
-
-      // Glossy sheen across the vinyl.
-      ctx.beginPath();
-      ctx.arc(0, 0, DISC_RADIUS, 0, Math.PI * 2);
-      const sheen = ctx.createLinearGradient(-DISC_RADIUS, -DISC_RADIUS, DISC_RADIUS, DISC_RADIUS);
-      sheen.addColorStop(0, "rgba(255,255,255,0.08)");
-      sheen.addColorStop(0.45, "rgba(255,255,255,0)");
-      sheen.addColorStop(0.55, "rgba(255,255,255,0)");
-      sheen.addColorStop(1, "rgba(255,255,255,0.04)");
-      ctx.fillStyle = sheen;
-      ctx.fill();
-
-      ctx.restore(); // undo disc rotation
-
-      // --- Tonearm (needle) ---
-      const currentTime = audioElement?.currentTime ?? 0;
-      const duration =
-        audioElement?.duration && Number.isFinite(audioElement.duration)
-          ? audioElement.duration
-          : 0;
-      const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
-
-      // Needle tip sweeps from outer groove to inner groove area.
-      const startAngle = -Math.PI / 4; // -45°
-      const endAngle = (-Math.PI * 5) / 9; // -100°
-      const outerR = DISC_RADIUS - 16;
-      const innerR = LABEL_RADIUS + 34;
-      const needleRadius = outerR - progress * (outerR - innerR);
-      const needleAngle = startAngle + progress * (endAngle - startAngle);
-      const tipX = CX + needleRadius * Math.cos(needleAngle);
-      const tipY = CY + needleRadius * Math.sin(needleAngle);
-
-      const armAngle = Math.atan2(tipY - PIVOT.y, tipX - PIVOT.x);
-      const armLength = Math.hypot(tipX - PIVOT.x, tipY - PIVOT.y);
-
-      // Pivot base (sleek metallic cylinder).
-      const baseGradient = ctx.createRadialGradient(
-        PIVOT.x - 4,
-        PIVOT.y - 4,
-        4,
-        PIVOT.x,
-        PIVOT.y,
-        22,
-      );
-      baseGradient.addColorStop(0, "#F3F4F6");
-      baseGradient.addColorStop(0.5, "#9CA3AF");
-      baseGradient.addColorStop(1, "#374151");
-      ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 22, 0, Math.PI * 2);
-      ctx.fillStyle = baseGradient;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.25)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Pivot top highlight ring.
-      ctx.beginPath();
-      ctx.arc(PIVOT.x, PIVOT.y, 14, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Counterweight.
-      ctx.save();
-      ctx.translate(PIVOT.x, PIVOT.y);
-      ctx.rotate(armAngle + Math.PI / 2);
-      const cwGradient = ctx.createLinearGradient(-10, -26, 10, 14);
-      cwGradient.addColorStop(0, "#4B5563");
-      cwGradient.addColorStop(0.5, "#9CA3AF");
-      cwGradient.addColorStop(1, "#1F2937");
-      ctx.fillStyle = cwGradient;
-      ctx.beginPath();
-      ctx.roundRect(-10, -26, 20, 40, 6);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.35)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
-
-      // Metallic tonearm (thick, with white highlight line).
-      const armGradient = ctx.createLinearGradient(PIVOT.x, PIVOT.y, tipX, tipY);
-      armGradient.addColorStop(0, "#6B7280");
-      armGradient.addColorStop(0.5, "#E5E7EB");
-      armGradient.addColorStop(1, "#4B5563");
-
-      ctx.save();
-      ctx.strokeStyle = armGradient;
-      ctx.lineWidth = 11;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(PIVOT.x, PIVOT.y);
-      ctx.lineTo(tipX, tipY);
-      ctx.stroke();
-      // White metallic shine line.
-      ctx.strokeStyle = "rgba(255,255,255,0.75)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(
-        PIVOT.x + Math.cos(armAngle + Math.PI / 2) * 2,
-        PIVOT.y + Math.sin(armAngle + Math.PI / 2) * 2,
-      );
-      ctx.lineTo(
-        tipX + Math.cos(armAngle + Math.PI / 2) * 2,
-        tipY + Math.sin(armAngle + Math.PI / 2) * 2,
-      );
-      ctx.stroke();
-      ctx.restore();
-
-      // Headshell / cartridge (rectangular, resting on grooves).
-      const headshellLen = 44;
-      const headshellW = 16;
-      ctx.save();
-      ctx.translate(tipX, tipY);
-      ctx.rotate(armAngle);
-      // Cartridge body.
-      const cartGradient = ctx.createLinearGradient(-headshellW / 2, 0, headshellW / 2, 0);
-      cartGradient.addColorStop(0, "#111827");
-      cartGradient.addColorStop(0.5, "#374151");
-      cartGradient.addColorStop(1, "#1F2937");
-      ctx.fillStyle = cartGradient;
-      ctx.beginPath();
-      ctx.roundRect(-headshellW / 2, -headshellLen / 2, headshellW, headshellLen, 5);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // Stylus tip glow.
-      ctx.shadowColor = "rgba(251,191,36,0.9)";
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = "#FBBF24";
-      ctx.beginPath();
-      ctx.arc(0, headshellLen / 2 + 3, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // --- Bold centered typography at bottom ---
-      ctx.shadowBlur = 0;
-      ctx.textAlign = "center";
-
-      ctx.fillStyle = "#111827";
-      ctx.font = "bold 76px sans-serif";
-      ctx.fillText(truncate(ctx, title ?? "", 900), 500, 1180);
-
-      if (subtitle) {
-        ctx.fillStyle = "#4B5563";
-        ctx.font = "50px sans-serif";
-        const handle = subtitle.startsWith("@") ? subtitle : `@${subtitle}`;
-        ctx.fillText(truncate(ctx, handle, 900), 500, 1270);
-      }
-
-      rafRef.current = requestAnimationFrame(draw);
-    };
-
-    rafRef.current = requestAnimationFrame(draw);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    };
-  }, [title, subtitle, audioElement]);
-
-  // Keep the dummy video's state aligned with the audio element.
-  useEffect(() => {
+  const sendPlayback = useCallback(() => {
+    workerRef.current?.postMessage({ type: "playback", playback: snapshot() });
+  }, [snapshot]);
+  const stopRendering = useCallback(() => {
+    activeRef.current = false;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    if (timerRef.current !== null) clearInterval(timerRef.current);
+    timerRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
     const video = videoRef.current;
-    if (!video || !pipActive) return;
-    syncing.current = true;
-    if (playing && video.paused) void video.play().catch(() => {});
-    if (!playing && !video.paused) video.pause();
-    const id = setTimeout(() => {
-      syncing.current = false;
-    }, 0);
-    return () => clearTimeout(id);
-  }, [playing, pipActive]);
-
-  const onVideoPlay = useCallback(() => {
-    if (syncing.current) return;
-    if (!playingRef.current) toggle();
-  }, [toggle]);
-
-  const onVideoPause = useCallback(() => {
-    if (syncing.current) return;
-    if (playingRef.current) toggle();
-  }, [toggle]);
+    if (video) {
+      expectedEvent.current = "pause";
+      video.pause();
+      video.srcObject = null;
+    }
+  }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    setSupported(
+      document.pictureInPictureEnabled === true &&
+        typeof HTMLCanvasElement.prototype.captureStream === "function",
+    );
+    return () => {
+      mountedRef.current = false;
+      cleanupEvents.current?.();
+      stopRendering();
+    };
+  }, [stopRendering]);
+  useEffect(() => {
+    latest.current = options;
+    // Preload local assets only. Rendering does not start until PiP is requested.
+    if (options.playing && !assetsRef.current) {
+      assetsRef.current = loadAssets();
+      void assetsRef.current.catch(() => {
+        assetsRef.current = null;
+      });
+    }
+    sendPlayback();
+    const video = videoRef.current;
+    if (!video || !activeRef.current) return;
+    if (options.playing && video.paused) {
+      expectedEvent.current = "play";
+      void video.play().catch(() => {
+        expectedEvent.current = null;
+      });
+    } else if (!options.playing && !video.paused) {
+      expectedEvent.current = "pause";
+      video.pause();
+    }
+  }, [options, sendPlayback]);
+  useEffect(() => {
+    const audio = options.audioElement;
+    if (!audio) return;
+    const events = [
+      "timeupdate",
+      "seeking",
+      "seeked",
+      "durationchange",
+      "play",
+      "pause",
+      "ended",
+      "ratechange",
+    ];
+    events.forEach((event) => audio.addEventListener(event, sendPlayback));
+    return () => events.forEach((event) => audio.removeEventListener(event, sendPlayback));
+  }, [options.audioElement, sendPlayback]);
 
   const togglePip = useCallback(async () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!canvas || !video) return;
+    if (!canvas || !video || openingRef.current) return;
+    if (document.pictureInPictureElement === video) {
+      await document.exitPictureInPicture();
+      return;
+    }
+    if (!latest.current.audioElement || latest.current.audioElement.paused) return;
+    openingRef.current = true;
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-        return;
-      }
-      if (!video.srcObject) {
-        video.srcObject = canvas.captureStream(30);
-      }
+      assetsRef.current ??= loadAssets();
+      const assets = await assetsRef.current;
+      if (!mountedRef.current) return;
+      canvas.width = PIP_WIDTH;
+      canvas.height = PIP_HEIGHT;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("PiP canvas unavailable");
+      const stream = canvas.captureStream(30);
+      streamRef.current = stream;
+      const captureTrack = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined;
+      const requestFrame = () => captureTrack?.requestFrame?.();
+      drawPipTurntable(ctx, assets, snapshot(), 0);
+      requestFrame();
+      video.srcObject = stream;
       video.muted = true;
+      cleanupEvents.current?.();
+      const onPlayback = (event: Event) => {
+        if (expectedEvent.current === event.type) {
+          expectedEvent.current = null;
+          return;
+        }
+        if (!activeRef.current || document.pictureInPictureElement !== video) return;
+        const playing = snapshot().playing;
+        if ((event.type === "play" && !playing) || (event.type === "pause" && playing))
+          latest.current.toggle();
+      };
+      const onLeave = () => {
+        stopRendering();
+        setPipActive(false);
+      };
+      video.addEventListener("play", onPlayback);
+      video.addEventListener("pause", onPlayback);
+      video.addEventListener("leavepictureinpicture", onLeave);
+      cleanupEvents.current = () => {
+        video.removeEventListener("play", onPlayback);
+        video.removeEventListener("pause", onPlayback);
+        video.removeEventListener("leavepictureinpicture", onLeave);
+      };
+      expectedEvent.current = "play";
       await video.play();
       await video.requestPictureInPicture();
+      if (!mountedRef.current) {
+        stopRendering();
+        return;
+      }
+      activeRef.current = true;
+      setPipActive(true);
+      const startFallback = () => {
+        workerRef.current?.terminate();
+        workerRef.current = null;
+        if (!activeRef.current || timerRef.current !== null) return;
+        let rotation = 0;
+        let previous = performance.now();
+        timerRef.current = setInterval(() => {
+          const now = performance.now();
+          const state = snapshot();
+          rotation = advanceRotation(rotation, (now - previous) / 1000, state.playing);
+          previous = now;
+          drawPipTurntable(ctx, assets, state, rotation);
+          requestFrame();
+        }, 1000 / 30);
+      };
+      // Worker paints OffscreenCanvas; main thread only presents the bitmap and samples
+      // actual audio time. Only one unconsumed frame can be queued. No foreground rAF.
+      try {
+        if (
+          typeof Worker === "undefined" ||
+          typeof OffscreenCanvas === "undefined" ||
+          typeof createImageBitmap === "undefined"
+        ) {
+          startFallback();
+          return;
+        }
+        const bitmaps = await Promise.all(
+          Object.values(assets).map((image) => createImageBitmap(image)),
+        );
+        if (!activeRef.current || !mountedRef.current) {
+          bitmaps.forEach((bitmap) => bitmap.close());
+          return;
+        }
+        const worker = new Worker(new URL("../lib/pip-render.worker.ts", import.meta.url), {
+          type: "module",
+        });
+        workerRef.current = worker;
+        worker.onerror = (event) => {
+          event.preventDefault();
+          startFallback();
+        };
+        worker.onmessage = (event: MessageEvent<{ type: string; frame: ImageBitmap }>) => {
+          const frame = event.data.frame;
+          if (activeRef.current) {
+            ctx.drawImage(frame, 0, 0);
+            requestFrame();
+            worker.postMessage({ type: "consumed", playback: snapshot() });
+          }
+          frame.close();
+        };
+        worker.postMessage(
+          {
+            type: "init",
+            assets: Object.fromEntries(
+              Object.keys(assets).map((key, index) => [key, bitmaps[index]]),
+            ),
+          },
+          bitmaps,
+        );
+        sendPlayback();
+      } catch {
+        startFallback();
+      }
     } catch {
-      /* PiP unsupported or blocked */
+      stopRendering();
+      if (mountedRef.current) setPipActive(false);
+      // Unsupported/blocked PiP must not interrupt actual audio playback.
+    } finally {
+      openingRef.current = false;
     }
-  }, []);
-
-  // Native events (incl. play/pause from the OS PiP window).
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const onEnter = () => setPipActive(true);
-    const onLeave = () => {
-      setPipActive(false);
-      video.pause();
-    };
-    video.addEventListener("play", onVideoPlay);
-    video.addEventListener("pause", onVideoPause);
-    video.addEventListener("enterpictureinpicture", onEnter);
-    video.addEventListener("leavepictureinpicture", onLeave);
-    return () => {
-      video.removeEventListener("play", onVideoPlay);
-      video.removeEventListener("pause", onVideoPause);
-      video.removeEventListener("enterpictureinpicture", onEnter);
-      video.removeEventListener("leavepictureinpicture", onLeave);
-    };
-  }, [onVideoPlay, onVideoPause]);
-
+  }, [sendPlayback, snapshot, stopRendering]);
   return { canvasRef, videoRef, pipActive, supported, togglePip };
-}
-
-function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let out = text;
-  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) out = out.slice(0, -1);
-  return `${out}…`;
 }

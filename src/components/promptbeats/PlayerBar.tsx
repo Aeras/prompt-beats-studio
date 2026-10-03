@@ -204,8 +204,8 @@ export function PlayerBar() {
       </div>
       <canvas
         ref={canvasRef}
-        width={1000}
-        height={1400}
+        width={1200}
+        height={900}
         className="pointer-events-none absolute h-px w-px opacity-0"
         aria-hidden
       />
@@ -213,7 +213,7 @@ export function PlayerBar() {
         ref={videoRef}
         muted
         playsInline
-        style={{ aspectRatio: "10 / 14", objectFit: "contain" }}
+        style={{ aspectRatio: "4 / 3", objectFit: "contain" }}
         className="pointer-events-none absolute h-px w-px opacity-0"
         aria-hidden
       />
