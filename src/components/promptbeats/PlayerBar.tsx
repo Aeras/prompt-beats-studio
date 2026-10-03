@@ -12,6 +12,7 @@ import {
 import { Visualizer } from "./Visualizer";
 import { usePlayer } from "@/lib/player";
 import { usePipPlayer } from "@/hooks/usePipPlayer";
+import { PIP_HEIGHT, PIP_WIDTH } from "@/lib/pip-turntable";
 import { useI18n } from "@/i18n";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 
@@ -204,8 +205,8 @@ export function PlayerBar() {
       </div>
       <canvas
         ref={canvasRef}
-        width={1200}
-        height={900}
+        width={PIP_WIDTH}
+        height={PIP_HEIGHT}
         className="pointer-events-none absolute h-px w-px opacity-0"
         aria-hidden
       />
@@ -213,8 +214,17 @@ export function PlayerBar() {
         ref={videoRef}
         muted
         playsInline
-        style={{ aspectRatio: "4 / 3", objectFit: "contain" }}
-        className="pointer-events-none absolute h-px w-px opacity-0"
+        width={PIP_WIDTH}
+        height={PIP_HEIGHT}
+        style={{
+          width: PIP_WIDTH,
+          height: PIP_HEIGHT,
+          left: -PIP_WIDTH * 2,
+          top: 0,
+          aspectRatio: `${PIP_WIDTH} / ${PIP_HEIGHT}`,
+          objectFit: "contain",
+        }}
+        className="pointer-events-none fixed opacity-0"
         aria-hidden
       />
     </div>

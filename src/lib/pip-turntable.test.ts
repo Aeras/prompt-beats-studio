@@ -110,7 +110,15 @@ describe("PiP-only turntable", () => {
     expect(hook).toContain("workerRef.current?.terminate()");
     expect(hook).toContain("track.stop()");
     expect(hook).not.toContain("options.art");
-    expect(bar.match(/pointer-events-none absolute h-px w-px opacity-0/g)).toHaveLength(2);
+    expect(bar.match(/pointer-events-none absolute h-px w-px opacity-0/g)).toHaveLength(1);
+    const video = bar.slice(bar.indexOf("<video"));
+    expect(video).toContain("width={PIP_WIDTH}");
+    expect(video).toContain("height={PIP_HEIGHT}");
+    expect(video).toContain("width: PIP_WIDTH");
+    expect(video).toContain("height: PIP_HEIGHT");
+    expect(video).toContain("left: -PIP_WIDTH * 2");
+    expect(video).not.toContain("h-px w-px");
+    expect(video).not.toContain('aspectRatio: "4 / 3"');
   });
   test("worker backpressure, pause/resume and stop lifecycle work without animation frames", async () => {
     const source = await readFile(new URL("./pip-render.worker.ts", import.meta.url), "utf8");
