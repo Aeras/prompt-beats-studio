@@ -287,20 +287,22 @@ function AuthenticatedHome({
             {el ? "Όλα τα Projects" : "All Projects"}
           </Link>
         </div>
-        <Link
-          to="/create"
-          className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent"
-        >
-          <Sparkles className="h-4 w-4" />
-          {el ? "Περισσότερα εργαλεία δημιουργίας" : "More creation tools"}
-        </Link>
-        <Link
-          to="/discover"
-          className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent"
-        >
-          <Compass className="h-4 w-4" />
-          Discover
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+          <Link
+            to="/create"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-accent"
+          >
+            <Sparkles className="h-4 w-4 shrink-0 text-accent" />
+            {el ? "Περισσότερα εργαλεία δημιουργίας" : "More creation tools"}
+          </Link>
+          <Link
+            to="/discover"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-accent"
+          >
+            <Compass className="h-4 w-4 shrink-0 text-accent" />
+            Discover
+          </Link>
+        </div>
       </section>
     </section>
   );
