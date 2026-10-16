@@ -400,7 +400,6 @@ function PrivateReviewPage() {
                 </button>
               </div>
             </div>
-          )}
         </section>
       </div>
     </div>
