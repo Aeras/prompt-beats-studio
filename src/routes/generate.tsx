@@ -156,6 +156,8 @@ export const Route = createFileRoute("/generate")({
     project: z.string().uuid().optional(),
     base: z.string().uuid().optional(),
     presets: z.enum(["open"]).optional(),
+    start: z.enum(["new"]).optional(),
+    session: z.string().uuid().optional(),
   }),
   head: () => ({
     meta: [
@@ -175,7 +177,7 @@ export const Route = createFileRoute("/generate")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: GeneratePage,
+  component: GenerateSessionBoundary,
 });
 
 const CUSTOM = "Custom…";
@@ -842,6 +844,21 @@ function ResultSection({
   );
 }
 
+function GenerateSessionBoundary() {
+  const search = Route.useSearch();
+  const freshSession =
+    search.start === "new" &&
+    search.session &&
+    !search.mode &&
+    !search.workspace &&
+    !search.project &&
+    !search.base
+      ? search.session
+      : null;
+  // A new fresh-start URL must not inherit the mounted Generator's previous state.
+  return <GeneratePage key={freshSession ? `fresh:${freshSession}` : "standard"} />;
+}
+
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
@@ -855,6 +872,16 @@ function GeneratePage() {
   const songUniverseFeature = useFeatureAccess("song_universe");
   const navigate = useNavigate();
   const search = Route.useSearch();
+  const freshSession =
+    search.start === "new" &&
+    search.session &&
+    !search.mode &&
+    !search.workspace &&
+    !search.project &&
+    !search.base
+      ? search.session
+      : null;
+  const jobStorageKey = freshSession ? `pb:generation-job:fresh:${freshSession}` : JOB_STORAGE_KEY;
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
@@ -1022,6 +1049,7 @@ function GeneratePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (freshSession) return;
     const raw = window.sessionStorage.getItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);
     if (!raw) return;
     window.sessionStorage.removeItem(STORY_MAP_SONG_SETUP_HANDOFF_KEY);
@@ -1066,6 +1094,7 @@ function GeneratePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (freshSession) return;
     const raw = window.sessionStorage.getItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY);
     if (!raw) return;
     window.sessionStorage.removeItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY);
@@ -1117,6 +1146,7 @@ function GeneratePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (freshSession) return;
     const raw = window.sessionStorage.getItem(INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY);
     if (!raw) return;
     window.sessionStorage.removeItem(INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY);
@@ -1175,6 +1205,7 @@ function GeneratePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (freshSession) return;
     const raw = window.sessionStorage.getItem(SONG_ANALYZER_HANDOFF_KEY);
     if (!raw) return;
     window.sessionStorage.removeItem(SONG_ANALYZER_HANDOFF_KEY);
@@ -1318,8 +1349,8 @@ function GeneratePage() {
 
   function rememberJob(id: string | null) {
     if (typeof window === "undefined") return;
-    if (id) window.localStorage.setItem(JOB_STORAGE_KEY, id);
-    else window.localStorage.removeItem(JOB_STORAGE_KEY);
+    if (id) window.localStorage.setItem(jobStorageKey, id);
+    else window.localStorage.removeItem(jobStorageKey);
   }
 
   function applyJob(job: GenerationJob) {
@@ -1412,13 +1443,14 @@ function GeneratePage() {
   useEffect(() => {
     if (!user || jobId || result) return;
     const stored =
-      typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+      typeof window !== "undefined" ? window.localStorage.getItem(jobStorageKey) : null;
     if (stored) {
       setJobId(stored);
       setBusy(true);
       return;
     }
     let cancelled = false;
+    if (freshSession) return;
     void getLatestGenerationJob()
       .then((r) => {
         const job = r.job;
@@ -1692,9 +1724,12 @@ function GeneratePage() {
   };
   const generatorDraftScope = revisionMode
     ? `generator:revision:${revisionProjectId || "none"}:${revisionBasePromptId || "none"}`
-    : "generator:new";
+    : freshSession
+      ? `generator:fresh:${freshSession}`
+      : "generator:new";
   const clearGeneratorDraft = useDraftAutosave({
-    ownerId: user?.id,
+    // Do not erase a saved fresh-session draft while account preferences are still hydrating.
+    ownerId: freshSession && !accountPreferencesReady ? null : user?.id,
     scope: generatorDraftScope,
     enabled: Boolean(user && accountPreferences.autoSaveDrafts && search.workspace !== "lyrics"),
     value: { snapshot: currentSnapshot, revisionRequest },
@@ -2158,6 +2193,7 @@ ${narrativePlan.beats
       applyJob(res.job);
     } catch (err) {
       try {
+        if (freshSession) throw err;
         const latest = await getLatestGenerationJob();
         if (latest.job && latest.job.status !== "failed") {
           pendingKey.current = null;
