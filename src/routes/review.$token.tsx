@@ -81,7 +81,8 @@ function PrivateReviewPage() {
     },
   });
 
-  const data = session.data?.state === "active" ? session.data : null;
+  const sessionData: Awaited<ReturnType<typeof getPrivateReviewSession>> | undefined = session.data;
+  const data = sessionData?.state === "active" ? sessionData : null;
   const rootComments = useMemo(() => data?.comments ?? [], [data]);
 
   if (info.isLoading)
