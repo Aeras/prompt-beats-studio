@@ -1728,7 +1728,8 @@ function GeneratePage() {
       ? `generator:fresh:${freshSession}`
       : "generator:new";
   const clearGeneratorDraft = useDraftAutosave({
-    ownerId: user?.id,
+    // Do not erase a saved fresh-session draft while account preferences are still hydrating.
+    ownerId: freshSession && !accountPreferencesReady ? null : user?.id,
     scope: generatorDraftScope,
     enabled: Boolean(user && accountPreferences.autoSaveDrafts && search.workspace !== "lyrics"),
     value: { snapshot: currentSnapshot, revisionRequest },
