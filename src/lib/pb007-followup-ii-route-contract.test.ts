@@ -33,7 +33,9 @@ describe("PB-007 Follow-up II route contracts", () => {
   it("remounts per fresh-session URL and preserves drafts during preference hydration", () => {
     expect(generator).toContain("component: GenerateSessionBoundary");
     expect(generator).toContain('key={freshSession ? `fresh:${freshSession}` : "standard"}');
-    expect(generator).toContain("ownerId: freshSession && !accountPreferencesReady ? null : user?.id");
+    expect(generator).toContain(
+      "ownerId: freshSession && !accountPreferencesReady ? null : user?.id",
+    );
     expect(generator).toContain("if (freshSession) return;");
     expect(generator).toContain("if (freshSession) throw err;");
     expect(home.indexOf('id="home-new-song"')).toBeLessThan(home.indexOf('id="home-other-work"'));
