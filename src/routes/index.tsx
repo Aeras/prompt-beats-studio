@@ -236,9 +236,9 @@ function AuthenticatedHome({
                   search: { start: "new", session: crypto.randomUUID() },
                 })
               }
-              className="min-h-20 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex min-h-14 w-full items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 px-5 py-4 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <Sparkles className="mb-2 h-5 w-5 text-accent" />
+              <Sparkles className="h-5 w-5 shrink-0 text-accent" />
               {el ? "Νέο τραγούδι" : "New Song"}
             </button>
           ) : (
@@ -273,17 +273,17 @@ function AuthenticatedHome({
           <button
             type="button"
             onClick={openTrackSubmission}
-            className="min-h-20 rounded-2xl border border-white/10 p-5 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 px-5 py-4 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <Music2 className="mb-2 h-5 w-5 text-accent" />
+            <Music2 className="h-5 w-5 shrink-0 text-accent" />
             {el ? "Πρόσθεσε τραγούδι" : "Add Song"}
           </button>
           <Link
             to="/library"
             search={{ tab: "prompts", view: "projects" }}
-            className="min-h-20 rounded-2xl border border-white/10 p-5 font-semibold focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 px-5 py-4 font-semibold focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <FolderOpen className="mb-2 h-5 w-5 text-accent" />
+            <FolderOpen className="h-5 w-5 shrink-0 text-accent" />
             {el ? "Όλα τα Projects" : "All Projects"}
           </Link>
         </div>
