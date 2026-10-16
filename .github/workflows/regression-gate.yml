@@ -10,12 +10,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
-    permissions:
-      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -245,27 +243,3 @@ jobs:
         with:
           name: strict-typecheck-report
           path: typecheck.log
-
-  pb007_format_once:
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 326
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          persist-credentials: true
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - name: Format PB-007 changed files only
-        run: bunx prettier --write src/routes/index.tsx src/routes/library.tsx src/routes/generate.tsx src/lib/home-creator-state.ts src/lib/home-creator-state.test.ts src/lib/pb007-followup-ii-route-contract.test.ts src/lib/library-tab-refresh-persistence.test.ts
-      - name: Commit formatting-only diff
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/index.tsx src/routes/library.tsx src/routes/generate.tsx src/lib/home-creator-state.ts src/lib/home-creator-state.test.ts src/lib/pb007-followup-ii-route-contract.test.ts src/lib/library-tab-refresh-persistence.test.ts
-          if ! git diff --cached --quiet; then
-            git commit -m "style(PB-007): format changed implementation files"
-            git push origin HEAD:feat/pb-007-followup-ii-creator-home
-          fi
