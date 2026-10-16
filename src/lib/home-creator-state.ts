@@ -11,7 +11,7 @@ export type HomeCreatorState =
 export function resolveHomeCreatorState(input: {
   authLoading: boolean;
   resumeLoading: boolean;
-  data?: HomeResumeResult;
+  data?: HomeResumeResult | undefined;
   queryError?: unknown;
 }): HomeCreatorState {
   if (input.authLoading) return { kind: "auth-loading" };
