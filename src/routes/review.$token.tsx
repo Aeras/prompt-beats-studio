@@ -227,7 +227,6 @@ function PrivateReviewPage() {
                 {data.creatorMessage}
               </p>
             </div>
-          )}
         </section>
 
         {data.audio && (
@@ -338,19 +337,17 @@ function PrivateReviewPage() {
                 <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                   {item.body}
                 </p>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReplyParentId(item.id);
-                      setComment("");
-                    }}
-                    className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"
-                  >
-                    <MessageSquareReply className="h-3 w-3" />
-                    {el ? "Απάντηση" : "Reply"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyParentId(item.id);
+                    setComment("");
+                  }}
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"
+                >
+                  <MessageSquareReply className="h-3 w-3" />
+                  {el ? "Απάντηση" : "Reply"}
+                </button>
               </div>
             ))}
             {rootComments.length === 0 && (
@@ -360,8 +357,7 @@ function PrivateReviewPage() {
             )}
           </div>
 
-          {!readOnly && (
-            <div className="mt-4 rounded-xl border border-accent/15 p-3">
+          <div className="mt-4 rounded-xl border border-accent/15 p-3">
               {replyParentId && (
                 <p className="mb-2 text-[10px] text-accent">
                   {el ? "Απάντηση σε υπάρχον σχόλιο" : "Replying to a comment"}
