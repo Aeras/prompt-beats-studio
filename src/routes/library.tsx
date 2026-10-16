@@ -183,7 +183,11 @@ export const Route = createFileRoute("/library")({
     const view = ["all", "projects", "analyses"].includes(String(search["view"]))
       ? (search["view"] as LibraryView)
       : undefined;
-    return { ...(tab ? { tab } : {}), ...(project !== undefined ? { project } : {}), ...(view ? { view } : {}) };
+    return {
+      ...(tab ? { tab } : {}),
+      ...(project !== undefined ? { project } : {}),
+      ...(view ? { view } : {}),
+    };
   },
   head: () => ({
     meta: [

@@ -857,9 +857,15 @@ function GeneratePage() {
   const songUniverseFeature = useFeatureAccess("song_universe");
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const freshSession = search.start === "new" && search.session && !search.mode && !search.workspace && !search.project && !search.base
-    ? search.session
-    : null;
+  const freshSession =
+    search.start === "new" &&
+    search.session &&
+    !search.mode &&
+    !search.workspace &&
+    !search.project &&
+    !search.base
+      ? search.session
+      : null;
   const jobStorageKey = freshSession ? `pb:generation-job:fresh:${freshSession}` : JOB_STORAGE_KEY;
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
@@ -1703,7 +1709,9 @@ function GeneratePage() {
   };
   const generatorDraftScope = revisionMode
     ? `generator:revision:${revisionProjectId || "none"}:${revisionBasePromptId || "none"}`
-    : freshSession ? `generator:fresh:${freshSession}` : "generator:new";
+    : freshSession
+      ? `generator:fresh:${freshSession}`
+      : "generator:new";
   const clearGeneratorDraft = useDraftAutosave({
     ownerId: user?.id,
     scope: generatorDraftScope,
