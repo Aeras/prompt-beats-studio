@@ -286,9 +286,11 @@ function AuthenticatedHome({
             <FolderOpen className="mb-2 h-5 w-5 text-accent" />
             {el ? "Όλα τα Projects" : "All Projects"}
           </Link>
-
         </div>
-        <Link to="/create" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent">
+        <Link
+          to="/create"
+          className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent"
+        >
           <Sparkles className="h-4 w-4" />
           {el ? "Περισσότερα εργαλεία δημιουργίας" : "More creation tools"}
         </Link>

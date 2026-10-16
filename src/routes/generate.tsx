@@ -847,7 +847,12 @@ function ResultSection({
 function GenerateSessionBoundary() {
   const search = Route.useSearch();
   const freshSession =
-    search.start === "new" && search.session && !search.mode && !search.workspace && !search.project && !search.base
+    search.start === "new" &&
+    search.session &&
+    !search.mode &&
+    !search.workspace &&
+    !search.project &&
+    !search.base
       ? search.session
       : null;
   // A new fresh-start URL must not inherit the mounted Generator's previous state.
