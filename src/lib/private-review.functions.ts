@@ -210,7 +210,11 @@ export const getPrivateReviewSession = createServerFn({ method: "POST" })
       _reviewer_key: data.reviewerKey,
     });
     if (error) throw new Error("The review session could not be loaded.");
-    if ((raw as any)?.state === "unavailable") return { state: "unavailable" as const };
+    const state = (raw as any)?.state;
+    if (state === "unavailable") return { state: "unavailable" as const };
+    if (state === "closed" || state === "expired") {
+      return { state: state as "closed" | "expired" };
+    }
 
     const review = raw as any;
     const trackId = review?.audio?.trackId;

@@ -64,6 +64,29 @@ describe("Private Review Links Phase 1", () => {
     expect(sql).not.toContain("reopen_private_review");
   });
 
+  test("closed or expired sessions no longer return snapshot, comments or audio", async () => {
+    const hardening = await source(
+      "supabase/migrations/20261016135041_private_review_closed_content_revocation.sql",
+    );
+    const server = await source("src/lib/private-review.functions.ts");
+    const route = await source("src/routes/review.$token.tsx");
+
+    expect(hardening).toContain("IF v_state <> 'active' THEN");
+    expect(hardening).toContain("'expiresAt', v_session.expires_at");
+    expect(hardening.indexOf("IF v_state <> 'active' THEN")).toBeLessThan(
+      hardening.indexOf("SELECT COALESCE(jsonb_agg"),
+    );
+    expect(hardening.indexOf("IF v_state <> 'active' THEN")).toBeLessThan(
+      hardening.indexOf("IF v_session.include_audio"),
+    );
+    expect(server).toContain('if (state === "closed" || state === "expired")');
+    expect(server.indexOf('if (state === "closed" || state === "expired")')).toBeLessThan(
+      server.indexOf("hydrateTrackAudioUrl"),
+    );
+    expect(route).toContain('session.data?.state === "expired" || session.data?.state === "closed"');
+    expect(route).not.toContain("read-only.");
+  });
+
   test("creator dashboard supports reviewer filtering", async () => {
     const sql = await source("supabase/migrations/20260923054500_private_review_links_phase1.sql");
     const manager = await source("src/components/promptbeats/PrivateReviewManager.tsx");
