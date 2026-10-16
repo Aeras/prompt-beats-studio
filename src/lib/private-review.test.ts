@@ -66,7 +66,7 @@ describe("Private Review Links Phase 1", () => {
 
   test("closed or expired sessions no longer return snapshot, comments or audio", async () => {
     const hardening = await source(
-      "supabase/migrations/20261016131500_private_review_closed_content_revocation.sql",
+      "supabase/migrations/20261016135041_private_review_closed_content_revocation.sql",
     );
     const server = await source("src/lib/private-review.functions.ts");
     const route = await source("src/routes/review.$token.tsx");
