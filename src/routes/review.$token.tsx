@@ -81,7 +81,7 @@ function PrivateReviewPage() {
     },
   });
 
-  const data = session.data && session.data.state !== "unavailable" ? session.data : null;
+  const data = session.data?.state === "active" ? session.data : null;
   const rootComments = useMemo(() => data?.comments ?? [], [data]);
 
   if (info.isLoading)
@@ -164,14 +164,26 @@ function PrivateReviewPage() {
 
   if (session.isLoading)
     return <ScreenMessage text={el ? "Φόρτωση review..." : "Loading review..."} loading />;
+  if (session.data?.state === "expired" || session.data?.state === "closed")
+    return (
+      <ScreenMessage
+        text={
+          session.data.state === "expired"
+            ? el
+              ? "Το review έχει λήξει."
+              : "This review has expired."
+            : el
+              ? "Το review έχει κλείσει."
+              : "This review has been closed."
+        }
+      />
+    );
   if (!data)
     return (
       <ScreenMessage
         text={el ? "Δεν ήταν δυνατή η φόρτωση του review." : "The review could not be loaded."}
       />
     );
-
-  const readOnly = data.state !== "active";
   const isSongReview = data.sourceType === "track";
   const effectiveSongPanel =
     songPanel ?? (data.includePrompt ? "prompt" : data.includeLyrics ? "lyrics" : null);
@@ -215,17 +227,6 @@ function PrivateReviewPage() {
                 {data.creatorMessage}
               </p>
             </div>
-          )}
-          {readOnly && (
-            <p className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
-              {data.state === "expired"
-                ? el
-                  ? "Το review έχει λήξει και είναι μόνο για ανάγνωση."
-                  : "This review has expired and is read-only."
-                : el
-                  ? "Ο δημιουργός έκλεισε το review. Είναι μόνο για ανάγνωση."
-                  : "The creator closed this review. It is read-only."}
-            </p>
           )}
         </section>
 
