@@ -83,7 +83,9 @@ describe("Private Review Links Phase 1", () => {
     expect(server.indexOf('if (state === "closed" || state === "expired")')).toBeLessThan(
       server.indexOf("hydrateTrackAudioUrl"),
     );
-    expect(route).toContain('session.data?.state === "expired" || session.data?.state === "closed"');
+    expect(route).toContain(
+      'session.data?.state === "expired" || session.data?.state === "closed"',
+    );
     expect(route).not.toContain("read-only.");
   });
 
