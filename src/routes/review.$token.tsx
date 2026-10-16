@@ -227,6 +227,7 @@ function PrivateReviewPage() {
                 {data.creatorMessage}
               </p>
             </div>
+          )}
         </section>
 
         {data.audio && (
