@@ -231,7 +231,11 @@ export const getPrivateReviewSession = createServerFn({ method: "POST" })
       if (hydrated?.audio_url) review.audio.audioUrl = hydrated.audio_url;
     }
 
-    return privateReviewSessionSchema.parse(review);
+    const parsed = privateReviewSessionSchema.parse(review);
+    if (parsed.state !== "active") {
+      return { state: parsed.state as "closed" | "expired" };
+    }
+    return { ...parsed, state: "active" as const };
   });
 
 export const addPrivateReviewComment = createServerFn({ method: "POST" })
