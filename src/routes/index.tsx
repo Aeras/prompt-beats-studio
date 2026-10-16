@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { getHomeResume } from "@/lib/home.functions";
 import type { HomeResumeItem } from "@/lib/home-resume.shared";
+import { resolveHomeCreatorState, type HomeCreatorState } from "@/lib/home-creator-state";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { canonicalLink, canonicalUrl, robotsContent, safeJsonLd } from "@/lib/seo-policy";
 
 export const Route = createFileRoute("/")({
@@ -75,6 +77,13 @@ function HomePage() {
     refetchOnMount: "always",
   });
 
+  const creatorState = resolveHomeCreatorState({
+    authLoading: loading,
+    resumeLoading: resume.isLoading,
+    data: resume.data,
+    queryError: resume.error,
+  });
+
   const header = (
     <div className="flex min-w-0 items-center gap-2">
       <Home className="h-5 w-5 shrink-0 text-accent" />
@@ -94,9 +103,8 @@ function HomePage() {
         ) : user ? (
           <AuthenticatedHome
             el={el}
-            items={resume.data?.items ?? []}
-            resumeLoading={resume.isLoading}
-            failedSourceCount={resume.data?.failedSources.length ?? 0}
+            state={creatorState}
+            onRetry={() => void resume.refetch()}
           />
         ) : (
           <GuestHome el={el} />
@@ -143,101 +151,89 @@ function GuestHome({ el }: { el: boolean }) {
 
 function AuthenticatedHome({
   el,
-  items,
-  resumeLoading,
-  failedSourceCount,
+  state,
+  onRetry,
 }: {
   el: boolean;
-  items: HomeResumeItem[];
-  resumeLoading: boolean;
-  failedSourceCount: number;
+  state: HomeCreatorState;
+  onRetry: () => void;
 }) {
   const { openTrackSubmission } = useAppShellActions();
-
+  const generatorAccess = useFeatureAccess("ai_generator");
+  const items = state.kind === "available" || state.kind === "degraded" ? state.items : [];
+  const primary = items[0];
+  const secondary = items.slice(1);
+  const retry = (
+    <button type="button" onClick={onRetry} className="min-h-11 rounded-xl border border-accent/40 px-4 text-sm font-semibold text-accent focus-visible:ring-2 focus-visible:ring-accent">
+      {el ? "Δοκίμασε ξανά" : "Retry"}
+    </button>
+  );
   return (
     <section className="space-y-6">
       <div className="glass-strong rounded-3xl p-6 sm:p-8">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          {el ? "Τι θέλεις να δημιουργήσεις σήμερα;" : "What do you want to create today?"}
+          {el ? "Συνέχισε τη δημιουργία σου" : "Continue creating"}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {el
-            ? "Ξεκίνα κάτι νέο, πρόσθεσε ένα τραγούδι ή εξερεύνησε τη μουσική της κοινότητας."
-            : "Start something new, add a song, or explore music from the community."}
+        <p className="mt-2 text-sm text-muted-foreground">
+          {el ? "Η δημιουργική δουλειά σου, έτοιμη να τη συνεχίσεις." : "Pick up your creative work where you left off."}
         </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Link
-            to="/create"
-            className="flex min-h-24 items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-left transition-colors hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-          >
-            <Sparkles className="h-5 w-5 shrink-0 text-accent" />
-            <span>
-              <span className="block text-sm font-semibold">
-                {el ? "Νέα δημιουργία" : "New creation"}
-              </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {el ? "Μπες στο Create" : "Open Create"}
-              </span>
-            </span>
-          </Link>
-          <button
-            type="button"
-            onClick={openTrackSubmission}
-            className="flex min-h-24 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-accent/30 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-          >
-            <Music2 className="h-5 w-5 shrink-0 text-accent" />
-            <span>
-              <span className="block text-sm font-semibold">
-                {el ? "Πρόσθεσε τραγούδι" : "Add a song"}
-              </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {el ? "Upload ή σύνδεσμος" : "Upload or link"}
-              </span>
-            </span>
-          </button>
-          <Link
-            to="/discover"
-            className="flex min-h-24 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-accent/30 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
-          >
-            <Compass className="h-5 w-5 shrink-0 text-accent" />
-            <span>
-              <span className="block text-sm font-semibold">{el ? "Εξερεύνησε" : "Explore"}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">Discover</span>
-            </span>
-          </Link>
-        </div>
+        {state.kind === "resume-loading" || state.kind === "auth-loading" ? (
+          <p className="mt-6 text-sm text-muted-foreground" role="status">{el ? "Φόρτωση εργασιών..." : "Loading your work..."}</p>
+        ) : primary ? (
+          <div className="mt-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{el ? "Συνέχισε" : "Continue"}</h2>
+            <div className="max-w-2xl"><ResumeCard item={primary} el={el} /></div>
+          </div>
+        ) : state.kind === "verified-empty" ? (
+          <p className="mt-6 text-sm text-muted-foreground" role="status">
+            {el ? "Δεν έχεις ξεκινήσει ακόμη δημιουργική δουλειά. Ξεκίνα το πρώτο σου τραγούδι." : "No creative work yet. Start your first song."}
+          </p>
+        ) : (
+          <div className="mt-6 flex flex-wrap items-center gap-3" role="alert">
+            <p className="text-sm text-muted-foreground">{el ? "Δεν ήταν δυνατή η φόρτωση της δουλειάς σου." : "Your work could not be loaded."}</p>
+            {retry}
+          </div>
+        )}
+        {state.kind === "degraded" && (
+          <div className="mt-4 flex flex-wrap items-center gap-3" role="status">
+            <p className="text-xs text-muted-foreground">{el ? "Κάποιες εργασίες δεν φορτώθηκαν." : "Some work could not be loaded."}</p>
+            {retry}
+          </div>
+        )}
       </div>
-
-      {resumeLoading ? (
-        <div className="glass rounded-2xl p-5 text-sm text-muted-foreground" aria-live="polite">
-          {el ? "Εύρεση πρόσφατης δημιουργικής δουλειάς..." : "Finding recent creative work..."}
-        </div>
-      ) : items.length > 0 ? (
-        <section aria-labelledby="home-resume-heading" className="space-y-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 id="home-resume-heading" className="font-display text-xl font-bold">
-                {el ? "Συνέχισε" : "Resume"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {el ? "Επέστρεψε εκεί που δούλευες πρόσφατα." : "Return to recent creative work."}
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {items.map((item) => (
-              <ResumeCard key={`${item.type}:${item.id}`} item={item} el={el} />
-            ))}
-          </div>
-          {failedSourceCount >= 2 && (
-            <p className="text-xs text-muted-foreground" role="status">
-              {el
-                ? "Κάποια πρόσφατη δουλειά δεν μπόρεσε να φορτωθεί αυτή τη στιγμή."
-                : "Some recent work could not be loaded right now."}
-            </p>
-          )}
+      {secondary.length > 0 && (
+        <section aria-labelledby="home-other-work" className="space-y-3">
+          <h2 id="home-other-work" className="font-display text-xl font-bold">{el ? "Επίσης στη δουλειά σου" : "More to continue"}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">{secondary.map(item => <ResumeCard key={item.type + ":" + item.id} item={item} el={el} />)}</div>
         </section>
-      ) : null}
+      )}
+      <section aria-labelledby="home-quick-actions" className="space-y-3">
+        <h2 id="home-quick-actions" className="font-display text-xl font-bold">{el ? "Γρήγορες ενέργειες" : "Quick actions"}</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {generatorAccess.isLoading ? (
+            <div className="glass rounded-2xl p-5 text-sm text-muted-foreground" role="status">{el ? "Έλεγχος πρόσβασης..." : "Checking access..."}</div>
+          ) : generatorAccess.allowed ? (
+            <button type="button" onClick={() => { window.location.assign("/generate?start=new&session=" + crypto.randomUUID()); }}
+              className="min-h-20 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent">
+              <Sparkles className="mb-2 h-5 w-5 text-accent" />{el ? "Νέο τραγούδι" : "New Song"}
+            </button>
+          ) : (
+            <div className="rounded-2xl border border-white/10 p-5 text-sm text-muted-foreground" role="status">{el ? "Η δημιουργία τραγουδιού δεν είναι διαθέσιμη." : "New Song is not available for this account."}</div>
+          )}
+          <button type="button" onClick={openTrackSubmission} className="min-h-20 rounded-2xl border border-white/10 p-5 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent">
+            <Music2 className="mb-2 h-5 w-5 text-accent" />{el ? "Πρόσθεσε τραγούδι" : "Add Song"}
+          </button>
+          <Link to="/library" search={{ tab: "prompts", view: "projects" }} className="min-h-20 rounded-2xl border border-white/10 p-5 font-semibold focus-visible:ring-2 focus-visible:ring-accent">
+            <FolderOpen className="mb-2 h-5 w-5 text-accent" />{el ? "Όλα τα Projects" : "All Projects"}
+          </Link>
+          <Link to="/create" className="min-h-20 rounded-2xl border border-white/10 p-5 font-semibold focus-visible:ring-2 focus-visible:ring-accent">
+            <Sparkles className="mb-2 h-5 w-5 text-accent" />Create
+          </Link>
+        </div>
+        <Link to="/discover" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent">
+          <Compass className="h-4 w-4" />Discover
+        </Link>
+      </section>
     </section>
   );
 }
