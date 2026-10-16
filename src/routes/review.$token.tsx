@@ -81,7 +81,8 @@ function PrivateReviewPage() {
     },
   });
 
-  const data = session.data?.state === "active" ? session.data : null;
+  const sessionData: Awaited<ReturnType<typeof getPrivateReviewSession>> | undefined = session.data;
+  const data = sessionData?.state === "active" ? sessionData : null;
   const rootComments = useMemo(() => data?.comments ?? [], [data]);
 
   if (info.isLoading)
@@ -338,19 +339,17 @@ function PrivateReviewPage() {
                 <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                   {item.body}
                 </p>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReplyParentId(item.id);
-                      setComment("");
-                    }}
-                    className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"
-                  >
-                    <MessageSquareReply className="h-3 w-3" />
-                    {el ? "Απάντηση" : "Reply"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyParentId(item.id);
+                    setComment("");
+                  }}
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-accent"
+                >
+                  <MessageSquareReply className="h-3 w-3" />
+                  {el ? "Απάντηση" : "Reply"}
+                </button>
               </div>
             ))}
             {rootComments.length === 0 && (
@@ -360,50 +359,48 @@ function PrivateReviewPage() {
             )}
           </div>
 
-          {!readOnly && (
-            <div className="mt-4 rounded-xl border border-accent/15 p-3">
+          <div className="mt-4 rounded-xl border border-accent/15 p-3">
+            {replyParentId && (
+              <p className="mb-2 text-[10px] text-accent">
+                {el ? "Απάντηση σε υπάρχον σχόλιο" : "Replying to a comment"}
+              </p>
+            )}
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value.slice(0, 2000))}
+              rows={3}
+              maxLength={2000}
+              className="w-full resize-y rounded-lg border border-white/10 bg-black/30 p-3 text-sm"
+              placeholder={el ? "Γράψε το feedback σου..." : "Write your feedback..."}
+            />
+            {post.error && (
+              <p className="mt-2 text-xs text-red-400">
+                {post.error instanceof Error ? post.error.message : "Error"}
+              </p>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
               {replyParentId && (
-                <p className="mb-2 text-[10px] text-accent">
-                  {el ? "Απάντηση σε υπάρχον σχόλιο" : "Replying to a comment"}
-                </p>
-              )}
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value.slice(0, 2000))}
-                rows={3}
-                maxLength={2000}
-                className="w-full resize-y rounded-lg border border-white/10 bg-black/30 p-3 text-sm"
-                placeholder={el ? "Γράψε το feedback σου..." : "Write your feedback..."}
-              />
-              {post.error && (
-                <p className="mt-2 text-xs text-red-400">
-                  {post.error instanceof Error ? post.error.message : "Error"}
-                </p>
-              )}
-              <div className="mt-2 flex justify-end gap-2">
-                {replyParentId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReplyParentId(null);
-                      setComment("");
-                    }}
-                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs"
-                  >
-                    {el ? "Ακύρωση reply" : "Cancel reply"}
-                  </button>
-                )}
                 <button
                   type="button"
-                  disabled={!comment.trim() || post.isPending}
-                  onClick={() => post.mutate()}
-                  className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-semibold text-accent disabled:opacity-40"
+                  onClick={() => {
+                    setReplyParentId(null);
+                    setComment("");
+                  }}
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs"
                 >
-                  {post.isPending ? "…" : el ? "Αποστολή" : "Send"}
+                  {el ? "Ακύρωση reply" : "Cancel reply"}
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                disabled={!comment.trim() || post.isPending}
+                onClick={() => post.mutate()}
+                className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-semibold text-accent disabled:opacity-40"
+              >
+                {post.isPending ? "…" : el ? "Αποστολή" : "Send"}
+              </button>
             </div>
-          )}
+          </div>
         </section>
       </div>
     </div>
