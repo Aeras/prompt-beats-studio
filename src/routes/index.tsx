@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Compass, FolderOpen, Home, Lightbulb, Map, Music2, Orbit, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
@@ -160,6 +160,7 @@ function AuthenticatedHome({
 }) {
   const { openTrackSubmission } = useAppShellActions();
   const generatorAccess = useFeatureAccess("ai_generator");
+  const navigate = useNavigate();
   const items = state.kind === "available" || state.kind === "degraded" ? state.items : [];
   const primary = items[0];
   const secondary = items.slice(1);
@@ -213,7 +214,7 @@ function AuthenticatedHome({
           {generatorAccess.isLoading ? (
             <div className="glass rounded-2xl p-5 text-sm text-muted-foreground" role="status">{el ? "Έλεγχος πρόσβασης..." : "Checking access..."}</div>
           ) : generatorAccess.allowed ? (
-            <button type="button" onClick={() => { window.location.assign("/generate?start=new&session=" + crypto.randomUUID()); }}
+            <button type="button" onClick={() => void navigate({ to: "/generate", search: { start: "new", session: crypto.randomUUID() } })}
               className="min-h-20 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-left font-semibold focus-visible:ring-2 focus-visible:ring-accent">
               <Sparkles className="mb-2 h-5 w-5 text-accent" />{el ? "Νέο τραγούδι" : "New Song"}
             </button>
