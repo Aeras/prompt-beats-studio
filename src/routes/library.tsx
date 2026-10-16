@@ -169,7 +169,8 @@ function toTrack(track: Row, handle: string): Track {
 }
 
 const TABS = LIBRARY_TAB_IDS;
-type LibrarySearch = { tab?: LibraryTab; project?: string };
+type LibraryView = "all" | "projects" | "analyses";
+type LibrarySearch = { tab?: LibraryTab; project?: string; view?: LibraryView };
 
 function parseLibraryTab(value: unknown): LibraryTab | undefined {
   return isLibraryTab(value) ? value : undefined;
@@ -179,7 +180,10 @@ export const Route = createFileRoute("/library")({
   validateSearch: (search: Record<string, unknown>): LibrarySearch => {
     const tab = parseLibraryTab(search["tab"]);
     const project = preserveExplicitObjectSearch(search["project"]);
-    return { ...(tab ? { tab } : {}), ...(project !== undefined ? { project } : {}) };
+    const view = ["all", "projects", "analyses"].includes(String(search["view"]))
+      ? (search["view"] as LibraryView)
+      : undefined;
+    return { ...(tab ? { tab } : {}), ...(project !== undefined ? { project } : {}), ...(view ? { view } : {}) };
   },
   head: () => ({
     meta: [
@@ -203,7 +207,7 @@ export const Route = createFileRoute("/library")({
 function LibraryPage() {
   const { t, language } = useI18n();
   const navigate = useNavigate();
-  const { tab: requestedTab, project: projectSearch } = Route.useSearch();
+  const { tab: requestedTab, project: projectSearch, view: requestedView } = Route.useSearch();
   const projectSelection = parseExplicitObjectSelection(projectSearch);
   const { user, profile, loading } = useAuth();
   const { preferences: accountPreferences } = useAccountPreferences();
@@ -218,8 +222,12 @@ function LibraryPage() {
   const [trackSource, setTrackSource] = useState<TrackSourcePreference>(defaultTrackSource);
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [showTabFade, setShowTabFade] = useState(false);
-  const [promptView, setPromptView] = useState<"all" | "projects" | "analyses">("all");
+  const [promptView, setPromptView] = useState<LibraryView>(requestedView ?? "all");
   const [promptSearch, setPromptSearch] = useState("");
+
+  useEffect(() => {
+    setPromptView(requestedView ?? "all");
+  }, [requestedView]);
 
   const availableTabs = TABS.filter((item) => {
     if (item === "playlists") return playlistsAccess.allowed;
