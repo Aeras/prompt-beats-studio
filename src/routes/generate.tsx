@@ -177,7 +177,7 @@ export const Route = createFileRoute("/generate")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: GeneratePage,
+  component: GenerateSessionBoundary,
 });
 
 const CUSTOM = "Custom…";
@@ -842,6 +842,16 @@ function ResultSection({
       )}
     </div>
   );
+}
+
+function GenerateSessionBoundary() {
+  const search = Route.useSearch();
+  const freshSession =
+    search.start === "new" && search.session && !search.mode && !search.workspace && !search.project && !search.base
+      ? search.session
+      : null;
+  // A new fresh-start URL must not inherit the mounted Generator's previous state.
+  return <GeneratePage key={freshSession ? `fresh:${freshSession}` : "standard"} />;
 }
 
 function GeneratePage() {
