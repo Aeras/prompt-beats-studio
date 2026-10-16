@@ -218,23 +218,11 @@ function AuthenticatedHome({
           </div>
         )}
       </div>
-      {secondary.length > 0 && (
-        <section aria-labelledby="home-other-work" className="space-y-3">
-          <h2 id="home-other-work" className="font-display text-xl font-bold">
-            {el ? "Επίσης στη δουλειά σου" : "More to continue"}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {secondary.map((item) => (
-              <ResumeCard key={item.type + ":" + item.id} item={item} el={el} />
-            ))}
-          </div>
-        </section>
-      )}
-      <section aria-labelledby="home-quick-actions" className="space-y-3">
-        <h2 id="home-quick-actions" className="font-display text-xl font-bold">
-          {el ? "Γρήγορες ενέργειες" : "Quick actions"}
+      <section aria-labelledby="home-new-song" className="space-y-3">
+        <h2 id="home-new-song" className="font-display text-xl font-bold">
+          {el ? "Ξεκίνα κάτι νέο" : "Start something new"}
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="max-w-2xl">
           {generatorAccess.isLoading ? (
             <div className="glass rounded-2xl p-5 text-sm text-muted-foreground" role="status">
               {el ? "Έλεγχος πρόσβασης..." : "Checking access..."}
@@ -263,6 +251,25 @@ function AuthenticatedHome({
                 : "New Song is not available for this account."}
             </div>
           )}
+        </div>
+      </section>
+      {secondary.length > 0 && (
+        <section aria-labelledby="home-other-work" className="space-y-3">
+          <h2 id="home-other-work" className="font-display text-xl font-bold">
+            {el ? "Επίσης στη δουλειά σου" : "More to continue"}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {secondary.map((item) => (
+              <ResumeCard key={item.type + ":" + item.id} item={item} el={el} />
+            ))}
+          </div>
+        </section>
+      )}
+      <section aria-labelledby="home-quick-actions" className="space-y-3">
+        <h2 id="home-quick-actions" className="font-display text-xl font-bold">
+          {el ? "Γρήγορες ενέργειες" : "Quick actions"}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={openTrackSubmission}
@@ -279,14 +286,12 @@ function AuthenticatedHome({
             <FolderOpen className="mb-2 h-5 w-5 text-accent" />
             {el ? "Όλα τα Projects" : "All Projects"}
           </Link>
-          <Link
-            to="/create"
-            className="min-h-20 rounded-2xl border border-white/10 p-5 font-semibold focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <Sparkles className="mb-2 h-5 w-5 text-accent" />
-            Create
-          </Link>
+
         </div>
+        <Link to="/create" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent">
+          <Sparkles className="h-4 w-4" />
+          {el ? "Περισσότερα εργαλεία δημιουργίας" : "More creation tools"}
+        </Link>
         <Link
           to="/discover"
           className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-accent"
