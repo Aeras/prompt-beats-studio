@@ -15,6 +15,7 @@ import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-anal
 export const SONG_ANALYZER_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  { id: "gemini-4-argon", label: "Gemini 4 Argon" },
   { id: "gpt-audio-1.5", label: "GPT Audio 1.5" },
 ] as const;
 
@@ -51,6 +52,12 @@ const BUILTIN_SONG_ANALYZER_MODEL_CONFIGS: readonly SongAnalyzerModelConfig[] = 
   {
     id: "gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro",
+    provider: "gemini",
+    acceptedMimeTypes: supportedMimeTypes,
+  },
+  {
+    id: "gemini-4-argon",
+    label: "Gemini 4 Argon",
     provider: "gemini",
     acceptedMimeTypes: supportedMimeTypes,
   },
@@ -1407,7 +1414,10 @@ async function generateAudioEvidence(args: {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: EVIDENCE_RESPONSE_SCHEMA,
-          maxOutputTokens: 8192,
+          maxOutputTokens: args.model === "gemini-4-argon" ? 32_768 : 8192,
+          ...(args.model === "gemini-4-argon"
+            ? { thinkingConfig: { thinkingLevel: "medium" } }
+            : {}),
           temperature: 0.1,
         },
       }),
@@ -1639,7 +1649,10 @@ async function generateFinalFromEvidence(args: {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: ANALYZER_RESPONSE_SCHEMA,
-          maxOutputTokens: 8192,
+          maxOutputTokens: args.model === "gemini-4-argon" ? 32_768 : 8192,
+          ...(args.model === "gemini-4-argon"
+            ? { thinkingConfig: { thinkingLevel: "medium" } }
+            : {}),
           temperature: 0.1,
         },
       }),

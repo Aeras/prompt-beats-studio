@@ -9,6 +9,7 @@ export const AI_MODELS = [
   { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", provider: "gemini" },
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "gemini" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "gemini" },
+  { id: "gemini-4-argon", label: "Gemini 4 Argon", provider: "gemini" },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic" },
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic" },
   { id: "claude-fable-5", label: "Claude Fable 5", provider: "anthropic" },
