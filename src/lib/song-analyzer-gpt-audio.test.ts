@@ -17,6 +17,18 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(code).toContain('provider: analyzerProvider(args.model)');
   });
 
+  test("gives GPT Audio the exact Stage A JSON contract when structured response formats are unavailable", async () => {
+    const code = await source("./song-analyzer.functions.ts");
+    expect(code).toContain("OUTPUT CONTRACT — REQUIRED EXACT JSON SHAPE");
+    expect(code).toContain('"dominantRhythmicPulse"');
+    expect(code).toContain('"gridCandidates"');
+    expect(code).toContain('"dominantElements"');
+    expect(code).toContain('"instrumentEvidence"');
+    expect(code).toContain('"songSections"');
+    expect(code).toContain('"uncertaintyNotes"');
+    expect(code).toContain("OPENAI_STAGE_A_JSON_CONTRACT");
+  });
+
   test("keeps OpenAI audio input constrained to the documented MP3/WAV formats", async () => {
     const code = await source("./song-analyzer.functions.ts");
     const route = await source("../routes/song-analyzer.tsx");

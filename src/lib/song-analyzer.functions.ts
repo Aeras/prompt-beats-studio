@@ -400,6 +400,98 @@ Do not infer club-ready mix, EDM drop, sidechain, filter sweep, riser, synth hoo
 Return only the structured JSON requested by the schema.
 `.trim();
 
+const OPENAI_STAGE_A_JSON_CONTRACT = `
+OUTPUT CONTRACT — REQUIRED EXACT JSON SHAPE
+
+Return exactly one JSON object with these top-level keys and no prose:
+{
+  "dominantRhythmicPulse": {
+    "observation": string,
+    "evidence": string,
+    "confidence": "high" | "medium" | "low"
+  },
+  "tempo": {
+    "gridCandidates": number[],
+    "feltTempo": number | null,
+    "possibleHalfTime": number | null,
+    "possibleDoubleTime": number | null,
+    "confidence": "high" | "medium" | "low",
+    "kickEvidence": string,
+    "backbeatEvidence": string,
+    "bassPhrasing": string,
+    "vocalPhrasing": string,
+    "harmonicRhythm": string,
+    "notes": string
+  },
+  "drumPercussionEvidence": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "bassEvidence": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "harmonicFoundation": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "dominantElements": [
+    {
+      "category": "instrument" | "groove" | "texture" | "melodic_figure" | "other",
+      "element": string,
+      "role": string,
+      "technique": string | null,
+      "prominence": "dominant" | "major" | "supporting",
+      "confidence": "high" | "medium" | "low",
+      "evidence": string
+    }
+  ],
+  "instrumentEvidence": [
+    {
+      "instrument": string,
+      "role": string,
+      "technique": string | null,
+      "timbre": string | null,
+      "prominence": "dominant" | "major" | "supporting",
+      "confidence": "high" | "medium" | "low",
+      "evidence": string
+    }
+  ],
+  "melodicElements": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "vocalCharacteristics": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "arrangementChanges": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "songSections": [
+    {
+      "label": string,
+      "startSeconds": number | null,
+      "endSeconds": number | null,
+      "evidence": string,
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "energyProgression": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "productionMixEvidence": [
+    { "claim": string, "evidence": string, "confidence": "high" | "medium" | "low" }
+  ],
+  "uncertaintyNotes": string[]
+}
+
+CONTRACT RULES
+- Every top-level key above is required, even when the value is an empty array.
+- dominantElements must contain 3 to 5 items.
+- gridCandidates must contain at least one BPM number between 20 and 300.
+- startSeconds/endSeconds must be JSON numbers in seconds or null, never "mm:ss" strings.
+- Use only the exact enum strings shown above.
+- Use JSON null, never "unknown", "N/A", or omitted fields, for nullable values.
+- Do not wrap the JSON in markdown fences.
+- Do not add explanatory text before or after the JSON.
+`.trim();
+
 const ANALYZER_SYSTEM_PROMPT = `
 You are PromptBeats Stage B: MUSICAL INTERPRETATION / GENERATOR-READY SYNTHESIS.
 
@@ -1022,8 +1114,20 @@ function parseStructured<T>(
 
   const checked = schema.safeParse(parsed);
   if (!checked.success) {
-    logStage(model, stage, "schema_validation_failure", checked.error.flatten());
-    throw new Error(`Analyzer ${stage} returned schema-invalid JSON`);
+    const issues = checked.error.issues.slice(0, 6).map((issue) => ({
+      path: issue.path.join("."),
+      code: issue.code,
+      message: issue.message,
+    }));
+    logStage(model, stage, "schema_validation_failure", { issues });
+    const detail = issues
+      .map((issue) => issue.path || "<root>")
+      .filter(Boolean)
+      .slice(0, 4)
+      .join(", ");
+    throw new Error(
+      `Analyzer ${stage} returned schema-invalid JSON${detail ? ` at: ${detail}` : ""}`,
+    );
   }
   return checked.data;
 }
@@ -1134,7 +1238,10 @@ async function generateAudioEvidence(args: {
         model: args.model,
         modalities: ["text"],
         messages: [
-          { role: "system", content: EVIDENCE_EXTRACTION_SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: `${EVIDENCE_EXTRACTION_SYSTEM_PROMPT}\n\n${OPENAI_STAGE_A_JSON_CONTRACT}`,
+          },
           {
             role: "user",
             content: [
