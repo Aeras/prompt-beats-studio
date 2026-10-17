@@ -321,18 +321,87 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   const requestedOutput = (call.maxTokens ?? 8192) * 2;
   const maxOutputTokens = isArgon ? Math.max(requestedOutput, 32_768) : requestedOutput;
 
+  // Gemini 4 Argon requires a newer SDK than the version currently pinned by
+  // PromptBeats. Use the stable REST generateContent contract directly so the
+  // model can be enabled without upgrading the whole Gemini dependency surface.
+  if (isArgon) {
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: call.system }] },
+          contents: [{ role: "user", parts: [{ text: call.prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            ...(call.schema ? { responseSchema: call.schema } : {}),
+            maxOutputTokens,
+            thinkingConfig: { thinkingLevel: argonThinkingLevel },
+          },
+        }),
+      },
+    );
+    const payload = (await response.json()) as any;
+    if (!response.ok) {
+      const message = payload?.error?.message;
+      console.error("[ai-provider] Gemini 4 Argon request failed", {
+        status: response.status,
+        error: typeof message === "string" ? message.slice(0, 300) : "unknown",
+      });
+      throw new Error(
+        typeof message === "string" && message
+          ? message
+          : "The Gemini 4 Argon service is temporarily unavailable.",
+      );
+    }
+
+    const candidate = payload?.candidates?.[0];
+    const finish = candidate?.finishReason ?? null;
+    const stopReason =
+      finish === "STOP" ? "end_turn" : finish === "MAX_TOKENS" ? "max_tokens" : (finish ?? null);
+    const text = (candidate?.content?.parts ?? [])
+      .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+      .join("");
+    const um = payload?.usageMetadata;
+    const inputTokens = um?.promptTokenCount ?? null;
+    const outputTokens =
+      um?.candidatesTokenCount == null && um?.thoughtsTokenCount == null
+        ? null
+        : (um?.candidatesTokenCount ?? 0) + (um?.thoughtsTokenCount ?? 0);
+    const totalTokens =
+      um?.totalTokenCount ??
+      (inputTokens == null && outputTokens == null
+        ? null
+        : (inputTokens ?? 0) + (outputTokens ?? 0));
+    const usage =
+      inputTokens == null && outputTokens == null && totalTokens == null
+        ? null
+        : {
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            cachedInputTokens: um?.cachedContentTokenCount ?? null,
+            reasoningTokens: um?.thoughtsTokenCount ?? null,
+          };
+    return { text, stopReason, usage, provider: "gemini", model };
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model,
     contents: call.prompt,
     config: {
       systemInstruction: call.system,
-      abortSignal: AbortSignal.timeout(timeoutMs),
-      httpOptions: { timeout: timeoutMs },
+      abortSignal: providerRequestSignal(call),
+      httpOptions: { timeout: providerRequestTimeoutMs(call) },
       // Gemini structured JSON output; Zod still validates the parsed result.
       responseMimeType: "application/json",
       ...(call.schema ? { responseSchema: call.schema as never } : {}),
-      ...(isArgon ? { thinkingConfig: { thinkingLevel: argonThinkingLevel } } : {}),
       maxOutputTokens,
     },
   });
