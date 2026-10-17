@@ -1148,7 +1148,6 @@ async function generateAudioEvidence(args: {
         ],
         max_completion_tokens: 8192,
         temperature: 0.1,
-        response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(5 * 60 * 1000),
     });
@@ -1395,7 +1394,6 @@ async function generateFinalFromEvidence(args: {
         ],
         max_completion_tokens: 8192,
         temperature: 0.1,
-        response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(5 * 60 * 1000),
     });
