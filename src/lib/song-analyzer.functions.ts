@@ -66,8 +66,6 @@ export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 
-
-
 const confidenceSchema = z.enum(["high", "medium", "low"]);
 
 const bpmSchema = z
@@ -1102,6 +1100,7 @@ function analyzerProvider(model: string) {
 }
 
 async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]> {
+  if (!process.env["OPENROUTER_API_KEY"]?.trim()) return [];
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("app_settings")
