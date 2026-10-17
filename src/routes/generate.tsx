@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
 import { useDraftAutosave } from "@/lib/draft-autosave";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import {
   ADVANCED_SETUP_MAX_BYTES,
   advancedSetupFilename,
@@ -1803,6 +1804,15 @@ function GeneratePage() {
       !!revisionBasePromptId &&
       !!revisionBase.data?.prompt &&
       revisionRequest.trim().length > 0);
+  usePb012LastWork(
+    user?.id ?? null,
+    !loading &&
+      generatorFeature.allowed &&
+      search.workspace !== "lyrics" &&
+      (!revisionMode || Boolean(revisionBase.data?.prompt))
+      ? { type: "generator" }
+      : null,
+  );
   const ready =
     theme.trim().length >= 3 &&
     !!baseGenre &&

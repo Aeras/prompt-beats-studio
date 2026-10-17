@@ -67,7 +67,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { useAccountPreferences } from "@/lib/account-preferences";
-import { capturePb012LastWork } from "@/lib/pb012-last-work";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import { useDraftAutosave } from "@/lib/draft-autosave";
 import { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 import {
@@ -323,12 +323,27 @@ function LibraryPage() {
     enabled: Boolean(user && favoritesAccess.allowed),
   });
 
-  useEffect(() => {
-    if (!user || loading || projectSelection.mode !== "absent") return;
-    if (tab === "tracks" && mine.isSuccess) capturePb012LastWork(user.id, { type: "my_songs" });
-    else if (tab === "playlists" && playlistsAccess.allowed) capturePb012LastWork(user.id, { type: "playlists" });
-    else if (tab === "prompts" && promptView === "projects" && projects.isSuccess) capturePb012LastWork(user.id, { type: "projects" });
-  }, [user?.id, loading, projectSelection.mode, tab, promptView, mine.isSuccess, projects.isSuccess, playlistsAccess.allowed]);
+  const settledProject =
+    projectSelection.mode === "valid" && projects.isSuccess && !projects.isFetching
+      ? projects.data?.projects.find((project) => project.id === projectSelection.id)
+      : null;
+  usePb012LastWork(
+    user?.id ?? null,
+    loading
+      ? null
+      : tab === "prompts" && settledProject
+        ? { type: "project", id: settledProject.id }
+        : projectSelection.mode !== "absent"
+          ? null
+          : tab === "tracks" && mine.isSuccess && !mine.isFetching
+            ? { type: "my_songs" }
+            : tab === "prompts" &&
+                promptView === "projects" &&
+                projects.isSuccess &&
+                !projects.isFetching
+              ? { type: "projects" }
+              : null,
+  );
 
   const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));

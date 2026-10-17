@@ -1,9 +1,22 @@
-export const START_SCREEN_VALUES = ["home", "last_work", "projects", "my_songs", "playlists", "generator", "song_universe", "inspiration_wall", "story_map", "discover", "create"] as const;
+export const START_SCREEN_VALUES = [
+  "home",
+  "last_work",
+  "projects",
+  "my_songs",
+  "playlists",
+  "generator",
+  "song_universe",
+  "inspiration_wall",
+  "story_map",
+  "discover",
+  "create",
+] as const;
 export type StartScreenPreference = (typeof START_SCREEN_VALUES)[number];
 export const DEFAULT_START_SCREEN: StartScreenPreference = "home";
 export function parseStartScreenPreference(value: unknown): StartScreenPreference {
   return typeof value === "string" && (START_SCREEN_VALUES as readonly string[]).includes(value)
-    ? value as StartScreenPreference : DEFAULT_START_SCREEN;
+    ? (value as StartScreenPreference)
+    : DEFAULT_START_SCREEN;
 }
 
 export type LastWorkDestination =
@@ -28,16 +41,26 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 export function parseLastWorkEnvelope(value: unknown): LastWorkEnvelope | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
-  if (raw.version !== 1 || !raw.destination || typeof raw.destination !== "object" || Array.isArray(raw.destination)) return null;
-  const dest = raw.destination as Record<string, unknown>;
-  if (typeof dest.type !== "string") return null;
-  if (EXACT_TYPES.has(dest.type)) {
-    if (typeof dest.id !== "string" || !UUID.test(dest.id)) return null;
-  } else if (!AREA_TYPES.has(dest.type)) return null;
-  const destination = EXACT_TYPES.has(dest.type)
-    ? { type: dest.type, id: dest.id } as LastWorkDestination
-    : { type: dest.type } as LastWorkDestination;
-  return { version: 1, destination, ...(typeof raw.recordedAt === "string" ? { recordedAt: raw.recordedAt } : {}) };
+  if (
+    raw["version"] !== 1 ||
+    !raw["destination"] ||
+    typeof raw["destination"] !== "object" ||
+    Array.isArray(raw["destination"])
+  )
+    return null;
+  const dest = raw["destination"] as Record<string, unknown>;
+  if (typeof dest["type"] !== "string") return null;
+  if (EXACT_TYPES.has(dest["type"])) {
+    if (typeof dest["id"] !== "string" || !UUID.test(dest["id"])) return null;
+  } else if (!AREA_TYPES.has(dest["type"])) return null;
+  const destination = EXACT_TYPES.has(dest["type"])
+    ? ({ type: dest["type"], id: dest["id"] } as LastWorkDestination)
+    : ({ type: dest["type"] } as LastWorkDestination);
+  return {
+    version: 1,
+    destination,
+    ...(typeof raw["recordedAt"] === "string" ? { recordedAt: raw["recordedAt"] } : {}),
+  };
 }
 export function sameLastWorkDestination(a: LastWorkDestination, b: LastWorkDestination): boolean {
   return a.type === b.type && (!("id" in a) || ("id" in b && a.id === b.id));
@@ -58,22 +81,44 @@ export const START_SCREEN_FEATURES: Partial<Record<StartScreenPreference, string
   story_map: "story_map",
 };
 
-export type Pb012Route = { to: string; search?: Record<string, string> };
+export type Pb012Route =
+  | { to: "/" | "/generate" | "/create" | "/discover"; search?: never }
+  | {
+      to: "/library";
+      search: { tab: "prompts" | "tracks" | "playlists"; view?: "projects"; project?: string };
+    }
+  | { to: "/song-universe"; search?: { universe: string } }
+  | { to: "/story-map"; search?: { map: string } }
+  | { to: "/inspiration-wall"; search?: { wall: string } };
 export function pb012RouteFor(destination: Pb012ResolvedDestination): Pb012Route {
   switch (destination.type) {
-    case "home": return { to: "/" };
-    case "projects": return { to: "/library", search: { tab: "prompts", view: "projects" } };
-    case "my_songs": return { to: "/library", search: { tab: "tracks" } };
-    case "playlists": return { to: "/library", search: { tab: "playlists" } };
-    case "generator": return { to: "/generate" };
-    case "create": return { to: "/create" };
-    case "song_universe": return { to: "/song-universe" };
-    case "inspiration_wall": return { to: "/inspiration-wall" };
-    case "story_map": return { to: "/story-map" };
-    case "discover": return { to: "/discover" };
-    case "project": return { to: "/library", search: { tab: "prompts", project: destination.id } };
-    case "song_universe_exact": return { to: "/song-universe", search: { universe: destination.id } };
-    case "story_map_exact": return { to: "/story-map", search: { map: destination.id } };
-    case "inspiration_wall_exact": return { to: "/inspiration-wall", search: { wall: destination.id } };
+    case "home":
+      return { to: "/" };
+    case "projects":
+      return { to: "/library", search: { tab: "prompts", view: "projects" } };
+    case "my_songs":
+      return { to: "/library", search: { tab: "tracks" } };
+    case "playlists":
+      return { to: "/library", search: { tab: "playlists" } };
+    case "generator":
+      return { to: "/generate" };
+    case "create":
+      return { to: "/create" };
+    case "song_universe":
+      return { to: "/song-universe" };
+    case "inspiration_wall":
+      return { to: "/inspiration-wall" };
+    case "story_map":
+      return { to: "/story-map" };
+    case "discover":
+      return { to: "/discover" };
+    case "project":
+      return { to: "/library", search: { tab: "prompts", project: destination.id } };
+    case "song_universe_exact":
+      return { to: "/song-universe", search: { universe: destination.id } };
+    case "story_map_exact":
+      return { to: "/story-map", search: { map: destination.id } };
+    case "inspiration_wall_exact":
+      return { to: "/inspiration-wall", search: { wall: destination.id } };
   }
 }

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { DEFAULT_START_SCREEN, parseStartScreenPreference, type StartScreenPreference } from "@/lib/pb012-starting-screen.shared";
+import {
+  DEFAULT_START_SCREEN,
+  parseStartScreenPreference,
+  type StartScreenPreference,
+} from "@/lib/pb012-starting-screen.shared";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExportFormat } from "@/lib/export-center.shared";
 import { isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
@@ -66,7 +70,9 @@ export function readAccountPreferences(metadata: Record<string, unknown> | null 
   const exportFormat = data[ACCOUNT_PREFERENCE_KEYS.exportFormat];
   const generatorLanguage = data[ACCOUNT_PREFERENCE_KEYS.generatorLanguage];
   return {
-    defaultStartScreen: parseStartScreenPreference(data[ACCOUNT_PREFERENCE_KEYS.defaultStartScreen]),
+    defaultStartScreen: parseStartScreenPreference(
+      data[ACCOUNT_PREFERENCE_KEYS.defaultStartScreen],
+    ),
     generatorLanguage: typeof generatorLanguage === "string" ? generatorLanguage : "",
     generatorMode: generatorMode === "advanced" ? "advanced" : "basic",
     libraryTab: isLibraryTab(libraryTab) ? libraryTab : "tracks",

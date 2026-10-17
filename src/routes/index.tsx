@@ -63,7 +63,11 @@ export const Route = createFileRoute("/")({
         : [],
     };
   },
-  component: () => <Pb012DefaultEntryBoundary><HomePage /></Pb012DefaultEntryBoundary>,
+  component: () => (
+    <Pb012DefaultEntryBoundary>
+      <HomePage />
+    </Pb012DefaultEntryBoundary>
+  ),
 });
 
 function HomePage() {

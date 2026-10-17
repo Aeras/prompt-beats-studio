@@ -9,7 +9,8 @@ import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { getUserAvatarUrl } from "@/lib/user-avatar";
 import { AVATAR_ACCEPT, validateAvatarFile } from "@/lib/avatar-upload";
-import { postAuthDestination, validateNextIntentSearch } from "@/lib/auth-continuation";
+import { validateNextIntentSearch } from "@/lib/auth-continuation";
+import { resolvePb012EntryRoute } from "@/lib/pb012-entry";
 
 export const Route = createFileRoute("/onboarding")({
   validateSearch: validateNextIntentSearch,
@@ -122,7 +123,7 @@ function Onboarding() {
             : {}),
         },
       });
-      navigate({ to: postAuthDestination(next), replace: true });
+      await navigate({ ...(await resolvePb012EntryRoute(next)), replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("onboarding.saveError"));
       setBusy(false);

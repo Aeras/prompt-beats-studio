@@ -9,11 +9,8 @@ import { sendWelcomeEmail } from "@/lib/email.functions";
 import { checkSignupAvailability, checkSignupRegistration } from "@/lib/profile.functions";
 import { useI18n } from "@/i18n";
 import { LEGAL_VERSION } from "@/lib/legal-documents";
-import {
-  authCallbackUrl,
-  postAuthDestination,
-  validateAuthRouteSearch,
-} from "@/lib/auth-continuation";
+import { authCallbackUrl, validateAuthRouteSearch } from "@/lib/auth-continuation";
+import { resolvePb012EntryRoute } from "@/lib/pb012-entry";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: validateAuthRouteSearch,
@@ -108,20 +105,24 @@ function AuthPage() {
 
   useEffect(() => {
     let active = true;
-    const recoveryInUrl =
+    let recoveryInUrl =
       typeof window !== "undefined" &&
       (reset === "1" || window.location.hash.includes("type=recovery"));
 
     if (recoveryInUrl) setResetStage("update");
 
-    void supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
-      if (data.session && !recoveryInUrl) navigate({ to: postAuthDestination(next) });
+      if (data.session && !recoveryInUrl) {
+        const route = await resolvePb012EntryRoute(next);
+        if (active && !recoveryInUrl) void navigate({ ...route, replace: true });
+      }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (!active) return;
       if (event === "PASSWORD_RECOVERY") {
+        recoveryInUrl = true;
         setMessage(null);
         setResetStage("update");
       }
@@ -157,7 +158,9 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: authCallbackUrl(window.location.origin, next),
+            emailRedirectTo: next
+              ? authCallbackUrl(window.location.origin, next)
+              : `${window.location.origin}/auth`,
             data: {
               handle: cleanHandle,
               display_name: alias.trim(),
@@ -188,7 +191,7 @@ function AuthPage() {
           }
           throw new Error(t("auth.signinUnavailable"));
         }
-        navigate({ to: postAuthDestination(next) });
+        await navigate({ ...(await resolvePb012EntryRoute(next)), replace: true });
       }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : t("auth.somethingWrong"));
@@ -261,7 +264,9 @@ function AuthPage() {
     setBusy(true);
     setMessage(null);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: authCallbackUrl(window.location.origin, next),
+      redirect_uri: next
+        ? authCallbackUrl(window.location.origin, next)
+        : `${window.location.origin}/auth`,
     });
     if (result.error) {
       setMessage(t("auth.googleFailed"));
@@ -274,7 +279,7 @@ function AuthPage() {
     } catch {
       /* ignore */
     }
-    navigate({ to: postAuthDestination(next) });
+    await navigate({ ...(await resolvePb012EntryRoute(next)), replace: true });
   };
 
   if (resetStage !== "none") {

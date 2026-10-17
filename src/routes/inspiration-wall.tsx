@@ -7,6 +7,7 @@ import {
 } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import {
   Image as ImageIcon,
   Lightbulb,
@@ -142,10 +143,21 @@ function InspirationWallPage() {
   }, [access.allowed, navigate, selection.mode, user, wallSearch, walls.data?.walls]);
 
   const wall = useQuery({
-    queryKey: ["inspiration-wall", selectedWallId],
+    queryKey: ["inspiration-wall", selectedWallId, user?.id],
     queryFn: () => getInspirationWall({ data: { wallId: selectedWallId! } }),
     enabled: Boolean(selectedWallId && user && access.allowed),
   });
+  usePb012LastWork(
+    user?.id ?? null,
+    !loading &&
+      access.allowed &&
+      wall.isSuccess &&
+      !wall.isFetching &&
+      selectedWallId &&
+      wall.data?.wall.id === selectedWallId
+      ? { type: "inspiration_wall", id: selectedWallId }
+      : null,
+  );
 
   const refresh = async (wallId = selectedWallId) => {
     await queryClient.invalidateQueries({ queryKey: ["inspiration-walls", user?.id] });
