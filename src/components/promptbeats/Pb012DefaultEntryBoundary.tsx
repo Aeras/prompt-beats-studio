@@ -28,11 +28,18 @@ function claimDefaultDocumentEntry(): boolean {
 export function Pb012DefaultEntryBoundary({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [eligible] = useState(() => claimDefaultDocumentEntry());
-  const [resolved, setResolved] = useState(!eligible);
+  // Neutral first render on both server and client prevents hydration mismatch and Home flash.
+  const [eligible, setEligible] = useState<boolean | null>(null);
+  const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    if (!eligible || loading) return;
+    const claimedHere = claimDefaultDocumentEntry();
+    setEligible(claimedHere);
+    if (!claimedHere) setResolved(true);
+  }, []);
+
+  useEffect(() => {
+    if (eligible !== true || loading) return;
     if (!user) {
       setResolved(true);
       return;
