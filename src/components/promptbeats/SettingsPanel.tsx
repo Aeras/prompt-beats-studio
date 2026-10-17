@@ -245,6 +245,33 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
           </section>
 
           {signedIn && (
+            <section className="relative py-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold">{el ? "Αρχική σελίδα" : "Starting page"}</h3>
+                <InfoButton infoKey="startingPage" active={info === "startingPage"} onToggle={toggleInfo} label={infoLabel} />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {el ? "Επίλεξε τι θα ανοίγει πρώτο όταν μπαίνεις στο PromptBeats." : "Choose what opens first when you enter PromptBeats."}
+              </p>
+              <select
+                value={preferences.defaultStartScreen}
+                onChange={(event) => save("defaultStartScreen", event.target.value as StartScreenPreference)}
+                className={selectClass}
+                aria-label={el ? "Αρχική σελίδα" : "Starting page"}
+              >
+                {START_SCREEN_VALUES.map((value) => (
+                  <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
+                ))}
+              </select>
+              {info === "startingPage" && (
+                <InfoPopover>
+                  {el ? "Η Τελευταία εργασία επιστρέφει στο τελευταίο υποστηριζόμενο σημείο εργασίας σου." : "Last Work returns to your last supported work destination."}
+                </InfoPopover>
+              )}
+            </section>
+          )}
+
+          {signedIn && (
             <>
               <section className="relative py-3.5">
                 <div className="flex items-center justify-between gap-3">
