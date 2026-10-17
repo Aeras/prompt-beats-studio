@@ -991,9 +991,14 @@ function logStage(model: string, stage: string, event: string, details?: unknown
 }
 
 function parseStructured<T>(text: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>, model: string, stage: string): T {
+  const trimmed = text.trim();
+  const fenced = trimmed.startsWith("```") && trimmed.endsWith("```");
+  const jsonText = fenced
+    ? trimmed.slice(trimmed.indexOf("\n") + 1, trimmed.lastIndexOf("```")).trim()
+    : trimmed;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(jsonText);
   } catch (error) {
     logStage(
       model,
