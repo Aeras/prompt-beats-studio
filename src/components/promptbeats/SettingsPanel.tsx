@@ -30,6 +30,7 @@ type InfoKey =
   | "generatorLanguage"
   | "generatorMode"
   | "appLanguage"
+  | "startingPage"
   | "libraryTab"
   | "trackPublished"
   | "promptPublic"
