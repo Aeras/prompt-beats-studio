@@ -30,22 +30,18 @@ describe("Song Analyzer Stage A grounding guard", () => {
     expect(code).toContain("Rhythmic Plucked Layer");
   });
 
-  test("uses the Demucs other stem only as conditional source-disambiguation evidence", async () => {
+  test("keeps Demucs stem support dormant while the active flow uses local Essentia only", async () => {
     const guard = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     const background = await source("src/lib/song-analyzer-background.ts");
     const essentia = await source("src/lib/song-analyzer-essentia.ts");
     expect(guard).toContain("DEMUCS OTHER-STEM PREVIEW");
     expect(guard).toContain(
-      "Use it primarily for guitar / processed-guitar / synth-pluck / other-plucked-string source identity",
-    );
-    expect(guard).toContain(
       "stemPreviewUsed = Boolean(layerResolutionRequired && args.sourceStemPreview)",
     );
-    expect(guard).toContain("full-mix evidence remained authoritative");
-    expect(background).toContain("consumeAnalyzerSourceStemPreview");
-    expect(background).toContain("{ ...response.stage0Evidence, sourceStemPreview }");
-    expect(essentia).toContain("pendingSourceStemPreview = sourceStemPreview ?? null");
-    expect(essentia).toContain("const { sourceStemPreview, ...cleanStage0Evidence } = transported");
+    expect(background).not.toContain("consumeAnalyzerSourceStemPreview");
+    expect(background).not.toContain("{ ...response.stage0Evidence, sourceStemPreview }");
+    expect(essentia).toContain("song-analyzer-essentia.worker.ts");
+    expect(essentia).not.toContain("RunPod");
   });
 
   test("treats verification as a confidence gate rather than a genre classifier", async () => {
