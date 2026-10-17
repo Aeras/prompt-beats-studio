@@ -260,7 +260,19 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                 aria-label={el ? "Αρχική σελίδα" : "Starting page"}
               >
                 {START_SCREEN_VALUES.map((value) => (
-                  <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
+                  <option key={value} value={value}>{({
+                    home: el ? "Αρχική" : "Home",
+                    last_work: el ? "Τελευταία εργασία" : "Last Work",
+                    projects: "Projects",
+                    my_songs: el ? "Τα τραγούδια μου" : "My Songs",
+                    playlists: "Playlists",
+                    generator: "Generator",
+                    song_universe: "Song Universe",
+                    inspiration_wall: "Inspiration Wall",
+                    story_map: "Story Map",
+                    discover: el ? "Ανακάλυψη" : "Discover",
+                    create: el ? "Δημιουργία" : "Create",
+                  } satisfies Record<StartScreenPreference, string>)[value]}</option>
                 ))}
               </select>
               {info === "startingPage" && (
