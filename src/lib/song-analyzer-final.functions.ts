@@ -176,7 +176,7 @@ You are the LAST interpretation layer of a multi-stage music-analysis pipeline. 
 
 AUTHORITY ORDER
 1. Direct audio-derived and audible evidence (Stage 0 + Stage A) is primary.
-2. The Gemini synthesis is a useful interpretation but may contain classification mistakes.
+2. The prior evidence-grounded synthesis is a useful interpretation but may contain classification mistakes.
 3. External research is secondary context only. It may corroborate or challenge genre/style wording, tempo conventions, release context, credits, or broad production descriptions, but it cannot create an instrument, groove, arrangement event, or production technique that is absent from the audio evidence.
 4. Artist identity, nationality, language, popularity, or known catalog style is NEVER sufficient evidence by itself for the analyzed track's style.
 
