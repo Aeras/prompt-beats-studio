@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Settings, X } from "lucide-react";
 
 import { getSongLanguageOptions } from "@/catalog/song-languages";
@@ -16,7 +17,8 @@ import { useExternalMediaConsent } from "@/lib/external-media-consent";
 import { useAccountPreferences, type AccountPreferences } from "@/lib/account-preferences";
 import { clearAllDraftAutosaves } from "@/lib/draft-autosave";
 import { LIBRARY_TABS } from "@/lib/library-tabs";
-import { START_SCREEN_VALUES, type StartScreenPreference } from "@/lib/pb012-starting-screen.shared";
+import { getStartingPageAccess } from "@/lib/pb012-starting-page-access.functions";
+import { START_SCREEN_FEATURES, START_SCREEN_VALUES, type StartScreenPreference } from "@/lib/pb012-starting-screen.shared";
 import { useI18n } from "@/i18n";
 
 const EXPORT_FORMATS = [
@@ -117,6 +119,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
   const explicit = useExplicitContentPreference();
   const { preferences, setPreference, signedIn, userId } = useAccountPreferences();
   const [info, setInfo] = useState<InfoKey | null>(null);
+  const startingPageAccess = useQuery({ queryKey: ["pb012-settings-access", userId], queryFn: () => getStartingPageAccess(), enabled: open && signedIn, staleTime: 30_000 });
   const [saveError, setSaveError] = useState("");
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const el = language === "el";
