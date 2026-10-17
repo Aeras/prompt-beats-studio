@@ -1100,7 +1100,6 @@ function analyzerProvider(model: string) {
 }
 
 async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]> {
-  if (!process.env["OPENROUTER_API_KEY"]?.trim()) return [];
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("app_settings")
@@ -1114,14 +1113,26 @@ async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]>
   const rows = (data as any)?.value?.models;
   if (!Array.isArray(rows)) return [];
   return rows.flatMap((item: any) => {
-    const provider = String(item?.provider ?? "");
+    const provider = String(item?.provider ?? "") as SongAnalyzerProvider;
     const id = String(item?.id ?? "");
-    if (provider !== "openrouter" || !id) return [];
+    if (!["gemini", "openai", "openrouter"].includes(provider) || !id) return [];
+
+    const configured =
+      provider === "gemini"
+        ? Boolean(process.env["GEMINI_API_KEY"]?.trim())
+        : provider === "openai"
+          ? Boolean(process.env["OPENAI_API_KEY"]?.trim())
+          : Boolean(process.env["OPENROUTER_API_KEY"]?.trim());
+    if (!configured) return [];
+
     return [{
       id,
       label: String(item?.label ?? id),
-      provider: "openrouter" as const,
-      acceptedMimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"] as const,
+      provider,
+      acceptedMimeTypes:
+        provider === "gemini"
+          ? supportedMimeTypes
+          : (["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"] as const),
     }];
   });
 }
