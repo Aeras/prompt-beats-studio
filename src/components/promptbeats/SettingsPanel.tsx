@@ -262,8 +262,8 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                 className={selectClass}
                 aria-label={el ? "Αρχική σελίδα" : "Starting page"}
               >
-                {START_SCREEN_VALUES.map((value) => (
-                  <option key={value} value={value}>{({
+                {START_SCREEN_VALUES.filter((value) => !START_SCREEN_FEATURES[value] || startingPageAccess.data?.[value] === true || value === preferences.defaultStartScreen).map((value) => (
+                  <option key={value} value={value} disabled={Boolean(START_SCREEN_FEATURES[value]) && startingPageAccess.data?.[value] !== true}>{({
                     home: el ? "Αρχική" : "Home",
                     last_work: el ? "Τελευταία εργασία" : "Last Work",
                     projects: "Projects",
