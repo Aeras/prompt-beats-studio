@@ -26,6 +26,16 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(route).toContain('t("songAnalyzer.gptAudioFormat")');
   });
 
+  test("uses GPT Audio only for audible evidence and hands text synthesis to Gemini Flash", async () => {
+    const code = await source("./song-analyzer.functions.ts");
+    expect(code).toContain(
+      'data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model',
+    );
+    expect(code).toContain("model: synthesisModel");
+    expect(code).toContain("apiKey: synthesisApiKey");
+    expect(code).toContain("audioAnalysisModel: data.model");
+  });
+
   test("accepts GPT Audio runs through the Stage A guard while retaining the independent Gemini verifier", async () => {
     const guard = await source("./song-analyzer-stage-a-guard.functions.ts");
     expect(guard).toContain('"gpt-audio-1.5"');

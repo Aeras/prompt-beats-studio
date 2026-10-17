@@ -1691,13 +1691,21 @@ export const analyzeSong = createServerFn({ method: "POST" })
           throw error;
         }
 
+        const synthesisModel: SongAnalyzerModelId =
+          data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model;
+        const synthesisApiKey =
+          synthesisModel === data.model ? apiKey : process.env["GEMINI_API_KEY"];
+        if (!synthesisApiKey) {
+          throw new Error("Gemini API is not configured");
+        }
+
         let synthesisUsage: ReturnType<typeof normalizedUsage> = null;
         let result: SongAnalysisResult;
         const stageBStartedAt = Date.now();
         try {
           result = await generateFinalFromEvidence({
-            apiKey,
-            model: data.model,
+            apiKey: synthesisApiKey,
+            model: synthesisModel,
             evidence,
             stage0Evidence,
             onUsage: (usage) => {
@@ -1706,18 +1714,19 @@ export const analyzeSong = createServerFn({ method: "POST" })
           });
           await recordStageUsage({
             userId: context.userId,
-            model: data.model,
+            model: synthesisModel,
             stage: "final_synthesis",
             usage: synthesisUsage,
             success: true,
           });
-          logStage(data.model, "final_synthesis", "timing", {
+          logStage(synthesisModel, "final_synthesis", "timing", {
             durationMs: Date.now() - stageBStartedAt,
+            audioAnalysisModel: data.model,
           });
         } catch (error) {
           await recordStageUsage({
             userId: context.userId,
-            model: data.model,
+            model: synthesisModel,
             stage: "final_synthesis",
             usage: synthesisUsage,
             success: false,
