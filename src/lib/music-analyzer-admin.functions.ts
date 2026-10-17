@@ -21,6 +21,22 @@ const providerIdSchema = z.enum([
 
 const SETTINGS_KEY = "song_analyzer_extra_models";
 
+const BUILTIN_ANALYZER_MODELS = [
+  { provider: "gemini", providerModelId: "gemini-3.8-flash" },
+  { provider: "gemini", providerModelId: "gemini-3.1-pro-preview" },
+  { provider: "openai", providerModelId: "gpt-audio-1.5" },
+] as const;
+
+function installedAnalyzerModels(extras: ExtraAnalyzerModel[]) {
+  return [
+    ...BUILTIN_ANALYZER_MODELS,
+    ...extras.map((model) => ({
+      provider: model.provider,
+      providerModelId: model.id,
+    })),
+  ];
+}
+
 type ExtraAnalyzerModel = {
   provider: string;
   id: string;
@@ -86,10 +102,7 @@ export const checkMusicAnalyzerProviderModels = createServerFn({ method: "POST" 
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const extras = await readExtraModels(supabaseAdmin);
-    const installed = extras.map((model) => ({
-      provider: model.provider,
-      providerModelId: model.id,
-    }));
+    const installed = installedAnalyzerModels(extras);
 
     const { discoverProviderAudioTextModels } =
       await import("@/lib/ai-provider-registry.server");
@@ -113,10 +126,7 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
       return { ok: true, alreadyInstalled: true };
     }
 
-    const installed = extras.map((model) => ({
-      provider: model.provider,
-      providerModelId: model.id,
-    }));
+    const installed = installedAnalyzerModels(extras);
     const { discoverProviderAudioTextModels } =
       await import("@/lib/ai-provider-registry.server");
     const discovery = await discoverProviderAudioTextModels(data.providerId, installed);
