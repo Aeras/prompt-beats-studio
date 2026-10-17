@@ -1149,12 +1149,20 @@ function openAiInputAudioFormat(mimeType: string): "mp3" | "wav" | null {
 
 export function songAnalyzerModelAcceptsMimeType(model: string, mimeType: string) {
   const builtin = BUILTIN_SONG_ANALYZER_MODEL_CONFIGS.find((item) => item.id === model);
-  return builtin ? builtin.acceptedMimeTypes.includes(mimeType) : openAiInputAudioFormat(mimeType) !== null;
+  return builtin
+    ? builtin.acceptedMimeTypes.some((accepted) => accepted === mimeType)
+    : openAiInputAudioFormat(mimeType) !== null;
 }
 
-function logStage(model: string, stage: string, event: string, details?: unknown) {
+function logStage(
+  model: string,
+  stage: string,
+  event: string,
+  details?: unknown,
+  provider?: SongAnalyzerProvider,
+) {
   console.info("[song-analyzer]", {
-    provider: analyzerProvider(model),
+    provider: provider ?? analyzerProvider(model),
     model,
     stage,
     event,
