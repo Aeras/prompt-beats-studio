@@ -215,6 +215,7 @@ async function runAnalyzer(
     publish(completed);
     return completed;
   } catch (error) {
+    completeAuxiliaryRequest("song_analyzer");
     const failed: AnalyzerBackgroundSnapshot = {
       ...snapshot,
       status: "failed",
@@ -232,6 +233,10 @@ export function startAnalyzerBackground(args: StartArgs) {
   if (activePromise && snapshot.status === "running") return activePromise;
   if (snapshot.status === "running" && !activePromise) {
     return resumeAnalyzerBackground(args.file);
+  }
+
+  if (snapshot.status === "failed") {
+    completeAuxiliaryRequest("song_analyzer");
   }
 
   const startedAt = Date.now();
