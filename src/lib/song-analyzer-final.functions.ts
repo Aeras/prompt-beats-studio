@@ -16,6 +16,7 @@ import {
 const FINAL_ANALYZER_MODELS = [
   "gemini-3.8-flash",
   "gemini-3.1-pro-preview",
+  "gemini-4-argon",
   "gpt-audio-1.5",
 ] as const;
 
