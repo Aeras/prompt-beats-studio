@@ -131,7 +131,7 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
       await import("@/lib/ai-provider-registry.server");
     const discovery = await discoverProviderAudioTextModels(data.providerId, installed);
     const candidate = discovery.candidates.find(
-      (model) => model.id === data.modelId && !model.deprecated,
+      (model) => model.id === data.modelId && !model.deprecated && !model.installed,
     );
     if (!candidate) {
       throw new Error("This provider does not explicitly advertise this model as audio input → text output.");
@@ -140,23 +140,21 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
       throw new Error(candidate.runtimeNote);
     }
 
-    const next = [
-      ...extras,
-      {
-        provider: data.providerId,
-        id: candidate.id,
-        label: candidate.name || candidate.id,
-      },
-    ];
-    await writeExtraModels(supabaseAdmin, next);
-
     // Ensure usage/cost logging has a registry row even though this model is
     // intentionally not enabled for the general Generator or Quality Check.
-    const { data: existingRegistry } = await supabaseAdmin
+    // PromptBeats currently treats provider_model_id as globally unique in
+    // runtime selection, so reject a cross-provider collision explicitly.
+    const { data: existingRegistry, error: existingRegistryError } = await supabaseAdmin
       .from("ai_models" as never)
-      .select("id")
+      .select("id,provider")
       .eq("provider_model_id", candidate.id)
       .maybeSingle();
+    if (existingRegistryError) {
+      throw new Error("Could not validate the Music Analyzer model registry.");
+    }
+    if (existingRegistry && String((existingRegistry as any).provider) !== data.providerId) {
+      throw new Error("That model ID is already registered under a different provider.");
+    }
 
     if (!existingRegistry) {
       const nowIso = new Date().toISOString();
@@ -186,9 +184,19 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
         updated_at: nowIso,
       } as never);
       if (registryError) {
-        console.error("[music-analyzer-admin] registry insert failed", registryError.message);
+        throw new Error("Could not register the Music Analyzer model for usage tracking.");
       }
     }
+
+    const next = [
+      ...extras,
+      {
+        provider: data.providerId,
+        id: candidate.id,
+        label: candidate.name || candidate.id,
+      },
+    ];
+    await writeExtraModels(supabaseAdmin, next);
 
     const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
       admin_user_id: context.userId,
