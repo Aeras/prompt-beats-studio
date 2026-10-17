@@ -1414,7 +1414,10 @@ async function generateAudioEvidence(args: {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: EVIDENCE_RESPONSE_SCHEMA,
-          maxOutputTokens: 8192,
+          maxOutputTokens: args.model === "gemini-4-argon" ? 32_768 : 8192,
+          ...(args.model === "gemini-4-argon"
+            ? { thinkingConfig: { thinkingLevel: "medium" } }
+            : {}),
           temperature: 0.1,
         },
       }),
@@ -1646,7 +1649,10 @@ async function generateFinalFromEvidence(args: {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: ANALYZER_RESPONSE_SCHEMA,
-          maxOutputTokens: 8192,
+          maxOutputTokens: args.model === "gemini-4-argon" ? 32_768 : 8192,
+          ...(args.model === "gemini-4-argon"
+            ? { thinkingConfig: { thinkingLevel: "medium" } }
+            : {}),
           temperature: 0.1,
         },
       }),
