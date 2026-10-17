@@ -24,6 +24,7 @@ const SETTINGS_KEY = "song_analyzer_extra_models";
 const BUILTIN_ANALYZER_MODELS = [
   { provider: "gemini", providerModelId: "gemini-3.8-flash" },
   { provider: "gemini", providerModelId: "gemini-3.1-pro-preview" },
+  { provider: "gemini", providerModelId: "gemini-4-argon" },
   { provider: "openai", providerModelId: "gpt-audio-1.5" },
 ] as const;
 
