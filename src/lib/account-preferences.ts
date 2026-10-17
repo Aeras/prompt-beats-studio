@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { DEFAULT_START_SCREEN, parseStartScreenPreference, type StartScreenPreference } from "@/lib/pb012-starting-screen.shared";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExportFormat } from "@/lib/export-center.shared";
 import { isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
@@ -8,6 +9,7 @@ import { isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 export type GeneratorDefaultMode = "basic" | "advanced";
 
 export type AccountPreferences = {
+  defaultStartScreen: StartScreenPreference;
   generatorLanguage: string;
   generatorMode: GeneratorDefaultMode;
   libraryTab: LibraryTab;
@@ -25,6 +27,7 @@ type AccountPreferenceState = {
 };
 
 export const ACCOUNT_PREFERENCE_KEYS = {
+  defaultStartScreen: "default_start_screen",
   generatorLanguage: "default_generator_language",
   generatorMode: "default_generator_mode",
   libraryTab: "default_library_tab",
@@ -37,6 +40,7 @@ export const ACCOUNT_PREFERENCE_KEYS = {
 } as const;
 
 export const DEFAULT_ACCOUNT_PREFERENCES: AccountPreferences = {
+  defaultStartScreen: DEFAULT_START_SCREEN,
   generatorLanguage: "",
   generatorMode: "basic",
   libraryTab: "tracks",
@@ -62,6 +66,7 @@ export function readAccountPreferences(metadata: Record<string, unknown> | null 
   const exportFormat = data[ACCOUNT_PREFERENCE_KEYS.exportFormat];
   const generatorLanguage = data[ACCOUNT_PREFERENCE_KEYS.generatorLanguage];
   return {
+    defaultStartScreen: parseStartScreenPreference(data[ACCOUNT_PREFERENCE_KEYS.defaultStartScreen]),
     generatorLanguage: typeof generatorLanguage === "string" ? generatorLanguage : "",
     generatorMode: generatorMode === "advanced" ? "advanced" : "basic",
     libraryTab: isLibraryTab(libraryTab) ? libraryTab : "tracks",
