@@ -13,7 +13,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(code).toContain('https://api.openai.com/v1/chat/completions');
     expect(code).toContain('type: "input_audio"');
     expect(code).toContain('modalities: ["text"]');
-    expect(code).toContain('provider: analyzerProvider(args.model as SongAnalyzerModelId)');
+    expect(code).toContain('provider: analyzerProvider(args.model)');
   });
 
   test("keeps OpenAI audio input constrained to the documented MP3/WAV formats", async () => {
