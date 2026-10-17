@@ -20,6 +20,18 @@ export const SONG_ANALYZER_MODELS = [
 
 export type SongAnalyzerModelId = string;
 
+const supportedMimeTypes = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/ogg",
+  "audio/flac",
+] as const;
+
 type SongAnalyzerProvider = "gemini" | "openai" | "openrouter";
 
 type SongAnalyzerModelConfig = {
@@ -53,17 +65,7 @@ const BUILTIN_SONG_ANALYZER_MODEL_CONFIGS: readonly SongAnalyzerModelConfig[] = 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 
-const supportedMimeTypes = [
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/mp4",
-  "audio/x-m4a",
-  "audio/aac",
-  "audio/ogg",
-  "audio/flac",
-] as const;
+
 
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
@@ -1295,19 +1297,19 @@ async function generateAudioEvidence(args: {
   if (args.provider === "openai" || args.provider === "openrouter") {
     const format = openAiInputAudioFormat(args.mimeType);
     if (!format) {
-      throw new Error("GPT Audio 1.5 currently accepts MP3 or WAV input in PromptBeats.");
+      throw new Error("This Music Analyzer provider currently accepts MP3 or WAV input in PromptBeats.");
     }
     const response = await fetch(
       args.provider === "openrouter"
         ? "https://openrouter.ai/api/v1/chat/completions"
         : "https://api.openai.com/v1/chat/completions",
       {
-      method: "POST",
-      headers: {
+        method: "POST",
+        headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${args.apiKey}`,
-      },
-      body: JSON.stringify({
+        },
+        body: JSON.stringify({
         model: args.model,
         ...(args.provider === "openai" ? { modalities: ["text"] } : {}),
         messages: [
@@ -1328,7 +1330,7 @@ async function generateAudioEvidence(args: {
         ],
         max_completion_tokens: 8192,
         temperature: 0.1,
-      }),
+        }),
         signal: AbortSignal.timeout(5 * 60 * 1000),
       },
     );
@@ -1829,7 +1831,9 @@ export const analyzeSong = createServerFn({ method: "POST" })
           throw new Error(
             provider === "openai"
               ? "OpenAI API is not configured"
-              : "Gemini API is not configured",
+              : provider === "openrouter"
+                ? "OpenRouter API is not configured"
+                : "Gemini API is not configured",
           );
         }
 
@@ -1848,6 +1852,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
           await markProviderStarted();
           evidence = await generateAudioEvidence({
             apiKey,
+            provider,
             model: data.model,
             audioBase64: data.audioBase64,
             mimeType: data.mimeType,
@@ -1948,6 +1953,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
           externalUsage = validationResult.usage;
           await recordStageUsage({
             userId: context.userId,
+            provider: "gemini",
             model: data.model,
             stage: "external_validation",
             usage: externalUsage,
@@ -1956,6 +1962,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         } catch (error) {
           await recordStageUsage({
             userId: context.userId,
+            provider: "gemini",
             model: data.model,
             stage: "external_validation",
             usage: externalUsage,
@@ -1989,6 +1996,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
           });
           await recordStageUsage({
             userId: context.userId,
+            provider: "gemini",
             model: data.model,
             stage: "external_reconciliation",
             usage: reconciliationUsage,
@@ -2006,6 +2014,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         } catch (error) {
           await recordStageUsage({
             userId: context.userId,
+            provider: "gemini",
             model: data.model,
             stage: "external_reconciliation",
             usage: reconciliationUsage,
