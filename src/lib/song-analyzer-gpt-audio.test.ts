@@ -34,6 +34,15 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(guard).toContain("model: verifierModel");
   });
 
+  test("keeps the final Analyzer provider-neutral and uses Gemini only for web research fallback", async () => {
+    const finalizer = await source("./song-analyzer-final.functions.ts");
+    expect(finalizer).toContain('"gpt-audio-1.5"');
+    expect(finalizer).toContain('data.audioAnalysisModel === "gpt-audio-1.5"');
+    expect(finalizer).toContain('? "gemini-3.8-flash"');
+    expect(finalizer).not.toContain("STAGE A GEMINI AUDIBLE EVIDENCE");
+    expect(finalizer).not.toContain("GEMINI EVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE");
+  });
+
   test("saved analyses accept GPT Audio as their recorded source model", async () => {
     const code = await source("./song-analyzer.functions.ts");
     expect(code).toContain(
