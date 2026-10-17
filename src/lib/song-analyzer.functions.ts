@@ -18,7 +18,7 @@ export const SONG_ANALYZER_MODELS = [
   { id: "gpt-audio-1.5", label: "GPT Audio 1.5" },
 ] as const;
 
-type SongAnalyzerModelId = (typeof SONG_ANALYZER_MODELS)[number]["id"];
+export type SongAnalyzerModelId = (typeof SONG_ANALYZER_MODELS)[number]["id"];
 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -972,7 +972,7 @@ function normalizedOpenAiUsage(payload: any) {
   };
 }
 
-function analyzerProvider(model: SongAnalyzerModelId) {
+function analyzerProvider(model: string) {
   return model === "gpt-audio-1.5" ? "openai" : "gemini";
 }
 
@@ -982,11 +982,11 @@ function openAiInputAudioFormat(mimeType: string): "mp3" | "wav" | null {
   return null;
 }
 
-export function songAnalyzerModelAcceptsMimeType(model: SongAnalyzerModelId, mimeType: string) {
+export function songAnalyzerModelAcceptsMimeType(model: string, mimeType: string) {
   return model !== "gpt-audio-1.5" || openAiInputAudioFormat(mimeType) !== null;
 }
 
-function logStage(model: SongAnalyzerModelId, stage: string, event: string, details?: unknown) {
+function logStage(model: string, stage: string, event: string, details?: unknown) {
   console.info("[song-analyzer]", { provider: analyzerProvider(model), model, stage, event, details });
 }
 
@@ -1592,7 +1592,7 @@ async function recordStageUsage(args: {
   logStage(args.model, args.stage, args.success ? "usage_success" : "usage_failure", args.usage);
   await recordAiUsage({
     userId: args.userId,
-    provider: analyzerProvider(args.model as SongAnalyzerModelId),
+    provider: analyzerProvider(args.model),
     model: args.model,
     operation: "song_analysis",
     usage: args.usage,
