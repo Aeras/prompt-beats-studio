@@ -987,10 +987,21 @@ export function songAnalyzerModelAcceptsMimeType(model: string, mimeType: string
 }
 
 function logStage(model: string, stage: string, event: string, details?: unknown) {
-  console.info("[song-analyzer]", { provider: analyzerProvider(model), model, stage, event, details });
+  console.info("[song-analyzer]", {
+    provider: analyzerProvider(model),
+    model,
+    stage,
+    event,
+    details,
+  });
 }
 
-function parseStructured<T>(text: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>, model: string, stage: string): T {
+function parseStructured<T>(
+  text: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  model: string,
+  stage: string,
+): T {
   const trimmed = text.trim();
   const fenced = trimmed.startsWith("```") && trimmed.endsWith("```");
   const jsonText = fenced
@@ -1137,6 +1148,7 @@ async function generateAudioEvidence(args: {
         ],
         max_completion_tokens: 8192,
         temperature: 0.1,
+        response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(5 * 60 * 1000),
     });
@@ -1383,6 +1395,7 @@ async function generateFinalFromEvidence(args: {
         ],
         max_completion_tokens: 8192,
         temperature: 0.1,
+        response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(5 * 60 * 1000),
     });
