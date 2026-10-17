@@ -17,9 +17,12 @@ describe("Admin Music Analyzer model discovery", () => {
   test("only enables direct installation for verified runtime adapters", async () => {
     const registry = await source("./ai-provider-registry.server.ts");
     const admin = await source("./music-analyzer-admin.functions.ts");
+    expect(registry).toContain('provider.id === "gemini"');
+    expect(registry).toContain('provider.id === "openai"');
     expect(registry).toContain('provider.id === "openrouter"');
     expect(admin).toContain("if (!candidate.runtimeSupported)");
     expect(admin).toContain('"song_analyzer_extra_models"');
+    expect(admin).toContain("BUILTIN_ANALYZER_MODELS");
   });
 
   test("routes admin-added OpenRouter audio models through input_audio chat completions", async () => {
