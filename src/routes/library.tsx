@@ -324,7 +324,7 @@ function LibraryPage() {
   });
 
   useEffect(() => {
-    if (!user || loading || projectSelection.mode !== "none") return;
+    if (!user || loading || projectSelection.mode !== "absent") return;
     if (tab === "tracks" && mine.isSuccess) capturePb012LastWork(user.id, { type: "my_songs" });
     else if (tab === "playlists" && playlistsAccess.allowed) capturePb012LastWork(user.id, { type: "playlists" });
     else if (tab === "prompts" && promptView === "projects" && projects.isSuccess) capturePb012LastWork(user.id, { type: "projects" });
