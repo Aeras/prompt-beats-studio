@@ -13,7 +13,11 @@ import {
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
 
-const FINAL_ANALYZER_MODELS = ["gemini-3.8-flash", "gemini-3.1-pro-preview"] as const;
+const FINAL_ANALYZER_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.1-pro-preview",
+  "gpt-audio-1.5",
+] as const;
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
 
@@ -168,11 +172,11 @@ const ANALYZER_RESPONSE_SCHEMA: Record<string, unknown> = {
 
 const FINAL_JUDGE_SYSTEM = `You are PromptBeats Final Music Judge.
 
-You are the LAST interpretation layer of a multi-stage music-analysis pipeline. You do not hear the original audio directly. You receive signal-derived Stage 0 evidence, Gemini Stage A audible evidence, a Gemini evidence-grounded synthesis, and optionally a web-research packet for an exact user-supplied track identity.
+You are the LAST interpretation layer of a multi-stage music-analysis pipeline. You do not hear the original audio directly. You receive signal-derived Stage 0 evidence, Stage A audible evidence from the selected audio-analysis model, an evidence-grounded synthesis, and optionally a web-research packet for an exact user-supplied track identity.
 
 AUTHORITY ORDER
 1. Direct audio-derived and audible evidence (Stage 0 + Stage A) is primary.
-2. The Gemini synthesis is a useful interpretation but may contain classification mistakes.
+2. The prior evidence-grounded synthesis is a useful interpretation but may contain classification mistakes.
 3. External research is secondary context only. It may corroborate or challenge genre/style wording, tempo conventions, release context, credits, or broad production descriptions, but it cannot create an instrument, groove, arrangement event, or production technique that is absent from the audio evidence.
 4. Artist identity, nationality, language, popularity, or known catalog style is NEVER sufficient evidence by itself for the analyzed track's style.
 
@@ -422,11 +426,11 @@ async function runFinalJudge(args: {
   const prompt = [
     "STAGE 0 SIGNAL-DERIVED EVIDENCE:",
     JSON.stringify(args.stage0Evidence),
-    "\nSTAGE A GEMINI AUDIBLE EVIDENCE:",
+    "\nSTAGE A AUDIBLE EVIDENCE:",
     JSON.stringify(args.stageAEvidence),
     "\nDETERMINISTIC INTERPRETATION GUARD PACKET:",
     JSON.stringify(interpretationGuardPacket),
-    "\nGEMINI EVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE:",
+    "\nEVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE:",
     JSON.stringify(args.initialResult),
     args.trackTitle && args.artist
       ? `\nUSER-SUPPLIED IDENTITY (context only):\nTrack Title: ${args.trackTitle}\nArtist: ${args.artist}`
@@ -434,7 +438,7 @@ async function runFinalJudge(args: {
     args.research
       ? "\nREGIONAL / WEB RESEARCH PACKET (secondary context only):\n" + JSON.stringify(args.research)
       : "\nNO EXTERNAL RESEARCH PACKET WAS AVAILABLE.",
-    "\nProduce the final canonical PromptBeats Analyzer JSON. Re-evaluate the style classification instead of merely paraphrasing the Gemini synthesis. Apply the genre evidence quorum before selecting a narrow rhythm-defined label, preserve a broader hybrid family when independently supported, and retain verified keyboard/production details.",
+    "\nProduce the final canonical PromptBeats Analyzer JSON. Re-evaluate the style classification instead of merely paraphrasing the prior synthesis. Apply the genre evidence quorum before selecting a narrow rhythm-defined label, preserve a broader hybrid family when independently supported, and retain verified keyboard/production details.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -514,9 +518,13 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
 
     if (trackTitle && artist) {
       try {
+        const researchModel =
+          data.audioAnalysisModel === "gpt-audio-1.5"
+            ? "gemini-3.8-flash"
+            : data.audioAnalysisModel;
         research = await runRegionalResearch({
           userId: context.userId,
-          model: data.audioAnalysisModel,
+          model: researchModel,
           trackTitle,
           artist,
           initialResult: data.initialResult,

@@ -12,7 +12,11 @@ import {
 } from "@/lib/song-analyzer.functions";
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
-const analyzerModelSchema = z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]);
+const analyzerModelSchema = z.enum([
+  "gemini-3.8-flash",
+  "gemini-3.1-pro-preview",
+  "gpt-audio-1.5",
+]);
 const supportedMimeTypes = z.enum([
   "audio/mpeg",
   "audio/mp3",
@@ -1101,10 +1105,12 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
     const apiKey = process.env["GEMINI_API_KEY"];
     if (apiKey) {
       let usage: ReturnType<typeof normalizedUsage> = null;
+      const verifierModel =
+        data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model;
       try {
         const checked = await runVerifier({
           apiKey,
-          model: data.model,
+          model: verifierModel,
           audioBase64: data.audioBase64,
           mimeType: data.mimeType,
           evidence,
@@ -1126,7 +1132,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
         await recordAiUsage({
           userId: context.userId,
           provider: "gemini",
-          model: data.model,
+          model: verifierModel,
           operation: "song_analysis",
           usage,
           success: true,
@@ -1136,7 +1142,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
         await recordAiUsage({
           userId: context.userId,
           provider: "gemini",
-          model: data.model,
+          model: verifierModel,
           operation: "song_analysis",
           usage,
           success: false,

@@ -15,9 +15,10 @@ import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-anal
 export const SONG_ANALYZER_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  { id: "gpt-audio-1.5", label: "GPT Audio 1.5" },
 ] as const;
 
-type SongAnalyzerModelId = (typeof SONG_ANALYZER_MODELS)[number]["id"];
+export type SongAnalyzerModelId = (typeof SONG_ANALYZER_MODELS)[number]["id"];
 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -959,14 +960,56 @@ function normalizedUsage(payload: any) {
   };
 }
 
-function logStage(model: string, stage: string, event: string, details?: unknown) {
-  console.info("[song-analyzer]", { provider: "gemini", model, stage, event, details });
+function normalizedOpenAiUsage(payload: any) {
+  const usage = payload?.usage;
+  if (!usage) return null;
+  return {
+    inputTokens: usage.prompt_tokens ?? null,
+    outputTokens: usage.completion_tokens ?? null,
+    totalTokens: usage.total_tokens ?? null,
+    cachedInputTokens: usage.prompt_tokens_details?.cached_tokens ?? null,
+    reasoningTokens: usage.completion_tokens_details?.reasoning_tokens ?? null,
+  };
 }
 
-function parseStructured<T>(text: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>, model: string, stage: string): T {
+function analyzerProvider(model: string) {
+  return model === "gpt-audio-1.5" ? "openai" : "gemini";
+}
+
+function openAiInputAudioFormat(mimeType: string): "mp3" | "wav" | null {
+  if (mimeType === "audio/mpeg" || mimeType === "audio/mp3") return "mp3";
+  if (mimeType === "audio/wav" || mimeType === "audio/x-wav") return "wav";
+  return null;
+}
+
+export function songAnalyzerModelAcceptsMimeType(model: string, mimeType: string) {
+  return model !== "gpt-audio-1.5" || openAiInputAudioFormat(mimeType) !== null;
+}
+
+function logStage(model: string, stage: string, event: string, details?: unknown) {
+  console.info("[song-analyzer]", {
+    provider: analyzerProvider(model),
+    model,
+    stage,
+    event,
+    details,
+  });
+}
+
+function parseStructured<T>(
+  text: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  model: string,
+  stage: string,
+): T {
+  const trimmed = text.trim();
+  const fenced = trimmed.startsWith("```") && trimmed.endsWith("```");
+  const jsonText = fenced
+    ? trimmed.slice(trimmed.indexOf("\n") + 1, trimmed.lastIndexOf("```")).trim()
+    : trimmed;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(jsonText);
   } catch (error) {
     logStage(
       model,
@@ -1068,7 +1111,83 @@ async function generateAudioEvidence(args: {
     JSON.stringify(args.stage0Evidence),
   ].join("\n");
 
-  if (!args.apiKey) throw new Error("Gemini API is not configured");
+  if (!args.apiKey) {
+    throw new Error(
+      analyzerProvider(args.model) === "openai"
+        ? "OpenAI API is not configured"
+        : "Gemini API is not configured",
+    );
+  }
+
+  if (analyzerProvider(args.model) === "openai") {
+    const format = openAiInputAudioFormat(args.mimeType);
+    if (!format) {
+      throw new Error("GPT Audio 1.5 currently accepts MP3 or WAV input in PromptBeats.");
+    }
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${args.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: args.model,
+        modalities: ["text"],
+        messages: [
+          { role: "system", content: EVIDENCE_EXTRACTION_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "input_audio",
+                input_audio: { data: args.audioBase64, format },
+              },
+            ],
+          },
+        ],
+        max_completion_tokens: 8192,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(5 * 60 * 1000),
+    });
+
+    const payload = (await response.json()) as any;
+    args.onUsage(normalizedOpenAiUsage(payload));
+    if (!response.ok) {
+      logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
+      throw new Error(
+        payload?.error?.message || `OpenAI evidence extraction failed (${response.status})`,
+      );
+    }
+
+    const choice = payload?.choices?.[0];
+    const finishReason = choice?.finish_reason ?? null;
+    if (finishReason && finishReason !== "stop") {
+      logStage(args.model, stage, "non_success_stop_reason", finishReason);
+      throw new Error(`OpenAI evidence extraction stopped before completion: ${finishReason}`);
+    }
+    const text =
+      typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    if (!text) {
+      logStage(args.model, stage, "missing_json");
+      throw new Error("OpenAI evidence extraction returned no JSON");
+    }
+
+    const parsed = parseStructured(text, stageAEvidenceSchema, args.model, stage);
+    const evidence = normalizeSectionCoverage(
+      parsed,
+      args.stage0Evidence.processing.durationSeconds,
+    );
+    logStage(args.model, stage, "success", {
+      dominantElements: evidence.dominantElements.length,
+      instruments: evidence.instrumentEvidence.length,
+      sections: evidence.songSections.length,
+    });
+    return evidence;
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
     {
@@ -1252,7 +1371,64 @@ async function generateFinalFromEvidence(args: {
     .filter(Boolean)
     .join("\n");
 
-  if (!args.apiKey) throw new Error("Gemini API is not configured");
+  if (!args.apiKey) {
+    throw new Error(
+      analyzerProvider(args.model) === "openai"
+        ? "OpenAI API is not configured"
+        : "Gemini API is not configured",
+    );
+  }
+
+  if (analyzerProvider(args.model) === "openai") {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${args.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: args.model,
+        modalities: ["text"],
+        messages: [
+          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+          { role: "user", content: context },
+        ],
+        max_completion_tokens: 8192,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(5 * 60 * 1000),
+    });
+
+    const payload = (await response.json()) as any;
+    args.onUsage(normalizedOpenAiUsage(payload));
+    if (!response.ok) {
+      logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
+      throw new Error(
+        payload?.error?.message || `OpenAI final synthesis failed (${response.status})`,
+      );
+    }
+
+    const choice = payload?.choices?.[0];
+    const finishReason = choice?.finish_reason ?? null;
+    if (finishReason && finishReason !== "stop") {
+      logStage(args.model, stage, "non_success_stop_reason", finishReason);
+      throw new Error(`OpenAI final synthesis stopped before completion: ${finishReason}`);
+    }
+
+    const text =
+      typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    if (!text) {
+      logStage(args.model, stage, "missing_json");
+      throw new Error("OpenAI final synthesis returned no JSON");
+    }
+
+    const final = parseStructured(text, songAnalysisResultSchema, args.model, stage);
+    const gated = applyEvidenceGate(final, args.evidence);
+    logStage(args.model, stage, "success");
+    return gated;
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(args.model)}:generateContent`,
     {
@@ -1402,7 +1578,7 @@ const analyzeInput = z.object({
   audioBase64: z.string().min(1).max(21_500_000),
   mimeType: z.enum(supportedMimeTypes),
   model: z
-    .enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"])
+    .enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "gpt-audio-1.5"])
     .default(DEFAULT_SONG_ANALYZER_MODEL),
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
@@ -1434,7 +1610,7 @@ async function recordStageUsage(args: {
   logStage(args.model, args.stage, args.success ? "usage_success" : "usage_failure", args.usage);
   await recordAiUsage({
     userId: args.userId,
-    provider: "gemini",
+    provider: analyzerProvider(args.model),
     model: args.model,
     operation: "song_analysis",
     usage: args.usage,
@@ -1458,8 +1634,18 @@ export const analyzeSong = createServerFn({ method: "POST" })
           throw new Error("Audio file exceeds the 15 MB Analyzer limit.");
         }
 
-        const apiKey = process.env["GEMINI_API_KEY"];
-        if (!apiKey) throw new Error("Gemini API is not configured");
+        const provider = analyzerProvider(data.model);
+        const apiKey =
+          provider === "openai"
+            ? process.env["OPENAI_API_KEY"]
+            : process.env["GEMINI_API_KEY"];
+        if (!apiKey) {
+          throw new Error(
+            provider === "openai"
+              ? "OpenAI API is not configured"
+              : "Gemini API is not configured",
+          );
+        }
 
         const totalStartedAt = Date.now();
         const stage0Evidence = data.stage0Evidence;
@@ -1542,7 +1728,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         const trackTitle = data.trackTitle?.trim();
         const artist = data.artist?.trim();
 
-        if (!trackTitle || !artist) {
+        if (provider !== "gemini" || !trackTitle || !artist) {
           logStage(data.model, "analysis_total", "timing", {
             durationMs: Date.now() - totalStartedAt,
           });
@@ -1638,7 +1824,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
 const saveAnalysisInput = z.object({
   name: z.string().trim().min(1).max(200),
   projectId: z.string().uuid().nullable().optional(),
-  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]),
+  model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "gpt-audio-1.5"]),
   result: songAnalysisResultSchema,
 });
 

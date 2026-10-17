@@ -24,6 +24,7 @@ import {
   saveSongAnalysis,
   SONG_ANALYZER_MAX_FILE_BYTES,
   SONG_ANALYZER_MODELS,
+  songAnalyzerModelAcceptsMimeType,
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
@@ -161,8 +162,11 @@ function SongAnalyzerPage() {
   const fileError = useMemo(() => {
     if (!file) return null;
     if (file.size > SONG_ANALYZER_MAX_FILE_BYTES) return t("songAnalyzer.fileTooLarge");
+    if (!songAnalyzerModelAcceptsMimeType(model, file.type)) {
+      return t("songAnalyzer.gptAudioFormat");
+    }
     return null;
-  }, [file, t]);
+  }, [file, model, t]);
 
   const analyze = () => {
     if (!file || fileError) return;

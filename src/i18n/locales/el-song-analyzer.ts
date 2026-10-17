@@ -68,6 +68,7 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.loading": "Φόρτωση…",
   "songAnalyzer.checkingAccess": "Έλεγχος πρόσβασης…",
   "songAnalyzer.fileTooLarge": "Ο Analyzer δέχεται αρχεία ήχου έως 15 MB.",
+  "songAnalyzer.gptAudioFormat": "Το GPT Audio 1.5 δέχεται αυτή τη στιγμή αρχεία MP3 ή WAV.",
   "songAnalyzer.analysisFailed": "Η ανάλυση του τραγουδιού απέτυχε.",
   "songAnalyzer.saveFailed": "Δεν ήταν δυνατή η αποθήκευση της ανάλυσης.",
   "songAnalyzer.sessionPersistFailed":
