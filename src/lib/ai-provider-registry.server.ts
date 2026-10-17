@@ -451,6 +451,18 @@ function modelModalities(row: any) {
 }
 
 function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry) {
+  if (provider.id === "gemini") {
+    return {
+      supported: true,
+      note: "PromptBeats already has a direct Gemini inline-audio Analyzer adapter.",
+    };
+  }
+  if (provider.id === "openai") {
+    return {
+      supported: true,
+      note: "PromptBeats already has a direct OpenAI input_audio Analyzer adapter.",
+    };
+  }
   if (provider.id === "openrouter") {
     return {
       supported: true,
