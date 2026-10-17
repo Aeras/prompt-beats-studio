@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   parseStartScreenPreference, parseLastWorkEnvelope, START_SCREEN_FEATURES,
@@ -15,7 +16,7 @@ export type DestinationValidation =
 const HOME: DestinationValidation = { status: "valid", destination: { type: "home" } };
 
 type ResolverClient = {
-  auth: { getUser: () => Promise<{ data: { user: { id: string; user_metadata?: Record<string, unknown> } | null }; error: unknown }> };
+  auth: { getUser: (token: string) => Promise<{ data: { user: { id: string; user_metadata?: Record<string, unknown> } | null }; error: unknown }> };
   rpc: (name: string, args: { _feature_key: FeatureKey }) => Promise<{ data: boolean | null; error: unknown }>;
   from: (table: string) => any;
 };
@@ -70,7 +71,10 @@ export const resolveDefaultEntry = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<DestinationValidation> => {
     try {
       const client = context.supabase as unknown as ResolverClient;
-      const { data, error } = await client.auth.getUser();
+      const bearer = getRequest().headers.get("authorization");
+      const token = bearer?.startsWith("Bearer ") ? bearer.slice(7) : "";
+      if (!token) return { status: "temporary_failure" };
+      const { data, error } = await client.auth.getUser(token);
       if (error || !data.user || data.user.id !== context.userId) return { status: "temporary_failure" };
       const metadata = data.user.user_metadata ?? {};
       const preference = parseStartScreenPreference(metadata.default_start_screen);
