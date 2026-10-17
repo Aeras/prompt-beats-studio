@@ -66,7 +66,7 @@ export const enSongAnalyzer = {
   "songAnalyzer.loading": "Loading…",
   "songAnalyzer.checkingAccess": "Checking access…",
   "songAnalyzer.fileTooLarge": "The Analyzer accepts audio files up to 15 MB.",
-  "songAnalyzer.gptAudioFormat": "GPT Audio 1.5 currently accepts MP3 or WAV files.",
+  "songAnalyzer.gptAudioFormat": "The selected audio-analysis model currently accepts MP3 or WAV files.",
   "songAnalyzer.analysisFailed": "Song analysis failed.",
   "songAnalyzer.saveFailed": "Could not save analysis.",
   "songAnalyzer.sessionPersistFailed":
