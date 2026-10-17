@@ -22,6 +22,11 @@ describe("Song Analyzer resilience", () => {
     expect(essentia).toContain("Essentia.js/WASM Stage 0 unavailable; legacy DSP fallback used.");
   });
 
+  it("resets the durable Analyzer request key after a failed run so retries do not replay stale provider errors", () => {
+    expect(background).toContain('completeAuxiliaryRequest("song_analyzer");');
+    expect(background).toContain('if (snapshot.status === "failed")');
+  });
+
   it("keeps route changes from owning the Analyzer promise", () => {
     expect(background).toContain("let activePromise");
     expect(background).toContain("subscribeAnalyzerBackground");
