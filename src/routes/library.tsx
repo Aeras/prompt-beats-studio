@@ -67,6 +67,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { useAccountPreferences } from "@/lib/account-preferences";
+import { capturePb012LastWork } from "@/lib/pb012-last-work";
 import { useDraftAutosave } from "@/lib/draft-autosave";
 import { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 import {
@@ -321,6 +322,13 @@ function LibraryPage() {
     queryFn: () => listFavoriteTracks(),
     enabled: Boolean(user && favoritesAccess.allowed),
   });
+
+  useEffect(() => {
+    if (!user || loading || projectSelection.mode !== "none") return;
+    if (tab === "tracks" && mine.isSuccess) capturePb012LastWork(user.id, { type: "my_songs" });
+    else if (tab === "playlists" && playlistsAccess.allowed) capturePb012LastWork(user.id, { type: "playlists" });
+    else if (tab === "prompts" && promptView === "projects" && projects.isSuccess) capturePb012LastWork(user.id, { type: "projects" });
+  }, [user?.id, loading, projectSelection.mode, tab, promptView, mine.isSuccess, projects.isSuccess, playlistsAccess.allowed]);
 
   const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
