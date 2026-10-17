@@ -55,7 +55,7 @@ INSERT INTO public.ai_models (
   'USD',
   'verified',
   now(),
-  'official_documentation',
+  'official_docs',
   'https://ai.google.dev/gemini-api/docs/pricing',
   now(),
   false,
