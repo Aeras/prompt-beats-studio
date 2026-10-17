@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AudioLines,
   Check,
   Cpu,
   DollarSign,
@@ -32,6 +33,11 @@ import {
   checkAllAdminAiModelsForUpdates,
   saveAdminAiModelVerificationSource,
 } from "@/lib/ai-model-refresh.functions";
+import {
+  addMusicAnalyzerModel,
+  checkMusicAnalyzerProviderModels,
+  getMusicAnalyzerAdminModels,
+} from "@/lib/music-analyzer-admin.functions";
 import { cn } from "@/lib/utils";
 
 type Reasoning = AdminAiModel["generatorReasoningEffort"];
@@ -483,11 +489,17 @@ export function AiModelsPanel() {
     queryFn: () => getDetectedAiProviders(),
     staleTime: 30_000,
   });
+  const musicAnalyzerModelsQuery = useQuery({
+    queryKey: ["admin-music-analyzer-models"],
+    queryFn: () => getMusicAnalyzerAdminModels(),
+    staleTime: 15_000,
+  });
   const [generatorDefault, setGeneratorDefault] = useState("");
   const [qualityDefault, setQualityDefault] = useState("");
   const [aiToolsDefault, setAiToolsDefault] = useState("");
   const [editing, setEditing] = useState<AdminAiModel | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [musicAnalyzerProvider, setMusicAnalyzerProvider] = useState("");
   const [addedModelIds, setAddedModelIds] = useState<Set<string>>(() => new Set());
   const [compatibilityProgress, setCompatibilityProgress] = useState({ completed: 0, total: 0 });
   const compatibilityCancelRef = useRef(false);
@@ -499,6 +511,13 @@ export function AiModelsPanel() {
     else if (!providers.some((provider) => provider.id === selectedProvider))
       setSelectedProvider(providers[0]!.id);
   }, [providersQuery.data, selectedProvider]);
+
+  useEffect(() => {
+    const providers = providersQuery.data?.providers ?? [];
+    if (!providers.length) setMusicAnalyzerProvider("");
+    else if (!providers.some((provider) => provider.id === musicAnalyzerProvider))
+      setMusicAnalyzerProvider(providers[0]!.id);
+  }, [providersQuery.data, musicAnalyzerProvider]);
 
   useEffect(() => {
     if (!data) return;
@@ -553,6 +572,42 @@ export function AiModelsPanel() {
       qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : t("aiModels.addModelError")),
+  });
+
+  const musicAnalyzerProviderCheck = useMutation({
+    mutationFn: (providerId: string) =>
+      checkMusicAnalyzerProviderModels({ data: { providerId: providerId as any } }),
+    onError: (e) =>
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : el
+            ? "Ο έλεγχος Music Analyzer απέτυχε."
+            : "Music Analyzer discovery failed.",
+      ),
+  });
+
+  const addMusicAnalyzer = useMutation({
+    mutationFn: (modelId: string) =>
+      addMusicAnalyzerModel({
+        data: { providerId: musicAnalyzerProvider as any, modelId },
+      }),
+    onSuccess: () => {
+      toast.success(
+        el ? "Το μοντέλο προστέθηκε στο Music Analyzer." : "Model added to Music Analyzer.",
+      );
+      qc.invalidateQueries({ queryKey: ["admin-music-analyzer-models"] });
+      qc.invalidateQueries({ queryKey: ["song-analyzer-access"], exact: false });
+      musicAnalyzerProviderCheck.reset();
+    },
+    onError: (e) =>
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : el
+            ? "Δεν ήταν δυνατή η προσθήκη."
+            : "Could not add Music Analyzer model.",
+      ),
   });
 
   const modelHealth = useMutation({
@@ -655,6 +710,11 @@ export function AiModelsPanel() {
     selectedDiscovery?.models.filter(
       (m) => !m.installed && !m.deprecated && !fastSuccessors.some((s) => s.id === m.id),
     ) ?? [];
+
+  const musicDiscovery =
+    musicAnalyzerProviderCheck.data?.provider.id === musicAnalyzerProvider
+      ? musicAnalyzerProviderCheck.data
+      : null;
 
   return (
     <div className="space-y-5">
@@ -910,6 +970,172 @@ export function AiModelsPanel() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="glass overflow-hidden rounded-2xl border border-cyan-400/20">
+        <div className="border-b border-white/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <AudioLines className="h-4 w-4 text-cyan-300" />
+            <h3 className="font-display text-sm font-semibold">Music Analyzer</h3>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {el
+              ? "Ελέγξτε έναν provider και εμφανίστε μόνο μοντέλα που δηλώνουν ρητά audio input και text output. Δεν γίνεται πρόβλεψη από το όνομα του μοντέλου."
+              : "Check a provider and show only models that explicitly advertise audio input and text output. PromptBeats does not guess from model names."}
+          </p>
+        </div>
+        <div className="space-y-4 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={musicAnalyzerProvider}
+              onChange={(e) => {
+                setMusicAnalyzerProvider(e.target.value);
+                musicAnalyzerProviderCheck.reset();
+              }}
+              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
+            >
+              {(providersQuery.data?.providers ?? []).map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.label}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={!musicAnalyzerProvider || musicAnalyzerProviderCheck.isPending}
+              onClick={() => musicAnalyzerProviderCheck.mutate(musicAnalyzerProvider)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-200 ring-1 ring-inset ring-cyan-400/30 disabled:opacity-50"
+            >
+              <SearchCheck
+                className={cn(
+                  "h-4 w-4",
+                  musicAnalyzerProviderCheck.isPending && "animate-pulse",
+                )}
+              />
+              {musicAnalyzerProviderCheck.isPending
+                ? el
+                  ? "Έλεγχος…"
+                  : "Checking…"
+                : el
+                  ? "Έλεγχος για Audio → Text"
+                  : "Check Audio → Text"}
+            </button>
+          </div>
+
+          {musicDiscovery && (
+            <>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    {el ? "Μοντέλα provider" : "Provider models"}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold">{musicDiscovery.returned}</div>
+                </div>
+                <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    {el ? "Audio → Text" : "Audio → Text"}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-cyan-200">
+                    {musicDiscovery.candidates.length}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    {el ? "Χωρίς ρητή συμβατότητα" : "No explicit match"}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold">
+                    {musicDiscovery.excludedWithoutExplicitModalities}
+                  </div>
+                </div>
+              </div>
+
+              {musicDiscovery.candidates.length === 0 ? (
+                <div className="rounded-xl border border-white/10 p-4 text-sm text-muted-foreground">
+                  {el
+                    ? "Ο συγκεκριμένος provider δεν επέστρεψε κανένα μοντέλο που να δηλώνει ρητά audio input και text output στο API catalog του."
+                    : "This provider did not return any model explicitly advertising audio input and text output in its API catalog."}
+                </div>
+              ) : (
+                <div className="max-h-[520px] space-y-2 overflow-auto">
+                  {musicDiscovery.candidates.map((candidate) => (
+                    <div
+                      key={candidate.id}
+                      className="rounded-xl border border-white/10 bg-black/15 p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium">{candidate.name}</div>
+                          <div className="mt-1 break-all text-xs text-muted-foreground">
+                            {candidate.id}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <Pill kind="enabled">
+                              input: {candidate.inputModalities.join(", ")}
+                            </Pill>
+                            <Pill kind="enabled">
+                              output: {candidate.outputModalities.join(", ")}
+                            </Pill>
+                            {candidate.contextWindow != null && (
+                              <Pill kind="unknown">
+                                {candidate.contextWindow.toLocaleString()} context
+                              </Pill>
+                            )}
+                            <Pill kind={candidate.runtimeSupported ? "healthy" : "inconclusive"}>
+                              {candidate.runtimeSupported
+                                ? el
+                                  ? "Έτοιμο για PromptBeats"
+                                  : "PromptBeats ready"
+                                : el
+                                  ? "Χρειάζεται adapter"
+                                  : "Adapter required"}
+                            </Pill>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {candidate.runtimeNote}
+                          </p>
+                        </div>
+                        <button
+                          disabled={
+                            candidate.installed ||
+                            candidate.deprecated ||
+                            !candidate.runtimeSupported ||
+                            (addMusicAnalyzer.isPending &&
+                              addMusicAnalyzer.variables === candidate.id)
+                          }
+                          onClick={() => addMusicAnalyzer.mutate(candidate.id)}
+                          className="shrink-0 rounded-xl border border-cyan-400/30 px-3 py-2 text-xs font-semibold text-cyan-200 disabled:opacity-40"
+                        >
+                          {candidate.installed
+                            ? el
+                              ? "Ήδη στο Music Analyzer"
+                              : "Already in Music Analyzer"
+                            : el
+                              ? "Προσθήκη στο Music Analyzer"
+                              : "Add to Music Analyzer"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {(musicAnalyzerModelsQuery.data?.models.length ?? 0) > 0 && (
+            <div className="rounded-xl border border-white/10 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {el ? "Πρόσθετα ενεργά μοντέλα" : "Additional active models"}
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {musicAnalyzerModelsQuery.data!.models.map((item) => (
+                  <div key={item.provider + ":" + item.id} className="text-sm">
+                    <span className="font-medium">{item.label}</span>
+                    <span className="text-muted-foreground"> · {item.provider}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

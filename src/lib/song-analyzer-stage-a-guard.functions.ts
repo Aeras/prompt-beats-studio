@@ -12,11 +12,7 @@ import {
 } from "@/lib/song-analyzer.functions";
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
-const analyzerModelSchema = z.enum([
-  "gemini-3.8-flash",
-  "gemini-3.1-pro-preview",
-  "gpt-audio-1.5",
-]);
+const analyzerModelSchema = z.string().trim().min(1).max(240);
 const supportedMimeTypes = z.enum([
   "audio/mpeg",
   "audio/mp3",
@@ -1106,7 +1102,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
     if (apiKey) {
       let usage: ReturnType<typeof normalizedUsage> = null;
       const verifierModel =
-        data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model;
+        data.model.startsWith("gemini-") ? data.model : "gemini-3.8-flash";
       try {
         const checked = await runVerifier({
           apiKey,

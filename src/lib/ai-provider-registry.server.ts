@@ -390,6 +390,199 @@ export async function discoverProviderModels(
   };
 }
 
+
+export type DiscoveredAudioTextModel = {
+  id: string;
+  name: string;
+  ownedBy: string | null;
+  contextWindow: number | null;
+  deprecated: boolean;
+  installed: boolean;
+  inputModalities: string[];
+  outputModalities: string[];
+  runtimeSupported: boolean;
+  runtimeNote: string;
+};
+
+function normalizeModalities(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((item) => String(item).toLowerCase().trim()).filter(Boolean))];
+}
+
+function modelModalities(row: any) {
+  const architecture =
+    row?.architecture && typeof row.architecture === "object" ? row.architecture : {};
+  let inputModalities = normalizeModalities(
+    architecture?.input_modalities ??
+      row?.input_modalities ??
+      row?.inputModalities ??
+      row?.modalities?.input,
+  );
+  let outputModalities = normalizeModalities(
+    architecture?.output_modalities ??
+      row?.output_modalities ??
+      row?.outputModalities ??
+      row?.modalities?.output,
+  );
+
+  const modality =
+    typeof architecture?.modality === "string"
+      ? architecture.modality.toLowerCase()
+      : typeof row?.modality === "string"
+        ? row.modality.toLowerCase()
+        : "";
+  if (modality.includes("->")) {
+    const [input, output] = modality.split("->");
+    if (!inputModalities.length && input) {
+      inputModalities = input
+        .split("+")
+        .map((value: string) => value.trim())
+        .filter(Boolean);
+    }
+    if (!outputModalities.length && output) {
+      outputModalities = output
+        .split("+")
+        .map((value: string) => value.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return { inputModalities, outputModalities };
+}
+
+function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry) {
+  if (provider.id === "gemini") {
+    return {
+      supported: true,
+      note: "PromptBeats already has a direct Gemini inline-audio Analyzer adapter.",
+    };
+  }
+  if (provider.id === "openai") {
+    return {
+      supported: true,
+      note: "PromptBeats already has a direct OpenAI input_audio Analyzer adapter.",
+    };
+  }
+  if (provider.id === "openrouter") {
+    return {
+      supported: true,
+      note: "OpenRouter chat completions supports base64 input_audio for audio reasoning.",
+    };
+  }
+  return {
+    supported: false,
+    note: "Audio/text capability was discovered, but PromptBeats does not yet have a verified audio runtime adapter for this provider.",
+  };
+}
+
+/**
+ * Discovers only models whose provider catalog explicitly advertises audio input
+ * and text output. We deliberately do not guess from model names or descriptions.
+ */
+export async function discoverProviderAudioTextModels(
+  providerId: AiProviderId,
+  installedModels: Array<{ provider: string; providerModelId: string }>,
+): Promise<{
+  provider: DetectedAiProvider;
+  returned: number;
+  candidates: DiscoveredAudioTextModel[];
+  excludedWithoutExplicitModalities: number;
+}> {
+  const provider = AI_PROVIDER_REGISTRY.find((candidate) => candidate.id === providerId);
+  if (!provider) throw new Error("Unknown AI provider.");
+  if (!provider.secretNames.every((name) => Boolean(process.env[name]?.trim()))) {
+    throw new Error("Provider credentials are not configured.");
+  }
+
+  const apiKey = providerSecret(provider);
+  const headers: Record<string, string> = { accept: "application/json" };
+  let url = provider.discoveryUrl;
+  if (provider.auth === "bearer") headers["authorization"] = "Bearer " + apiKey;
+  if (provider.auth === "x-api-key") {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  }
+  if (provider.auth === "gemini-query") {
+    headers["x-goog-api-key"] = apiKey;
+    url += "?pageSize=1000";
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  let response: Response;
+  try {
+    response = await fetch(url, { method: "GET", headers, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError")
+      throw new Error("Provider check timed out.");
+    throw new Error("Could not connect to the provider.");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403)
+      throw new Error("Provider authentication failed.");
+    if (response.status === 429) throw new Error("Provider rate limit reached. Try again later.");
+    throw new Error("Provider check failed (HTTP " + response.status + ").");
+  }
+
+  const payload = await response.json();
+  const rows = getRows(provider, payload);
+  const installedSet = new Set(
+    installedModels.map((model) => model.provider + ":" + model.providerModelId),
+  );
+  const runtime = audioAnalyzerRuntimeSupport(provider);
+
+  const candidates = rows
+    .flatMap((row) => {
+      const rawId =
+        provider.apiDialect === "gemini"
+          ? String(row?.name ?? "").replace(/^models\//, "")
+          : provider.apiDialect === "cohere"
+            ? String(row?.name ?? "")
+            : String(row?.id ?? row?.name ?? "");
+      if (!rawId) return [];
+
+      const { inputModalities, outputModalities } = modelModalities(row);
+      if (!inputModalities.includes("audio") || !outputModalities.includes("text")) return [];
+
+      const name = String(row?.displayName ?? row?.display_name ?? row?.name ?? rawId).replace(
+        /^models\//,
+        "",
+      );
+      return [
+        {
+          id: rawId,
+          name,
+          ownedBy: row?.owned_by == null ? null : String(row.owned_by),
+          contextWindow:
+            asNumber(row?.model_info?.context_window) ??
+            asNumber(row?.context_length) ??
+            asNumber(row?.contextWindow) ??
+            asNumber(row?.context_length_tokens),
+          deprecated: row?.is_deprecated === true || row?.deprecated === true,
+          installed: installedSet.has(provider.id + ":" + rawId),
+          inputModalities,
+          outputModalities,
+          runtimeSupported: runtime.supported,
+          runtimeNote: runtime.note,
+        },
+      ];
+    })
+    .filter(
+      (model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index,
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    provider: { id: provider.id, label: provider.label },
+    returned: rows.length,
+    candidates,
+    excludedWithoutExplicitModalities: Math.max(0, rows.length - candidates.length),
+  };
+}
+
 type ProbeOutcome = "passed" | "unsupported" | "inconclusive";
 type ProbeResult = { outcome: ProbeOutcome; error?: string };
 

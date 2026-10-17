@@ -14,7 +14,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(code).toContain('type: "input_audio"');
     expect(code).toContain('modalities: ["text"]');
     expect(code).not.toContain('response_format: { type: "json_object" }');
-    expect(code).toContain('provider: analyzerProvider(args.model)');
+    expect(code).toContain('provider: args.provider');
   });
 
   test("gives GPT Audio the exact Stage A JSON contract when structured response formats are unavailable", async () => {
@@ -34,14 +34,14 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     const route = await source("../routes/song-analyzer.tsx");
     expect(code).toContain('mimeType === "audio/mpeg" || mimeType === "audio/mp3"');
     expect(code).toContain('mimeType === "audio/wav" || mimeType === "audio/x-wav"');
-    expect(route).toContain("songAnalyzerModelAcceptsMimeType(model, file.type)");
+    expect(route).toContain("acceptedMimeTypes.includes(file.type)");
     expect(route).toContain('t("songAnalyzer.gptAudioFormat")');
   });
 
   test("uses GPT Audio only for audible evidence and hands text synthesis to Gemini Flash", async () => {
     const code = await source("./song-analyzer.functions.ts");
     expect(code).toContain(
-      'data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model',
+      'provider === "gemini" ? data.model : "gemini-3.8-flash"',
     );
     expect(code).toContain("model: synthesisModel");
     expect(code).toContain("apiKey: synthesisApiKey");
@@ -50,27 +50,27 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
 
   test("accepts GPT Audio runs through the Stage A guard while retaining the independent Gemini verifier", async () => {
     const guard = await source("./song-analyzer-stage-a-guard.functions.ts");
-    expect(guard).toContain('"gpt-audio-1.5"');
+    expect(guard).toContain('z.string().trim().min(1).max(240)');
     expect(guard).toContain(
-      'data.model === "gpt-audio-1.5" ? "gemini-3.8-flash" : data.model',
+      'data.model.startsWith("gemini-") ? data.model : "gemini-3.8-flash"',
     );
     expect(guard).toContain("model: verifierModel");
   });
 
   test("keeps the final Analyzer provider-neutral and uses Gemini only for web research fallback", async () => {
     const finalizer = await source("./song-analyzer-final.functions.ts");
-    expect(finalizer).toContain('"gpt-audio-1.5"');
-    expect(finalizer).toContain('data.audioAnalysisModel === "gpt-audio-1.5"');
-    expect(finalizer).toContain('? "gemini-3.8-flash"');
+    expect(finalizer).toContain('audioAnalysisModel: z.string().trim().min(1).max(240)');
+    expect(finalizer).toContain('data.audioAnalysisModel.startsWith("gemini-")');
+    expect(finalizer).toContain(': "gemini-3.8-flash"');
     expect(finalizer).not.toContain("STAGE A GEMINI AUDIBLE EVIDENCE");
     expect(finalizer).not.toContain("GEMINI EVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE");
     expect(finalizer).not.toContain("The Gemini synthesis is a useful interpretation");
   });
 
-  test("saved analyses accept GPT Audio as their recorded source model", async () => {
+  test("saved analyses accept dynamically-added Music Analyzer model IDs", async () => {
     const code = await source("./song-analyzer.functions.ts");
-    expect(code).toContain(
-      'model: z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "gpt-audio-1.5"])',
-    );
+    expect(code).toContain('model: z.string().trim().min(1).max(240)');
+    expect(code).toContain('"song_analyzer_extra_models"');
+    expect(code).toContain('"https://openrouter.ai/api/v1/chat/completions"');
   });
 });
