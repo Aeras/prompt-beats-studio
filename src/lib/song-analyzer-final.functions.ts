@@ -520,7 +520,8 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
     if (trackTitle && artist) {
       try {
         const researchModel =
-          data.audioAnalysisModel.startsWith("gemini-")
+          data.audioAnalysisModel.startsWith("gemini-") &&
+          data.audioAnalysisModel !== "gemini-4-argon"
             ? (data.audioAnalysisModel as (typeof FINAL_ANALYZER_MODELS)[number])
             : "gemini-3.8-flash";
         research = await runRegionalResearch({
