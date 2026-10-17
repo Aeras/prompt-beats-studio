@@ -13,6 +13,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(code).toContain('https://api.openai.com/v1/chat/completions');
     expect(code).toContain('type: "input_audio"');
     expect(code).toContain('modalities: ["text"]');
+    expect(code).toContain('response_format: { type: "json_object" }');
     expect(code).toContain('provider: analyzerProvider(args.model)');
   });
 
@@ -41,6 +42,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(finalizer).toContain('? "gemini-3.8-flash"');
     expect(finalizer).not.toContain("STAGE A GEMINI AUDIBLE EVIDENCE");
     expect(finalizer).not.toContain("GEMINI EVIDENCE-GROUNDED SYNTHESIS TO RE-EVALUATE");
+    expect(finalizer).not.toContain("The Gemini synthesis is a useful interpretation");
   });
 
   test("saved analyses accept GPT Audio as their recorded source model", async () => {
