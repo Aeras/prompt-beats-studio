@@ -16,6 +16,7 @@ import { useExternalMediaConsent } from "@/lib/external-media-consent";
 import { useAccountPreferences, type AccountPreferences } from "@/lib/account-preferences";
 import { clearAllDraftAutosaves } from "@/lib/draft-autosave";
 import { LIBRARY_TABS } from "@/lib/library-tabs";
+import { START_SCREEN_VALUES, type StartScreenPreference } from "@/lib/pb012-starting-screen.shared";
 import { useI18n } from "@/i18n";
 
 const EXPORT_FORMATS = [
