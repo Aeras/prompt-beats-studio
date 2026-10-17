@@ -3,6 +3,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { Compass, FolderOpen, Home, Lightbulb, Map, Music2, Orbit, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { Pb012DefaultEntryBoundary } from "@/components/promptbeats/Pb012DefaultEntryBoundary";
 import { useAppShellActions } from "@/components/promptbeats/AppShellActions";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
@@ -62,7 +63,7 @@ export const Route = createFileRoute("/")({
         : [],
     };
   },
-  component: HomePage,
+  component: () => <Pb012DefaultEntryBoundary><HomePage /></Pb012DefaultEntryBoundary>,
 });
 
 function HomePage() {
