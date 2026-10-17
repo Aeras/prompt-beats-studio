@@ -308,18 +308,32 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
 
+  const isArgon = model === "gemini-4-argon";
+  const argonThinkingLevel =
+    call.reasoningEffort === "low"
+      ? "low"
+      : call.reasoningEffort === "high" ||
+          call.reasoningEffort === "xhigh" ||
+          call.reasoningEffort === "max"
+        ? "high"
+        : "medium";
+  const timeoutMs = isArgon ? 15 * 60 * 1000 : providerRequestTimeoutMs(call);
+  const requestedOutput = (call.maxTokens ?? 8192) * 2;
+  const maxOutputTokens = isArgon ? Math.max(requestedOutput, 32_768) : requestedOutput;
+
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model,
     contents: call.prompt,
     config: {
       systemInstruction: call.system,
-      abortSignal: providerRequestSignal(call),
-      httpOptions: { timeout: providerRequestTimeoutMs(call) },
+      abortSignal: AbortSignal.timeout(timeoutMs),
+      httpOptions: { timeout: timeoutMs },
       // Gemini structured JSON output; Zod still validates the parsed result.
       responseMimeType: "application/json",
       ...(call.schema ? { responseSchema: call.schema as never } : {}),
-      maxOutputTokens: (call.maxTokens ?? 8192) * 2,
+      ...(isArgon ? { thinkingConfig: { thinkingLevel: argonThinkingLevel } } : {}),
+      maxOutputTokens,
     },
   });
 
