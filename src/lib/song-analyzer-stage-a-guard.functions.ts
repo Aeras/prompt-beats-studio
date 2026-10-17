@@ -12,7 +12,11 @@ import {
 } from "@/lib/song-analyzer.functions";
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
-const analyzerModelSchema = z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "gpt-audio-1.5"]);
+const analyzerModelSchema = z.enum([
+  "gemini-3.8-flash",
+  "gemini-3.1-pro-preview",
+  "gpt-audio-1.5",
+]);
 const supportedMimeTypes = z.enum([
   "audio/mpeg",
   "audio/mp3",
