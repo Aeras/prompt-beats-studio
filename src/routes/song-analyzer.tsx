@@ -24,7 +24,6 @@ import {
   saveSongAnalysis,
   SONG_ANALYZER_MAX_FILE_BYTES,
   SONG_ANALYZER_MODELS,
-  songAnalyzerModelAcceptsMimeType,
   type SongAnalysisResult,
   type StageAEvidence,
 } from "@/lib/song-analyzer.functions";
@@ -159,14 +158,21 @@ function SongAnalyzerPage() {
     }
   }, [finalModel, finalModelAccess.data]);
 
+  const analyzerModelOptions = access.data?.models ?? SONG_ANALYZER_MODELS;
+  const selectedAnalyzerModel = analyzerModelOptions.find((item) => item.id === model);
+
   const fileError = useMemo(() => {
     if (!file) return null;
     if (file.size > SONG_ANALYZER_MAX_FILE_BYTES) return t("songAnalyzer.fileTooLarge");
-    if (!songAnalyzerModelAcceptsMimeType(model, file.type)) {
+    const acceptedMimeTypes =
+      "acceptedMimeTypes" in (selectedAnalyzerModel ?? {})
+        ? (selectedAnalyzerModel as { acceptedMimeTypes?: string[] }).acceptedMimeTypes
+        : undefined;
+    if (acceptedMimeTypes?.length && !acceptedMimeTypes.includes(file.type)) {
       return t("songAnalyzer.gptAudioFormat");
     }
     return null;
-  }, [file, model, t]);
+  }, [file, selectedAnalyzerModel, t]);
 
   const analyze = () => {
     if (!file || fileError) return;
@@ -457,7 +463,7 @@ function SongAnalyzerPage() {
                 disabled={busy}
                 className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground disabled:opacity-50"
               >
-                {SONG_ANALYZER_MODELS.map((item) => (
+                {analyzerModelOptions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.label}
                   </option>
@@ -699,7 +705,7 @@ function SongAnalyzerPage() {
                         {t("songAnalyzer.analyzedWith", {
                           model:
                             finalResultModelLabel ??
-                            SONG_ANALYZER_MODELS.find((item) => item.id === resultModel)?.label ??
+                            analyzerModelOptions.find((item) => item.id === resultModel)?.label ??
                             resultModel ??
                             "",
                         })}
