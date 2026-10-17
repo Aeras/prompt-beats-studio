@@ -1,10 +1,7 @@
 import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
 import { analyzeStage0Dsp } from "@/lib/song-analyzer-dsp";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
-import {
-  analyzeStage0Essentia,
-  consumeAnalyzerSourceStemPreview,
-} from "@/lib/song-analyzer-essentia";
+import { analyzeStage0Essentia } from "@/lib/song-analyzer-essentia";
 import {
   analyzeSong,
   type SongAnalysisResult,
@@ -72,7 +69,6 @@ function restoreSnapshot(): AnalyzerBackgroundSnapshot {
       return { ...emptySnapshot };
     }
     const parsed = JSON.parse(raw) as Partial<AnalyzerBackgroundSnapshot>;
-    // Running work is recovered from the separately persisted RunPod job ID.
     // Do not resurrect a frozen spinner after a full browser refresh.
     if (!["completed", "failed"].includes(String(parsed.status))) {
       window.sessionStorage.removeItem(STORAGE_KEY);
@@ -162,8 +158,6 @@ async function runAnalyzer(
       stage0Evidence = await analyzeStage0Essentia(args.file, legacyStage0Evidence);
       publish({ ...snapshot, stage0Evidence });
     }
-    const sourceStemPreview = consumeAnalyzerSourceStemPreview();
-
     const response = await analyzeSong({
       data: {
         requestKey: getAuxiliaryRequestKey("song_analyzer"),
@@ -179,9 +173,7 @@ async function runAnalyzer(
         audioBase64,
         mimeType: args.file.type as any,
         model: args.model as any,
-        stage0Evidence: sourceStemPreview
-          ? { ...response.stage0Evidence, sourceStemPreview }
-          : response.stage0Evidence,
+        stage0Evidence: response.stage0Evidence,
         stageAEvidence: response.stageAEvidence,
         initialResult: response.result,
       },

@@ -1,251 +1,298 @@
-import { cancelEnhancedStage0Job } from "@/lib/song-analyzer-enhanced-cancel.functions";
-import {
-  pollEnhancedStage0Job,
-  startEnhancedStage0Job,
-} from "@/lib/song-analyzer-enhanced-job.functions";
-import type { AnalyzerSourceStemPreview } from "@/lib/song-analyzer-enhanced.shared";
 import type { Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
 
-export type AnalyzerSimilarityEmbedding = {
-  contract: "promptbeats-mert95-similarity-v1";
-  vector: number[];
-};
+const ESSENTIA_SAMPLE_RATE = 44100;
+const ESSENTIA_TIMEOUT_MS = 90_000;
 
-const RUNPOD_POLL_INTERVAL_MS = 2_000;
-const RUNPOD_EXECUTION_TIMEOUT_MS = 11 * 60 * 1000;
-const RUNPOD_RECOVERY_WINDOW_MS = 30 * 60 * 1000;
-const MAX_CONSECUTIVE_POLL_TRANSPORT_ERRORS = 8;
-const ACTIVE_RUNPOD_JOB_KEY = "pb:song-analyzer-runpod-job-v1";
-
-let pendingSourceStemPreview: AnalyzerSourceStemPreview | null = null;
-
-type PersistedRunpodJob = {
-  jobId: string;
-  audioKey: string;
-  startedAt: number;
-  fileFingerprint: string;
-};
-
-export function consumeAnalyzerSourceStemPreview() {
-  const preview = pendingSourceStemPreview;
-  pendingSourceStemPreview = null;
-  return preview;
-}
-
-async function sleep(ms: number) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isTransientTransportError(error: unknown) {
-  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
-  return (
-    message.includes("failed to fetch") ||
-    message.includes("network") ||
-    message.includes("fetch failed") ||
-    message.includes("temporarily unavailable") ||
-    message.includes("timeout") ||
-    message.includes("timed out") ||
-    message.includes("connection")
-  );
-}
-
-function fingerprintFile(file: File) {
-  return [file.name, file.size, file.lastModified, file.type].join(":");
-}
-
-function readPersistedRunpodJob(): PersistedRunpodJob | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(ACTIVE_RUNPOD_JOB_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PersistedRunpodJob>;
-    if (
-      typeof parsed.jobId !== "string" ||
-      typeof parsed.audioKey !== "string" ||
-      typeof parsed.startedAt !== "number" ||
-      typeof parsed.fileFingerprint !== "string"
-    ) {
-      window.sessionStorage.removeItem(ACTIVE_RUNPOD_JOB_KEY);
-      return null;
-    }
-    return parsed as PersistedRunpodJob;
-  } catch {
-    return null;
-  }
-}
-
-function persistRunpodJob(job: PersistedRunpodJob | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (job) window.sessionStorage.setItem(ACTIVE_RUNPOD_JOB_KEY, JSON.stringify(job));
-    else window.sessionStorage.removeItem(ACTIVE_RUNPOD_JOB_KEY);
-  } catch {
-    // Resume metadata is best-effort; the server still enforces job ownership.
-  }
-}
-
-async function cancelAndForget(job: PersistedRunpodJob) {
-  persistRunpodJob(null);
-  try {
-    await cancelEnhancedStage0Job({
-      data: {
-        jobId: job.jobId,
-        audioKey: job.audioKey,
-      },
-    });
-  } catch {
-    // The caller is already stopping this logical run. Do not turn cleanup into
-    // a second user-facing failure or accidentally resubmit a duplicate job.
-  }
-}
-
-export function hasRecoverableEnhancedStage0Job(file?: File | null) {
-  const job = readPersistedRunpodJob();
-  if (!job) return false;
-  if (Date.now() - job.startedAt > RUNPOD_RECOVERY_WINDOW_MS) return false;
-  return !file || job.fileFingerprint === fingerprintFile(file);
-}
-
-/**
- * Browser-side Essentia.js/WASM has been removed; Super Admin analysis obtains
- * Stage 0 evidence from the external GPU worker (Demucs + Essentia + MERT +
- * fusion). Enhanced Stage 0 is authoritative: legacy DSP is never silently used
- * as a substitute when the GPU path fails.
- *
- * Once RunPod returns a job ID, that identity is persisted immediately. A page
- * refresh or a temporarily suspended mobile tab therefore resumes polling the
- * same billable GPU job instead of submitting a duplicate. The normal execution
- * budget is deliberately separate from the longer recovery window: an actually
- * running job is cancelled after 11 minutes, while a phone that wakes later may
- * still collect a job that already reached COMPLETED during suspension.
- */
-async function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read audio file"));
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      const comma = value.indexOf(",");
-      if (comma < 0) reject(new Error("Could not encode audio file"));
-      else resolve(value.slice(comma + 1));
+type EssentiaWorkerSuccess = {
+  id: number;
+  ok: true;
+  result: {
+    engineVersion: string;
+    algorithmNames: string[];
+    tempo: {
+      primaryBpm: number | null;
+      confidence: number | null;
+      stable: boolean | null;
+      stabilityScore: number | null;
+      ambiguous: boolean | null;
+      estimates: number[];
+      notes: string;
     };
-    reader.readAsDataURL(file);
+    rhythm: {
+      beatStrength: number | null;
+      onsetDensity: number | null;
+      beatTimestamps: number[];
+      onsetTimestamps: number[];
+    };
+    tonal: {
+      keyCandidate: string | null;
+      scaleCandidate: string | null;
+      keyConfidence: number | null;
+      notes: string;
+    };
+    energy: {
+      dynamicComplexity: number | null;
+      loudnessDb: number | null;
+    };
+    spectral: {
+      spectralCentroidHz: number | null;
+    };
+    processingMs: number;
+  };
+};
+
+type EssentiaWorkerFailure = {
+  id: number;
+  ok: false;
+  error: string;
+  processingMs: number;
+};
+
+type EssentiaWorkerMessage = EssentiaWorkerSuccess | EssentiaWorkerFailure;
+
+let worker: Worker | null = null;
+let nextRequestId = 1;
+const pending = new Map<number, {
+  resolve: (message: EssentiaWorkerMessage) => void;
+  reject: (error: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}>();
+
+function getWorker() {
+  if (worker) return worker;
+
+  worker = new Worker(new URL("./song-analyzer-essentia.worker.ts", import.meta.url), {
+    type: "module",
+    name: "promptbeats-essentia-stage0",
+  });
+  worker.onmessage = (event: MessageEvent<EssentiaWorkerMessage>) => {
+    const request = pending.get(event.data.id);
+    if (!request) return;
+    clearTimeout(request.timeout);
+    pending.delete(event.data.id);
+    request.resolve(event.data);
+  };
+  worker.onerror = (event) => {
+    const error = new Error(event.message || "Essentia worker failed.");
+    for (const request of pending.values()) {
+      clearTimeout(request.timeout);
+      request.reject(error);
+    }
+    pending.clear();
+    worker?.terminate();
+    worker = null;
+  };
+
+  return worker;
+}
+
+function mixToMono(buffer: AudioBuffer) {
+  const mono = new Float32Array(buffer.length);
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    const source = buffer.getChannelData(channel);
+    for (let i = 0; i < source.length; i += 1) {
+      mono[i] += (source[i] ?? 0) / buffer.numberOfChannels;
+    }
+  }
+  return mono;
+}
+
+function resampleLinearExact(input: Float32Array, sourceRate: number, targetRate: number) {
+  if (sourceRate === targetRate) return input;
+  const ratio = sourceRate / targetRate;
+  const length = Math.max(1, Math.round(input.length / ratio));
+  const output = new Float32Array(length);
+
+  for (let i = 0; i < length; i += 1) {
+    const position = i * ratio;
+    const left = Math.floor(position);
+    const right = Math.min(input.length - 1, left + 1);
+    const fraction = position - left;
+    output[i] = (input[left] ?? 0) * (1 - fraction) + (input[right] ?? 0) * fraction;
+  }
+
+  return output;
+}
+
+async function decodeForEssentia(file: File) {
+  const decodeStartedAt = performance.now();
+  const audioContext = new AudioContext();
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    const mono = mixToMono(decoded);
+    const samples = resampleLinearExact(mono, decoded.sampleRate, ESSENTIA_SAMPLE_RATE);
+    return {
+      samples,
+      sourceSampleRate: decoded.sampleRate,
+      durationSeconds: samples.length / ESSENTIA_SAMPLE_RATE,
+      channels: decoded.numberOfChannels,
+      decodeMs: performance.now() - decodeStartedAt,
+    };
+  } finally {
+    void audioContext.close().catch(() => undefined);
+  }
+}
+
+function runWorker(samples: Float32Array) {
+  const id = nextRequestId++;
+  const activeWorker = getWorker();
+
+  return new Promise<EssentiaWorkerMessage>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error("Essentia Stage 0 timed out."));
+    }, ESSENTIA_TIMEOUT_MS);
+
+    pending.set(id, { resolve, reject, timeout });
+    activeWorker.postMessage(
+      { id, samples: samples.buffer, sampleRate: ESSENTIA_SAMPLE_RATE },
+      [samples.buffer],
+    );
   });
 }
 
-async function requestEnhancedStage0(file: File, audioBase64: string) {
-  const fileFingerprint = fingerprintFile(file);
-  let active = readPersistedRunpodJob();
-
-  if (active && active.fileFingerprint !== fileFingerprint) {
-    await cancelAndForget(active);
-    active = null;
-  }
-
-  if (active && Date.now() - active.startedAt > RUNPOD_RECOVERY_WINDOW_MS) {
-    await cancelAndForget(active);
-    active = null;
-  }
-
-  if (!active) {
-    // Do not automatically retry submission: if RunPod accepted the request but
-    // the response was lost, retrying /run could create a second billable job.
-    const started = await startEnhancedStage0Job({
-      data: {
-        audioBase64,
-        mimeType: file.type as any,
-      },
-    });
-    active = {
-      jobId: started.jobId,
-      audioKey: started.audioKey,
-      startedAt: started.startedAt,
-      fileFingerprint,
-    };
-    persistRunpodJob(active);
-  }
-
-  const recoveryDeadline = active.startedAt + RUNPOD_RECOVERY_WINDOW_MS;
-  let consecutiveTransportErrors = 0;
-
-  while (Date.now() < recoveryDeadline) {
-    await sleep(RUNPOD_POLL_INTERVAL_MS);
-    try {
-      const polled = await pollEnhancedStage0Job({
-        data: {
-          jobId: active.jobId,
-          audioKey: active.audioKey,
-          startedAt: active.startedAt,
-        },
-      });
-      consecutiveTransportErrors = 0;
-
-      if (polled.status === "completed" && polled.stage0Evidence) {
-        persistRunpodJob(null);
-        return {
-          stage0Evidence: polled.stage0Evidence,
-          similarityEmbedding: polled.similarityEmbedding ?? null,
-        };
-      }
-
-      if (Date.now() - active.startedAt >= RUNPOD_EXECUTION_TIMEOUT_MS) {
-        await cancelAndForget(active);
-        throw new Error(
-          "Enhanced Song Analyzer exceeded the 11-minute GPU execution limit and was cancelled.",
-        );
-      }
-    } catch (error) {
-      if (!isTransientTransportError(error)) {
-        persistRunpodJob(null);
-        throw error;
-      }
-      consecutiveTransportErrors += 1;
-      if (consecutiveTransportErrors > MAX_CONSECUTIVE_POLL_TRANSPORT_ERRORS) {
-        // Keep the persisted job identity. A refresh/reopen can resume the same
-        // RunPod job inside the recovery window instead of starting another one.
-        throw error;
-      }
-      await sleep(Math.min(1_000 * consecutiveTransportErrors, 5_000));
-    }
-  }
-
-  await cancelAndForget(active);
-  throw new Error("Enhanced Song Analyzer recovery window expired and the GPU job was cancelled.");
-}
-
-export async function analyzeStage0EssentiaWithSimilarity(
-  file: File,
-  _legacy: Stage0DspEvidence,
-): Promise<{
-  stage0Evidence: Stage0DspEvidence;
-  similarityEmbedding: AnalyzerSimilarityEmbedding | null;
-}> {
-  pendingSourceStemPreview = null;
-
-  try {
-    const audioBase64 = await fileToBase64(file);
-    const response = await requestEnhancedStage0(file, audioBase64);
-    const transported = response.stage0Evidence as Stage0DspEvidence & {
-      sourceStemPreview?: AnalyzerSourceStemPreview;
-    };
-    const { sourceStemPreview, ...cleanStage0Evidence } = transported;
-    pendingSourceStemPreview = sourceStemPreview ?? null;
-    return {
-      stage0Evidence: cleanStage0Evidence as Stage0DspEvidence,
-      similarityEmbedding: response.similarityEmbedding,
-    };
-  } catch (error) {
-    pendingSourceStemPreview = null;
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Enhanced Song Analyzer is temporarily unavailable. Analysis was stopped instead of using degraded legacy DSP. ${detail}`.slice(0, 900),
-    );
-  }
+function round(value: number | null, digits = 4) {
+  if (value == null || !Number.isFinite(value)) return null;
+  const scale = 10 ** digits;
+  return Math.round(value * scale) / scale;
 }
 
 export async function analyzeStage0Essentia(
   file: File,
   legacy: Stage0DspEvidence,
 ): Promise<Stage0DspEvidence> {
-  return (await analyzeStage0EssentiaWithSimilarity(file, legacy)).stage0Evidence;
+  const totalStartedAt = performance.now();
+
+  try {
+    const decoded = await decodeForEssentia(file);
+    const workerResult = await runWorker(decoded.samples);
+    if (!workerResult.ok) throw new Error(workerResult.error);
+
+    const es = workerResult.result;
+    const primaryBpm = es.tempo.primaryBpm;
+    const halfTimeCandidate =
+      primaryBpm != null && primaryBpm / 2 >= 20 ? round(primaryBpm / 2, 2) : null;
+    const doubleTimeCandidate =
+      primaryBpm != null && primaryBpm * 2 <= 300 ? round(primaryBpm * 2, 2) : null;
+
+    const limitations = [
+      ...legacy.limitations.filter((item) => !item.startsWith("Stage 0 is deterministic")),
+      "Essentia.js/WASM Stage 0 is supporting MIR evidence, not musical ground truth.",
+      "Tempo confidence is normalized from Essentia multifeature beat-tracker confidence.",
+      "Half-time and double-time candidates remain interpretation checks rather than automatic corrections.",
+      "KeyExtractor uses an internal HPCP pipeline; the exposed chroma summary remains the legacy diagnostic summary in this experiment.",
+      "Energy segments, spectral band ratios, and section-change candidates are retained from the legacy DSP for side-by-side validation during the experiment.",
+    ];
+
+    return {
+      ...legacy,
+      version: "stage0-dsp-v1",
+      available: true,
+      engine: {
+        name: "essentia",
+        engineVersion: es.engineVersion || "0.1.3",
+        methodVersion: "promptbeats-essentia-stage0-v1",
+        algorithms: es.algorithmNames,
+      },
+      processing: {
+        ...legacy.processing,
+        decodeMs: round(decoded.decodeMs, 2),
+        dspMs: round(es.processingMs, 2),
+        totalMs: round(performance.now() - totalStartedAt, 2),
+        sourceSampleRate: decoded.sourceSampleRate,
+        analysisSampleRate: ESSENTIA_SAMPLE_RATE,
+        durationSeconds: round(decoded.durationSeconds, 3),
+        channels: decoded.channels,
+      },
+      tempo: {
+        primaryBpm,
+        halfTimeCandidate,
+        doubleTimeCandidate,
+        confidence: es.tempo.confidence,
+        stable: es.tempo.stable,
+        stabilityScore: es.tempo.stabilityScore,
+        ambiguous: es.tempo.ambiguous,
+        notes: [
+          es.tempo.notes,
+          es.tempo.estimates.length
+            ? `Essentia BPM distribution samples: ${es.tempo.estimates.join(", ")}.`
+            : "",
+          legacy.tempo?.primaryBpm != null
+            ? `Legacy comparison BPM: ${legacy.tempo.primaryBpm}.`
+            : "",
+        ].filter(Boolean).join(" "),
+      },
+      rhythm: {
+        beatStrength: es.rhythm.beatStrength,
+        onsetDensity: es.rhythm.onsetDensity,
+        meterCandidate: legacy.rhythm?.meterCandidate ?? null,
+        meterConfidence: legacy.rhythm?.meterConfidence ?? null,
+        beatTimestamps: es.rhythm.beatTimestamps,
+        notes: [
+          "Beat timestamps and onset density are produced by Essentia RhythmExtractor2013/OnsetRate.",
+          es.rhythm.onsetTimestamps.length
+            ? `Detected onset count in retained diagnostic sample: ${es.rhythm.onsetTimestamps.length}.`
+            : "",
+          "Meter remains unreported unless a separate reliable meter detector is introduced.",
+        ].filter(Boolean).join(" "),
+      },
+      energy: legacy.energy
+        ? {
+            ...legacy.energy,
+            loudnessDb: es.energy.loudnessDb,
+            dynamicComplexity: es.energy.dynamicComplexity,
+          }
+        : null,
+      tonal: legacy.tonal
+        ? {
+            ...legacy.tonal,
+            keyCandidate: es.tonal.keyCandidate,
+            scaleCandidate: es.tonal.scaleCandidate,
+            keyConfidence: es.tonal.keyConfidence,
+            notes: [
+              es.tonal.notes,
+              "Weak tonal evidence must not influence genre classification.",
+            ].join(" "),
+          }
+        : {
+            keyCandidate: es.tonal.keyCandidate,
+            scaleCandidate: es.tonal.scaleCandidate,
+            keyConfidence: es.tonal.keyConfidence,
+            chromaSummary: Array(12).fill(0),
+            notes: es.tonal.notes,
+          },
+      spectral: legacy.spectral
+        ? {
+            ...legacy.spectral,
+            spectralCentroidHz: es.spectral.spectralCentroidHz,
+          }
+        : {
+            spectralCentroidHz: es.spectral.spectralCentroidHz,
+            brightness: null,
+            lowFrequencyEnergy: null,
+            highFrequencyEnergy: null,
+          },
+      limitations,
+    };
+  } catch (error) {
+    return {
+      ...legacy,
+      engine: legacy.engine ?? {
+        name: "legacy",
+        engineVersion: "promptbeats-legacy-v1",
+        methodVersion: "stage0-dsp-v1",
+        algorithms: [],
+      },
+      processing: {
+        ...legacy.processing,
+        totalMs: round(performance.now() - totalStartedAt, 2),
+      },
+      limitations: [
+        ...legacy.limitations,
+        "Essentia.js/WASM Stage 0 unavailable; legacy DSP fallback used.",
+        `Essentia failure: ${(error instanceof Error ? error.message : String(error)).slice(0, 500)}`,
+      ],
+    };
+  }
 }

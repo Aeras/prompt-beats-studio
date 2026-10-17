@@ -5,7 +5,7 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.admin": "Admin",
   "songAnalyzer.analyzeComplete": "Ανάλυση ολοκληρωμένου τραγουδιού",
   "songAnalyzer.zeroRetention":
-    "Το source audio χρησιμοποιείται μόνο για την ανάλυση. Η enhanced ανάλυση μπορεί να το τοποθετήσει προσωρινά σε ιδιωτικό transport storage ώστε να το διαβάσει ο GPU worker· το προσωρινό object διαγράφεται μετά την ολοκλήρωση του job και δεν αποθηκεύεται ποτέ ως Track, στοιχείο Library ή asset Project.",
+    "Το source audio χρησιμοποιείται μόνο για την ανάλυση στον browser και από το επιλεγμένο AI μοντέλο. Δεν αποθηκεύεται ως Track, στοιχείο Library ή asset Project.",
   "songAnalyzer.chooseAudio": "Επιλογή αρχείου ήχου",
   "songAnalyzer.restoringAudio": "Επαναφορά audio της συνεδρίας…",
   "songAnalyzer.fileTypes": "MP3, WAV, M4A/MP4, AAC, OGG ή FLAC · έως 15 MB",
