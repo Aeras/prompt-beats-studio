@@ -485,7 +485,7 @@ const finalizeInput = z.object({
   initialResult: songAnalysisResultSchema,
   stage0Evidence: stage0DspEvidenceSchema,
   stageAEvidence: z.unknown(),
-  audioAnalysisModel: z.enum(FINAL_ANALYZER_MODELS),
+  audioAnalysisModel: z.string().trim().min(1).max(240),
   finalModel: z.string().trim().min(1).max(240).optional(),
   trackTitle: z.string().trim().min(1).max(200).optional(),
   artist: z.string().trim().min(1).max(200).optional(),
@@ -519,9 +519,9 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
     if (trackTitle && artist) {
       try {
         const researchModel =
-          data.audioAnalysisModel === "gpt-audio-1.5"
-            ? "gemini-3.8-flash"
-            : data.audioAnalysisModel;
+          data.audioAnalysisModel.startsWith("gemini-")
+            ? (data.audioAnalysisModel as (typeof FINAL_ANALYZER_MODELS)[number])
+            : "gemini-3.8-flash";
         research = await runRegionalResearch({
           userId: context.userId,
           model: researchModel,
