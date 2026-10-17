@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Settings, X } from "lucide-react";
 
 import { getSongLanguageOptions } from "@/catalog/song-languages";
@@ -16,6 +17,12 @@ import { useExternalMediaConsent } from "@/lib/external-media-consent";
 import { useAccountPreferences, type AccountPreferences } from "@/lib/account-preferences";
 import { clearAllDraftAutosaves } from "@/lib/draft-autosave";
 import { LIBRARY_TABS } from "@/lib/library-tabs";
+import { getStartingPageAccess } from "@/lib/pb012-starting-page-access.functions";
+import {
+  START_SCREEN_FEATURES,
+  START_SCREEN_VALUES,
+  type StartScreenPreference,
+} from "@/lib/pb012-starting-screen.shared";
 import { useI18n } from "@/i18n";
 
 const EXPORT_FORMATS = [
@@ -29,6 +36,7 @@ type InfoKey =
   | "generatorLanguage"
   | "generatorMode"
   | "appLanguage"
+  | "startingPage"
   | "libraryTab"
   | "trackPublished"
   | "promptPublic"
@@ -115,6 +123,12 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
   const explicit = useExplicitContentPreference();
   const { preferences, setPreference, signedIn, userId } = useAccountPreferences();
   const [info, setInfo] = useState<InfoKey | null>(null);
+  const startingPageAccess = useQuery({
+    queryKey: ["pb012-settings-access", userId],
+    queryFn: () => getStartingPageAccess(),
+    enabled: open && signedIn,
+    staleTime: 30_000,
+  });
   const [saveError, setSaveError] = useState("");
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const el = language === "el";
@@ -241,6 +255,74 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
               </InfoPopover>
             )}
           </section>
+
+          {signedIn && (
+            <section className="relative py-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold">{el ? "Αρχική σελίδα" : "Starting page"}</h3>
+                <InfoButton
+                  infoKey="startingPage"
+                  active={info === "startingPage"}
+                  onToggle={toggleInfo}
+                  label={infoLabel}
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {el
+                  ? "Επίλεξε τι θα ανοίγει πρώτο όταν μπαίνεις στο PromptBeats."
+                  : "Choose what opens first when you enter PromptBeats."}
+              </p>
+              <select
+                value={preferences.defaultStartScreen}
+                onChange={(event) =>
+                  save("defaultStartScreen", event.target.value as StartScreenPreference)
+                }
+                className={selectClass}
+                aria-label={el ? "Αρχική σελίδα" : "Starting page"}
+              >
+                {START_SCREEN_VALUES.filter(
+                  (value) =>
+                    !START_SCREEN_FEATURES[value] ||
+                    startingPageAccess.data?.[value] === true ||
+                    value === preferences.defaultStartScreen,
+                ).map((value) => (
+                  <option
+                    key={value}
+                    value={value}
+                    disabled={
+                      Boolean(START_SCREEN_FEATURES[value]) &&
+                      startingPageAccess.data?.[value] !== true
+                    }
+                  >
+                    {
+                      (
+                        {
+                          home: el ? "Αρχική" : "Home",
+                          last_work: el ? "Τελευταία εργασία" : "Last Work",
+                          projects: "Projects",
+                          my_songs: el ? "Τα τραγούδια μου" : "My Songs",
+                          playlists: "Playlists",
+                          generator: "Generator",
+                          song_universe: "Song Universe",
+                          inspiration_wall: "Inspiration Wall",
+                          story_map: "Story Map",
+                          discover: el ? "Ανακάλυψη" : "Discover",
+                          create: el ? "Δημιουργία" : "Create",
+                        } satisfies Record<StartScreenPreference, string>
+                      )[value]
+                    }
+                  </option>
+                ))}
+              </select>
+              {info === "startingPage" && (
+                <InfoPopover>
+                  {el
+                    ? "Η Τελευταία εργασία επιστρέφει στο τελευταίο υποστηριζόμενο σημείο εργασίας σου."
+                    : "Last Work returns to your last supported work destination."}
+                </InfoPopover>
+              )}
+            </section>
+          )}
 
           {signedIn && (
             <>

@@ -34,6 +34,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import { cn } from "@/lib/utils";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { COVER_ACCEPT, validateCoverFile } from "@/lib/cover-upload";
@@ -323,6 +324,12 @@ export function PlaylistLibraryPanel({ userId }: { userId: string }) {
     enabled: featureAccess.allowed,
   });
   const rows = (playlists.data?.playlists ?? []) as PlaylistSummary[];
+  usePb012LastWork(
+    userId,
+    featureAccess.allowed && playlists.isSuccess && !playlists.isFetching
+      ? { type: "playlists" }
+      : null,
+  );
 
   if (!featureAccess.allowed) return null;
 

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import {
   Archive,
   ChevronDown,
@@ -83,6 +85,7 @@ const sectionLabels: Record<
 };
 
 function SongUniversePage() {
+  const { user } = useAuth();
   const { language } = useI18n();
   const el = language === "el";
   const locale = el ? "el" : "en";
@@ -96,15 +99,26 @@ function SongUniversePage() {
     navigate({ to: "/song-universe", search: { universe: id } });
 
   const list = useQuery({
-    queryKey: ["song-universes"],
+    queryKey: ["song-universes", user?.id],
     queryFn: () => listSongUniverses(),
-    enabled: access.allowed,
+    enabled: access.allowed && Boolean(user),
   });
   const selected = useQuery({
-    queryKey: ["song-universe", selectedId],
+    queryKey: ["song-universe", selectedId, user?.id],
     queryFn: () => getSongUniverse({ data: { universeId: selectedId! } }),
-    enabled: access.allowed && Boolean(selectedId),
+    enabled: access.allowed && Boolean(selectedId && user),
   });
+  usePb012LastWork(
+    user?.id ?? null,
+    access.allowed &&
+      selected.isSuccess &&
+      !selected.isFetching &&
+      selectedId &&
+      selected.data?.universe.id === selectedId &&
+      selected.data.universe.status !== "archived"
+      ? { type: "song_universe", id: selectedId }
+      : null,
+  );
 
   const createMutation = useMutation({
     mutationFn: () =>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import {
   ArrowDown,
   ArrowRight,
@@ -104,10 +105,21 @@ function StoryMapPage() {
     enabled: Boolean(user && access.allowed),
   });
   const mapQuery = useQuery({
-    queryKey: ["story-map", selectedId],
+    queryKey: ["story-map", selectedId, user?.id],
     queryFn: () => getStoryMap({ data: { storyMapId: selectedId! } }),
     enabled: Boolean(user && access.allowed && selectedId),
   });
+  usePb012LastWork(
+    user?.id ?? null,
+    !loading &&
+      access.allowed &&
+      mapQuery.isSuccess &&
+      !mapQuery.isFetching &&
+      selectedId &&
+      mapQuery.data?.storyMap.id === selectedId
+      ? { type: "story_map", id: selectedId }
+      : null,
+  );
 
   useEffect(() => {
     if (selection.mode !== "absent") {

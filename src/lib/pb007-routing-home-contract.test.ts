@@ -36,11 +36,15 @@ describe("PB-007 routing and Home contract", () => {
   test("auth and onboarding use the allowlisted continuation helpers", async () => {
     const auth = await source("src/routes/auth.tsx");
     const onboarding = await source("src/routes/onboarding.tsx");
+    const entry = await source("src/lib/pb012-entry.ts");
     expect(auth).toContain("validateAuthRouteSearch");
-    expect(auth).toContain("postAuthDestination");
+    expect(auth).toContain("resolvePb012EntryRoute(next)");
     expect(auth).toContain("authCallbackUrl");
     expect(onboarding).toContain("validateNextIntentSearch");
-    expect(onboarding).toContain("postAuthDestination");
+    expect(onboarding).toContain("resolvePb012EntryRoute(next)");
+    expect(entry).toContain('from "@/lib/auth-continuation"');
+    expect(entry).toContain("if (next) return { to: postAuthDestination(next) }");
+    expect(entry.indexOf("if (next)")).toBeLessThan(entry.indexOf("resolve(),"));
   });
 
   test("global public search targets Discover", async () => {

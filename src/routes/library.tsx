@@ -67,6 +67,7 @@ import artFallback from "@/assets/art-3.jpg";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { useAccountPreferences } from "@/lib/account-preferences";
+import { usePb012LastWork } from "@/lib/pb012-last-work";
 import { useDraftAutosave } from "@/lib/draft-autosave";
 import { LIBRARY_TAB_IDS, isLibraryTab, type LibraryTab } from "@/lib/library-tabs";
 import {
@@ -321,6 +322,28 @@ function LibraryPage() {
     queryFn: () => listFavoriteTracks(),
     enabled: Boolean(user && favoritesAccess.allowed),
   });
+
+  const settledProject =
+    projectSelection.mode === "valid" && projects.isSuccess && !projects.isFetching
+      ? projects.data?.projects.find((project) => project.id === projectSelection.id)
+      : null;
+  usePb012LastWork(
+    user?.id ?? null,
+    loading
+      ? null
+      : tab === "prompts" && settledProject
+        ? { type: "project", id: settledProject.id }
+        : projectSelection.mode !== "absent"
+          ? null
+          : tab === "tracks" && mine.isSuccess && !mine.isFetching
+            ? { type: "my_songs" }
+            : tab === "prompts" &&
+                promptView === "projects" &&
+                projects.isSuccess &&
+                !projects.isFetching
+              ? { type: "projects" }
+              : null,
+  );
 
   const myTracks = (mine.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
   const likedTracks = (liked.data?.tracks ?? []).map((track: any) => toTrack(track as Row, handle));
