@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useModeration } from "@/hooks/useModeration";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
 import { useDraftAutosave } from "@/lib/draft-autosave";
@@ -80,6 +81,10 @@ import {
   undoVocalArrangement,
 } from "@/lib/quality-apply";
 import { DEFAULT_AI_MODEL, aiModelLabel } from "@/lib/ai-models";
+import {
+  buildGeneratorBenchmarkMarkdown,
+  generatorBenchmarkFilename,
+} from "@/lib/generator-benchmark-export";
 import {
   AI_TARGET_PLATFORMS,
   AI_TARGET_PLATFORM_LABEL,
@@ -863,6 +868,7 @@ function GenerateSessionBoundary() {
 function GeneratePage() {
   const { t, language: appLanguage } = useI18n();
   const { user, loading } = useAuth();
+  const moderation = useModeration();
   const { preferences: accountPreferences, signedIn: accountPreferencesReady } =
     useAccountPreferences();
   const generatorFeature = useFeatureAccess("ai_generator");
@@ -1622,6 +1628,43 @@ function GeneratePage() {
     generationAvailableModels.find((model) => model.id === modelId)?.label ??
     qualityAvailableModels.find((model) => model.id === modelId)?.label ??
     aiModelLabel(modelId);
+  const exportGeneratorBenchmark = () => {
+    if (!moderation.isSuperAdmin || !result) return;
+    const modelId =
+      generationResultModel ??
+      songContext?.inputSnapshot?.generationModel ??
+      generationModel ??
+      "unknown";
+    const modelOption =
+      generationAvailableModels.find((model) => model.id === modelId) ??
+      qualityAvailableModels.find((model) => model.id === modelId);
+    const exportedAt = new Date().toISOString();
+    const markdown = buildGeneratorBenchmarkMarkdown({
+      title: result.title,
+      musicStyle: result.tags,
+      lyrics: result.lyrics,
+      producerNote: result.note,
+      modelId,
+      modelLabel: modelOption?.label ?? aiModelLabel(modelId),
+      provider: modelOption?.provider ?? null,
+      targetPlatform: effectiveTargetPlatform,
+      generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
+      exportedAt,
+    });
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = generatorBenchmarkFilename({
+      title: result.title,
+      modelLabel: modelOption?.label ?? aiModelLabel(modelId),
+      exportedAt,
+    });
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
   const songContextTargetPlatform = (
     songContext as (GenerationContext & { targetPlatform?: AITargetPlatform }) | null
   )?.targetPlatform;
@@ -3785,7 +3828,22 @@ ${narrativePlan.beats
                   <p className="mt-1 text-muted-foreground">{t("generator.revisionAutoSaved")}</p>
                 </div>
               )}
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                {moderation.isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={exportGeneratorBenchmark}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-400/5 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10"
+                    title={
+                      appLanguage === "el"
+                        ? "Εξαγωγή ολόκληρου του αποτελέσματος για benchmark"
+                        : "Export the full result for benchmarking"
+                    }
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {appLanguage === "el" ? "Εξαγωγή Test (.md)" : "Export Test (.md)"}
+                  </button>
+                )}
                 <button
                   onClick={toggleAll}
                   className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
