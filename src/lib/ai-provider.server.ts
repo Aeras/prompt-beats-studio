@@ -634,10 +634,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
       : call.reasoningEffort === "max"
         ? "xhigh"
         : (call.reasoningEffort ?? "medium");
-  const timeoutMs =
-    reasoningEffort === "xhigh" || reasoningEffort === "max"
-      ? 30 * 60 * 1000
-      : 15 * 60 * 1000;
+  const timeoutMs = reasoningEffort === "xhigh" ? 30 * 60 * 1000 : 15 * 60 * 1000;
 
   let res: Response;
   try {
