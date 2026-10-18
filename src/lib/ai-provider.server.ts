@@ -622,15 +622,115 @@ async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResu
 async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["XAI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
-  // xAI supports OpenAI-compatible Chat Completions and JSON object mode.
-  return callOpenAiCompatible(
-    "xai",
-    "https://api.x.ai/v1/chat/completions",
-    apiKey,
-    model,
-    call,
-    true,
-  );
+
+  // Grok 4.6/4.7 are reasoning models and xAI currently recommends the Responses API
+  // with at least a 900s client timeout for non-streaming reasoning requests.
+  // PromptBeats also sets reasoning effort explicitly so xAI's higher provider default
+  // cannot silently turn ordinary Generator calls into unexpectedly long requests.
+  const jsonSchema = call.schema ? toOpenAiJsonSchema(call.schema) : null;
+  const reasoningEffort =
+    call.reasoningEffort === "none" ? "low" : (call.reasoningEffort ?? "medium");
+  const timeoutMs =
+    reasoningEffort === "xhigh" || reasoningEffort === "max"
+      ? 30 * 60 * 1000
+      : 15 * 60 * 1000;
+
+  let res: Response;
+  try {
+    res = await fetch("https://api.x.ai/v1/responses", {
+      method: "POST",
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: "system", content: call.system },
+          { role: "user", content: call.prompt },
+        ],
+        max_output_tokens: openAiOutputBudget(call),
+        reasoning: { effort: reasoningEffort },
+        ...(jsonSchema
+          ? {
+              text: {
+                format: {
+                  type: "json_schema",
+                  name: "promptbeats_response",
+                  strict: true,
+                  schema: jsonSchema,
+                },
+              },
+            }
+          : {}),
+      }),
+    });
+  } catch (error) {
+    console.error(
+      `[ai-provider] xAI request failed before response (${model})`,
+      error instanceof Error ? error.message : String(error),
+    );
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error(`[ai-provider] xAI Responses request failed (${res.status})`, errorBody.slice(0, 2000));
+    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+  }
+
+  const payload = (await res.json()) as {
+    status?: string | null;
+    model?: string | null;
+    incomplete_details?: { reason?: string | null } | null;
+    output?: Array<{
+      type?: string;
+      content?: Array<{ type?: string; text?: string }>;
+    }>;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      total_tokens?: number;
+      input_tokens_details?: { cached_tokens?: number };
+      output_tokens_details?: { reasoning_tokens?: number };
+    };
+  };
+
+  const text =
+    payload.output
+      ?.filter((item) => item.type === "message")
+      .flatMap((item) => item.content ?? [])
+      .filter((item) => item.type === "output_text")
+      .map((item) => item.text ?? "")
+      .join("") ?? "";
+
+  const status = payload.status ?? null;
+  const incompleteReason = payload.incomplete_details?.reason ?? null;
+  const stopReason =
+    status === "completed"
+      ? "end_turn"
+      : status === "incomplete" && incompleteReason === "max_output_tokens"
+        ? "max_tokens"
+        : (incompleteReason ?? status);
+
+  const inputTokens = payload.usage?.input_tokens ?? null;
+  const outputTokens = payload.usage?.output_tokens ?? null;
+  const totalTokens =
+    payload.usage?.total_tokens ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  const usage =
+    inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : {
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          cachedInputTokens: payload.usage?.input_tokens_details?.cached_tokens ?? null,
+          reasoningTokens: payload.usage?.output_tokens_details?.reasoning_tokens ?? null,
+        };
+
+  return { text, stopReason, usage, provider: "xai", model };
 }
 
 function toOpenAiJsonSchema(value: unknown): unknown {
