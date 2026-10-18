@@ -9,11 +9,12 @@ export const AUDIO_MODEL_LAB_MAX_FILE_BYTES = 14 * 1024 * 1024;
 export const AUDIO_MODEL_LAB_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "gemini" },
   { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "gemini" },
+  { id: "gemini-4-argon", label: "Gemini 4 Argon", provider: "gemini" },
 ] as const;
 
 export type AudioModelLabModelId = (typeof AUDIO_MODEL_LAB_MODELS)[number]["id"];
 
-const modelSchema = z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview"]);
+const modelSchema = z.enum(["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-4-argon"]);
 
 const inputSchema = z.object({
   model: modelSchema,
@@ -85,6 +86,52 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
 
+  if (model === "gemini-4-argon") {
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        signal: AbortSignal.timeout(15 * 60 * 1000),
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: ANALYSIS_PROMPT },
+                { inlineData: { data: audioBase64, mimeType } },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.15,
+            maxOutputTokens: 32_768,
+            thinkingConfig: { thinkingLevel: "medium" },
+          },
+        }),
+      },
+    );
+    const payload = (await response.json()) as any;
+    if (!response.ok) {
+      const message = payload?.error?.message;
+      throw new Error(
+        typeof message === "string" && message
+          ? message
+          : "Gemini 4 Argon analysis failed.",
+      );
+    }
+
+    const text = (payload?.candidates?.[0]?.content?.parts ?? [])
+      .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+      .join("")
+      .trim();
+    if (!text) throw new Error("Gemini 4 Argon returned an empty analysis.");
+    return text;
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model,
@@ -127,7 +174,12 @@ export const analyzeAudioWithLabModel = createServerFn({ method: "POST" })
     }
 
     const startedAt = Date.now();
-    const label = data.model === "gemini-3.8-flash" ? "Gemini 3.8 Flash" : "Gemini 3.1 Pro";
+    const label =
+      data.model === "gemini-3.8-flash"
+        ? "Gemini 3.8 Flash"
+        : data.model === "gemini-3.1-pro-preview"
+          ? "Gemini 3.1 Pro"
+          : "Gemini 4 Argon";
     const text = await analyzeWithGemini(data.model, data.audioBase64, data.mimeType);
     return {
       model: data.model,
