@@ -519,9 +519,9 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   return { text, stopReason, usage, provider: "mistral", model };
 }
 /**
- * OpenAI-compatible chat completions call shared by Groq, OpenRouter and xAI.
- * The PromptBeats system prompt, user prompt and downstream Zod validation are
- * identical to every other provider; only transport differs.
+ * OpenAI-compatible Chat Completions transport used by providers that still
+ * expose that interface. xAI has a dedicated Responses API path below because
+ * current Grok reasoning models need explicit effort and longer timeouts.
  */
 async function callOpenAiCompatible(
   providerName: string,
@@ -677,7 +677,10 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
 
   if (!res.ok) {
     const errorBody = await res.text();
-    console.error(`[ai-provider] xAI Responses request failed (${res.status})`, errorBody.slice(0, 2000));
+    console.error(
+      `[ai-provider] xAI Responses request failed (${res.status})`,
+      errorBody.slice(0, 2000),
+    );
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
