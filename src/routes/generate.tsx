@@ -893,6 +893,7 @@ function GeneratePage() {
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
+  const [promptVersion, setPromptVersion] = useState<"v1" | "v2">("v1");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
@@ -1649,6 +1650,7 @@ function GeneratePage() {
       provider: modelOption?.provider ?? null,
       targetPlatform: effectiveTargetPlatform,
       generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
+      promptVersion: songContext?.promptVersion ?? "v1",
       exportedAt,
     });
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -2213,6 +2215,7 @@ ${narrativePlan.beats
           language: effectiveLanguage,
           targetPlatform,
           generationModel,
+          promptVersion: advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1",
           advanced: advanced || revisionMode,
           baseMusicStyle: baseGenre,
           instruments: instrumentsText,
@@ -3007,6 +3010,28 @@ ${narrativePlan.beats
                 )}
             </div>
 
+            {advanced && !revisionMode && moderation.isSuperAdmin && (
+              <div className="rounded-xl border border-accent/25 bg-accent/[0.035] p-3">
+                <label htmlFor="generator-prompt-version" className="mb-2 block text-xs font-semibold text-accent">
+                  Generator Prompt Version · Super Admin
+                </label>
+                <select
+                  id="generator-prompt-version"
+                  className={fieldClass}
+                  value={promptVersion}
+                  disabled={busy || Boolean(jobId)}
+                  onChange={(event) => setPromptVersion(event.target.value === "v2" ? "v2" : "v1")}
+                >
+                  <option value="v1">Prompt Version 1 — Original</option>
+                  <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
+                </select>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {appLanguage === "el"
+                    ? "Η V1 παραμένει αμετάβλητη. Η V2 ελέγχεται μόνο σε Super Admin δημιουργίες."
+                    : "V1 remains unchanged. V2 runs only for Super Admin generations."}
+                </p>
+              </div>
+            )}
             {revisionMode && (
               <div className="space-y-4 rounded-2xl border border-accent/30 bg-accent/[0.04] p-4">
                 <div>
