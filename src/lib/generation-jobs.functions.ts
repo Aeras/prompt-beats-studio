@@ -82,6 +82,7 @@ const resultShape = z.union([songResultShape, sectionEditResultShape]);
  * completely closed browser — never localStorage, never the result text.
  */
 const songInputShape = z.object({
+  promptVersion: z.enum(["v1", "v2"]).default("v1"),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().default(""),
   genre: z.string().default(""),
