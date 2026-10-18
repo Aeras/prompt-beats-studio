@@ -981,8 +981,8 @@ export function AiModelsPanel() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {el
-              ? "Ελέγξτε έναν provider και εμφανίστε μόνο μοντέλα που δηλώνουν ρητά audio input και text output. Δεν γίνεται πρόβλεψη από το όνομα του μοντέλου."
-              : "Check a provider and show only models that explicitly advertise audio input and text output. PromptBeats does not guess from model names."}
+              ? "Ελέγξτε έναν provider και εμφανίστε μοντέλα που είναι πραγματικά συμβατά με audio input → text output. Όταν το API catalog δεν δηλώνει modalities, το PromptBeats κάνει μικρό live compatibility probe αντί να επιστρέφει ψευδές 0."
+              : "Check a provider and show models that are actually compatible with audio input → text output. When the API catalog omits modalities, PromptBeats runs a tiny live compatibility probe instead of returning a false zero."}
           </p>
         </div>
         <div className="space-y-4 p-4">
@@ -1041,7 +1041,7 @@ export function AiModelsPanel() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/15 p-3">
                   <div className="text-xs text-muted-foreground">
-                    {el ? "Χωρίς ρητή συμβατότητα" : "No explicit match"}
+                    {el ? "Μη επαληθευμένα / μη συμβατά" : "Unverified / incompatible"}
                   </div>
                   <div className="mt-1 text-lg font-semibold">
                     {musicDiscovery.excludedWithoutExplicitModalities}
@@ -1052,8 +1052,8 @@ export function AiModelsPanel() {
               {musicDiscovery.candidates.length === 0 ? (
                 <div className="rounded-xl border border-white/10 p-4 text-sm text-muted-foreground">
                   {el
-                    ? "Ο συγκεκριμένος provider δεν επέστρεψε κανένα μοντέλο που να δηλώνει ρητά audio input και text output στο API catalog του."
-                    : "This provider did not return any model explicitly advertising audio input and text output in its API catalog."}
+                    ? "Δεν επαληθεύτηκε κανένα μοντέλο Audio → Text από το catalog ή από live compatibility probe."
+                    : "No Audio → Text model was verified from catalog metadata or by live compatibility probe."}
                 </div>
               ) : (
                 <div className="max-h-[520px] space-y-2 overflow-auto">
