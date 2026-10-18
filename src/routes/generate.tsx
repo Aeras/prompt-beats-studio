@@ -103,13 +103,8 @@ import {
   buildStoryMapSongSetupDescription,
   STORY_MAP_SONG_SETUP_HANDOFF_KEY,
   storyMapSongSetupHandoffSchema,
-  type StoryMapDraft,
   type StoryMapSongSetupHandoff,
 } from "@/lib/story-map.shared";
-import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
-import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
-import { createStoryMap } from "@/lib/story-map.functions";
-import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {
   buildSongUniverseContextText,
   SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
@@ -875,7 +870,6 @@ function GeneratePage() {
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
-  const storyMapFeature = useFeatureAccess("story_map");
   const songUniverseFeature = useFeatureAccess("song_universe");
   const navigate = useNavigate();
   const search = Route.useSearch();
@@ -953,9 +947,6 @@ function GeneratePage() {
   const [songUniverseHandoff, setSongUniverseHandoff] =
     useState<SongUniverseSongSetupHandoff | null>(null);
   const [storyDriven, setStoryDriven] = useState(false);
-  const [storyDrivenDraft, setStoryDrivenDraft] = useState<StoryMapDraft | null>(null);
-  const [storyMapPreviewOpen, setStoryMapPreviewOpen] = useState(false);
-  const [storyMapSaved, setStoryMapSaved] = useState(false);
   const [songSetupPrefill, setSongSetupPrefill] = useState<{
     key: string;
     description: string;
@@ -2168,8 +2159,6 @@ function GeneratePage() {
     setGenerationResultModel(null);
     setQualityCheckResultModel(null);
     setSongContext(null);
-    setStoryDrivenDraft(null);
-    setStoryMapSaved(false);
     setApplied({});
     setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID();
