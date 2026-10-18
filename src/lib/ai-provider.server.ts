@@ -629,7 +629,11 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   // cannot silently turn ordinary Generator calls into unexpectedly long requests.
   const jsonSchema = call.schema ? toOpenAiJsonSchema(call.schema) : null;
   const reasoningEffort =
-    call.reasoningEffort === "none" ? "low" : (call.reasoningEffort ?? "medium");
+    call.reasoningEffort === "none"
+      ? "low"
+      : call.reasoningEffort === "max"
+        ? "xhigh"
+        : (call.reasoningEffort ?? "medium");
   const timeoutMs =
     reasoningEffort === "xhigh" || reasoningEffort === "max"
       ? 30 * 60 * 1000
