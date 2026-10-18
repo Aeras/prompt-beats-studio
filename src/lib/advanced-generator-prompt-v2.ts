@@ -81,7 +81,7 @@ same generation call; do not add a second model request.
     "Do not add vocal tags unnecessarily; explicit Blueprint voice assignments and handoffs always require unambiguous tags."
   );
   output = output.replace(
-    "Use square-bracketed non-sung directions sparingly and only when they provide meaningful structural, vocal or production guidance that cannot be communicated more cleanly through the ${promptLabel} or normal lyric formatting.",
+    /Use square-bracketed non-sung directions sparingly and only when they provide meaningful structural, vocal or production guidance that cannot be communicated more cleanly through the (?:Style Prompt|Udio Prompt) or normal lyric formatting\./,
     "Use concise square-bracketed directions for required vocal changes and section-specific arrangement actions. Avoid optional/redundant tags, but never omit a tag that is necessary to execute an explicit Blueprint requirement."
   );
   return output;
