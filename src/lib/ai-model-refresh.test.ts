@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const root = resolve(process.cwd(), "src");
 const refresh = readFileSync(resolve(root, "lib/ai-model-refresh.functions.ts"), "utf8");
 const panel = readFileSync(resolve(root, "components/promptbeats/AiModelsPanel.tsx"), "utf8");
+const providerRegistry = readFileSync(resolve(root, "lib/ai-provider-registry.server.ts"), "utf8");
 
 describe("AI model verification and update workflow", () => {
   it("keeps DB pricing authoritative while checking official sources", () => {
@@ -33,11 +34,18 @@ describe("AI model verification and update workflow", () => {
     expect(panel).toContain("addDiscoveredAiModel");
   });
 
-  it("keeps the full compatibility scan for unrelated candidates", () => {
-    expect(panel).toContain("Other new candidates");
+  it("keeps the full compatibility scan for every new provider-catalog model", () => {
+    expect(panel).toContain("All new API models");
     expect(panel).toContain("runAiProviderCompatibilityTests");
     expect(panel).toContain("compatibilityProgress");
     expect(panel).toContain("stopCompatibility");
+    expect(providerRegistry).toContain("Normalize every model returned by the provider catalog.");
+    expect(providerRegistry).not.toContain("looksLikeGenerativeTextModel");
+    expect(providerRegistry).not.toContain('methods.includes("generateContent")');
+  });
+
+  it("recognizes future Argon versions as Gemini family successors", () => {
+    expect(panel).toContain('flash(?:-lite)?|pro|argon');
   });
 
   it("provides a read-only bulk update report", () => {

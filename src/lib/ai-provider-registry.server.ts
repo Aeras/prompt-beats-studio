@@ -219,36 +219,6 @@ export function getDetectedAiProviders(): DetectedAiProvider[] {
   ).map(({ id, label }) => ({ id, label }));
 }
 
-function looksLikeGenerativeTextModel(id: string, metadata?: Record<string, unknown>): boolean {
-  const value = id.toLowerCase();
-  const excluded = [
-    "embedding",
-    "embed-",
-    "text-embedding",
-    "rerank",
-    "moderation",
-    "whisper",
-    "transcribe",
-    "tts",
-    "speech",
-    "audio",
-    "image",
-    "imagen",
-    "veo",
-    "video",
-    "guard",
-    "safety",
-    "ocr",
-    "robotics",
-    "realtime",
-    "computer-use",
-  ];
-  if (excluded.some((token) => value.includes(token))) return false;
-  const output = metadata?.["output_modalities"];
-  if (Array.isArray(output) && output.length && !output.includes("text")) return false;
-  return true;
-}
-
 function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -260,6 +230,14 @@ function getRows(provider: ProviderRegistryEntry, payload: any): any[] {
   return Array.isArray(payload?.data) ? payload.data : [];
 }
 
+/**
+ * Normalize every model returned by the provider catalog.
+ *
+ * Discovery is intentionally capability-agnostic: the admin compatibility test is the
+ * authority for whether a newly discovered model can be used by Generator and/or
+ * Quality Check. Do not hide candidates here based on naming heuristics or provider
+ * metadata, because new model families can otherwise disappear before they are tested.
+ */
 function normalizeModels(
   provider: ProviderRegistryEntry,
   rows: any[],
@@ -274,19 +252,6 @@ function normalizeModels(
             ? String(row?.name ?? "")
             : String(row?.id ?? row?.name ?? "");
       if (!rawId) return [];
-
-      if (provider.apiDialect === "gemini") {
-        const methods = Array.isArray(row?.supportedGenerationMethods)
-          ? row.supportedGenerationMethods
-          : [];
-        if (methods.length && !methods.includes("generateContent")) return [];
-      }
-
-      const meta =
-        row?.architecture && typeof row.architecture === "object"
-          ? (row.architecture as Record<string, unknown>)
-          : undefined;
-      if (!looksLikeGenerativeTextModel(rawId, meta)) return [];
 
       const name = String(row?.displayName ?? row?.display_name ?? row?.name ?? rawId).replace(
         /^models\//,

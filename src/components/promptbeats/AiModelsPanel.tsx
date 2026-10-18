@@ -80,7 +80,7 @@ function successorFamily(provider: string, id: string) {
     return match ? `claude:${match[1]}` : null;
   }
   if (provider === "gemini") {
-    const match = value.match(/^gemini-[0-9.]+-(flash(?:-lite)?|pro)/);
+    const match = value.match(/^gemini-[0-9.]+-(flash(?:-lite)?|pro|argon)(?:-|$)/);
     return match ? `gemini:${match[1]}` : null;
   }
   if (provider === "xai") return value.startsWith("grok-") ? "grok" : null;
@@ -875,10 +875,10 @@ export function AiModelsPanel() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-display text-sm font-semibold">
-                        {el ? "Άλλα νέα υποψήφια μοντέλα" : "Other new candidates"}
+                        {el ? "Όλα τα νέα μοντέλα του API" : "All new API models"}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {normalCandidates.length} {el ? "υποψήφια" : "candidates"}
+                        {normalCandidates.length} {el ? "μοντέλα για Compatibility Test" : "models to run through Compatibility Test"}
                       </p>
                     </div>
                     <button disabled={compatibilityTest.isPending} onClick={() => compatibilityTest.mutate({ providerId: selectedProvider, modelIds: normalCandidates.map((m) => m.id) })} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold">
