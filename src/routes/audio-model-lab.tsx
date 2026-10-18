@@ -84,6 +84,7 @@ function AudioModelLabPage() {
   const [states, setStates] = useState<Record<AudioModelLabModelId, LabState>>({
     "gemini-3.8-flash": { status: "idle" },
     "gemini-3.1-pro-preview": { status: "idle" },
+    "gemini-4-argon": { status: "idle" },
   });
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -239,6 +240,7 @@ function AudioModelLabPage() {
                   setStates({
                     "gemini-3.8-flash": { status: "idle" },
                     "gemini-3.1-pro-preview": { status: "idle" },
+                    "gemini-4-argon": { status: "idle" },
                   });
                 }}
               />
