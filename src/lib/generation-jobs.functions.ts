@@ -35,6 +35,7 @@ const jobInput = z.object({
   mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(80),
   generationModel: z.string().trim().min(1).max(240).nullish(),
+  promptVersion: z.enum(["v1", "v2"]).default("v1"),
   advanced: z.boolean().default(false),
   baseMusicStyle: z.string().trim().default(""),
   instruments: z.string().trim().default(""),
@@ -160,6 +161,12 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
+    if (data.promptVersion === "v2") {
+      const { data: isSuperAdmin, error: roleError } = await supabase.rpc("current_user_is_super_admin");
+      if (roleError || isSuperAdmin !== true || !data.advanced || data.operation !== "generate") {
+        throw new Error("Prompt Version 2 is restricted to Super Admin Advanced generation.");
+      }
+    }
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
 
     const {
