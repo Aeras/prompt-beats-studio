@@ -6,12 +6,15 @@ async function source(path: string) {
 }
 
 describe("Admin Music Analyzer model discovery", () => {
-  test("filters provider catalogs by explicit audio input and text output", async () => {
+  test("uses catalog modalities when available and live audio probes when catalogs omit them", async () => {
     const registry = await source("./ai-provider-registry.server.ts");
     expect(registry).toContain("discoverProviderAudioTextModels");
     expect(registry).toContain('inputModalities.includes("audio")');
     expect(registry).toContain('outputModalities.includes("text")');
-    expect(registry).toContain("We deliberately do not guess from model names or descriptions");
+    expect(registry).toContain("probeAudioTextCompatibility");
+    expect(registry).toContain('provider.id === "gemini"');
+    expect(registry).toContain('provider.id === "openai"');
+    expect(registry).toContain("Audio compatibility was verified with a live probe.");
   });
 
   test("only enables direct installation for verified runtime adapters", async () => {
@@ -38,5 +41,6 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(panel).toContain("Music Analyzer");
     expect(panel).toContain("checkMusicAnalyzerProviderModels");
     expect(panel).toContain("Προσθήκη στο Music Analyzer");
+    expect(panel).toContain("live compatibility probe");
   });
 });

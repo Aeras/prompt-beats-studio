@@ -440,9 +440,102 @@ function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry) {
   };
 }
 
+const AUDIO_TEXT_PROBE_WAV_BASE64 =
+  "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";
+
+const audioProbeCache = new Map<string, { value: boolean | null; checkedAt: number }>();
+
+async function probeAudioTextCompatibility(
+  provider: ProviderRegistryEntry,
+  modelId: string,
+  apiKey: string,
+): Promise<boolean | null> {
+  const cacheKey = provider.id + ":" + modelId;
+  const cached = audioProbeCache.get(cacheKey);
+  if (cached && Date.now() - cached.checkedAt < 10 * 60_000) return cached.value;
+
+  let response: Response;
+  try {
+    if (provider.id === "gemini") {
+      response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/" +
+          encodeURIComponent(modelId) +
+          ":generateContent",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: AbortSignal.timeout(12_000),
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { inlineData: { mimeType: "audio/wav", data: AUDIO_TEXT_PROBE_WAV_BASE64 } },
+                  { text: "Reply with OK." },
+                ],
+              },
+            ],
+            generationConfig: { maxOutputTokens: 8, temperature: 0 },
+          }),
+        },
+      );
+    } else if (provider.id === "openai") {
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + apiKey,
+        },
+        signal: AbortSignal.timeout(12_000),
+        body: JSON.stringify({
+          model: modelId,
+          modalities: ["text"],
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Reply with OK." },
+                {
+                  type: "input_audio",
+                  input_audio: { data: AUDIO_TEXT_PROBE_WAV_BASE64, format: "wav" },
+                },
+              ],
+            },
+          ],
+          max_completion_tokens: 8,
+        }),
+      });
+    } else {
+      return null;
+    }
+  } catch {
+    audioProbeCache.set(cacheKey, { value: null, checkedAt: Date.now() });
+    return null;
+  }
+
+  const value =
+    response.ok
+      ? true
+      : response.status === 401 ||
+          response.status === 402 ||
+          response.status === 403 ||
+          response.status === 408 ||
+          response.status === 409 ||
+          response.status === 429 ||
+          response.status >= 500
+        ? null
+        : false;
+  audioProbeCache.set(cacheKey, { value, checkedAt: Date.now() });
+  return value;
+}
+
 /**
- * Discovers only models whose provider catalog explicitly advertises audio input
- * and text output. We deliberately do not guess from model names or descriptions.
+ * Discovers audio-input → text-output models.
+ *
+ * Provider catalogs such as OpenRouter expose explicit modality metadata, so we use
+ * it directly. Google Gemini and OpenAI catalogs do not reliably expose those
+ * modalities for every model; for them we perform a tiny real audio request against
+ * each plausible model instead of concluding "0 compatible" from missing metadata.
  */
 export async function discoverProviderAudioTextModels(
   providerId: AiProviderId,
@@ -499,52 +592,75 @@ export async function discoverProviderAudioTextModels(
   );
   const runtime = audioAnalyzerRuntimeSupport(provider);
 
-  const candidates = rows
-    .flatMap((row) => {
-      const rawId =
-        provider.apiDialect === "gemini"
-          ? String(row?.name ?? "").replace(/^models\//, "")
-          : provider.apiDialect === "cohere"
-            ? String(row?.name ?? "")
-            : String(row?.id ?? row?.name ?? "");
-      if (!rawId) return [];
+  const candidates: DiscoveredAudioTextModel[] = [];
+  let notVerified = 0;
 
-      const { inputModalities, outputModalities } = modelModalities(row);
-      if (!inputModalities.includes("audio") || !outputModalities.includes("text")) return [];
+  for (const row of rows) {
+    const rawId =
+      provider.apiDialect === "gemini"
+        ? String(row?.name ?? "").replace(/^models\//, "")
+        : provider.apiDialect === "cohere"
+          ? String(row?.name ?? "")
+          : String(row?.id ?? row?.name ?? "");
+    if (!rawId) continue;
 
-      const name = String(row?.displayName ?? row?.display_name ?? row?.name ?? rawId).replace(
-        /^models\//,
-        "",
-      );
-      return [
-        {
-          id: rawId,
-          name,
-          ownedBy: row?.owned_by == null ? null : String(row.owned_by),
-          contextWindow:
-            asNumber(row?.model_info?.context_window) ??
-            asNumber(row?.context_length) ??
-            asNumber(row?.contextWindow) ??
-            asNumber(row?.context_length_tokens),
-          deprecated: row?.is_deprecated === true || row?.deprecated === true,
-          installed: installedSet.has(provider.id + ":" + rawId),
-          inputModalities,
-          outputModalities,
-          runtimeSupported: runtime.supported,
-          runtimeNote: runtime.note,
-        },
-      ];
-    })
-    .filter(
-      (model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index,
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    const { inputModalities, outputModalities } = modelModalities(row);
+    const explicitlyCompatible =
+      inputModalities.includes("audio") && outputModalities.includes("text");
+
+    let liveCompatible: boolean | null = null;
+    if (!explicitlyCompatible && (provider.id === "gemini" || provider.id === "openai")) {
+      if (provider.id === "gemini") {
+        const methods = Array.isArray(row?.supportedGenerationMethods)
+          ? row.supportedGenerationMethods
+          : [];
+        if (methods.length && !methods.includes("generateContent")) {
+          liveCompatible = false;
+        } else {
+          liveCompatible = await probeAudioTextCompatibility(provider, rawId, apiKey);
+        }
+      } else {
+        liveCompatible = await probeAudioTextCompatibility(provider, rawId, apiKey);
+      }
+    }
+
+    if (!explicitlyCompatible && liveCompatible !== true) {
+      notVerified += 1;
+      continue;
+    }
+
+    const name = String(row?.displayName ?? row?.display_name ?? row?.name ?? rawId).replace(
+      /^models\//,
+      "",
+    );
+    candidates.push({
+      id: rawId,
+      name,
+      ownedBy: row?.owned_by == null ? null : String(row.owned_by),
+      contextWindow:
+        asNumber(row?.model_info?.context_window) ??
+        asNumber(row?.context_length) ??
+        asNumber(row?.contextWindow) ??
+        asNumber(row?.context_length_tokens),
+      deprecated: row?.is_deprecated === true || row?.deprecated === true,
+      installed: installedSet.has(provider.id + ":" + rawId),
+      inputModalities: inputModalities.length ? inputModalities : ["audio"],
+      outputModalities: outputModalities.length ? outputModalities : ["text"],
+      runtimeSupported: runtime.supported,
+      runtimeNote:
+        explicitlyCompatible
+          ? runtime.note
+          : runtime.note + " Audio compatibility was verified with a live probe.",
+    });
+  }
+
+  candidates.sort((a, b) => a.name.localeCompare(b.name));
 
   return {
     provider: { id: provider.id, label: provider.label },
     returned: rows.length,
     candidates,
-    excludedWithoutExplicitModalities: Math.max(0, rows.length - candidates.length),
+    excludedWithoutExplicitModalities: notVerified,
   };
 }
 
