@@ -141,7 +141,7 @@ export const enApp = {
   "generator.songSetupAssistant": "Song Setup Assistant",
   "generator.storyDrivenLyrics": "Story-driven lyrics",
   "generator.storyDrivenLyricsDescription":
-    "Builds narrative or emotional progression first, so the lyrics develop instead of repeating the same idea.",
+    "Requests narrative development within the song lyrics, without creating a Story Map or making a separate AI call.",
   "generator.storyMapSaveFailed": "Could not save Story Map.",
   "generator.error.providerUnavailable":
     "The AI provider is temporarily unavailable. Please try again later.",

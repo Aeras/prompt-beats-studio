@@ -103,13 +103,8 @@ import {
   buildStoryMapSongSetupDescription,
   STORY_MAP_SONG_SETUP_HANDOFF_KEY,
   storyMapSongSetupHandoffSchema,
-  type StoryMapDraft,
   type StoryMapSongSetupHandoff,
 } from "@/lib/story-map.shared";
-import { planStoryDrivenGeneration } from "@/lib/story-map-ai.functions";
-import { completeAuxiliaryRequest, getAuxiliaryRequestKey } from "@/lib/auxiliary-request-key";
-import { createStoryMap } from "@/lib/story-map.functions";
-import { replaceStoryMapDraft } from "@/lib/story-map-workspace.functions";
 import {
   buildSongUniverseContextText,
   SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
@@ -875,7 +870,6 @@ function GeneratePage() {
   const qualityFeature = useFeatureAccess("quality_check");
   const lyricsWorkspaceFeature = useFeatureAccess("lyrics_workspace");
   const songSetupFeature = useFeatureAccess("song_setup_assistant");
-  const storyMapFeature = useFeatureAccess("story_map");
   const songUniverseFeature = useFeatureAccess("song_universe");
   const navigate = useNavigate();
   const search = Route.useSearch();
@@ -953,9 +947,6 @@ function GeneratePage() {
   const [songUniverseHandoff, setSongUniverseHandoff] =
     useState<SongUniverseSongSetupHandoff | null>(null);
   const [storyDriven, setStoryDriven] = useState(false);
-  const [storyDrivenDraft, setStoryDrivenDraft] = useState<StoryMapDraft | null>(null);
-  const [storyMapPreviewOpen, setStoryMapPreviewOpen] = useState(false);
-  const [storyMapSaved, setStoryMapSaved] = useState(false);
   const [songSetupPrefill, setSongSetupPrefill] = useState<{
     key: string;
     description: string;
@@ -2168,44 +2159,17 @@ function GeneratePage() {
     setGenerationResultModel(null);
     setQualityCheckResultModel(null);
     setSongContext(null);
-    setStoryDrivenDraft(null);
-    setStoryMapSaved(false);
     setApplied({});
     setApplyErrors({});
     const key = pendingKey.current ?? crypto.randomUUID();
     pendingKey.current = key;
     try {
-      let narrativePlan: StoryMapDraft | null = null;
-      if (storyDriven && storyMapFeature.allowed && !revisionMode) {
-        setStatus(
-          appLanguage === "el" ? "Δημιουργία αφηγηματικής ροής…" : "Building narrative flow…",
-        );
-        const planned = await planStoryDrivenGeneration({
-          data: {
-            requestKey: getAuxiliaryRequestKey("story_map:generator-plan"),
-            theme: theme.trim(),
-            genre: effectiveGenre,
-            mood: effectiveMood,
-            language: effectiveLanguage,
-            structure: structure.join(" → ").slice(0, 600),
-            production: production.trim().slice(0, 1200),
-            instructions: instructions.trim().slice(0, 1200),
-            model: generationModel || null,
-          },
-        });
-        completeAuxiliaryRequest("story_map:generator-plan");
-        narrativePlan = planned.draft;
-        setStoryDrivenDraft(planned.draft);
-      }
-      const narrativeInstruction = narrativePlan
-        ? `
-
-STORY MAP (narrative/emotional intent only; Blueprint remains authoritative; never print Beat labels):
-${narrativePlan.summary}
-${narrativePlan.beats
-  .map((beat, index) => `${index + 1}. ${beat.title}: ${beat.whatHappens || beat.purpose}`)
-  .join("\n")}`
+      const narrativeInstruction = storyDriven && !revisionMode
+        ? "\n\nNARRATIVE LYRICS DIRECTION: Give sung lyrics a clear beginning, development and fitting ending, without inventing extra sections or overriding user Blueprint, perspective or restrictions. No Story Map or beat labels."
         : "";
+      const combinedInstructions = narrativeInstruction
+        ? `${instructions.trim().slice(0, Math.max(0, 2000 - narrativeInstruction.length))}${narrativeInstruction}`
+        : instructions.trim().slice(0, 2000);
       const res = await startGenerationJob({
         data: {
           idempotencyKey: key,
@@ -2225,7 +2189,7 @@ ${narrativePlan.beats
               ? activeSongBlueprint(buildSongBlueprint(structure, songBlueprint))
               : [],
           production: production.trim().slice(0, 2000),
-          instructions: `${instructions.trim()}${narrativeInstruction}`.slice(0, 2000),
+          instructions: combinedInstructions,
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
           revision: revisionMode
@@ -3649,7 +3613,7 @@ ${narrativePlan.beats
                   {t("generator.generationModel", { model: registryModelLabel(generationModel) })}
                 </p>
               )}
-              {storyMapFeature.allowed && !revisionMode && (
+              {!revisionMode && (
                 <div className="mb-3 rounded-2xl border border-accent/20 bg-accent/[0.04] p-3">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
@@ -3753,91 +3717,6 @@ ${narrativePlan.beats
 
           {!busy && result && (
             <div className="mt-6 space-y-4 pb-16">
-              {storyDrivenDraft && (
-                <div className="glass rounded-2xl p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">Story Map</p>
-                      <p className="mt-1 max-w-full whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
-                        {storyDrivenDraft.summary}
-                      </p>
-                    </div>
-                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setStoryMapPreviewOpen((open) => !open)}
-                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-accent"
-                      >
-                        {storyMapPreviewOpen
-                          ? appLanguage === "el"
-                            ? "Κλείσιμο Story Map"
-                            : "Hide Story Map"
-                          : appLanguage === "el"
-                            ? "Προβολή Story Map"
-                            : "View Story Map"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={storyMapSaved}
-                        onClick={() =>
-                          void (async () => {
-                            try {
-                              const created = await createStoryMap({
-                                data: {
-                                  title: `${result.title || theme.trim()} — Story Map`,
-                                  concept: theme.trim(),
-                                  projectId: saveProjectId || null,
-                                },
-                              });
-                              await replaceStoryMapDraft({
-                                data: { storyMapId: created.storyMap.id, draft: storyDrivenDraft },
-                              });
-                              setStoryMapSaved(true);
-                              setStatus(
-                                appLanguage === "el"
-                                  ? "Το Story Map αποθηκεύτηκε."
-                                  : "Story Map saved.",
-                              );
-                            } catch (cause) {
-                              setStatus(
-                                cause instanceof Error
-                                  ? cause.message
-                                  : t("generator.storyMapSaveFailed"),
-                              );
-                            }
-                          })()
-                        }
-                        className="rounded-lg border border-accent/35 px-3 py-1.5 text-xs text-accent disabled:opacity-40"
-                      >
-                        {storyMapSaved
-                          ? appLanguage === "el"
-                            ? "Αποθηκεύτηκε"
-                            : "Saved"
-                          : appLanguage === "el"
-                            ? "Αποθήκευση Story Map"
-                            : "Save Story Map"}
-                      </button>
-                    </div>
-                  </div>
-                  {storyMapPreviewOpen && (
-                    <div className="mt-3 space-y-2">
-                      {storyDrivenDraft.beats.map((beat, index) => (
-                        <div
-                          key={`${beat.title}-${index}`}
-                          className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs"
-                        >
-                          <span className="font-semibold text-accent">
-                            {index + 1}. {beat.title}
-                          </span>
-                          {beat.whatHappens && (
-                            <span className="ml-2 text-muted-foreground">{beat.whatHappens}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
               {generationResultModel && (
                 <p className="text-xs text-muted-foreground">
                   {t("generator.generatedWith", {
