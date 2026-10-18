@@ -2165,7 +2165,7 @@ function GeneratePage() {
     pendingKey.current = key;
     try {
       const narrativeInstruction = storyDriven && !revisionMode
-        ? "\n\nNARRATIVE LYRICS DIRECTION: Write lyrics with a meaningful progression from opening through development to a fitting ending. Let the events, images and emotional stakes evolve naturally in the sung lines; do not add a Story Map, beat labels, a narrator, or extra sections. Preserve the user's exact structure, Blueprint requirements, language, perspective and any explicit restrictions. This instruction applies to lyrics only and does not authorize changing the arrangement."
+        ? "\n\nNARRATIVE LYRICS DIRECTION: Give sung lyrics a clear beginning, development and fitting ending, without inventing extra sections or overriding user Blueprint, perspective or restrictions. No Story Map or beat labels."
         : "";
       const combinedInstructions = narrativeInstruction
         ? `${instructions.trim().slice(0, Math.max(0, 2000 - narrativeInstruction.length))}${narrativeInstruction}`
