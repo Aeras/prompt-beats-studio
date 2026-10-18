@@ -32,6 +32,17 @@ describe("Gemini 4 Argon direct integration", () => {
     expect(finalizer).toContain('"gemini-4-argon"');
   });
 
+  test("exposes Argon in the direct Audio Model Lab without the staged analyzer pipeline", async () => {
+    const lab = await source("./audio-model-lab.functions.ts");
+    const route = await source("../routes/audio-model-lab.tsx");
+    expect(lab).toContain('{ id: "gemini-4-argon", label: "Gemini 4 Argon", provider: "gemini" }');
+    expect(lab).toContain('"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent"');
+    expect(lab).toContain('thinkingConfig: { thinkingLevel: "medium" }');
+    expect(lab).toContain("maxOutputTokens: 32_768");
+    expect(route).toContain('"gemini-4-argon": { status: "idle" }');
+    expect(route).toContain("Χωρίς RunPod, Demucs, Essentia, MERT, Qdrant, Stage A/B ή Final Judge.");
+  });
+
   test("keeps web research on Gemini 3.8 Flash for Argon", async () => {
     const finalizer = await source("./song-analyzer-final.functions.ts");
     expect(finalizer).toContain('data.audioAnalysisModel !== "gemini-4-argon"');
