@@ -888,7 +888,7 @@ function GeneratePage() {
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
-  const [promptVersion, setPromptVersion] = useState<"v1" | "v2">("v1");
+  const [promptVersion, setPromptVersion] = useState<"v1" | "v2" | "v3">("v1");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
@@ -2991,15 +2991,16 @@ function GeneratePage() {
                   className={fieldClass}
                   value={promptVersion}
                   disabled={busy || Boolean(jobId)}
-                  onChange={(event) => setPromptVersion(event.target.value === "v2" ? "v2" : "v1")}
+                  onChange={(event) => setPromptVersion(event.target.value === "v3" ? "v3" : event.target.value === "v2" ? "v2" : "v1")}
                 >
                   <option value="v1">Prompt Version 1 — Original</option>
                   <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
+                   <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
                 </select>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {appLanguage === "el"
-                    ? "Η V1 παραμένει αμετάβλητη. Η V2 ελέγχεται μόνο σε Super Admin δημιουργίες."
-                    : "V1 remains unchanged. V2 runs only for Super Admin generations."}
+                    ? "Οι V1/V2 παραμένουν αμετάβλητες. Η V3 δοκιμάζει προσαρμοστική τραγουδισιμότητα μόνο για Super Admin."
+                    : "V1/V2 remain unchanged. V3 tests adaptive singability for Super Admin only."}
                 </p>
               </div>
             )}
