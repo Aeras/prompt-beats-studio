@@ -2238,7 +2238,6 @@ function SongAnalysisCard({
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [copiedField, setCopiedField] = useState<"tags" | "lyrics" | null>(null);
   const [deleting, setDeleting] = useState(false);
   const project = projects.find((item) => item.id === analysis.project_id) ?? null;
   const bpm = analysis.generator_ready.bpm;
@@ -2475,6 +2474,7 @@ function SavedPromptCard({
   const generatorAccess = useFeatureAccess("ai_generator");
   const lyricsWorkspaceAccess = useFeatureAccess("lyrics_workspace");
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"tags" | "lyrics" | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
