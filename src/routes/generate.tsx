@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
@@ -3736,6 +3737,16 @@ function GeneratePage() {
                     {t("generator.revisionCreated", { version: revisionMeta.versionNumber })}
                   </p>
                   <p className="mt-1 text-muted-foreground">{t("generator.revisionAutoSaved")}</p>
+                  {revisionMeta.projectId && (
+                    <Link
+                      to="/library"
+                      search={{ tab: "prompts", project: revisionMeta.projectId }}
+                      className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg border border-accent/35 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      {appLanguage === "el" ? "Επιστροφή στο Project" : "Return to Project"}
+                    </Link>
+                  )}
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
