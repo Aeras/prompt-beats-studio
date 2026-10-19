@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 const generator = readFileSync("src/routes/generate.tsx", "utf8");

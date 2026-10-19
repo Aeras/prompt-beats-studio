@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { buildAdvancedGeneratorPromptV2 } from "./advanced-generator-prompt-v2";
 
 const original = [

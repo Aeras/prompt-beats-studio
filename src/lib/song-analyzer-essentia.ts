@@ -91,7 +91,7 @@ function mixToMono(buffer: AudioBuffer) {
   for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
     const source = buffer.getChannelData(channel);
     for (let i = 0; i < source.length; i += 1) {
-      mono[i] += (source[i] ?? 0) / buffer.numberOfChannels;
+      mono[i] = (mono[i] ?? 0) + (source[i] ?? 0) / buffer.numberOfChannels;
     }
   }
   return mono;

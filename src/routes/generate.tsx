@@ -2707,6 +2707,7 @@ function GeneratePage() {
       production: savedWorkspaceSnapshot?.productionStyle ?? "",
       instructions: savedWorkspaceSnapshot?.additionalInstructions ?? "",
       operation: "generate",
+      promptVersion: "v1",
       revision: null,
       inputSnapshot: savedWorkspaceSnapshot,
     });
