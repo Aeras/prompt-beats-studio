@@ -2991,11 +2991,19 @@ function GeneratePage() {
                   className={fieldClass}
                   value={promptVersion}
                   disabled={busy || Boolean(jobId)}
-                  onChange={(event) => setPromptVersion(event.target.value === "v3" ? "v3" : event.target.value === "v2" ? "v2" : "v1")}
+                  onChange={(event) =>
+                    setPromptVersion(
+                      event.target.value === "v3"
+                        ? "v3"
+                        : event.target.value === "v2"
+                          ? "v2"
+                          : "v1",
+                    )
+                  }
                 >
                   <option value="v1">Prompt Version 1 — Original</option>
                   <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
-                   <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
+                  <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
                 </select>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {appLanguage === "el"
