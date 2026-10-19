@@ -20,18 +20,17 @@ describe("Experimental Advanced Generator V3", () => {
     const v2 = buildAdvancedGeneratorPromptV2(base);
     const v3 = buildAdvancedGeneratorPromptV3(base);
     expect(v3).toContain("V2 CREATIVE AUTHORITY");
-    expect(v3).toContain("V3 ADAPTIVE SINGABILITY");
-    expect(v3).toContain("half-time vs double-time");
-    expect(v3).toContain("SOFT diagnostic signals");
+    expect(v3).toContain("V3 CONSERVATIVE SINGABILITY CHECK");
+    expect(v3).toContain("KEEP THE V2 SONGWRITING APPROACH");
+    expect(v3).toContain("SMALLEST possible edit");
+    expect(v3).toContain("EVERY REQUESTED LANGUAGE");
+    expect(v3).toContain("Never manufacture end rhymes");
+    expect(v3).toContain("KEEP the original V2-like line");
+    expect(v3).toContain("native-language fluency and intended meaning");
     expect(v3).toContain("same generation call");
-    expect(v3).toContain("EVERY requested language");
-    expect(v3).toContain("LANGUAGE-NATIVE NATURALNESS");
-    expect(v3).toContain("native-language");
-    expect(v3).toContain("choose near-rhyme, assonance or no rhyme");
-    expect(v3).not.toContain("natural spoken Greek (or the requested");
-    expect(v3).toContain("section intended for relaxed or sustained singing");
-    expect(v2).not.toContain("V3 ADAPTIVE SINGABILITY");
-    expect(base).not.toContain("V3 ADAPTIVE SINGABILITY");
+    expect(v3).not.toContain("V3 ADAPTIVE SINGABILITY");
+    expect(v2).not.toContain("V3 CONSERVATIVE SINGABILITY CHECK");
+    expect(base).not.toContain("V3 CONSERVATIVE SINGABILITY CHECK");
   });
 
   test("fails closed if prompt composition anchors drift", () => {
