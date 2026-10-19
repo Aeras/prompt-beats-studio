@@ -2238,6 +2238,7 @@ function SongAnalysisCard({
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"tags" | "lyrics" | null>(null);
   const [deleting, setDeleting] = useState(false);
   const project = projects.find((item) => item.id === analysis.project_id) ?? null;
   const bpm = analysis.generator_ready.bpm;
@@ -2510,11 +2511,16 @@ function SavedPromptCard({
       setDeleting(false);
     }
   };
-  const copy = async (text: string) => {
+  const copy = async (text: string, field?: "tags" | "lyrics") => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      if (field) {
+        setCopiedField(field);
+        setTimeout(() => setCopiedField((current) => (current === field ? null : current)), 1600);
+      } else {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }
     } catch {
       // Clipboard access is best-effort in restricted browser contexts.
     }
@@ -2874,12 +2880,12 @@ function SavedPromptCard({
           </pre>
           <button
             type="button"
-            onClick={() => copy(prompt.tags)}
+            onClick={() => copy(prompt.tags, "tags")}
             aria-label={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
             title={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
             className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
-            <Copy className="h-4 w-4" />
+            {copiedField === "tags" ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
       )}
@@ -2890,12 +2896,12 @@ function SavedPromptCard({
           </pre>
           <button
             type="button"
-            onClick={() => copy(prompt.lyrics)}
+            onClick={() => copy(prompt.lyrics, "lyrics")}
             aria-label={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
             title={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
             className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
-            <Copy className="h-4 w-4" />
+            {copiedField === "lyrics" ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
       )}
