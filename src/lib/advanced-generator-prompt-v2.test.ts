@@ -26,7 +26,14 @@ describe("Advanced Generator prompt versioning", () => {
 
   test("V2 gives narrative, voice, production and energy independent destinations", () => {
     const v2 = buildAdvancedGeneratorPromptV2(original);
-    for (const phrase of ["LYRICAL/NARRATIVE", "VOCAL/CASTING", "ARRANGEMENT/PERFORMANCE", "ENERGY (1-5)", "Producer's Note", "same generation call"]) {
+    for (const phrase of [
+      "LYRICAL/NARRATIVE",
+      "VOCAL/CASTING",
+      "ARRANGEMENT/PERFORMANCE",
+      "ENERGY (1-5)",
+      "Producer's Note",
+      "same generation call",
+    ]) {
       expect(v2).toContain(phrase);
     }
     expect(v2).toContain("explicit Blueprint voice assignments");

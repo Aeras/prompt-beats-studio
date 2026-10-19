@@ -17,6 +17,6 @@ describe("Generator narrative lyrics isolation", () => {
   });
   test("narrative lyrics remains available independently of Story Map feature", () => {
     expect(generator).toContain("{!revisionMode && (");
-    expect(generator).toContain('checked={storyDriven}');
+    expect(generator).toContain("checked={storyDriven}");
   });
 });

@@ -2164,9 +2164,10 @@ function GeneratePage() {
     const key = pendingKey.current ?? crypto.randomUUID();
     pendingKey.current = key;
     try {
-      const narrativeInstruction = storyDriven && !revisionMode
-        ? "\n\nNARRATIVE LYRICS DIRECTION: Give sung lyrics a clear beginning, development and fitting ending, without inventing extra sections or overriding user Blueprint, perspective or restrictions. No Story Map or beat labels."
-        : "";
+      const narrativeInstruction =
+        storyDriven && !revisionMode
+          ? "\n\nNARRATIVE LYRICS DIRECTION: Give sung lyrics a clear beginning, development and fitting ending, without inventing extra sections or overriding user Blueprint, perspective or restrictions. No Story Map or beat labels."
+          : "";
       const combinedInstructions = narrativeInstruction
         ? `${instructions.trim().slice(0, Math.max(0, 2000 - narrativeInstruction.length))}${narrativeInstruction}`
         : instructions.trim().slice(0, 2000);
@@ -2179,7 +2180,8 @@ function GeneratePage() {
           language: effectiveLanguage,
           targetPlatform,
           generationModel,
-          promptVersion: advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1",
+          promptVersion:
+            advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1",
           advanced: advanced || revisionMode,
           baseMusicStyle: baseGenre,
           instruments: instrumentsText,
@@ -2977,7 +2979,10 @@ function GeneratePage() {
 
             {advanced && !revisionMode && moderation.isSuperAdmin && (
               <div className="rounded-xl border border-accent/25 bg-accent/[0.035] p-3">
-                <label htmlFor="generator-prompt-version" className="mb-2 block text-xs font-semibold text-accent">
+                <label
+                  htmlFor="generator-prompt-version"
+                  className="mb-2 block text-xs font-semibold text-accent"
+                >
                   Generator Prompt Version · Super Admin
                 </label>
                 <select

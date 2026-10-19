@@ -6,7 +6,9 @@ const source = readFileSync("src/lib/ai.functions.ts", "utf8");
 
 describe("Generator chorus length guidance", () => {
   it("keeps a concise hook without constraining the entire chorus to four lines", () => {
-    expect(source).toContain("the entire chorus must NOT default to a fixed, minimal number of lines");
+    expect(source).toContain(
+      "the entire chorus must NOT default to a fixed, minimal number of lines",
+    );
     expect(source).toContain("Four, six, eight or more sung lines can all be appropriate");
     expect(source).toContain("Choose chorus length from the user's explicit structure, Blueprint");
     expect(source).not.toContain("a short memorable chorus and only essential sections");
