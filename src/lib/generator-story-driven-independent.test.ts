@@ -5,7 +5,8 @@ const generator = readFileSync("src/routes/generate.tsx", "utf8");
 
 describe("Generator narrative lyrics isolation", () => {
   test("story-driven checkbox adds narrative direction to the normal generation job", () => {
-    expect(generator).toContain("const narrativeInstruction = storyDriven && !revisionMode");
+    expect(generator).toContain("const narrativeInstruction =");
+    expect(generator).toContain("storyDriven && !revisionMode");
     expect(generator).toContain("NARRATIVE LYRICS DIRECTION:");
     expect(generator).toContain("instructions: combinedInstructions");
   });
