@@ -1,4 +1,5 @@
 import { buildAdvancedGeneratorPromptV2 } from "@/lib/advanced-generator-prompt-v2";
+import { buildAdvancedGeneratorPromptV3 } from "@/lib/advanced-generator-prompt-v3";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -42,7 +43,7 @@ const generateInput = z.object({
     .enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]])
     .default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.string().trim().min(1).max(240).nullish(),
-  promptVersion: z.enum(["v1", "v2"]).default("v1"),
+  promptVersion: z.enum(["v1", "v2", "v3"]).default("v1"),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
   songBlueprint: songBlueprintSchema,
@@ -1973,9 +1974,11 @@ export async function runSongGeneration(
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       prompt: isRevision
         ? buildRevisionPrompt(data)
-        : data.promptVersion === "v2"
-          ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
-          : buildPrompt(data),
+        : data.promptVersion === "v3"
+          ? buildAdvancedGeneratorPromptV3(buildPrompt(data))
+          : data.promptVersion === "v2"
+            ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
+            : buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
       reasoningEffort: reasoningEffort ?? "medium",
