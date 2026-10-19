@@ -363,7 +363,7 @@ Never rely on the target platform to repair overcrowded lyrics through unnatural
 CHORUS / HOOK
 ==================================================
 
-Create a memorable, concise and highly singable chorus with a distinctive emotional or lyrical hook.
+Create a memorable, naturally singable chorus with a distinctive emotional or lyrical hook. The hook itself should be concise and memorable, but the entire chorus must NOT default to a fixed, minimal number of lines.
 
 The chorus should provide the natural emotional payoff of the song.
 
@@ -371,11 +371,11 @@ Use repetition strategically, never merely to fill space.
 
 Keep chorus phrases concise enough to be sung with real breathing space and to land as memorable rhythmic shapes.
 
-Favour natural repetition of a short, strong hook over adding new information.
+Use a short, strong hook and repeat it naturally where it helps; develop the rest of the chorus as much as the song musically needs. Four, six, eight or more sung lines can all be appropriate. Do not automatically stop after four lines or equate a short hook with a short chorus.
 
 Do not make the chorus verbose in order to explain the story: the verses carry the detail, the chorus carries the feeling and the hook.
 
-Choruses should generally avoid unnecessary lyrical density and leave sufficient space for melodic emphasis, unless the requested genre or vocal style intentionally calls for dense rhythmic delivery.
+Choose chorus length from the user's explicit structure, Blueprint and lyrical instructions first, then the genre, energy, tempo and melodic arc. Avoid unnecessary lyrical density and leave sufficient melodic space, but do not reduce a well-developed chorus merely to make it shorter. When a chorus is deliberately short, it should be because the song calls for it.
 
 ==================================================
 STRUCTURE
@@ -457,7 +457,7 @@ LYRIC VOLUME RULES
 
 - Never fill the entire song duration with continuous dense lead vocals.
 - Do not make every verse, pre-chorus, chorus and bridge equally long or equally word-dense.
-- Use concise sections rather than adding lines merely to make the lyric sheet appear complete.
+- Give each section the length its musical role requires; do not add filler or arbitrarily shorten a section that needs meaningful development.
 - Let the arrangement breathe, especially before a chorus, after a central hook, during transitions and near the ending.
 - When a compact generation length is implied, reduce narrative detail and keep the form focused instead of compressing a conventional full-length lyric sheet into a short creation.
 - When the user requests a longer song, expand through meaningful musical development, section contrast, instrumental space and emotional progression — never through filler or crowded writing.
@@ -468,7 +468,7 @@ Unless the user explicitly requests otherwise:
 
 - Verses may carry the most narrative information, but should use a limited number of concise lyrical phrases and leave room for groove and melodic development.
 - Pre-choruses should remain focused and transitional rather than becoming another full verse.
-- Choruses should generally prioritize concise, memorable phrasing and sufficient melodic space rather than accumulating narrative detail.
+- Choruses should prioritize memorable phrases and melodic space, but may contain as many naturally singable lines as their musical role requires; keep the hook concise without forcing the whole chorus to be short.
 - Bridges should create contrast without becoming another dense verse.
 - Intros, post-choruses, instrumentals and outros must have a clear musical purpose and must not be filled with unnecessary lyrics.
 
@@ -476,7 +476,7 @@ TARGET-PLATFORM LENGTH RULES
 
 For Udio:
 - Keep the complete lyric set compact enough for one approximately 130-second creation.
-- Prefer a focused form with concise verses, a short memorable chorus and only essential sections.
+- Prefer a focused form with naturally singable sections and a memorable hook; adapt the chorus length to the actual duration available without imposing a four-line default.
 - If the requested structure is complex, preserve the requested order but shorten individual sections and reduce non-essential narrative detail.
 - Do not compress a conventional 3–4 minute lyric sheet into one Udio generation.
 
