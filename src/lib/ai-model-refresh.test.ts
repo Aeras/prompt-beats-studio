@@ -41,7 +41,8 @@ describe("AI model verification and update workflow", () => {
     expect(panel).toContain("stopCompatibility");
     expect(providerRegistry).toContain("Normalize every model returned by the provider catalog.");
     expect(providerRegistry).not.toContain("looksLikeGenerativeTextModel");
-    expect(providerRegistry).not.toContain('methods.includes("generateContent")');
+    // Gemini generateContent is legitimately checked by the separate audio-to-text compatibility probe.
+    expect(providerRegistry).toContain("liveCompatible = await probeAudioTextCompatibility");
   });
 
   it("recognizes future Argon versions as Gemini family successors", () => {
