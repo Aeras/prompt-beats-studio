@@ -109,15 +109,17 @@ describe("Story Map", () => {
     expect(panel).toContain("without automatically changing the lyrics");
   });
 
-  test("Generator consumes Story Map handoff and supports story-driven planning without direct beat labels", async () => {
+  test("Generator preserves explicit Story Map handoff while narrative lyrics remain independent", async () => {
     const generator = await source("src/routes/generate.tsx");
     const ai = await source("src/lib/story-map-ai.functions.ts");
     expect(generator).toContain("storyMapSongSetupHandoffSchema");
     expect(generator).toContain("STORY_MAP_SONG_SETUP_HANDOFF_KEY");
-    expect(generator).toContain("planStoryDrivenGeneration");
-    expect(generator).toContain("createStoryMap");
-    expect(generator).toContain("replaceStoryMapDraft");
     expect(generator).toContain('t("generator.storyDrivenLyrics")');
+    expect(generator).toContain("NARRATIVE LYRICS DIRECTION:");
+    expect(generator).toContain("instructions: combinedInstructions");
+    expect(generator).not.toContain("planStoryDrivenGeneration");
+    expect(generator).not.toContain("createStoryMap");
+    expect(generator).not.toContain("replaceStoryMapDraft");
     expect(ai).toContain("planStoryDrivenGeneration");
     expect(ai.toLowerCase()).toContain("beat");
   });
