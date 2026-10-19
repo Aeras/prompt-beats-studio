@@ -2880,12 +2880,16 @@ function SavedPromptCard({
           </pre>
           <button
             type="button"
-            onClick={() => copy(prompt.tags, "tags")}
+            onClick={() => copy(prompt.tags ?? "", "tags")}
             aria-label={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
             title={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
             className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
-            {copiedField === "tags" ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+            {copiedField === "tags" ? (
+              <Check className="h-4 w-4 text-accent" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </button>
         </div>
       )}
@@ -2896,12 +2900,16 @@ function SavedPromptCard({
           </pre>
           <button
             type="button"
-            onClick={() => copy(prompt.lyrics, "lyrics")}
+            onClick={() => copy(prompt.lyrics ?? "", "lyrics")}
             aria-label={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
             title={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
             className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
-            {copiedField === "lyrics" ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+            {copiedField === "lyrics" ? (
+              <Check className="h-4 w-4 text-accent" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </button>
         </div>
       )}
