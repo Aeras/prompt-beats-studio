@@ -163,9 +163,13 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
     if (data.promptVersion === "v2" || data.promptVersion === "v3") {
-      const { data: isSuperAdmin, error: roleError } = await supabase.rpc("current_user_is_super_admin");
+      const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
+        "current_user_is_super_admin",
+      );
       if (roleError || isSuperAdmin !== true || !data.advanced || data.operation !== "generate") {
-        throw new Error("Experimental prompt versions are restricted to Super Admin Advanced generation.");
+        throw new Error(
+          "Experimental prompt versions are restricted to Super Admin Advanced generation.",
+        );
       }
     }
     await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
