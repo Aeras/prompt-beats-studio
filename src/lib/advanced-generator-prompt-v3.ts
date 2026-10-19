@@ -8,7 +8,8 @@ import { buildAdvancedGeneratorPromptV2 } from "./advanced-generator-prompt-v2";
 export function buildAdvancedGeneratorPromptV3(original: string): string {
   const v2 = buildAdvancedGeneratorPromptV2(original);
   const anchor = "==================================================\nPROFESSIONAL CREATIVE DIRECTION\n==================================================";
-  if (!v2.includes(anchor)) throw new Error("Generator V3 creative direction anchor missing");
+  if (!v2.includes(anchor))
+    throw new Error("Generator V3 creative direction anchor missing");
   const guidance = `==================================================
 V3 ADAPTIVE SINGABILITY — MUSIC-AWARE LYRIC COMPOSITION
 ==================================================
