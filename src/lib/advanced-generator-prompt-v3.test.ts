@@ -24,6 +24,11 @@ describe("Experimental Advanced Generator V3", () => {
     expect(v3).toContain("half-time vs double-time");
     expect(v3).toContain("SOFT diagnostic signals");
     expect(v3).toContain("same generation call");
+    expect(v3).toContain("EVERY requested language");
+    expect(v3).toContain("LANGUAGE-NATIVE NATURALNESS");
+    expect(v3).toContain("native-language");
+    expect(v3).toContain("choose near-rhyme, assonance or no rhyme");
+    expect(v3).not.toContain("natural spoken Greek (or the requested");
     expect(v3).toContain("section intended for relaxed or sustained singing");
     expect(v2).not.toContain("V3 ADAPTIVE SINGABILITY");
     expect(base).not.toContain("V3 ADAPTIVE SINGABILITY");
