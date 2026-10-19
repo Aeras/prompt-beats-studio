@@ -1,76 +1,59 @@
 import { buildAdvancedGeneratorPromptV2 } from "./advanced-generator-prompt-v2";
 
 /**
- * Experimental Super Admin-only Advanced Generator V3.
- * Compose on the proven V2 blueprint interpretation, adding adaptive
- * singability guidance without touching V1/V2 or making hard syllable caps.
+ * Experimental Super Admin Advanced Generator V3.
+ * V2 is the canonical songwriting baseline. V3 adds only a narrowly scoped,
+ * conservative singability check; it does not replace V2's creative rules.
  */
 export function buildAdvancedGeneratorPromptV3(original: string): string {
   const v2 = buildAdvancedGeneratorPromptV2(original);
   const anchor =
     "==================================================\nPROFESSIONAL CREATIVE DIRECTION\n==================================================";
   if (!v2.includes(anchor)) throw new Error("Generator V3 creative direction anchor missing");
+
   const guidance = `==================================================
-V3 ADAPTIVE SINGABILITY — MUSIC-AWARE LYRIC COMPOSITION
+V3 CONSERVATIVE SINGABILITY CHECK — V2-FIRST
 ==================================================
 
-Apply these instructions to EVERY sung section in EVERY requested language.
-Adapt to the selected language, genre/subgenre, mood, BPM if provided, groove, vocal
-delivery, explicit structure, and each occurrence-specific Blueprint. If tempo,
-meter or phrase duration are unknown, do not pretend that they are known.
-BPM alone never determines how many syllables fit: half-time vs double-time,
-beat subdivision, sustained notes, rests, meter and lyrical accents matter.
-Never infer a fixed bars-per-line value or force a genre-specific template.
+KEEP THE V2 SONGWRITING APPROACH. Compose naturally, as a fluent native
+songwriter in the user's requested language, with the same narrative richness,
+emotional truth, original imagery, idiomatic phrasing and creative freedom as V2.
+This V3 addition is a narrowly targeted CHECK, not a competing writing style,
+new rhyme scheme, length template, or instruction to shorten the whole song.
 
-Before writing each section, mentally plan natural breath-length vocal phrases
-appropriate to its role:
-- Melodic verses: conversational, clear, emotionally natural delivery, with
-  balanced adjacent line lengths and breathing room; not accidental fast rap.
-- Pre-chorus: controlled build, intentional momentum, room for tension.
-- Chorus/hook: memorable melodic phrases, space for held notes, vowels and
-  repetition only where meaningful; refrain should not become syllable-dense.
-- Bridge/breakdown: flexible expressive timing and deliberate pauses.
-- Rap or deliberately fast rhythmic vocals: allow denser writing WHEN requested,
-  but ensure articulable stresses and planned rests; do not impose sung-ballad
-  pacing on an explicitly rap-focused section.
+FIRST draft the full song naturally using all V2 instructions and the explicit
+user Blueprint. THEN silently review ONLY genuinely troublesome sung phrases
+for likely rushed delivery. Consider genre, subgenre, language-specific
+pronunciation and stress/tone, BPM when supplied, perceived groove (including
+half-time), intended vocal style and section purpose. These are contextual
+signals, not proof of exact note durations or available bars. Never infer the
+unwritten melody or impose universal numerical syllable limits.
 
-Treat syllable counts as SOFT diagnostic signals, never fixed minimums or caps.
-Avoid both telegraphic two-word lines and lengthy prose squeezed into a short
-musical phrase. Compare neighboring lines and repeated sections for likely
-delivery density, stress placement and natural idiomatic expression in the ACTUAL requested
-language. A longer line is welcome if its pacing, rests or extended phrase
-can support it; a shorter one is welcome for emphasis. Never shorten a line
-merely to match a number. Natural language and intended narrative outrank
-mechanical syllable symmetry and forced rhyme.
+Make the SMALLEST possible edit only when a line is clearly overloaded for
+its intended delivery compared with surrounding phrases. Prefer more natural
+wording, a meaningful pause or phrase boundary, or removal of redundant
+words. Leave long lines alone if they are comfortable as expressive phrases;
+leave short lines alone when they provide emphasis. Preserve explicit structure,
+Blueprint requirements, voice, perspective, meaning and natural breath.
 
-LANGUAGE-NATIVE NATURALNESS (UNIVERSAL; ALL LANGUAGES):
-Compose directly in the requested language, using its natural grammar, syntax,
-idioms, stress or tone, phonotactics, prosody, register and dialect where specified.
-Never translate word-for-word from another language or impose Greek, English or
-other language-specific rhyme patterns, syllable rules or sentence structures.
-Do not invert word order, invent unusual phrases, distort meaning, change tense,
-perspective or gender, or add redundant words just to create rhyme or fit an
-approximate syllable count. Preserve intentional poetic license when meaningful;
-do not treat expressive deviation as an automatic error. Favor natural everyday
-speech or the requested literary register over mechanical metrical perfection.
-If a line feels unnatural to a fluent native speaker, rephrase it first and
-adapt the rhythmic layout around that expression. When perfect rhyme conflicts
-with clear, authentic meaning, choose near-rhyme, assonance or no rhyme.
-Apply the same standard to the chorus, verses, bridges and ALL other vocal parts.
+HARD QUALITY INVARIANTS — EVERY REQUESTED LANGUAGE:
+- Never substitute awkward idioms, literal translation, broken grammar,
+  unnatural word order, implausible imagery or semantic contradictions just
+  to improve apparent meter or rhyme.
+- Never manufacture end rhymes, increase rhyme frequency or make the poem
+  more symmetrical merely because V3 is selected. Retain V2's organic rhyme
+  choices; imperfect rhyme or no rhyme is better than forced language.
+- Avoid meaningless filler, tautology, unexplained abstractions and unnatural
+  gender/person/tense changes. Intentional, meaningful poetic language is fine.
+- In a conflict, native-language fluency and intended meaning win over
+  any estimated rhythmic or syllable optimization.
+- If no clearly safe improvement exists, KEEP the original V2-like line.
 
-Internally review the completed lyrics once within the SAME generation call:
-1. Identify lines likely to require rushed/double-time articulation in a
-   section intended for relaxed or sustained singing.
-2. Look for hard-to-sing consonant clusters, unnatural stress, unclear breath
-   placement, sharp density jumps and lengthy adjacent phrases.
-3. Check every proposed rhythmic or rhyming revision for native-language
-   fluency, grammatical integrity and meaning; reject forced phrases.
-4. Revise only genuinely risky phrases while preserving meaning, voice,
-   emotional development, rhyme where natural and Blueprint requirements.
-5. Keep lyrics expressive and complete; do not delete required narrative details,
-   change genre or alter the requested sections to satisfy a syllable target.
-Do not output counts, diagnostic notes or a singability report unless requested.
-Do not claim to know the eventual Suno/Udio melody or guarantee its phrasing.
+As a final silent check, read the actual sung lines as a native speaker would:
+can they be understood on first hearing, do they sound idiomatic, and is the
+story coherent? Reject any editing that makes a line less natural than the
+original. Do not output a report, syllable counts or self-critique. Perform
+the review within the same generation call, without a second provider request.
 
 `;
   return v2.replace(anchor, guidance + anchor);
