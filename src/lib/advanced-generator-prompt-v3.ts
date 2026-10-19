@@ -14,8 +14,8 @@ export function buildAdvancedGeneratorPromptV3(original: string): string {
 V3 ADAPTIVE SINGABILITY — MUSIC-AWARE LYRIC COMPOSITION
 ==================================================
 
-Apply these instructions to EVERY sung section, not only Greek Pop. Adapt to
-the selected language, genre/subgenre, mood, BPM if provided, groove, vocal
+Apply these instructions to EVERY sung section in EVERY requested language.
+Adapt to the selected language, genre/subgenre, mood, BPM if provided, groove, vocal
 delivery, explicit structure, and each occurrence-specific Blueprint. If tempo,
 meter or phrase duration are unknown, do not pretend that they are known.
 BPM alone never determines how many syllables fit: half-time vs double-time,
@@ -37,20 +37,37 @@ appropriate to its role:
 Treat syllable counts as SOFT diagnostic signals, never fixed minimums or caps.
 Avoid both telegraphic two-word lines and lengthy prose squeezed into a short
 musical phrase. Compare neighboring lines and repeated sections for likely
-delivery density, stress placement and natural spoken Greek (or the requested
-language). A longer line is welcome if its pacing, rests or extended phrase
+delivery density, stress placement and natural idiomatic expression in the ACTUAL requested
+language. A longer line is welcome if its pacing, rests or extended phrase
 can support it; a shorter one is welcome for emphasis. Never shorten a line
 merely to match a number. Natural language and intended narrative outrank
 mechanical syllable symmetry and forced rhyme.
+
+LANGUAGE-NATIVE NATURALNESS (UNIVERSAL; ALL LANGUAGES):
+Compose directly in the requested language, using its natural grammar, syntax,
+idioms, stress or tone, phonotactics, prosody, register and dialect where specified.
+Never translate word-for-word from another language or impose Greek, English or
+other language-specific rhyme patterns, syllable rules or sentence structures.
+Do not invert word order, invent unusual phrases, distort meaning, change tense,
+perspective or gender, or add redundant words just to create rhyme or fit an
+approximate syllable count. Preserve intentional poetic license when meaningful;
+do not treat expressive deviation as an automatic error. Favor natural everyday
+speech or the requested literary register over mechanical metrical perfection.
+If a line feels unnatural to a fluent native speaker, rephrase it first and
+adapt the rhythmic layout around that expression. When perfect rhyme conflicts
+with clear, authentic meaning, choose near-rhyme, assonance or no rhyme.
+Apply the same standard to the chorus, verses, bridges and ALL other vocal parts.
 
 Internally review the completed lyrics once within the SAME generation call:
 1. Identify lines likely to require rushed/double-time articulation in a
    section intended for relaxed or sustained singing.
 2. Look for hard-to-sing consonant clusters, unnatural stress, unclear breath
    placement, sharp density jumps and lengthy adjacent phrases.
-3. Revise only genuinely risky phrases while preserving meaning, voice,
+3. Check every proposed rhythmic or rhyming revision for native-language
+   fluency, grammatical integrity and meaning; reject forced phrases.
+4. Revise only genuinely risky phrases while preserving meaning, voice,
    emotional development, rhyme where natural and Blueprint requirements.
-4. Keep lyrics expressive and complete; do not delete required narrative details,
+5. Keep lyrics expressive and complete; do not delete required narrative details,
    change genre or alter the requested sections to satisfy a syllable target.
 Do not output counts, diagnostic notes or a singability report unless requested.
 Do not claim to know the eventual Suno/Udio melody or guarantee its phrasing.
