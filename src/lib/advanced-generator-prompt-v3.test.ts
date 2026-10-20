@@ -16,28 +16,17 @@ const base = [
 ].join("\n");
 
 describe("Experimental Advanced Generator V3", () => {
-  test("retains V2 blueprint rules and adds adaptive singability guidance only in V3", () => {
+  test("retains the entire V2 prompt and adds only adaptive phrasing", () => {
     const v2 = buildAdvancedGeneratorPromptV2(base);
     const v3 = buildAdvancedGeneratorPromptV3(base);
-    expect(v3).toContain("V2 CREATIVE AUTHORITY");
-    expect(v3).toContain("V3 CONSERVATIVE SINGABILITY CHECK");
-    expect(v3).toContain("KEEP THE V2 SONGWRITING APPROACH");
-    expect(v3).toContain("SMALLEST possible edit");
-    expect(v3).toContain("EVERY REQUESTED LANGUAGE");
-    expect(v3).toContain("Never manufacture end rhymes");
-    expect(v3).toContain("KEEP the original V2-like line");
-    expect(v3).toContain("native-language fluency and intended meaning");
-    expect(v3).toContain("same generation call");
-    expect(v3).not.toContain("V3 ADAPTIVE SINGABILITY");
-    expect(v2).not.toContain("V3 CONSERVATIVE SINGABILITY CHECK");
-    expect(base).not.toContain("V3 CONSERVATIVE SINGABILITY CHECK");
+    expect(v3.startsWith(v2)).toBe(true);
+    expect(v3).toContain("ADAPTIVE MUSICAL PHRASING");
+    expect(v3).toContain("COMPOSE, DO NOT POST-EDIT");
+    expect(v3).not.toContain("V3 CONSERVATIVE SINGABILITY CHECK");
+    expect(v2).not.toContain("ADAPTIVE MUSICAL PHRASING");
   });
 
-  test("fails closed if prompt composition anchors drift", () => {
-    expect(() => buildAdvancedGeneratorPromptV3("no anchors")).toThrow("anchors missing");
-  });
-
-  test("V3 is accessible only through Super Admin Advanced generation", async () => {
+  test("V3 stays Super Admin Advanced-only and single-pass", async () => {
     const jobs = await readFile("src/lib/generation-jobs.functions.ts", "utf8");
     const route = await readFile("src/routes/generate.tsx", "utf8");
     const ai = await readFile("src/lib/ai.functions.ts", "utf8");
@@ -48,9 +37,7 @@ describe("Experimental Advanced Generator V3", () => {
     );
     expect(route).toContain('<option value="v3">Prompt Version 3');
     expect(ai).toContain('data.promptVersion === "v3"');
-    expect(ai).toContain('data.promptVersion === "v2" || data.promptVersion === "v3"');
-    expect(ai).toContain("buildV3ReviewPrompt({");
-    expect(ai).toContain("isSafeV3Review(result.data.lyrics, reviewed.data.lyrics)");
-    expect(ai).toContain("finalResult = result.data");
+    expect(ai).toContain('withV3MusicalPlanning(');
+    expect(ai).not.toContain("buildV3ReviewPrompt(");
   });
 });
