@@ -683,6 +683,9 @@ function QualityPanel({
   setConfirm,
   state,
   qualityCheckModel,
+  qualityCheckVersion,
+  onQualityCheckVersionChange,
+  isSuperAdmin,
   availableModels,
   modelAccessLoading,
   modelAccessReady,
@@ -700,6 +703,9 @@ function QualityPanel({
   setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
   qualityCheckModel: string;
+  qualityCheckVersion: "v1" | "v2";
+  onQualityCheckVersionChange: (value: "v1" | "v2") => void;
+  isSuperAdmin: boolean;
   availableModels: Array<{ id: string; label: string; provider: string }>;
   modelAccessLoading: boolean;
   modelAccessReady: boolean;
@@ -739,6 +745,21 @@ function QualityPanel({
       )}
       {!checking && (
         <div className="mt-4 space-y-3">
+          {isSuperAdmin && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Quality Check Version · Super Admin</span>
+              <select
+                value={qualityCheckVersion}
+                onChange={(e) =>
+                  onQualityCheckVersionChange(e.target.value === "v2" ? "v2" : "v1")
+                }
+                className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
+              >
+                <option value="v1">Version 1 — Existing</option>
+                <option value="v2">Version 2 — Precision Review</option>
+              </select>
+            </label>
+          )}
           {!featureAvailable && (
             <p className="text-xs text-muted-foreground">{t("quality.featureUnavailable")}</p>
           )}
@@ -2930,20 +2951,53 @@ function GeneratePage() {
                   )}
                   {advanced && !revisionMode && (
                     <>
-                      <button
-                        type="button"
-                        onClick={exportAdvancedSetup}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
-                      >
-                        <Download className="h-3.5 w-3.5" /> {setupIoText.export}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setupFileInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
-                      >
-                        <Upload className="h-3.5 w-3.5" /> {setupIoText.import}
-                      </button>
+                      {(["import", "export"] as const).map((kind) => (
+                        <div key={kind} className="relative">
+                          <button
+                            type="button"
+                            aria-expanded={setupMenuOpen === kind}
+                            onClick={() => setSetupMenuOpen((current) => current === kind ? null : kind)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
+                          >
+                            {kind === "import" ? <Upload className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+                            {kind === "import" ? (appLanguage === "el" ? "Εισαγωγή" : "Import") : (appLanguage === "el" ? "Εξαγωγή" : "Export")}
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                          {setupMenuOpen === kind && (
+                            <div className="absolute left-0 top-full z-30 mt-1 min-w-36 rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl">
+                              {(["JSON", "MD"] as const).map((format) => (
+                                <button
+                                  key={format}
+                                  type="button"
+                                  disabled={kind === "export" && format === "MD" && !result}
+                                  onClick={() => {
+                                    setSetupMenuOpen(null);
+                                    if (kind === "import") {
+                                      if (format === "JSON") setupFileInputRef.current?.click();
+                                      else mdFileInputRef.current?.click();
+                                    } else if (format === "JSON") exportAdvancedSetup();
+                                    else exportGeneratorBenchmark();
+                                  }}
+                                  className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40"
+                                >
+                                  {kind === "import" ? (appLanguage === "el" ? "Εισαγωγή" : "Import") : (appLanguage === "el" ? "Εξαγωγή" : "Export")} {format}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <input
+                        ref={mdFileInputRef}
+                        type="file"
+                        accept=".md,text/markdown,text/plain"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          void onSongMarkdownSelected(file);
+                        }}
+                      />
                       <input
                         ref={setupFileInputRef}
                         type="file"
@@ -3796,7 +3850,7 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                {moderation.isSuperAdmin && (
+                {(
                   <button
                     type="button"
                     onClick={exportGeneratorBenchmark}
@@ -3808,7 +3862,7 @@ function GeneratePage() {
                     }
                   >
                     <Download className="h-3.5 w-3.5" />
-                    {appLanguage === "el" ? "Εξαγωγή Test (.md)" : "Export Test (.md)"}
+                    {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
                   </button>
                 )}
                 <button
@@ -3879,6 +3933,9 @@ function GeneratePage() {
                 setConfirm={setConfirm}
                 state={applyState}
                 qualityCheckModel={qualityCheckModel}
+                qualityCheckVersion={qualityCheckVersion}
+                isSuperAdmin={moderation.isSuperAdmin}
+                onQualityCheckVersionChange={setQualityCheckVersion}
                 availableModels={qualityAvailableModels}
                 modelAccessLoading={modelAccessLoading}
                 modelAccessReady={modelAccessReady}
