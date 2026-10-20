@@ -20,10 +20,14 @@ export function parseSongMarkdown(raw: string): ImportedSongMarkdown | null {
   const expected = ["Title", "Music Style", "Lyrics", "Producer Note"];
   if (headings.some((heading, index) => heading[1] !== expected[index])) return null;
   const values = headings.map((heading, index) =>
-    normalized.slice(
-      (heading.index ?? 0) + heading[0].length,
-      index + 1 < headings.length ? (headings[index + 1]?.index ?? normalized.length) : normalized.length,
-    ).trim(),
+    normalized
+      .slice(
+        (heading.index ?? 0) + heading[0].length,
+        index + 1 < headings.length
+          ? (headings[index + 1]?.index ?? normalized.length)
+          : normalized.length,
+      )
+      .trim(),
   );
   const [title, tags, lyrics, note] = values;
   if (!title || !tags || !lyrics || !note) return null;
