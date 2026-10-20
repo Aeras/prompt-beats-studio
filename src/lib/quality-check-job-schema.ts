@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
 
 export const durableQualityCheckInput = z.object({
-  qualityCheckVersion: z.enum(["v1", "v2"]).default("v1"),
+  qualityCheckVersion: z.enum(["v1", "v2", "v2.1"]).default("v1"),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().trim().min(3).max(500),
   genre: z.string().trim().min(1).max(500),
