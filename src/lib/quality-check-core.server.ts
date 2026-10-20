@@ -727,7 +727,8 @@ export async function runDurableQualityCheck(
   provider: string;
   model: string;
   records: DurableQualityUsageRecord[];
-  failureReason?: "provider_error" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
+  failureReason?:
+    "provider_error" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
   const resolved = await providerLayer.resolveAiModelForUser(
