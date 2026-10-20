@@ -3958,6 +3958,9 @@ function GeneratePage() {
                 }}
                 qualityCheckResultModel={qualityCheckResultModel}
                 showQualityCheckModelSelector={showQualityCheckModelSelector}
+                qualityCheckVersion={qualityCheckVersion}
+                onQualityCheckVersionChange={setQualityCheckVersion}
+                showQualityCheckVersionSelector={moderation.isSuperAdmin}
                 featureAvailable={qualityFeature.allowed}
               />
             </div>
