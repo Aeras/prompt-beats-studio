@@ -2961,7 +2961,7 @@ function GeneratePage() {
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
                             {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
                           </button>
-                        </details>
+                        </div>
                       </details>
                       <details className="relative">
                         <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
@@ -2978,7 +2978,7 @@ function GeneratePage() {
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
                             {appLanguage === "el" ? "Εισαγωγή MD" : "Import MD"}
                           </button>
-                        </details>
+                        </div>
                       </details>
                       <input ref={mdFileInputRef} type="file" accept=".md,text/markdown"
                         className="hidden"
