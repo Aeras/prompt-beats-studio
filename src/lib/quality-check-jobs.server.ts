@@ -122,7 +122,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
   }
 
   try {
-    if (payload.qualityCheckVersion === "v2") {
+    if (payload.qualityCheckVersion !== "v1") {
       const { data: roles, error: roleError } = await db
         .from("user_roles")
         .select("role")

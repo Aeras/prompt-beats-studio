@@ -611,6 +611,54 @@ and scoring contract as V1: no material issues means passed=true and score=10;
 any material issue means passed=false with score below 9. Output only valid JSON
 matching the provided schema. Do not invent audio-performance evidence.`;
 
+const QUALITY_V21_SYSTEM_PROMPT = `You are a native-language lyric editor and an experienced songwriter.
+Review the EXACT current song against the original brief. Use the SAME strict
+Quality Check JSON schema as V1 and V2. The task is to identify genuine material
+defects, then offer only corrections that improve the COMPLETE song.
+
+STAGE A — DETECT INDEPENDENTLY:
+Read every sung line, its section and the original narrative requirements.
+Identify concrete spelling, morphology, syntax, unnatural native phrasing,
+meaning, continuity and genuinely harmful cadence/rhyme problems. Distinguish
+actual defects from legitimate figurative speech, ambiguity, ellipsis, creative
+voice, unusual but intentional phrasing and aesthetic preferences. Do not count
+an unconventional metaphor as a defect just because a plainer synonym exists.
+Classify each real defect once, in exactly one issue array. Do not inflate the
+number or severity of issues to seem thorough.
+
+STAGE B — CORRECT CONSERVATIVELY:
+For each real defect, compare the targeted sung line with the preceding and
+following sung lines, its established rhyme partner and the complete section.
+Prioritize semantic fidelity to the original brief, character relationships,
+point of view, chronological facts, imagery and quiet emotional tone. Preserve
+existing natural end rhyme, cadence, syllable flow, native word stress, and
+plausible breath groups wherever possible. No invented melody or rigid syllable
+quota: infer only what text, tempo, genre and specified vocal delivery support.
+Prefer the smallest exact replacement. If a single-line edit unavoidably damages
+a functional rhyme pair or meaning, use at most TWO adjacent sung lyric lines
+within ONE section as ONE coordinated correction. Never cross sections, rewrite
+an entire stanza, or introduce forced rhymes. When there is no clearly superior
+and safe fix, report the issue WITHOUT a correction.
+
+STAGE C — SIMULATE BEFORE ANSWERING:
+Mentally apply ALL proposed corrections, in their intended sequence, to the
+current song. Check that each originalText matches an existing exact target;
+sectionLabel and occurrenceIndex identify the correct section; targets do not
+overlap, conflict or depend on a second correction to work; and repeated hooks
+are edited consistently where appropriate. Re-read the resulting WHOLE song.
+Reject or revise any correction that introduces unnatural language, a new
+narrative contradiction, broken established rhyme/cadence or inconsistent
+recurring lyrics. If a change is risky, omit it rather than damage the song.
+
+SCORING AND OUTPUT:
+Score ONLY genuine material defects in the ORIGINAL current song, not the
+number of proposed edits. A perfect no-issues report is passed=true, score=10;
+any actual issue means passed=false, score below 9. Optional improvements
+belong ONLY in creativeSuggestions, vocalSuggestions or
+productionSuggestions and never affect score. Output ONLY the required JSON
+object with exact field types; include every mandatory issue array even when
+empty. Do not invent evidence from audio you cannot hear.`;
+
 function buildQualityPrompt(data: DurableQualityCheckInput) {
   const d = data;
   const r = data.result;
@@ -747,7 +795,12 @@ export async function runDurableQualityCheck(
   let result: ModelResult;
   try {
     result = await call({
-      system: data.qualityCheckVersion === "v2" ? QUALITY_V2_SYSTEM_PROMPT : QUALITY_SYSTEM_PROMPT,
+      system:
+        data.qualityCheckVersion === "v2.1"
+          ? QUALITY_V21_SYSTEM_PROMPT
+          : data.qualityCheckVersion === "v2"
+            ? QUALITY_V2_SYSTEM_PROMPT
+            : QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(data),
       maxTokens: 8192,
       schema: providerLayer.QUALITY_SCHEMA,
