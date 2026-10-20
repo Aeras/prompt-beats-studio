@@ -30,7 +30,12 @@ async function runFixture(version: string, revision = false) {
   const code = ts.transpileModule(runtime.getText(source), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const original = { title: "Original", tags: "Pop 80 BPM", lyrics: "[Verse]\nHello", note: "Soft" };
+  const original = {
+    title: "Original",
+    tags: "Pop 80 BPM",
+    lyrics: "[Verse]\\nHello",
+    note: "Soft",
+  };
   const calls: Array<{ prompt: string }> = [];
   const batches: Array<Array<{ success: boolean }>> = [];
   const exports: {
