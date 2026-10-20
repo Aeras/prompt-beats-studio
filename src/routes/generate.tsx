@@ -751,9 +751,7 @@ function QualityPanel({
               <select
                 aria-label="Quality Check Version"
                 value={qualityCheckVersion}
-                onChange={(event) =>
-                  onQualityCheckVersionChange(event.target.value as "v1" | "v2")
-                }
+                onChange={(event) => onQualityCheckVersionChange(event.target.value as "v1" | "v2")}
                 className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
               >
                 <option value="v1">Version 1</option>
