@@ -566,6 +566,28 @@ Language correctness comes first.
 Complete PASS 1 through PASS 4 before considering PASS 5.
 A genuine language or lyric defect must never be hidden by an otherwise strong song or replaced by an optional suggestion.`;
 
+const QUALITY_V2_GUIDANCE = `PRECISION LYRIC REVIEW — EXPERIMENTAL V2
+Use exactly the existing issue categories, correction schema and pass/score contract.
+Independent evaluation, not automatic rewriting. First establish what the sung
+line actually means within its entire verse and the original brief. Distinguish:
+(1) objectively broken or non-native language, (2) defensible but unconventional
+poetic language, and (3) valid lines that you simply prefer to write differently.
+Only category (1) and other clear, material musical/structural defects belong in
+Actual Issues. An unusual metaphor, conversational ellipsis, imperfect rhyme,
+or intentional stress/density contrast is not inherently an error.
+For a suspected defect, identify the exact offending words and why the phrase
+fails in its language and context. Do not invent a defect to justify a rewrite.
+Consider tempo, groove, genre, delivery and breaths as contextual estimates;
+without actual audio you cannot prove a line will not fit a melody. Do not enforce
+syllable equality, tight rhyming or formulaic chorus lengths.
+For each real problem propose the smallest naturally sung replacement, preserving
+meaning, story facts, perspective, hooks, repeated refrains and adjacent lines.
+If a satisfactory safe fix is not apparent, report the real issue without a
+correction. Avoid corrections that replace idiomatic lyrics with flatter prose.
+Optional suggestions must never appear as defects or lower the score.
+Do not overlook clear defects out of generosity, and do not penalize valid
+creative expression out of strictness.`;
+
 function buildQualityPrompt(data: DurableQualityCheckInput) {
   const d = data;
   const r = data.result;
@@ -699,7 +721,10 @@ export async function runDurableQualityCheck(
   let result: ModelResult;
   try {
     result = await call({
-      system: QUALITY_SYSTEM_PROMPT,
+      system:
+        data.qualityCheckVersion === "v2"
+          ? `${QUALITY_SYSTEM_PROMPT}\n\n${QUALITY_V2_GUIDANCE}`
+          : QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(data),
       maxTokens: 8192,
       schema: providerLayer.QUALITY_SCHEMA,
