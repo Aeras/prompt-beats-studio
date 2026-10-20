@@ -67,6 +67,14 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "quality_check");
+    if (data.qualityCheckVersion === "v2") {
+      const { data: superAdmin, error: roleError } = await context.supabase.rpc(
+        "current_user_is_super_admin",
+      );
+      if (roleError || superAdmin !== true) {
+        throw new Error("Quality Check V2 is restricted to Super Admin.");
+      }
+    }
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     await getModelForUser(context.userId, data.qualityCheckModel ?? undefined, "quality_check");
 
