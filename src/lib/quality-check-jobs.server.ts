@@ -123,11 +123,13 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
 
   try {
     if (payload.qualityCheckVersion === "v2") {
-      const { data: isSuperAdmin, error: roleError } = await db.rpc(
-        "user_is_super_admin",
-        { _user_id: action.user_id },
-      );
-      if (roleError || isSuperAdmin !== true) {
+      const { data: roles, error: roleError } = await db
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", action.user_id)
+        .eq("role", "super_admin")
+        .limit(1);
+      if (roleError || !roles?.length) {
         throw new Error("Quality Check V2 authorization failed.");
       }
     }
