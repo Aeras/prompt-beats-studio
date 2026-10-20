@@ -2065,6 +2065,10 @@ function GeneratePage() {
       if (!parsed) throw new Error("Invalid export");
       // Keep imported JSON brief, but never misidentify an MD file as an AI job.
       setResult(parsed);
+      setJobId(null);
+      rememberJob(null);
+      pendingKey.current = null;
+      setBusy(false);
       setGenerationId(null);
       setGenerationResultModel(null);
       setSongContext(null);
@@ -2078,6 +2082,8 @@ function GeneratePage() {
       setApplied({});
       setApplyErrors({});
       setWorkspaceResultSaved(false);
+      setSaved(false);
+      setRevisionMeta(null);
       setOpen({ title: true, tags: true, lyrics: true, note: true });
       setStatus(appLanguage === "el" ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI." : "MD result imported without AI generation.");
     } catch {
@@ -3850,21 +3856,6 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                {(
-                  <button
-                    type="button"
-                    onClick={exportGeneratorBenchmark}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-400/5 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10"
-                    title={
-                      appLanguage === "el"
-                        ? "Εξαγωγή ολόκληρου του αποτελέσματος για benchmark"
-                        : "Export the full result for benchmarking"
-                    }
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
-                  </button>
-                )}
                 <button
                   onClick={toggleAll}
                   className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
