@@ -748,9 +748,14 @@ function QualityPanel({
           {showQualityCheckVersionSelector && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Quality Check Version · Super Admin</span>
-              <select aria-label="Quality Check Version" value={qualityCheckVersion}
-                onChange={(event) => onQualityCheckVersionChange(event.target.value as "v1" | "v2")}
-                className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">
+              <select
+                aria-label="Quality Check Version"
+                value={qualityCheckVersion}
+                onChange={(event) =>
+                  onQualityCheckVersionChange(event.target.value as "v1" | "v2")
+                }
+                className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
+              >
                 <option value="v1">Version 1</option>
                 <option value="v2">Version 2</option>
               </select>
