@@ -57,6 +57,6 @@ export function isSafeV3Review(original: string, candidate: string): boolean {
   if (oldLines.length !== newLines.length) return false;
   const changed = oldLines.filter((l, i) => l !== newLines[i]).length;
   if (changed > Math.max(2, Math.ceil(oldLines.length * 0.15))) return false;
-  if (newLines.some((l, i) => l.length > oldLines[i].length * 1.7 + 15)) return false;
+  if (newLines.some((l, i) => l.length > (oldLines[i]?.length ?? 0) * 1.7 + 15)) return false;
   return true;
 }
