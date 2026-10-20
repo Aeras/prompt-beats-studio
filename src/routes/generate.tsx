@@ -2946,20 +2946,50 @@ function GeneratePage() {
                   )}
                   {advanced && !revisionMode && (
                     <>
-                      <button
-                        type="button"
-                        onClick={exportAdvancedSetup}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
-                      >
-                        <Download className="h-3.5 w-3.5" /> {setupIoText.export}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setupFileInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
-                      >
-                        <Upload className="h-3.5 w-3.5" /> {setupIoText.import}
-                      </button>
+                      <div className="relative group">
+                        <button type="button"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                          aria-label={appLanguage === "el" ? "Εξαγωγή αρχείου" : "Export file"}>
+                          <Download className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εξαγωγή" : "Export"}
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        <div className="absolute left-0 top-full z-30 hidden min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl group-hover:block group-focus-within:block">
+                          <button type="button" onClick={exportAdvancedSetup}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
+                            {appLanguage === "el" ? "Εξαγωγή JSON" : "Export JSON"}
+                          </button>
+                          <button type="button" onClick={exportGeneratorBenchmark} disabled={!result}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
+                            {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative group">
+                        <button type="button"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                          aria-label={appLanguage === "el" ? "Εισαγωγή αρχείου" : "Import file"}>
+                          <Upload className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εισαγωγή" : "Import"}
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        <div className="absolute left-0 top-full z-30 hidden min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl group-hover:block group-focus-within:block">
+                          <button type="button" onClick={() => setupFileInputRef.current?.click()}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
+                            {appLanguage === "el" ? "Εισαγωγή JSON" : "Import JSON"}
+                          </button>
+                          <button type="button" onClick={() => mdFileInputRef.current?.click()} disabled={busy || checking}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
+                            {appLanguage === "el" ? "Εισαγωγή MD" : "Import MD"}
+                          </button>
+                        </div>
+                      </div>
+                      <input ref={mdFileInputRef} type="file" accept=".md,text/markdown"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          void onMarkdownFileSelected(file);
+                        }}
+                      />
                       <input
                         ref={setupFileInputRef}
                         type="file"
@@ -3812,7 +3842,7 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                {(
+                {false && (
                   <button
                     type="button"
                     onClick={exportGeneratorBenchmark}
