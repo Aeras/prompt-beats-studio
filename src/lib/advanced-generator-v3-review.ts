@@ -43,11 +43,7 @@ ${input.lyrics}`;
 
 export function isSafeV3Review(original: string, candidate: string): boolean {
   if (!candidate.trim() || candidate === original) return Boolean(candidate.trim());
-  const directions = (s: string) =>
-    s
-      .split("\\n")
-      .map((line) => line.trim())
-      .filter((line) => line.startsWith("[") && line.endsWith("]"));
+  const directions = (s: string) => Array.from(s.matchAll(/\\[[^\\]\\r\\n]+\\]/g), (match) => match[0]);
   const a = directions(original);
   const b = directions(candidate);
   if (a.length !== b.length || a.some((line, i) => line !== b[i])) return false;
