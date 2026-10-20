@@ -2057,7 +2057,11 @@ function GeneratePage() {
     setSetupIoError(null);
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".md") || file.size > MAX_SONG_MARKDOWN_BYTES) {
-      setSetupIoError(appLanguage === "el" ? "Μη έγκυρο ή πολύ μεγάλο αρχείο MD." : "Invalid or oversized MD file.");
+      setSetupIoError(
+        appLanguage === "el"
+          ? "Μη έγκυρο ή πολύ μεγάλο αρχείο MD."
+          : "Invalid or oversized MD file.",
+      );
       return;
     }
     try {
@@ -2079,9 +2083,17 @@ function GeneratePage() {
       setRevisionMeta(null);
       setWorkspaceResultSaved(false);
       setOpen({ title: true, tags: true, lyrics: true, note: true });
-      setStatus(appLanguage === "el" ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI." : "MD result imported without AI generation.");
+      setStatus(
+        appLanguage === "el"
+          ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI."
+          : "MD result imported without AI generation.",
+      );
     } catch {
-      setSetupIoError(appLanguage === "el" ? "Δεν ήταν δυνατή η εισαγωγή του MD." : "Could not import MD result.");
+      setSetupIoError(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η εισαγωγή του MD."
+          : "Could not import MD result.",
+      );
     }
   };
 
