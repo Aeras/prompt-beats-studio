@@ -18,6 +18,7 @@ export const durableQualityCheckInput = z.object({
     note: z.string().trim().min(1).max(6000),
   }),
   qualityCheckModel: z.string().trim().min(1).max(240).nullish(),
+  qualityCheckVersion: z.enum(["v1", "v2"]).default("v1"),
   generationId: z.string().uuid().nullish(),
 });
 
