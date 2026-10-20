@@ -48,7 +48,10 @@ export function isSafeV3Review(original: string, candidate: string): boolean {
   const b = directions(candidate);
   if (a.length !== b.length || a.some((line, i) => line !== b[i])) return false;
   const lines = (s: string) =>
-    s.split("\n").map((l) => l.trim()).filter((l) => l && !/^\[/.test(l));
+    s
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !/^\[/.test(l));
   const oldLines = lines(original);
   const newLines = lines(candidate);
   if (oldLines.length !== newLines.length) return false;
