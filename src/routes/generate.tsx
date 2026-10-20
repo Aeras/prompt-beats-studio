@@ -904,6 +904,9 @@ function GeneratePage() {
       ? search.session
       : null;
   const jobStorageKey = freshSession ? `pb:generation-job:fresh:${freshSession}` : JOB_STORAGE_KEY;
+  const qualityJobStorageKey = user
+    ? `${QUALITY_JOB_STORAGE_KEY}:${user.id}`
+    : QUALITY_JOB_STORAGE_KEY;
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
@@ -1014,6 +1017,7 @@ function GeneratePage() {
     enabled: Boolean(user && search.workspace === "lyrics" && search.base),
   });
   const [result, setResult] = useState<GeneratorResult | null>(null);
+  const [importedResultActive, setImportedResultActive] = useState(false);
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [generationModel, setGenerationModel] = useState(DEFAULT_AI_MODEL);
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
@@ -1391,6 +1395,8 @@ function GeneratePage() {
       }
       const { revisionMeta: completedRevisionMeta, ...songResult } = job.result;
       setResult(songResult);
+      setImportedResultActive(false);
+      if (importedRecoveryKey) window.sessionStorage.removeItem(importedRecoveryKey);
       setWorkspaceResultSaved(false);
       setRevisionMeta(completedRevisionMeta ?? null);
       setSaved(Boolean(completedRevisionMeta));
@@ -1465,6 +1471,14 @@ function GeneratePage() {
   }, [jobData, jobId]);
   useEffect(() => {
     if (!user || jobId || result) return;
+    // A user-imported MD result is authoritative; a prior generated job must
+    // not overwrite it while its component state is being restored.
+    if (
+      !freshSession &&
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem(`pb:imported-quality:v1:${user.id}`)
+    )
+      return;
     const stored =
       typeof window !== "undefined" ? window.localStorage.getItem(jobStorageKey) : null;
     if (stored) {
@@ -1488,12 +1502,53 @@ function GeneratePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, jobId, result]);
 
+  // Imported MD results have no generationId. Preserve the result across a browser
+  // reload so the independently durable Quality Check can still be shown.
+  const importedRecoveryKey = user ? `pb:imported-quality:v1:${user.id}` : null;
+  useEffect(() => {
+    if (!importedRecoveryKey || freshSession || search.workspace === "lyrics" || revisionMode)
+      return;
+    try {
+      const raw = window.sessionStorage.getItem(importedRecoveryKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        result?: GeneratorResult;
+        quality?: QualityReport | null;
+      };
+      if (
+        !saved.result ||
+        typeof saved.result.title !== "string" ||
+        typeof saved.result.tags !== "string" ||
+        typeof saved.result.lyrics !== "string" ||
+        typeof saved.result.note !== "string"
+      )
+        return;
+      setResult((current) => current ?? saved.result ?? null);
+      setImportedResultActive(true);
+      if (saved.quality) setQuality(saved.quality);
+      setOpen({ title: true, tags: true, lyrics: true, note: true });
+    } catch {
+      // Recovery must not break normal Generator use.
+    }
+    // The saved state belongs to the signed-in user, not a prior account.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importedRecoveryKey, freshSession, search.workspace]);
+
+  useEffect(() => {
+    if (!importedRecoveryKey || !importedResultActive || !result) return;
+    try {
+      window.sessionStorage.setItem(importedRecoveryKey, JSON.stringify({ result, quality }));
+    } catch {
+      // Storage may be unavailable or full; the live result stays usable.
+    }
+  }, [importedRecoveryKey, importedResultActive, result, quality]);
+
   const [qualityActionId, setQualityActionId] = useState<string | null>(null);
   const pendingQualityKey = useRef<string | null>(null);
   function rememberQualityJob(id: string | null) {
     if (typeof window === "undefined") return;
-    if (id) window.localStorage.setItem(QUALITY_JOB_STORAGE_KEY, id);
-    else window.localStorage.removeItem(QUALITY_JOB_STORAGE_KEY);
+    if (id) window.localStorage.setItem(qualityJobStorageKey, id);
+    else window.localStorage.removeItem(qualityJobStorageKey);
   }
   function applyQualityJob(job: QualityCheckJob) {
     if (job.status === "completed") {
@@ -1548,7 +1603,7 @@ function GeneratePage() {
   useEffect(() => {
     if (!user || !result || qualityActionId || quality) return;
     const stored =
-      typeof window !== "undefined" ? window.localStorage.getItem(QUALITY_JOB_STORAGE_KEY) : null;
+      typeof window !== "undefined" ? window.localStorage.getItem(qualityJobStorageKey) : null;
     if (stored) {
       setQualityActionId(stored);
       setChecking(true);
@@ -2065,7 +2120,18 @@ function GeneratePage() {
     try {
       const parsed = parseSongMarkdown(await file.text());
       if (!parsed) throw new Error("Invalid export");
-      // Keep imported JSON brief, but never misidentify an MD file as an AI job.
+      // A local import must survive an app reload while its QC runs.
+      if (importedRecoveryKey) {
+        try {
+          window.sessionStorage.setItem(
+            importedRecoveryKey,
+            JSON.stringify({ result: parsed, quality: null }),
+          );
+        } catch {
+          /* Storage not available. */
+        }
+      }
+      setImportedResultActive(true);
       setResult(parsed);
       setJobId(null);
       rememberJob(null);
@@ -2228,6 +2294,8 @@ function GeneratePage() {
     setBusy(true);
     setStatus(t("generator.starting"));
     setSaved(false);
+    setImportedResultActive(false);
+    if (importedRecoveryKey) window.sessionStorage.removeItem(importedRecoveryKey);
     setResult(null);
     setQuality(null);
     setGenerationResultModel(null);
@@ -2546,6 +2614,8 @@ function GeneratePage() {
       }
     }
     clearGeneratorDraft();
+    setImportedResultActive(false);
+    if (importedRecoveryKey) window.sessionStorage.removeItem(importedRecoveryKey);
     setTheme("");
     setGenres([]);
     setCustomGenre("");
