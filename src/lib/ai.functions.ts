@@ -1,5 +1,5 @@
 import { buildAdvancedGeneratorPromptV2 } from "@/lib/advanced-generator-prompt-v2";
-import { buildAdvancedGeneratorPromptV3 } from "@/lib/advanced-generator-prompt-v3";
+import { buildV3ReviewPrompt, isSafeV3Review } from "@/lib/advanced-generator-v3-review";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -1974,11 +1974,9 @@ export async function runSongGeneration(
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       prompt: isRevision
         ? buildRevisionPrompt(data)
-        : data.promptVersion === "v3"
-          ? buildAdvancedGeneratorPromptV3(buildPrompt(data))
-          : data.promptVersion === "v2"
-            ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
-            : buildPrompt(data),
+        : data.promptVersion === "v2" || data.promptVersion === "v3"
+          ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
+          : buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
       reasoningEffort: reasoningEffort ?? "medium",
@@ -2016,9 +2014,62 @@ export async function runSongGeneration(
     throw new Error("The AI returned an incomplete or invalid response. Please try again.");
   }
 
+  let finalResult = result.data;
+  if (data.promptVersion === "v3" && data.operation !== "revision") {
+    try {
+      const review = await call({
+        system:
+          "You are a conservative independent lyrics editor. Return the required structured song output. Preserve all non-lyric metadata verbatim. No explanations.",
+        prompt: buildV3ReviewPrompt({
+          ...result.data,
+          language: data.language,
+          genre: data.genre,
+          mood: data.mood,
+          production: data.production,
+          structure: data.structure,
+        }),
+        maxTokens: 8192,
+        schema: schemas.song,
+        reasoningEffort: reasoningEffort ?? "medium",
+      });
+      const completed = review.stopReason === "end_turn";
+      records.push({
+        operation: "generate",
+        provider: review.provider,
+        model: review.model,
+        usage: review.usage,
+        success: completed,
+      });
+      if (completed) {
+        const reviewed = generationOutput.safeParse(parseSections(review.text));
+        if (
+          reviewed.success &&
+          reviewed.data.title === result.data.title &&
+          reviewed.data.tags === result.data.tags &&
+          reviewed.data.note === result.data.note &&
+          isSafeV3Review(result.data.lyrics, reviewed.data.lyrics)
+        ) {
+          finalResult = reviewed.data;
+        }
+      }
+    } catch (reviewError) {
+      records.push({
+        operation: "generate",
+        provider,
+        model,
+        usage: null,
+        success: false,
+      });
+      console.warn(
+        "[ai] optional V3 singability review failed; preserving V2 draft",
+        reviewError instanceof Error ? reviewError.message : reviewError,
+      );
+    }
+  }
+
   await flushUsage(userId, generationId, records);
   console.log(`[ai] generation served by model=${generated.model}`);
-  return { result: result.data, provider: generated.provider, model: generated.model };
+  return { result: finalResult, provider: generated.provider, model: generated.model };
 }
 
 export async function runLyricsSectionEdit(
