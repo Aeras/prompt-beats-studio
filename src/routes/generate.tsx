@@ -33,6 +33,7 @@ import {
   type AdvancedGeneratorSetup,
 } from "@/lib/advanced-generator-setup";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { parseSongMarkdown, SONG_MARKDOWN_MAX_BYTES } from "@/lib/generator-song-markdown";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
 import { VisualSongArrangement } from "@/components/promptbeats/VisualSongArrangement";
@@ -941,6 +942,8 @@ function GeneratePage() {
   const [songSetupAssistantOpen, setSongSetupAssistantOpen] = useState(false);
   const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(null);
   const [setupIoError, setSetupIoError] = useState<string | null>(null);
+  const [setupMenuOpen, setSetupMenuOpen] = useState<"import" | "export" | null>(null);
+  const mdFileInputRef = useRef<HTMLInputElement | null>(null);
   const setupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
     useState<InspirationWallSongSetupHandoff | null>(null);
@@ -997,6 +1000,7 @@ function GeneratePage() {
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
   const [generationResultModel, setGenerationResultModel] = useState<string | null>(null);
   const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
+  const [qualityCheckVersion, setQualityCheckVersion] = useState<"v1" | "v2">("v1");
   const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
   const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -1622,7 +1626,7 @@ function GeneratePage() {
     qualityAvailableModels.find((model) => model.id === modelId)?.label ??
     aiModelLabel(modelId);
   const exportGeneratorBenchmark = () => {
-    if (!moderation.isSuperAdmin || !result) return;
+    if (!result) return;
     const modelId =
       generationResultModel ??
       songContext?.inputSnapshot?.generationModel ??
@@ -2028,6 +2032,38 @@ function GeneratePage() {
     }
   };
 
+  const onSongMarkdownSelected = async (file: File | undefined) => {
+    setSetupIoError(null);
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".md") || file.size > SONG_MARKDOWN_MAX_BYTES) {
+      setSetupIoError(appLanguage === "el" ? "Μη έγκυρο ή υπερβολικά μεγάλο αρχείο MD." : "Invalid or oversized MD file.");
+      return;
+    }
+    try {
+      const parsed = parseSongMarkdown(await file.text());
+      if (!parsed) throw new Error("Invalid export");
+      // Keep imported JSON brief, but never misidentify an MD file as an AI job.
+      setResult(parsed);
+      setGenerationId(null);
+      setGenerationResultModel(null);
+      setSongContext(null);
+      setQuality(null);
+      setQualityCheckResultModel(null);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      setChecking(false);
+      setCheckError(null);
+      setApplied({});
+      setApplyErrors({});
+      setWorkspaceResultSaved(false);
+      setOpen({ title: true, tags: true, lyrics: true, note: true });
+      setStatus(appLanguage === "el" ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI." : "MD result imported without AI generation.");
+    } catch {
+      setSetupIoError(appLanguage === "el" ? "Δεν ήταν δυνατή η εισαγωγή του MD." : "Could not import MD song result.");
+    }
+  };
+
   const onSetupFileSelected = async (file: File | undefined) => {
     setSetupIoError(null);
     if (!file) return;
@@ -2283,6 +2319,7 @@ function GeneratePage() {
           result: { ...target },
           idempotencyKey,
           qualityCheckModel,
+          qualityCheckVersion: moderation.isSuperAdmin ? qualityCheckVersion : "v1",
           generationId,
         },
       });
