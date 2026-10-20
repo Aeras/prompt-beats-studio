@@ -750,9 +750,7 @@ function QualityPanel({
               <span>Quality Check Version · Super Admin</span>
               <select
                 value={qualityCheckVersion}
-                onChange={(e) =>
-                  onQualityCheckVersionChange(e.target.value === "v2" ? "v2" : "v1")
-                }
+                onChange={(e) => onQualityCheckVersionChange(e.target.value === "v2" ? "v2" : "v1")}
                 className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
               >
                 <option value="v1">Version 1 — Existing</option>
@@ -2057,7 +2055,11 @@ function GeneratePage() {
     setSetupIoError(null);
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".md") || file.size > SONG_MARKDOWN_MAX_BYTES) {
-      setSetupIoError(appLanguage === "el" ? "Μη έγκυρο ή υπερβολικά μεγάλο αρχείο MD." : "Invalid or oversized MD file.");
+      setSetupIoError(
+        appLanguage === "el"
+          ? "Μη έγκυρο ή υπερβολικά μεγάλο αρχείο MD."
+          : "Invalid or oversized MD file.",
+      );
       return;
     }
     try {
@@ -2085,9 +2087,17 @@ function GeneratePage() {
       setSaved(false);
       setRevisionMeta(null);
       setOpen({ title: true, tags: true, lyrics: true, note: true });
-      setStatus(appLanguage === "el" ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI." : "MD result imported without AI generation.");
+      setStatus(
+        appLanguage === "el"
+          ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI."
+          : "MD result imported without AI generation.",
+      );
     } catch {
-      setSetupIoError(appLanguage === "el" ? "Δεν ήταν δυνατή η εισαγωγή του MD." : "Could not import MD song result.");
+      setSetupIoError(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η εισαγωγή του MD."
+          : "Could not import MD song result.",
+      );
     }
   };
 
@@ -2962,11 +2972,23 @@ function GeneratePage() {
                           <button
                             type="button"
                             aria-expanded={setupMenuOpen === kind}
-                            onClick={() => setSetupMenuOpen((current) => current === kind ? null : kind)}
+                            onClick={() =>
+                              setSetupMenuOpen((current) => (current === kind ? null : kind))
+                            }
                             className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent"
                           >
-                            {kind === "import" ? <Upload className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
-                            {kind === "import" ? (appLanguage === "el" ? "Εισαγωγή" : "Import") : (appLanguage === "el" ? "Εξαγωγή" : "Export")}
+                            {kind === "import" ? (
+                              <Upload className="h-3.5 w-3.5" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            {kind === "import"
+                              ? appLanguage === "el"
+                                ? "Εισαγωγή"
+                                : "Import"
+                              : appLanguage === "el"
+                                ? "Εξαγωγή"
+                                : "Export"}
                             <ChevronDown className="h-3 w-3" />
                           </button>
                           {setupMenuOpen === kind && (
@@ -2986,7 +3008,14 @@ function GeneratePage() {
                                   }}
                                   className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40"
                                 >
-                                  {kind === "import" ? (appLanguage === "el" ? "Εισαγωγή" : "Import") : (appLanguage === "el" ? "Εξαγωγή" : "Export")} {format}
+                                  {kind === "import"
+                                    ? appLanguage === "el"
+                                      ? "Εισαγωγή"
+                                      : "Import"
+                                    : appLanguage === "el"
+                                      ? "Εξαγωγή"
+                                      : "Export"}{" "}
+                                  {format}
                                 </button>
                               ))}
                             </div>
