@@ -122,6 +122,15 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
   }
 
   try {
+    if (payload.qualityCheckVersion === "v2") {
+      const { data: isSuperAdmin, error: roleError } = await db.rpc(
+        "user_is_super_admin",
+        { _user_id: action.user_id },
+      );
+      if (roleError || isSuperAdmin !== true) {
+        throw new Error("Quality Check V2 authorization failed.");
+      }
+    }
     const out = await runDurableQualityCheck(
       payload,
       action.user_id,
