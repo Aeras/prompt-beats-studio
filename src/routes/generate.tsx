@@ -33,6 +33,7 @@ import {
   type AdvancedGeneratorSetup,
 } from "@/lib/advanced-generator-setup";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { parseGeneratorMarkdown, MAX_SONG_MARKDOWN_BYTES } from "@/lib/generator-markdown-import";
 import { SongSetupAssistantModal } from "@/components/promptbeats/SongSetupAssistantModal";
 import { SongBlueprintEditor } from "@/components/promptbeats/SongBlueprintEditor";
 import { VisualSongArrangement } from "@/components/promptbeats/VisualSongArrangement";
@@ -689,6 +690,9 @@ function QualityPanel({
   onQualityCheckModelChange,
   qualityCheckResultModel,
   showQualityCheckModelSelector,
+  qualityCheckVersion,
+  onQualityCheckVersionChange,
+  showQualityCheckVersionSelector,
   featureAvailable,
 }: {
   quality: QualityReport | null;
@@ -706,6 +710,9 @@ function QualityPanel({
   onQualityCheckModelChange: (model: string) => void;
   qualityCheckResultModel: string | null;
   showQualityCheckModelSelector: boolean;
+  qualityCheckVersion: "v1" | "v2";
+  onQualityCheckVersionChange: (value: "v1" | "v2") => void;
+  showQualityCheckVersionSelector: boolean;
   featureAvailable: boolean;
 }) {
   const { t } = useI18n();
@@ -738,6 +745,17 @@ function QualityPanel({
       )}
       {!checking && (
         <div className="mt-4 space-y-3">
+          {showQualityCheckVersionSelector && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Quality Check Version · Super Admin</span>
+              <select aria-label="Quality Check Version" value={qualityCheckVersion}
+                onChange={(event) => onQualityCheckVersionChange(event.target.value as "v1" | "v2")}
+                className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground">
+                <option value="v1">Version 1</option>
+                <option value="v2">Version 2</option>
+              </select>
+            </label>
+          )}
           {!featureAvailable && (
             <p className="text-xs text-muted-foreground">{t("quality.featureUnavailable")}</p>
           )}
@@ -942,6 +960,7 @@ function GeneratePage() {
   const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(null);
   const [setupIoError, setSetupIoError] = useState<string | null>(null);
   const setupFileInputRef = useRef<HTMLInputElement | null>(null);
+  const mdFileInputRef = useRef<HTMLInputElement | null>(null);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
     useState<InspirationWallSongSetupHandoff | null>(null);
   const [storyMapHandoff, setStoryMapHandoff] = useState<StoryMapSongSetupHandoff | null>(null);
@@ -998,6 +1017,7 @@ function GeneratePage() {
   const [generationResultModel, setGenerationResultModel] = useState<string | null>(null);
   const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
   const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
+  const [qualityCheckVersion, setQualityCheckVersion] = useState<"v1" | "v2">("v1");
   const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -1622,7 +1642,7 @@ function GeneratePage() {
     qualityAvailableModels.find((model) => model.id === modelId)?.label ??
     aiModelLabel(modelId);
   const exportGeneratorBenchmark = () => {
-    if (!moderation.isSuperAdmin || !result) return;
+    if (!result) return;
     const modelId =
       generationResultModel ??
       songContext?.inputSnapshot?.generationModel ??
@@ -2028,6 +2048,38 @@ function GeneratePage() {
     }
   };
 
+  const onMarkdownFileSelected = async (file: File | undefined) => {
+    setSetupIoError(null);
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".md") || file.size > MAX_SONG_MARKDOWN_BYTES) {
+      setSetupIoError(appLanguage === "el" ? "Μη έγκυρο ή πολύ μεγάλο αρχείο MD." : "Invalid or oversized MD file.");
+      return;
+    }
+    try {
+      const imported = parseGeneratorMarkdown(await file.text());
+      if (!imported) throw new Error("invalid markdown");
+      if (busy || checking) throw new Error("busy");
+      setResult(imported);
+      setGenerationId(null);
+      setGenerationResultModel(null);
+      setSongContext(null);
+      setQuality(null);
+      setQualityCheckResultModel(null);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      setSaved(false);
+      setApplied({});
+      setApplyErrors({});
+      setRevisionMeta(null);
+      setWorkspaceResultSaved(false);
+      setOpen({ title: true, tags: true, lyrics: true, note: true });
+      setStatus(appLanguage === "el" ? "Το αποτέλεσμα MD εισήχθη χωρίς δημιουργία AI." : "MD result imported without AI generation.");
+    } catch {
+      setSetupIoError(appLanguage === "el" ? "Δεν ήταν δυνατή η εισαγωγή του MD." : "Could not import MD result.");
+    }
+  };
+
   const onSetupFileSelected = async (file: File | undefined) => {
     setSetupIoError(null);
     if (!file) return;
@@ -2283,6 +2335,7 @@ function GeneratePage() {
           result: { ...target },
           idempotencyKey,
           qualityCheckModel,
+          qualityCheckVersion: moderation.isSuperAdmin ? qualityCheckVersion : "v1",
           generationId,
         },
       });
@@ -3759,7 +3812,7 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                {moderation.isSuperAdmin && (
+                {(
                   <button
                     type="button"
                     onClick={exportGeneratorBenchmark}
