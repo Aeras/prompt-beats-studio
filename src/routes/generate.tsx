@@ -904,7 +904,9 @@ function GeneratePage() {
       ? search.session
       : null;
   const jobStorageKey = freshSession ? `pb:generation-job:fresh:${freshSession}` : JOB_STORAGE_KEY;
-  const qualityJobStorageKey = user ? `${QUALITY_JOB_STORAGE_KEY}:${user.id}` : QUALITY_JOB_STORAGE_KEY;
+  const qualityJobStorageKey = user
+    ? `${QUALITY_JOB_STORAGE_KEY}:${user.id}`
+    : QUALITY_JOB_STORAGE_KEY;
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
@@ -1471,8 +1473,12 @@ function GeneratePage() {
     if (!user || jobId || result) return;
     // A user-imported MD result is authoritative; a prior generated job must
     // not overwrite it while its component state is being restored.
-    if (!freshSession && typeof window !== "undefined" &&
-        window.sessionStorage.getItem(`pb:imported-quality:v1:${user.id}`)) return;
+    if (
+      !freshSession &&
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem(`pb:imported-quality:v1:${user.id}`)
+    )
+      return;
     const stored =
       typeof window !== "undefined" ? window.localStorage.getItem(jobStorageKey) : null;
     if (stored) {
@@ -1500,7 +1506,8 @@ function GeneratePage() {
   // reload so the independently durable Quality Check can still be shown.
   const importedRecoveryKey = user ? `pb:imported-quality:v1:${user.id}` : null;
   useEffect(() => {
-    if (!importedRecoveryKey || freshSession || search.workspace === "lyrics" || revisionMode) return;
+    if (!importedRecoveryKey || freshSession || search.workspace === "lyrics" || revisionMode)
+      return;
     try {
       const raw = window.sessionStorage.getItem(importedRecoveryKey);
       if (!raw) return;
@@ -1508,10 +1515,14 @@ function GeneratePage() {
         result?: GeneratorResult;
         quality?: QualityReport | null;
       };
-      if (!saved.result || typeof saved.result.title !== "string" ||
-          typeof saved.result.tags !== "string" ||
-          typeof saved.result.lyrics !== "string" ||
-          typeof saved.result.note !== "string") return;
+      if (
+        !saved.result ||
+        typeof saved.result.title !== "string" ||
+        typeof saved.result.tags !== "string" ||
+        typeof saved.result.lyrics !== "string" ||
+        typeof saved.result.note !== "string"
+      )
+        return;
       setResult((current) => current ?? saved.result ?? null);
       setImportedResultActive(true);
       if (saved.quality) setQuality(saved.quality);
@@ -2113,9 +2124,12 @@ function GeneratePage() {
       if (importedRecoveryKey) {
         try {
           window.sessionStorage.setItem(
-            importedRecoveryKey, JSON.stringify({ result: parsed, quality: null }),
+            importedRecoveryKey,
+            JSON.stringify({ result: parsed, quality: null }),
           );
-        } catch { /* Storage not available. */ }
+        } catch {
+          /* Storage not available. */
+        }
       }
       setImportedResultActive(true);
       setResult(parsed);
