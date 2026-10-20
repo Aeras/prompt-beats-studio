@@ -48,6 +48,9 @@ describe("Experimental Advanced Generator V3", () => {
     );
     expect(route).toContain('<option value="v3">Prompt Version 3');
     expect(ai).toContain('data.promptVersion === "v3"');
-    expect(ai).toContain("buildAdvancedGeneratorPromptV3(buildPrompt(data))");
+    expect(ai).toContain('data.promptVersion === "v2" || data.promptVersion === "v3"');
+    expect(ai).toContain("buildV3ReviewPrompt({");
+    expect(ai).toContain("isSafeV3Review(result.data.lyrics, reviewed.data.lyrics)");
+    expect(ai).toContain("finalResult = result.data");
   });
 });
