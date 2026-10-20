@@ -2087,11 +2087,7 @@ function GeneratePage() {
           : "MD result imported without AI generation.",
       );
     } catch {
-      setSetupIoError(
-        appLanguage === "el"
-          ? "Δεν ήταν δυνατή η εισαγωγή του MD."
-          : "Could not import MD result.",
-      );
+      setSetupIoError(setupIoText.invalid);
     }
   };
 
