@@ -50,11 +50,13 @@ async function finalizePersistedResult(db: AdminClient, actionId: string): Promi
 export async function executeQualityCheckJob(actionId: string): Promise<{ ran: boolean }> {
   const db = await admin();
 
-  const { data: existing } = await db
+  const { data: existing, error: readError } = await db
     .from("ai_quality_check_actions")
     .select("*")
     .eq("id", actionId)
     .maybeSingle();
+
+  if (readError) throw new Error("The quality check job could not be read by the worker.");
 
   if (!existing || existing.status === "completed" || existing.status === "failed") {
     return { ran: false };
@@ -90,7 +92,8 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     .select("*")
     .maybeSingle();
 
-  if (claimError || !claimed) return { ran: false };
+  if (claimError) throw new Error("The quality check job could not be claimed by the worker.");
+  if (!claimed) return { ran: false };
 
   const action = claimed as {
     id: string;
