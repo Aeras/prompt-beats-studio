@@ -2947,40 +2947,63 @@ function GeneratePage() {
                   {advanced && !revisionMode && (
                     <>
                       <details className="relative">
-                        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
-                          aria-label={appLanguage === "el" ? "Εξαγωγή αρχείου" : "Export file"}>
-                          <Download className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εξαγωγή" : "Export"}
+                        <summary
+                          className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                          aria-label={appLanguage === "el" ? "Εξαγωγή αρχείου" : "Export file"}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {appLanguage === "el" ? "Εξαγωγή" : "Export"}
                           <ChevronDown className="h-3 w-3" />
                         </summary>
                         <div className="absolute left-0 top-full z-30 min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl">
-                          <button type="button" onClick={exportAdvancedSetup}
-                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
+                          <button
+                            type="button"
+                            onClick={exportAdvancedSetup}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10"
+                          >
                             {appLanguage === "el" ? "Εξαγωγή JSON" : "Export JSON"}
                           </button>
-                          <button type="button" onClick={exportGeneratorBenchmark} disabled={!result}
-                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
+                          <button
+                            type="button"
+                            onClick={exportGeneratorBenchmark}
+                            disabled={!result}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40"
+                          >
                             {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
                           </button>
                         </div>
                       </details>
                       <details className="relative">
-                        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
-                          aria-label={appLanguage === "el" ? "Εισαγωγή αρχείου" : "Import file"}>
-                          <Upload className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εισαγωγή" : "Import"}
+                        <summary
+                          className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                          aria-label={appLanguage === "el" ? "Εισαγωγή αρχείου" : "Import file"}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          {appLanguage === "el" ? "Εισαγωγή" : "Import"}
                           <ChevronDown className="h-3 w-3" />
                         </summary>
                         <div className="absolute left-0 top-full z-30 min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl">
-                          <button type="button" onClick={() => setupFileInputRef.current?.click()}
-                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
+                          <button
+                            type="button"
+                            onClick={() => setupFileInputRef.current?.click()}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10"
+                          >
                             {appLanguage === "el" ? "Εισαγωγή JSON" : "Import JSON"}
                           </button>
-                          <button type="button" onClick={() => mdFileInputRef.current?.click()} disabled={busy || checking}
-                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
+                          <button
+                            type="button"
+                            onClick={() => mdFileInputRef.current?.click()}
+                            disabled={busy || checking}
+                            className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40"
+                          >
                             {appLanguage === "el" ? "Εισαγωγή MD" : "Import MD"}
                           </button>
                         </div>
                       </details>
-                      <input ref={mdFileInputRef} type="file" accept=".md,text/markdown"
+                      <input
+                        ref={mdFileInputRef}
+                        type="file"
+                        accept=".md,text/markdown"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -3840,21 +3863,6 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                {false && (
-                  <button
-                    type="button"
-                    onClick={exportGeneratorBenchmark}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-400/5 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10"
-                    title={
-                      appLanguage === "el"
-                        ? "Εξαγωγή ολόκληρου του αποτελέσματος για benchmark"
-                        : "Export the full result for benchmarking"
-                    }
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    {appLanguage === "el" ? "Εξαγωγή Test (.md)" : "Export Test (.md)"}
-                  </button>
-                )}
                 <button
                   onClick={toggleAll}
                   className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent"
