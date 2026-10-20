@@ -15,9 +15,15 @@ const lyrics = [
 describe("Independent V3 lyric review", () => {
   test("retains complete V2 metadata and prohibits unrelated changes", () => {
     const prompt = buildV3ReviewPrompt({
-      title: "Song", tags: "Pop", lyrics, note: "Producer note",
-      language: "English", genre: "Pop", mood: "Hopeful",
-      production: "100 BPM, sung", structure: "Verse -> Chorus",
+      title: "Song",
+      tags: "Pop",
+      lyrics,
+      note: "Producer note",
+      language: "English",
+      genre: "Pop",
+      mood: "Hopeful",
+      production: "100 BPM, sung",
+      structure: "Verse -> Chorus",
     });
     expect(prompt).toContain("title, tags, lyrics and note");
     expect(prompt).toContain("Copy title, tags and note EXACTLY");
@@ -33,7 +39,15 @@ describe("Independent V3 lyric review", () => {
   test("rejects section structure modifications or excessive rewrites", () => {
     expect(isSafeV3Review(lyrics, lyrics.replace("[Chorus]", "[Verse]"))).toBe(false);
     expect(isSafeV3Review(lyrics, lyrics.replace("[Warm vocal]", "[Rap vocal]"))).toBe(false);
-    expect(isSafeV3Review(lyrics, lyrics.replace("I used", "I always used").replace("Now I", "Never I").replace("Come back", "Stay away"))).toBe(false);
+    expect(
+      isSafeV3Review(
+        lyrics,
+        lyrics
+          .replace("I used", "I always used")
+          .replace("Now I", "Never I")
+          .replace("Come back", "Stay away"),
+      ),
+    ).toBe(false);
     expect(isSafeV3Review(lyrics, "")).toBe(false);
   });
 });
