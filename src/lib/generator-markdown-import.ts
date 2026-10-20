@@ -16,8 +16,11 @@ export function parseGeneratorMarkdown(markdown: string): ImportedSongResult | n
   if (!normalized.startsWith("# PromptBeats Generator Test Result\n")) return null;
   const blocks = new Map<string, string>();
   const matches = [...normalized.matchAll(/^## (Title|Music Style|Lyrics|Producer Note)\s*$/gm)];
-  if (matches.length !== 4 || matches.map((m) => m[1]).join("|") !==
-      "Title|Music Style|Lyrics|Producer Note") return null;
+  if (
+    matches.length !== 4 ||
+    matches.map((m) => m[1]).join("|") !== "Title|Music Style|Lyrics|Producer Note"
+  )
+    return null;
   for (let i = 0; i < matches.length; i++) {
     const here = matches[i];
     if (!here || here.index === undefined) return null;
@@ -30,6 +33,7 @@ export function parseGeneratorMarkdown(markdown: string): ImportedSongResult | n
   const lyrics = blocks.get("Lyrics") ?? "";
   const note = blocks.get("Producer Note") ?? "";
   if (!title || !tags || !lyrics || !note || [title, tags, lyrics, note].includes("—")) return null;
-  if (title.length > 200 || tags.length > 4000 || lyrics.length > 12000 || note.length > 6000) return null;
+  if (title.length > 200 || tags.length > 4000 || lyrics.length > 12000 || note.length > 6000)
+    return null;
   return { title, tags, lyrics, note };
 }
