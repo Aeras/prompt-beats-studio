@@ -169,7 +169,9 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
         .from("ai_quality_check_actions")
         .update({
           status: "failed",
-          error: "Quality check unavailable. Please try again.",
+          error: out.failureReason
+            ? `Quality check could not complete (${out.failureReason}). Please try again later.`
+            : "Quality check unavailable. Please try again.",
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
