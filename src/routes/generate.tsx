@@ -904,6 +904,7 @@ function GeneratePage() {
       ? search.session
       : null;
   const jobStorageKey = freshSession ? `pb:generation-job:fresh:${freshSession}` : JOB_STORAGE_KEY;
+  const qualityJobStorageKey = user ? `${QUALITY_JOB_STORAGE_KEY}:${user.id}` : QUALITY_JOB_STORAGE_KEY;
   const queryClient = useQueryClient();
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
@@ -1468,6 +1469,10 @@ function GeneratePage() {
   }, [jobData, jobId]);
   useEffect(() => {
     if (!user || jobId || result) return;
+    // A user-imported MD result is authoritative; a prior generated job must
+    // not overwrite it while its component state is being restored.
+    if (!freshSession && typeof window !== "undefined" &&
+        window.sessionStorage.getItem(`pb:imported-quality:v1:${user.id}`)) return;
     const stored =
       typeof window !== "undefined" ? window.localStorage.getItem(jobStorageKey) : null;
     if (stored) {
@@ -1531,8 +1536,8 @@ function GeneratePage() {
   const pendingQualityKey = useRef<string | null>(null);
   function rememberQualityJob(id: string | null) {
     if (typeof window === "undefined") return;
-    if (id) window.localStorage.setItem(QUALITY_JOB_STORAGE_KEY, id);
-    else window.localStorage.removeItem(QUALITY_JOB_STORAGE_KEY);
+    if (id) window.localStorage.setItem(qualityJobStorageKey, id);
+    else window.localStorage.removeItem(qualityJobStorageKey);
   }
   function applyQualityJob(job: QualityCheckJob) {
     if (job.status === "completed") {
@@ -1587,7 +1592,7 @@ function GeneratePage() {
   useEffect(() => {
     if (!user || !result || qualityActionId || quality) return;
     const stored =
-      typeof window !== "undefined" ? window.localStorage.getItem(QUALITY_JOB_STORAGE_KEY) : null;
+      typeof window !== "undefined" ? window.localStorage.getItem(qualityJobStorageKey) : null;
     if (stored) {
       setQualityActionId(stored);
       setChecking(true);
