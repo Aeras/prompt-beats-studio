@@ -33,7 +33,9 @@ number of sung lines, bracket directions, narrative intent, voice, or story.
 If a line is already good, keep it verbatim.
 Make only very small, unmistakably beneficial local changes.
 If uncertain, return the original draft EXACTLY.
-Return a complete song result in the required structured output schema with\ntitle, tags, lyrics and note. Copy title, tags and note EXACTLY from the original;\nonly lyrics may change.
+Return a complete song result in the required structured output schema with
+title, tags, lyrics and note. Copy title, tags and note EXACTLY from the original;
+only lyrics may change.
 
 ORIGINAL LYRICS:
 ${input.lyrics}`;
@@ -41,11 +43,14 @@ ${input.lyrics}`;
 
 export function isSafeV3Review(original: string, candidate: string): boolean {
   if (!candidate.trim() || candidate === original) return Boolean(candidate.trim());
-  const sections = (s: string) =>
-    s.split("\n").map((l) => l.trim()).filter((l) => /^\[(?:intro|verse|pre-chorus|chorus|bridge|hook|breakdown|instrumental|final chorus|outro|post-chorus|refrain)/i.test(l));
-  const a = sections(original);
-  const b = sections(candidate);
-  if (a.length !== b.length || a.some((s, i) => s !== b[i])) return false;
+  const directions = (s: string) =>
+    s
+      .split("\\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("[") && line.endsWith("]"));
+  const a = directions(original);
+  const b = directions(candidate);
+  if (a.length !== b.length || a.some((line, i) => line !== b[i])) return false;
   const lines = (s: string) =>
     s.split("\n").map((l) => l.trim()).filter((l) => l && !/^\[/.test(l));
   const oldLines = lines(original);
