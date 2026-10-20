@@ -3,7 +3,10 @@
  * Review only sung phrasing; never rewrite metadata or rearrange sections.
  */
 export function buildV3ReviewPrompt(input: {
+  title: string;
+  tags: string;
   lyrics: string;
+  note: string;
   language: string;
   genre: string;
   mood: string;
@@ -30,7 +33,7 @@ number of sung lines, bracket directions, narrative intent, voice, or story.
 If a line is already good, keep it verbatim.
 Make only very small, unmistakably beneficial local changes.
 If uncertain, return the original draft EXACTLY.
-Return ONLY the revised complete lyrics as plain text.
+Return a complete song result in the required structured output schema with\ntitle, tags, lyrics and note. Copy title, tags and note EXACTLY from the original;\nonly lyrics may change.
 
 ORIGINAL LYRICS:
 ${input.lyrics}`;
