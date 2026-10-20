@@ -2946,14 +2946,13 @@ function GeneratePage() {
                   )}
                   {advanced && !revisionMode && (
                     <>
-                      <div className="relative group">
-                        <button type="button"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                      <details className="relative">
+                        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
                           aria-label={appLanguage === "el" ? "Εξαγωγή αρχείου" : "Export file"}>
                           <Download className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εξαγωγή" : "Export"}
                           <ChevronDown className="h-3 w-3" />
-                        </button>
-                        <div className="absolute left-0 top-full z-30 hidden min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl group-hover:block group-focus-within:block">
+                        </summary>
+                        <div className="absolute left-0 top-full z-30 min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl">
                           <button type="button" onClick={exportAdvancedSetup}
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
                             {appLanguage === "el" ? "Εξαγωγή JSON" : "Export JSON"}
@@ -2962,16 +2961,15 @@ function GeneratePage() {
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
                             {appLanguage === "el" ? "Εξαγωγή MD" : "Export MD"}
                           </button>
-                        </div>
-                      </div>
-                      <div className="relative group">
-                        <button type="button"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
+                        </details>
+                      </details>
+                      <details className="relative">
+                        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-muted-foreground hover:text-accent"
                           aria-label={appLanguage === "el" ? "Εισαγωγή αρχείου" : "Import file"}>
                           <Upload className="h-3.5 w-3.5" /> {appLanguage === "el" ? "Εισαγωγή" : "Import"}
                           <ChevronDown className="h-3 w-3" />
-                        </button>
-                        <div className="absolute left-0 top-full z-30 hidden min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl group-hover:block group-focus-within:block">
+                        </summary>
+                        <div className="absolute left-0 top-full z-30 min-w-[10rem] rounded-lg border border-white/15 bg-[#17171d] p-1 shadow-xl">
                           <button type="button" onClick={() => setupFileInputRef.current?.click()}
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10">
                             {appLanguage === "el" ? "Εισαγωγή JSON" : "Import JSON"}
@@ -2980,8 +2978,8 @@ function GeneratePage() {
                             className="block w-full rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-white/10 disabled:opacity-40">
                             {appLanguage === "el" ? "Εισαγωγή MD" : "Import MD"}
                           </button>
-                        </div>
-                      </div>
+                        </details>
+                      </details>
                       <input ref={mdFileInputRef} type="file" accept=".md,text/markdown"
                         className="hidden"
                         onChange={(e) => {
