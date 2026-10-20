@@ -727,6 +727,7 @@ export async function runDurableQualityCheck(
   provider: string;
   model: string;
   records: DurableQualityUsageRecord[];
+  failureReason?: "provider_error" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
   const resolved = await providerLayer.resolveAiModelForUser(
@@ -756,7 +757,7 @@ export async function runDurableQualityCheck(
       `[ai] quality_check failed model=${model}`,
       err instanceof Error ? err.message : err,
     );
-    return { quality: null, provider, model, records };
+    return { quality: null, provider, model, records, failureReason: "provider_error" };
   }
 
   const actualProvider = result.provider || provider;
@@ -777,7 +778,7 @@ export async function runDurableQualityCheck(
       provider: actualProvider,
       stopReason: result.stopReason ?? "unknown",
     });
-    return { quality: null, provider: actualProvider, model: actualModel, records };
+    return { quality: null, provider: actualProvider, model: actualModel, records, failureReason: "provider_incomplete" };
   }
 
   const cleaned = result.text
@@ -794,7 +795,7 @@ export async function runDurableQualityCheck(
       failureReason: "missing_json",
       responseTextLength: result.text.length,
     });
-    return { quality: null, provider: actualProvider, model: actualModel, records };
+    return { quality: null, provider: actualProvider, model: actualModel, records, failureReason: "missing_json" };
   }
 
   let parsedJson: unknown;
@@ -809,7 +810,7 @@ export async function runDurableQualityCheck(
       responseTextLength: result.text.length,
       error: err instanceof Error ? err.message : String(err),
     });
-    return { quality: null, provider: actualProvider, model: actualModel, records };
+    return { quality: null, provider: actualProvider, model: actualModel, records, failureReason: "invalid_json" };
   }
 
   parsedJson = normalizeQualityScore(parsedJson);
@@ -827,7 +828,7 @@ export async function runDurableQualityCheck(
         message: issue.message,
       })),
     });
-    return { quality: null, provider: actualProvider, model: actualModel, records };
+    return { quality: null, provider: actualProvider, model: actualModel, records, failureReason: "invalid_schema" };
   }
 
   return {
