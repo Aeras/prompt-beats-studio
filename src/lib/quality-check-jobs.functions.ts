@@ -67,12 +67,12 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "quality_check");
-    if (data.qualityCheckVersion === "v2") {
+    if (data.qualityCheckVersion !== "v1") {
       const { data: superAdmin, error: roleError } = await context.supabase.rpc(
         "current_user_is_super_admin",
       );
       if (roleError || superAdmin !== true) {
-        throw new Error("Quality Check V2 requires Super Admin privileges.");
+        throw new Error("Quality Check V2+ requires Super Admin privileges.");
       }
     }
     const { getModelForUser } = await import("@/lib/ai-provider.server");
