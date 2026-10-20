@@ -19,8 +19,12 @@ const song = {
 describe("Quality Check version isolation", () => {
   test("missing version remains V1 for every existing caller", () => {
     expect(durableQualityCheckInput.parse(song).qualityCheckVersion).toBe("v1");
-    expect(durableQualityCheckInput.parse({ ...song, qualityCheckVersion: "v2" }).qualityCheckVersion).toBe("v2");
-    expect(durableQualityCheckInput.safeParse({ ...song, qualityCheckVersion: "v3" }).success).toBe(false);
+    expect(
+      durableQualityCheckInput.parse({ ...song, qualityCheckVersion: "v2" }).qualityCheckVersion,
+    ).toBe("v2");
+    expect(durableQualityCheckInput.safeParse({ ...song, qualityCheckVersion: "v3" }).success).toBe(
+      false,
+    );
   });
 
   test("super-admin authorization is checked on admission and again in the worker", () => {
@@ -37,6 +41,8 @@ describe("Quality Check version isolation", () => {
     const core = readFileSync("src/lib/quality-check-core.server.ts", "utf8");
     expect(core).toContain("const QUALITY_SYSTEM_PROMPT =");
     expect(core).toContain("const QUALITY_V2_SYSTEM_PROMPT =");
-    expect(core).toContain('data.qualityCheckVersion === "v2" ? QUALITY_V2_SYSTEM_PROMPT : QUALITY_SYSTEM_PROMPT');
+    expect(core).toContain(
+      'data.qualityCheckVersion === "v2" ? QUALITY_V2_SYSTEM_PROMPT : QUALITY_SYSTEM_PROMPT',
+    );
   });
 });
