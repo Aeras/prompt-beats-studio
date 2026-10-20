@@ -23,7 +23,7 @@ describe("Generator Markdown export", () => {
     const route = await source("../routes/generate.tsx");
     expect(route).toContain("useModeration");
     expect(route).toContain("exportGeneratorBenchmark");
-    expect(route).toContain("Εξαγωγή MD");
+    expect(route).toContain('format === "MD"');
     expect(route).toContain("generationResultModel ??");
     expect(route).toContain("songContext?.inputSnapshot?.generationModel");
     expect(route).toContain("buildGeneratorBenchmarkMarkdown");
