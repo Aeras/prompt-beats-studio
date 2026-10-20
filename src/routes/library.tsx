@@ -2474,6 +2474,7 @@ function SavedPromptCard({
   const generatorAccess = useFeatureAccess("ai_generator");
   const lyricsWorkspaceAccess = useFeatureAccess("lyrics_workspace");
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"tags" | "lyrics" | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -2510,11 +2511,16 @@ function SavedPromptCard({
       setDeleting(false);
     }
   };
-  const copy = async (text: string) => {
+  const copy = async (text: string, field?: "tags" | "lyrics") => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      if (field) {
+        setCopiedField(field);
+        setTimeout(() => setCopiedField((current) => (current === field ? null : current)), 1600);
+      } else {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }
     } catch {
       // Clipboard access is best-effort in restricted browser contexts.
     }
@@ -2868,14 +2874,44 @@ function SavedPromptCard({
         </div>
       )}
       {(!listMode || expanded) && !compact && prompt.tags && (
-        <pre className="mt-3 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">
-          {prompt.tags}
-        </pre>
+        <div className="mt-3 relative overflow-hidden rounded-xl bg-black/40">
+          <pre className="max-h-20 overflow-y-auto whitespace-pre-wrap p-3 pr-14 text-[11px] text-muted-foreground">
+            {prompt.tags}
+          </pre>
+          <button
+            type="button"
+            onClick={() => copy(prompt.tags ?? "", "tags")}
+            aria-label={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
+            title={language === "el" ? "Αντιγραφή μουσικού στυλ" : "Copy Music Style"}
+            className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {copiedField === "tags" ? (
+              <Check className="h-4 w-4 text-accent" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       )}
       {(!listMode || expanded) && !compact && prompt.lyrics && (
-        <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/40 p-3 text-[11px] text-muted-foreground">
-          {prompt.lyrics}
-        </pre>
+        <div className="mt-2 relative overflow-hidden rounded-xl bg-black/40">
+          <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap p-3 pr-14 text-[11px] text-muted-foreground">
+            {prompt.lyrics}
+          </pre>
+          <button
+            type="button"
+            onClick={() => copy(prompt.lyrics ?? "", "lyrics")}
+            aria-label={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
+            title={language === "el" ? "Αντιγραφή στίχων" : "Copy Lyrics"}
+            className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-bl-2xl border-b border-l border-white/10 bg-[#17171d] text-muted-foreground transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {copiedField === "lyrics" ? (
+              <Check className="h-4 w-4 text-accent" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       )}
       <ProjectPromptActionMenu
         open={Boolean(prompt.project_id && projectMenuAnchor)}

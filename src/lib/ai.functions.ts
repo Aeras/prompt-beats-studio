@@ -1,3 +1,5 @@
+import { buildAdvancedGeneratorPromptV2 } from "@/lib/advanced-generator-prompt-v2";
+import { buildV3ReviewPrompt, isSafeV3Review } from "@/lib/advanced-generator-v3-review";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -41,6 +43,7 @@ const generateInput = z.object({
     .enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]])
     .default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.string().trim().min(1).max(240).nullish(),
+  promptVersion: z.enum(["v1", "v2", "v3"]).default("v1"),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
   songBlueprint: songBlueprintSchema,
@@ -361,7 +364,7 @@ Never rely on the target platform to repair overcrowded lyrics through unnatural
 CHORUS / HOOK
 ==================================================
 
-Create a memorable, concise and highly singable chorus with a distinctive emotional or lyrical hook.
+Create a memorable, naturally singable chorus with a distinctive emotional or lyrical hook. The hook itself should be concise and memorable, but the entire chorus must NOT default to a fixed, minimal number of lines.
 
 The chorus should provide the natural emotional payoff of the song.
 
@@ -369,11 +372,11 @@ Use repetition strategically, never merely to fill space.
 
 Keep chorus phrases concise enough to be sung with real breathing space and to land as memorable rhythmic shapes.
 
-Favour natural repetition of a short, strong hook over adding new information.
+Use a short, strong hook and repeat it naturally where it helps; develop the rest of the chorus as much as the song musically needs. Four, six, eight or more sung lines can all be appropriate. Do not automatically stop after four lines or equate a short hook with a short chorus.
 
 Do not make the chorus verbose in order to explain the story: the verses carry the detail, the chorus carries the feeling and the hook.
 
-Choruses should generally avoid unnecessary lyrical density and leave sufficient space for melodic emphasis, unless the requested genre or vocal style intentionally calls for dense rhythmic delivery.
+Choose chorus length from the user's explicit structure, Blueprint and lyrical instructions first, then the genre, energy, tempo and melodic arc. Avoid unnecessary lyrical density and leave sufficient melodic space, but do not reduce a well-developed chorus merely to make it shorter. When a chorus is deliberately short, it should be because the song calls for it.
 
 ==================================================
 STRUCTURE
@@ -455,7 +458,7 @@ LYRIC VOLUME RULES
 
 - Never fill the entire song duration with continuous dense lead vocals.
 - Do not make every verse, pre-chorus, chorus and bridge equally long or equally word-dense.
-- Use concise sections rather than adding lines merely to make the lyric sheet appear complete.
+- Give each section the length its musical role requires; do not add filler or arbitrarily shorten a section that needs meaningful development.
 - Let the arrangement breathe, especially before a chorus, after a central hook, during transitions and near the ending.
 - When a compact generation length is implied, reduce narrative detail and keep the form focused instead of compressing a conventional full-length lyric sheet into a short creation.
 - When the user requests a longer song, expand through meaningful musical development, section contrast, instrumental space and emotional progression — never through filler or crowded writing.
@@ -466,7 +469,7 @@ Unless the user explicitly requests otherwise:
 
 - Verses may carry the most narrative information, but should use a limited number of concise lyrical phrases and leave room for groove and melodic development.
 - Pre-choruses should remain focused and transitional rather than becoming another full verse.
-- Choruses should generally prioritize concise, memorable phrasing and sufficient melodic space rather than accumulating narrative detail.
+- Choruses should prioritize memorable phrases and melodic space, but may contain as many naturally singable lines as their musical role requires; keep the hook concise without forcing the whole chorus to be short.
 - Bridges should create contrast without becoming another dense verse.
 - Intros, post-choruses, instrumentals and outros must have a clear musical purpose and must not be filled with unnecessary lyrics.
 
@@ -474,7 +477,7 @@ TARGET-PLATFORM LENGTH RULES
 
 For Udio:
 - Keep the complete lyric set compact enough for one approximately 130-second creation.
-- Prefer a focused form with concise verses, a short memorable chorus and only essential sections.
+- Prefer a focused form with naturally singable sections and a memorable hook; adapt the chorus length to the actual duration available without imposing a four-line default.
 - If the requested structure is complex, preserve the requested order but shorten individual sections and reduce non-essential narrative detail.
 - Do not compress a conventional 3–4 minute lyric sheet into one Udio generation.
 
@@ -1969,7 +1972,11 @@ export async function runSongGeneration(
     const isRevision = data.operation === "revision";
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
-      prompt: isRevision ? buildRevisionPrompt(data) : buildPrompt(data),
+      prompt: isRevision
+        ? buildRevisionPrompt(data)
+        : data.promptVersion === "v2" || data.promptVersion === "v3"
+          ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
+          : buildPrompt(data),
       maxTokens: 8192,
       schema: schemas.song,
       reasoningEffort: reasoningEffort ?? "medium",
@@ -2007,9 +2014,62 @@ export async function runSongGeneration(
     throw new Error("The AI returned an incomplete or invalid response. Please try again.");
   }
 
+  let finalResult = result.data;
+  if (data.promptVersion === "v3" && data.operation !== "revision") {
+    try {
+      const review = await call({
+        system:
+          "You are a conservative independent lyrics editor. Return the required structured song output. Preserve all non-lyric metadata verbatim. No explanations.",
+        prompt: buildV3ReviewPrompt({
+          ...result.data,
+          language: data.language,
+          genre: data.genre,
+          mood: data.mood,
+          production: data.production,
+          structure: data.structure,
+        }),
+        maxTokens: 8192,
+        schema: schemas.song,
+        reasoningEffort: reasoningEffort ?? "medium",
+      });
+      const completed = review.stopReason === "end_turn";
+      records.push({
+        operation: "generate",
+        provider: review.provider,
+        model: review.model,
+        usage: review.usage,
+        success: completed,
+      });
+      if (completed) {
+        const reviewed = generationOutput.safeParse(parseSections(review.text));
+        if (
+          reviewed.success &&
+          reviewed.data.title === result.data.title &&
+          reviewed.data.tags === result.data.tags &&
+          reviewed.data.note === result.data.note &&
+          isSafeV3Review(result.data.lyrics, reviewed.data.lyrics)
+        ) {
+          finalResult = reviewed.data;
+        }
+      }
+    } catch (reviewError) {
+      records.push({
+        operation: "generate",
+        provider,
+        model,
+        usage: null,
+        success: false,
+      });
+      console.warn(
+        "[ai] optional V3 singability review failed; preserving V2 draft",
+        reviewError instanceof Error ? reviewError.message : reviewError,
+      );
+    }
+  }
+
   await flushUsage(userId, generationId, records);
   console.log(`[ai] generation served by model=${generated.model}`);
-  return { result: result.data, provider: generated.provider, model: generated.model };
+  return { result: finalResult, provider: generated.provider, model: generated.model };
 }
 
 export async function runLyricsSectionEdit(

@@ -52,11 +52,14 @@ type EssentiaWorkerMessage = EssentiaWorkerSuccess | EssentiaWorkerFailure;
 
 let worker: Worker | null = null;
 let nextRequestId = 1;
-const pending = new Map<number, {
-  resolve: (message: EssentiaWorkerMessage) => void;
-  reject: (error: Error) => void;
-  timeout: ReturnType<typeof setTimeout>;
-}>();
+const pending = new Map<
+  number,
+  {
+    resolve: (message: EssentiaWorkerMessage) => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  }
+>();
 
 function getWorker() {
   if (worker) return worker;
@@ -91,7 +94,7 @@ function mixToMono(buffer: AudioBuffer) {
   for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
     const source = buffer.getChannelData(channel);
     for (let i = 0; i < source.length; i += 1) {
-      mono[i] += (source[i] ?? 0) / buffer.numberOfChannels;
+      mono[i] = (mono[i] ?? 0) + (source[i] ?? 0) / buffer.numberOfChannels;
     }
   }
   return mono;
@@ -145,10 +148,9 @@ function runWorker(samples: Float32Array) {
     }, ESSENTIA_TIMEOUT_MS);
 
     pending.set(id, { resolve, reject, timeout });
-    activeWorker.postMessage(
-      { id, samples: samples.buffer, sampleRate: ESSENTIA_SAMPLE_RATE },
-      [samples.buffer],
-    );
+    activeWorker.postMessage({ id, samples: samples.buffer, sampleRate: ESSENTIA_SAMPLE_RATE }, [
+      samples.buffer,
+    ]);
   });
 }
 
@@ -221,7 +223,9 @@ export async function analyzeStage0Essentia(
           legacy.tempo?.primaryBpm != null
             ? `Legacy comparison BPM: ${legacy.tempo.primaryBpm}.`
             : "",
-        ].filter(Boolean).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
       rhythm: {
         beatStrength: es.rhythm.beatStrength,
@@ -235,7 +239,9 @@ export async function analyzeStage0Essentia(
             ? `Detected onset count in retained diagnostic sample: ${es.rhythm.onsetTimestamps.length}.`
             : "",
           "Meter remains unreported unless a separate reliable meter detector is introduced.",
-        ].filter(Boolean).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
       energy: legacy.energy
         ? {

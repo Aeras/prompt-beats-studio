@@ -16,7 +16,6 @@ describe("Generator EN/EL localization", () => {
       "generator.storyDrivenLyrics",
       "generator.storyDrivenLyricsDescription",
       "generator.songSetupAssistant",
-      "generator.storyMapSaveFailed",
     ];
 
     for (const key of requiredKeys) expect(route).toContain(`t("${key}")`);

@@ -146,7 +146,7 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.songSetupAssistant": "Βοηθός ρύθμισης τραγουδιού",
   "generator.storyDrivenLyrics": "Στίχοι με αφηγηματική εξέλιξη",
   "generator.storyDrivenLyricsDescription":
-    "Χτίζει πρώτα αφηγηματική ή συναισθηματική εξέλιξη ώστε οι στίχοι να προχωρούν αντί να επαναλαμβάνουν την ίδια ιδέα.",
+    "Ζητά αφηγηματική εξέλιξη στους στίχους, χωρίς δημιουργία Story Map ή επιπλέον κλήση AI.",
   "generator.storyMapSaveFailed": "Δεν ήταν δυνατή η αποθήκευση του Story Map.",
   "generator.error.providerUnavailable":
     "Ο πάροχος AI δεν είναι προσωρινά διαθέσιμος. Δοκίμασε ξανά αργότερα.",
