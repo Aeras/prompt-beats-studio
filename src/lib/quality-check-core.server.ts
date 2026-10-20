@@ -729,6 +729,7 @@ export async function runDurableQualityCheck(
   records: DurableQualityUsageRecord[];
   failureReason?:
     "provider_error" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
+  schemaFailureDetails?: string;
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
   const resolved = await providerLayer.resolveAiModelForUser(
@@ -847,12 +848,22 @@ export async function runDurableQualityCheck(
         message: issue.message,
       })),
     });
+    // Only field paths and Zod issue codes; never persist raw provider content,
+    // lyric excerpts, or free-form validation messages.
+    const diagnostics = parsed.error.issues.slice(0, 8).map((issue) => {
+      const path = issue.path
+        .map((segment) => (typeof segment === "number" ? "#" : String(segment)))
+        .map((segment) => segment.replace(/[^A-Za-z0-9_#-]/g, "").slice(0, 40))
+        .join(".");
+      return `${path || "root"}:${issue.code}`;
+    });
     return {
       quality: null,
       provider: actualProvider,
       model: actualModel,
       records,
       failureReason: "invalid_schema",
+      schemaFailureDetails: diagnostics.join(", ").slice(0, 400),
     };
   }
 
