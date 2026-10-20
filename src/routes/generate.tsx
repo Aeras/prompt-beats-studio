@@ -703,7 +703,7 @@ function QualityPanel({
   setConfirm: (v: "check" | "recheck" | null) => void;
   state: ApplyState;
   qualityCheckModel: string;
-  qualityCheckVersion: "v1" | "v2";
+  qualityCheckVersion: "v1" | "v2" | "v2.1";
   onQualityCheckVersionChange: (value: "v1" | "v2") => void;
   isSuperAdmin: boolean;
   availableModels: Array<{ id: string; label: string; provider: string }>;
@@ -755,6 +755,7 @@ function QualityPanel({
               >
                 <option value="v1">Version 1 — Existing</option>
                 <option value="v2">Version 2 — Precision Review</option>
+                <option value="v2.1">Version 2.1 — Precision Improved</option>
               </select>
             </label>
           )}
@@ -1023,7 +1024,7 @@ function GeneratePage() {
   const [generationModelChosen, setGenerationModelChosen] = useState(false);
   const [generationResultModel, setGenerationResultModel] = useState<string | null>(null);
   const [qualityCheckModel, setQualityCheckModel] = useState(DEFAULT_AI_MODEL);
-  const [qualityCheckVersion, setQualityCheckVersion] = useState<"v1" | "v2">("v1");
+  const [qualityCheckVersion, setQualityCheckVersion] = useState<"v1" | "v2" | "v2.1">("v1");
   const [qualityCheckModelChosen, setQualityCheckModelChosen] = useState(false);
   const [qualityCheckResultModel, setQualityCheckResultModel] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
