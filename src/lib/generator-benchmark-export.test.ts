@@ -5,7 +5,7 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
-describe("Super Admin Generator benchmark export", () => {
+describe("Generator Markdown export", () => {
   test("serializes the complete generator result with model metadata", async () => {
     const helper = await source("./generator-benchmark-export.ts");
     expect(helper).toContain("# PromptBeats Generator Test Result");
@@ -19,11 +19,11 @@ describe("Super Admin Generator benchmark export", () => {
     expect(helper).toContain("PromptBeats_Test_");
   });
 
-  test("keeps the export control Super Admin-only and uses the actual generation result model", async () => {
+  test("makes Markdown export available to Advanced users and uses the actual generation result model", async () => {
     const route = await source("../routes/generate.tsx");
     expect(route).toContain("useModeration");
-    expect(route).toContain("moderation.isSuperAdmin &&");
-    expect(route).toContain("Εξαγωγή Test (.md)");
+    expect(route).toContain("exportGeneratorBenchmark");
+    expect(route).toContain("Εξαγωγή MD");
     expect(route).toContain("generationResultModel ??");
     expect(route).toContain("songContext?.inputSnapshot?.generationModel");
     expect(route).toContain("buildGeneratorBenchmarkMarkdown");
