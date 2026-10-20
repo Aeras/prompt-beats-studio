@@ -122,6 +122,17 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
   }
 
   try {
+    if (payload.qualityCheckVersion === "v2") {
+      const { data: roles, error: roleError } = await db
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", action.user_id)
+        .eq("role", "super_admin")
+        .limit(1);
+      if (roleError || !roles?.length) {
+        throw new Error("Quality Check V2 authorization failed.");
+      }
+    }
     const out = await runDurableQualityCheck(
       payload,
       action.user_id,
