@@ -744,22 +744,26 @@ export function normalizeUnambiguousZeroBasedCorrections(
     }
     const original = correction["originalText"];
     if (typeof original !== "string" || !original.length) return item;
-    const first = lyrics.indexOf(original);
-    if (first === -1 || lyrics.indexOf(original, first + 1) !== -1) return item;
     const section = correction["sectionLabel"];
     if (typeof section !== "string" || !section.trim()) return item;
     const sectionMarker = `[${section.trim()}]`;
     const firstSection = lyrics.indexOf(sectionMarker);
     if (firstSection === -1 || lyrics.indexOf(sectionMarker, firstSection + 1) !== -1)
       return item;
-    const nextHeading = lyrics.indexOf("\n[", firstSection + sectionMarker.length);
-    if (first < firstSection + sectionMarker.length) return item;
-    if (nextHeading !== -1 && first >= nextHeading) {
-      // Vocal/performance annotations can appear between the section and lyric.
-      const intermediate = lyrics.slice(firstSection + sectionMarker.length, first);
-      if (/\[(?:Verse|Chorus|Pre-Chorus|Bridge|Final Chorus|Outro|Intro)\b/i.test(intermediate))
-        return item;
-    }
+    // Ignore vocal/performance tags while finding the next structural section.
+    const sectionHeadings = Array.from(
+      lyrics.matchAll(
+        /^\\[(?:Intro|Verse(?:\\s*\\d+)?|Pre-Chorus(?:\\s*\\d+)?|Chorus(?:\\s*\\d+)?|Bridge|Final Chorus|Outro)\\]$/gim,
+      ),
+    );
+    const nextSection = sectionHeadings.find(
+      (heading) => (heading.index ?? -1) > firstSection,
+    );
+    const sectionEnd = nextSection?.index ?? lyrics.length;
+    const content = lyrics.slice(firstSection + sectionMarker.length, sectionEnd);
+    const firstTarget = content.indexOf(original);
+    if (firstTarget === -1 || content.indexOf(original, firstTarget + 1) !== -1)
+      return item;
     changed = true;
     return { ...correction, occurrenceIndex: 1 };
   });
