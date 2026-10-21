@@ -24,6 +24,9 @@ import { hash } from "./v3-source";
 
 // *.local is already ignored. Unlike .output, this survives application builds.
 const OUTPUT = ".benchmarks.local/v3-rhyme";
+// PR #377: conservative exposure from the lost six-result run and uncertain request.
+// Included in EVERY new live budget admission; never cleared by starting a fresh ledger.
+export const PRIOR_BENCHMARK_EXPOSURE_MICRO_USD = 303449;
 export function parseArgs(args: string[]) {
   let live = false;
   let confirmSpendUsd = "";
@@ -266,6 +269,7 @@ export async function main(args: string[]) {
       ci,
       confirmSpendUsd: options.confirmSpendUsd,
       apiKeyAvailable: true,
+      priorExposureMicroUsd: PRIOR_BENCHMARK_EXPOSURE_MICRO_USD,
       ...(options.continuation ? { continuation: options.continuation } : {}),
       call: async (model, call) => {
         const reply = await adapter(model, call);
@@ -285,6 +289,14 @@ export async function main(args: string[]) {
         {
           ...result,
           pilotResultHash: ledger.entries[0]?.resultHash,
+          priorExposureUsd: PRIOR_BENCHMARK_EXPOSURE_MICRO_USD / 1e6,
+          estimatedTotalExposureUsd:
+            (PRIOR_BENCHMARK_EXPOSURE_MICRO_USD +
+              ledger.entries.reduce(
+                (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
+                0,
+              )) /
+            1e6,
           estimatedSpentUsd:
             ledger.entries.reduce(
               (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),

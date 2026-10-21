@@ -95,6 +95,63 @@ function harness(plan = makePlan(evidence())) {
   return { plan, ledger, options, saved, reservations, calls: () => calls };
 }
 
+describe("V3-C cumulative cap with previous lost benchmark exposure", () => {
+  test("fresh ledger includes previous $0.303449 before first dispatch", async () => {
+    const h = harness();
+    await expect(
+      execute(h.plan, h.ledger, {
+        ...h.options,
+        priorExposureMicroUsd: 2_999_999,
+      }),
+    ).rejects.toThrow("BUDGET_EXPOSURE_EXCEEDED");
+    expect(h.calls()).toBe(0);
+    expect(h.ledger.entries).toHaveLength(0);
+  });
+
+  test("rejects invalid outside exposure before any provider request", async () => {
+    for (const exposure of [-1, Number.NaN, 3_000_001, 1.5]) {
+      const h = harness();
+      await expect(
+        execute(h.plan, h.ledger, {
+          ...h.options,
+          priorExposureMicroUsd: exposure,
+        }),
+      ).rejects.toThrow("PRIOR_EXPOSURE_INVALID");
+      expect(h.calls()).toBe(0);
+    }
+  });
+
+  test("external exposure is cumulative with completed and reserved jobs", async () => {
+    const h = harness();
+    const first = await execute(h.plan, h.ledger, {
+      ...h.options,
+      priorExposureMicroUsd: 303449,
+    });
+    expect(first.calls).toBe(1);
+    expect(h.ledger.entries[0]?.state).toBe("completed");
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: null,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    const highExposure =
+      3_000_000 - second.upperMicroUsd! - (h.ledger.entries[0]!.chargedMicroUsd ?? 0);
+    await expect(
+      execute(h.plan, h.ledger, {
+        ...h.options,
+        priorExposureMicroUsd: highExposure,
+        continuation: h.ledger.entries[0]!.resultHash!,
+      }),
+    ).rejects.toThrow("BUDGET_EXPOSURE_EXCEEDED");
+    expect(h.calls()).toBe(1);
+  });
+});
+
 describe("V3 benchmark explicit offline recovery arguments", () => {
   const digest = "a".repeat(64);
   test("requires full audited recovery parameters and never allows live recovery", () => {
