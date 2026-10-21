@@ -34,6 +34,7 @@ export const PRIOR_BENCHMARK_EXPOSURE_MICRO_USD = 303449;
 export function parseArgs(args: string[]) {
   let live = false;
   let dOnly = false;
+  let oneJob = false;
   let confirmSpendUsd = "";
   let evidencePath: string | undefined;
   let continuation: string | undefined;
@@ -50,6 +51,10 @@ export function parseArgs(args: string[]) {
       continue;
     }
     if (arg === "--dry-run") continue;
+    if (arg === "--one-job") {
+      oneJob = true;
+      continue;
+    }
     if (arg === "--d-only") {
       dOnly = true;
       continue;
@@ -76,6 +81,7 @@ export function parseArgs(args: string[]) {
   }
   if ((live && seen.has("--dry-run")) || (!live && (confirmSpendUsd || continuation)))
     throw new Error("INVALID_ARGUMENTS");
+  if (oneJob && (!dOnly || !live)) throw new Error("ONE_JOB_REQUIRES_LIVE_D_ONLY");
   const recovering = Boolean(recoveryEvidencePath || recoverJob || expectedLedgerHash);
   if (
     recovering &&
@@ -92,6 +98,7 @@ export function parseArgs(args: string[]) {
   return {
     live,
     dOnly,
+    oneJob,
     confirmSpendUsd,
     evidencePath,
     continuation,
@@ -281,6 +288,7 @@ export async function main(args: string[]) {
       ci,
       confirmSpendUsd: options.confirmSpendUsd,
       apiKeyAvailable: true,
+      singleJob: options.oneJob,
       priorExposureMicroUsd: options.dOnly
         ? D_PRIOR_EXPOSURE_MICRO_USD
         : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD,
