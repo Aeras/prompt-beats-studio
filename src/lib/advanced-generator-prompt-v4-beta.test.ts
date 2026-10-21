@@ -54,11 +54,9 @@ describe("V4 BETA prompt", () => {
     const out = buildAdvancedGeneratorPromptV4Beta({
       ...base,
       structure: "Verse, Chorus",
-      songBlueprint: {
-        items: [
-          { structureIndex: 1, sectionType: "Chorus", occurrence: 1, energy: 5, instruction: "Full band" },
-        ],
-      } as never,
+      songBlueprint: [
+        { structureIndex: 1, sectionType: "Chorus", occurrence: 1, energy: 5, instruction: "Full band" },
+      ],
     });
     expect(out).toContain("- Structure position 2: Chorus #1 — Energy target: 5/5 — Direction: Full band");
   });
