@@ -12,7 +12,7 @@ import { withAdvancedSunoEnrichmentInstruction } from "../../src/lib/advanced-su
 import { BRIEFS, briefInput } from "./v3-fixtures";
 
 export const BASELINE_SHA = "889b610b9ea41754e0389b4d9e5e53198e255dbc";
-export const ARMS = ["current", "a", "a+b"] as const;
+export const ARMS = ["current", "a", "a+b", "c"] as const;
 export type Arm = (typeof ARMS)[number];
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
