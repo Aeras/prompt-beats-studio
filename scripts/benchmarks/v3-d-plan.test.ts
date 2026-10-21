@@ -6,6 +6,14 @@ import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
+  test("D-only live directory is isolated from original V3-C ledger", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const runnerSource = fs.readFileSync("scripts/benchmarks/v3-runner.ts", "utf8");
+    expect(runnerSource).toContain('const output = options.dOnly ? OUTPUT_D : OUTPUT;');
+    expect(runnerSource).toContain('const directory = `${output}/live`;');
+    expect(runnerSource).not.toContain('const directory = `${OUTPUT}/live`;');
+  });
+
   test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
     expect(parseArgs(["--d-only"]).dOnly).toBe(true);
     expect(parseArgs([]).dOnly).toBe(false);
