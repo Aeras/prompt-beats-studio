@@ -209,7 +209,11 @@ export const ledgerSchema = z
     entries: z.array(
       z
         .object({
-          id: z.string().regex(/^(?:ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]|(?:ru|el|en|es|fr)-(pop|ballad|hook)-d-1)$/),
+          id: z
+            .string()
+            .regex(
+              /^(?:ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]|(?:ru|el|en|es|fr)-(pop|ballad|hook)-d-1)$/,
+            ),
           blindId: z.string().regex(/^[a-f0-9]{20}$/),
           state: z.enum(["reserved", "completed", "failed", "abandoned"]),
           reservedMicroUsd: z.number().int().nonnegative(),
