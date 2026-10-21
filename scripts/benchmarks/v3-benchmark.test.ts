@@ -95,12 +95,143 @@ function harness(plan = makePlan(evidence())) {
   return { plan, ledger, options, saved, reservations, calls: () => calls };
 }
 
+describe("V3-C cumulative cap with previous lost benchmark exposure", () => {
+  test("fresh ledger includes previous $0.303449 before first dispatch", async () => {
+    const h = harness();
+    await expect(
+      execute(h.plan, h.ledger, {
+        ...h.options,
+        priorExposureMicroUsd: 2_999_999,
+      }),
+    ).rejects.toThrow("BUDGET_EXPOSURE_EXCEEDED");
+    expect(h.calls()).toBe(0);
+    expect(h.ledger.entries).toHaveLength(0);
+  });
+
+  test("rejects invalid outside exposure before any provider request", async () => {
+    for (const exposure of [-1, Number.NaN, 3_000_001, 1.5]) {
+      const h = harness();
+      await expect(
+        execute(h.plan, h.ledger, {
+          ...h.options,
+          priorExposureMicroUsd: exposure,
+        }),
+      ).rejects.toThrow("PRIOR_EXPOSURE_INVALID");
+      expect(h.calls()).toBe(0);
+    }
+  });
+
+  test("external exposure is cumulative with completed and reserved jobs", async () => {
+    const h = harness();
+    const first = await execute(h.plan, h.ledger, {
+      ...h.options,
+      priorExposureMicroUsd: 303449,
+    });
+    expect(first.calls).toBe(1);
+    expect(h.ledger.entries[0]?.state).toBe("completed");
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: null,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    const highExposure =
+      3_000_000 - second.upperMicroUsd! - (h.ledger.entries[0]!.chargedMicroUsd ?? 0);
+    await expect(
+      execute(h.plan, h.ledger, {
+        ...h.options,
+        priorExposureMicroUsd: highExposure,
+        continuation: h.ledger.entries[0]!.resultHash!,
+      }),
+    ).rejects.toThrow("BUDGET_EXPOSURE_EXCEEDED");
+    expect(h.calls()).toBe(1);
+  });
+});
+
+describe("V3 benchmark explicit offline recovery arguments", () => {
+  const digest = "a".repeat(64);
+  test("requires full audited recovery parameters and never allows live recovery", () => {
+    const args = [
+      "--recover-prior-evidence",
+      ".benchmarks.local/evidence-original.json",
+      "--evidence",
+      ".benchmarks.local/evidence.json",
+      "--recover-abandoned-job",
+      "ru-pop-c-1",
+      "--expected-ledger-hash",
+      digest,
+    ];
+    expect(parseArgs(args).recovering).toBe(true);
+    expect(parseArgs(args).live).toBe(false);
+    expect(() => parseArgs([...args, "--live"])).toThrow("INVALID_RECOVERY_ARGUMENTS");
+    expect(() => parseArgs([...args, "--continue-after-pilot", digest])).toThrow(
+      "INVALID_ARGUMENTS",
+    );
+    expect(() => parseArgs(args.slice(0, -2))).toThrow("INVALID_RECOVERY_ARGUMENTS");
+    expect(() =>
+      parseArgs(args.map((value) => (value === "ru-pop-c-1" ? "ru-pop-c-2" : value))),
+    ).toThrow("INVALID_RECOVERY_ARGUMENTS");
+  });
+});
+
+describe("V3 benchmark uncertain-request quarantine", () => {
+  test("an audited abandoned job is skipped forever and its full reservation counts", async () => {
+    const h = harness();
+    await execute(h.plan, h.ledger, h.options);
+    const first = h.ledger.entries[0]!;
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: null,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    const countBefore = h.calls();
+    const result = await execute(h.plan, h.ledger, {
+      ...h.options,
+      continuation: first.resultHash!,
+    });
+    expect(result.abandoned).toBe(1);
+    expect(result.completed).toBe(23);
+    expect(h.calls() - countBefore).toBe(22);
+    expect(h.ledger.entries[1]?.state).toBe("abandoned");
+    expect(h.ledger.entries[1]?.chargedMicroUsd).toBeNull();
+    expect(h.ledger.entries[1]?.reservedMicroUsd).toBe(second.upperMicroUsd);
+  });
+
+  test("a suspicious abandoned record cannot bypass manual billing review", async () => {
+    const h = harness();
+    await execute(h.plan, h.ledger, h.options);
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: 0,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    await expect(
+      execute(h.plan, h.ledger, { ...h.options, continuation: h.ledger.entries[0]!.resultHash! }),
+    ).rejects.toThrow("LEDGER_MISMATCH");
+    expect(h.calls()).toBe(1);
+  });
+});
+
 describe("V3 benchmark offline assembly", () => {
-  test("18 deterministic jobs use genuine V2 prefixes and pinned original MAIN V3", () => {
+  test("24 deterministic jobs use genuine V2 prefixes and pinned original MAIN V3", () => {
     const plan = makePlan();
-    expect(plan.jobs).toHaveLength(18);
-    expect(new Set(plan.jobs.map((j) => j.id)).size).toBe(18);
-    expect(new Set(plan.jobs.map((j) => j.blindId)).size).toBe(18);
+    expect(plan.jobs).toHaveLength(24);
+    expect(new Set(plan.jobs.map((j) => j.id)).size).toBe(24);
+    expect(new Set(plan.jobs.map((j) => j.blindId)).size).toBe(24);
     expect(dryRun(plan)).toEqual(dryRun(makePlan()));
     const original = execFileSync(
       "git",
@@ -157,7 +288,7 @@ describe("V3 benchmark offline assembly", () => {
     expect(child.status).toBe(0);
     expect(child.stderr).toBe("");
     const report = JSON.parse(child.stdout);
-    expect(report.plannedGenerations).toBe(18);
+    expect(report.plannedGenerations).toBe(24);
     expect(child.stdout).not.toContain("SENTINEL_NEVER_OUTPUT");
     expect(readFileSync(".benchmarks.local/v3-rhyme/offline/manifest.json", "utf8")).not.toContain(
       "SENTINEL_NEVER_OUTPUT",
@@ -290,10 +421,10 @@ describe("pilot, reservations, failure and resume guards", () => {
     expect(f.calls()).toBe(1);
     const continuation = f.ledger.entries[0]!.resultHash!;
     const result = await execute(f.plan, f.ledger, { ...f.options, continuation });
-    expect(result.calls).toBe(17);
-    expect(f.calls()).toBe(18);
+    expect(result.calls).toBe(23);
+    expect(f.calls()).toBe(24);
     expect((await execute(f.plan, f.ledger, { ...f.options, continuation })).calls).toBe(0);
-    expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(18);
+    expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(24);
   });
 
   test("live gates, unknown pricing and over-budget stop before dispatch", async () => {

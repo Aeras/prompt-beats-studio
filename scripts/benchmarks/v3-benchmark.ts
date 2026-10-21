@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BRIEFS } from "./v3-fixtures";
+import type { DPlan } from "./v3-d-plan";
 import { ARMS, BASELINE_SHA, hash, loadSources, type Call, type ProviderReply } from "./v3-source";
 
 export const BUDGET_MICRO_USD = 3_000_000;
@@ -130,7 +131,7 @@ export function makePlan(evidence?: Evidence) {
   );
   return { source, jobs, fingerprint, evidence };
 }
-export type Plan = ReturnType<typeof makePlan>;
+export type Plan = ReturnType<typeof makePlan> | DPlan;
 export type Job = Plan["jobs"][number];
 
 export function dryRun(plan: Plan, _provider?: unknown) {
@@ -156,7 +157,7 @@ export function dryRun(plan: Plan, _provider?: unknown) {
     reportedBalanceUsd: 4.11,
     intendedReserveUsd: 1.11,
     caveat:
-      "Local estimates/reservations are not a provider-enforced financial ceiling. All 18 may not fit; each call must pass remaining-budget guard.",
+      "Local estimates/reservations are not a provider-enforced financial ceiling. All planned jobs may not fit; each call must pass remaining-budget guard.",
     jobs: plan.jobs.map(({ call, ...job }) => ({
       ...job,
       systemHash: hash(call.system),
@@ -208,9 +209,13 @@ export const ledgerSchema = z
     entries: z.array(
       z
         .object({
-          id: z.string().regex(/^ru-(pop|ballad|hook)-(current|a|a\+b)-[12]$/),
+          id: z
+            .string()
+            .regex(
+              /^(?:ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]|(?:ru|el|en|es|fr)-(pop|ballad|hook)-d-1)$/,
+            ),
           blindId: z.string().regex(/^[a-f0-9]{20}$/),
-          state: z.enum(["reserved", "completed", "failed"]),
+          state: z.enum(["reserved", "completed", "failed", "abandoned"]),
           reservedMicroUsd: z.number().int().nonnegative(),
           chargedMicroUsd: z.number().int().nonnegative().nullable(),
           resultHash: z.string().nullable(),
@@ -230,7 +235,9 @@ export async function execute(
     confirmSpendUsd: string;
     ci: boolean;
     apiKeyAvailable: boolean;
+    priorExposureMicroUsd?: number;
     continuation?: string;
+    singleJob?: boolean;
     call: (model: string, request: Call) => Promise<ProviderReply>;
     saveLedger: (ledger: Ledger) => void;
     saveResult: (
@@ -243,6 +250,13 @@ export async function execute(
   },
 ) {
   const now = options.now ?? Date.now;
+  const priorExposureMicroUsd = options.priorExposureMicroUsd ?? 0;
+  if (
+    !Number.isSafeInteger(priorExposureMicroUsd) ||
+    priorExposureMicroUsd < 0 ||
+    priorExposureMicroUsd > BUDGET_MICRO_USD
+  )
+    throw new Error("PRIOR_EXPOSURE_INVALID");
   if (!options.live || options.confirmSpendUsd !== "3.00" || options.ci || !options.apiKeyAvailable)
     throw new Error("LIVE_AUTHORIZATION_REQUIRED");
   if (!plan.evidence) throw new Error("MODEL_OR_PRICING_UNVERIFIED");
@@ -261,6 +275,10 @@ export async function execute(
         job.blindId !== entry.blindId ||
         job.upperMicroUsd !== entry.reservedMicroUsd ||
         (entry.chargedMicroUsd !== null && entry.chargedMicroUsd > entry.reservedMicroUsd) ||
+        (entry.state === "abandoned" &&
+          (entry.resultHash !== null ||
+            entry.chargedMicroUsd !== null ||
+            entry.error !== "MANUALLY_ABANDONED_UNCERTAIN_BILLING")) ||
         (entry.state === "completed" &&
           (entry.chargedMicroUsd === null ||
             !entry.resultHash ||
@@ -270,14 +288,14 @@ export async function execute(
     })
   )
     throw new Error("LEDGER_MISMATCH");
-  if (ledger.entries.some((entry) => entry.state !== "completed"))
+  if (ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned"))
     throw new Error("UNCERTAIN_PRIOR_REQUEST_MANUAL_REVIEW_REQUIRED");
   if (ledger.entries.length > 0) {
     const pilot = ledger.entries[0];
     if (!pilot?.resultHash || options.continuation !== pilot.resultHash)
       throw new Error("PILOT_REVIEW_REQUIRED");
   } else if (options.continuation) throw new Error("PILOT_REQUIRED_FIRST");
-  const count = options.continuation ? 18 : 1;
+  const count = options.singleJob ? 1 : options.continuation ? plan.jobs.length : 1;
   let calls = 0;
   for (const job of plan.jobs) {
     if (ledger.entries.some((entry) => entry.id === job.id)) continue;
@@ -286,7 +304,10 @@ export async function execute(
       (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
       0,
     );
-    if (job.upperMicroUsd === null || job.upperMicroUsd + spent > BUDGET_MICRO_USD)
+    if (
+      job.upperMicroUsd === null ||
+      job.upperMicroUsd + spent + priorExposureMicroUsd > BUDGET_MICRO_USD
+    )
       throw new Error("BUDGET_EXPOSURE_EXCEEDED");
     const entry: Ledger["entries"][number] = {
       id: job.id,
@@ -386,5 +407,11 @@ export async function execute(
     }
     if (calls >= count) break;
   }
-  return { calls, completed: ledger.entries.length, pilotReviewRequired: !options.continuation };
+  const abandoned = ledger.entries.filter((entry) => entry.state === "abandoned").length;
+  return {
+    calls,
+    completed: ledger.entries.filter((entry) => entry.state === "completed").length,
+    pilotReviewRequired: !options.continuation,
+    ...(abandoned > 0 ? { abandoned } : {}),
+  };
 }

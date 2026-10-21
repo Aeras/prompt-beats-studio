@@ -12,7 +12,7 @@ import { withAdvancedSunoEnrichmentInstruction } from "../../src/lib/advanced-su
 import { BRIEFS, briefInput } from "./v3-fixtures";
 
 export const BASELINE_SHA = "889b610b9ea41754e0389b4d9e5e53198e255dbc";
-export const ARMS = ["current", "a", "a+b"] as const;
+export const ARMS = ["current", "a", "a+b", "c"] as const;
 export type Arm = (typeof ARMS)[number];
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -148,6 +148,12 @@ export function loadSources() {
         arm === "current" ? current.withV3MusicalPlanning(base) : withV3MusicalPlanning(base, arm);
       if (!result.startsWith(base)) throw new Error("V2 prefix changed");
       return result;
+    },
+    dPrompt(input: Parameters<typeof withAdvancedSunoEnrichmentInstruction>[0]) {
+      const base = buildAdvancedGeneratorPromptV2(
+        builders.buildPrompt(withAdvancedSunoEnrichmentInstruction(input)),
+      );
+      return withV3MusicalPlanning(base, "d");
     },
     // Real app adapter with only fetch/key injected. Never logs provider error bodies.
     caller(fetcher: typeof fetch, apiKey: string) {

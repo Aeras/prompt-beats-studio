@@ -29,6 +29,23 @@ describe("V3 adaptive musical planning", () => {
     expect(withV3MusicalPlanning(source)).toBe(ab);
   });
 
+  test("C adds language-first quality while A and A+B remain unchanged", () => {
+    const a = withV3MusicalPlanning("baseline", "a");
+    const ab = withV3MusicalPlanning("baseline", "a+b");
+    const candidateC = withV3MusicalPlanning("baseline", "c");
+    expect(candidateC.startsWith("baseline")).toBe(true);
+    expect(candidateC).toContain("LANGUAGE-FIRST QUALITY (V3-C)");
+    expect(candidateC).toContain("agreement, prepositions");
+    expect(candidateC).toContain("economical chorus");
+    expect(candidateC).toContain("explicit rhyme schemes");
+    expect(candidateC).toContain("Repeat the recognizable core hook");
+    expect(candidateC).toContain("RHYME INTENT (V3)");
+    expect(candidateC).not.toContain("Keep the endings provisional");
+    expect(a).not.toContain("LANGUAGE-FIRST QUALITY (V3-C)");
+    expect(ab).not.toContain("LANGUAGE-FIRST QUALITY (V3-C)");
+    expect(withV3MusicalPlanning("baseline")).toBe(ab);
+  });
+
   test("preserves V2 and adds phrasing rather than post-edit guidance", () => {
     const prompt = withV3MusicalPlanning("V2 baseline");
     expect(prompt.startsWith("V2 baseline")).toBe(true);

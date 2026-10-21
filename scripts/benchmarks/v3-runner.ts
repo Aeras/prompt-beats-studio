@@ -10,9 +10,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { zipSync, unzipSync, strToU8 } from "fflate";
 import { pathToFileURL } from "node:url";
 import {
   dryRun,
+  evidenceSchema,
   execute,
   ledgerSchema,
   makePlan,
@@ -20,14 +23,26 @@ import {
   type Ledger,
 } from "./v3-benchmark";
 import { hash } from "./v3-source";
+import { makeDPlan } from "./v3-d-plan";
 
 // *.local is already ignored. Unlike .output, this survives application builds.
 const OUTPUT = ".benchmarks.local/v3-rhyme";
+const OUTPUT_D = ".benchmarks.local/v3-d-multilingual";
+// Lost-run exposure $0.303449 + complete V3-C benchmark $0.091213.
+export const D_PRIOR_EXPOSURE_MICRO_USD = 394662;
+// PR #377: conservative exposure from the lost six-result run and uncertain request.
+// Included in EVERY new live budget admission; never cleared by starting a fresh ledger.
+export const PRIOR_BENCHMARK_EXPOSURE_MICRO_USD = 303449;
 export function parseArgs(args: string[]) {
   let live = false;
+  let dOnly = false;
+  let oneJob = false;
   let confirmSpendUsd = "";
   let evidencePath: string | undefined;
   let continuation: string | undefined;
+  let recoveryEvidencePath: string | undefined;
+  let recoverJob: string | undefined;
+  let expectedLedgerHash: string | undefined;
   const seen = new Set<string>();
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -38,17 +53,62 @@ export function parseArgs(args: string[]) {
       continue;
     }
     if (arg === "--dry-run") continue;
-    if (!["--confirm-spend-usd", "--evidence", "--continue-after-pilot"].includes(arg))
+    if (arg === "--one-job") {
+      oneJob = true;
+      continue;
+    }
+    if (arg === "--d-only") {
+      dOnly = true;
+      continue;
+    }
+    if (
+      ![
+        "--confirm-spend-usd",
+        "--evidence",
+        "--continue-after-pilot",
+        "--recover-prior-evidence",
+        "--recover-abandoned-job",
+        "--expected-ledger-hash",
+      ].includes(arg)
+    )
       throw new Error("INVALID_ARGUMENTS");
     const value = args[++i];
     if (!value || value.startsWith("--")) throw new Error("INVALID_ARGUMENTS");
     if (arg === "--confirm-spend-usd") confirmSpendUsd = value;
     if (arg === "--evidence") evidencePath = value;
     if (arg === "--continue-after-pilot") continuation = value;
+    if (arg === "--recover-prior-evidence") recoveryEvidencePath = value;
+    if (arg === "--recover-abandoned-job") recoverJob = value;
+    if (arg === "--expected-ledger-hash") expectedLedgerHash = value;
   }
   if ((live && seen.has("--dry-run")) || (!live && (confirmSpendUsd || continuation)))
     throw new Error("INVALID_ARGUMENTS");
-  return { live, confirmSpendUsd, evidencePath, continuation };
+  if (oneJob && (!dOnly || !live)) throw new Error("ONE_JOB_REQUIRES_LIVE_D_ONLY");
+  const recovering = Boolean(recoveryEvidencePath || recoverJob || expectedLedgerHash);
+  if (
+    recovering &&
+    (dOnly ||
+      live ||
+      continuation ||
+      confirmSpendUsd ||
+      !evidencePath ||
+      !recoveryEvidencePath ||
+      recoverJob !== "ru-pop-c-1" ||
+      !/^[a-f0-9]{64}$/.test(expectedLedgerHash ?? ""))
+  )
+    throw new Error("INVALID_RECOVERY_ARGUMENTS");
+  return {
+    live,
+    dOnly,
+    oneJob,
+    confirmSpendUsd,
+    evidencePath,
+    continuation,
+    recoveryEvidencePath,
+    recoverJob,
+    expectedLedgerHash,
+    recovering,
+  };
 }
 
 function durableJson(path: string, value: unknown, exclusive = false) {
@@ -75,12 +135,130 @@ export async function main(args: string[]) {
   const evidence = options.evidencePath
     ? validateEvidence(JSON.parse(readFileSync(options.evidencePath, "utf8")))
     : undefined;
-  const plan = makePlan(evidence);
+  const plan = options.dOnly ? makeDPlan(evidence) : makePlan(evidence);
+  const output = options.dOnly ? OUTPUT_D : OUTPUT;
+  if (options.recovering) {
+    // Completely offline, explicit one-time ledger migration. This path never
+    // constructs a provider adapter and never accesses OPENAI_API_KEY.
+    const priorEvidence = evidenceSchema.parse(
+      JSON.parse(readFileSync(options.recoveryEvidencePath!, "utf8")),
+    );
+    const priorPlan = makePlan(priorEvidence);
+    if (
+      !evidence ||
+      JSON.stringify({ ...priorEvidence, verifiedAt: null }) !==
+        JSON.stringify({ ...evidence, verifiedAt: null }) ||
+      priorPlan.jobs.length !== plan.jobs.length ||
+      priorPlan.jobs.some(
+        (job, i) =>
+          job.id !== plan.jobs[i]?.id ||
+          job.blindId !== plan.jobs[i]?.blindId ||
+          job.promptHash !== plan.jobs[i]?.promptHash ||
+          job.upperMicroUsd !== plan.jobs[i]?.upperMicroUsd,
+      )
+    )
+      throw new Error("RECOVERY_EVIDENCE_OR_PLAN_DRIFT");
+    const directory = `${output}/live`;
+    const ledgerPath = `${directory}/ledger.json`;
+    const rawLedger = readFileSync(ledgerPath, "utf8");
+    const originalHash = hash(rawLedger);
+    if (originalHash !== options.expectedLedgerHash)
+      throw new Error("RECOVERY_LEDGER_HASH_MISMATCH");
+    const ledger = ledgerSchema.parse(JSON.parse(rawLedger));
+    if (
+      ledger.fingerprint !== priorPlan.fingerprint ||
+      ledger.entries.length !== 7 ||
+      ledger.entries.filter((entry) => entry.state === "completed").length !== 6 ||
+      ledger.entries.filter((entry) => entry.state === "reserved").length !== 1 ||
+      ledger.entries[6]?.id !== options.recoverJob ||
+      ledger.entries[6]?.chargedMicroUsd !== null ||
+      ledger.entries[6]?.resultHash !== null ||
+      ledger.entries[6]?.error !== null ||
+      ledger.entries.some(
+        (entry, i) =>
+          entry.id !== priorPlan.jobs[i]?.id ||
+          entry.blindId !== priorPlan.jobs[i]?.blindId ||
+          entry.reservedMicroUsd !== priorPlan.jobs[i]?.upperMicroUsd,
+      )
+    )
+      throw new Error("RECOVERY_UNEXPECTED_LEDGER");
+    for (const entry of ledger.entries.slice(0, 6)) {
+      if (!entry.resultHash || entry.chargedMicroUsd === null || entry.error !== null)
+        throw new Error("RECOVERY_COMPLETED_ENTRY_INVALID");
+      const result = JSON.parse(readFileSync(`${directory}/${entry.blindId}.json`, "utf8"));
+      const blind = JSON.parse(readFileSync(`${directory}/blind/${entry.blindId}.json`, "utf8"));
+      if (
+        hash(JSON.stringify(result)) !== entry.resultHash ||
+        result.fingerprint !== priorPlan.fingerprint ||
+        blind.id !== entry.blindId ||
+        blind.lyrics !== result.renderedLyrics
+      )
+        throw new Error("RECOVERY_ARTIFACT_MISMATCH");
+    }
+    // A stale lock must exist and the operator must independently confirm
+    // that its process is gone. Never silently remove it.
+    if (!existsSync(`${directory}/runner.lock`)) throw new Error("RECOVERY_LOCK_MISSING");
+    const backupPath = `${directory}/ledger.pre-recovery-${originalHash}.json`;
+    const auditPath = `${directory}/recovery-${originalHash}.json`;
+    if (existsSync(backupPath) || existsSync(auditPath))
+      throw new Error("RECOVERY_ALREADY_ATTEMPTED");
+    const updated: Ledger = {
+      fingerprint: plan.fingerprint,
+      entries: ledger.entries.map((entry) =>
+        entry.id === options.recoverJob
+          ? { ...entry, state: "abandoned", error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING" }
+          : entry,
+      ),
+    };
+    // Preserve original bytes and provenance; historic result hashes never change.
+    const backup = openSync(backupPath, "wx", 0o600);
+    try {
+      writeFileSync(backup, rawLedger);
+      fsyncSync(backup);
+    } finally {
+      closeSync(backup);
+    }
+    durableJson(
+      auditPath,
+      {
+        originalLedgerSha256: originalHash,
+        originalFingerprint: priorPlan.fingerprint,
+        refreshedFingerprint: plan.fingerprint,
+        abandonedJob: options.recoverJob,
+        reservationMicroUsd: ledger.entries[6]!.reservedMicroUsd,
+        originalEvidenceVerifiedAt: priorEvidence.verifiedAt,
+        refreshedEvidenceVerifiedAt: evidence.verifiedAt,
+        originalResultHashes: ledger.entries.slice(0, 6).map((entry) => entry.resultHash),
+        note: "Historic result artifacts retain the original fingerprint and hashes.",
+      },
+      true,
+    );
+    durableJson(ledgerPath, updated);
+    console.log(
+      JSON.stringify(
+        {
+          recovered: true,
+          completed: 6,
+          abandoned: 1,
+          pending: 17,
+          originalLedgerSha256: originalHash,
+          fingerprint: plan.fingerprint,
+          backupPath,
+          auditPath,
+          lockStillPresent: true,
+          providerCalls: 0,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
   if (!options.live) {
     const report = dryRun(plan);
-    mkdirSync(`${OUTPUT}/offline`, { recursive: true, mode: 0o700 });
+    mkdirSync(`${output}/offline`, { recursive: true, mode: 0o700 });
     // Deterministic output: no keys, time, generated content, or environment state.
-    writeFileSync(`${OUTPUT}/offline/manifest.json`, `${JSON.stringify(report, null, 2)}\n`, {
+    writeFileSync(`${output}/offline/manifest.json`, `${JSON.stringify(report, null, 2)}\n`, {
       mode: 0o600,
     });
     console.log(JSON.stringify(report, null, 2));
@@ -89,7 +267,7 @@ export async function main(args: string[]) {
   if (!evidence) throw new Error("MODEL_OR_PRICING_UNVERIFIED");
   const key = process.env["OPENAI_API_KEY"];
   if (!key?.trim()) throw new Error("API_KEY_MISSING");
-  const directory = `${OUTPUT}/live`;
+  const directory = `${output}/live`;
   mkdirSync(`${directory}/blind`, { recursive: true, mode: 0o700 });
   // Exclusive process lock, never auto-expired: stale lock requires billing review.
   const lockPath = `${directory}/runner.lock`;
@@ -112,6 +290,10 @@ export async function main(args: string[]) {
       ci,
       confirmSpendUsd: options.confirmSpendUsd,
       apiKeyAvailable: true,
+      singleJob: options.oneJob,
+      priorExposureMicroUsd: options.dOnly
+        ? D_PRIOR_EXPOSURE_MICRO_USD
+        : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD,
       ...(options.continuation ? { continuation: options.continuation } : {}),
       call: async (model, call) => {
         const reply = await adapter(model, call);
@@ -126,11 +308,67 @@ export async function main(args: string[]) {
       },
       saveFailure: (id, record) => durableJson(`${directory}/${id}.failure.json`, record, true),
     });
+    if (options.oneJob) {
+      // Portable verified checkpoint; operator must export off-container before next call.
+      const completed = ledger.entries.filter((entry) => entry.state === "completed");
+      const files: Record<string, Uint8Array> = {
+        "ledger.json": strToU8(readFileSync(ledgerPath, "utf8")),
+        "evidence.json": strToU8(readFileSync(options.evidencePath!, "utf8")),
+      };
+      for (const entry of completed) {
+        files[`results/${entry.blindId}.json`] = strToU8(
+          readFileSync(`${directory}/${entry.blindId}.json`, "utf8"),
+        );
+        files[`blind/${entry.blindId}.json`] = strToU8(
+          readFileSync(`${directory}/blind/${entry.blindId}.json`, "utf8"),
+        );
+      }
+      const checksums = Object.entries(files)
+        .map(([name, bytes]) => `${hash(Buffer.from(bytes).toString("utf8"))}  ${name}`)
+        .join("\n");
+      files["checksums.sha256"] = strToU8(`${checksums}\n`);
+      const zipped = zipSync(files, { level: 6 });
+      const checkpoint = unzipSync(zipped);
+      if (
+        Object.keys(checkpoint).length !== Object.keys(files).length ||
+        Object.entries(files).some(
+          ([name, bytes]) =>
+            !checkpoint[name] ||
+            Buffer.compare(Buffer.from(bytes), Buffer.from(checkpoint[name])) !== 0,
+        )
+      )
+        throw new Error("CHECKPOINT_INTEGRITY_FAILED");
+      const archivePath = `${directory}/checkpoint-${String(completed.length).padStart(2, "0")}.zip`;
+      const fd = openSync(archivePath, "wx", 0o600);
+      try {
+        writeFileSync(fd, zipped);
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      console.log(
+        JSON.stringify({
+          checkpoint: archivePath,
+          sha256: createHash("sha256").update(zipped).digest("hex"),
+          completed: completed.length,
+          operatorExportRequired: true,
+        }),
+      );
+    }
     console.log(
       JSON.stringify(
         {
           ...result,
           pilotResultHash: ledger.entries[0]?.resultHash,
+          priorExposureUsd:
+            (options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) / 1e6,
+          estimatedTotalExposureUsd:
+            ((options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) +
+              ledger.entries.reduce(
+                (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
+                0,
+              )) /
+            1e6,
           estimatedSpentUsd:
             ledger.entries.reduce(
               (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
