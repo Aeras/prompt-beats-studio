@@ -320,6 +320,84 @@ export class AiProviderHttpError extends Error {
   }
 }
 
+/**
+ * Gemini SSE emits incremental candidate text and a terminal usage/finish frame.
+ * The full JSON response is reconstructed before Quality Check validation.
+ * This avoids holding an idle generateContent HTTP request for the entire
+ * (often >120s) Argon reasoning period. A stream does not bypass hard runtime
+ * execution limits; those still require deployment-level investigation.
+ */
+async function collectGeminiSse(response: Response, model: string): Promise<{
+  text: string;
+  finish: string | null;
+  usageMetadata: any;
+}> {
+  if (!response.body) throw new Error("Gemini streaming response has no body.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let finish: string | null = null;
+  let usageMetadata: any = null;
+  let frames = 0;
+  const consume = (frame: string) => {
+    const dataLines = frame
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart());
+    if (!dataLines.length) return;
+    const data = dataLines.join("\n");
+    if (data === "[DONE]") return;
+    const payload = JSON.parse(data) as any;
+    if (payload?.error) {
+      throw new Error("Gemini streaming response returned an error frame.");
+    }
+    const candidate = payload?.candidates?.[0];
+    for (const part of candidate?.content?.parts ?? []) {
+      if (typeof part?.text === "string") text += part.text;
+    }
+    if (typeof candidate?.finishReason === "string") finish = candidate.finishReason;
+    if (payload?.usageMetadata) usageMetadata = payload.usageMetadata;
+    frames++;
+  };
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      // SSE frames are separated by blank lines (LF or CRLF).
+      buffer = buffer.replace(/\r\n/g, "\n");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        consume(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) consume(buffer);
+  } catch (error) {
+    console.error("[ai-provider] Gemini Argon stream failed", {
+      model,
+      frames,
+      receivedCharacters: text.length,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  if (finish !== "STOP") {
+    console.error("[ai-provider] Gemini Argon stream incomplete", {
+      model,
+      frames,
+      finish,
+      receivedCharacters: text.length,
+    });
+  }
+  return { text, finish, usageMetadata };
+}
+
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -342,7 +420,7 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   // model can be enabled without upgrading the whole Gemini dependency surface.
   if (isArgon) {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:streamGenerateContent?alt=sse",
       {
         method: "POST",
         headers: {
@@ -362,8 +440,8 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
         }),
       },
     );
-    const payload = (await response.json()) as any;
     if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as any;
       const message = payload?.error?.message;
       const providerCode = typeof payload?.error?.status === "string" ? payload.error.status : null;
       console.error("[ai-provider] Gemini 4 Argon request failed", {
@@ -375,14 +453,12 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
       throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
 
-    const candidate = payload?.candidates?.[0];
-    const finish = candidate?.finishReason ?? null;
+    const streamed = await collectGeminiSse(response, model);
+    const finish = streamed.finish;
     const stopReason =
       finish === "STOP" ? "end_turn" : finish === "MAX_TOKENS" ? "max_tokens" : (finish ?? null);
-    const text = (candidate?.content?.parts ?? [])
-      .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
-      .join("");
-    const um = payload?.usageMetadata;
+    const text = streamed.text;
+    const um = streamed.usageMetadata;
     const inputTokens = um?.promptTokenCount ?? null;
     const outputTokens =
       um?.candidatesTokenCount == null && um?.thoughtsTokenCount == null
