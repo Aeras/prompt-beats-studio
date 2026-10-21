@@ -7,6 +7,7 @@ import {
   useRouterState,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -53,7 +54,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorContent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   const { t } = useI18n();
@@ -89,7 +90,7 @@ function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <I18nProvider>
       <ErrorContent error={error} reset={reset} />
