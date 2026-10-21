@@ -26,9 +26,15 @@ describe("Quality Check V2.1 correction index normalization", () => {
     expect(output.corrections[0]?.occurrenceIndex).toBe(1);
   });
 
-  test("does not guess the occurrence of repeated hook text", () => {
+  test("recovers a repeated hook only when its section is explicit", () => {
     const report = { corrections: [{ field: "lyrics", sectionLabel: "Chorus 1", occurrenceIndex: 0, originalText: "Согреет нас." }] };
     const output = normalizeUnambiguousZeroBasedCorrections(report, lyrics) as typeof report;
+    expect(output.corrections[0]?.occurrenceIndex).toBe(1);
+  });
+
+  test("does not guess when the same text repeats inside one section", () => {
+    const report = { corrections: [{ field: "lyrics", sectionLabel: "Verse 1", occurrenceIndex: 0, originalText: "echo" }] };
+    const output = normalizeUnambiguousZeroBasedCorrections(report, "[Verse 1]\\necho\\necho") as typeof report;
     expect(output.corrections[0]?.occurrenceIndex).toBe(0);
   });
 
