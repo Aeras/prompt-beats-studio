@@ -28,13 +28,15 @@ export function makeDPlan() {
       call,
     };
   });
-  const fingerprint = hash(JSON.stringify({
-    series: "PB-V3-D-MULTILINGUAL-15",
-    baseline: BASELINE_SHA,
-    sourceHash: source.sourceHash,
-    fixtures: D_BRIEFS,
-    jobs: jobs.map(({ call, ...job }) => job),
-  }));
+  const fingerprint = hash(
+    JSON.stringify({
+      series: "PB-V3-D-MULTILINGUAL-15",
+      baseline: BASELINE_SHA,
+      sourceHash: source.sourceHash,
+      fixtures: D_BRIEFS,
+      jobs: jobs.map(({ call, ...job }) => job),
+    }),
+  );
   return {
     series: "PB-V3-D-MULTILINGUAL-15",
     baselineSha: BASELINE_SHA,
