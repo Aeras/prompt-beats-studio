@@ -309,6 +309,17 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   return { text, stopReason, usage, provider: "anthropic", model };
 }
 
+export class AiProviderHttpError extends Error {
+  override readonly name = "AiProviderHttpError";
+  constructor(
+    readonly provider: string,
+    readonly httpStatus: number,
+    readonly providerCode: string | null,
+  ) {
+    super(`AI provider request failed: ${provider} HTTP ${httpStatus}`);
+  }
+}
+
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -354,15 +365,14 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     const payload = (await response.json()) as any;
     if (!response.ok) {
       const message = payload?.error?.message;
+      const providerCode = typeof payload?.error?.status === "string" ? payload.error.status : null;
       console.error("[ai-provider] Gemini 4 Argon request failed", {
         status: response.status,
+        providerCode,
+        // Truncated provider detail is server-only. Never expose model request or API key.
         error: typeof message === "string" ? message.slice(0, 300) : "unknown",
       });
-      throw new Error(
-        typeof message === "string" && message
-          ? message
-          : "The Gemini 4 Argon service is temporarily unavailable.",
-      );
+      throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
 
     const candidate = payload?.candidates?.[0];
