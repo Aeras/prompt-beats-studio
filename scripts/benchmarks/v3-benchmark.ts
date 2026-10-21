@@ -237,6 +237,7 @@ export async function execute(
     apiKeyAvailable: boolean;
     priorExposureMicroUsd?: number;
     continuation?: string;
+    singleJob?: boolean;
     call: (model: string, request: Call) => Promise<ProviderReply>;
     saveLedger: (ledger: Ledger) => void;
     saveResult: (
@@ -294,7 +295,7 @@ export async function execute(
     if (!pilot?.resultHash || options.continuation !== pilot.resultHash)
       throw new Error("PILOT_REVIEW_REQUIRED");
   } else if (options.continuation) throw new Error("PILOT_REQUIRED_FIRST");
-  const count = options.continuation ? plan.jobs.length : 1;
+  const count = options.singleJob ? 1 : options.continuation ? plan.jobs.length : 1;
   let calls = 0;
   for (const job of plan.jobs) {
     if (ledger.entries.some((entry) => entry.id === job.id)) continue;
