@@ -1,9 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { D_BRIEFS } from "./v3-d-fixtures";
 import { makeDPlan } from "./v3-d-plan";
+import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
+  test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
+    expect(parseArgs(["--d-only"]).dOnly).toBe(true);
+    expect(parseArgs([]).dOnly).toBe(false);
+    expect(D_PRIOR_EXPOSURE_MICRO_USD).toBe(394662);
+    expect(parseArgs(["--d-only", "--live", "--confirm-spend-usd", "3.00"]).dOnly).toBe(true);
+    expect(() => parseArgs(["--d-only", "--recover-abandoned-job", "ru-pop-c-1"])).toThrow();
+  });
+
   test("only one candidate and exactly three jobs per language, 15 total", () => {
     expect(D_BRIEFS).toHaveLength(15);
     const groups = ["Russian", "Greek", "English", "Spanish", "French"];
