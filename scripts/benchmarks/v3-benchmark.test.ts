@@ -112,7 +112,7 @@ describe("V3 benchmark explicit offline recovery arguments", () => {
     expect(parseArgs(args).live).toBe(false);
     expect(() => parseArgs([...args, "--live"])).toThrow("INVALID_RECOVERY_ARGUMENTS");
     expect(() => parseArgs([...args, "--continue-after-pilot", digest])).toThrow(
-      "INVALID_RECOVERY_ARGUMENTS",
+      "INVALID_ARGUMENTS",
     );
     expect(() => parseArgs(args.slice(0, -2))).toThrow("INVALID_RECOVERY_ARGUMENTS");
     expect(() =>
