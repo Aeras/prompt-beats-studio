@@ -4,15 +4,6 @@ import { makeDPlan } from "./v3-d-plan";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
-  test("diagnostic canonical fixture formatting", async () => {
-    const prettier = await import("prettier");
-    const fs = await import("node:fs");
-    const file = "scripts/benchmarks/v3-d-fixtures.ts";
-    const source = fs.readFileSync(file, "utf8");
-    const config = await prettier.resolveConfig(file);
-    const formatted = await prettier.format(source, { ...config, filepath: file });
-    if (source !== formatted) console.log("CANONICAL-PRETTIER:", JSON.stringify(formatted));
-  });
   test("only one candidate and exactly three jobs per language, 15 total", () => {
     expect(D_BRIEFS).toHaveLength(15);
     const groups = ["Russian", "Greek", "English", "Spanish", "French"];
