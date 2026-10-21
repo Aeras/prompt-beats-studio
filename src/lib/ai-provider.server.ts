@@ -327,7 +327,10 @@ export class AiProviderHttpError extends Error {
  * (often >120s) Argon reasoning period. A stream does not bypass hard runtime
  * execution limits; those still require deployment-level investigation.
  */
-async function collectGeminiSse(response: Response, model: string): Promise<{
+async function collectGeminiSse(
+  response: Response,
+  model: string,
+): Promise<{
   text: string;
   finish: string | null;
   usageMetadata: any;
