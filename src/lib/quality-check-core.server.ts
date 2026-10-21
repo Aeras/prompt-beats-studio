@@ -831,7 +831,12 @@ export async function runDurableQualityCheck(
   model: string;
   records: DurableQualityUsageRecord[];
   failureReason?:
-    "provider_error" | "provider_timeout" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
+    | "provider_error"
+    | "provider_timeout"
+    | "provider_incomplete"
+    | "missing_json"
+    | "invalid_json"
+    | "invalid_schema";
   schemaFailureDetails?: string;
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
