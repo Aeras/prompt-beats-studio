@@ -5,15 +5,6 @@ import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
-  test("temporary formatter diagnostic", async () => {
-    const prettier = await import("prettier");
-    const fs = await import("node:fs");
-    for (const path of ["scripts/benchmarks/v3-benchmark.ts", "scripts/benchmarks/v3-d-plan.ts", "scripts/benchmarks/v3-runner.ts"]) {
-      const original = fs.readFileSync(path, "utf8");
-      const formatted = await prettier.format(original, { ...(await prettier.resolveConfig(path)), filepath: path });
-      if (original !== formatted) console.log("FMT:"+path+":"+JSON.stringify(formatted));
-    }
-  });
   test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
     expect(parseArgs(["--d-only"]).dOnly).toBe(true);
     expect(parseArgs([]).dOnly).toBe(false);
