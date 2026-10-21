@@ -890,11 +890,13 @@ export async function runDurableQualityCheck(
       ? "provider_timeout"
       : httpStatus === 429
         ? "provider_rate_limited"
-        : httpStatus === 503 || httpStatus === 502 || httpStatus === 504
-          ? "provider_unavailable"
-          : httpStatus !== undefined
-            ? "provider_rejected"
-            : "provider_error";
+        : httpStatus === 408
+          ? "provider_timeout"
+          : httpStatus !== undefined && httpStatus >= 500
+            ? "provider_unavailable"
+            : httpStatus !== undefined
+              ? "provider_rejected"
+              : "provider_error";
     console.error("[ai] quality_check provider failure classified", {
       model,
       provider,
@@ -902,7 +904,22 @@ export async function runDurableQualityCheck(
       httpStatus: httpStatus ?? null,
       providerCode: providerHttpError?.providerCode ?? null,
     });
-    return { quality: null, provider, model, records, failureReason };
+    // Persist only bounded, non-sensitive provider metadata so the exact HTTP
+    // response class survives after ephemeral hosting logs expire. No prompt,
+    // lyrics, response bodies, API keys or arbitrary provider messages.
+    const rawCode = providerHttpError?.providerCode;
+    const safeCode =
+      typeof rawCode === "string" && /^[A-Z][A-Z0-9_]{0,39}$/.test(rawCode) ? rawCode : null;
+    const schemaFailureDetails =
+      httpStatus === undefined ? undefined : `http_${httpStatus}${safeCode ? `:${safeCode}` : ""}`;
+    return {
+      quality: null,
+      provider,
+      model,
+      records,
+      failureReason,
+      ...(schemaFailureDetails ? { schemaFailureDetails } : {}),
+    };
   }
 
   const actualProvider = result.provider || provider;

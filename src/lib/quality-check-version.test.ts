@@ -113,6 +113,10 @@ describe("Gemini Argon provider failure diagnostics", () => {
     expect(core).toContain('"provider_rate_limited"');
     expect(core).toContain('"provider_unavailable"');
     expect(core).toContain('"provider_rejected"');
+    expect(core).toContain("httpStatus >= 500");
+    expect(core).toContain("httpStatus === 408");
+    expect(core).toContain("schemaFailureDetails");
+    expect(core).toContain("httpStatus === undefined");
   });
 });
 
