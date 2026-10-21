@@ -389,10 +389,11 @@ export async function execute(
     }
     if (calls >= count) break;
   }
+  const abandoned = ledger.entries.filter((entry) => entry.state === "abandoned").length;
   return {
     calls,
     completed: ledger.entries.filter((entry) => entry.state === "completed").length,
-    abandoned: ledger.entries.filter((entry) => entry.state === "abandoned").length,
     pilotReviewRequired: !options.continuation,
+    ...(abandoned > 0 ? { abandoned } : {}),
   };
 }
