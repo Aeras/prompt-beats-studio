@@ -210,7 +210,7 @@ export const ledgerSchema = z
         .object({
           id: z.string().regex(/^ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]$/),
           blindId: z.string().regex(/^[a-f0-9]{20}$/),
-          state: z.enum(["reserved", "completed", "failed"]),
+          state: z.enum(["reserved", "completed", "failed", "abandoned"]),
           reservedMicroUsd: z.number().int().nonnegative(),
           chargedMicroUsd: z.number().int().nonnegative().nullable(),
           resultHash: z.string().nullable(),
@@ -261,6 +261,10 @@ export async function execute(
         job.blindId !== entry.blindId ||
         job.upperMicroUsd !== entry.reservedMicroUsd ||
         (entry.chargedMicroUsd !== null && entry.chargedMicroUsd > entry.reservedMicroUsd) ||
+        (entry.state === "abandoned" &&
+          (entry.resultHash !== null ||
+            entry.chargedMicroUsd !== null ||
+            entry.error !== "MANUALLY_ABANDONED_UNCERTAIN_BILLING")) ||
         (entry.state === "completed" &&
           (entry.chargedMicroUsd === null ||
             !entry.resultHash ||
@@ -270,7 +274,7 @@ export async function execute(
     })
   )
     throw new Error("LEDGER_MISMATCH");
-  if (ledger.entries.some((entry) => entry.state !== "completed"))
+  if (ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned"))
     throw new Error("UNCERTAIN_PRIOR_REQUEST_MANUAL_REVIEW_REQUIRED");
   if (ledger.entries.length > 0) {
     const pilot = ledger.entries[0];
@@ -386,5 +390,11 @@ export async function execute(
     }
     if (calls >= count) break;
   }
-  return { calls, completed: ledger.entries.length, pilotReviewRequired: !options.continuation };
+  const abandoned = ledger.entries.filter((entry) => entry.state === "abandoned").length;
+  return {
+    calls,
+    completed: ledger.entries.filter((entry) => entry.state === "completed").length,
+    pilotReviewRequired: !options.continuation,
+    ...(abandoned > 0 ? { abandoned } : {}),
+  };
 }

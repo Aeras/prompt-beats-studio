@@ -133,3 +133,64 @@ No credentials or full requests are saved. Provider errors are suppressed/saniti
 ## 7. Ready state
 
 Implementation/free checks can complete without paid execution. A live pilot is still blocked until installed registry/pricing evidence and explicit owner authorization are present. Passing dry-run/tests is not proof of better Russian rhyme and not permission to merge or spend.
+
+## PR #378 — Crash recovery after a single uncertain V3-C request
+
+This exceptional process is for the **specific PR #377 benchmark** that has six
+verified completed results, one `ru-pop-c-1` uncertain reservation, and 17
+jobs never dispatched. It is not a generic retry or override mechanism.
+
+**No provider call is permitted until the offline recovery is audited.**
+
+1. Verify the old process is dead and independently inspect OpenAI usage if
+   possible. A missing provider request ID does not prove absence of billing.
+2. Preserve the entire ignored `.benchmarks.local/v3-rhyme/live/` directory,
+   including `runner.lock`, and the original `.benchmarks.local/evidence.json`
+   in a protected copy. The old evidence can be expired, but must be genuine;
+   **never edit its timestamp**.
+3. Save the original evidence as `.benchmarks.local/evidence-original.json`.
+   Reverify the installed registry, model, rates and limits from legitimate
+   sources; write fresh `.benchmarks.local/evidence.json`. The recovery tool
+   verifies the two evidence objects are identical **apart from verifiedAt**.
+   If pricing/model/settings changed, STOP and do not use this migration.
+4. Confirm the live ledger has exactly six completed entries and the seventh
+   is `ru-pop-c-1` reserved. Obtain its SHA-256 from the **exact original
+   ledger bytes** (`sha256sum .benchmarks.local/v3-rhyme/live/ledger.json`).
+   Do not use the pilot result hash in place of the ledger hash.
+5. With the current recovery code checked out, run the **offline-only** command:
+
+```sh
+bun scripts/benchmarks/v3-runner.ts \
+  --recover-prior-evidence .benchmarks.local/evidence-original.json \
+  --evidence .benchmarks.local/evidence.json \
+  --recover-abandoned-job ru-pop-c-1 \
+  --expected-ledger-hash <sha256-of-the-existing-ledger-file>
+```
+
+This call does **not** access `OPENAI_API_KEY` or dispatch any model request.
+It verifies the previous fingerprint, every preceding completed result
+hash and blind artifact, exact plan identities, old/new registry equality and
+the stale lock. Then it creates an immutable-named original ledger backup,
+writes a recovery audit record, migrates only the current ledger fingerprint
+to the newly verified evidence and permanently marks `ru-pop-c-1` as
+`abandoned`. Its full `$0.282161` reservation remains counted. The six
+historic result artifacts **retain their original fingerprint and hash**.
+
+6. After the recovery audit succeeds and after verifying the old process is
+   still dead, remove **only** `runner.lock` manually. If anything is
+   inconsistent or a recovery artifact already exists, STOP and investigate,
+   rather than deleting backups/ledger or bypassing checks.
+7. Within the fresh evidence's validity window, run the ordinary priced
+   dry-run to confirm `liveReady: true`. Then, **only upon explicit owner
+   authorization for additional paid requests**, resume using the unchanged
+   original pilot result SHA in `--continue-after-pilot`. Run in a session
+   proven to outlive the entire command; do not repeat the 60-second
+   process-group termination setup. If safe long-lived execution is not
+   available, STOP instead of dispatching.
+8. Maximum outcome: **23 completed / 1 abandoned**, not 24 successes.
+   The affected arm has an unbalanced replicate count; preserve this
+   limitation in the blind analysis. Never synthesize the missing result.
+
+Do not merge/deploy the experiment, change budget, delete old results or
+retry the uncertain request. If another process interruption occurs, stop
+for a fresh forensic review; never automatically remove a lock.
