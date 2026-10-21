@@ -149,6 +149,12 @@ export function loadSources() {
       if (!result.startsWith(base)) throw new Error("V2 prefix changed");
       return result;
     },
+    dPrompt(input: Parameters<typeof withAdvancedSunoEnrichmentInstruction>[0]) {
+      const base = buildAdvancedGeneratorPromptV2(
+        builders.buildPrompt(withAdvancedSunoEnrichmentInstruction(input)),
+      );
+      return withV3MusicalPlanning(base, "d");
+    },
     // Real app adapter with only fetch/key injected. Never logs provider error bodies.
     caller(fetcher: typeof fetch, apiKey: string) {
       return compile<{ callOpenAI: (model: string, call: Call) => Promise<ProviderReply> }>(

@@ -21,14 +21,19 @@ import {
   type Ledger,
 } from "./v3-benchmark";
 import { hash } from "./v3-source";
+import { makeDPlan } from "./v3-d-plan";
 
 // *.local is already ignored. Unlike .output, this survives application builds.
 const OUTPUT = ".benchmarks.local/v3-rhyme";
+const OUTPUT_D = ".benchmarks.local/v3-d-multilingual";
+// Lost-run exposure $0.303449 + complete V3-C benchmark $0.091213.
+export const D_PRIOR_EXPOSURE_MICRO_USD = 394662;
 // PR #377: conservative exposure from the lost six-result run and uncertain request.
 // Included in EVERY new live budget admission; never cleared by starting a fresh ledger.
 export const PRIOR_BENCHMARK_EXPOSURE_MICRO_USD = 303449;
 export function parseArgs(args: string[]) {
   let live = false;
+  let dOnly = false;
   let confirmSpendUsd = "";
   let evidencePath: string | undefined;
   let continuation: string | undefined;
@@ -45,6 +50,10 @@ export function parseArgs(args: string[]) {
       continue;
     }
     if (arg === "--dry-run") continue;
+    if (arg === "--d-only") {
+      dOnly = true;
+      continue;
+    }
     if (
       ![
         "--confirm-spend-usd",
@@ -70,7 +79,8 @@ export function parseArgs(args: string[]) {
   const recovering = Boolean(recoveryEvidencePath || recoverJob || expectedLedgerHash);
   if (
     recovering &&
-    (live ||
+    (dOnly ||
+      live ||
       continuation ||
       confirmSpendUsd ||
       !evidencePath ||
@@ -81,6 +91,7 @@ export function parseArgs(args: string[]) {
     throw new Error("INVALID_RECOVERY_ARGUMENTS");
   return {
     live,
+    dOnly,
     confirmSpendUsd,
     evidencePath,
     continuation,
@@ -115,7 +126,8 @@ export async function main(args: string[]) {
   const evidence = options.evidencePath
     ? validateEvidence(JSON.parse(readFileSync(options.evidencePath, "utf8")))
     : undefined;
-  const plan = makePlan(evidence);
+  const plan = options.dOnly ? makeDPlan(evidence) : makePlan(evidence);
+  const output = options.dOnly ? OUTPUT_D : OUTPUT;
   if (options.recovering) {
     // Completely offline, explicit one-time ledger migration. This path never
     // constructs a provider adapter and never accesses OPENAI_API_KEY.
@@ -137,7 +149,7 @@ export async function main(args: string[]) {
       )
     )
       throw new Error("RECOVERY_EVIDENCE_OR_PLAN_DRIFT");
-    const directory = `${OUTPUT}/live`;
+    const directory = `${output}/live`;
     const ledgerPath = `${directory}/ledger.json`;
     const rawLedger = readFileSync(ledgerPath, "utf8");
     const originalHash = hash(rawLedger);
@@ -235,9 +247,9 @@ export async function main(args: string[]) {
   }
   if (!options.live) {
     const report = dryRun(plan);
-    mkdirSync(`${OUTPUT}/offline`, { recursive: true, mode: 0o700 });
+    mkdirSync(`${output}/offline`, { recursive: true, mode: 0o700 });
     // Deterministic output: no keys, time, generated content, or environment state.
-    writeFileSync(`${OUTPUT}/offline/manifest.json`, `${JSON.stringify(report, null, 2)}\n`, {
+    writeFileSync(`${output}/offline/manifest.json`, `${JSON.stringify(report, null, 2)}\n`, {
       mode: 0o600,
     });
     console.log(JSON.stringify(report, null, 2));
@@ -269,7 +281,9 @@ export async function main(args: string[]) {
       ci,
       confirmSpendUsd: options.confirmSpendUsd,
       apiKeyAvailable: true,
-      priorExposureMicroUsd: PRIOR_BENCHMARK_EXPOSURE_MICRO_USD,
+      priorExposureMicroUsd: options.dOnly
+        ? D_PRIOR_EXPOSURE_MICRO_USD
+        : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD,
       ...(options.continuation ? { continuation: options.continuation } : {}),
       call: async (model, call) => {
         const reply = await adapter(model, call);
@@ -289,9 +303,10 @@ export async function main(args: string[]) {
         {
           ...result,
           pilotResultHash: ledger.entries[0]?.resultHash,
-          priorExposureUsd: PRIOR_BENCHMARK_EXPOSURE_MICRO_USD / 1e6,
+          priorExposureUsd:
+            (options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) / 1e6,
           estimatedTotalExposureUsd:
-            (PRIOR_BENCHMARK_EXPOSURE_MICRO_USD +
+            ((options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) +
               ledger.entries.reduce(
                 (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
                 0,

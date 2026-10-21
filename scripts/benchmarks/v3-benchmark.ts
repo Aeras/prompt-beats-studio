@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BRIEFS } from "./v3-fixtures";
+import type { DPlan } from "./v3-d-plan";
 import { ARMS, BASELINE_SHA, hash, loadSources, type Call, type ProviderReply } from "./v3-source";
 
 export const BUDGET_MICRO_USD = 3_000_000;
@@ -130,7 +131,7 @@ export function makePlan(evidence?: Evidence) {
   );
   return { source, jobs, fingerprint, evidence };
 }
-export type Plan = ReturnType<typeof makePlan>;
+export type Plan = ReturnType<typeof makePlan> | DPlan;
 export type Job = Plan["jobs"][number];
 
 export function dryRun(plan: Plan, _provider?: unknown) {
@@ -208,7 +209,11 @@ export const ledgerSchema = z
     entries: z.array(
       z
         .object({
-          id: z.string().regex(/^ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]$/),
+          id: z
+            .string()
+            .regex(
+              /^(?:ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]|(?:ru|el|en|es|fr)-(pop|ballad|hook)-d-1)$/,
+            ),
           blindId: z.string().regex(/^[a-f0-9]{20}$/),
           state: z.enum(["reserved", "completed", "failed", "abandoned"]),
           reservedMicroUsd: z.number().int().nonnegative(),
