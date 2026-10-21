@@ -304,8 +304,7 @@ export async function main(args: string[]) {
           ...result,
           pilotResultHash: ledger.entries[0]?.resultHash,
           priorExposureUsd:
-            (options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) /
-            1e6,
+            (options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) / 1e6,
           estimatedTotalExposureUsd:
             ((options.dOnly ? D_PRIOR_EXPOSURE_MICRO_USD : PRIOR_BENCHMARK_EXPOSURE_MICRO_USD) +
               ledger.entries.reduce(
