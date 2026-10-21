@@ -16,9 +16,9 @@ describe("Gemini 4 Argon direct integration", () => {
   test("uses the direct Google REST endpoint with Argon thinking levels", async () => {
     const provider = await source("./ai-provider.server.ts");
     expect(provider).toContain(
-      '"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent"',
+      '"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:streamGenerateContent?alt=sse"',
     );
-    expect(provider).toContain('thinkingConfig: { thinkingLevel: argonThinkingLevel }');
+    expect(provider).toContain("thinkingConfig: { thinkingLevel: argonThinkingLevel }");
     expect(provider).toContain("Math.max(requestedOutput, 32_768)");
     expect(provider).toContain("15 * 60 * 1000");
   });
@@ -36,11 +36,15 @@ describe("Gemini 4 Argon direct integration", () => {
     const lab = await source("./audio-model-lab.functions.ts");
     const route = await source("../routes/audio-model-lab.tsx");
     expect(lab).toContain('{ id: "gemini-4-argon", label: "Gemini 4 Argon", provider: "gemini" }');
-    expect(lab).toContain('"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent"');
+    expect(lab).toContain(
+      '"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent"',
+    );
     expect(lab).toContain('thinkingConfig: { thinkingLevel: "medium" }');
     expect(lab).toContain("maxOutputTokens: 32_768");
     expect(route).toContain('"gemini-4-argon": { status: "idle" }');
-    expect(route).toContain("Χωρίς RunPod, Demucs, Essentia, MERT, Qdrant, Stage A/B ή Final Judge.");
+    expect(route).toContain(
+      "Χωρίς RunPod, Demucs, Essentia, MERT, Qdrant, Stage A/B ή Final Judge.",
+    );
   });
 
   test("keeps web research on Gemini 3.8 Flash for Argon", async () => {

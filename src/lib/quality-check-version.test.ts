@@ -93,6 +93,16 @@ describe("V2.1 OpenAI long-running request safety", () => {
   });
 });
 
+describe("Gemini Argon streamed Quality Check", () => {
+  test("requests SSE and reconstructs the full JSON before schema validation", () => {
+    const provider = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    expect(provider).toContain("gemini-4-argon:streamGenerateContent?alt=sse");
+    expect(provider).toContain("collectGeminiSse(response, model)");
+    expect(provider).toContain('finish !== "STOP"');
+    expect(provider).toContain('buffer.indexOf("\\n\\n")');
+  });
+});
+
 describe("Gemini Argon provider failure diagnostics", () => {
   test("preserves provider HTTP status and classifies durable Quality Check failures", () => {
     const provider = readFileSync("src/lib/ai-provider.server.ts", "utf8");
