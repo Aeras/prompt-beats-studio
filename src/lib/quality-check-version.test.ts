@@ -93,6 +93,19 @@ describe("V2.1 OpenAI long-running request safety", () => {
   });
 });
 
+describe("Gemini Argon provider failure diagnostics", () => {
+  test("preserves provider HTTP status and classifies durable Quality Check failures", () => {
+    const provider = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    const core = readFileSync("src/lib/quality-check-core.server.ts", "utf8");
+    expect(provider).toContain("export class AiProviderHttpError extends Error");
+    expect(provider).toContain('new AiProviderHttpError("gemini", response.status, providerCode)');
+    expect(core).toContain("err instanceof providerLayer.AiProviderHttpError");
+    expect(core).toContain('"provider_rate_limited"');
+    expect(core).toContain('"provider_unavailable"');
+    expect(core).toContain('"provider_rejected"');
+  });
+});
+
 describe("Quality Check version isolation", () => {
   test("missing version remains V1 for every existing caller", () => {
     expect(durableQualityCheckInput.parse(song).qualityCheckVersion).toBe("v1");
