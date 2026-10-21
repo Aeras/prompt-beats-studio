@@ -908,14 +908,8 @@ export async function runDurableQualityCheck(
     // response class survives after ephemeral hosting logs expire. No prompt,
     // lyrics, response bodies, API keys or arbitrary provider messages.
     const rawCode = providerHttpError?.providerCode;
-    const safeCode =
-      typeof rawCode === "string" && /^[A-Z][A-Z0-9_]{0,39}$/.test(rawCode)
-        ? rawCode
-        : null;
-    const schemaFailureDetails =
-      httpStatus === undefined
-        ? undefined
-        : `http_${httpStatus}${safeCode ? `:${safeCode}` : ""}`;
+    const safeCode = typeof rawCode === "string" && /^[A-Z][A-Z0-9_]{0,39}$/.test(rawCode) ? rawCode : null;
+    const schemaFailureDetails = httpStatus === undefined ? undefined : `http_${httpStatus}${safeCode ? `:${safeCode}` : ""}`;
     return { quality: null, provider, model, records, failureReason, schemaFailureDetails };
   }
 
