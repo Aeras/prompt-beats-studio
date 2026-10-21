@@ -162,9 +162,7 @@ export async function main(args: string[]) {
       if (!entry.resultHash || entry.chargedMicroUsd === null || entry.error !== null)
         throw new Error("RECOVERY_COMPLETED_ENTRY_INVALID");
       const result = JSON.parse(readFileSync(`${directory}/${entry.blindId}.json`, "utf8"));
-      const blind = JSON.parse(
-        readFileSync(`${directory}/blind/${entry.blindId}.json`, "utf8"),
-      );
+      const blind = JSON.parse(readFileSync(`${directory}/blind/${entry.blindId}.json`, "utf8"));
       if (
         hash(JSON.stringify(result)) !== entry.resultHash ||
         result.fingerprint !== priorPlan.fingerprint ||
