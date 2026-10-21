@@ -753,7 +753,7 @@ export function normalizeUnambiguousZeroBasedCorrections(
     // Ignore vocal/performance tags while finding the next structural section.
     const sectionHeadings = Array.from(
       lyrics.matchAll(
-        /^\\[(?:Intro|Verse(?:\\s*\\d+)?|Pre-Chorus(?:\\s*\\d+)?|Chorus(?:\\s*\\d+)?|Bridge|Final Chorus|Outro)\\]$/gim,
+        /^\[(?:Intro|Verse(?:\s*\d+)?|Pre-Chorus(?:\s*\d+)?|Chorus(?:\s*\d+)?|Bridge|Final Chorus|Outro)\]$/gim,
       ),
     );
     const nextSection = sectionHeadings.find(
