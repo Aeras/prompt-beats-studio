@@ -134,7 +134,7 @@ export const D_BRIEFS = [
     instructions: "Conserve exactement «Voilà le bonheur» dans les deux refrains.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
-  }
+  },
 ] as const;
 
 export function dBriefInput(brief: (typeof D_BRIEFS)[number]) {
