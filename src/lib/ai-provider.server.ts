@@ -34,6 +34,8 @@ export type ModelCall = {
   schema?: Record<string, unknown>;
   /** Provider-specific reasoning budget; ignored by providers that do not expose it. */
   reasoningEffort?: ReasoningEffort;
+  /** Explicit bounded request timeout for long-running durable operations only. */
+  requestTimeoutMs?: number;
 };
 
 export type ModelResult = {
@@ -58,6 +60,9 @@ export type ModelResult = {
 export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
 
 function providerRequestTimeoutMs(call: ModelCall) {
+  if (call.requestTimeoutMs !== undefined) {
+    return Math.max(1000, Math.min(call.requestTimeoutMs, 12 * 60 * 1000));
+  }
   if (
     call.reasoningEffort === "high" ||
     call.reasoningEffort === "xhigh" ||
