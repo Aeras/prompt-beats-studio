@@ -101,7 +101,7 @@ describe("V3-C cumulative cap with previous lost benchmark exposure", () => {
     await expect(
       execute(h.plan, h.ledger, {
         ...h.options,
-        priorExposureMicroUsd: 2_800_000,
+        priorExposureMicroUsd: 2_999_999,
       }),
     ).rejects.toThrow("BUDGET_EXPOSURE_EXCEEDED");
     expect(h.calls()).toBe(0);
