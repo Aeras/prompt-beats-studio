@@ -9,6 +9,9 @@ describe("candidate D multilingual frozen design", () => {
   test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
     expect(parseArgs(["--d-only"]).dOnly).toBe(true);
     expect(parseArgs([]).dOnly).toBe(false);
+    expect(parseArgs(["--d-only", "--live", "--one-job", "--confirm-spend-usd", "3.00"]).oneJob).toBe(true);
+    expect(() => parseArgs(["--one-job", "--live", "--confirm-spend-usd", "3.00"])).toThrow("ONE_JOB_REQUIRES_LIVE_D_ONLY");
+    expect(() => parseArgs(["--d-only", "--one-job"])).toThrow("ONE_JOB_REQUIRES_LIVE_D_ONLY");
     expect(D_PRIOR_EXPOSURE_MICRO_USD).toBe(394662);
     expect(parseArgs(["--d-only", "--live", "--confirm-spend-usd", "3.00"]).dOnly).toBe(true);
     expect(() => parseArgs(["--d-only", "--recover-abandoned-job", "ru-pop-c-1"])).toThrow();
