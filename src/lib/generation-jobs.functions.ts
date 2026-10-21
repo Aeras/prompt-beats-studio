@@ -35,7 +35,7 @@ const jobInput = z.object({
   mood: z.string().trim().min(1),
   language: z.string().trim().min(1).max(80),
   generationModel: z.string().trim().min(1).max(240).nullish(),
-  promptVersion: z.enum(["v1", "v2", "v3"]).default("v1"),
+  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
   advanced: z.boolean().default(false),
   baseMusicStyle: z.string().trim().default(""),
   instruments: z.string().trim().default(""),
@@ -82,7 +82,7 @@ const resultShape = z.union([songResultShape, sectionEditResultShape]);
  * completely closed browser — never localStorage, never the result text.
  */
 const songInputShape = z.object({
-  promptVersion: z.enum(["v1", "v2", "v3"]).default("v1"),
+  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().default(""),
   genre: z.string().default(""),
@@ -162,7 +162,11 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
-    if (data.promptVersion === "v2" || data.promptVersion === "v3") {
+    if (
+      data.promptVersion === "v2" ||
+      data.promptVersion === "v3" ||
+      data.promptVersion === "v4_beta"
+    ) {
       const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
         "current_user_is_super_admin",
       );

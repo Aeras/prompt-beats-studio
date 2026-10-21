@@ -917,7 +917,7 @@ function GeneratePage() {
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
-  const [promptVersion, setPromptVersion] = useState<"v1" | "v2" | "v3">("v1");
+  const [promptVersion, setPromptVersion] = useState<"v1" | "v2" | "v3" | "v4_beta">("v1");
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
@@ -3195,7 +3195,9 @@ function GeneratePage() {
                   disabled={busy || Boolean(jobId)}
                   onChange={(event) =>
                     setPromptVersion(
-                      event.target.value === "v3"
+                      event.target.value === "v4_beta"
+                        ? "v4_beta"
+                        : event.target.value === "v3"
                         ? "v3"
                         : event.target.value === "v2"
                           ? "v2"
@@ -3206,11 +3208,12 @@ function GeneratePage() {
                   <option value="v1">Prompt Version 1 — Original</option>
                   <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
                   <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
+                  <option value="v4_beta">Prompt Version 4 BETA — Unified Master (R3.1)</option>
                 </select>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {appLanguage === "el"
-                    ? "Οι V1/V2 παραμένουν αμετάβλητες. Η V3 δοκιμάζει προσαρμοστική τραγουδισιμότητα μόνο για Super Admin."
-                    : "V1/V2 remain unchanged. V3 tests adaptive singability for Super Admin only."}
+                    ? "Οι V1/V2/V3 παραμένουν αμετάβλητες. Η V3 δοκιμάζει προσαρμοστική τραγουδισιμότητα και η V4 BETA το ενιαίο master prompt R3.1, μόνο για Super Admin."
+                    : "V1/V2/V3 remain unchanged. V3 tests adaptive singability and V4 BETA the unified R3.1 master prompt, Super Admin only."}
                 </p>
               </div>
             )}
