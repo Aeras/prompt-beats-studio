@@ -752,12 +752,12 @@ export function normalizeUnambiguousZeroBasedCorrections(
     const firstSection = lyrics.indexOf(sectionMarker);
     if (firstSection === -1 || lyrics.indexOf(sectionMarker, firstSection + 1) !== -1)
       return item;
-    const nextHeading = lyrics.indexOf("\\n[", firstSection + sectionMarker.length);
+    const nextHeading = lyrics.indexOf("\n[", firstSection + sectionMarker.length);
     if (first < firstSection + sectionMarker.length) return item;
     if (nextHeading !== -1 && first >= nextHeading) {
       // Vocal/performance annotations can appear between the section and lyric.
       const intermediate = lyrics.slice(firstSection + sectionMarker.length, first);
-      if (/\\n\\[(?:Verse|Chorus|Pre-Chorus|Bridge|Final Chorus|Outro|Intro)\\b/i.test(intermediate))
+      if (/\[(?:Verse|Chorus|Pre-Chorus|Bridge|Final Chorus|Outro|Intro)\b/i.test(intermediate))
         return item;
     }
     changed = true;
