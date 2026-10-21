@@ -9,7 +9,7 @@ const RHYME_INTENT = `RHYME INTENT (V3):
 Follow explicit user and occurrence-specific Blueprint preferences for a rhyme
 scheme, free verse, minimal rhyme, or internal rhyme over genre defaults.
 Otherwise, when the requested genre and section favor audible rhyme — especially
-melodic pop, ballad, or dance-pop choruses — aim for natural recurring sound
+melodic pop, ballad, or dance-pop choruses — aim for natural recurring end-rhyme
 relationships. Do not equate natural phrasing with avoiding rhyme. Adapt the
 density to the genre and section; do not demand end rhyme on every line.
 Rap may prioritize internal or multisyllabic patterns; spoken/experimental
@@ -17,8 +17,9 @@ sections may deliberately avoid end rhyme.`;
 
 const RHYME_PLANNING = `For sections where rhyme serves the brief, silently consider a few meaningful,
 compatible ending words or phrases together before composing the lines.
-Keep the endings provisional: revise an ending or relax a pattern rather than
-distort grammar, idiom, lexical stress, required imagery, meaning, or delivery.
+Keep the endings provisional: choose another ending or rephrase the line rather
+than distort grammar, idiom, lexical stress, required imagery, meaning, or delivery.
+Relax only a self-chosen pattern, never an explicit user or Blueprint rhyme scheme.
 Judge the sound in the requested language, not spelling or shared grammatical
 suffixes alone. For Russian, check the stressed vowel and following sounds;
 distinguish exact from deliberate slant rhyme or assonance. Do not apply
@@ -47,8 +48,9 @@ required hooks. Distribute details across appropriate sections.
 Give melodic hooks room for held notes and breaths where useful; allow naturally
 dense rap or spoken-sung lines when intended. Preserve idiomatic language,
 meaning, vivid specifics and intentional rhythmic contrasts in every language.
-Never impose fixed syllable counts, equal line lengths, a universal rhyme scheme,
-universal BPM-to-syllable formulas or an imagined note/bar map.
+Never impose fixed syllable counts, equal line lengths, or a rhyme scheme as
+automatic defaults; honor explicit requests for a particular metrical form.
+Never impose universal BPM-to-syllable formulas or an imagined note/bar map.
 ${RHYME_INTENT}
 ${rhymeCandidate === "a+b" ? RHYME_PLANNING : ""}
 Require narrative development only when the user requests it or enables narrative
