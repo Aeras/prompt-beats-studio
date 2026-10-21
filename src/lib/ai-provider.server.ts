@@ -310,7 +310,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
 }
 
 export class AiProviderHttpError extends Error {
-  readonly name = "AiProviderHttpError";
+  override readonly name = "AiProviderHttpError";
   constructor(
     readonly provider: string,
     readonly httpStatus: number,
