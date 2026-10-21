@@ -262,7 +262,8 @@ export async function execute(
         job.upperMicroUsd !== entry.reservedMicroUsd ||
         (entry.chargedMicroUsd !== null && entry.chargedMicroUsd > entry.reservedMicroUsd) ||
         (entry.state === "abandoned" &&
-          (entry.resultHash !== null || entry.chargedMicroUsd !== null ||
+          (entry.resultHash !== null ||
+            entry.chargedMicroUsd !== null ||
             entry.error !== "MANUALLY_ABANDONED_UNCERTAIN_BILLING")) ||
         (entry.state === "completed" &&
           (entry.chargedMicroUsd === null ||
@@ -273,7 +274,9 @@ export async function execute(
     })
   )
     throw new Error("LEDGER_MISMATCH");
-  if (ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned"))
+  if (
+    ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned")
+  )
     throw new Error("UNCERTAIN_PRIOR_REQUEST_MANUAL_REVIEW_REQUIRED");
   if (ledger.entries.length > 0) {
     const pilot = ledger.entries[0];
