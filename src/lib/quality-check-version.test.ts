@@ -19,7 +19,7 @@ const song = {
 
 describe("Quality Check V2.1 correction index normalization", () => {
   const lyrics =
-    "[Verse 1]\\n[Female lead]\\nГазету развернула на весах.\\n[Chorus 1]\\nСогреет нас.\\n[Chorus 2]\\nСогреет нас.";
+    "[Verse 1]\n[Female lead]\nГазету развернула на весах.\n[Chorus 1]\nСогреет нас.\n[Chorus 2]\nСогреет нас.";
 
   test("repairs zero only when the exact lyric target and section are unambiguous", () => {
     const report = {
@@ -59,7 +59,7 @@ describe("Quality Check V2.1 correction index normalization", () => {
     };
     const output = normalizeUnambiguousZeroBasedCorrections(
       report,
-      "[Verse 1]\\necho\\necho",
+      "[Verse 1]\necho\necho",
     ) as typeof report;
     expect(output.corrections[0]?.occurrenceIndex).toBe(0);
   });
