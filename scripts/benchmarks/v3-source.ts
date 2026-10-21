@@ -149,7 +149,7 @@ export function loadSources() {
       if (!result.startsWith(base)) throw new Error("V2 prefix changed");
       return result;
     },
-    dPrompt(input: Parameters<typeof builders.buildPrompt>[0]) {
+    dPrompt(input: Parameters<typeof withAdvancedSunoEnrichmentInstruction>[0]) {
       const base = buildAdvancedGeneratorPromptV2(
         builders.buildPrompt(withAdvancedSunoEnrichmentInstruction(input)),
       );
