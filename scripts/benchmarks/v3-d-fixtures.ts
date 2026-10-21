@@ -4,22 +4,18 @@ export const D_BRIEFS = [
     id: "ru-pop",
     language: "Russian",
     genre: "Russian melodic pop",
-    theme:
-      "Счастье в обычном совместном воскресном утре: чай, дождь и близкий человек рядом.",
+    theme: "Счастье в обычном совместном воскресном утре: чай, дождь и близкий человек рядом.",
     instructions:
       "Natural idiomatic Russian; audible chorus rhyme without an imposed scheme; no invented plot.",
     mood: "Warm and intimate",
-    production:
-      "Conversational voice, piano, restrained drums; open melodic refrain",
+    production: "Conversational voice, piano, restrained drums; open melodic refrain",
   },
   {
     id: "ru-ballad",
     language: "Russian",
     genre: "Russian piano ballad",
-    theme:
-      "Тихая благодарность человеку, который остаётся рядом в трудный вечер.",
-    instructions:
-      "Four sung chorus lines with audible ABAB; natural lexical stress and syntax.",
+    theme: "Тихая благодарность человеку, который остаётся рядом в трудный вечер.",
+    instructions: "Four sung chorus lines with audible ABAB; natural lexical stress and syntax.",
     mood: "Tender and reflective",
     production: "Expressive voice, piano, soft strings; space for breaths",
   },
@@ -27,10 +23,8 @@ export const D_BRIEFS = [
     id: "ru-hook",
     language: "Russian",
     genre: "Russian contemporary hook pop",
-    theme:
-      "Домашнее спокойствие, небольшие бытовые детали и любимый человек рядом.",
-    instructions:
-      "Memorable literal hook «Вот оно, счастье» in both choruses; no forced story.",
+    theme: "Домашнее спокойствие, небольшие бытовые детали и любимый человек рядом.",
+    instructions: "Memorable literal hook «Вот оно, счастье» in both choruses; no forced story.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
   },
@@ -38,22 +32,17 @@ export const D_BRIEFS = [
     id: "el-pop",
     language: "Greek",
     genre: "Greek melodic pop",
-    theme:
-      "Ένα ήσυχο κυριακάτικο πρωινό με βροχή, δύο κούπες τσάι και έναν αγαπημένο άνθρωπο.",
-    instructions:
-      "Φυσικά νέα ελληνικά· ακουστή ομοιοκαταληξία στο ρεφρέν χωρίς υποχρεωτικό σχήμα.",
+    theme: "Ένα ήσυχο κυριακάτικο πρωινό με βροχή, δύο κούπες τσάι και έναν αγαπημένο άνθρωπο.",
+    instructions: "Φυσικά νέα ελληνικά· ακουστή ομοιοκαταληξία στο ρεφρέν χωρίς υποχρεωτικό σχήμα.",
     mood: "Warm and intimate",
-    production:
-      "Conversational voice, piano, restrained drums; open melodic refrain",
+    production: "Conversational voice, piano, restrained drums; open melodic refrain",
   },
   {
     id: "el-ballad",
     language: "Greek",
     genre: "Greek piano ballad",
-    theme:
-      "Ήσυχη ευγνωμοσύνη για κάποιον που στέκεται δίπλα σου ένα δύσκολο βράδυ.",
-    instructions:
-      "Τέσσερις τραγουδισμένοι στίχοι στο ρεφρέν με ακουστό ABAB, φυσικούς τονισμούς.",
+    theme: "Ήσυχη ευγνωμοσύνη για κάποιον που στέκεται δίπλα σου ένα δύσκολο βράδυ.",
+    instructions: "Τέσσερις τραγουδισμένοι στίχοι στο ρεφρέν με ακουστό ABAB, φυσικούς τονισμούς.",
     mood: "Tender and reflective",
     production: "Expressive voice, piano, soft strings; space for breaths",
   },
@@ -61,10 +50,8 @@ export const D_BRIEFS = [
     id: "el-hook",
     language: "Greek",
     genre: "Greek contemporary hook pop",
-    theme:
-      "Η ηρεμία του σπιτιού και μικρές καθημερινές στιγμές με τον άνθρωπό σου.",
-    instructions:
-      "Διατήρησε αυτούσια τη φράση «Αυτό είναι ευτυχία» στο αρχικό και τελικό ρεφρέν.",
+    theme: "Η ηρεμία του σπιτιού και μικρές καθημερινές στιγμές με τον άνθρωπό σου.",
+    instructions: "Διατήρησε αυτούσια τη φράση «Αυτό είναι ευτυχία» στο αρχικό και τελικό ρεφρέν.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
   },
@@ -72,22 +59,17 @@ export const D_BRIEFS = [
     id: "en-pop",
     language: "English",
     genre: "English melodic pop",
-    theme:
-      "A quiet rainy Sunday morning, two cups of tea and someone you love beside you.",
-    instructions:
-      "Natural conversational English; audible chorus rhyme without a mandated scheme.",
+    theme: "A quiet rainy Sunday morning, two cups of tea and someone you love beside you.",
+    instructions: "Natural conversational English; audible chorus rhyme without a mandated scheme.",
     mood: "Warm and intimate",
-    production:
-      "Conversational voice, piano, restrained drums; open melodic refrain",
+    production: "Conversational voice, piano, restrained drums; open melodic refrain",
   },
   {
     id: "en-ballad",
     language: "English",
     genre: "English piano ballad",
-    theme:
-      "Quiet gratitude to someone who stays close during a difficult evening.",
-    instructions:
-      "Four sung chorus lines in an audible ABAB rhyme scheme, no forced wording.",
+    theme: "Quiet gratitude to someone who stays close during a difficult evening.",
+    instructions: "Four sung chorus lines in an audible ABAB rhyme scheme, no forced wording.",
     mood: "Tender and reflective",
     production: "Expressive voice, piano, soft strings; space for breaths",
   },
@@ -96,8 +78,7 @@ export const D_BRIEFS = [
     language: "English",
     genre: "English contemporary hook pop",
     theme: "Comfort at home with a loved one, found in everyday small details.",
-    instructions:
-      "Keep the exact hook “This is happiness” in both chorus occurrences.",
+    instructions: "Keep the exact hook “This is happiness” in both chorus occurrences.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
   },
@@ -105,20 +86,16 @@ export const D_BRIEFS = [
     id: "es-pop",
     language: "Spanish",
     genre: "Spanish melodic pop",
-    theme:
-      "Una mañana de domingo lluviosa, dos tazas de té y alguien querido a tu lado.",
-    instructions:
-      "Español natural; rima audible en el estribillo sin esquema impuesto.",
+    theme: "Una mañana de domingo lluviosa, dos tazas de té y alguien querido a tu lado.",
+    instructions: "Español natural; rima audible en el estribillo sin esquema impuesto.",
     mood: "Warm and intimate",
-    production:
-      "Conversational voice, piano, restrained drums; open melodic refrain",
+    production: "Conversational voice, piano, restrained drums; open melodic refrain",
   },
   {
     id: "es-ballad",
     language: "Spanish",
     genre: "Spanish piano ballad",
-    theme:
-      "Gratitud tranquila hacia alguien que permanece a tu lado durante una tarde difícil.",
+    theme: "Gratitud tranquila hacia alguien que permanece a tu lado durante una tarde difícil.",
     instructions:
       "Estribillo de cuatro versos cantados con rima ABAB audible y acentuación natural.",
     mood: "Tender and reflective",
@@ -128,10 +105,8 @@ export const D_BRIEFS = [
     id: "es-hook",
     language: "Spanish",
     genre: "Spanish contemporary hook pop",
-    theme:
-      "La calma del hogar y las pequeñas cosas cotidianas con alguien a quien amas.",
-    instructions:
-      "Conserva exactamente «Esto es felicidad» en ambos estribillos.",
+    theme: "La calma del hogar y las pequeñas cosas cotidianas con alguien a quien amas.",
+    instructions: "Conserva exactamente «Esto es felicidad» en ambos estribillos.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
   },
@@ -139,22 +114,17 @@ export const D_BRIEFS = [
     id: "fr-pop",
     language: "French",
     genre: "French melodic pop",
-    theme:
-      "Un dimanche matin pluvieux, deux tasses de thé et la personne aimée près de soi.",
-    instructions:
-      "Français naturel; rimes audibles au refrain, sans schéma obligatoire.",
+    theme: "Un dimanche matin pluvieux, deux tasses de thé et la personne aimée près de soi.",
+    instructions: "Français naturel; rimes audibles au refrain, sans schéma obligatoire.",
     mood: "Warm and intimate",
-    production:
-      "Conversational voice, piano, restrained drums; open melodic refrain",
+    production: "Conversational voice, piano, restrained drums; open melodic refrain",
   },
   {
     id: "fr-ballad",
     language: "French",
     genre: "French piano ballad",
-    theme:
-      "Une gratitude discrète envers une personne présente pendant une soirée difficile.",
-    instructions:
-      "Quatre lignes chantées au refrain, rimes ABAB audibles sans tournures forcées.",
+    theme: "Une gratitude discrète envers une personne présente pendant une soirée difficile.",
+    instructions: "Quatre lignes chantées au refrain, rimes ABAB audibles sans tournures forcées.",
     mood: "Tender and reflective",
     production: "Expressive voice, piano, soft strings; space for breaths",
   },
@@ -162,10 +132,8 @@ export const D_BRIEFS = [
     id: "fr-hook",
     language: "French",
     genre: "French contemporary hook pop",
-    theme:
-      "Le calme de la maison et les petits gestes quotidiens avec la personne aimée.",
-    instructions:
-      "Conserve exactement «Voilà le bonheur» dans les deux refrains.",
+    theme: "Le calme de la maison et les petits gestes quotidiens avec la personne aimée.",
+    instructions: "Conserve exactement «Voilà le bonheur» dans les deux refrains.",
     mood: "Affectionate and relaxed",
     production: "Conversational vocal, gentle guitar and bass; memorable hook",
   },
