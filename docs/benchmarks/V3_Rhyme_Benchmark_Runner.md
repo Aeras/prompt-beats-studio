@@ -1,3 +1,5 @@
+> **Experimental V3-C extension — PR #377:** This branch extends the frozen design to **24 jobs** (3 briefs × Current / A / A+B / C × 2 repeats). It is NOT a continuation of the completed 18-job benchmark: use a fresh checkout and distinct ignored local output directory. Any live pilot requires new explicit approval and fresh verified evidence. The legacy instructions below describe the original 18-job PR #375 and its successfully completed run; apply the four-arm counts (24 total, 23 after pilot) for this experimental branch. Do not reuse the old ledger, old pilot hash or old evidence.
+
 # V3 rhyme benchmark runner — execution guide
 
 Developer-only, no application UI, database writes, deployment or automatic AI reviews. PR #375 remains draft, based on #374. Implemented commands default to offline mode. **No paid pilot is authorized by this document.**
