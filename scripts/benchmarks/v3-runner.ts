@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { zipSync, unzipSync, strToU8 } from "fflate";
 import { pathToFileURL } from "node:url";
 import {
@@ -324,8 +325,8 @@ export async function main(args: string[]) {
       }
       const checksums = Object.entries(files)
         .map(([name, bytes]) => `${hash(Buffer.from(bytes).toString("utf8"))}  ${name}`)
-        .join("\\n");
-      files["checksums.sha256"] = strToU8(`${checksums}\\n`);
+        .join("\n");
+      files["checksums.sha256"] = strToU8(`${checksums}\n`);
       const zipped = zipSync(files, { level: 6 });
       const checkpoint = unzipSync(zipped);
       if (
@@ -342,7 +343,7 @@ export async function main(args: string[]) {
       } finally {
         closeSync(fd);
       }
-      console.log(JSON.stringify({ checkpoint: archivePath, sha256: hash(Buffer.from(zipped).toString("binary")), completed: completed.length, operatorExportRequired: true }));
+      console.log(JSON.stringify({ checkpoint: archivePath, sha256: createHash("sha256").update(zipped).digest("hex"), completed: completed.length, operatorExportRequired: true }));
     }
     console.log(
       JSON.stringify(
