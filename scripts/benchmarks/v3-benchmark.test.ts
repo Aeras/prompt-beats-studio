@@ -96,10 +96,10 @@ function harness(plan = makePlan(evidence())) {
 }
 
 describe("V3 benchmark offline assembly", () => {
-  test("18 deterministic jobs use genuine V2 prefixes and pinned original MAIN V3", () => {
+  test("24 deterministic jobs use genuine V2 prefixes and pinned original MAIN V3", () => {
     const plan = makePlan();
-    expect(plan.jobs).toHaveLength(18);
-    expect(new Set(plan.jobs.map((j) => j.id)).size).toBe(18);
+    expect(plan.jobs).toHaveLength(24);
+    expect(new Set(plan.jobs.map((j) => j.id)).size).toBe(24);
     expect(new Set(plan.jobs.map((j) => j.blindId)).size).toBe(18);
     expect(dryRun(plan)).toEqual(dryRun(makePlan()));
     const original = execFileSync(
@@ -157,7 +157,7 @@ describe("V3 benchmark offline assembly", () => {
     expect(child.status).toBe(0);
     expect(child.stderr).toBe("");
     const report = JSON.parse(child.stdout);
-    expect(report.plannedGenerations).toBe(18);
+    expect(report.plannedGenerations).toBe(24);
     expect(child.stdout).not.toContain("SENTINEL_NEVER_OUTPUT");
     expect(readFileSync(".benchmarks.local/v3-rhyme/offline/manifest.json", "utf8")).not.toContain(
       "SENTINEL_NEVER_OUTPUT",
@@ -291,7 +291,7 @@ describe("pilot, reservations, failure and resume guards", () => {
     const continuation = f.ledger.entries[0]!.resultHash!;
     const result = await execute(f.plan, f.ledger, { ...f.options, continuation });
     expect(result.calls).toBe(17);
-    expect(f.calls()).toBe(18);
+    expect(f.calls()).toBe(24);
     expect((await execute(f.plan, f.ledger, { ...f.options, continuation })).calls).toBe(0);
     expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(18);
   });
