@@ -274,9 +274,7 @@ export async function execute(
     })
   )
     throw new Error("LEDGER_MISMATCH");
-  if (
-    ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned")
-  )
+  if (ledger.entries.some((entry) => entry.state !== "completed" && entry.state !== "abandoned"))
     throw new Error("UNCERTAIN_PRIOR_REQUEST_MANUAL_REVIEW_REQUIRED");
   if (ledger.entries.length > 0) {
     const pilot = ledger.entries[0];
