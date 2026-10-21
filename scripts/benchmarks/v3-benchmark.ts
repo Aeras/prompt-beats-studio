@@ -245,7 +245,11 @@ export async function execute(
 ) {
   const now = options.now ?? Date.now;
   const priorExposureMicroUsd = options.priorExposureMicroUsd ?? 0;
-  if (!Number.isSafeInteger(priorExposureMicroUsd) || priorExposureMicroUsd < 0 || priorExposureMicroUsd > BUDGET_MICRO_USD)
+  if (
+    !Number.isSafeInteger(priorExposureMicroUsd) ||
+    priorExposureMicroUsd < 0 ||
+    priorExposureMicroUsd > BUDGET_MICRO_USD
+  )
     throw new Error("PRIOR_EXPOSURE_INVALID");
   if (!options.live || options.confirmSpendUsd !== "3.00" || options.ci || !options.apiKeyAvailable)
     throw new Error("LIVE_AUTHORIZATION_REQUIRED");
@@ -294,7 +298,10 @@ export async function execute(
       (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
       0,
     );
-    if (job.upperMicroUsd === null || job.upperMicroUsd + spent + priorExposureMicroUsd > BUDGET_MICRO_USD)
+    if (
+      job.upperMicroUsd === null ||
+      job.upperMicroUsd + spent + priorExposureMicroUsd > BUDGET_MICRO_USD
+    )
       throw new Error("BUDGET_EXPOSURE_EXCEEDED");
     const entry: Ledger["entries"][number] = {
       id: job.id,
