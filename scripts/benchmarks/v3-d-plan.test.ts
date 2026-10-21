@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { D_BRIEFS } from "./v3-d-fixtures";
 import { makeDPlan } from "./v3-d-plan";
+import { execute, validateEvidence, type Ledger } from "./v3-benchmark";
 import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
@@ -35,6 +36,81 @@ describe("candidate D multilingual frozen design", () => {
     expect(result).not.toContain("LANGUAGE-FIRST QUALITY (V3-C)");
     expect(result).toContain("Never add or remove sections");
     expect(result).toContain("never rules copied from another language");
+  });
+
+  test("protected D-only pipeline completes mock pilot plus 14 calls with prior exposure", async () => {
+    const evidence = validateEvidence({
+      registry: {
+        id: "00000000-0000-4000-8000-000000000001",
+        provider: "openai",
+        providerModelId: "gpt-5.6-luna",
+        displayName: "GPT-5.6 Luna",
+        status: "testing",
+        generatorCompatible: true,
+        generatorEnabled: true,
+        generatorReasoningEffort: "medium",
+        pricingCurrency: "USD",
+        pricingStatus: "verified",
+        inputPricePerMillion: 0.2,
+        outputPricePerMillion: 1.2,
+        cachedInputPricePerMillion: 0.02,
+        cacheWritePricePerMillion: 0.25,
+      },
+      verifiedAt: new Date().toISOString(),
+      modelSource: "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      pricingSource: "https://developers.openai.com/api/docs/pricing",
+      modelIdentityVerified: true,
+      schemaSupported: true,
+      reasoningBilledAsOutput: true,
+      maxInputTokens: 131072,
+      maxOutputTokens: 32768,
+      standardInputTokenCeiling: 131072,
+    });
+    const plan = makeDPlan(evidence);
+    const ledger: Ledger = { fingerprint: plan.fingerprint, entries: [] };
+    let count = 0;
+    const saved: string[] = [];
+    const options = {
+      live: true,
+      confirmSpendUsd: "3.00",
+      ci: false,
+      apiKeyAvailable: true,
+      priorExposureMicroUsd: D_PRIOR_EXPOSURE_MICRO_USD,
+      call: async () => {
+        count++;
+        return {
+          provider: "openai",
+          model: "gpt-5.6-luna",
+          stopReason: "end_turn",
+          text: JSON.stringify({
+            title: "Mock song",
+            tags: "Melodic pop, 104 BPM",
+            lyrics: "[Chorus]\\nMock sung line",
+            note: "Offline-only mock",
+          }),
+          usage: {
+            inputTokens: 1000,
+            outputTokens: 500,
+            totalTokens: 1500,
+            reasoningTokens: 100,
+            cachedInputTokens: 0,
+          },
+        };
+      },
+      saveLedger: (_ledger: Ledger) => {},
+      saveResult: (id: string) => {
+        saved.push(id);
+      },
+    };
+    await execute(plan, ledger, options);
+    expect(count).toBe(1);
+    expect(ledger.entries).toHaveLength(1);
+    await execute(plan, ledger, { ...options, continuation: ledger.entries[0]!.resultHash! });
+    expect(count).toBe(15);
+    expect(ledger.entries).toHaveLength(15);
+    expect(saved).toHaveLength(15);
+    expect(new Set(saved).size).toBe(15);
+    expect(ledger.entries.every((entry) => entry.state === "completed")).toBe(true);
   });
 
   test("manifest contains exclusively D, no paid requests, no repeated IDs", () => {
