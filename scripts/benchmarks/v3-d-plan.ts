@@ -25,7 +25,8 @@ export function makeDPlan(evidence?: Evidence) {
       evidence &&
       (outputCap > evidence.maxOutputTokens ||
         inputBytes + 4096 > Math.min(evidence.maxInputTokens, evidence.standardInputTokenCeiling))
-    ) throw new Error("MODEL_TOKEN_LIMIT_UNVERIFIED");
+    )
+      throw new Error("MODEL_TOKEN_LIMIT_UNVERIFIED");
     const upperMicroUsd = evidence
       ? Math.ceil(
           evidence.maxInputTokens *
