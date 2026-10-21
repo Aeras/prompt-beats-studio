@@ -6,6 +6,24 @@ import { z } from "zod";
 import { withV3MusicalPlanning } from "./advanced-generator-v3-review";
 
 describe("V3 adaptive musical planning", () => {
+  test("provides separately testable A and A+B without touching the V2 prefix", () => {
+    const source = "V2 baseline";
+    const a = withV3MusicalPlanning(source, "a");
+    const ab = withV3MusicalPlanning(source, "a+b");
+    expect(a.startsWith(source)).toBe(true);
+    expect(ab.startsWith(source)).toBe(true);
+    expect(a).toContain("RHYME INTENT (V3)");
+    expect(ab).toContain("RHYME INTENT (V3)");
+    expect(a).not.toContain("Keep the endings provisional");
+    expect(ab).toContain("Keep the endings provisional");
+    expect(a).toContain("free verse, minimal rhyme");
+    expect(a).toContain("Require narrative development only when");
+    expect(a).toContain("Do not equate natural phrasing with avoiding rhyme");
+    expect(a).not.toContain("mandatory rhymes");
+    expect(ab).toContain("Return only the existing song output schema");
+    expect(withV3MusicalPlanning(source)).toBe(ab);
+  });
+
   test("preserves V2 and adds phrasing rather than post-edit guidance", () => {
     const prompt = withV3MusicalPlanning("V2 baseline");
     expect(prompt.startsWith("V2 baseline")).toBe(true);
