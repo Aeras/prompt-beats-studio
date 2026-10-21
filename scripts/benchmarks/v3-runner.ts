@@ -291,10 +291,12 @@ export async function main(args: string[]) {
           pilotResultHash: ledger.entries[0]?.resultHash,
           priorExposureUsd: PRIOR_BENCHMARK_EXPOSURE_MICRO_USD / 1e6,
           estimatedTotalExposureUsd:
-            (PRIOR_BENCHMARK_EXPOSURE_MICRO_USD + ledger.entries.reduce(
-              (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
-              0,
-            )) / 1e6,
+            (PRIOR_BENCHMARK_EXPOSURE_MICRO_USD +
+              ledger.entries.reduce(
+                (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
+                0,
+              )) /
+            1e6,
           estimatedSpentUsd:
             ledger.entries.reduce(
               (sum, entry) => sum + (entry.chargedMicroUsd ?? entry.reservedMicroUsd),
