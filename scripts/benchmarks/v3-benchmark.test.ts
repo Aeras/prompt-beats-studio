@@ -95,6 +95,32 @@ function harness(plan = makePlan(evidence())) {
   return { plan, ledger, options, saved, reservations, calls: () => calls };
 }
 
+describe("V3 benchmark explicit offline recovery arguments", () => {
+  const digest = "a".repeat(64);
+  test("requires full audited recovery parameters and never allows live recovery", () => {
+    const args = [
+      "--recover-prior-evidence",
+      ".benchmarks.local/evidence-original.json",
+      "--evidence",
+      ".benchmarks.local/evidence.json",
+      "--recover-abandoned-job",
+      "ru-pop-c-1",
+      "--expected-ledger-hash",
+      digest,
+    ];
+    expect(parseArgs(args).recovering).toBe(true);
+    expect(parseArgs(args).live).toBe(false);
+    expect(() => parseArgs([...args, "--live"])).toThrow("INVALID_RECOVERY_ARGUMENTS");
+    expect(() => parseArgs([...args, "--continue-after-pilot", digest])).toThrow(
+      "INVALID_RECOVERY_ARGUMENTS",
+    );
+    expect(() => parseArgs(args.slice(0, -2))).toThrow("INVALID_RECOVERY_ARGUMENTS");
+    expect(() =>
+      parseArgs(args.map((value) => (value === "ru-pop-c-1" ? "ru-pop-c-2" : value))),
+    ).toThrow("INVALID_RECOVERY_ARGUMENTS");
+  });
+});
+
 describe("V3 benchmark uncertain-request quarantine", () => {
   test("an audited abandoned job is skipped forever and its full reservation counts", async () => {
     const h = harness();
