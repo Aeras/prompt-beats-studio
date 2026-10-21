@@ -80,6 +80,19 @@ describe("Quality Check V2.1 correction index normalization", () => {
   });
 });
 
+describe("V2.1 OpenAI long-running request safety", () => {
+  test("extends only the durable Sol V2.1 request and identifies timeout errors", () => {
+    const core = readFileSync("src/lib/quality-check-core.server.ts", "utf8");
+    const provider = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    expect(core).toContain('data.qualityCheckVersion === "v2.1"');
+    expect(core).toContain("requestTimeoutMs: 12 * 60 * 1000");
+    expect(core).toContain('"provider_timeout"');
+    expect(core).toContain('err.name === "TimeoutError"');
+    expect(provider).toContain("if (call.requestTimeoutMs !== undefined)");
+    expect(provider).toContain("Math.min(call.requestTimeoutMs, 12 * 60 * 1000)");
+  });
+});
+
 describe("Quality Check version isolation", () => {
   test("missing version remains V1 for every existing caller", () => {
     expect(durableQualityCheckInput.parse(song).qualityCheckVersion).toBe("v1");
