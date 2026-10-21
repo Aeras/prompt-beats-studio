@@ -650,6 +650,12 @@ Reject or revise any correction that introduces unnatural language, a new
 narrative contradiction, broken established rhyme/cadence or inconsistent
 recurring lyrics. If a change is risky, omit it rather than damage the song.
 
+CORRECTION TARGET INDEX CONTRACT:
+occurrenceIndex is ALWAYS a 1-based positive integer (1 for the first
+occurrence of a section; 2 for the second, etc.). NEVER return 0 or a
+zero-based index. For title/tags/note use occurrenceIndex=1. Confirm the
+originalText occurs exactly in the intended current section before returning.
+
 SCORING AND OUTPUT:
 Score ONLY genuine material defects in the ORIGINAL current song, not the
 number of proposed edits. A perfect no-issues report is passed=true, score=10;
@@ -706,6 +712,55 @@ Report ONLY clear, material and defensible lyric defects and other genuine defec
 ${qualityPlatformGuidance(targetPlatform)}
 
 Return the strict JSON object only.`;
+}
+
+/**
+ * Recover a model's zero-based correction target only when its exact original
+ * snippet uniquely identifies a single place in the current lyrics. Ambiguous
+ * repeated hooks remain invalid rather than silently targeting the wrong one.
+ */
+export function normalizeUnambiguousZeroBasedCorrections(raw: unknown, lyrics: string): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const report = raw as Record<string, unknown>;
+  if (!Array.isArray(report["corrections"])) return raw;
+  let changed = false;
+  const corrections = report["corrections"].map((item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    const correction = item as Record<string, unknown>;
+    if (correction["occurrenceIndex"] !== 0) return item;
+    if (correction["field"] !== "lyrics") {
+      if (
+        correction["field"] === "title" ||
+        correction["field"] === "tags" ||
+        correction["field"] === "note"
+      ) {
+        changed = true;
+        return { ...correction, occurrenceIndex: 1 };
+      }
+      return item;
+    }
+    const original = correction["originalText"];
+    if (typeof original !== "string" || !original.length) return item;
+    const section = correction["sectionLabel"];
+    if (typeof section !== "string" || !section.trim()) return item;
+    const sectionMarker = `[${section.trim()}]`;
+    const firstSection = lyrics.indexOf(sectionMarker);
+    if (firstSection === -1 || lyrics.indexOf(sectionMarker, firstSection + 1) !== -1) return item;
+    // Ignore vocal/performance tags while finding the next structural section.
+    const sectionHeadings = Array.from(
+      lyrics.matchAll(
+        /^\[(?:Intro|Verse(?:\s*\d+)?|Pre-Chorus(?:\s*\d+)?|Chorus(?:\s*\d+)?|Bridge|Final Chorus|Outro)\]$/gim,
+      ),
+    );
+    const nextSection = sectionHeadings.find((heading) => (heading.index ?? -1) > firstSection);
+    const sectionEnd = nextSection?.index ?? lyrics.length;
+    const content = lyrics.slice(firstSection + sectionMarker.length, sectionEnd);
+    const firstTarget = content.indexOf(original);
+    if (firstTarget === -1 || content.indexOf(original, firstTarget + 1) !== -1) return item;
+    changed = true;
+    return { ...correction, occurrenceIndex: 1 };
+  });
+  return changed ? { ...report, corrections } : raw;
 }
 
 function canonicalizeQualityReport(report: QualityReport): QualityReport {
@@ -886,6 +941,9 @@ export async function runDurableQualityCheck(
     };
   }
 
+  if (data.qualityCheckVersion === "v2.1") {
+    parsedJson = normalizeUnambiguousZeroBasedCorrections(parsedJson, data.result.lyrics);
+  }
   parsedJson = normalizeQualityScore(parsedJson);
   const parsed = qualityReportSchema.safeParse(parsedJson);
   if (!parsed.success) {
