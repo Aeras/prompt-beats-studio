@@ -93,10 +93,7 @@ function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <I18nProvider>
-      <ErrorContent
-        error={error instanceof Error ? error : new Error(String(error))}
-        reset={reset}
-      />
+      <ErrorContent error={error} reset={reset} />
     </I18nProvider>
   );
 }
