@@ -95,6 +95,52 @@ function harness(plan = makePlan(evidence())) {
   return { plan, ledger, options, saved, reservations, calls: () => calls };
 }
 
+describe("V3 benchmark uncertain-request quarantine", () => {
+  test("an audited abandoned job is skipped forever and its full reservation counts", async () => {
+    const h = harness();
+    await execute(h.plan, h.ledger, h.options);
+    const first = h.ledger.entries[0]!;
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: null,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    const countBefore = h.calls();
+    const result = await execute(h.plan, h.ledger, {
+      ...h.options,
+      continuation: first.resultHash!,
+    });
+    expect(result.abandoned).toBe(1);
+    expect(result.completed).toBe(23);
+    expect(h.calls() - countBefore).toBe(22);
+    expect(h.ledger.entries[1]?.state).toBe("abandoned");
+    expect(h.ledger.entries[1]?.chargedMicroUsd).toBeNull();
+    expect(h.ledger.entries[1]?.reservedMicroUsd).toBe(second.upperMicroUsd);
+  });
+
+  test("a suspicious abandoned record cannot bypass manual billing review", async () => {
+    const h = harness();
+    await execute(h.plan, h.ledger, h.options);
+    const second = h.plan.jobs[1]!;
+    h.ledger.entries.push({
+      id: second.id,
+      blindId: second.blindId,
+      state: "abandoned",
+      reservedMicroUsd: second.upperMicroUsd!,
+      chargedMicroUsd: 0,
+      resultHash: null,
+      error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
+    });
+    await expect(execute(h.plan, h.ledger, { ...h.options, continuation: h.ledger.entries[0]!.resultHash! })).rejects.toThrow("LEDGER_MISMATCH");
+    expect(h.calls()).toBe(1);
+  });
+});
+
 describe("V3 benchmark offline assembly", () => {
   test("24 deterministic jobs use genuine V2 prefixes and pinned original MAIN V3", () => {
     const plan = makePlan();
