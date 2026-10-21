@@ -290,7 +290,7 @@ describe("pilot, reservations, failure and resume guards", () => {
     expect(f.calls()).toBe(1);
     const continuation = f.ledger.entries[0]!.resultHash!;
     const result = await execute(f.plan, f.ledger, { ...f.options, continuation });
-    expect(result.calls).toBe(17);
+    expect(result.calls).toBe(23);
     expect(f.calls()).toBe(24);
     expect((await execute(f.plan, f.ledger, { ...f.options, continuation })).calls).toBe(0);
     expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(24);
