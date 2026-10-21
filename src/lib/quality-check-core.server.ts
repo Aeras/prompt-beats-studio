@@ -832,6 +832,9 @@ export async function runDurableQualityCheck(
   records: DurableQualityUsageRecord[];
   failureReason?:
     | "provider_error"
+    | "provider_rejected"
+    | "provider_rate_limited"
+    | "provider_unavailable"
     | "provider_timeout"
     | "provider_incomplete"
     | "missing_json"
@@ -881,13 +884,25 @@ export async function runDurableQualityCheck(
         err.name === "AbortError" ||
         (err.cause instanceof Error &&
           (err.cause.name === "TimeoutError" || err.cause.name === "AbortError")));
-    return {
-      quality: null,
-      provider,
+    const providerHttpError = err instanceof providerLayer.AiProviderHttpError ? err : null;
+    const httpStatus = providerHttpError?.httpStatus;
+    const failureReason = timedOut
+      ? "provider_timeout"
+      : httpStatus === 429
+        ? "provider_rate_limited"
+        : httpStatus === 503 || httpStatus === 502 || httpStatus === 504
+          ? "provider_unavailable"
+          : httpStatus !== undefined
+            ? "provider_rejected"
+            : "provider_error";
+    console.error("[ai] quality_check provider failure classified", {
       model,
-      records,
-      failureReason: timedOut ? "provider_timeout" : "provider_error",
-    };
+      provider,
+      failureReason,
+      httpStatus: httpStatus ?? null,
+      providerCode: providerHttpError?.providerCode ?? null,
+    });
+    return { quality: null, provider, model, records, failureReason };
   }
 
   const actualProvider = result.provider || provider;
