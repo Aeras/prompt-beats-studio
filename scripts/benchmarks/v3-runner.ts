@@ -196,30 +196,40 @@ export async function main(args: string[]) {
     } finally {
       closeSync(backup);
     }
-    durableJson(auditPath, {
-      originalLedgerSha256: originalHash,
-      originalFingerprint: priorPlan.fingerprint,
-      refreshedFingerprint: plan.fingerprint,
-      abandonedJob: options.recoverJob,
-      reservationMicroUsd: ledger.entries[6]!.reservedMicroUsd,
-      originalEvidenceVerifiedAt: priorEvidence.verifiedAt,
-      refreshedEvidenceVerifiedAt: evidence.verifiedAt,
-      originalResultHashes: ledger.entries.slice(0, 6).map((entry) => entry.resultHash),
-      note: "Historic result artifacts retain the original fingerprint and hashes.",
-    }, true);
-    durableJson(ledgerPath, updated);
-    console.log(JSON.stringify({
-      recovered: true,
-      completed: 6,
-      abandoned: 1,
-      pending: 17,
-      originalLedgerSha256: originalHash,
-      fingerprint: plan.fingerprint,
-      backupPath,
+    durableJson(
       auditPath,
-      lockStillPresent: true,
-      providerCalls: 0,
-    }, null, 2));
+      {
+        originalLedgerSha256: originalHash,
+        originalFingerprint: priorPlan.fingerprint,
+        refreshedFingerprint: plan.fingerprint,
+        abandonedJob: options.recoverJob,
+        reservationMicroUsd: ledger.entries[6]!.reservedMicroUsd,
+        originalEvidenceVerifiedAt: priorEvidence.verifiedAt,
+        refreshedEvidenceVerifiedAt: evidence.verifiedAt,
+        originalResultHashes: ledger.entries.slice(0, 6).map((entry) => entry.resultHash),
+        note: "Historic result artifacts retain the original fingerprint and hashes.",
+      },
+      true,
+    );
+    durableJson(ledgerPath, updated);
+    console.log(
+      JSON.stringify(
+        {
+          recovered: true,
+          completed: 6,
+          abandoned: 1,
+          pending: 17,
+          originalLedgerSha256: originalHash,
+          fingerprint: plan.fingerprint,
+          backupPath,
+          auditPath,
+          lockStillPresent: true,
+          providerCalls: 0,
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (!options.live) {
