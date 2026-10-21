@@ -105,7 +105,15 @@ describe("candidate D multilingual frozen design", () => {
     await execute(plan, ledger, options);
     expect(count).toBe(1);
     expect(ledger.entries).toHaveLength(1);
-    await execute(plan, ledger, { ...options, continuation: ledger.entries[0]!.resultHash! });
+    for (let i = 1; i < 15; i++) {
+      await execute(plan, ledger, {
+        ...options,
+        singleJob: true,
+        continuation: ledger.entries[0]!.resultHash!,
+      });
+      expect(count).toBe(i + 1);
+      expect(ledger.entries).toHaveLength(i + 1);
+    }
     expect(count).toBe(15);
     expect(ledger.entries).toHaveLength(15);
     expect(saved).toHaveLength(15);
