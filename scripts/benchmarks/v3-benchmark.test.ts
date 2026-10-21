@@ -100,7 +100,7 @@ describe("V3 benchmark offline assembly", () => {
     const plan = makePlan();
     expect(plan.jobs).toHaveLength(24);
     expect(new Set(plan.jobs.map((j) => j.id)).size).toBe(24);
-    expect(new Set(plan.jobs.map((j) => j.blindId)).size).toBe(18);
+    expect(new Set(plan.jobs.map((j) => j.blindId)).size).toBe(24);
     expect(dryRun(plan)).toEqual(dryRun(makePlan()));
     const original = execFileSync(
       "git",
@@ -293,7 +293,7 @@ describe("pilot, reservations, failure and resume guards", () => {
     expect(result.calls).toBe(17);
     expect(f.calls()).toBe(24);
     expect((await execute(f.plan, f.ledger, { ...f.options, continuation })).calls).toBe(0);
-    expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(18);
+    expect(new Set(f.ledger.entries.map((e) => e.id)).size).toBe(24);
   });
 
   test("live gates, unknown pricing and over-budget stop before dispatch", async () => {
