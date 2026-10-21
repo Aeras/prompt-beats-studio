@@ -719,10 +719,7 @@ Return the strict JSON object only.`;
  * snippet uniquely identifies a single place in the current lyrics. Ambiguous
  * repeated hooks remain invalid rather than silently targeting the wrong one.
  */
-export function normalizeUnambiguousZeroBasedCorrections(
-  raw: unknown,
-  lyrics: string,
-): unknown {
+export function normalizeUnambiguousZeroBasedCorrections(raw: unknown, lyrics: string): unknown {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
   const report = raw as Record<string, unknown>;
   if (!Array.isArray(report["corrections"])) return raw;
@@ -748,22 +745,18 @@ export function normalizeUnambiguousZeroBasedCorrections(
     if (typeof section !== "string" || !section.trim()) return item;
     const sectionMarker = `[${section.trim()}]`;
     const firstSection = lyrics.indexOf(sectionMarker);
-    if (firstSection === -1 || lyrics.indexOf(sectionMarker, firstSection + 1) !== -1)
-      return item;
+    if (firstSection === -1 || lyrics.indexOf(sectionMarker, firstSection + 1) !== -1) return item;
     // Ignore vocal/performance tags while finding the next structural section.
     const sectionHeadings = Array.from(
       lyrics.matchAll(
         /^\[(?:Intro|Verse(?:\s*\d+)?|Pre-Chorus(?:\s*\d+)?|Chorus(?:\s*\d+)?|Bridge|Final Chorus|Outro)\]$/gim,
       ),
     );
-    const nextSection = sectionHeadings.find(
-      (heading) => (heading.index ?? -1) > firstSection,
-    );
+    const nextSection = sectionHeadings.find((heading) => (heading.index ?? -1) > firstSection);
     const sectionEnd = nextSection?.index ?? lyrics.length;
     const content = lyrics.slice(firstSection + sectionMarker.length, sectionEnd);
     const firstTarget = content.indexOf(original);
-    if (firstTarget === -1 || content.indexOf(original, firstTarget + 1) !== -1)
-      return item;
+    if (firstTarget === -1 || content.indexOf(original, firstTarget + 1) !== -1) return item;
     changed = true;
     return { ...correction, occurrenceIndex: 1 };
   });
