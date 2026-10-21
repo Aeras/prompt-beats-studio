@@ -117,7 +117,6 @@ describe("Gemini Argon provider failure diagnostics", () => {
     expect(core).toContain("httpStatus === 408");
     expect(core).toContain("schemaFailureDetails");
     expect(core).toContain("httpStatus === undefined");
-
   });
 });
 
