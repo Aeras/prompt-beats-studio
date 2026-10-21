@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { zipSync, unzipSync, strToU8 } from "fflate";
 import { pathToFileURL } from "node:url";
 import {
   dryRun,
@@ -306,6 +307,43 @@ export async function main(args: string[]) {
       },
       saveFailure: (id, record) => durableJson(`${directory}/${id}.failure.json`, record, true),
     });
+    if (options.oneJob) {
+      // Portable verified checkpoint; operator must export off-container before next call.
+      const completed = ledger.entries.filter((entry) => entry.state === "completed");
+      const files: Record<string, Uint8Array> = {
+        "ledger.json": strToU8(readFileSync(ledgerPath, "utf8")),
+        "evidence.json": strToU8(readFileSync(options.evidencePath!, "utf8")),
+      };
+      for (const entry of completed) {
+        files[`results/${entry.blindId}.json`] = strToU8(
+          readFileSync(`${directory}/${entry.blindId}.json`, "utf8"),
+        );
+        files[`blind/${entry.blindId}.json`] = strToU8(
+          readFileSync(`${directory}/blind/${entry.blindId}.json`, "utf8"),
+        );
+      }
+      const checksums = Object.entries(files)
+        .map(([name, bytes]) => `${hash(Buffer.from(bytes).toString("utf8"))}  ${name}`)
+        .join("\\n");
+      files["checksums.sha256"] = strToU8(`${checksums}\\n`);
+      const zipped = zipSync(files, { level: 6 });
+      const checkpoint = unzipSync(zipped);
+      if (
+        Object.keys(checkpoint).length !== Object.keys(files).length ||
+        Object.entries(files).some(([name, bytes]) =>
+          !checkpoint[name] || Buffer.compare(Buffer.from(bytes), Buffer.from(checkpoint[name])) !== 0,
+        )
+      ) throw new Error("CHECKPOINT_INTEGRITY_FAILED");
+      const archivePath = `${directory}/checkpoint-${String(completed.length).padStart(2, "0")}.zip`;
+      const fd = openSync(archivePath, "wx", 0o600);
+      try {
+        writeFileSync(fd, zipped);
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      console.log(JSON.stringify({ checkpoint: archivePath, sha256: hash(Buffer.from(zipped).toString("binary")), completed: completed.length, operatorExportRequired: true }));
+    }
     console.log(
       JSON.stringify(
         {
