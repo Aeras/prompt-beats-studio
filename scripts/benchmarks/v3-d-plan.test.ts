@@ -7,20 +7,10 @@ import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
-  test("temporary exact format preview", async () => {
-    const prettier = await import("prettier");
-    const source = readFileSync("scripts/benchmarks/v3-d-plan.test.ts", "utf8");
-    const formatted = await prettier.format(source, {
-      ...(await prettier.resolveConfig("scripts/benchmarks/v3-d-plan.test.ts")),
-      filepath: "scripts/benchmarks/v3-d-plan.test.ts",
-    });
-    if (source !== formatted) console.log("EXACT-TEST:", JSON.stringify(formatted));
-  });
-
   test("D-only live directory is isolated from original V3-C ledger", () => {
     const source = readFileSync("scripts/benchmarks/v3-runner.ts", "utf8");
-    expect(source).toContain("const directory = \`\${output}/live\`;");
-    expect(source).not.toContain("const directory = \`\${OUTPUT}/live\`;");
+    expect(source).toContain("const directory = " + "`" + "${output}/live" + "`" + ";");
+    expect(source).not.toContain("const directory = " + "`" + "${OUTPUT}/live" + "`" + ";");
   });
 
   test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
