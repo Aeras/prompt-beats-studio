@@ -162,11 +162,8 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
-    if (
-      data.promptVersion === "v2" ||
-      data.promptVersion === "v3" ||
-      data.promptVersion === "v4_beta"
-    ) {
+    // prettier-ignore
+    if (data.promptVersion === "v2" || data.promptVersion === "v3" || data.promptVersion === "v4_beta") {
       const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
         "current_user_is_super_admin",
       );
