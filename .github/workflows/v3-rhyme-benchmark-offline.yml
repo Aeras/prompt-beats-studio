@@ -1,0 +1,46 @@
+name: V3 benchmark offline gate
+
+on:
+  pull_request:
+    paths:
+      - "scripts/benchmarks/**"
+      - "docs/benchmarks/**"
+      - ".github/workflows/v3-rhyme-benchmark-offline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # No provider secrets are mapped into this job. CLI independently refuses CI live mode.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Benchmark safety tests and complete regression suite
+        run: bun test
+      - name: Real offline dry-run
+        run: bun scripts/benchmarks/v3-runner.ts --dry-run
+      - name: Formatter and changed benchmark lint
+        run: |
+          bunx prettier --check scripts/benchmarks docs/benchmarks/V3_Rhyme_Benchmark_Runner.md .github/workflows/v3-rhyme-benchmark-offline.yml
+          bunx eslint scripts/benchmarks/*.ts
+      - name: Strict application and CLI TypeScript
+        run: |
+          bunx tsc --noEmit --pretty false
+          bunx tsc --project scripts/benchmarks/tsconfig.json --noEmit --pretty false
+      - name: Application build (no deployment)
+        run: bun run build
+      - name: Whitespace and unchanged production source
+        run: |
+          git diff --check
+          git diff --exit-code -- src
+      # Intentionally no result/artifact upload: generated/private lyrics stay local.
