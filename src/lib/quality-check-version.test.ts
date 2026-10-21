@@ -44,7 +44,7 @@ describe("Quality Check version isolation", () => {
     const ui = readFileSync("src/routes/generate.tsx", "utf8");
     expect(ui).toContain('option value="v2.1"');
     expect(ui).toContain('selected === "v2.1"');
-    expect(ui).toContain('onQualityCheckVersionChange(selected)');
+    expect(ui).toContain("onQualityCheckVersionChange(selected)");
     expect(ui).not.toContain('e.target.value === "v2" ? "v2" : "v1"');
   });
 
