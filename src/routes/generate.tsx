@@ -704,7 +704,7 @@ function QualityPanel({
   state: ApplyState;
   qualityCheckModel: string;
   qualityCheckVersion: "v1" | "v2" | "v2.1";
-  onQualityCheckVersionChange: (value: "v1" | "v2") => void;
+  onQualityCheckVersionChange: (value: "v1" | "v2" | "v2.1") => void;
   isSuperAdmin: boolean;
   availableModels: Array<{ id: string; label: string; provider: string }>;
   modelAccessLoading: boolean;
@@ -750,7 +750,12 @@ function QualityPanel({
               <span>Quality Check Version · Super Admin</span>
               <select
                 value={qualityCheckVersion}
-                onChange={(e) => onQualityCheckVersionChange(e.target.value === "v2" ? "v2" : "v1")}
+                onChange={(e) => {
+                  const selected = e.target.value;
+                  if (selected === "v1" || selected === "v2" || selected === "v2.1") {
+                    onQualityCheckVersionChange(selected);
+                  }
+                }}
                 className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-foreground"
               >
                 <option value="v1">Version 1 — Existing</option>

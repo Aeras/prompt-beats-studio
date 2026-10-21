@@ -40,6 +40,14 @@ describe("Quality Check version isolation", () => {
     expect(worker).toContain('.eq("role", "super_admin")');
   });
 
+  test("the generator UI preserves all three selectable QC versions", () => {
+    const ui = readFileSync("src/routes/generate.tsx", "utf8");
+    expect(ui).toContain('option value="v2.1"');
+    expect(ui).toContain('selected === "v2.1"');
+    expect(ui).toContain("onQualityCheckVersionChange(selected)");
+    expect(ui).not.toContain('e.target.value === "v2" ? "v2" : "v1"');
+  });
+
   test("V1 and V2 prompts remain available alongside an independent V2.1 prompt", () => {
     const core = readFileSync("src/lib/quality-check-core.server.ts", "utf8");
     expect(core).toContain("const QUALITY_SYSTEM_PROMPT =");
