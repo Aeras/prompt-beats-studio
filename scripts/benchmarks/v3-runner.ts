@@ -331,10 +331,13 @@ export async function main(args: string[]) {
       const checkpoint = unzipSync(zipped);
       if (
         Object.keys(checkpoint).length !== Object.keys(files).length ||
-        Object.entries(files).some(([name, bytes]) =>
-          !checkpoint[name] || Buffer.compare(Buffer.from(bytes), Buffer.from(checkpoint[name])) !== 0,
+        Object.entries(files).some(
+          ([name, bytes]) =>
+            !checkpoint[name] ||
+            Buffer.compare(Buffer.from(bytes), Buffer.from(checkpoint[name])) !== 0,
         )
-      ) throw new Error("CHECKPOINT_INTEGRITY_FAILED");
+      )
+        throw new Error("CHECKPOINT_INTEGRITY_FAILED");
       const archivePath = `${directory}/checkpoint-${String(completed.length).padStart(2, "0")}.zip`;
       const fd = openSync(archivePath, "wx", 0o600);
       try {
@@ -343,7 +346,14 @@ export async function main(args: string[]) {
       } finally {
         closeSync(fd);
       }
-      console.log(JSON.stringify({ checkpoint: archivePath, sha256: createHash("sha256").update(zipped).digest("hex"), completed: completed.length, operatorExportRequired: true }));
+      console.log(
+        JSON.stringify({
+          checkpoint: archivePath,
+          sha256: createHash("sha256").update(zipped).digest("hex"),
+          completed: completed.length,
+          operatorExportRequired: true,
+        }),
+      );
     }
     console.log(
       JSON.stringify(
