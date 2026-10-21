@@ -831,7 +831,12 @@ export async function runDurableQualityCheck(
   model: string;
   records: DurableQualityUsageRecord[];
   failureReason?:
-    "provider_error" | "provider_incomplete" | "missing_json" | "invalid_json" | "invalid_schema";
+    | "provider_error"
+    | "provider_timeout"
+    | "provider_incomplete"
+    | "missing_json"
+    | "invalid_json"
+    | "invalid_schema";
   schemaFailureDetails?: string;
 }> {
   const providerLayer = await import("@/lib/ai-provider.server");
@@ -860,6 +865,9 @@ export async function runDurableQualityCheck(
       maxTokens: 8192,
       schema: providerLayer.QUALITY_SCHEMA,
       reasoningEffort: resolved.reasoningEffort ?? "high",
+      ...(provider === "openai" && model === "gpt-6.1-sol" && data.qualityCheckVersion === "v2.1"
+        ? { requestTimeoutMs: 12 * 60 * 1000 }
+        : {}),
     });
   } catch (err) {
     records.push({ operation: "quality_check", provider, model, usage: null, success: false });
@@ -867,7 +875,19 @@ export async function runDurableQualityCheck(
       `[ai] quality_check failed model=${model}`,
       err instanceof Error ? err.message : err,
     );
-    return { quality: null, provider, model, records, failureReason: "provider_error" };
+    const timedOut =
+      err instanceof Error &&
+      (err.name === "TimeoutError" ||
+        err.name === "AbortError" ||
+        (err.cause instanceof Error &&
+          (err.cause.name === "TimeoutError" || err.cause.name === "AbortError")));
+    return {
+      quality: null,
+      provider,
+      model,
+      records,
+      failureReason: timedOut ? "provider_timeout" : "provider_error",
+    };
   }
 
   const actualProvider = result.provider || provider;
