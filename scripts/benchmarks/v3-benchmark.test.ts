@@ -136,7 +136,9 @@ describe("V3 benchmark uncertain-request quarantine", () => {
       resultHash: null,
       error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
     });
-    await expect(execute(h.plan, h.ledger, { ...h.options, continuation: h.ledger.entries[0]!.resultHash! })).rejects.toThrow("LEDGER_MISMATCH");
+    await expect(
+      execute(h.plan, h.ledger, { ...h.options, continuation: h.ledger.entries[0]!.resultHash! }),
+    ).rejects.toThrow("LEDGER_MISMATCH");
     expect(h.calls()).toBe(1);
   });
 });
