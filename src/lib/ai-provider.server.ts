@@ -907,8 +907,8 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
 
   if (!res.ok) {
     const errorBody = await res.text();
-    console.error(`[ai-provider] OpenAI request failed (${res.status})`, errorBody.slice(0, 1000));
-    throw new Error("The AI provider is temporarily unavailable. Please try again later.");
+    console.error("[ai-provider] OpenAI rejected request", { status: res.status, model });
+    throw new AiProviderHttpError("openai", res.status, null);
   }
 
   const payload = (await res.json()) as {
