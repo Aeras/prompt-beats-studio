@@ -54,7 +54,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorContent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   const { t } = useI18n();
