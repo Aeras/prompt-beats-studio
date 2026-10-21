@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { D_BRIEFS } from "./v3-d-fixtures";
 import { makeDPlan } from "./v3-d-plan";
 import { execute, validateEvidence, type Ledger } from "./v3-benchmark";
@@ -6,6 +7,12 @@ import { parseArgs, D_PRIOR_EXPOSURE_MICRO_USD } from "./v3-runner";
 import { withV3MusicalPlanning } from "../../src/lib/advanced-generator-v3-review";
 
 describe("candidate D multilingual frozen design", () => {
+  test("D-only live directory is isolated from original V3-C ledger", () => {
+    const source = readFileSync("scripts/benchmarks/v3-runner.ts", "utf8");
+    expect(source).toContain("const directory = " + "`" + "${output}/live" + "`" + ";");
+    expect(source).not.toContain("const directory = " + "`" + "${OUTPUT}/live" + "`" + ";");
+  });
+
   test("D-only mode is explicit and tracks cumulative prior conservative exposure", () => {
     expect(parseArgs(["--d-only"]).dOnly).toBe(true);
     expect(parseArgs([]).dOnly).toBe(false);

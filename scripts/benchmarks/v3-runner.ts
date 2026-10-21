@@ -267,7 +267,7 @@ export async function main(args: string[]) {
   if (!evidence) throw new Error("MODEL_OR_PRICING_UNVERIFIED");
   const key = process.env["OPENAI_API_KEY"];
   if (!key?.trim()) throw new Error("API_KEY_MISSING");
-  const directory = `${OUTPUT}/live`;
+  const directory = `${output}/live`;
   mkdirSync(`${directory}/blind`, { recursive: true, mode: 0o700 });
   // Exclusive process lock, never auto-expired: stale lock requires billing review.
   const lockPath = `${directory}/runner.lock`;
