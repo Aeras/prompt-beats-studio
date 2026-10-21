@@ -156,7 +156,7 @@ export function dryRun(plan: Plan, _provider?: unknown) {
     reportedBalanceUsd: 4.11,
     intendedReserveUsd: 1.11,
     caveat:
-      "Local estimates/reservations are not a provider-enforced financial ceiling. All 18 may not fit; each call must pass remaining-budget guard.",
+      "Local estimates/reservations are not a provider-enforced financial ceiling. All planned jobs may not fit; each call must pass remaining-budget guard.",
     jobs: plan.jobs.map(({ call, ...job }) => ({
       ...job,
       systemHash: hash(call.system),
@@ -208,7 +208,7 @@ export const ledgerSchema = z
     entries: z.array(
       z
         .object({
-          id: z.string().regex(/^ru-(pop|ballad|hook)-(current|a|a\+b)-[12]$/),
+          id: z.string().regex(/^ru-(pop|ballad|hook)-(current|a|a\+b|c)-[12]$/),
           blindId: z.string().regex(/^[a-f0-9]{20}$/),
           state: z.enum(["reserved", "completed", "failed"]),
           reservedMicroUsd: z.number().int().nonnegative(),
@@ -277,7 +277,7 @@ export async function execute(
     if (!pilot?.resultHash || options.continuation !== pilot.resultHash)
       throw new Error("PILOT_REVIEW_REQUIRED");
   } else if (options.continuation) throw new Error("PILOT_REQUIRED_FIRST");
-  const count = options.continuation ? 18 : 1;
+  const count = options.continuation ? plan.jobs.length : 1;
   let calls = 0;
   for (const job of plan.jobs) {
     if (ledger.entries.some((entry) => entry.id === job.id)) continue;
