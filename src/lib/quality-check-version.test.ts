@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { durableQualityCheckInput } from "./quality-check-job-schema";
+import { normalizeUnambiguousZeroBasedCorrections } from "./quality-check-core.server";
 
 const song = {
   targetPlatform: "suno" as const,
@@ -15,6 +16,28 @@ const song = {
     note: "Soft",
   },
 };
+
+describe("Quality Check V2.1 correction index normalization", () => {
+  const lyrics = "[Verse 1]\\n[Female lead]\\nГазету развернула на весах.\\n[Chorus 1]\\nСогреет нас.\\n[Chorus 2]\\nСогреет нас.";
+
+  test("repairs zero only when the exact lyric target and section are unambiguous", () => {
+    const report = { corrections: [{ field: "lyrics", sectionLabel: "Verse 1", occurrenceIndex: 0, originalText: "Газету развернула на весах." }] };
+    const output = normalizeUnambiguousZeroBasedCorrections(report, lyrics) as typeof report;
+    expect(output.corrections[0]?.occurrenceIndex).toBe(1);
+  });
+
+  test("does not guess the occurrence of repeated hook text", () => {
+    const report = { corrections: [{ field: "lyrics", sectionLabel: "Chorus 1", occurrenceIndex: 0, originalText: "Согреет нас." }] };
+    const output = normalizeUnambiguousZeroBasedCorrections(report, lyrics) as typeof report;
+    expect(output.corrections[0]?.occurrenceIndex).toBe(0);
+  });
+
+  test("does not coerce negative or non-integer values", () => {
+    const report = { corrections: [{ field: "lyrics", sectionLabel: "Verse 1", occurrenceIndex: -1, originalText: "Газету развернула на весах." }] };
+    const output = normalizeUnambiguousZeroBasedCorrections(report, lyrics) as typeof report;
+    expect(output.corrections[0]?.occurrenceIndex).toBe(-1);
+  });
+});
 
 describe("Quality Check version isolation", () => {
   test("missing version remains V1 for every existing caller", () => {
