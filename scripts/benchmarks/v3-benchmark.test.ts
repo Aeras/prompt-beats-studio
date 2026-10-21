@@ -139,7 +139,8 @@ describe("V3-C cumulative cap with previous lost benchmark exposure", () => {
       resultHash: null,
       error: "MANUALLY_ABANDONED_UNCERTAIN_BILLING",
     });
-    const highExposure = 3_000_000 - second.upperMicroUsd! - (h.ledger.entries[0]!.chargedMicroUsd ?? 0);
+    const highExposure =
+      3_000_000 - second.upperMicroUsd! - (h.ledger.entries[0]!.chargedMicroUsd ?? 0);
     await expect(
       execute(h.plan, h.ledger, {
         ...h.options,
