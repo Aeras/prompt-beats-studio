@@ -16,7 +16,7 @@ describe("Gemini 4 Argon direct integration", () => {
   test("uses the direct Google REST endpoint with Argon thinking levels", async () => {
     const provider = await source("./ai-provider.server.ts");
     expect(provider).toContain(
-      '"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:generateContent"',
+      '"https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon:streamGenerateContent?alt=sse"',
     );
     expect(provider).toContain('thinkingConfig: { thinkingLevel: argonThinkingLevel }');
     expect(provider).toContain("Math.max(requestedOutput, 32_768)");
