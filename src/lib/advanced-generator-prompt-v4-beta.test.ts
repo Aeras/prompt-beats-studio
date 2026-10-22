@@ -74,6 +74,13 @@ describe("V4 BETA prompt", () => {
     expect(() => buildAdvancedGeneratorPromptV4Beta({ ...base, mood: " " })).toThrow();
   });
 
+  it("enforces the same Super Admin runner guard for V2, V3 and V4", () => {
+    const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
+    expect(runner).toContain('input.promptVersion === "v2" || input.promptVersion === "v3" || input.promptVersion === "v4_beta"');
+    expect(runner).toContain('input.inputSnapshot?.generatorMode !== "advanced"');
+    expect(runner).toContain('input.operation !== "generate"');
+  });
+
   it("is Super Admin Advanced new-song only and routed separately from V3", () => {
     const jobs = readFileSync("src/lib/generation-jobs.functions.ts", "utf8");
     expect(jobs).toContain('data.promptVersion === "v3" || data.promptVersion === "v4_beta"');
