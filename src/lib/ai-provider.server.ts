@@ -639,16 +639,26 @@ async function callOpenAiCompatible(
         { role: "user", content: call.prompt },
       ],
       max_tokens: call.maxTokens ?? 8192,
+      ...(providerName === "openrouter" && call.reasoningEffort
+        ? { reasoning: { effort: call.reasoningEffort } }
+        : {}),
       ...(useJsonMode ? { response_format: { type: "json_object" } } : {}),
     }),
   });
 
   if (!res.ok) {
-    const errorBody = await res.text();
-    console.error(
-      `[ai-provider] ${providerName} request failed (${res.status})`,
-      errorBody.slice(0, 1000),
-    );
+    // Do not log provider error bodies: they may echo the prompt or credentials.
+    console.error("[ai-provider] upstream_http_error", {
+      provider: providerName,
+      model,
+      status: res.status,
+      category: res.status === 429 ? "rate_limit" : res.status === 400 || res.status === 422
+        ? "invalid_request" : res.status === 401 || res.status === 403
+          ? "authentication" : res.status >= 500 ? "upstream_failure" : "other",
+    });
+    if (res.status === 429) throw new Error("The AI provider rate limit was reached. Please try later.");
+    if (res.status === 400 || res.status === 422) throw new Error("The AI provider rejected the request parameters. Please contact support.");
+    if (res.status === 401 || res.status === 403) throw new Error("The AI provider authentication was rejected. Please contact support.");
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
@@ -657,7 +667,7 @@ async function callOpenAiCompatible(
       finish_reason?: string | null;
       message?: { content?: string | Array<{ type?: string; text?: string }> };
     }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
   };
 
   const choice = payload.choices?.[0];
@@ -683,7 +693,7 @@ async function callOpenAiCompatible(
   const usage =
     inputTokens == null && outputTokens == null && totalTokens == null
       ? null
-      : { inputTokens, outputTokens, totalTokens };
+      : { inputTokens, outputTokens, totalTokens, reasoningTokens: payload.usage?.completion_tokens_details?.reasoning_tokens ?? null };
   return { text, stopReason, usage, provider: providerName, model };
 }
 
