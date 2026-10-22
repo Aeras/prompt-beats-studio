@@ -74,7 +74,10 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
             : model.provider === "openrouter"
               ? "OPENROUTER_API_KEY"
               : "GEMINI_API_KEY";
+        const { analyzerV2AdminEnabled } = await import("./song-analyzer-v2-admin-options.server");
+        const allowAdminOptIn = await analyzerV2AdminEnabled(model.provider, model.id);
         const { result, usage } = await runSingleCallAnalyzerV2({
+          allowAdminOptIn,
           model,
           apiKey: process.env[secret] ?? "",
           audioBase64: data.audioBase64,
