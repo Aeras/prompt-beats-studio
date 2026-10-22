@@ -125,7 +125,7 @@ describe("V4 BETA prompt", () => {
     expect(adapter).toContain('model === "z-ai/glm-5.3-flash"');
     expect(adapter).toContain('response_format: { type: "json_object" }');
     const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
-    expect(ai).toContain('generation_invalid_response');
+    expect(ai).toContain("generation_invalid_response");
     expect(ai).toContain("result.error.issues.map");
     expect(ai).toContain("responseLength: raw.length");
   });
