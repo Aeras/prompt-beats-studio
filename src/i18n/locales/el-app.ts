@@ -148,6 +148,9 @@ export const elApp: Record<AppUiTranslationKey, string> = {
   "generator.storyDrivenLyricsDescription":
     "Ζητά αφηγηματική εξέλιξη στους στίχους, χωρίς δημιουργία Story Map ή επιπλέον κλήση AI.",
   "generator.storyMapSaveFailed": "Δεν ήταν δυνατή η αποθήκευση του Story Map.",
+  "generator.error.rateLimit": "Ο πάροχος AI έφτασε το όριο αιτημάτων. Δοκίμασε αργότερα.",
+  "generator.error.invalidProviderRequest": "Ο πάροχος AI απέρριψε τις παραμέτρους του αιτήματος. Επικοινώνησε με την υποστήριξη.",
+  "generator.error.providerAuth": "Ο πάροχος AI απέρριψε την πιστοποίηση. Επικοινώνησε με την υποστήριξη.",
   "generator.error.providerUnavailable":
     "Ο πάροχος AI δεν είναι προσωρινά διαθέσιμος. Δοκίμασε ξανά αργότερα.",
   "generator.error.registryUnavailable": "Το μητρώο μοντέλων AI δεν είναι προσωρινά διαθέσιμο.",
