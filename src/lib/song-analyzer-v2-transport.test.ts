@@ -1,15 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
+import { stage0DspEvidenceSchema } from "./song-analyzer-dsp.shared";
 import { runSingleCallAnalyzerV2, safeErrorMetadata } from "./song-analyzer-v2.server";
 
 const KEY = "sk-or-OFFLINE_SECRET_KEY_123";
 const AUDIO = Buffer.from("PRIVATE_AUDIO_BYTES").toString("base64");
-const evidence = {
-  version: 1,
+const evidence = stage0DspEvidenceSchema.parse({
+  version: "stage0-dsp-v1",
   available: true,
-  engine: { name: "essentia", engineVersion: "test", algorithms: [] },
-  processing: { durationSeconds: 10 },
+  engine: {
+    name: "essentia",
+    engineVersion: "0.1.3",
+    methodVersion: "promptbeats-essentia-stage0-v2",
+    algorithms: ["RhythmExtractor2013"],
+  },
+  processing: {
+    decodeMs: 1,
+    dspMs: 2,
+    totalMs: 3,
+    sourceSampleRate: 44100,
+    analysisSampleRate: 44100,
+    durationSeconds: 10,
+    channels: 2,
+  },
   tempo: null,
   rhythm: null,
   energy: null,
@@ -17,7 +31,7 @@ const evidence = {
   spectral: null,
   sectionChangeCandidates: [],
   limitations: [],
-} as any;
+});
 
 function setup(fetcher: typeof fetch) {
   let started = 0;
@@ -56,7 +70,7 @@ async function failure(f: ReturnType<typeof setup>) {
   try {
     await runSingleCallAnalyzerV2(f.args as any);
   } catch (e) {
-    return e as Error & { code: string; diagnostics?: Record<string, unknown> };
+    return e as Error & { code: string; diagnostics?: any };
   }
   throw new Error("expected failure");
 }
