@@ -2024,7 +2024,11 @@ export async function runSongGeneration(
   if (!result.success) {
     // Record the shape of invalid responses without logging user lyrics or prompts.
     // This distinguishes malformed JSON from missing or oversized song fields.
-    const rawJson = raw.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
+    const rawJson = raw
+      .trim()
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/, "")
+      .trim();
     let responseShape: string = "non_json";
     try {
       const decoded: unknown = JSON.parse(rawJson);
