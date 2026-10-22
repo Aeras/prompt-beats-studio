@@ -1982,7 +1982,14 @@ export async function runSongGeneration(
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       prompt:
         !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
-      maxTokens: 8192,
+      // Keep the historical 8K cap for all other providers/models. These two
+      // OpenRouter models exhausted exactly 8192 completion tokens during V4
+      // generation; allow extra headroom without a second paid request.
+      maxTokens:
+        provider === "openrouter" &&
+        (model === "aion-labs/aion-3.0" || model === "qwen/qwen3.8-max-0902")
+          ? 16384
+          : 8192,
       schema: schemas.song,
       reasoningEffort: reasoningEffort ?? "medium",
     });
