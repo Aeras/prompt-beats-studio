@@ -143,6 +143,9 @@ export const enApp = {
   "generator.storyDrivenLyricsDescription":
     "Requests narrative development within the song lyrics, without creating a Story Map or making a separate AI call.",
   "generator.storyMapSaveFailed": "Could not save Story Map.",
+  "generator.error.rateLimit": "The AI provider rate limit was reached. Please try later.",
+  "generator.error.invalidProviderRequest": "The AI provider rejected the request parameters. Please contact support.",
+  "generator.error.providerAuth": "The AI provider authentication was rejected. Please contact support.",
   "generator.error.providerUnavailable":
     "The AI provider is temporarily unavailable. Please try again later.",
   "generator.error.registryUnavailable": "AI model registry is temporarily unavailable.",
