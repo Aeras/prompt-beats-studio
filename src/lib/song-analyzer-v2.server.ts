@@ -10,13 +10,54 @@ type Model = {
   acceptedMimeTypes: readonly string[];
 };
 type Song = { generatorReady: unknown; detailedAnalysis: Record<string, unknown> };
+/** Metadata-only transport diagnostics. Never contains keys, audio, prompts or provider text. */
+export type AnalyzerV2Diagnostics = {
+  provider: Model["provider"];
+  model: string;
+  requestBytes: number;
+  elapsedMs: number;
+  errorName?: string;
+  causeName?: string;
+  causeCode?: string;
+  httpStatus?: number;
+};
+const SAFE_NAME = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
+const SAFE_CODE = /^[A-Z][A-Z0-9_]{0,39}$/;
+export function safeErrorMetadata(error: unknown) {
+  const meta: { errorName?: string; causeName?: string; causeCode?: string } = {};
+  const name = (error as { name?: unknown } | null)?.name;
+  if (typeof name === "string" && SAFE_NAME.test(name)) meta.errorName = name;
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  const causeName = (cause as { name?: unknown } | null)?.name;
+  if (typeof causeName === "string" && SAFE_NAME.test(causeName)) meta.causeName = causeName;
+  const code =
+    (cause as { code?: unknown } | null)?.code ?? (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && SAFE_CODE.test(code)) meta.causeCode = code;
+  return meta;
+}
+function formatDiagnostics(d: AnalyzerV2Diagnostics) {
+  const model = d.model.replace(/[^A-Za-z0-9._:/-]/g, "").slice(0, 120);
+  return [
+    `provider=${d.provider}`,
+    `model=${model}`,
+    `bytes=${d.requestBytes}`,
+    `elapsedMs=${d.elapsedMs}`,
+    d.errorName && `error=${d.errorName}`,
+    d.causeName && `cause=${d.causeName}`,
+    d.causeCode && `code=${d.causeCode}`,
+    d.httpStatus !== undefined && `status=${d.httpStatus}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 export class AnalyzerV2Error extends Error {
   constructor(
     public readonly code: string,
     public readonly status?: number,
+    public readonly diagnostics?: AnalyzerV2Diagnostics,
   ) {
     super(
-      `Analyzer V2: ${code}${status ? ` (HTTP ${status})` : ""}. No automatic retry or fallback was made.`,
+      `Analyzer V2: ${code}${status ? ` (HTTP ${status})` : ""}. No automatic retry or fallback was made.${diagnostics ? ` [${formatDiagnostics(diagnostics)}]` : ""}`,
     );
   }
 }
