@@ -36,7 +36,8 @@ function safeErrorMessage(err: unknown): string {
   if (raw === "The AI response was incomplete. Please try again.") return raw;
   if (raw === "The AI returned an incomplete or invalid response. Please try again.") return raw;
   if (raw === "The AI provider rate limit was reached. Please try later.") return raw;
-  if (raw === "The AI provider rejected the request parameters. Please contact support.") return raw;
+  if (raw === "The AI provider rejected the request parameters. Please contact support.")
+    return raw;
   if (raw === "The AI provider authentication was rejected. Please contact support.") return raw;
   if (raw === "The account is no longer available.") return raw;
   if (raw === "This account is not allowed to use AI services.") return raw;
