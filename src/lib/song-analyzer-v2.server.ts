@@ -250,7 +250,11 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
     if (response.status === 0 || (response.status >= 300 && response.status < 400)) {
       const diagnostics = diag({ httpStatus: response.status });
       console.error("[analyzer-v2] redirect_rejected", diagnostics);
-      throw new AnalyzerV2Error("PROVIDER_REDIRECT_REJECTED", response.status || undefined, diagnostics);
+      throw new AnalyzerV2Error(
+        "PROVIDER_REDIRECT_REJECTED",
+        response.status || undefined,
+        diagnostics,
+      );
     }
     if (!response.ok) {
       // Inspect only known machine codes, never echo provider messages/private content.
