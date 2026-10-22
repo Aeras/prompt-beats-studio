@@ -1260,6 +1260,38 @@ export function AiModelsPanel() {
             </button>
           </div>
 
+          {musicAnalyzerModelsQuery.data?.models.some(
+            (model) => model.provider === musicAnalyzerProvider,
+          ) && (
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+              <div className="text-sm font-semibold text-amber-200">
+                {el ? "Ήδη εγκατεστημένα μοντέλα" : "Previously installed models"}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {el
+                  ? "Η εγκατάσταση για την παλαιότερη έκδοση δεν πιστοποιεί συμβατότητα με V2. Τα μοντέλα δεν διαγράφονται. Όσα δεν έχουν ελεγμένο V2 adapter μπορούν να χρησιμοποιηθούν στη V1."
+                  : "Earlier installation does not certify V2 compatibility. Models are not deleted. Those without reviewed V2 adapters remain available in V1."}
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {musicAnalyzerModelsQuery.data.models
+                  .filter((model) => model.provider === musicAnalyzerProvider)
+                  .map((model) => (
+                    <div
+                      key={model.provider + ":" + model.id}
+                      className="flex flex-wrap items-center justify-between gap-2 text-xs"
+                    >
+                      <span className="break-all">
+                        {model.label} · {model.id}
+                      </span>
+                      <Pill kind="inconclusive">
+                        {el ? "Εγκατεστημένο · V2 απαιτεί επαλήθευση" : "Installed · V2 unverified"}
+                      </Pill>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {musicDiscovery && (
             <>
               <div className="grid gap-2 sm:grid-cols-3">
