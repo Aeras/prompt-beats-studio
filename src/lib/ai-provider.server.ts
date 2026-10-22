@@ -645,7 +645,8 @@ async function callOpenAiCompatible(
       // GLM finished normally on OpenRouter but repeatedly returned a response
       // that failed our four-field song contract. Request JSON mode for this
       // model only; no retry or extra paid request is performed.
-      ...(useJsonMode || (providerName === "openrouter" && model === "z-ai/glm-5.3-flash" && !!call.schema)
+      ...(useJsonMode ||
+      (providerName === "openrouter" && model === "z-ai/glm-5.3-flash" && !!call.schema)
         ? { response_format: { type: "json_object" } }
         : {}),
     }),
