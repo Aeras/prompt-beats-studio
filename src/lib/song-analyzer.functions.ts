@@ -1806,6 +1806,8 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAnalyzerAccess(context);
+    const { readAnalyzerV2AdminOptions } = await import("./song-analyzer-v2-admin-options.server");
+    const v2Options = await readAnalyzerV2AdminOptions();
     return {
       allowed: true as const,
       models: (await availableSongAnalyzerModels()).map((model) => ({
@@ -1813,7 +1815,12 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
         label: model.label,
         provider: model.provider,
         acceptedMimeTypes: [...model.acceptedMimeTypes],
-        v2Compatible: analyzerV2Compatibility(model).compatible,
+        v2Compatible:
+          analyzerV2Compatibility(model).compatible ||
+          v2Options.some(
+            (option) =>
+              option.provider === model.provider && option.id === model.id && option.enabled,
+          ),
       })),
       defaultModel: DEFAULT_SONG_ANALYZER_MODEL,
       maxFileBytes: SONG_ANALYZER_MAX_FILE_BYTES,

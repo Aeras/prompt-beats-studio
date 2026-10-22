@@ -441,6 +441,7 @@ function endpointFixture(allowed = true) {
         if (!allowed) throw new Error("Feature not available");
       },
       executeDurableAuxiliaryAiRequest: durable.execute,
+      analyzerV2AdminEnabled: async () => false,
       resolveSongAnalyzerModel: async (id: string) => ({
         id,
         label: "GPT Audio 1.5",

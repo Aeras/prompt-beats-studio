@@ -88,6 +88,7 @@ ${JSON.stringify(schema)}`;
 /** One fetch/dispatch attempt, using real audio parts. All dependencies injectable offline. */
 export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   model: Model;
+  allowAdminOptIn?: boolean;
   apiKey: string;
   audioBase64: string;
   mimeType: string;
@@ -99,7 +100,8 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   fetcher?: typeof fetch;
 }) {
   const capability = analyzerV2Compatibility(args.model);
-  if (!capability.compatible) throw new AnalyzerV2Error("MODEL_INCOMPATIBLE");
+  if (!capability.compatible && !args.allowAdminOptIn)
+    throw new AnalyzerV2Error("MODEL_INCOMPATIBLE");
   if (!args.model.acceptedMimeTypes.includes(args.mimeType))
     throw new AnalyzerV2Error("UNSUPPORTED_AUDIO_FORMAT");
   if (!args.apiKey.trim()) throw new AnalyzerV2Error("PROVIDER_NOT_CONFIGURED");
