@@ -231,7 +231,7 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
     try {
       response = await (args.fetcher ?? fetch)(url, {
         method: "POST",
-        // Cloudflare Workers reject redirect:"error" synchronously (only follow/manual are
+        // Cloudflare Workers reject the "error" redirect mode synchronously (only follow/manual are
         // supported). "manual" + explicit 3xx rejection below keeps the no-redirect contract.
         redirect: "manual",
         signal: AbortSignal.timeout(6 * 60 * 1000),
