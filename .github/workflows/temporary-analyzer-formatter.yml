@@ -1,0 +1,33 @@
+name: Temporary Analyzer PR formatter
+on:
+  push:
+    branches:
+      - fix/music-analyzer-audio-compatibility-20261022
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Format and autofix two scoped files only
+        run: |
+          bunx prettier --write src/lib/ai-provider-registry.server.ts src/components/promptbeats/AiModelsPanel.tsx
+          bunx eslint --fix src/lib/ai-provider-registry.server.ts src/components/promptbeats/AiModelsPanel.tsx
+      - name: Commit only scoped formatter changes
+        run: |
+          if ! git diff --quiet -- src/lib/ai-provider-registry.server.ts src/components/promptbeats/AiModelsPanel.tsx; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/lib/ai-provider-registry.server.ts src/components/promptbeats/AiModelsPanel.tsx
+            git commit -m "style(admin): apply project formatter to Analyzer discovery files"
+            git push origin HEAD:fix/music-analyzer-audio-compatibility-20261022
+          fi
