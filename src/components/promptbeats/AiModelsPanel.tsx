@@ -981,8 +981,8 @@ export function AiModelsPanel() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {el
-              ? "Ελέγξτε έναν provider και εμφανίστε μοντέλα που είναι πραγματικά συμβατά με audio input → text output. Όταν το API catalog δεν δηλώνει modalities, το PromptBeats κάνει μικρό live compatibility probe αντί να επιστρέφει ψευδές 0."
-              : "Check a provider and show models that are actually compatible with audio input → text output. When the API catalog omits modalities, PromptBeats runs a tiny live compatibility probe instead of returning a false zero."}
+              ? "Εμφάνιση μόνο μοντέλων Audio → Text με ελεγμένο συμβόλαιο εκτέλεσης Music Analyzer V2. Το catalog από μόνο του δεν αποδεικνύει πλήρη συμβατότητα· η πραγματική ανάλυση MP3 χρειάζεται χωριστή δοκιμή. Για Gemini/OpenAI ενδέχεται να γίνει μικρό live probe με κόστος."
+              : "Show only Audio → Text models with a reviewed Music Analyzer V2 runtime contract. Catalog modalities alone do not prove full compatibility; a real MP3/full-report test is separate. Gemini/OpenAI discovery may run a small billable live probe."}
           </p>
         </div>
         <div className="space-y-4 p-4">
@@ -1033,7 +1033,7 @@ export function AiModelsPanel() {
                 </div>
                 <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
                   <div className="text-xs text-muted-foreground">
-                    {el ? "Audio → Text" : "Audio → Text"}
+                    {el ? "V2 υποψήφια" : "V2 candidates"}
                   </div>
                   <div className="mt-1 text-lg font-semibold text-cyan-200">
                     {musicDiscovery.candidates.length}
@@ -1052,8 +1052,8 @@ export function AiModelsPanel() {
               {musicDiscovery.candidates.length === 0 ? (
                 <div className="rounded-xl border border-white/10 p-4 text-sm text-muted-foreground">
                   {el
-                    ? "Δεν επαληθεύτηκε κανένα μοντέλο Audio → Text από το catalog ή από live compatibility probe."
-                    : "No Audio → Text model was verified from catalog metadata or by live compatibility probe."}
+                    ? "Δεν βρέθηκε μοντέλο με ελεγμένο συμβόλαιο Music Analyzer V2. Η συμβατότητα catalog δεν αρκεί."
+                    : "No model with a reviewed Music Analyzer V2 runtime contract was found. Catalog modality support alone is insufficient."}
                 </div>
               ) : (
                 <div className="max-h-[520px] space-y-2 overflow-auto">
@@ -1083,8 +1083,8 @@ export function AiModelsPanel() {
                             <Pill kind={candidate.runtimeSupported ? "healthy" : "inconclusive"}>
                               {candidate.runtimeSupported
                                 ? el
-                                  ? "Έτοιμο για PromptBeats"
-                                  : "PromptBeats ready"
+                                  ? "Ελεγμένο V2 adapter"
+                                  : "Reviewed V2 adapter"
                                 : el
                                   ? "Χρειάζεται adapter"
                                   : "Adapter required"}
