@@ -82,7 +82,8 @@ export const getMusicAnalyzerAdminModels = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return { models: await readExtraModels(supabaseAdmin) };
+    const { readAnalyzerV2AdminOptions } = await import("./song-analyzer-v2-admin-options.server");
+    return { models: await readExtraModels(supabaseAdmin), v2Options: await readAnalyzerV2AdminOptions() };
   });
 
 const providerCheckTimestamps = new Map<string, number>();
@@ -221,4 +222,24 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
         label: candidate.name || candidate.id,
       },
     };
+  });
+
+const v2InstalledInput = z.object({
+  providerId: z.enum(["gemini", "openai", "openrouter"]),
+  modelId: z.string().trim().min(1).max(240),
+  enabled: z.boolean(),
+});
+
+/** Admin-only explicit experimental permission; never mutates Generator or Quality Check model flags. */
+export const setInstalledAnalyzerV2Enabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => v2InstalledInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const extras = await readExtraModels(supabaseAdmin);
+    const installed = extras.some((model) => model.provider === data.providerId && model.id === data.modelId);
+    if (!installed) throw new Error("The selected model is not installed in Music Analyzer.");
+    const { updateAnalyzerV2AdminOption } = await import("./song-analyzer-v2-admin-options.server");
+    return updateAnalyzerV2AdminOption(data.providerId, data.modelId, data.enabled);
   });
