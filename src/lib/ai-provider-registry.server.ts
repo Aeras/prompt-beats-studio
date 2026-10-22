@@ -415,28 +415,25 @@ function modelModalities(row: any) {
   return { inputModalities, outputModalities };
 }
 
-function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry) {
-  if (provider.id === "gemini") {
-    return {
-      supported: true,
-      note: "PromptBeats already has a direct Gemini inline-audio Analyzer adapter.",
-    };
-  }
-  if (provider.id === "openai") {
-    return {
-      supported: true,
-      note: "PromptBeats already has a direct OpenAI input_audio Analyzer adapter.",
-    };
-  }
-  if (provider.id === "openrouter") {
-    return {
-      supported: true,
-      note: "OpenRouter chat completions supports base64 input_audio for audio reasoning.",
-    };
-  }
+/**
+ * A provider-wide audio transport is NOT evidence that each discovered model
+ * accepts PromptBeats V2's full-report, one-dispatch contract.
+ * Keep the discovery list actionable only for reviewed V2 adapters.
+ */
+function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry, modelId: string) {
+  const gemini =
+    provider.id === "gemini" &&
+    ["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-4-argon"].includes(modelId);
+  const openai = provider.id === "openai" && modelId === "gpt-audio-1.5";
+  const openrouter =
+    provider.id === "openrouter" &&
+    ["openai/gpt-audio", "openai/gpt-audio-1.5"].includes(modelId);
   return {
-    supported: false,
-    note: "Audio/text capability was discovered, but PromptBeats does not yet have a verified audio runtime adapter for this provider.",
+    supported: gemini || openai || openrouter,
+    note:
+      gemini || openai || openrouter
+        ? "Reviewed for the PromptBeats V2 single-call audio/full-report adapter. Live report success is not guaranteed by discovery."
+        : "Audio → text catalogue capability alone does not establish compatibility with PromptBeats V2. This model needs a reviewed one-call MP3/full-report JSON contract before it can be enabled.",
   };
 }
 
@@ -590,7 +587,6 @@ export async function discoverProviderAudioTextModels(
   const installedSet = new Set(
     installedModels.map((model) => model.provider + ":" + model.providerModelId),
   );
-  const runtime = audioAnalyzerRuntimeSupport(provider);
 
   const candidates: DiscoveredAudioTextModel[] = [];
   let notVerified = 0;
@@ -633,6 +629,11 @@ export async function discoverProviderAudioTextModels(
       /^models\//,
       "",
     );
+    const runtime = audioAnalyzerRuntimeSupport(provider, rawId);
+    if (!runtime.supported) {
+      notVerified += 1;
+      continue;
+    }
     candidates.push({
       id: rawId,
       name,
