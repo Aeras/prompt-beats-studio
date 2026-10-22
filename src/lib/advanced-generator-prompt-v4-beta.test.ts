@@ -120,6 +120,16 @@ describe("V4 BETA prompt", () => {
     expect(jobs).toContain("The AI provider rejected the request parameters.");
   });
 
+  it("GLM OpenRouter requests JSON output and invalid results log only safe metadata", () => {
+    const adapter = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    expect(adapter).toContain('model === "z-ai/glm-5.3-flash"');
+    expect(adapter).toContain('response_format: { type: "json_object" }');
+    const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
+    expect(ai).toContain('generation_invalid_response');
+    expect(ai).toContain("result.error.issues.map");
+    expect(ai).toContain("responseLength: raw.length");
+  });
+
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
     const guard = runner.indexOf('input.promptVersion === "v4_beta"');
