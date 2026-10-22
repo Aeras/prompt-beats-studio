@@ -22,6 +22,7 @@ import {
   essentiaOnlyEvidence,
 } from "./song-analyzer-v2.shared";
 import { runSingleCallAnalyzerV2 } from "./song-analyzer-v2.server";
+import { analyzerV2AdminEnabled } from "./song-analyzer-v2-admin-options.server";
 
 export const analyzeSongV2Input = z
   .object({
@@ -74,7 +75,6 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
             : model.provider === "openrouter"
               ? "OPENROUTER_API_KEY"
               : "GEMINI_API_KEY";
-        const { analyzerV2AdminEnabled } = await import("./song-analyzer-v2-admin-options.server");
         const allowAdminOptIn = await analyzerV2AdminEnabled(model.provider, model.id);
         const { result, usage } = await runSingleCallAnalyzerV2({
           allowAdminOptIn,
