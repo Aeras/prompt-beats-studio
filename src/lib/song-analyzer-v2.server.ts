@@ -285,7 +285,9 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
                       : response.status === 400 || response.status === 422
                         ? "PROVIDER_CONTRACT_REJECTED"
                         : "PROVIDER_HTTP_FAILED";
-      throw new AnalyzerV2Error(code, response.status);
+      const diagnostics = diag({ httpStatus: response.status });
+      console.error("[analyzer-v2] provider_http_error", { ...diagnostics, code });
+      throw new AnalyzerV2Error(code, response.status, diagnostics);
     }
     let payload: unknown;
     try {
