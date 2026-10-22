@@ -11,6 +11,7 @@ import {
 } from "@/lib/ai-auxiliary-idempotency.server";
 import { recordAiUsage } from "@/lib/ai-usage.server";
 import { stage0DspEvidenceSchema, type Stage0DspEvidence } from "@/lib/song-analyzer-dsp.shared";
+import { analyzerV2Compatibility, analyzerV2ProvenanceSchema } from "@/lib/song-analyzer-v2.shared";
 
 export const SONG_ANALYZER_MODELS = [
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
@@ -71,7 +72,6 @@ const BUILTIN_SONG_ANALYZER_MODEL_CONFIGS: readonly SongAnalyzerModelConfig[] = 
 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
-
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
 
@@ -147,10 +147,12 @@ const instrumentEvidenceSchema = z.object({
   evidence: z.string().trim().min(1).max(2000),
 });
 
-const tolerantSectionTimeSchema = z.preprocess(
-  (value) => (value === undefined || value === "" ? null : value),
-  z.number().min(0).max(21600).nullable(),
-).catch(null);
+const tolerantSectionTimeSchema = z
+  .preprocess(
+    (value) => (value === undefined || value === "" ? null : value),
+    z.number().min(0).max(21600).nullable(),
+  )
+  .catch(null);
 
 const songSectionEvidenceSchema = z
   .object({
@@ -707,7 +709,7 @@ Do not reproduce lyrics, melodies, hooks, or protected expression.
 Return only the existing canonical Analyzer JSON schema.
 `.trim();
 
-const ANALYZER_RESPONSE_SCHEMA: Record<string, unknown> = {
+export const ANALYZER_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
   properties: {
     generatorReady: {
@@ -1066,7 +1068,7 @@ const EXTERNAL_VALIDATION_RESPONSE_FORMAT = {
   ],
 } as const;
 
-async function requireAnalyzerAccess(context: { supabase: any }) {
+export async function requireAnalyzerAccess(context: { supabase: any }) {
   await requireFeatureAccess(context.supabase, "song_analyzer");
 }
 
@@ -1103,7 +1105,9 @@ function normalizedOpenAiUsage(payload: any) {
 }
 
 function analyzerProvider(model: string) {
-  return BUILTIN_SONG_ANALYZER_MODEL_CONFIGS.find((item) => item.id === model)?.provider ?? "gemini";
+  return (
+    BUILTIN_SONG_ANALYZER_MODEL_CONFIGS.find((item) => item.id === model)?.provider ?? "gemini"
+  );
 }
 
 async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]> {
@@ -1132,15 +1136,17 @@ async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]>
           : Boolean(process.env["OPENROUTER_API_KEY"]?.trim());
     if (!configured) return [];
 
-    return [{
-      id,
-      label: String(item?.label ?? id),
-      provider,
-      acceptedMimeTypes:
-        provider === "gemini"
-          ? supportedMimeTypes
-          : (["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"] as const),
-    }];
+    return [
+      {
+        id,
+        label: String(item?.label ?? id),
+        provider,
+        acceptedMimeTypes:
+          provider === "gemini"
+            ? supportedMimeTypes
+            : (["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"] as const),
+      },
+    ];
   });
 }
 
@@ -1151,7 +1157,7 @@ async function availableSongAnalyzerModels() {
   );
 }
 
-async function resolveSongAnalyzerModel(model: string): Promise<SongAnalyzerModelConfig> {
+export async function resolveSongAnalyzerModel(model: string): Promise<SongAnalyzerModelConfig> {
   const models = await availableSongAnalyzerModels();
   const selected = models.find((item) => item.id === model);
   if (!selected) throw new Error("That Music Analyzer model is not enabled.");
@@ -1322,7 +1328,9 @@ async function generateAudioEvidence(args: {
   if (args.provider === "openai" || args.provider === "openrouter") {
     const format = openAiInputAudioFormat(args.mimeType);
     if (!format) {
-      throw new Error("This Music Analyzer provider currently accepts MP3 or WAV input in PromptBeats.");
+      throw new Error(
+        "This Music Analyzer provider currently accepts MP3 or WAV input in PromptBeats.",
+      );
     }
     const response = await fetch(
       args.provider === "openrouter"
@@ -1331,30 +1339,30 @@ async function generateAudioEvidence(args: {
       {
         method: "POST",
         headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${args.apiKey}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${args.apiKey}`,
         },
         body: JSON.stringify({
-        model: args.model,
-        ...(args.provider === "openai" ? { modalities: ["text"] } : {}),
-        messages: [
-          {
-            role: "system",
-            content: `${EVIDENCE_EXTRACTION_SYSTEM_PROMPT}\n\n${OPENAI_STAGE_A_JSON_CONTRACT}`,
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              {
-                type: "input_audio",
-                input_audio: { data: args.audioBase64, format },
-              },
-            ],
-          },
-        ],
-        max_completion_tokens: 8192,
-        temperature: 0.1,
+          model: args.model,
+          ...(args.provider === "openai" ? { modalities: ["text"] } : {}),
+          messages: [
+            {
+              role: "system",
+              content: `${EVIDENCE_EXTRACTION_SYSTEM_PROMPT}\n\n${OPENAI_STAGE_A_JSON_CONTRACT}`,
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "input_audio",
+                  input_audio: { data: args.audioBase64, format },
+                },
+              ],
+            },
+          ],
+          max_completion_tokens: 8192,
+          temperature: 0.1,
         }),
         signal: AbortSignal.timeout(5 * 60 * 1000),
       },
@@ -1373,10 +1381,11 @@ async function generateAudioEvidence(args: {
     const finishReason = choice?.finish_reason ?? null;
     if (finishReason && finishReason !== "stop") {
       logStage(args.model, stage, "non_success_stop_reason", finishReason);
-      throw new Error(`Audio provider evidence extraction stopped before completion: ${finishReason}`);
+      throw new Error(
+        `Audio provider evidence extraction stopped before completion: ${finishReason}`,
+      );
     }
-    const text =
-      typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    const text = typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
     if (!text) {
       logStage(args.model, stage, "missing_json");
       throw new Error("Audio provider evidence extraction returned no JSON");
@@ -1451,10 +1460,7 @@ async function generateAudioEvidence(args: {
   }
 
   const parsed = parseStructured(text, stageAEvidenceSchema, args.model, stage);
-  const evidence = normalizeSectionCoverage(
-    parsed,
-    args.stage0Evidence.processing.durationSeconds,
-  );
+  const evidence = normalizeSectionCoverage(parsed, args.stage0Evidence.processing.durationSeconds);
   logStage(args.model, stage, "success", {
     dominantElements: evidence.dominantElements.length,
     instruments: evidence.instrumentEvidence.length,
@@ -1625,8 +1631,7 @@ async function generateFinalFromEvidence(args: {
       throw new Error(`OpenAI final synthesis stopped before completion: ${finishReason}`);
     }
 
-    const text =
-      typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    const text = typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
     if (!text) {
       logStage(args.model, stage, "missing_json");
       throw new Error("OpenAI final synthesis returned no JSON");
@@ -1787,6 +1792,7 @@ Return only the requested structured JSON.
 }
 
 const analyzeInput = z.object({
+  version: z.literal("v1").default("v1"),
   audioBase64: z.string().min(1).max(21_500_000),
   mimeType: z.enum(supportedMimeTypes),
   model: z.string().trim().min(1).max(240).default(DEFAULT_SONG_ANALYZER_MODEL),
@@ -1807,6 +1813,7 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
         label: model.label,
         provider: model.provider,
         acceptedMimeTypes: [...model.acceptedMimeTypes],
+        v2Compatible: analyzerV2Compatibility(model).compatible,
       })),
       defaultModel: DEFAULT_SONG_ANALYZER_MODEL,
       maxFileBytes: SONG_ANALYZER_MAX_FILE_BYTES,
@@ -2060,11 +2067,22 @@ export const analyzeSong = createServerFn({ method: "POST" })
     });
   });
 
+// Optional experimental metadata lives only at the persistence boundary.
+// V1 generation/validation and its provider schema remain exactly unchanged.
+export const savedSongAnalysisResultSchema = songAnalysisResultSchema.extend({
+  generatorReady: songAnalysisResultSchema.shape.generatorReady.extend({
+    analyzerVersion: z.literal("v2").optional(),
+  }),
+  detailedAnalysis: songAnalysisResultSchema.shape.detailedAnalysis.extend({
+    analyzerProvenance: analyzerV2ProvenanceSchema.optional(),
+  }),
+});
+
 const saveAnalysisInput = z.object({
   name: z.string().trim().min(1).max(200),
   projectId: z.string().uuid().nullable().optional(),
   model: z.string().trim().min(1).max(240),
-  result: songAnalysisResultSchema,
+  result: savedSongAnalysisResultSchema,
 });
 
 async function assertOwnedProject(

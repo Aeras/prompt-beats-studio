@@ -9,6 +9,13 @@ import {
 } from "@/lib/song-analyzer.functions";
 import { guardSongAnalyzerStageA } from "@/lib/song-analyzer-stage-a-guard.functions";
 import { finalizeSongAnalysis } from "@/lib/song-analyzer-final.functions";
+import { analyzeSongV2 } from "@/lib/song-analyzer-v2.functions";
+import {
+  analyzerAudioMimeSchema,
+  essentiaOnlyEvidence,
+  type AnalyzerVersion,
+  type AnalyzerV2Provenance,
+} from "@/lib/song-analyzer-v2.shared";
 
 const STORAGE_KEY = "pb:song-analyzer-background-result-v2";
 const LEGACY_STORAGE_KEY = "pb:song-analyzer-background-result-v1";
@@ -16,6 +23,7 @@ const LEGACY_STORAGE_KEY = "pb:song-analyzer-background-result-v1";
 type AnalyzerStatus = "idle" | "running" | "completed" | "failed";
 
 type PersistedAnalysisArgs = {
+  version?: AnalyzerVersion | undefined;
   model: string;
   finalModel?: string | undefined;
   trackTitle?: string | undefined;
@@ -35,6 +43,7 @@ export type AnalyzerBackgroundSnapshot = {
   resultModel: string | null;
   finalResultModelLabel: string | null;
   error: string | null;
+  provenance: AnalyzerV2Provenance | null;
 };
 
 type StartArgs = PersistedAnalysisArgs & {
@@ -54,6 +63,7 @@ const emptySnapshot: AnalyzerBackgroundSnapshot = {
   resultModel: null,
   finalResultModelLabel: null,
   error: null,
+  provenance: null,
 };
 
 let snapshot: AnalyzerBackgroundSnapshot = restoreSnapshot();
@@ -69,6 +79,15 @@ function restoreSnapshot(): AnalyzerBackgroundSnapshot {
       return { ...emptySnapshot };
     }
     const parsed = JSON.parse(raw) as Partial<AnalyzerBackgroundSnapshot>;
+    if (parsed.status === "running" && parsed.analysisArgs?.version === "v2") {
+      return {
+        ...emptySnapshot,
+        ...parsed,
+        status: "failed",
+        error:
+          "Analyzer V2 connection interrupted. Retry recovers the same request; it does not automatically start another paid call.",
+      };
+    }
     // Do not resurrect a frozen spinner after a full browser refresh.
     if (!["completed", "failed"].includes(String(parsed.status))) {
       window.sessionStorage.removeItem(STORAGE_KEY);
@@ -88,7 +107,11 @@ function restoreSnapshot(): AnalyzerBackgroundSnapshot {
 function persist(value: AnalyzerBackgroundSnapshot) {
   if (typeof window === "undefined") return;
   try {
-    if (value.status === "completed" || value.status === "failed") {
+    if (
+      value.status === "completed" ||
+      value.status === "failed" ||
+      (value.status === "running" && value.analysisArgs?.version === "v2")
+    ) {
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     } else {
       window.sessionStorage.removeItem(STORAGE_KEY);
@@ -137,6 +160,13 @@ export function clearAnalyzerBackground() {
   return true;
 }
 
+/** Explicit new action only; never deletes/reclaims the durable server request. */
+export function resetV2AnalyzerRequest() {
+  if (snapshot.status === "running") return false;
+  completeAuxiliaryRequest("song_analyzer:v2");
+  return clearAnalyzerBackground();
+}
+
 async function runAnalyzer(
   args: StartArgs,
   startedAt: number,
@@ -155,11 +185,46 @@ async function runAnalyzer(
     const audioBase64 = await audioBase64Promise;
 
     if (!stage0Evidence) {
-      stage0Evidence = await analyzeStage0Essentia(args.file, legacyStage0Evidence);
+      stage0Evidence =
+        args.version === "v2"
+          ? await analyzeStage0Essentia(args.file, legacyStage0Evidence, "v2")
+          : await analyzeStage0Essentia(args.file, legacyStage0Evidence);
       publish({ ...snapshot, stage0Evidence });
+    }
+    if (args.version === "v2") {
+      stage0Evidence = essentiaOnlyEvidence(stage0Evidence);
+      const response = await analyzeSongV2({
+        data: {
+          version: "v2",
+          requestKey: getAuxiliaryRequestKey("song_analyzer:v2"),
+          audioBase64,
+          mimeType: analyzerAudioMimeSchema.parse(args.file.type),
+          model: args.model,
+          stage0Evidence,
+        },
+      });
+      completeAuxiliaryRequest("song_analyzer:v2");
+      const completed: AnalyzerBackgroundSnapshot = {
+        status: "completed",
+        fileName: args.file.name,
+        startedAt,
+        completedAt: Date.now(),
+        analysisArgs: { version: "v2", model: args.model },
+        legacyStage0Evidence,
+        stage0Evidence: response.stage0Evidence,
+        stageAEvidence: null,
+        result: response.result,
+        resultModel: response.model,
+        finalResultModelLabel: null,
+        provenance: response.provenance,
+        error: null,
+      };
+      publish(completed);
+      return completed;
     }
     const response = await analyzeSong({
       data: {
+        version: "v1",
         requestKey: getAuxiliaryRequestKey("song_analyzer"),
         audioBase64,
         mimeType: args.file.type as any,
@@ -211,11 +276,12 @@ async function runAnalyzer(
       resultModel: response.model,
       finalResultModelLabel: finalized.finalModelLabel,
       error: null,
+      provenance: null,
     };
     publish(completed);
     return completed;
   } catch (error) {
-    completeAuxiliaryRequest("song_analyzer");
+    if (args.version !== "v2") completeAuxiliaryRequest("song_analyzer");
     const failed: AnalyzerBackgroundSnapshot = {
       ...snapshot,
       status: "failed",
@@ -236,7 +302,7 @@ export function startAnalyzerBackground(args: StartArgs) {
   }
 
   if (snapshot.status === "failed") {
-    completeAuxiliaryRequest("song_analyzer");
+    if (args.version !== "v2") completeAuxiliaryRequest("song_analyzer");
   }
 
   const startedAt = Date.now();
@@ -246,6 +312,7 @@ export function startAnalyzerBackground(args: StartArgs) {
     fileName: args.file.name,
     startedAt,
     analysisArgs: {
+      version: args.version ?? "v1",
       model: args.model,
       finalModel: args.finalModel,
       trackTitle: args.trackTitle,

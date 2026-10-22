@@ -1,6 +1,17 @@
 export const enSongAnalyzer = {
   "songAnalyzer.title": "AI Song Analyzer",
   "songAnalyzer.admin": "Admin",
+  "songAnalyzer.version": "Analyzer version",
+  "songAnalyzer.version1": "Version 1",
+  "songAnalyzer.version2": "Version 2",
+  "songAnalyzer.v2Help": "Essentia + selected Audio AI · one AI call · no final judge",
+  "songAnalyzer.v2Result": "Complete single-model musical analysis",
+  "songAnalyzer.v2Incompatible": "V2 incompatible",
+  "songAnalyzer.v2IncompatibleHelp":
+    "This model's single-call full-report audio contract has not been verified for V2. Choose a supported model or use V1. No fallback model will be called.",
+  "songAnalyzer.v2NewRequest": "Prepare a new analysis request",
+  "songAnalyzer.v2NewRequestConfirm":
+    "Retrying Analyze recovers the same request. Preparing a NEW request may incur another charge when you press Analyze. An earlier server request may still finish; this does not cancel it. Continue?",
   "songAnalyzer.analyzeComplete": "Analyze a complete song",
   "songAnalyzer.zeroRetention":
     "The source audio is used only for analysis in your browser and by the selected AI model. It is not saved as a Track, Library item, or Project asset.",
@@ -66,7 +77,8 @@ export const enSongAnalyzer = {
   "songAnalyzer.loading": "Loading…",
   "songAnalyzer.checkingAccess": "Checking access…",
   "songAnalyzer.fileTooLarge": "The Analyzer accepts audio files up to 15 MB.",
-  "songAnalyzer.gptAudioFormat": "The selected audio-analysis model currently accepts MP3 or WAV files.",
+  "songAnalyzer.gptAudioFormat":
+    "The selected audio-analysis model currently accepts MP3 or WAV files.",
   "songAnalyzer.analysisFailed": "Song analysis failed.",
   "songAnalyzer.saveFailed": "Could not save analysis.",
   "songAnalyzer.sessionPersistFailed":

@@ -23,6 +23,7 @@ import { useModeration } from "@/hooks/useModeration";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAccountPreferences } from "@/lib/account-preferences";
 import { useDraftAutosave } from "@/lib/draft-autosave";
+import { analyzerV2GeneratorPatch } from "@/lib/song-analyzer-handoff.shared";
 import { usePb012LastWork } from "@/lib/pb012-last-work";
 import {
   ADVANCED_SETUP_MAX_BYTES,
@@ -1243,6 +1244,40 @@ function GeneratePage() {
     if (!raw) return;
     window.sessionStorage.removeItem(SONG_ANALYZER_HANDOFF_KEY);
     try {
+      const incoming: unknown = JSON.parse(raw);
+      if (
+        incoming &&
+        typeof incoming === "object" &&
+        "analyzerVersion" in incoming &&
+        incoming.analyzerVersion === "v2"
+      ) {
+        const patch = analyzerV2GeneratorPatch(incoming);
+        setAdvanced(true);
+        if (patch.customGenre) {
+          setGenres([]);
+          setCustomGenre(patch.customGenre);
+        }
+        if (patch.customMood) {
+          setMoods([]);
+          setCustomMood(patch.customMood);
+        }
+        if (patch.customInstruments) {
+          setInstruments([]);
+          setCustomInstruments(patch.customInstruments);
+        }
+        if (patch.structure && patch.songBlueprint) {
+          setStructure(patch.structure);
+          setSongBlueprint(patch.songBlueprint);
+        }
+        if (patch.production) setProduction(patch.production);
+        if (patch.instructions) setInstructions(patch.instructions);
+        if (patch.customBpm) {
+          setBpm("Custom");
+          setCustomBpm(patch.customBpm);
+        }
+        setStatus(t("generator.songAnalyzerLoaded"));
+        return;
+      }
       const handoff = JSON.parse(raw) as {
         musicStyle?: string;
         mood?: string;

@@ -34,7 +34,9 @@ import {
   getAnalyzerBackgroundSnapshot,
   startAnalyzerBackground,
   subscribeAnalyzerBackground,
+  resetV2AnalyzerRequest,
 } from "@/lib/song-analyzer-background";
+import type { AnalyzerVersion, AnalyzerV2Provenance } from "@/lib/song-analyzer-v2.shared";
 import {
   clearAnalyzerSessionAudio,
   loadAnalyzerSessionAudio,
@@ -73,6 +75,10 @@ function SongAnalyzerPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [version, setVersion] = useState<AnalyzerVersion>(
+    () => getAnalyzerBackgroundSnapshot().analysisArgs?.version ?? "v1",
+  );
+  const [provenance, setProvenance] = useState<AnalyzerV2Provenance | null>(null);
   const access = useQuery({
     queryKey: ["song-analyzer-access", user?.id],
     queryFn: () => getSongAnalyzerAccess(),
@@ -82,7 +88,7 @@ function SongAnalyzerPage() {
   const finalModelAccess = useQuery({
     queryKey: ["song-analyzer-final-model-access", user?.id],
     queryFn: () => getSongAnalyzerFinalModelAccess(),
-    enabled: Boolean(user && access.data?.allowed),
+    enabled: Boolean(user && access.data?.allowed && version === "v1"),
     retry: false,
   });
   const projects = useQuery({
@@ -133,15 +139,24 @@ function SongAnalyzerPage() {
   }, []);
 
   useEffect(() => {
-    const applyBackgroundSnapshot = (background: ReturnType<typeof getAnalyzerBackgroundSnapshot>) => {
+    const applyBackgroundSnapshot = (
+      background: ReturnType<typeof getAnalyzerBackgroundSnapshot>,
+    ) => {
       setBusy(background.status === "running");
+      if (background.analysisArgs) {
+        setVersion(background.analysisArgs.version ?? "v1");
+        setModel(background.analysisArgs.model);
+      }
+      setProvenance(background.provenance);
       if (background.legacyStage0Evidence) setLegacyStage0Evidence(background.legacyStage0Evidence);
       if (background.stage0Evidence) setStage0Evidence(background.stage0Evidence);
       if (background.stageAEvidence) setStageAEvidence(background.stageAEvidence);
       if (background.result) setResult(background.result);
       if (background.resultModel) setResultModel(background.resultModel);
-      if (background.finalResultModelLabel) setFinalResultModelLabel(background.finalResultModelLabel);
-      if (background.status === "failed") setError(background.error || t("songAnalyzer.analysisFailed"));
+      if (background.finalResultModelLabel)
+        setFinalResultModelLabel(background.finalResultModelLabel);
+      if (background.status === "failed")
+        setError(background.error || t("songAnalyzer.analysisFailed"));
       if (background.status === "completed") setError(null);
     };
 
@@ -160,6 +175,11 @@ function SongAnalyzerPage() {
 
   const analyzerModelOptions = access.data?.models ?? SONG_ANALYZER_MODELS;
   const selectedAnalyzerModel = analyzerModelOptions.find((item) => item.id === model);
+  const v2Incompatible =
+    version === "v2" &&
+    (!selectedAnalyzerModel ||
+      !("v2Compatible" in selectedAnalyzerModel) ||
+      !selectedAnalyzerModel.v2Compatible);
 
   const fileError = useMemo(() => {
     if (!file) return null;
@@ -175,7 +195,7 @@ function SongAnalyzerPage() {
   }, [file, selectedAnalyzerModel, t]);
 
   const analyze = () => {
-    if (!file || fileError) return;
+    if (!file || fileError || v2Incompatible) return;
     clearAnalyzerBackground();
     setBusy(true);
     setError(null);
@@ -191,6 +211,7 @@ function SongAnalyzerPage() {
     setFinalResultModelLabel(null);
 
     void startAnalyzerBackground({
+      version,
       file,
       model,
       finalModel: finalModel || undefined,
@@ -214,7 +235,7 @@ function SongAnalyzerPage() {
         data: {
           name: analysisName.trim(),
           projectId: targetProjectId,
-          model: resultModel as any,
+          model: provenance ? `V2 · ${provenance.label}`.slice(0, 240) : resultModel,
           result,
         },
       });
@@ -357,6 +378,38 @@ function SongAnalyzerPage() {
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1500px] px-4 pb-24 pt-6 md:px-8">
+        <div
+          role="group"
+          aria-label={t("songAnalyzer.version")}
+          className="mb-5 flex flex-wrap gap-2"
+        >
+          {(["v1", "v2"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              disabled={busy || saving}
+              aria-pressed={version === value}
+              className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 ${version === value ? "border-accent bg-accent/10 text-accent" : "border-white/10 text-muted-foreground"}`}
+              onClick={() => {
+                if (value === version || !clearAnalyzerBackground()) return;
+                resetV2AnalyzerRequest();
+                setVersion(value);
+                setResult(null);
+                setStage0Evidence(null);
+                setLegacyStage0Evidence(null);
+                setStageAEvidence(null);
+                setResultModel(null);
+                setFinalResultModelLabel(null);
+                setProvenance(null);
+                setError(null);
+                setSaved(false);
+              }}
+            >
+              {value === "v1" ? t("songAnalyzer.version1") : t("songAnalyzer.version2")}
+            </button>
+          ))}
+        </div>
+        {version === "v2" && <p className="mb-5 text-sm text-accent">{t("songAnalyzer.v2Help")}</p>}
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
           <section className="glass h-fit rounded-2xl p-5">
             <h1 className="font-display text-xl font-bold">{t("songAnalyzer.analyzeComplete")}</h1>
@@ -381,6 +434,7 @@ function SongAnalyzerPage() {
                 onChange={(event) => {
                   const nextFile = event.target.files?.[0] ?? null;
                   if (!clearAnalyzerBackground()) return;
+                  resetV2AnalyzerRequest();
                   setFile(nextFile);
                   setResult(null);
                   setStage0Evidence(null);
@@ -424,36 +478,38 @@ function SongAnalyzerPage() {
               </div>
             )}
 
-            <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("songAnalyzer.optionalReference")}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                {t("songAnalyzer.optionalReferenceHelp")}
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  {t("songAnalyzer.trackTitleOptional")}
-                  <input
-                    value={trackTitle}
-                    onChange={(e) => setTrackTitle(e.target.value)}
-                    maxLength={200}
-                    autoComplete="off"
-                    className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
-                  />
-                </label>
-                <label className="text-xs font-semibold text-muted-foreground">
-                  {t("songAnalyzer.artistOptional")}
-                  <input
-                    value={artist}
-                    onChange={(e) => setArtist(e.target.value)}
-                    maxLength={200}
-                    autoComplete="off"
-                    className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
-                  />
-                </label>
+            {version === "v1" && (
+              <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("songAnalyzer.optionalReference")}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {t("songAnalyzer.optionalReferenceHelp")}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    {t("songAnalyzer.trackTitleOptional")}
+                    <input
+                      value={trackTitle}
+                      onChange={(e) => setTrackTitle(e.target.value)}
+                      maxLength={200}
+                      autoComplete="off"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    {t("songAnalyzer.artistOptional")}
+                    <input
+                      value={artist}
+                      onChange={(e) => setArtist(e.target.value)}
+                      maxLength={200}
+                      autoComplete="off"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary/60"
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
             <label className="mt-5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t("songAnalyzer.model")}
@@ -466,33 +522,53 @@ function SongAnalyzerPage() {
                 {analyzerModelOptions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.label}
+                    {version === "v2" && (!("v2Compatible" in item) || !item.v2Compatible)
+                      ? ` — ${t("songAnalyzer.v2Incompatible")}`
+                      : ""}
                   </option>
                 ))}
               </select>
             </label>
 
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("songAnalyzer.finalModel")}
-              <select
-                value={finalModel}
-                onChange={(e) => setFinalModel(e.target.value)}
-                disabled={busy || finalModelAccess.isLoading || !(finalModelAccess.data?.modelOptions.length)}
-                className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground disabled:opacity-50"
-              >
-                {(finalModelAccess.data?.modelOptions ?? []).map((item) => (
-                  <option key={`${item.provider}:${item.id}`} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">
-                {t("songAnalyzer.finalModelHelp")}
-              </span>
-            </label>
+            {v2Incompatible && (
+              <p role="status" className="mt-2 text-xs text-amber-300">
+                {t("songAnalyzer.v2IncompatibleHelp")}
+              </p>
+            )}
+            {version === "v1" && (
+              <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("songAnalyzer.finalModel")}
+                <select
+                  value={finalModel}
+                  onChange={(e) => setFinalModel(e.target.value)}
+                  disabled={
+                    busy ||
+                    finalModelAccess.isLoading ||
+                    !finalModelAccess.data?.modelOptions.length
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground disabled:opacity-50"
+                >
+                  {(finalModelAccess.data?.modelOptions ?? []).map((item) => (
+                    <option key={`${item.provider}:${item.id}`} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">
+                  {t("songAnalyzer.finalModelHelp")}
+                </span>
+              </label>
+            )}
 
             <button
               onClick={analyze}
-              disabled={!file || Boolean(fileError) || busy || finalModelAccess.isLoading}
+              disabled={
+                !file ||
+                Boolean(fileError) ||
+                busy ||
+                v2Incompatible ||
+                (version === "v1" && finalModelAccess.isLoading)
+              }
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-4 py-3 text-sm font-semibold text-primary-foreground glow-neon disabled:opacity-50"
             >
               {busy ? (
@@ -504,10 +580,23 @@ function SongAnalyzerPage() {
             </button>
             {busy && (
               <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                Analysis continues if you navigate elsewhere in PromptBeats or the screen is temporarily locked. Return here to see the result.
+                Analysis continues if you navigate elsewhere in PromptBeats or the screen is
+                temporarily locked. Return here to see the result.
               </p>
             )}
             {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+            {error && version === "v2" && !busy && (
+              <button
+                type="button"
+                className="mt-3 min-h-11 rounded-xl border border-white/10 px-3 text-xs focus-visible:ring-2 focus-visible:ring-accent"
+                onClick={() => {
+                  if (!window.confirm(t("songAnalyzer.v2NewRequestConfirm"))) return;
+                  if (resetV2AnalyzerRequest()) setError(null);
+                }}
+              >
+                {t("songAnalyzer.v2NewRequest")}
+              </button>
+            )}
           </section>
 
           <section className="space-y-5">
@@ -688,11 +777,17 @@ function SongAnalyzerPage() {
 
                 <div className="px-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
-                    Final AI
+                    {provenance ? t("songAnalyzer.version2") : "Final AI"}
                   </p>
                   <h2 className="mt-1 font-display text-lg font-bold">
-                    Final Musical Interpretation
+                    {provenance ? t("songAnalyzer.v2Result") : "Final Musical Interpretation"}
                   </h2>
+                  {provenance && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {provenance.provider} · {provenance.label} · Essentia{" "}
+                      {provenance.essentiaEngine} · {t("songAnalyzer.v2Help")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="glass rounded-2xl p-5">
