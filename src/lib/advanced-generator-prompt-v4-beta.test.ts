@@ -83,4 +83,13 @@ describe("V4 BETA prompt", () => {
     );
     expect(ai).toContain("? buildRevisionPrompt(data)");
   });
+
+  it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
+    const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
+    const guard = runner.indexOf('input.promptVersion === "v4_beta"');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(runner.indexOf("runSongGeneration(runtimeInput"));
+    expect(runner).toContain('_role: "super_admin"');
+    expect(runner).toContain('input.inputSnapshot?.generatorMode !== "advanced"');
+  });
 });
