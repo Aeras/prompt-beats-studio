@@ -700,6 +700,20 @@ async function callOpenAiCompatible(
       : reason === "length" || reason === "model_length"
         ? "max_tokens"
         : reason;
+  if (providerName === "openrouter" && stopReason === "max_tokens") {
+    const completionTokens = payload.usage?.completion_tokens ?? null;
+    const reasoningTokens = payload.usage?.completion_tokens_details?.reasoning_tokens ?? null;
+    console.warn("[ai-provider] completion_budget_exhausted", {
+      model,
+      requestedMaxTokens: call.maxTokens ?? 8192,
+      completionTokens,
+      reasoningTokens,
+      visibleTokens:
+        completionTokens !== null && reasoningTokens !== null
+          ? Math.max(0, completionTokens - reasoningTokens)
+          : null,
+    });
+  }
   const inputTokens = payload.usage?.prompt_tokens ?? null;
   const outputTokens = payload.usage?.completion_tokens ?? null;
   const totalTokens =
