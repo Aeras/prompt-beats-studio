@@ -71,7 +71,9 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // for all experimental prompt versions before any provider call.
     if (
       input.operation !== "lyrics_section_edit" &&
-      (input.promptVersion === "v2" || input.promptVersion === "v3" || input.promptVersion === "v4_beta")
+      (input.promptVersion === "v2" ||
+        input.promptVersion === "v3" ||
+        input.promptVersion === "v4_beta")
     ) {
       const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {
         _user_id: job.user_id,
