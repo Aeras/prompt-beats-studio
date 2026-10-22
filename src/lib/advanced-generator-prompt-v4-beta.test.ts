@@ -76,9 +76,9 @@ describe("V4 BETA prompt", () => {
 
   it("enforces the same Super Admin runner guard for V2, V3 and V4", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
-    expect(runner).toContain(
-      'input.promptVersion === "v2" || input.promptVersion === "v3" || input.promptVersion === "v4_beta"',
-    );
+    for (const version of ["v2", "v3", "v4_beta"]) {
+      expect(runner).toContain(`input.promptVersion === "${version}"`);
+    }
     expect(runner).toContain('input.inputSnapshot?.generatorMode !== "advanced"');
     expect(runner).toContain('input.operation !== "generate"');
   });
