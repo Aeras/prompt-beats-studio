@@ -234,6 +234,9 @@ function localizeAiError(
   const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const normalized = message.toLowerCase();
 
+  if (normalized.includes("ai provider rate limit was reached")) return t("generator.error.rateLimit");
+  if (normalized.includes("ai provider rejected the request parameters")) return t("generator.error.invalidProviderRequest");
+  if (normalized.includes("ai provider authentication was rejected")) return t("generator.error.providerAuth");
   if (
     normalized.includes("ai provider is temporarily unavailable") ||
     normalized.includes("ai service is not configured")
