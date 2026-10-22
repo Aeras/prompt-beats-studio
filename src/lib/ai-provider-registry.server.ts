@@ -355,7 +355,6 @@ export async function discoverProviderModels(
   };
 }
 
-
 export type DiscoveredAudioTextModel = {
   id: string;
   name: string;
@@ -426,8 +425,7 @@ function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry, modelId: s
     ["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-4-argon"].includes(modelId);
   const openai = provider.id === "openai" && modelId === "gpt-audio-1.5";
   const openrouter =
-    provider.id === "openrouter" &&
-    ["openai/gpt-audio", "openai/gpt-audio-1.5"].includes(modelId);
+    provider.id === "openrouter" && ["openai/gpt-audio", "openai/gpt-audio-1.5"].includes(modelId);
   return {
     supported: gemini || openai || openrouter,
     note:
@@ -510,18 +508,17 @@ async function probeAudioTextCompatibility(
     return null;
   }
 
-  const value =
-    response.ok
-      ? true
-      : response.status === 401 ||
-          response.status === 402 ||
-          response.status === 403 ||
-          response.status === 408 ||
-          response.status === 409 ||
-          response.status === 429 ||
-          response.status >= 500
-        ? null
-        : false;
+  const value = response.ok
+    ? true
+    : response.status === 401 ||
+        response.status === 402 ||
+        response.status === 403 ||
+        response.status === 408 ||
+        response.status === 409 ||
+        response.status === 429 ||
+        response.status >= 500
+      ? null
+      : false;
   audioProbeCache.set(cacheKey, { value, checkedAt: Date.now() });
   return value;
 }
@@ -648,10 +645,9 @@ export async function discoverProviderAudioTextModels(
       inputModalities: inputModalities.length ? inputModalities : ["audio"],
       outputModalities: outputModalities.length ? outputModalities : ["text"],
       runtimeSupported: runtime.supported,
-      runtimeNote:
-        explicitlyCompatible
-          ? runtime.note
-          : runtime.note + " Audio compatibility was verified with a live probe.",
+      runtimeNote: explicitlyCompatible
+        ? runtime.note
+        : runtime.note + " Audio compatibility was verified with a live probe.",
     });
   }
 
@@ -708,7 +704,10 @@ function sanitizeProviderError(body: string, status: number): string {
     const code = nested?.["code"] ?? payload?.["code"];
     const message = nested?.["message"] ?? payload?.["message"];
     const requestId =
-      nested?.["request_id"] ?? nested?.["requestId"] ?? payload?.["request_id"] ?? payload?.["requestId"];
+      nested?.["request_id"] ??
+      nested?.["requestId"] ??
+      payload?.["request_id"] ??
+      payload?.["requestId"];
     detail = [code, message, requestId ? `request_id=${requestId}` : null]
       .filter(Boolean)
       .map(String)
@@ -806,9 +805,7 @@ async function probeModel(
             { role: "user", content: prompt },
           ],
           max_tokens: 120,
-          ...(provider.compatibility.jsonMode
-            ? { response_format: { type: "json_object" } }
-            : {}),
+          ...(provider.compatibility.jsonMode ? { response_format: { type: "json_object" } } : {}),
         }),
       });
       if (response.ok) {
