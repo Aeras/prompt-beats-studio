@@ -3,6 +3,17 @@ import type { SongAnalyzerTranslationKey } from "@/i18n/locales/en-song-analyzer
 export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.title": "AI Song Analyzer",
   "songAnalyzer.admin": "Admin",
+  "songAnalyzer.version": "Έκδοση Analyzer",
+  "songAnalyzer.version1": "Version 1",
+  "songAnalyzer.version2": "Version 2",
+  "songAnalyzer.v2Help": "Essentia + επιλεγμένο Audio AI · μία AI κλήση · χωρίς Final Judge",
+  "songAnalyzer.v2Result": "Πλήρης μουσική ανάλυση από ένα μοντέλο",
+  "songAnalyzer.v2Incompatible": "Μη συμβατό με V2",
+  "songAnalyzer.v2IncompatibleHelp":
+    "Δεν έχει επαληθευτεί για το V2 το συμβόλαιο πλήρους audio report με μία κλήση αυτού του μοντέλου. Επίλεξε συμβατό μοντέλο ή V1. Δεν θα κληθεί εναλλακτικό μοντέλο.",
+  "songAnalyzer.v2NewRequest": "Προετοιμασία νέου αιτήματος ανάλυσης",
+  "songAnalyzer.v2NewRequestConfirm":
+    "Το Analyze ανακτά το ίδιο αίτημα. Ένα ΝΕΟ αίτημα μπορεί να χρεωθεί ξανά όταν πατήσεις Analyze. Το προηγούμενο αίτημα ενδέχεται να ολοκληρωθεί στον server· δεν ακυρώνεται. Συνέχεια;",
   "songAnalyzer.analyzeComplete": "Ανάλυση ολοκληρωμένου τραγουδιού",
   "songAnalyzer.zeroRetention":
     "Το source audio χρησιμοποιείται μόνο για την ανάλυση στον browser και από το επιλεγμένο AI μοντέλο. Δεν αποθηκεύεται ως Track, στοιχείο Library ή asset Project.",
@@ -68,7 +79,8 @@ export const elSongAnalyzer: Record<SongAnalyzerTranslationKey, string> = {
   "songAnalyzer.loading": "Φόρτωση…",
   "songAnalyzer.checkingAccess": "Έλεγχος πρόσβασης…",
   "songAnalyzer.fileTooLarge": "Ο Analyzer δέχεται αρχεία ήχου έως 15 MB.",
-  "songAnalyzer.gptAudioFormat": "Το επιλεγμένο μοντέλο ανάλυσης ήχου δέχεται αυτή τη στιγμή αρχεία MP3 ή WAV.",
+  "songAnalyzer.gptAudioFormat":
+    "Το επιλεγμένο μοντέλο ανάλυσης ήχου δέχεται αυτή τη στιγμή αρχεία MP3 ή WAV.",
   "songAnalyzer.analysisFailed": "Η ανάλυση του τραγουδιού απέτυχε.",
   "songAnalyzer.saveFailed": "Δεν ήταν δυνατή η αποθήκευση της ανάλυσης.",
   "songAnalyzer.sessionPersistFailed":

@@ -355,7 +355,6 @@ export async function discoverProviderModels(
   };
 }
 
-
 export type DiscoveredAudioTextModel = {
   id: string;
   name: string;
@@ -415,28 +414,24 @@ function modelModalities(row: any) {
   return { inputModalities, outputModalities };
 }
 
-function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry) {
-  if (provider.id === "gemini") {
-    return {
-      supported: true,
-      note: "PromptBeats already has a direct Gemini inline-audio Analyzer adapter.",
-    };
-  }
-  if (provider.id === "openai") {
-    return {
-      supported: true,
-      note: "PromptBeats already has a direct OpenAI input_audio Analyzer adapter.",
-    };
-  }
-  if (provider.id === "openrouter") {
-    return {
-      supported: true,
-      note: "OpenRouter chat completions supports base64 input_audio for audio reasoning.",
-    };
-  }
+/**
+ * A provider-wide audio transport is NOT evidence that each discovered model
+ * accepts PromptBeats V2's full-report, one-dispatch contract.
+ * Keep the discovery list actionable only for reviewed V2 adapters.
+ */
+function audioAnalyzerRuntimeSupport(provider: ProviderRegistryEntry, modelId: string) {
+  const gemini =
+    provider.id === "gemini" &&
+    ["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-4-argon"].includes(modelId);
+  const openai = provider.id === "openai" && modelId === "gpt-audio-1.5";
+  const openrouter =
+    provider.id === "openrouter" && ["openai/gpt-audio", "openai/gpt-audio-1.5"].includes(modelId);
   return {
-    supported: false,
-    note: "Audio/text capability was discovered, but PromptBeats does not yet have a verified audio runtime adapter for this provider.",
+    supported: gemini || openai || openrouter,
+    note:
+      gemini || openai || openrouter
+        ? "Reviewed for the PromptBeats V2 single-call audio/full-report adapter. Live report success is not guaranteed by discovery."
+        : "Audio → text catalogue capability alone does not establish compatibility with PromptBeats V2. This model needs a reviewed one-call MP3/full-report JSON contract before it can be enabled.",
   };
 }
 
@@ -513,18 +508,17 @@ async function probeAudioTextCompatibility(
     return null;
   }
 
-  const value =
-    response.ok
-      ? true
-      : response.status === 401 ||
-          response.status === 402 ||
-          response.status === 403 ||
-          response.status === 408 ||
-          response.status === 409 ||
-          response.status === 429 ||
-          response.status >= 500
-        ? null
-        : false;
+  const value = response.ok
+    ? true
+    : response.status === 401 ||
+        response.status === 402 ||
+        response.status === 403 ||
+        response.status === 408 ||
+        response.status === 409 ||
+        response.status === 429 ||
+        response.status >= 500
+      ? null
+      : false;
   audioProbeCache.set(cacheKey, { value, checkedAt: Date.now() });
   return value;
 }
@@ -590,7 +584,6 @@ export async function discoverProviderAudioTextModels(
   const installedSet = new Set(
     installedModels.map((model) => model.provider + ":" + model.providerModelId),
   );
-  const runtime = audioAnalyzerRuntimeSupport(provider);
 
   const candidates: DiscoveredAudioTextModel[] = [];
   let notVerified = 0;
@@ -633,6 +626,11 @@ export async function discoverProviderAudioTextModels(
       /^models\//,
       "",
     );
+    const runtime = audioAnalyzerRuntimeSupport(provider, rawId);
+    if (!runtime.supported) {
+      notVerified += 1;
+      continue;
+    }
     candidates.push({
       id: rawId,
       name,
@@ -647,10 +645,9 @@ export async function discoverProviderAudioTextModels(
       inputModalities: inputModalities.length ? inputModalities : ["audio"],
       outputModalities: outputModalities.length ? outputModalities : ["text"],
       runtimeSupported: runtime.supported,
-      runtimeNote:
-        explicitlyCompatible
-          ? runtime.note
-          : runtime.note + " Audio compatibility was verified with a live probe.",
+      runtimeNote: explicitlyCompatible
+        ? runtime.note
+        : runtime.note + " Audio compatibility was verified with a live probe.",
     });
   }
 
@@ -707,7 +704,10 @@ function sanitizeProviderError(body: string, status: number): string {
     const code = nested?.["code"] ?? payload?.["code"];
     const message = nested?.["message"] ?? payload?.["message"];
     const requestId =
-      nested?.["request_id"] ?? nested?.["requestId"] ?? payload?.["request_id"] ?? payload?.["requestId"];
+      nested?.["request_id"] ??
+      nested?.["requestId"] ??
+      payload?.["request_id"] ??
+      payload?.["requestId"];
     detail = [code, message, requestId ? `request_id=${requestId}` : null]
       .filter(Boolean)
       .map(String)
@@ -717,7 +717,7 @@ function sanitizeProviderError(body: string, status: number): string {
   }
 
   detail = detail
-    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+/gi, "Bearer [redacted]")
     .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted]")
     .slice(0, 360);
   return detail ? `${fallback} · ${detail}` : fallback;
@@ -805,9 +805,7 @@ async function probeModel(
             { role: "user", content: prompt },
           ],
           max_tokens: 120,
-          ...(provider.compatibility.jsonMode
-            ? { response_format: { type: "json_object" } }
-            : {}),
+          ...(provider.compatibility.jsonMode ? { response_format: { type: "json_object" } } : {}),
         }),
       });
       if (response.ok) {

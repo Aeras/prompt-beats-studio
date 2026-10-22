@@ -166,7 +166,9 @@ function AiModelEditor({
       );
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : el ? "Ο έλεγχος απέτυχε." : "Check failed"),
+      toast.error(
+        error instanceof Error ? error.message : el ? "Ο έλεγχος απέτυχε." : "Check failed",
+      ),
   });
 
   const mutation = useMutation({
@@ -250,7 +252,8 @@ function AiModelEditor({
   const sourceLabel = (value: string) => {
     if (value === "official_docs") return el ? "Επίσημη τεκμηρίωση" : "Official documentation";
     if (value === "provider_metadata") return el ? "Metadata provider" : "Provider metadata";
-    if (value === "verified_catalog") return el ? "Επαληθευμένο catalog PromptBeats" : "PromptBeats verified catalog";
+    if (value === "verified_catalog")
+      return el ? "Επαληθευμένο catalog PromptBeats" : "PromptBeats verified catalog";
     return el ? "Μη επιβεβαιωμένο" : "Unverified";
   };
 
@@ -367,7 +370,11 @@ function AiModelEditor({
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-xs text-muted-foreground">
               {t("aiModels.displayName")}
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={field} />
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className={field}
+              />
             </label>
             <label className="text-xs text-muted-foreground">
               {t("aiModels.modelId")}
@@ -375,7 +382,11 @@ function AiModelEditor({
             </label>
             <label className="text-xs text-muted-foreground">
               {t("aiModels.lifecycleStatus")}
-              <select value={status} onChange={(e) => setStatus(e.target.value as AdminAiModel["status"])} className={select}>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as AdminAiModel["status"])}
+                className={select}
+              >
                 <option value="testing">{t("aiModels.testing")}</option>
                 <option value="enabled">{t("aiModels.enabled")}</option>
                 <option value="disabled">{t("aiModels.disabled")}</option>
@@ -385,30 +396,60 @@ function AiModelEditor({
             </label>
             <label className="text-xs text-muted-foreground">
               {t("aiModels.accessPolicy")}
-              <select value={accessPolicy} onChange={(e) => setAccessPolicy(e.target.value as AdminAiModel["accessPolicy"])} className={select}>
+              <select
+                value={accessPolicy}
+                onChange={(e) => setAccessPolicy(e.target.value as AdminAiModel["accessPolicy"])}
+                className={select}
+              >
                 <option value="admin_only">{t("aiModels.adminOnly")}</option>
                 <option value="selected_users">{t("aiModels.selectedUsers")}</option>
                 <option value="all_users">{t("aiModels.allUsers")}</option>
               </select>
             </label>
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 p-3 text-sm">
-              <input type="checkbox" checked={generatorEnabled} disabled={!model.generatorCompatible} onChange={(e) => setGeneratorEnabled(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={generatorEnabled}
+                disabled={!model.generatorCompatible}
+                onChange={(e) => setGeneratorEnabled(e.target.checked)}
+              />
               {t("aiModels.useGenerator")}
             </label>
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 p-3 text-sm">
-              <input type="checkbox" checked={qualityEnabled} disabled={!model.qualityCheckCompatible} onChange={(e) => setQualityEnabled(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={qualityEnabled}
+                disabled={!model.qualityCheckCompatible}
+                onChange={(e) => setQualityEnabled(e.target.checked)}
+              />
               {t("aiModels.useQualityCheck")}
             </label>
             <label className="text-xs text-muted-foreground">
               {t("aiModels.generatorReasoning")}
-              <select value={generatorReasoning ?? ""} onChange={(e) => setGeneratorReasoning((e.target.value || null) as Reasoning)} className={select}>
-                {reasoningOptions.map(([value, label]) => <option key={value ?? "default"} value={value ?? ""}>{label}</option>)}
+              <select
+                value={generatorReasoning ?? ""}
+                onChange={(e) => setGeneratorReasoning((e.target.value || null) as Reasoning)}
+                className={select}
+              >
+                {reasoningOptions.map(([value, label]) => (
+                  <option key={value ?? "default"} value={value ?? ""}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="text-xs text-muted-foreground">
               {t("aiModels.qualityReasoning")}
-              <select value={qualityReasoning ?? ""} onChange={(e) => setQualityReasoning((e.target.value || null) as Reasoning)} className={select}>
-                {reasoningOptions.map(([value, label]) => <option key={value ?? "default"} value={value ?? ""}>{label}</option>)}
+              <select
+                value={qualityReasoning ?? ""}
+                onChange={(e) => setQualityReasoning((e.target.value || null) as Reasoning)}
+                className={select}
+              >
+                {reasoningOptions.map(([value, label]) => (
+                  <option key={value ?? "default"} value={value ?? ""}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
@@ -424,13 +465,51 @@ function AiModelEditor({
                 : "Prices can be filled from API metadata, official documentation, or the PromptBeats verified catalog."}
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <label className="text-xs text-muted-foreground">{t("aiModels.inputPrice")}<input inputMode="decimal" value={inputPrice} onChange={(e) => setInputPrice(e.target.value)} className={field} /></label>
-              <label className="text-xs text-muted-foreground">{t("aiModels.outputPrice")}<input inputMode="decimal" value={outputPrice} onChange={(e) => setOutputPrice(e.target.value)} className={field} /></label>
-              <label className="text-xs text-muted-foreground">{t("aiModels.cachedInputPrice")}<input inputMode="decimal" value={cachedInputPrice} onChange={(e) => setCachedInputPrice(e.target.value)} className={field} /></label>
-              <label className="text-xs text-muted-foreground">{t("aiModels.cacheWritePrice")}<input inputMode="decimal" value={cacheWritePrice} onChange={(e) => setCacheWritePrice(e.target.value)} className={field} /></label>
+              <label className="text-xs text-muted-foreground">
+                {t("aiModels.inputPrice")}
+                <input
+                  inputMode="decimal"
+                  value={inputPrice}
+                  onChange={(e) => setInputPrice(e.target.value)}
+                  className={field}
+                />
+              </label>
+              <label className="text-xs text-muted-foreground">
+                {t("aiModels.outputPrice")}
+                <input
+                  inputMode="decimal"
+                  value={outputPrice}
+                  onChange={(e) => setOutputPrice(e.target.value)}
+                  className={field}
+                />
+              </label>
+              <label className="text-xs text-muted-foreground">
+                {t("aiModels.cachedInputPrice")}
+                <input
+                  inputMode="decimal"
+                  value={cachedInputPrice}
+                  onChange={(e) => setCachedInputPrice(e.target.value)}
+                  className={field}
+                />
+              </label>
+              <label className="text-xs text-muted-foreground">
+                {t("aiModels.cacheWritePrice")}
+                <input
+                  inputMode="decimal"
+                  value={cacheWritePrice}
+                  onChange={(e) => setCacheWritePrice(e.target.value)}
+                  className={field}
+                />
+              </label>
               <label className="text-xs text-muted-foreground">
                 {t("aiModels.pricingStatus")}
-                <select value={pricingStatus} onChange={(e) => setPricingStatus(e.target.value as AdminAiModel["pricingStatus"])} className={select}>
+                <select
+                  value={pricingStatus}
+                  onChange={(e) =>
+                    setPricingStatus(e.target.value as AdminAiModel["pricingStatus"])
+                  }
+                  className={select}
+                >
                   <option value="verified">{t("aiModels.verified")}</option>
                   <option value="unknown">{t("aiModels.unknown")}</option>
                   <option value="outdated">{t("aiModels.outdated")}</option>
@@ -440,7 +519,9 @@ function AiModelEditor({
                 <p className="text-xs text-muted-foreground">{t("aiModels.pricingUpdated")}</p>
                 <p className="mt-1 text-sm">
                   {model.pricingUpdatedAt
-                    ? new Date(model.pricingUpdatedAt).toLocaleString(language === "el" ? "el-GR" : "en-US")
+                    ? new Date(model.pricingUpdatedAt).toLocaleString(
+                        language === "el" ? "el-GR" : "en-US",
+                      )
                     : "—"}
                 </p>
               </div>
@@ -449,7 +530,12 @@ function AiModelEditor({
 
           <label className="mt-4 block text-xs text-muted-foreground">
             {t("aiModels.notes")}
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-foreground" />
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={2000}
+              className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-foreground"
+            />
           </label>
         </div>
 
@@ -534,8 +620,7 @@ export function AiModelsPanel() {
       setCompatibilityProgress({ completed: 0, total: 0 });
       setAddedModelIds(new Set());
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : t("aiModels.providerCheckError")),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t("aiModels.providerCheckError")),
   });
 
   const compatibilityTest = useMutation({
@@ -559,8 +644,7 @@ export function AiModelsPanel() {
       }
       return { provider, results, cancelled: compatibilityCancelRef.current };
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : t("aiModels.compatibilityError")),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t("aiModels.compatibilityError")),
   });
 
   const addModel = useMutation({
@@ -622,10 +706,8 @@ export function AiModelsPanel() {
     onError: (e) => toast.error(e instanceof Error ? e.message : t("aiModels.healthCheckError")),
   });
   const setDefault = useMutation({
-    mutationFn: (input: {
-      operation: "generator" | "quality_check" | "ai_tools";
-      model: string;
-    }) => setAdminAiModelDefault({ data: input as any }),
+    mutationFn: (input: { operation: "generator" | "quality_check" | "ai_tools"; model: string }) =>
+      setAdminAiModelDefault({ data: input as any }),
     onSuccess: () => {
       toast.success(t("aiModels.defaultSaved"));
       qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
@@ -638,7 +720,14 @@ export function AiModelsPanel() {
       setBulkResult(result);
       toast.success(el ? "Ο μαζικός έλεγχος ολοκληρώθηκε." : "Model update scan complete.");
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : el ? "Ο έλεγχος ενημερώσεων απέτυχε." : "Update scan failed"),
+    onError: (e) =>
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : el
+            ? "Ο έλεγχος ενημερώσεων απέτυχε."
+            : "Update scan failed",
+      ),
   });
 
   const generatorOptions = useMemo(
@@ -659,7 +748,9 @@ export function AiModelsPanel() {
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("aiModels.loading")}</p>;
   if (error || !data)
-    return <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("aiModels.loadError")}</div>;
+    return (
+      <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("aiModels.loadError")}</div>
+    );
 
   const statusLabel = (value: AdminAiModel["status"]) => {
     if (value === "enabled") return t("aiModels.enabled");
@@ -694,7 +785,8 @@ export function AiModelsPanel() {
     return el ? "Μη συμβατό" : "Unsupported";
   };
 
-  const selectedDiscovery = providerCheck.data?.provider.id === selectedProvider ? providerCheck.data : null;
+  const selectedDiscovery =
+    providerCheck.data?.provider.id === selectedProvider ? providerCheck.data : null;
   const installedForProvider = data.models.filter((m) => m.provider === selectedProvider);
   const fastSuccessors = selectedDiscovery
     ? selectedDiscovery.models.filter((candidate) => {
@@ -742,27 +834,41 @@ export function AiModelsPanel() {
       {bulkResult && (
         <div className="glass rounded-2xl p-4">
           <div className="flex flex-wrap gap-2">
-            <Pill kind="up_to_date">{el ? "Ενημερωμένα" : "Up to date"}: {bulkResult.summary.upToDate}</Pill>
-            <Pill kind="outdated">{el ? "Αλλαγές" : "Changed"}: {bulkResult.summary.changed}</Pill>
-            <Pill kind="newer">{el ? "Νεότερη έκδοση" : "Newer version"}: {bulkResult.summary.newerVersion}</Pill>
-            <Pill kind="unavailable">{el ? "Μη διαθέσιμα" : "Unavailable"}: {bulkResult.summary.unavailable}</Pill>
+            <Pill kind="up_to_date">
+              {el ? "Ενημερωμένα" : "Up to date"}: {bulkResult.summary.upToDate}
+            </Pill>
+            <Pill kind="outdated">
+              {el ? "Αλλαγές" : "Changed"}: {bulkResult.summary.changed}
+            </Pill>
+            <Pill kind="newer">
+              {el ? "Νεότερη έκδοση" : "Newer version"}: {bulkResult.summary.newerVersion}
+            </Pill>
+            <Pill kind="unavailable">
+              {el ? "Μη διαθέσιμα" : "Unavailable"}: {bulkResult.summary.unavailable}
+            </Pill>
           </div>
           <div className="mt-3 max-h-72 space-y-2 overflow-auto">
             {bulkResult.reports
-              .filter((r) => r.changes.length || r.likelySuccessors.length || r.error || r.available === false)
+              .filter(
+                (r) =>
+                  r.changes.length || r.likelySuccessors.length || r.error || r.available === false,
+              )
               .map((report) => (
                 <div key={report.id} className="rounded-xl border border-white/10 p-3 text-xs">
                   <div className="font-semibold">
-                    {report.displayName} <span className="text-muted-foreground">({report.providerModelId})</span>
+                    {report.displayName}{" "}
+                    <span className="text-muted-foreground">({report.providerModelId})</span>
                   </div>
                   {report.changes.map((change: any) => (
                     <div key={change.field} className="mt-1 text-muted-foreground">
-                      {change.field}: {String(change.current ?? "—")} → <span className="text-foreground">{String(change.suggested ?? "—")}</span>
+                      {change.field}: {String(change.current ?? "—")} →{" "}
+                      <span className="text-foreground">{String(change.suggested ?? "—")}</span>
                     </div>
                   ))}
                   {report.likelySuccessors.length > 0 && (
                     <div className="mt-1 text-amber-200">
-                      {el ? "Πιθανή νεότερη έκδοση:" : "Likely newer version:"} {report.likelySuccessors.map((x: any) => x.id).join(", ")}
+                      {el ? "Πιθανή νεότερη έκδοση:" : "Likely newer version:"}{" "}
+                      {report.likelySuccessors.map((x: any) => x.id).join(", ")}
                     </div>
                   )}
                   {report.error && <div className="mt-1 text-red-200">{report.error}</div>}
@@ -773,20 +879,53 @@ export function AiModelsPanel() {
       )}
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {([
-          ["generator", t("aiModels.generatorDefault"), generatorDefault, setGeneratorDefault, generatorOptions],
-          ["ai_tools", t("aiModels.aiToolsDefault"), aiToolsDefault, setAiToolsDefault, aiToolsOptions],
-          ["quality_check", t("aiModels.qualityDefault"), qualityDefault, setQualityDefault, qualityOptions],
-        ] as const).map(([operation, label, value, setter, options]) => (
+        {(
+          [
+            [
+              "generator",
+              t("aiModels.generatorDefault"),
+              generatorDefault,
+              setGeneratorDefault,
+              generatorOptions,
+            ],
+            [
+              "ai_tools",
+              t("aiModels.aiToolsDefault"),
+              aiToolsDefault,
+              setAiToolsDefault,
+              aiToolsOptions,
+            ],
+            [
+              "quality_check",
+              t("aiModels.qualityDefault"),
+              qualityDefault,
+              setQualityDefault,
+              qualityOptions,
+            ],
+          ] as const
+        ).map(([operation, label, value, setter, options]) => (
           <div key={operation} className="glass rounded-2xl p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <Cpu className="h-4 w-4 text-primary" />{label}
+              <Cpu className="h-4 w-4 text-primary" />
+              {label}
             </div>
             <div className="mt-3 flex gap-2">
-              <select value={value} onChange={(e) => setter(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm">
-                {options.map((m) => <option key={m.id} value={m.providerModelId}>{m.displayName}</option>)}
+              <select
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
+              >
+                {options.map((m) => (
+                  <option key={m.id} value={m.providerModelId}>
+                    {m.displayName}
+                  </option>
+                ))}
               </select>
-              <button disabled={!value || setDefault.isPending} onClick={() => setDefault.mutate({ operation, model: value })} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+              <button
+                disabled={!value || setDefault.isPending}
+                onClick={() => setDefault.mutate({ operation, model: value })}
+                className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+              >
                 {t("aiModels.saveDefault")}
               </button>
             </div>
@@ -814,15 +953,29 @@ export function AiModelsPanel() {
               }}
               className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
             >
-              {providersQuery.data?.providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              {providersQuery.data?.providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
             </select>
-            <button disabled={!selectedProvider || providerCheck.isPending} onClick={() => providerCheck.mutate(selectedProvider)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+            <button
+              disabled={!selectedProvider || providerCheck.isPending}
+              onClick={() => providerCheck.mutate(selectedProvider)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
               <RefreshCw className={cn("h-4 w-4", providerCheck.isPending && "animate-spin")} />
               {providerCheck.isPending ? t("aiModels.checkingApi") : t("aiModels.checkApi")}
             </button>
-            <button disabled={!selectedProvider || providerHealth.isPending} onClick={() => providerHealth.mutate(selectedProvider)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm">
+            <button
+              disabled={!selectedProvider || providerHealth.isPending}
+              onClick={() => providerHealth.mutate(selectedProvider)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm"
+            >
               <HeartPulse className="h-4 w-4" />
-              {providerHealth.isPending ? t("aiModels.recheckingProvider") : t("aiModels.recheckProvider")}
+              {providerHealth.isPending
+                ? t("aiModels.recheckingProvider")
+                : t("aiModels.recheckProvider")}
             </button>
           </div>
 
@@ -835,7 +988,10 @@ export function AiModelsPanel() {
                   [t("aiModels.installedCount"), selectedDiscovery.summary.installed],
                   [t("aiModels.excludedCount"), selectedDiscovery.summary.excluded],
                 ].map(([label, value]) => (
-                  <div key={String(label)} className="rounded-xl border border-white/10 bg-black/15 p-3">
+                  <div
+                    key={String(label)}
+                    className="rounded-xl border border-white/10 bg-black/15 p-3"
+                  >
                     <div className="text-xs text-muted-foreground">{label}</div>
                     <div className="mt-1 text-lg font-semibold">{value}</div>
                   </div>
@@ -845,7 +1001,9 @@ export function AiModelsPanel() {
               {fastSuccessors.length > 0 && (
                 <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4">
                   <div className="font-display text-sm font-semibold">
-                    {el ? "Νέες εκδόσεις εγκατεστημένων μοντέλων" : "New versions of installed models"}
+                    {el
+                      ? "Νέες εκδόσεις εγκατεστημένων μοντέλων"
+                      : "New versions of installed models"}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {el
@@ -854,15 +1012,32 @@ export function AiModelsPanel() {
                   </p>
                   <div className="mt-3 space-y-2">
                     {fastSuccessors.map((candidate) => (
-                      <div key={candidate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
+                      <div
+                        key={candidate.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3"
+                      >
                         <div>
                           <div className="font-medium">{candidate.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {candidate.id}{candidate.contextWindow ? ` · ${candidate.contextWindow.toLocaleString()} context` : ""}
+                            {candidate.id}
+                            {candidate.contextWindow
+                              ? ` · ${candidate.contextWindow.toLocaleString()} context`
+                              : ""}
                           </div>
                         </div>
-                        <button disabled={addedModelIds.has(candidate.id) || (addModel.isPending && addModel.variables === candidate.id)} onClick={() => addModel.mutate(candidate.id)} className="rounded-xl border border-amber-400/30 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50">
-                          {addedModelIds.has(candidate.id) ? t("aiModels.added") : el ? "Έλεγχος & Προσθήκη" : "Check & Add"}
+                        <button
+                          disabled={
+                            addedModelIds.has(candidate.id) ||
+                            (addModel.isPending && addModel.variables === candidate.id)
+                          }
+                          onClick={() => addModel.mutate(candidate.id)}
+                          className="rounded-xl border border-amber-400/30 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50"
+                        >
+                          {addedModelIds.has(candidate.id)
+                            ? t("aiModels.added")
+                            : el
+                              ? "Έλεγχος & Προσθήκη"
+                              : "Check & Add"}
                         </button>
                       </div>
                     ))}
@@ -878,15 +1053,34 @@ export function AiModelsPanel() {
                         {el ? "Όλα τα νέα μοντέλα του API" : "All new API models"}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {normalCandidates.length} {el ? "μοντέλα για Compatibility Test" : "models to run through Compatibility Test"}
+                        {normalCandidates.length}{" "}
+                        {el
+                          ? "μοντέλα για Compatibility Test"
+                          : "models to run through Compatibility Test"}
                       </p>
                     </div>
-                    <button disabled={compatibilityTest.isPending} onClick={() => compatibilityTest.mutate({ providerId: selectedProvider, modelIds: normalCandidates.map((m) => m.id) })} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold">
-                      {compatibilityTest.isPending ? `${t("aiModels.runningCompatibility")} ${compatibilityProgress.completed}/${compatibilityProgress.total}` : t("aiModels.runCompatibility")}
+                    <button
+                      disabled={compatibilityTest.isPending}
+                      onClick={() =>
+                        compatibilityTest.mutate({
+                          providerId: selectedProvider,
+                          modelIds: normalCandidates.map((m) => m.id),
+                        })
+                      }
+                      className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold"
+                    >
+                      {compatibilityTest.isPending
+                        ? `${t("aiModels.runningCompatibility")} ${compatibilityProgress.completed}/${compatibilityProgress.total}`
+                        : t("aiModels.runCompatibility")}
                     </button>
                   </div>
                   {compatibilityTest.isPending && (
-                    <button onClick={() => { compatibilityCancelRef.current = true; }} className="mt-2 text-xs text-amber-200">
+                    <button
+                      onClick={() => {
+                        compatibilityCancelRef.current = true;
+                      }}
+                      className="mt-2 text-xs text-amber-200"
+                    >
                       {t("aiModels.stopCompatibility")}
                     </button>
                   )}
@@ -896,15 +1090,31 @@ export function AiModelsPanel() {
               {compatibilityTest.data && (
                 <div className="max-h-80 overflow-auto rounded-2xl border border-white/10">
                   {compatibilityTest.data.results
-                    .filter((r: any) => ["compatible", "generator_only", "quality_check_only"].includes(r.status))
+                    .filter((r: any) =>
+                      ["compatible", "generator_only", "quality_check_only"].includes(r.status),
+                    )
                     .map((result: any) => (
-                      <div key={result.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 p-3 first:border-t-0">
+                      <div
+                        key={result.id}
+                        className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 p-3 first:border-t-0"
+                      >
                         <div>
                           <div className="font-medium">{result.name}</div>
-                          <div className="text-xs text-muted-foreground">{result.id} · {compatibilityLabel(result.status)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {result.id} · {compatibilityLabel(result.status)}
+                          </div>
                         </div>
-                        <button disabled={addedModelIds.has(result.id) || (addModel.isPending && addModel.variables === result.id)} onClick={() => addModel.mutate(result.id)} className="rounded-xl border border-white/10 px-3 py-2 text-xs">
-                          {addedModelIds.has(result.id) ? t("aiModels.added") : t("aiModels.addModel")}
+                        <button
+                          disabled={
+                            addedModelIds.has(result.id) ||
+                            (addModel.isPending && addModel.variables === result.id)
+                          }
+                          onClick={() => addModel.mutate(result.id)}
+                          className="rounded-xl border border-white/10 px-3 py-2 text-xs"
+                        >
+                          {addedModelIds.has(result.id)
+                            ? t("aiModels.added")
+                            : t("aiModels.addModel")}
                         </button>
                       </div>
                     ))}
@@ -939,30 +1149,61 @@ export function AiModelsPanel() {
                 <tr key={model.id} className="border-t border-white/5 align-top">
                   <td className="px-4 py-3">
                     <div className="font-medium">{model.displayName}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{model.providerModelId}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {model.providerModelId}
+                    </div>
                   </td>
                   <td className="px-4 py-3 capitalize">{model.provider}</td>
-                  <td className="px-4 py-3">{model.generatorCompatible && model.generatorEnabled ? <Check className="h-4 w-4 text-emerald-300" /> : "—"}</td>
-                  <td className="px-4 py-3">{model.qualityCheckCompatible && model.qualityCheckEnabled ? <Check className="h-4 w-4 text-emerald-300" /> : "—"}</td>
-                  <td className="px-4 py-3"><Pill kind={model.status}>{statusLabel(model.status)}</Pill></td>
-                  <td className="px-4 py-3"><Pill kind={model.healthStatus}>{healthLabel(model.healthStatus)}</Pill></td>
-                  <td className="px-4 py-3"><Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill></td>
+                  <td className="px-4 py-3">
+                    {model.generatorCompatible && model.generatorEnabled ? (
+                      <Check className="h-4 w-4 text-emerald-300" />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {model.qualityCheckCompatible && model.qualityCheckEnabled ? (
+                      <Check className="h-4 w-4 text-emerald-300" />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Pill kind={model.status}>{statusLabel(model.status)}</Pill>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Pill kind={model.healthStatus}>{healthLabel(model.healthStatus)}</Pill>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill>
+                  </td>
                   <td className="px-4 py-3">
                     <Pill kind={model.pricingStatus}>{pricingLabel(model.pricingStatus)}</Pill>
                     {model.pricingStatus === "verified" && (
                       <div className="mt-1 text-xs text-muted-foreground">
-                        ${model.inputPricePerMillion ?? "—"} {el ? "είσοδος" : "in"} · ${model.outputPricePerMillion ?? "—"} {el ? "έξοδος" : "out"}
+                        ${model.inputPricePerMillion ?? "—"} {el ? "είσοδος" : "in"} · $
+                        {model.outputPricePerMillion ?? "—"} {el ? "έξοδος" : "out"}
                       </div>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => setEditing(model)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs">
-                        <Pencil className="h-3.5 w-3.5" />{t("aiModels.edit")}
+                      <button
+                        onClick={() => setEditing(model)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        {t("aiModels.edit")}
                       </button>
-                      <button disabled={modelHealth.isPending && modelHealth.variables === model.id} onClick={() => modelHealth.mutate(model.id)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs disabled:opacity-50">
+                      <button
+                        disabled={modelHealth.isPending && modelHealth.variables === model.id}
+                        onClick={() => modelHealth.mutate(model.id)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs disabled:opacity-50"
+                      >
                         <HeartPulse className="h-3.5 w-3.5" />
-                        {modelHealth.isPending && modelHealth.variables === model.id ? t("aiModels.rechecking") : t("aiModels.recheck")}
+                        {modelHealth.isPending && modelHealth.variables === model.id
+                          ? t("aiModels.rechecking")
+                          : t("aiModels.recheck")}
                       </button>
                     </div>
                   </td>
@@ -981,8 +1222,8 @@ export function AiModelsPanel() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {el
-              ? "Ελέγξτε έναν provider και εμφανίστε μοντέλα που είναι πραγματικά συμβατά με audio input → text output. Όταν το API catalog δεν δηλώνει modalities, το PromptBeats κάνει μικρό live compatibility probe αντί να επιστρέφει ψευδές 0."
-              : "Check a provider and show models that are actually compatible with audio input → text output. When the API catalog omits modalities, PromptBeats runs a tiny live compatibility probe instead of returning a false zero."}
+              ? "Εμφάνιση μόνο μοντέλων Audio → Text με ελεγμένο συμβόλαιο εκτέλεσης Music Analyzer V2. Το catalog από μόνο του δεν αποδεικνύει πλήρη συμβατότητα· η πραγματική ανάλυση MP3 χρειάζεται χωριστή δοκιμή. Για Gemini/OpenAI ενδέχεται να γίνει μικρό live probe με κόστος."
+              : "Show only Audio → Text models with a reviewed Music Analyzer V2 runtime contract. Catalog modalities alone do not prove full compatibility; a real MP3/full-report test is separate. Gemini/OpenAI discovery may run a small billable live probe."}
           </p>
         </div>
         <div className="space-y-4 p-4">
@@ -1007,10 +1248,7 @@ export function AiModelsPanel() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-200 ring-1 ring-inset ring-cyan-400/30 disabled:opacity-50"
             >
               <SearchCheck
-                className={cn(
-                  "h-4 w-4",
-                  musicAnalyzerProviderCheck.isPending && "animate-pulse",
-                )}
+                className={cn("h-4 w-4", musicAnalyzerProviderCheck.isPending && "animate-pulse")}
               />
               {musicAnalyzerProviderCheck.isPending
                 ? el
@@ -1033,7 +1271,7 @@ export function AiModelsPanel() {
                 </div>
                 <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
                   <div className="text-xs text-muted-foreground">
-                    {el ? "Audio → Text" : "Audio → Text"}
+                    {el ? "V2 υποψήφια" : "V2 candidates"}
                   </div>
                   <div className="mt-1 text-lg font-semibold text-cyan-200">
                     {musicDiscovery.candidates.length}
@@ -1052,8 +1290,8 @@ export function AiModelsPanel() {
               {musicDiscovery.candidates.length === 0 ? (
                 <div className="rounded-xl border border-white/10 p-4 text-sm text-muted-foreground">
                   {el
-                    ? "Δεν επαληθεύτηκε κανένα μοντέλο Audio → Text από το catalog ή από live compatibility probe."
-                    : "No Audio → Text model was verified from catalog metadata or by live compatibility probe."}
+                    ? "Δεν βρέθηκε μοντέλο με ελεγμένο συμβόλαιο Music Analyzer V2. Η συμβατότητα catalog δεν αρκεί."
+                    : "No model with a reviewed Music Analyzer V2 runtime contract was found. Catalog modality support alone is insufficient."}
                 </div>
               ) : (
                 <div className="max-h-[520px] space-y-2 overflow-auto">
@@ -1083,8 +1321,8 @@ export function AiModelsPanel() {
                             <Pill kind={candidate.runtimeSupported ? "healthy" : "inconclusive"}>
                               {candidate.runtimeSupported
                                 ? el
-                                  ? "Έτοιμο για PromptBeats"
-                                  : "PromptBeats ready"
+                                  ? "Ελεγμένο V2 adapter"
+                                  : "Reviewed V2 adapter"
                                 : el
                                   ? "Χρειάζεται adapter"
                                   : "Adapter required"}

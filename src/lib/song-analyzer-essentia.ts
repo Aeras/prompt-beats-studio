@@ -163,6 +163,7 @@ function round(value: number | null, digits = 4) {
 export async function analyzeStage0Essentia(
   file: File,
   legacy: Stage0DspEvidence,
+  version: "v1" | "v2" = "v1",
 ): Promise<Stage0DspEvidence> {
   const totalStartedAt = performance.now();
 
@@ -177,6 +178,73 @@ export async function analyzeStage0Essentia(
       primaryBpm != null && primaryBpm / 2 >= 20 ? round(primaryBpm / 2, 2) : null;
     const doubleTimeCandidate =
       primaryBpm != null && primaryBpm * 2 <= 300 ? round(primaryBpm * 2, 2) : null;
+
+    if (version === "v2") {
+      return {
+        version: "stage0-dsp-v1",
+        available: true,
+        engine: {
+          name: "essentia",
+          engineVersion: es.engineVersion || "0.1.3",
+          methodVersion: "promptbeats-essentia-stage0-v2",
+          algorithms: es.algorithmNames,
+        },
+        processing: {
+          decodeMs: round(decoded.decodeMs, 2),
+          dspMs: round(es.processingMs, 2),
+          totalMs: round(performance.now() - totalStartedAt, 2),
+          sourceSampleRate: decoded.sourceSampleRate,
+          analysisSampleRate: ESSENTIA_SAMPLE_RATE,
+          durationSeconds: round(decoded.durationSeconds, 3),
+          channels: decoded.channels,
+        },
+        tempo: {
+          primaryBpm,
+          halfTimeCandidate,
+          doubleTimeCandidate,
+          confidence: es.tempo.confidence,
+          stable: es.tempo.stable,
+          stabilityScore: es.tempo.stabilityScore,
+          ambiguous: es.tempo.ambiguous,
+          notes: es.tempo.notes,
+        },
+        rhythm: {
+          beatStrength: es.rhythm.beatStrength,
+          onsetDensity: es.rhythm.onsetDensity,
+          meterCandidate: null,
+          meterConfidence: null,
+          beatTimestamps: [],
+          notes: "Essentia rhythm summary; meter is not measured.",
+        },
+        energy: {
+          meanRms: null,
+          stdRms: null,
+          dynamicRangeDb: null,
+          loudnessDb: es.energy.loudnessDb,
+          dynamicComplexity: es.energy.dynamicComplexity,
+          energySegments: [],
+          majorChanges: [],
+        },
+        tonal: {
+          keyCandidate: es.tonal.keyCandidate,
+          scaleCandidate: es.tonal.scaleCandidate,
+          keyConfidence: es.tonal.keyConfidence,
+          chromaSummary: Array(12).fill(0),
+          notes: "Essentia KeyExtractor. Chroma is not exposed (zeros are placeholders).",
+        },
+        spectral: {
+          spectralCentroidHz: es.spectral.spectralCentroidHz,
+          brightness: null,
+          lowFrequencyEnergy: null,
+          highFrequencyEnergy: null,
+        },
+        sectionChangeCandidates: [],
+        limitations: [
+          "Essentia is supporting evidence, not musical ground truth.",
+          "No measured section boundaries or energy segments are available from this engine. No legacy measurements are included.",
+        ],
+      };
+    }
 
     const limitations = [
       ...legacy.limitations.filter((item) => !item.startsWith("Stage 0 is deterministic")),
