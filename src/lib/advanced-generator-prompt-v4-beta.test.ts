@@ -103,6 +103,23 @@ describe("V4 BETA prompt", () => {
     expect(ai).not.toContain("maxTokens: 16384");
   });
 
+  it("OpenRouter forwards reasoning and separates upstream errors without leaking bodies", () => {
+    const adapter = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    const section = adapter
+      .split("async function callOpenAiCompatible(")[1]
+      ?.split("async function callGroq(")[0];
+    expect(section).toBeDefined();
+    expect(section).toContain('providerName === "openrouter" && call.reasoningEffort');
+    expect(section).toContain("reasoning: { effort: call.reasoningEffort }");
+    expect(section).toContain("completion_tokens_details?.reasoning_tokens");
+    expect(section).toContain("res.status === 429");
+    expect(section).toContain("res.status === 400 || res.status === 422");
+    expect(section).not.toContain("errorBody.slice");
+    const jobs = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
+    expect(jobs).toContain("The AI provider rate limit was reached.");
+    expect(jobs).toContain("The AI provider rejected the request parameters.");
+  });
+
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
     const guard = runner.indexOf('input.promptVersion === "v4_beta"');
