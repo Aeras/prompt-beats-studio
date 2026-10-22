@@ -61,7 +61,12 @@ function field(value: string | undefined) {
  * re-scanned, so user-supplied `{{...}}` cannot trigger further substitution.
  */
 export function buildAdvancedGeneratorPromptV4Beta(input: V4BetaInput): string {
-  const required = { theme: input.theme, genre: input.genre, mood: input.mood, language: input.language };
+  const required = {
+    theme: input.theme,
+    genre: input.genre,
+    mood: input.mood,
+    language: input.language,
+  };
   for (const [key, value] of Object.entries(required)) {
     if (!value || !value.trim()) throw new Error(`V4 BETA requires a non-empty ${key}.`);
   }

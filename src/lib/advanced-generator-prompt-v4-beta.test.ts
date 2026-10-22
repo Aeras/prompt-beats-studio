@@ -56,10 +56,18 @@ describe("V4 BETA prompt", () => {
       ...base,
       structure: "Verse, Chorus",
       songBlueprint: [
-        { structureIndex: 1, sectionType: "Chorus", occurrence: 1, energy: 5, instruction: "Full band" },
+        {
+          structureIndex: 1,
+          sectionType: "Chorus",
+          occurrence: 1,
+          energy: 5,
+          instruction: "Full band",
+        },
       ],
     });
-    expect(out).toContain("- Structure position 2: Chorus #1 — Energy target: 5/5 — Direction: Full band");
+    expect(out).toContain(
+      "- Structure position 2: Chorus #1 — Energy target: 5/5 — Direction: Full band",
+    );
   });
 
   it("rejects empty required fields", () => {
@@ -70,7 +78,18 @@ describe("V4 BETA prompt", () => {
     const jobs = readFileSync("src/lib/generation-jobs.functions.ts", "utf8");
     expect(jobs).toContain('data.promptVersion === "v3" || data.promptVersion === "v4_beta"');
     const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
-    expect(ai).toContain('data.promptVersion === "v4_beta"\n        ? buildAdvancedGeneratorPromptV4Beta(data)');
+    expect(ai).toContain(
+      'data.promptVersion === "v4_beta"\n        ? buildAdvancedGeneratorPromptV4Beta(data)',
+    );
     expect(ai).toContain("? buildRevisionPrompt(data)");
+  });
+
+  it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
+    const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
+    const guard = runner.indexOf('input.promptVersion === "v4_beta"');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(runner.indexOf("runSongGeneration(runtimeInput"));
+    expect(runner).toContain('_role: "super_admin"');
+    expect(runner).toContain('input.inputSnapshot?.generatorMode !== "advanced"');
   });
 });

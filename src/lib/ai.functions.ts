@@ -1976,8 +1976,8 @@ export async function runSongGeneration(
       : data.promptVersion === "v4_beta"
         ? buildAdvancedGeneratorPromptV4Beta(data)
         : data.promptVersion === "v2" || data.promptVersion === "v3"
-        ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
-        : buildPrompt(data);
+          ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
+          : buildPrompt(data);
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       prompt:
