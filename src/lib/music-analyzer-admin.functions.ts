@@ -243,3 +243,25 @@ export const setInstalledAnalyzerV2Enabled = createServerFn({ method: "POST" })
     const { updateAnalyzerV2AdminOption } = await import("./song-analyzer-v2-admin-options.server");
     return updateAnalyzerV2AdminOption(data.providerId, data.modelId, data.enabled);
   });
+
+/**
+ * Explicit user-triggered, potentially billable tiny WAV probe. A pass proves
+ * basic audio transport (not the complete V2 song-report schema).
+ */
+export const verifyInstalledAnalyzerV2 = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => v2InstalledInput.omit({ enabled: true }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const extras = await readExtraModels(supabaseAdmin);
+    const installed = extras.some((model) => model.provider === data.providerId && model.id === data.modelId);
+    if (!installed) throw new Error("The selected model is not installed in Music Analyzer.");
+    const { verifyInstalledAnalyzerAudioTransport } = await import("./ai-provider-registry.server");
+    const outcome = await verifyInstalledAnalyzerAudioTransport(data.providerId, data.modelId);
+    if (outcome === "passed") {
+      const { updateAnalyzerV2AdminOption } = await import("./song-analyzer-v2-admin-options.server");
+      await updateAnalyzerV2AdminOption(data.providerId, data.modelId, true, true);
+    }
+    return { outcome, enabledOnSuccess: outcome === "passed", scope: "basic_audio_transport" as const };
+  });
