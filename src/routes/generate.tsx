@@ -3198,10 +3198,10 @@ function GeneratePage() {
                       event.target.value === "v4_beta"
                         ? "v4_beta"
                         : event.target.value === "v3"
-                        ? "v3"
-                        : event.target.value === "v2"
-                          ? "v2"
-                          : "v1",
+                          ? "v3"
+                          : event.target.value === "v2"
+                            ? "v2"
+                            : "v1",
                     )
                   }
                 >
