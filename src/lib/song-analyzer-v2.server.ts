@@ -10,13 +10,54 @@ type Model = {
   acceptedMimeTypes: readonly string[];
 };
 type Song = { generatorReady: unknown; detailedAnalysis: Record<string, unknown> };
+/** Metadata-only transport diagnostics. Never contains keys, audio, prompts or provider text. */
+export type AnalyzerV2Diagnostics = {
+  provider: Model["provider"];
+  model: string;
+  requestBytes: number;
+  elapsedMs: number;
+  errorName?: string;
+  causeName?: string;
+  causeCode?: string;
+  httpStatus?: number;
+};
+const SAFE_NAME = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
+const SAFE_CODE = /^[A-Z][A-Z0-9_]{0,39}$/;
+export function safeErrorMetadata(error: unknown) {
+  const meta: { errorName?: string; causeName?: string; causeCode?: string } = {};
+  const name = (error as { name?: unknown } | null)?.name;
+  if (typeof name === "string" && SAFE_NAME.test(name)) meta.errorName = name;
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  const causeName = (cause as { name?: unknown } | null)?.name;
+  if (typeof causeName === "string" && SAFE_NAME.test(causeName)) meta.causeName = causeName;
+  const code =
+    (cause as { code?: unknown } | null)?.code ?? (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && SAFE_CODE.test(code)) meta.causeCode = code;
+  return meta;
+}
+function formatDiagnostics(d: AnalyzerV2Diagnostics) {
+  const model = d.model.replace(/[^A-Za-z0-9._:/-]/g, "").slice(0, 120);
+  return [
+    `provider=${d.provider}`,
+    `model=${model}`,
+    `bytes=${d.requestBytes}`,
+    `elapsedMs=${d.elapsedMs}`,
+    d.errorName && `error=${d.errorName}`,
+    d.causeName && `cause=${d.causeName}`,
+    d.causeCode && `code=${d.causeCode}`,
+    d.httpStatus !== undefined && `status=${d.httpStatus}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 export class AnalyzerV2Error extends Error {
   constructor(
     public readonly code: string,
     public readonly status?: number,
+    public readonly diagnostics?: AnalyzerV2Diagnostics,
   ) {
     super(
-      `Analyzer V2: ${code}${status ? ` (HTTP ${status})` : ""}. No automatic retry or fallback was made.`,
+      `Analyzer V2: ${code}${status ? ` (HTTP ${status})` : ""}. No automatic retry or fallback was made.${diagnostics ? ` [${formatDiagnostics(diagnostics)}]` : ""}`,
     );
   }
 }
@@ -176,12 +217,23 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   let success = false;
   // No SDK retries. All request construction and validation happens before this boundary.
   await args.markProviderStarted();
+  const requestBytes = new TextEncoder().encode(encodedBody).byteLength;
+  const startedAt = Date.now();
+  const diag = (extra: Partial<AnalyzerV2Diagnostics> = {}): AnalyzerV2Diagnostics => ({
+    provider: args.model.provider,
+    model: args.model.id,
+    requestBytes,
+    elapsedMs: Date.now() - startedAt,
+    ...extra,
+  });
   try {
     let response: Response;
     try {
       response = await (args.fetcher ?? fetch)(url, {
         method: "POST",
-        redirect: "error",
+        // Cloudflare Workers reject the "error" redirect mode synchronously (only follow/manual are
+        // supported). "manual" + explicit 3xx rejection below keeps the no-redirect contract.
+        redirect: "manual",
         signal: AbortSignal.timeout(6 * 60 * 1000),
         headers: gemini
           ? { "Content-Type": "application/json", "x-goog-api-key": args.apiKey }
@@ -189,9 +241,19 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
         body: encodedBody,
       });
     } catch (error) {
-      const name = error instanceof Error ? error.name : "";
+      const meta = safeErrorMetadata(error);
+      const timedOut = meta.errorName === "TimeoutError" || meta.errorName === "AbortError";
+      const diagnostics = diag(meta);
+      console.error("[analyzer-v2] transport_failed", diagnostics);
+      throw new AnalyzerV2Error(timedOut ? "TIMEOUT" : "TRANSPORT_FAILED", undefined, diagnostics);
+    }
+    if (response.status === 0 || (response.status >= 300 && response.status < 400)) {
+      const diagnostics = diag({ httpStatus: response.status });
+      console.error("[analyzer-v2] redirect_rejected", diagnostics);
       throw new AnalyzerV2Error(
-        name === "TimeoutError" || name === "AbortError" ? "TIMEOUT" : "TRANSPORT_FAILED",
+        "PROVIDER_REDIRECT_REJECTED",
+        response.status || undefined,
+        diagnostics,
       );
     }
     if (!response.ok) {
@@ -227,7 +289,9 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
                       : response.status === 400 || response.status === 422
                         ? "PROVIDER_CONTRACT_REJECTED"
                         : "PROVIDER_HTTP_FAILED";
-      throw new AnalyzerV2Error(code, response.status);
+      const diagnostics = diag({ httpStatus: response.status });
+      console.error("[analyzer-v2] provider_http_error", { ...diagnostics, code });
+      throw new AnalyzerV2Error(code, response.status, diagnostics);
     }
     let payload: unknown;
     try {
