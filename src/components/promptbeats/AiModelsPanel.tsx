@@ -1276,8 +1276,13 @@ export function AiModelsPanel() {
                 {musicAnalyzerModelsQuery.data.models
                   .filter((model) => model.provider === musicAnalyzerProvider)
                   .map((model) => (
-                    <div key={model.provider + ":" + model.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="break-all">{model.label} · {model.id}</span>
+                    <div
+                      key={model.provider + ":" + model.id}
+                      className="flex flex-wrap items-center justify-between gap-2 text-xs"
+                    >
+                      <span className="break-all">
+                        {model.label} · {model.id}
+                      </span>
                       <Pill kind="inconclusive">
                         {el ? "Εγκατεστημένο · V2 απαιτεί επαλήθευση" : "Installed · V2 unverified"}
                       </Pill>
