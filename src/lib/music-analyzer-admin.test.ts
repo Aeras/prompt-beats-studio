@@ -27,6 +27,11 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(registry).toContain("if (!runtime.supported)");
     expect(registry).toContain('"openai/gpt-audio-1.5"');
     expect(registry).toContain('"gemini-4-argon"');
+    const v2 = await source("./song-analyzer-v2.shared.ts");
+    for (const id of ["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-4-argon", "gpt-audio-1.5", "openai/gpt-audio", "openai/gpt-audio-1.5"]) {
+      expect(registry).toContain(`"${id}"`);
+      expect(v2).toContain(`"${id}"`);
+    }
     expect(admin).toContain("if (!candidate.runtimeSupported)");
     expect(admin).toContain('"song_analyzer_extra_models"');
     expect(admin).toContain("BUILTIN_ANALYZER_MODELS");
