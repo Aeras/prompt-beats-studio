@@ -93,6 +93,16 @@ describe("V4 BETA prompt", () => {
     expect(ai).toContain("? buildRevisionPrompt(data)");
   });
 
+  it("gives only the two verified OpenRouter models additional output budget", () => {
+    const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
+    expect(ai).toContain('provider === "openrouter"');
+    expect(ai).toContain('model === "aion-labs/aion-3.0"');
+    expect(ai).toContain('model === "qwen/qwen3.8-max-0902"');
+    expect(ai).toContain("? 16384");
+    expect(ai).toContain(": 8192");
+    expect(ai).not.toContain("maxTokens: 16384");
+  });
+
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
     const guard = runner.indexOf('input.promptVersion === "v4_beta"');
