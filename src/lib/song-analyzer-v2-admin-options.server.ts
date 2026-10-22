@@ -6,12 +6,12 @@ function valid(row: unknown): row is Entry {
   if (!row || typeof row !== "object") return false;
   const v = row as Record<string, unknown>;
   return (
-    ["gemini", "openai", "openrouter"].includes(String(v.provider)) &&
-    typeof v.id === "string" &&
-    v.id.length > 0 &&
-    v.id.length <= 240 &&
-    typeof v.enabled === "boolean" &&
-    typeof v.verified === "boolean"
+    ["gemini", "openai", "openrouter"].includes(String(v["provider"])) &&
+    typeof v["id"] === "string" &&
+    v["id"].length > 0 &&
+    v["id"].length <= 240 &&
+    typeof v["enabled"] === "boolean" &&
+    typeof v["verified"] === "boolean"
   );
 }
 
