@@ -524,6 +524,54 @@ async function probeAudioTextCompatibility(
 }
 
 /**
+ * An explicitly triggered tiny billable transport probe, independent of discovery.
+ * Passing this does not guarantee that the full V2 schema or musical analysis will succeed.
+ */
+export async function verifyInstalledAnalyzerAudioTransport(
+  providerId: "gemini" | "openai" | "openrouter",
+  modelId: string,
+): Promise<"passed" | "failed" | "inconclusive"> {
+  const provider = AI_PROVIDER_REGISTRY.find((entry) => entry.id === providerId);
+  if (!provider) return "failed";
+  const key = providerSecret(provider);
+  if (!key) return "inconclusive";
+  if (providerId === "openrouter") {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+        body: JSON.stringify({
+          model: modelId,
+          max_tokens: 128,
+          provider: { allow_fallbacks: false },
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: 'Reply ONLY with valid JSON: {"audioReceived":true}. The attached WAV is test audio.' },
+                { type: "input_audio", input_audio: { data: AUDIO_TEXT_PROBE_WAV_BASE64, format: "wav" } },
+              ],
+            },
+          ],
+        }),
+      });
+      if (!response.ok) return [401, 402, 403, 408, 409, 429].includes(response.status) || response.status >= 500 ? "inconclusive" : "failed";
+      const payload = await response.json().catch(() => null);
+      const raw = payload?.choices?.[0]?.message?.content;
+      if (typeof raw !== "string") return "failed";
+      const parsed = JSON.parse(raw.trim().replace(/^\x60\x60\x60(?:json)?\s*/i, "").replace(/\s*\x60\x60\x60$/, ""));
+      return parsed?.audioReceived === true ? "passed" : "failed";
+    } catch {
+      return "inconclusive";
+    }
+  }
+  const result = await probeAudioTextCompatibility(provider, modelId, key);
+  return result === true ? "passed" : result === false ? "failed" : "inconclusive";
+}
+
+/**
  * Discovers audio-input → text-output models.
  *
  * Provider catalogs such as OpenRouter expose explicit modality metadata, so we use
