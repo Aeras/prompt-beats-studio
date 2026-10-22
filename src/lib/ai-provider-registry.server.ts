@@ -718,7 +718,7 @@ function sanitizeProviderError(body: string, status: number): string {
   }
 
   detail = detail
-    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+/gi, "Bearer [redacted]")
     .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted]")
     .slice(0, 360);
   return detail ? `${fallback} · ${detail}` : fallback;
