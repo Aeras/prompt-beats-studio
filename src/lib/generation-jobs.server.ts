@@ -66,9 +66,13 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
 
   try {
     const input = durableAiJobInput.parse(job.input_payload);
-    // V4 BETA defense in depth: jobs can also be created via the raw RPC, so
-    // re-verify Super Admin + Advanced new-song before any provider call.
-    if (input.operation !== "lyrics_section_edit" && input.promptVersion === "v4_beta") {
+    // Defense in depth: durable jobs can also be created via the raw RPC.
+    // Re-verify the existing Super Admin + Advanced new-song restriction
+    // for all experimental prompt versions before any provider call.
+    if (
+      input.operation !== "lyrics_section_edit" &&
+      (input.promptVersion === "v2" || input.promptVersion === "v3" || input.promptVersion === "v4_beta")
+    ) {
       const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {
         _user_id: job.user_id,
         _role: "super_admin",
