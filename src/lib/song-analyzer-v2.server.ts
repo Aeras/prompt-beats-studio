@@ -190,6 +190,16 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
       });
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
+      // The provider never returned an HTTP response. Log only non-sensitive
+      // diagnostics; never record the MP3, prompt, API key or raw error message.
+      console.warn("[song-analyzer-v2] provider transport failure", {
+        provider: args.model.provider,
+        model: args.model.id,
+        audioBytesEstimate: Math.floor((args.audioBase64.length * 3) / 4),
+        requestBytes: new TextEncoder().encode(encodedBody).byteLength,
+        errorName: name || "unknown",
+        timeout: name === "TimeoutError" || name === "AbortError",
+      });
       throw new AnalyzerV2Error(
         name === "TimeoutError" || name === "AbortError" ? "TIMEOUT" : "TRANSPORT_FAILED",
       );
