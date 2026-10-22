@@ -23,6 +23,10 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(registry).toContain('provider.id === "gemini"');
     expect(registry).toContain('provider.id === "openai"');
     expect(registry).toContain('provider.id === "openrouter"');
+    expect(registry).toContain("audioAnalyzerRuntimeSupport(provider, rawId)");
+    expect(registry).toContain("if (!runtime.supported)");
+    expect(registry).toContain('"openai/gpt-audio-1.5"');
+    expect(registry).toContain('"gemini-4-argon"');
     expect(admin).toContain("if (!candidate.runtimeSupported)");
     expect(admin).toContain('"song_analyzer_extra_models"');
     expect(admin).toContain("BUILTIN_ANALYZER_MODELS");
@@ -41,6 +45,6 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(panel).toContain("Music Analyzer");
     expect(panel).toContain("checkMusicAnalyzerProviderModels");
     expect(panel).toContain("Προσθήκη στο Music Analyzer");
-    expect(panel).toContain("live compatibility probe");
+    expect(panel).toContain("reviewed Music Analyzer V2 runtime contract");
   });
 });
