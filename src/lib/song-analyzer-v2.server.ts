@@ -100,7 +100,8 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   fetcher?: typeof fetch;
 }) {
   const capability = analyzerV2Compatibility(args.model);
-  if (!capability.compatible && !args.allowAdminOptIn) throw new AnalyzerV2Error("MODEL_INCOMPATIBLE");
+  if (!capability.compatible && !args.allowAdminOptIn)
+    throw new AnalyzerV2Error("MODEL_INCOMPATIBLE");
   if (!args.model.acceptedMimeTypes.includes(args.mimeType))
     throw new AnalyzerV2Error("UNSUPPORTED_AUDIO_FORMAT");
   if (!args.apiKey.trim()) throw new AnalyzerV2Error("PROVIDER_NOT_CONFIGURED");

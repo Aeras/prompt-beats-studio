@@ -1817,7 +1817,10 @@ export const getSongAnalyzerAccess = createServerFn({ method: "GET" })
         acceptedMimeTypes: [...model.acceptedMimeTypes],
         v2Compatible:
           analyzerV2Compatibility(model).compatible ||
-          v2Options.some((option) => option.provider === model.provider && option.id === model.id && option.enabled),
+          v2Options.some(
+            (option) =>
+              option.provider === model.provider && option.id === model.id && option.enabled,
+          ),
       })),
       defaultModel: DEFAULT_SONG_ANALYZER_MODEL,
       maxFileBytes: SONG_ANALYZER_MAX_FILE_BYTES,

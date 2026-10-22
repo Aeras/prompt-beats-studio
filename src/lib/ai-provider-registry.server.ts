@@ -550,18 +550,32 @@ export async function verifyInstalledAnalyzerAudioTransport(
             {
               role: "user",
               content: [
-                { type: "text", text: 'Reply ONLY with valid JSON: {"audioReceived":true}. The attached WAV is test audio.' },
-                { type: "input_audio", input_audio: { data: AUDIO_TEXT_PROBE_WAV_BASE64, format: "wav" } },
+                {
+                  type: "text",
+                  text: 'Reply ONLY with valid JSON: {"audioReceived":true}. The attached WAV is test audio.',
+                },
+                {
+                  type: "input_audio",
+                  input_audio: { data: AUDIO_TEXT_PROBE_WAV_BASE64, format: "wav" },
+                },
               ],
             },
           ],
         }),
       });
-      if (!response.ok) return [401, 402, 403, 408, 409, 429].includes(response.status) || response.status >= 500 ? "inconclusive" : "failed";
+      if (!response.ok)
+        return [401, 402, 403, 408, 409, 429].includes(response.status) || response.status >= 500
+          ? "inconclusive"
+          : "failed";
       const payload = await response.json().catch(() => null);
       const raw = payload?.choices?.[0]?.message?.content;
       if (typeof raw !== "string") return "failed";
-      const parsed = JSON.parse(raw.trim().replace(/^\x60\x60\x60(?:json)?\s*/i, "").replace(/\s*\x60\x60\x60$/, ""));
+      const parsed = JSON.parse(
+        raw
+          .trim()
+          .replace(/^\x60\x60\x60(?:json)?\s*/i, "")
+          .replace(/\s*\x60\x60\x60$/, ""),
+      );
       return parsed?.audioReceived === true ? "passed" : "failed";
     } catch {
       return "inconclusive";

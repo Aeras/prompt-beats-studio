@@ -40,7 +40,12 @@ export async function analyzerV2AdminEnabled(provider: string, id: string) {
   return rows.some((entry) => entry.provider === provider && entry.id === id && entry.enabled);
 }
 
-export async function updateAnalyzerV2AdminOption(provider: string, id: string, enabled: boolean, verified?: boolean) {
+export async function updateAnalyzerV2AdminOption(
+  provider: string,
+  id: string,
+  enabled: boolean,
+  verified?: boolean,
+) {
   const rows = await readAnalyzerV2AdminOptions();
   const previous = rows.find((entry) => entry.provider === provider && entry.id === id);
   const next: Entry = {

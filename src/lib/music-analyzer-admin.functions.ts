@@ -67,13 +67,11 @@ async function readExtraModels(supabaseAdmin: any): Promise<ExtraAnalyzerModel[]
 }
 
 async function writeExtraModels(supabaseAdmin: any, models: ExtraAnalyzerModel[]) {
-  const { error } = await supabaseAdmin
-    .from("app_settings")
-    .upsert({
-      key: SETTINGS_KEY,
-      value: { models },
-      updated_at: new Date().toISOString(),
-    });
+  const { error } = await supabaseAdmin.from("app_settings").upsert({
+    key: SETTINGS_KEY,
+    value: { models },
+    updated_at: new Date().toISOString(),
+  });
   if (error) throw new Error("Could not save Music Analyzer model settings.");
 }
 
@@ -83,7 +81,10 @@ export const getMusicAnalyzerAdminModels = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { readAnalyzerV2AdminOptions } = await import("./song-analyzer-v2-admin-options.server");
-    return { models: await readExtraModels(supabaseAdmin), v2Options: await readAnalyzerV2AdminOptions() };
+    return {
+      models: await readExtraModels(supabaseAdmin),
+      v2Options: await readAnalyzerV2AdminOptions(),
+    };
   });
 
 const providerCheckTimestamps = new Map<string, number>();
@@ -106,8 +107,7 @@ export const checkMusicAnalyzerProviderModels = createServerFn({ method: "POST" 
     const extras = await readExtraModels(supabaseAdmin);
     const installed = installedAnalyzerModels(extras);
 
-    const { discoverProviderAudioTextModels } =
-      await import("@/lib/ai-provider-registry.server");
+    const { discoverProviderAudioTextModels } = await import("@/lib/ai-provider-registry.server");
     return discoverProviderAudioTextModels(data.providerId, installed);
   });
 
@@ -129,14 +129,15 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
     }
 
     const installed = installedAnalyzerModels(extras);
-    const { discoverProviderAudioTextModels } =
-      await import("@/lib/ai-provider-registry.server");
+    const { discoverProviderAudioTextModels } = await import("@/lib/ai-provider-registry.server");
     const discovery = await discoverProviderAudioTextModels(data.providerId, installed);
     const candidate = discovery.candidates.find(
       (model) => model.id === data.modelId && !model.deprecated && !model.installed,
     );
     if (!candidate) {
-      throw new Error("This provider does not explicitly advertise this model as audio input → text output.");
+      throw new Error(
+        "This provider does not explicitly advertise this model as audio input → text output.",
+      );
     }
     if (!candidate.runtimeSupported) {
       throw new Error(candidate.runtimeNote);
@@ -182,7 +183,8 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
         discovered_at: nowIso,
         last_checked_at: nowIso,
         health_status: "unknown",
-        notes: "Added specifically for PromptBeats Music Analyzer after explicit audio-input/text-output discovery.",
+        notes:
+          "Added specifically for PromptBeats Music Analyzer after explicit audio-input/text-output discovery.",
         updated_at: nowIso,
       } as never);
       if (registryError) {
@@ -238,7 +240,9 @@ export const setInstalledAnalyzerV2Enabled = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const extras = await readExtraModels(supabaseAdmin);
-    const installed = extras.some((model) => model.provider === data.providerId && model.id === data.modelId);
+    const installed = extras.some(
+      (model) => model.provider === data.providerId && model.id === data.modelId,
+    );
     if (!installed) throw new Error("The selected model is not installed in Music Analyzer.");
     const { updateAnalyzerV2AdminOption } = await import("./song-analyzer-v2-admin-options.server");
     return updateAnalyzerV2AdminOption(data.providerId, data.modelId, data.enabled);
@@ -255,13 +259,20 @@ export const verifyInstalledAnalyzerV2 = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const extras = await readExtraModels(supabaseAdmin);
-    const installed = extras.some((model) => model.provider === data.providerId && model.id === data.modelId);
+    const installed = extras.some(
+      (model) => model.provider === data.providerId && model.id === data.modelId,
+    );
     if (!installed) throw new Error("The selected model is not installed in Music Analyzer.");
     const { verifyInstalledAnalyzerAudioTransport } = await import("./ai-provider-registry.server");
     const outcome = await verifyInstalledAnalyzerAudioTransport(data.providerId, data.modelId);
     if (outcome === "passed") {
-      const { updateAnalyzerV2AdminOption } = await import("./song-analyzer-v2-admin-options.server");
+      const { updateAnalyzerV2AdminOption } =
+        await import("./song-analyzer-v2-admin-options.server");
       await updateAnalyzerV2AdminOption(data.providerId, data.modelId, true, true);
     }
-    return { outcome, enabledOnSuccess: outcome === "passed", scope: "basic_audio_transport" as const };
+    return {
+      outcome,
+      enabledOnSuccess: outcome === "passed",
+      scope: "basic_audio_transport" as const,
+    };
   });

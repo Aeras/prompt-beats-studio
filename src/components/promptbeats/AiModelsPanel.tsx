@@ -697,8 +697,11 @@ export function AiModelsPanel() {
   });
 
   const setAnalyzerV2Enabled = useMutation({
-    mutationFn: (args: { providerId: "gemini" | "openai" | "openrouter"; modelId: string; enabled: boolean }) =>
-      setInstalledAnalyzerV2Enabled({ data: args }),
+    mutationFn: (args: {
+      providerId: "gemini" | "openai" | "openrouter";
+      modelId: string;
+      enabled: boolean;
+    }) => setInstalledAnalyzerV2Enabled({ data: args }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-music-analyzer-models"] });
       qc.invalidateQueries({ queryKey: ["song-analyzer-access"], exact: false });
@@ -714,10 +717,16 @@ export function AiModelsPanel() {
       qc.invalidateQueries({ queryKey: ["song-analyzer-access"], exact: false });
       toast[result.outcome === "passed" ? "success" : "error"](
         result.outcome === "passed"
-          ? (el ? "Ο έλεγχος audio API πέρασε. Ενεργοποιήθηκε η V2." : "Audio API probe passed. V2 was enabled.")
+          ? el
+            ? "Ο έλεγχος audio API πέρασε. Ενεργοποιήθηκε η V2."
+            : "Audio API probe passed. V2 was enabled."
           : result.outcome === "inconclusive"
-            ? (el ? "Ο έλεγχος ήταν ασαφής. Μπορείς να ενεργοποιήσεις χειροκίνητα τη V2." : "Probe inconclusive; you may manually opt in.")
-            : (el ? "Ο έλεγχος audio API απέτυχε. Μπορείς να δοκιμάσεις χειροκίνητα." : "Audio API probe failed; manual opt-in remains available."),
+            ? el
+              ? "Ο έλεγχος ήταν ασαφής. Μπορείς να ενεργοποιήσεις χειροκίνητα τη V2."
+              : "Probe inconclusive; you may manually opt in."
+            : el
+              ? "Ο έλεγχος audio API απέτυχε. Μπορείς να δοκιμάσεις χειροκίνητα."
+              : "Audio API probe failed; manual opt-in remains available.",
       );
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Audio probe failed."),
@@ -1301,7 +1310,11 @@ export function AiModelsPanel() {
                   ? "Η εγκατάσταση για την παλαιότερη έκδοση δεν πιστοποιεί συμβατότητα με V2. Τα μοντέλα δεν διαγράφονται. Όσα δεν έχουν ελεγμένο V2 adapter μπορούν να χρησιμοποιηθούν στη V1."
                   : "Earlier installation does not certify V2 compatibility. Models are not deleted. Those without reviewed V2 adapters remain available in V1."}
               </p>
-              <p className="mt-1 text-xs text-amber-200/80">{el ? "Η Επαλήθευση κάνει μικρή πιθανώς χρεώσιμη API κλήση και ελέγχει audio transport, όχι την ποιότητα ή την πλήρη αναφορά. Το χειροκίνητο checkbox επιτρέπει δοκιμαστική κλήση χωρίς επαλήθευση." : "Verify uses a small potentially billable audio API probe, not a full report-quality test. Manual opt-in allows an experimental V2 call without verification."}</p>
+              <p className="mt-1 text-xs text-amber-200/80">
+                {el
+                  ? "Η Επαλήθευση κάνει μικρή πιθανώς χρεώσιμη API κλήση και ελέγχει audio transport, όχι την ποιότητα ή την πλήρη αναφορά. Το χειροκίνητο checkbox επιτρέπει δοκιμαστική κλήση χωρίς επαλήθευση."
+                  : "Verify uses a small potentially billable audio API probe, not a full report-quality test. Manual opt-in allows an experimental V2 call without verification."}
+              </p>
               <div className="mt-2 space-y-1.5">
                 {musicAnalyzerModelsQuery.data.models
                   .filter((model) => model.provider === musicAnalyzerProvider)
@@ -1320,7 +1333,8 @@ export function AiModelsPanel() {
                             aria-label={el ? "Χρήση στη Version 2" : "Enable in Version 2"}
                             checked={Boolean(
                               musicAnalyzerModelsQuery.data?.v2Options?.find(
-                                (option) => option.provider === model.provider && option.id === model.id,
+                                (option) =>
+                                  option.provider === model.provider && option.id === model.id,
                               )?.enabled,
                             )}
                             disabled={setAnalyzerV2Enabled.isPending || verifyAnalyzerV2.isPending}
@@ -1345,18 +1359,39 @@ export function AiModelsPanel() {
                           }
                           className="rounded-lg border border-cyan-400/30 px-2.5 py-1.5 text-cyan-200 disabled:opacity-40"
                         >
-                          {verifyAnalyzerV2.isPending && verifyAnalyzerV2.variables?.modelId === model.id
-                            ? (el ? "Έλεγχος…" : "Verifying…")
-                            : (el ? "Επαλήθευση" : "Verify")}
+                          {verifyAnalyzerV2.isPending &&
+                          verifyAnalyzerV2.variables?.modelId === model.id
+                            ? el
+                              ? "Έλεγχος…"
+                              : "Verifying…"
+                            : el
+                              ? "Επαλήθευση"
+                              : "Verify"}
                         </button>
-                        <Pill kind={musicAnalyzerModelsQuery.data?.v2Options?.some(
-                          (option) => option.provider === model.provider && option.id === model.id && option.verified,
-                        ) ? "healthy" : "inconclusive"}>
+                        <Pill
+                          kind={
+                            musicAnalyzerModelsQuery.data?.v2Options?.some(
+                              (option) =>
+                                option.provider === model.provider &&
+                                option.id === model.id &&
+                                option.verified,
+                            )
+                              ? "healthy"
+                              : "inconclusive"
+                          }
+                        >
                           {musicAnalyzerModelsQuery.data?.v2Options?.some(
-                            (option) => option.provider === model.provider && option.id === model.id && option.verified,
+                            (option) =>
+                              option.provider === model.provider &&
+                              option.id === model.id &&
+                              option.verified,
                           )
-                            ? (el ? "Audio API ελεγμένο" : "Audio API verified")
-                            : (el ? "Μη επαληθευμένο" : "Unverified")}
+                            ? el
+                              ? "Audio API ελεγμένο"
+                              : "Audio API verified"
+                            : el
+                              ? "Μη επαληθευμένο"
+                              : "Unverified"}
                         </Pill>
                       </div>
                     </div>
