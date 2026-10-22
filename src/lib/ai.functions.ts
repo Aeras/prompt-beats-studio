@@ -2022,6 +2022,29 @@ export async function runSongGeneration(
 
   const result = generationOutput.safeParse(parseSections(raw));
   if (!result.success) {
+    // Record the shape of invalid responses without logging user lyrics or prompts.
+    // This distinguishes malformed JSON from missing or oversized song fields.
+    const rawJson = raw.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
+    let responseShape: string = "non_json";
+    try {
+      const decoded: unknown = JSON.parse(rawJson);
+      responseShape =
+        decoded !== null && typeof decoded === "object" && !Array.isArray(decoded)
+          ? "json_object"
+          : "json_other";
+    } catch {
+      // No response content is persisted in diagnostics.
+    }
+    console.warn("[ai] generation_invalid_response", {
+      provider: generated.provider,
+      model: generated.model,
+      responseShape,
+      responseLength: raw.length,
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        code: issue.code,
+      })),
+    });
     await flushUsage(userId, generationId, records);
     throw new Error("The AI returned an incomplete or invalid response. Please try again.");
   }
