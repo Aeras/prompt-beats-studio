@@ -217,12 +217,23 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   let success = false;
   // No SDK retries. All request construction and validation happens before this boundary.
   await args.markProviderStarted();
+  const requestBytes = new TextEncoder().encode(encodedBody).byteLength;
+  const startedAt = Date.now();
+  const diag = (extra: Partial<AnalyzerV2Diagnostics> = {}): AnalyzerV2Diagnostics => ({
+    provider: args.model.provider,
+    model: args.model.id,
+    requestBytes,
+    elapsedMs: Date.now() - startedAt,
+    ...extra,
+  });
   try {
     let response: Response;
     try {
       response = await (args.fetcher ?? fetch)(url, {
         method: "POST",
-        redirect: "error",
+        // Cloudflare Workers reject redirect:"error" synchronously (only follow/manual are
+        // supported). "manual" + explicit 3xx rejection below keeps the no-redirect contract.
+        redirect: "manual",
         signal: AbortSignal.timeout(6 * 60 * 1000),
         headers: gemini
           ? { "Content-Type": "application/json", "x-goog-api-key": args.apiKey }
@@ -230,10 +241,16 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
         body: encodedBody,
       });
     } catch (error) {
-      const name = error instanceof Error ? error.name : "";
-      throw new AnalyzerV2Error(
-        name === "TimeoutError" || name === "AbortError" ? "TIMEOUT" : "TRANSPORT_FAILED",
-      );
+      const meta = safeErrorMetadata(error);
+      const timedOut = meta.errorName === "TimeoutError" || meta.errorName === "AbortError";
+      const diagnostics = diag(meta);
+      console.error("[analyzer-v2] transport_failed", diagnostics);
+      throw new AnalyzerV2Error(timedOut ? "TIMEOUT" : "TRANSPORT_FAILED", undefined, diagnostics);
+    }
+    if (response.status === 0 || (response.status >= 300 && response.status < 400)) {
+      const diagnostics = diag({ httpStatus: response.status });
+      console.error("[analyzer-v2] redirect_rejected", diagnostics);
+      throw new AnalyzerV2Error("PROVIDER_REDIRECT_REJECTED", response.status || undefined, diagnostics);
     }
     if (!response.ok) {
       // Inspect only known machine codes, never echo provider messages/private content.
