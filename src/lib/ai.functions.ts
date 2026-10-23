@@ -2011,6 +2011,14 @@ export async function runSongGeneration(
   });
 
   if (!generateOk) {
+    console.warn("[ai] generation_non_success_stop", {
+      provider: generated.provider,
+      model: generated.model,
+      stopReason: stopReason ?? "unknown",
+      outputTokens: generated.usage?.outputTokens ?? null,
+      reasoningTokens: generated.usage?.reasoningTokens ?? null,
+      responseLength: raw.length,
+    });
     await flushUsage(userId, generationId, records);
     if (stopReason === "max_tokens") {
       throw new Error("The AI response was incomplete. Please try again.");
@@ -2030,8 +2038,15 @@ export async function runSongGeneration(
       .replace(/```$/, "")
       .trim();
     let responseShape: string = "non_json";
+    let returnedKeys: string[] = [];
     try {
       const decoded: unknown = JSON.parse(rawJson);
+      if (decoded !== null && typeof decoded === "object" && !Array.isArray(decoded)) {
+        // Presence-only diagnostics: never include actual field values or lyrics.
+        returnedKeys = ["title", "tags", "lyrics", "note"].filter((key) =>
+          Object.prototype.hasOwnProperty.call(decoded, key),
+        );
+      }
       responseShape =
         decoded !== null && typeof decoded === "object" && !Array.isArray(decoded)
           ? "json_object"
@@ -2044,6 +2059,9 @@ export async function runSongGeneration(
       model: generated.model,
       responseShape,
       responseLength: raw.length,
+      outputTokens: generated.usage?.outputTokens ?? null,
+      reasoningTokens: generated.usage?.reasoningTokens ?? null,
+      returnedKeys,
       issues: result.error.issues.map((issue) => ({
         path: issue.path.join("."),
         code: issue.code,
