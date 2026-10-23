@@ -1,0 +1,25 @@
+name: Temporary AI cancellation formatter
+on:
+  push:
+    branches:
+      - feat/ai-cancellation-provider-foundation-20261023
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/ai-cancellation-provider-foundation-20261023
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx prettier --write src/lib/ai-provider.server.ts
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/ai-provider.server.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "style: format provider adapter after SSE integration"
+            git push origin HEAD:feat/ai-cancellation-provider-foundation-20261023
+          fi
