@@ -1995,7 +1995,8 @@ export async function runSongGeneration(
       // and returned an empty response. For songwriting, disable thinking
       // explicitly rather than allocating more completion tokens.
       reasoningEffort:
-        provider === "openrouter" && model.startsWith("xiaomi/mimo-v2.6-")
+        provider === "openrouter" &&
+        (model.startsWith("xiaomi/mimo-v2.6-") || model === "qwen/qwen3.8-flash")
           ? "none"
           : (reasoningEffort ?? "medium"),
     });
