@@ -36,6 +36,8 @@ export type ModelCall = {
   reasoningEffort?: ReasoningEffort;
   /** Explicit bounded request timeout for long-running durable operations only. */
   requestTimeoutMs?: number;
+  /** Caller-driven cancellation, separate from the transport timeout. */
+  abortSignal?: AbortSignal;
 };
 
 export type ModelResult = {
@@ -75,7 +77,8 @@ function providerRequestTimeoutMs(call: ModelCall) {
 }
 
 function providerRequestSignal(call: ModelCall) {
-  return AbortSignal.timeout(providerRequestTimeoutMs(call));
+  const timeout = AbortSignal.timeout(providerRequestTimeoutMs(call));
+  return call.abortSignal ? AbortSignal.any([timeout, call.abortSignal]) : timeout;
 }
 
 export function providerOf(model: string) {
