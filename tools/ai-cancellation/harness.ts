@@ -200,11 +200,21 @@ async function timedFetch(d: Deps, url: string, init: RequestInit = {}): Promise
   const controller = new AbortController();
   const outer = init.signal;
   outer?.addEventListener("abort", () => controller.abort());
-  const timeout = (d.requestTimeout ?? ((ms) => d.sleep(ms)))(REQUEST_TIMEOUT_MS).then(() => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const wait = d.requestTimeout
+    ? d.requestTimeout(REQUEST_TIMEOUT_MS)
+    : new Promise<void>((r) => {
+        timer = setTimeout(r, REQUEST_TIMEOUT_MS);
+      });
+  const timeout = wait.then(() => {
     controller.abort();
     throw new RequestTimeoutError("timeout");
   });
-  return Promise.race([d.fetch(url, { ...init, signal: controller.signal }), timeout]);
+  try {
+    return await Promise.race([d.fetch(url, { ...init, signal: controller.signal }), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function estimate(c: ModeConfig, u: Usage): number | null {
