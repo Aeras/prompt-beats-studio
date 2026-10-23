@@ -642,7 +642,8 @@ async function callOpenAiCompatible(
       ...(providerName === "openrouter" && call.reasoningEffort
         ? {
             reasoning:
-              model.startsWith("xiaomi/mimo-v2.6-") && call.reasoningEffort === "none"
+              (model.startsWith("xiaomi/mimo-v2.6-") || model === "qwen/qwen3.8-flash") &&
+              call.reasoningEffort === "none"
                 ? { enabled: false }
                 : { effort: call.reasoningEffort },
           }
