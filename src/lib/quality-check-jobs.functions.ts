@@ -17,7 +17,7 @@ import {
   type QualityReport,
 } from "@/lib/quality-check-job-schema";
 
-const statusSchema = z.enum(["pending", "processing", "completed", "failed"]);
+const statusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
 
 const rawJobSchema = z.object({
   actionId: z.string().uuid(),
@@ -27,6 +27,8 @@ const rawJobSchema = z.object({
   model: z.string().nullish(),
   error: z.string().nullish(),
   createdAt: z.string(),
+  cancelRequestedAt: z.string().nullish(),
+  cancellationOutcome: z.string().nullish(),
 });
 
 export type QualityCheckJob = {
@@ -37,6 +39,8 @@ export type QualityCheckJob = {
   model: string | null;
   error: string | null;
   createdAt: string;
+  cancelRequestedAt: string | null;
+  cancellationOutcome: string | null;
 };
 
 function toJob(raw: unknown): QualityCheckJob {
@@ -50,6 +54,8 @@ function toJob(raw: unknown): QualityCheckJob {
     model: parsed.model ?? null,
     error: parsed.error ?? null,
     createdAt: parsed.createdAt,
+    cancelRequestedAt: parsed.cancelRequestedAt ?? null,
+    cancellationOutcome: parsed.cancellationOutcome ?? null,
   };
 }
 
@@ -125,3 +131,52 @@ export const getLatestQualityCheckJob = createServerFn({ method: "POST" })
   });
 
 export type QualityCheckJobInput = DurableQualityCheckInput;
+
+/** Request provider cancellation of a caller-owned Quality Check job. */
+export const requestQualityCheckCancellation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ actionId: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "request_quality_check_cancellation",
+      { _action_id: data.actionId },
+    );
+    const parsed = z
+      .enum(["REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL"])
+      .safeParse(result);
+    if (error || !parsed.success)
+      throw new Error("The Quality Check cancellation request could not be saved.");
+    if (parsed.data === "REQUESTED" || parsed.data === "ALREADY_REQUESTED") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: action } = await supabaseAdmin
+        .from("ai_quality_check_actions")
+        .select("cancellation_remote_provider,cancellation_remote_id")
+        .eq("id", data.actionId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (action) {
+        const { cancelPersistedBackgroundOperation } =
+          await import("@/lib/cancel-persisted-ai-operation.server");
+        const outcome = await cancelPersistedBackgroundOperation(
+          (action as any).cancellation_remote_provider,
+          (action as any).cancellation_remote_id,
+        );
+        if (outcome === "cancelled_upstream_confirmed") {
+          await (supabaseAdmin as any)
+            .from("ai_quality_check_actions")
+            .update({
+              status: "cancelled",
+              cancellation_outcome: "cancelled_upstream_confirmed",
+              quality_report: null,
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", data.actionId)
+            .eq("user_id", context.userId)
+            .eq("status", "processing")
+            .not("cancel_requested_at", "is", null);
+        }
+      }
+    }
+    return { outcome: parsed.data };
+  });

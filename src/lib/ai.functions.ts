@@ -907,6 +907,12 @@ type ModelCall = {
   maxTokens?: number;
   schema?: Record<string, unknown>;
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
+  abortSignal?: AbortSignal;
+  onCancellationResult?: (outcome: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>;
 };
 type NormalizedUsage = {
   inputTokens: number | null;
@@ -1960,6 +1966,12 @@ export async function runSongGeneration(
   data: z.infer<typeof generateInput>,
   userId: string,
   generationId: string | null,
+  abortSignal?: AbortSignal,
+  onCancellationResult?: (outcome: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
@@ -1980,6 +1992,9 @@ export async function runSongGeneration(
           : buildPrompt(data);
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
+      ...(abortSignal ? { abortSignal } : {}),
+      ...(onCancellationResult ? { onCancellationResult } : {}),
+      ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
       prompt:
         !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
       // Keep the historical 8K cap for all other providers/models. These two
@@ -2087,6 +2102,12 @@ export async function runLyricsSectionEdit(
   data: z.infer<typeof lyricsSectionEditJobSchema>,
   userId: string,
   generationId: string | null,
+  abortSignal?: AbortSignal,
+  onCancellationResult?: (outcome: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{
   result: z.infer<typeof lyricsSectionEditOutputSchema>;
   provider: string;
@@ -2104,6 +2125,9 @@ export async function runLyricsSectionEdit(
     generated = await call({
       system: LYRICS_SECTION_EDIT_SYSTEM_PROMPT,
       prompt: buildLyricsSectionEditPrompt(data.sectionEdit),
+      ...(abortSignal ? { abortSignal } : {}),
+      ...(onCancellationResult ? { onCancellationResult } : {}),
+      ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
       maxTokens: 4096,
       schema: schemas.lyricsSectionEdit,
       reasoningEffort: reasoningEffort ?? "medium",

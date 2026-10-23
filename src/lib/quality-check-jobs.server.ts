@@ -101,6 +101,42 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     input_payload: unknown;
   };
 
+  const cancellationController = new AbortController();
+  let cancellationCheckInFlight = false;
+  let upstreamCancellationOutcome: string | null = null;
+  const checkCancellation = async () => {
+    if (cancellationCheckInFlight || cancellationController.signal.aborted) return;
+    cancellationCheckInFlight = true;
+    try {
+      const { data } = await db
+        .from("ai_quality_check_actions")
+        .select("cancel_requested_at")
+        .eq("id", action.id)
+        .maybeSingle();
+      if ((data as { cancel_requested_at?: string | null } | null)?.cancel_requested_at)
+        cancellationController.abort(new Error("Quality Check cancellation requested."));
+    } finally {
+      cancellationCheckInFlight = false;
+    }
+  };
+  const cancellationTimer = setInterval(() => {
+    void checkCancellation().catch(() => {});
+  }, 750);
+  const remoteCreated = async (provider: "openai" | "gemini", remoteId: string) => {
+    const { error } = await db
+      .from("ai_quality_check_actions")
+      .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
+      .eq("id", action.id)
+      .eq("status", "processing");
+    if (error) throw new Error("Could not persist QC cancellation remote ID.");
+  };
+  const cancellationReported = async (outcome: string) => {
+    upstreamCancellationOutcome =
+      outcome === "cancelled_upstream_confirmed"
+        ? "cancelled_upstream_confirmed"
+        : "connection_aborted_unconfirmed";
+  };
+
   let providerCommitted = false;
   let payload: ReturnType<typeof durableQualityCheckInput.parse>;
   try {
@@ -118,6 +154,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       .eq("id", actionId)
       .eq("status", "processing")
       .is("provider_started_at", null);
+    clearInterval(cancellationTimer);
     return { ran: true };
   }
 
@@ -149,6 +186,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
           .eq("id", action.id)
           .eq("status", "processing")
           .is("provider_started_at", null)
+          .is("cancel_requested_at", null)
           .select("id")
           .maybeSingle();
         if (error || !marked) {
@@ -156,7 +194,13 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
         }
         providerCommitted = true;
       },
+      cancellationController.signal,
+      cancellationReported,
+      remoteCreated,
     );
+    await checkCancellation();
+    if (cancellationController.signal.aborted)
+      throw new Error("Quality Check cancellation requested.");
 
     if (!out.quality) {
       try {
@@ -194,6 +238,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       })
       .eq("id", actionId)
       .eq("status", "processing")
+      .is("cancel_requested_at", null)
       .select("id")
       .maybeSingle();
 
@@ -217,6 +262,23 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
 
     return { ran: true };
   } catch (err) {
+    await checkCancellation().catch(() => {});
+    if (cancellationController.signal.aborted) {
+      // The provider transport is interrupted; only the native provider
+      // acknowledgement may authorize confirmed-upstream classification.
+      await db
+        .from("ai_quality_check_actions")
+        .update({
+          status: "cancelled",
+          cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
+          quality_report: null,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", actionId)
+        .eq("status", "processing");
+      return { ran: true };
+    }
     console.error("[quality-job] failed", actionId, err);
 
     if (!providerCommitted) {
@@ -238,6 +300,8 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     // unless a validated report was already persisted. Automatic retry here
     // could duplicate a billable provider request.
     return { ran: true };
+  } finally {
+    clearInterval(cancellationTimer);
   }
 }
 

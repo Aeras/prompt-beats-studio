@@ -112,6 +112,8 @@ type JobRow = {
   provider: string | null;
   model: string | null;
   created_at: string;
+  cancel_requested_at: string | null;
+  cancellation_outcome: string | null;
 };
 
 export type GenerationJob = {
@@ -124,9 +126,12 @@ export type GenerationJob = {
   provider: string | null;
   model: string | null;
   createdAt: string;
+  cancelRequestedAt: string | null;
+  cancellationOutcome: string | null;
 };
 
-const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,provider,model,created_at";
+const JOB_COLUMNS =
+  "id,status,result,input_payload,error,generation_id,provider,model,created_at,cancel_requested_at,cancellation_outcome";
 
 function toJob(row: JobRow): GenerationJob {
   const parsed = resultShape.safeParse(row.result);
@@ -141,6 +146,8 @@ function toJob(row: JobRow): GenerationJob {
     provider: row.provider,
     model: row.model,
     createdAt: row.created_at,
+    cancelRequestedAt: row.cancel_requested_at,
+    cancellationOutcome: row.cancellation_outcome,
   };
 }
 
@@ -385,7 +392,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     if (!row) return { job: null };
     // Never re-signals execution: the database owns starting and recovering
     // jobs, so polling can never cause a second provider call.
-    return { job: toJob(row as JobRow) };
+    return { job: toJob(row as unknown as JobRow) };
   });
 
 /**
@@ -407,7 +414,7 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(20);
-    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+    const row = ((rows ?? []) as unknown as JobRow[]).find((candidate) => {
       const parsed = inputShape.safeParse(candidate.input_payload);
       return parsed.success && parsed.data.operation !== "lyrics_section_edit";
     });
@@ -426,7 +433,7 @@ export const getLatestLyricsSectionEditJob = createServerFn({ method: "POST" })
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(20);
-    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+    const row = ((rows ?? []) as unknown as JobRow[]).find((candidate) => {
       const parsed = inputShape.safeParse(candidate.input_payload);
       return parsed.success && parsed.data.operation === "lyrics_section_edit";
     });
@@ -449,6 +456,66 @@ export const dismissGenerationJob = createServerFn({ method: "POST" })
     const parsed = z.enum(["CANCELLED", "DISMISSED", "ALREADY_FINAL"]).safeParse(result);
     if (error || !parsed.success) {
       throw new Error("The generation could not be dismissed. Please try again.");
+    }
+    return { outcome: parsed.data };
+  });
+
+/**
+ * Requests real interruption of a generation job.
+ * Unlike dismissGenerationJob, processing work is not merely hidden: the
+ * runner observes the persisted flag and interrupts its provider transport.
+ * Provider-side savings must not be assumed from this response alone.
+ */
+export const requestGenerationJobCancellation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    // The RPC is introduced in this PR's migration; generated Supabase types
+    // will be refreshed during the normal schema-type generation workflow.
+    const cancellationRpc = context.supabase.rpc as unknown as (
+      name: "request_generation_job_cancellation",
+      args: { _job_id: string },
+    ) => Promise<{ data: unknown; error: unknown }>;
+    const { data: result, error } = await cancellationRpc("request_generation_job_cancellation", {
+      _job_id: data.jobId,
+    });
+    const parsed = z
+      .enum(["REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL"])
+      .safeParse(result);
+    if (error || !parsed.success)
+      throw new Error("The generation cancellation request could not be saved.");
+    if (parsed.data === "REQUESTED" || parsed.data === "ALREADY_REQUESTED") {
+      // The remote operation may outlive the original worker. Cancel it through
+      // the provider as well, using server-only credentials and ownership check.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: job } = await supabaseAdmin
+        .from("ai_generation_jobs")
+        .select("cancellation_remote_provider,cancellation_remote_id")
+        .eq("id", data.jobId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (job) {
+        const { cancelPersistedBackgroundOperation } =
+          await import("@/lib/cancel-persisted-ai-operation.server");
+        const outcome = await cancelPersistedBackgroundOperation(
+          (job as any).cancellation_remote_provider,
+          (job as any).cancellation_remote_id,
+        );
+        if (outcome === "cancelled_upstream_confirmed") {
+          await (supabaseAdmin as any)
+            .from("ai_generation_jobs")
+            .update({
+              status: "cancelled",
+              cancellation_outcome: "cancelled_upstream_confirmed",
+              result: null,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", data.jobId)
+            .eq("user_id", context.userId)
+            .eq("status", "processing")
+            .not("cancel_requested_at", "is", null);
+        }
+      }
     }
     return { outcome: parsed.data };
   });

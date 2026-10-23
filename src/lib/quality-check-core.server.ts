@@ -825,6 +825,12 @@ export async function runDurableQualityCheck(
   data: DurableQualityCheckInput,
   userId: string,
   beforeProvider: (meta: { provider: string; model: string }) => Promise<void>,
+  abortSignal?: AbortSignal,
+  onCancellationResult?: (outcome: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{
   quality: QualityReport | null;
   provider: string;
@@ -866,6 +872,9 @@ export async function runDurableQualityCheck(
             : QUALITY_SYSTEM_PROMPT,
       prompt: buildQualityPrompt(data),
       maxTokens: 8192,
+      ...(abortSignal ? { abortSignal } : {}),
+      ...(onCancellationResult ? { onCancellationResult } : {}),
+      ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
       schema: providerLayer.QUALITY_SCHEMA,
       reasoningEffort: resolved.reasoningEffort ?? "high",
       ...(provider === "openai" && model === "gpt-6.1-sol" && data.qualityCheckVersion === "v2.1"

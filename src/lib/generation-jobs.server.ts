@@ -68,6 +68,46 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     attempts: number;
   };
 
+  // Database-backed cancellation works across server instances. The watcher
+  // signals the in-flight transport, but a socket abort is NOT necessarily an
+  // authoritative upstream cancellation.
+  const cancellationController = new AbortController();
+  let upstreamCancellationOutcome: string | null = null;
+  const recordRemoteOperation = async (provider: "openai" | "gemini", remoteId: string) => {
+    const { error } = await db
+      .from("ai_generation_jobs")
+      .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
+      .eq("id", job.id)
+      .eq("status", "processing");
+    if (error) throw new Error("Could not persist cancellation remote operation ID.");
+  };
+  const recordUpstreamCancellation = async (outcome: string) => {
+    upstreamCancellationOutcome =
+      outcome === "cancelled_upstream_confirmed"
+        ? "cancelled_upstream_confirmed"
+        : "connection_aborted_unconfirmed";
+  };
+  let cancellationCheckInFlight = false;
+  const checkCancellation = async () => {
+    if (cancellationCheckInFlight || cancellationController.signal.aborted) return;
+    cancellationCheckInFlight = true;
+    try {
+      const { data } = await db
+        .from("ai_generation_jobs")
+        .select("cancel_requested_at")
+        .eq("id", job.id)
+        .maybeSingle();
+      if ((data as { cancel_requested_at?: string | null } | null)?.cancel_requested_at)
+        cancellationController.abort(new Error("Generation cancellation requested."));
+    } catch {
+      // A polling error must never turn into a false cancellation success.
+    } finally {
+      cancellationCheckInFlight = false;
+    }
+  };
+  const cancellationTimer = setInterval(() => {
+    void checkCancellation();
+  }, 750);
   try {
     const input = durableAiJobInput.parse(job.input_payload);
     // Defense in depth: durable jobs can also be created via the raw RPC.
@@ -100,13 +140,21 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       .eq("id", job.id)
       .eq("status", "processing")
       .is("provider_started_at", null)
+      .is("cancel_requested_at", null)
       .select("id")
       .maybeSingle();
     if (markerError || !marked)
       throw new Error("The generation could not be started. Please try again.");
 
     if (input.operation === "lyrics_section_edit") {
-      const out = await runLyricsSectionEdit(input, job.user_id, job.generation_id);
+      const out = await runLyricsSectionEdit(
+        input,
+        job.user_id,
+        job.generation_id,
+        cancellationController.signal,
+        recordUpstreamCancellation,
+        recordRemoteOperation,
+      );
       await db
         .from("ai_generation_jobs")
         .update({
@@ -119,7 +167,21 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
           completed_at: new Date().toISOString(),
         })
         .eq("id", job.id)
-        .eq("status", "processing");
+        .eq("status", "processing")
+        .is("cancel_requested_at", null);
+      // A cancellation arriving between provider completion and the guarded
+      // result write must not strand a section-edit job in processing.
+      await db
+        .from("ai_generation_jobs")
+        .update({
+          status: "cancelled",
+          cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
+          result: null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id)
+        .eq("status", "processing")
+        .not("cancel_requested_at", "is", null);
       return { ran: true };
     }
 
@@ -128,7 +190,14 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // existing Additional Instructions channel so the same provider call is
     // explicitly told to enrich Music Style from useful Producer's Note cues.
     const runtimeInput = withAdvancedSunoEnrichmentInstruction(input);
-    const out = await runSongGeneration(runtimeInput, job.user_id, job.generation_id);
+    const out = await runSongGeneration(
+      runtimeInput,
+      job.user_id,
+      job.generation_id,
+      cancellationController.signal,
+      recordUpstreamCancellation,
+      recordRemoteOperation,
+    );
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
       input.targetPlatform === "suno" &&
@@ -148,6 +217,11 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     }
 
     let persistedResult: Record<string, unknown> = songResult;
+
+    // Do not begin non-idempotent revision persistence after cancellation.
+    await checkCancellation();
+    if (cancellationController.signal.aborted)
+      throw new Error("Generation cancellation requested.");
 
     if (input.operation === "revision" && input.revision) {
       const revision = input.revision;
@@ -245,20 +319,47 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         completed_at: new Date().toISOString(),
       })
       .eq("id", job.id)
-      .eq("status", "processing");
+      .eq("status", "processing")
+      .is("cancel_requested_at", null);
   } catch (err) {
-    console.error("[generation-job] failed", job.id, err);
+    // Resolve a cancellation/marker race even if the periodic poll has not yet
+    // observed the user request. A failed provider-start marker can mean that
+    // cancellation won the database race.
+    await checkCancellation();
+    if (!cancellationController.signal.aborted)
+      console.error("[generation-job] failed", job.id, err);
     await db
       .from("ai_generation_jobs")
       .update({
-        status: "failed",
+        status: cancellationController.signal.aborted ? "cancelled" : "failed",
+        ...(cancellationController.signal.aborted
+          ? {
+              cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
+            }
+          : {}),
         error: safeErrorMessage(err),
         attempts: (job.attempts ?? 0) + 1,
         completed_at: new Date().toISOString(),
       })
       .eq("id", job.id)
       .eq("status", "processing");
+  } finally {
+    clearInterval(cancellationTimer);
   }
+
+  // A completed provider call can race a user cancellation. Never publish a
+  // normal result when cancellation was recorded while the call was active.
+  await db
+    .from("ai_generation_jobs")
+    .update({
+      status: "cancelled",
+      cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
+      result: null,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", job.id)
+    .eq("status", "processing")
+    .not("cancel_requested_at", "is", null);
 
   return { ran: true };
 }

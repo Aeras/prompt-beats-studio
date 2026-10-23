@@ -13,6 +13,7 @@ import {
   Loader2,
   Save,
   Sparkles,
+  Square,
   Trash2,
   Upload,
   Wand2,
@@ -63,6 +64,7 @@ import {
   getGenerationJob,
   getLatestGenerationJob,
   dismissGenerationJob,
+  requestGenerationJobCancellation,
   startGenerationJob,
   type GenerationContext,
   type GenerationJob,
@@ -70,6 +72,7 @@ import {
 import {
   getLatestQualityCheckJob,
   getQualityCheckJob,
+  requestQualityCheckCancellation,
   startQualityCheckJob,
   type QualityCheckJob,
 } from "@/lib/quality-check-jobs.functions";
@@ -685,6 +688,9 @@ function QualityPanel({
   quality,
   checking,
   onCheck,
+  onStop,
+  stopAvailable,
+  stopRequested,
   checkError,
   confirm,
   setConfirm,
@@ -705,6 +711,9 @@ function QualityPanel({
   quality: QualityReport | null;
   checking: boolean;
   onCheck: () => void;
+  onStop: () => void;
+  stopAvailable: boolean;
+  stopRequested: boolean;
   checkError: string | null;
   confirm: "check" | "recheck" | null;
   setConfirm: (v: "check" | "recheck" | null) => void;
@@ -724,6 +733,7 @@ function QualityPanel({
 }) {
   const { t } = useI18n();
   const mode = quality ? "recheck" : "check";
+  const [confirmStopQuality, setConfirmStopQuality] = useState(false);
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
@@ -746,9 +756,50 @@ function QualityPanel({
         />
       )}
       {checking && (
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t("quality.checking")}
-        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {stopRequested ? "Η διακοπή ζητήθηκε / Cancellation requested" : t("quality.checking")}
+          </p>
+          <button
+            type="button"
+            disabled={!stopAvailable || stopRequested}
+            className="rounded-lg border border-orange-500/50 px-3 py-1.5 text-xs font-semibold text-orange-300 disabled:opacity-50"
+            onClick={() => setConfirmStopQuality(true)}
+          >
+            <Square className="mr-1 inline h-3 w-3" /> Διακοπή / Stop
+          </button>
+          {confirmStopQuality && (
+            <div
+              role="dialog"
+              aria-label="Επιβεβαίωση διακοπής Quality Check"
+              className="w-full rounded-xl border border-orange-500/30 bg-orange-950/20 p-3 text-xs"
+            >
+              <p>
+                Να ζητηθεί διακοπή του Quality Check; Η χρέωση στον provider μπορεί να συνεχιστεί.
+              </p>
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-1"
+                  onClick={() => setConfirmStopQuality(false)}
+                >
+                  Άκυρο
+                </button>
+                <button
+                  type="button"
+                  className="rounded bg-orange-600 px-3 py-1 text-white"
+                  onClick={() => {
+                    setConfirmStopQuality(false);
+                    onStop();
+                  }}
+                >
+                  Επιβεβαίωση διακοπής
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {!checking && (
         <div className="mt-4 space-y-3">
@@ -1050,6 +1101,9 @@ function GeneratePage() {
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmStop, setConfirmStop] = useState(false);
+  const [stoppingGeneration, setStoppingGeneration] = useState(false);
+  const [stopRequested, setStopRequested] = useState(false);
   const [applied, setApplied] = useState<Record<string, boolean>>({});
   const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
   const setApplyError = (id: string, msg: string | null) =>
@@ -1482,8 +1536,21 @@ function GeneratePage() {
     }
     if (job.status === "cancelled") {
       setBusy(false);
+      setStopRequested(false);
       setGenerationResultModel(null);
-      setStatus(null);
+      setStatus(
+        job.cancellationOutcome === "cancelled_before_start"
+          ? appLanguage === "el"
+            ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση."
+            : "Cancelled before the provider request."
+          : job.cancellationOutcome === "cancelled_upstream_confirmed"
+            ? appLanguage === "el"
+              ? "Η ακύρωση επιβεβαιώθηκε από τον AI provider."
+              : "Cancellation confirmed by the AI provider."
+            : appLanguage === "el"
+              ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί."
+              : "Local job stopped. Provider cancellation and billing are unconfirmed.",
+      );
       setJobId(null);
       rememberJob(null);
       return;
@@ -1500,7 +1567,14 @@ function GeneratePage() {
     rememberJob(job.jobId);
     setJobId(job.jobId);
     setBusy(true);
-    setStatus(t("generator.generating"));
+    if (job.cancelRequestedAt) setStopRequested(true);
+    setStatus(
+      job.cancelRequestedAt
+        ? appLanguage === "el"
+          ? "Η διακοπή έχει ζητηθεί και εκκρεμεί."
+          : "Cancellation has been requested."
+        : t("generator.generating"),
+    );
   }
 
   const { data: jobData, refetch: refetchJob } = useQuery({
@@ -1591,7 +1665,29 @@ function GeneratePage() {
   }, [importedRecoveryKey, importedResultActive, result, quality]);
 
   const [qualityActionId, setQualityActionId] = useState<string | null>(null);
+  const [qualityStopRequested, setQualityStopRequested] = useState(false);
   const pendingQualityKey = useRef<string | null>(null);
+  const stopQualityCheck = async () => {
+    if (!qualityActionId || qualityStopRequested) return;
+    try {
+      const { outcome } = await requestQualityCheckCancellation({
+        data: { actionId: qualityActionId },
+      });
+      if (outcome === "CANCELLED_BEFORE_START") {
+        setChecking(false);
+        setQualityActionId(null);
+        rememberQualityJob(null);
+        pendingQualityKey.current = null;
+        setCheckError("Το Quality Check ακυρώθηκε πριν ξεκινήσει.");
+      } else if (outcome === "ALREADY_FINAL") {
+        setCheckError("Το Quality Check είχε ήδη ολοκληρωθεί.");
+      } else {
+        setQualityStopRequested(true);
+      }
+    } catch {
+      setCheckError("Δεν ήταν δυνατή η αποστολή της διακοπής.");
+    }
+  };
   function rememberQualityJob(id: string | null) {
     if (typeof window === "undefined") return;
     if (id) window.localStorage.setItem(qualityJobStorageKey, id);
@@ -1599,6 +1695,7 @@ function GeneratePage() {
   }
   function applyQualityJob(job: QualityCheckJob) {
     if (job.status === "completed") {
+      setQualityStopRequested(false);
       if (job.qualityReport) {
         setQuality(job.qualityReport);
         setQualityCheckResultModel(job.model);
@@ -1613,6 +1710,21 @@ function GeneratePage() {
       void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       return;
     }
+    if (job.status === "cancelled") {
+      setQualityStopRequested(false);
+      setChecking(false);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      setCheckError(
+        job.cancellationOutcome === "cancelled_before_start"
+          ? "Το Quality Check ακυρώθηκε πριν από την κλήση στον provider."
+          : job.cancellationOutcome === "cancelled_upstream_confirmed"
+            ? "Ο AI provider επιβεβαίωσε την ακύρωση του Quality Check."
+            : "Το Quality Check διακόπηκε τοπικά· η upstream ακύρωση δεν επιβεβαιώθηκε.",
+      );
+      return;
+    }
     if (job.status === "failed") {
       setCheckError(localizeAiError(job.error, "quality.unavailable", t));
       setChecking(false);
@@ -1623,6 +1735,7 @@ function GeneratePage() {
       return;
     }
     rememberQualityJob(job.actionId);
+    if (job.cancelRequestedAt) setQualityStopRequested(true);
     setQualityActionId(job.actionId);
     setChecking(true);
     setCheckError(null);
@@ -2338,6 +2451,7 @@ function GeneratePage() {
       return;
     }
     if (busy || jobId || checking || qualityActionId) return;
+    setStopRequested(false);
     setBusy(true);
     setStatus(t("generator.starting"));
     setSaved(false);
@@ -2644,6 +2758,47 @@ function GeneratePage() {
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
+  const stopGeneration = async () => {
+    if (!jobId || stoppingGeneration || stopRequested) return;
+    setStoppingGeneration(true);
+    try {
+      const { outcome } = await requestGenerationJobCancellation({ data: { jobId } });
+      setConfirmStop(false);
+      if (outcome === "CANCELLED_BEFORE_START") {
+        setBusy(false);
+        setJobId(null);
+        rememberJob(null);
+        setStatus(
+          appLanguage === "el"
+            ? "Η εργασία ακυρώθηκε πριν σταλεί στον provider."
+            : "Cancelled before the provider request started.",
+        );
+      } else if (outcome === "ALREADY_FINAL") {
+        setStatus(
+          appLanguage === "el"
+            ? "Η εργασία είχε ήδη ολοκληρωθεί."
+            : "The job had already finished.",
+        );
+      } else {
+        setStopRequested(true);
+        setStatus(
+          appLanguage === "el"
+            ? "Ζητήθηκε διακοπή. Αναμονή επιβεβαίωσης από τον server — η upstream ακύρωση δεν είναι εγγυημένη."
+            : "Stop requested. Awaiting server confirmation; upstream cancellation is not guaranteed.",
+        );
+      }
+    } catch {
+      setStatus(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η αποστολή της εντολής διακοπής."
+          : "Could not submit the cancellation request.",
+      );
+      setConfirmStop(false);
+    } finally {
+      setStoppingGeneration(false);
+    }
+  };
+
   const clearAll = async () => {
     if (clearing || checking) return;
     setClearError(null);
@@ -2694,6 +2849,7 @@ function GeneratePage() {
     setQualityCheckResultModel(null);
     setSongContext(null);
     setJobId(null);
+    setStopRequested(false);
     rememberJob(null);
     pendingKey.current = null;
     setQualityActionId(null);
@@ -3896,22 +4052,39 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <button
-                  onClick={handleGenerateClick}
-                  disabled={generationActionDisabled}
-                  className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
-                    ready
-                      ? "glow-neon"
-                      : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
-                  }`}
-                >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="h-4 w-4" />
-                  )}{" "}
-                  {t("generator.generate")}
-                </button>
+                {busy ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmStop(true)}
+                    disabled={!jobId || stoppingGeneration || stopRequested}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/50 bg-orange-600/20 px-5 py-3 text-sm font-semibold text-orange-200 transition-colors hover:bg-orange-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {stoppingGeneration || stopRequested ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                    {appLanguage === "el"
+                      ? stopRequested
+                        ? "Διακοπή σε εξέλιξη..."
+                        : "Διακοπή"
+                      : stopRequested
+                        ? "Stopping..."
+                        : "Stop"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleGenerateClick}
+                    disabled={generationActionDisabled}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
+                      ready
+                        ? "glow-neon"
+                        : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
+                    }`}
+                  >
+                    <Wand2 className="h-4 w-4" /> {t("generator.generate")}
+                  </button>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {blocked
                     ? t("generator.tryAgainMinutes", { minutes: minutesLeft })
@@ -3920,6 +4093,53 @@ function GeneratePage() {
               </div>
             </div>
 
+            {confirmStop &&
+              jobId &&
+              createPortal(
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="stop-generation-title"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                  onClick={() => !stoppingGeneration && setConfirmStop(false)}
+                >
+                  <div
+                    className="w-full max-w-sm space-y-4 rounded-2xl border border-orange-500/30 bg-[#0e0e12] p-6 shadow-2xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <h3
+                      id="stop-generation-title"
+                      className="text-base font-semibold text-foreground"
+                    >
+                      {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm cancellation"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {appLanguage === "el"
+                        ? "Θα ζητηθεί πραγματική διακοπή της κλήσης. Αν ο provider δεν την επιβεβαιώσει, ενδέχεται να συνεχιστεί η χρέωση."
+                        : "We will request a real provider interruption. Billing may continue if the provider does not confirm cancellation."}
+                    </p>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        disabled={stoppingGeneration}
+                        onClick={() => setConfirmStop(false)}
+                        className="rounded-xl border border-white/10 px-4 py-2 text-xs text-foreground"
+                      >
+                        {appLanguage === "el" ? "Άκυρο" : "Back"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={stoppingGeneration}
+                        onClick={() => void stopGeneration()}
+                        className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm stop"}
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
             {confirmClear &&
               createPortal(
                 <div
@@ -4068,6 +4288,9 @@ function GeneratePage() {
                 quality={quality}
                 checking={checking}
                 onCheck={runCheck}
+                onStop={() => void stopQualityCheck()}
+                stopAvailable={!!qualityActionId}
+                stopRequested={qualityStopRequested}
                 checkError={checkError}
                 confirm={confirm}
                 setConfirm={setConfirm}

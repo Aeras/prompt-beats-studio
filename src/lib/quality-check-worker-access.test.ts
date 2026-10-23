@@ -88,6 +88,9 @@ function fixture(
   } = {};
   runInNewContext(workerCode, {
     exports,
+    AbortController,
+    setInterval: () => 1,
+    clearInterval: () => {},
     console: { error: () => {} },
     require: (name: string) => {
       if (name.endsWith("client.server")) return { supabaseAdmin: db };

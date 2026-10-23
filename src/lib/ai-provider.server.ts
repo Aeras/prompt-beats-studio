@@ -36,6 +36,14 @@ export type ModelCall = {
   reasoningEffort?: ReasoningEffort;
   /** Explicit bounded request timeout for long-running durable operations only. */
   requestTimeoutMs?: number;
+  /** Caller-driven cancellation, separate from the transport timeout. */
+  abortSignal?: AbortSignal;
+  /** Reports independently verified upstream cancellation to the durable job. */
+  onCancellationResult?: (outcome: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>;
 };
 
 export type ModelResult = {
@@ -75,7 +83,8 @@ function providerRequestTimeoutMs(call: ModelCall) {
 }
 
 function providerRequestSignal(call: ModelCall) {
-  return AbortSignal.timeout(providerRequestTimeoutMs(call));
+  const timeout = AbortSignal.timeout(providerRequestTimeoutMs(call));
+  return call.abortSignal ? AbortSignal.any([timeout, call.abortSignal]) : timeout;
 }
 
 export function providerOf(model: string) {
@@ -401,6 +410,108 @@ async function collectGeminiSse(
   return { text, finish, usageMetadata };
 }
 
+async function callGeminiBackground(
+  model: string,
+  call: ModelCall,
+  apiKey: string,
+  maxOutputTokens: number,
+): Promise<ModelResult> {
+  const url = "https://generativelanguage.googleapis.com/v1beta/interactions";
+  const headers = { "x-goog-api-key": apiKey, "content-type": "application/json" };
+  // Background response IDs must arrive even when the user stops immediately.
+  const create = await fetch(url, {
+    method: "POST",
+    headers,
+    signal: AbortSignal.timeout(providerRequestTimeoutMs(call)),
+    body: JSON.stringify({
+      model,
+      input: call.prompt,
+      system_instruction: call.system,
+      background: true,
+      generation_config: { max_output_tokens: maxOutputTokens },
+      ...(call.schema ? { response_format: call.schema } : {}),
+    }),
+  });
+  if (!create.ok) throw new Error("The Gemini background request was rejected.");
+  let interaction = (await create.json()) as {
+    id?: string;
+    status?: string;
+    output_text?: string;
+    steps?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+    usage?: {
+      total_input_tokens?: number;
+      total_output_tokens?: number;
+      total_thought_tokens?: number;
+      total_tokens?: number;
+    };
+  };
+  const id = interaction.id;
+  if (!id || !/^[A-Za-z0-9_.:-]{1,160}$/.test(id))
+    throw new Error("Gemini did not return a usable background interaction ID.");
+
+  await call.onRemoteOperationCreated?.("gemini", id);
+  const deadline = Date.now() + providerRequestTimeoutMs(call);
+  const terminal = new Set(["completed", "failed", "cancelled"]);
+  while (!terminal.has(interaction.status ?? "") && Date.now() < deadline) {
+    if (call.abortSignal?.aborted) {
+      const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      await call.onCancellationResult?.(cancelled.outcome);
+      throw new Error("Generation cancellation requested.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const check = await fetch(`${url}/${encodeURIComponent(id)}`, {
+      headers,
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!check.ok) throw new Error("Gemini background status retrieval failed.");
+    interaction = (await check.json()) as typeof interaction;
+  }
+  if (call.abortSignal?.aborted) {
+    if (interaction.status !== "cancelled") {
+      const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      await call.onCancellationResult?.(cancelled.outcome);
+    } else {
+      await call.onCancellationResult?.("cancelled_upstream_confirmed");
+    }
+    throw new Error("Generation cancellation requested.");
+  }
+  if (interaction.status !== "completed")
+    throw new Error("The Gemini background request was not completed.");
+
+  const text =
+    interaction.output_text ??
+    interaction.steps
+      ?.filter((step) => step.type === "model_output")
+      .flatMap((step) => step.content ?? [])
+      .filter((part) => part.type === "text")
+      .map((part) => part.text ?? "")
+      .join("") ??
+    "";
+  const u = interaction.usage;
+  const inputTokens = u?.total_input_tokens ?? null;
+  const outputTokens = u?.total_output_tokens ?? null;
+  const totalTokens =
+    u?.total_tokens ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  return {
+    text,
+    stopReason: "end_turn",
+    usage:
+      inputTokens == null && outputTokens == null && totalTokens == null
+        ? null
+        : {
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            reasoningTokens: u?.total_thought_tokens ?? null,
+          },
+    provider: "gemini",
+    model,
+  };
+}
+
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -417,6 +528,9 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   const timeoutMs = isArgon ? 15 * 60 * 1000 : providerRequestTimeoutMs(call);
   const requestedOutput = (call.maxTokens ?? 8192) * 2;
   const maxOutputTokens = isArgon ? Math.max(requestedOutput, 32_768) : requestedOutput;
+
+  if (call.abortSignal && model === "gemini-3.8-flash")
+    return callGeminiBackground(model, call, apiKey, maxOutputTokens);
 
   // Gemini 4 Argon requires a newer SDK than the version currently pinned by
   // PromptBeats. Use the stable REST generateContent contract directly so the
@@ -756,9 +870,142 @@ async function callGroq(model: string, call: ModelCall): Promise<ModelResult> {
   );
 }
 
+/**
+ * Streaming transport for the upstream/model combination verified in the
+ * isolated OpenRouter test. Do not enable for arbitrary routed providers.
+ */
+async function callOpenRouterCancellable(
+  model: string,
+  call: ModelCall,
+  apiKey: string,
+): Promise<ModelResult> {
+  let remoteId: string | null = null;
+  let text = "";
+  let stopReason: string | null = null;
+  let usage: ModelResult["usage"] = null;
+  let completed = false;
+  const signal = providerRequestSignal(call);
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      signal,
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: call.system },
+          { role: "user", content: call.prompt },
+        ],
+        max_tokens: call.maxTokens ?? 8192,
+        response_format: call.schema ? { type: "json_object" } : undefined,
+        ...(call.reasoningEffort ? { reasoning: { effort: call.reasoningEffort } } : {}),
+        provider: { only: ["OpenAI"], allow_fallbacks: false },
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
+    });
+    if (!res.ok || !res.body) throw new Error("OpenRouter streaming request failed.");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        buffer += decoder.decode(next.value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (data === "[DONE]") {
+            completed = true;
+            break;
+          }
+          let event: any;
+          try {
+            event = JSON.parse(data);
+          } catch {
+            continue;
+          }
+          if (
+            !remoteId &&
+            typeof event.id === "string" &&
+            /^[A-Za-z0-9_.:-]{1,160}$/.test(event.id)
+          )
+            remoteId = event.id;
+          const choice = event.choices?.[0];
+          if (typeof choice?.delta?.content === "string") text += choice.delta.content;
+          if (typeof choice?.finish_reason === "string") stopReason = choice.finish_reason;
+          if (event.usage) {
+            const u = event.usage;
+            usage = {
+              inputTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : null,
+              outputTokens: typeof u.completion_tokens === "number" ? u.completion_tokens : null,
+              totalTokens: typeof u.total_tokens === "number" ? u.total_tokens : null,
+              reasoningTokens:
+                typeof u.completion_tokens_details?.reasoning_tokens === "number"
+                  ? u.completion_tokens_details.reasoning_tokens
+                  : null,
+            };
+          }
+        }
+        if (completed) break;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  } catch (error) {
+    if (!call.abortSignal?.aborted) throw error;
+  }
+  if (call.abortSignal?.aborted) {
+    let confirmed = false;
+    if (remoteId) {
+      for (let i = 0; i < 12; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        try {
+          const status = await fetch(
+            `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(remoteId)}`,
+            {
+              headers: { authorization: `Bearer ${apiKey}` },
+              signal: AbortSignal.timeout(10000),
+            },
+          );
+          if (!status.ok) continue;
+          const data = ((await status.json()) as any)?.data;
+          if (data?.cancelled === true && data?.provider_name === "OpenAI") {
+            confirmed = true;
+            break;
+          }
+        } catch {
+          // Metadata is eventually consistent; never claim success on errors.
+        }
+      }
+    }
+    await call.onCancellationResult?.(
+      confirmed ? "cancelled_upstream_confirmed" : "connection_aborted_unconfirmed",
+    );
+    throw new Error("Generation cancellation requested.");
+  }
+  if (!completed) throw new Error("The OpenRouter stream ended without a terminal frame.");
+  return {
+    text,
+    stopReason:
+      stopReason === "stop" ? "end_turn" : stopReason === "length" ? "max_tokens" : stopReason,
+    usage,
+    provider: "openrouter",
+    model,
+  };
+}
+
 async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["OPENROUTER_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+  if (call.abortSignal && model === "openai/gpt-5.6-luna")
+    return callOpenRouterCancellable(model, call, apiKey);
   return callOpenAiCompatible(
     "openrouter",
     "https://openrouter.ai/api/v1/chat/completions",
@@ -790,7 +1037,9 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   try {
     res = await fetch("https://api.x.ai/v1/responses", {
       method: "POST",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: call.abortSignal
+        ? AbortSignal.any([AbortSignal.timeout(timeoutMs), call.abortSignal])
+        : AbortSignal.timeout(timeoutMs),
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
@@ -835,6 +1084,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   }
 
   const payload = (await res.json()) as {
+    id?: string | null;
     status?: string | null;
     model?: string | null;
     incomplete_details?: { reason?: string | null } | null;
@@ -951,14 +1201,22 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
       : {}),
   };
 
+  // The tested model has authoritative background cancellation. Other models
+  // retain the historical transport until their background compatibility is
+  // verified; a local abort alone must not be called upstream cancellation.
+  const cancellableBackground = !!call.abortSignal && model === "gpt-5.6-luna";
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    signal: providerRequestSignal(call),
+    // Keep initial creation response available even if cancellation is
+    // requested concurrently: it contains the ID needed to cancel upstream.
+    signal: cancellableBackground
+      ? AbortSignal.timeout(providerRequestTimeoutMs(call))
+      : providerRequestSignal(call),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(cancellableBackground ? { ...body, background: true, store: true } : body),
   });
 
   if (!res.ok) {
@@ -967,7 +1225,8 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
-  const payload = (await res.json()) as {
+  let payload = (await res.json()) as {
+    id?: string | null;
     status?: string | null;
     model?: string | null;
     incomplete_details?: { reason?: string | null } | null;
@@ -988,6 +1247,44 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
       total_tokens?: number;
     };
   };
+
+  if (cancellableBackground) {
+    const responseId = payload.id;
+    if (!responseId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(responseId))
+      throw new Error("OpenAI background response ID was not returned.");
+    await call.onRemoteOperationCreated?.("openai", responseId);
+    const headers = { authorization: `Bearer ${apiKey}` };
+    let done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    const deadline = Date.now() + providerRequestTimeoutMs(call);
+    while (!done && Date.now() < deadline) {
+      if (call.abortSignal?.aborted) {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        await call.onCancellationResult?.(outcome.outcome);
+        throw new Error("Generation cancellation requested.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const statusRes = await fetch(
+        `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`,
+        { method: "GET", headers, signal: AbortSignal.timeout(15000) },
+      );
+      if (!statusRes.ok) throw new Error("OpenAI background status could not be retrieved.");
+      payload = (await statusRes.json()) as typeof payload;
+      done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    }
+    if (call.abortSignal?.aborted) {
+      if (payload.status !== "cancelled") {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        await call.onCancellationResult?.(outcome.outcome);
+      } else {
+        await call.onCancellationResult?.("cancelled_upstream_confirmed");
+      }
+      throw new Error("Generation cancellation requested.");
+    }
+    if (!done || payload.status !== "completed")
+      throw new Error("The OpenAI background generation did not complete successfully.");
+  }
 
   const text =
     payload.output
