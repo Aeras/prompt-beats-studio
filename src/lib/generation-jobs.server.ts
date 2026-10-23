@@ -73,6 +73,13 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   // authoritative upstream cancellation.
   const cancellationController = new AbortController();
   let upstreamCancellationOutcome: string | null = null;
+  const recordRemoteOperation = async (provider: "openai" | "gemini", remoteId: string) => {
+    const { error } = await db.from("ai_generation_jobs")
+      .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
+      .eq("id", job.id)
+      .eq("status", "processing");
+    if (error) throw new Error("Could not persist cancellation remote operation ID.");
+  };
   const recordUpstreamCancellation = async (outcome: string) => {
     upstreamCancellationOutcome =
       outcome === "cancelled_upstream_confirmed"
@@ -145,6 +152,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         job.generation_id,
         cancellationController.signal,
         recordUpstreamCancellation,
+        recordRemoteOperation,
       );
       await db
         .from("ai_generation_jobs")
