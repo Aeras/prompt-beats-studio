@@ -110,7 +110,8 @@ describe("V4 BETA prompt", () => {
       ?.split("async function callGroq(")[0];
     expect(section).toBeDefined();
     expect(section).toContain('providerName === "openrouter" && call.reasoningEffort');
-    expect(section).toContain("reasoning: { effort: call.reasoningEffort }");
+    expect(section).toContain("{ effort: call.reasoningEffort }");
+    expect(section).toContain("enabled: false");
     expect(section).toContain("completion_tokens_details?.reasoning_tokens");
     expect(section).toContain("res.status === 429");
     expect(section).toContain("res.status === 400 || res.status === 422");
