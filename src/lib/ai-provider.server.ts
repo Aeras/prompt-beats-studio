@@ -425,9 +425,7 @@ async function callGeminiBackground(
       system_instruction: call.system,
       background: true,
       generation_config: { max_output_tokens: maxOutputTokens },
-      ...(call.schema
-        ? { response_format: { type: "text", mime_type: "application/json", schema: call.schema } }
-        : { response_format: { type: "text", mime_type: "application/json" } }),
+      ...(call.schema ? { response_format: call.schema } : {}),
     }),
   });
   if (!create.ok) throw new Error("The Gemini background request was rejected.");
