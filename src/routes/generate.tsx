@@ -13,6 +13,7 @@ import {
   Loader2,
   Save,
   Sparkles,
+  Square,
   Trash2,
   Upload,
   Wand2,
@@ -63,6 +64,7 @@ import {
   getGenerationJob,
   getLatestGenerationJob,
   dismissGenerationJob,
+  requestGenerationJobCancellation,
   startGenerationJob,
   type GenerationContext,
   type GenerationJob,
@@ -1050,6 +1052,9 @@ function GeneratePage() {
   const toggleAll = () =>
     setOpen({ title: !allOpen, tags: !allOpen, lyrics: !allOpen, note: !allOpen });
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmStop, setConfirmStop] = useState(false);
+  const [stoppingGeneration, setStoppingGeneration] = useState(false);
+  const [stopRequested, setStopRequested] = useState(false);
   const [applied, setApplied] = useState<Record<string, boolean>>({});
   const [applyErrors, setApplyErrors] = useState<Record<string, string>>({});
   const setApplyError = (id: string, msg: string | null) =>
@@ -2644,6 +2649,33 @@ function GeneratePage() {
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
 
+  const stopGeneration = async () => {
+    if (!jobId || stoppingGeneration || stopRequested) return;
+    setStoppingGeneration(true);
+    try {
+      const { outcome } = await requestGenerationJobCancellation({ data: { jobId } });
+      setConfirmStop(false);
+      if (outcome === "CANCELLED_BEFORE_START") {
+        setBusy(false);
+        setJobId(null);
+        rememberJob(null);
+        setStatus(appLanguage === "el" ? "Η εργασία ακυρώθηκε πριν σταλεί στον provider." : "Cancelled before the provider request started.");
+      } else if (outcome === "ALREADY_FINAL") {
+        setStatus(appLanguage === "el" ? "Η εργασία είχε ήδη ολοκληρωθεί." : "The job had already finished.");
+      } else {
+        setStopRequested(true);
+        setStatus(appLanguage === "el"
+          ? "Ζητήθηκε διακοπή. Αναμονή επιβεβαίωσης από τον server — η upstream ακύρωση δεν είναι εγγυημένη."
+          : "Stop requested. Awaiting server confirmation; upstream cancellation is not guaranteed.");
+      }
+    } catch {
+      setStatus(appLanguage === "el" ? "Δεν ήταν δυνατή η αποστολή της εντολής διακοπής." : "Could not submit the cancellation request.");
+      setConfirmStop(false);
+    } finally {
+      setStoppingGeneration(false);
+    }
+  };
+
   const clearAll = async () => {
     if (clearing || checking) return;
     setClearError(null);
@@ -3896,9 +3928,19 @@ function GeneratePage() {
                 </div>
               )}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <button
-                  onClick={handleGenerateClick}
-                  disabled={generationActionDisabled}
+                {busy ? (
+                  <button type="button" onClick={() => setConfirmStop(true)}
+                    disabled={!jobId || stoppingGeneration || stopRequested}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/50 bg-orange-600/20 px-5 py-3 text-sm font-semibold text-orange-200 transition-colors hover:bg-orange-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    {stoppingGeneration || stopRequested
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Square className="h-4 w-4" />}
+                    {appLanguage === "el"
+                      ? (stopRequested ? "Διακοπή σε εξέλιξη..." : "Διακοπή")
+                      : (stopRequested ? "Stopping..." : "Stop")}
+                  </button>
+                ) : (
+                  <button onClick={handleGenerateClick} disabled={generationActionDisabled}
                   className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
                     ready
                       ? "glow-neon"
@@ -3911,7 +3953,8 @@ function GeneratePage() {
                     <Wand2 className="h-4 w-4" />
                   )}{" "}
                   {t("generator.generate")}
-                </button>
+                  </button>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {blocked
                     ? t("generator.tryAgainMinutes", { minutes: minutesLeft })
@@ -3920,7 +3963,33 @@ function GeneratePage() {
               </div>
             </div>
 
-            {confirmClear &&
+            {confirmStop && jobId && createPortal(
+               <div role="dialog" aria-modal="true" aria-labelledby="stop-generation-title"
+                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                 onClick={() => !stoppingGeneration && setConfirmStop(false)}>
+                 <div className="w-full max-w-sm space-y-4 rounded-2xl border border-orange-500/30 bg-[#0e0e12] p-6 shadow-2xl"
+                   onClick={(event) => event.stopPropagation()}>
+                   <h3 id="stop-generation-title" className="text-base font-semibold text-foreground">
+                     {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm cancellation"}
+                   </h3>
+                   <p className="text-xs text-muted-foreground">
+                     {appLanguage === "el"
+                       ? "Θα ζητηθεί πραγματική διακοπή της κλήσης. Αν ο provider δεν την επιβεβαιώσει, ενδέχεται να συνεχιστεί η χρέωση."
+                       : "We will request a real provider interruption. Billing may continue if the provider does not confirm cancellation."}
+                   </p>
+                   <div className="flex justify-end gap-3">
+                     <button type="button" disabled={stoppingGeneration} onClick={() => setConfirmStop(false)}
+                       className="rounded-xl border border-white/10 px-4 py-2 text-xs text-foreground">
+                       {appLanguage === "el" ? "Άκυρο" : "Back"}
+                     </button>
+                     <button type="button" disabled={stoppingGeneration} onClick={() => void stopGeneration()}
+                       className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                       {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm stop"}
+                     </button>
+                   </div>
+                 </div>
+               </div>, document.body)}
+             {confirmClear &&
               createPortal(
                 <div
                   role="dialog"
