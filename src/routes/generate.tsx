@@ -1491,7 +1491,9 @@ function GeneratePage() {
       setGenerationResultModel(null);
       setStatus(job.cancellationOutcome === "cancelled_before_start"
         ? (appLanguage === "el" ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση." : "Cancelled before the provider request.")
-        : (appLanguage === "el" ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί." : "Local job stopped. Provider cancellation and billing are unconfirmed."));
+        : job.cancellationOutcome === "cancelled_upstream_confirmed"
+          ? (appLanguage === "el" ? "Η ακύρωση επιβεβαιώθηκε από τον AI provider." : "Cancellation confirmed by the AI provider.")
+          : (appLanguage === "el" ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί." : "Local job stopped. Provider cancellation and billing are unconfirmed."));
       setJobId(null);
       rememberJob(null);
       return;
