@@ -325,7 +325,9 @@ function AiModelEditor({
                 onClick={() => verifyCompatibility.mutate()}
                 className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50"
               >
-                <SearchCheck className={cn("h-4 w-4", verifyCompatibility.isPending && "animate-pulse")} />
+                <SearchCheck
+                  className={cn("h-4 w-4", verifyCompatibility.isPending && "animate-pulse")}
+                />
                 {verifyCompatibility.isPending
                   ? el
                     ? "Επαλήθευση…"
