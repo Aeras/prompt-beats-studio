@@ -40,6 +40,7 @@ export type ModelCall = {
   abortSignal?: AbortSignal;
   /** Reports independently verified upstream cancellation to the durable job. */
   onCancellationResult?: (outcome: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>;
 };
 
 export type ModelResult = {
@@ -445,6 +446,7 @@ async function callGeminiBackground(
   if (!id || !/^[A-Za-z0-9_.:-]{1,160}$/.test(id))
     throw new Error("Gemini did not return a usable background interaction ID.");
 
+  await call.onRemoteOperationCreated?.("gemini", id);
   const deadline = Date.now() + providerRequestTimeoutMs(call);
   const terminal = new Set(["completed", "failed", "cancelled"]);
   while (!terminal.has(interaction.status ?? "") && Date.now() < deadline) {
@@ -1247,6 +1249,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
     const responseId = payload.id;
     if (!responseId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(responseId))
       throw new Error("OpenAI background response ID was not returned.");
+    await call.onRemoteOperationCreated?.("openai", responseId);
     const headers = { authorization: `Bearer ${apiKey}` };
     let done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
     const deadline = Date.now() + providerRequestTimeoutMs(call);
