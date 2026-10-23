@@ -122,6 +122,13 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
   const cancellationTimer = setInterval(() => {
     void checkCancellation().catch(() => {});
   }, 750);
+  const remoteCreated = async (provider: "openai" | "gemini", remoteId: string) => {
+    const { error } = await db.from("ai_quality_check_actions")
+      .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
+      .eq("id", action.id)
+      .eq("status", "processing");
+    if (error) throw new Error("Could not persist QC cancellation remote ID.");
+  };
   const cancellationReported = async (outcome: string) => {
     upstreamCancellationOutcome =
       outcome === "cancelled_upstream_confirmed"
@@ -188,6 +195,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       },
       cancellationController.signal,
       cancellationReported,
+      remoteCreated,
     );
     await checkCancellation();
     if (cancellationController.signal.aborted)
