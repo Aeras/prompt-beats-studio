@@ -6,15 +6,20 @@
  *   cancelled_upstream_confirmed | connection_aborted_unconfirmed |
  *   already_completed | cancel_failed | unsupported
  *
- * Only a provider-authoritative status (OpenAI Responses `status: cancelled`,
- * Gemini Interactions `status: cancelled`, OpenRouter Generation `cancelled: true`)
- * yields `cancelled_upstream_confirmed`. A plain HTTP/stream abort never does.
+ * Only a provider-authoritative status read by an INDEPENDENT retrieval request
+ * (OpenAI GET /v1/responses/{id} `status: cancelled`, Gemini GET
+ * /v1beta/interactions/{id} `status: cancelled`, OpenRouter Generation API
+ * `cancelled: true` from a cancellation-supporting upstream) yields
+ * `cancelled_upstream_confirmed`. A cancel-endpoint HTTP 200 or a plain
+ * stream abort never does.
  *
- * Safety: exactly one billable "create" request per mode per run, no retries of
- * billable requests, worst-case cost admission before dispatch, prompt text and
- * secrets are never written to results or logs. The budget guard is a local
- * client-side guard, NOT a provider-side spending cap.
+ * Safety: each billable create request is durably reserved in the ledger BEFORE
+ * dispatch; at most one per mode, ever; no retries of billable requests; a
+ * reservation without a result counts as possibly billed. The budget guard is a
+ * local client-side admission check, NOT a provider-side spending cap.
+ * Prompt text and secrets are never written to results or logs.
  */
+import { MemoryLedger, type Ledger, type Reservation } from "./ledger";
 
 export type Outcome =
   | "cancelled_upstream_confirmed"
@@ -37,11 +42,20 @@ export type ModeConfig = {
   model: string;
   apiMode: string;
   envKey: string;
-  /** Conservative UPPER-BOUND prices in USD per 1M tokens (budget only). */
-  maxInputUsdPerM: number;
-  maxOutputUsdPerM: number;
-  /** Hard output cap sent to the provider (includes reasoning where applicable). */
+  /** Provider list prices in USD per 1M tokens, from the cited source. */
+  inputUsdPerM: number;
+  outputUsdPerM: number;
+  pricingSource: string;
+  pricingVerifiedOn: string;
+  /** Provider's documented maximum output tokens for the model. */
+  providerMaxOutputTokens: number;
+  /** Hard output cap the harness sends. */
   maxOutputTokens: number;
+  /**
+   * Safety factor for billed output beyond the cap (e.g. thinking tokens that
+   * may not be bounded by the visible-output cap).
+   */
+  outputBillMultiplier: number;
   /** Conservative upper bound of input tokens for the neutral prompt. */
   maxInputTokens: number;
 };
@@ -50,59 +64,84 @@ export type ModeConfig = {
 export const NEUTRAL_PROMPT =
   "Write a long, plain, factual description of how a public library organises its books, in numbered paragraphs.";
 
+/** OpenRouter upstreams documented as stopping processing+billing on stream abort. */
+export const OPENROUTER_CANCEL_SUPPORTED_UPSTREAMS = ["OpenAI", "Azure", "xAI", "Anthropic"];
+
 export const MODES: Record<ModeId, ModeConfig> = {
   openai_background_responses: {
     mode: "openai_background_responses",
     provider: "openai",
     model: "gpt-5.6-luna",
-    apiMode: "Responses API, background=true, POST /v1/responses/{id}/cancel",
+    apiMode:
+      "Responses API background=true; POST /v1/responses/{id}/cancel; verify via GET /v1/responses/{id}",
     envKey: "OPENAI_API_KEY",
-    maxInputUsdPerM: 0.5,
-    maxOutputUsdPerM: 3,
+    inputUsdPerM: 0.2,
+    outputUsdPerM: 1.2,
+    pricingSource: "developers.openai.com/api/docs/models/gpt-5.6-luna",
+    pricingVerifiedOn: "2026-10-23",
+    providerMaxOutputTokens: 128_000,
     maxOutputTokens: 1024,
+    outputBillMultiplier: 1, // max_output_tokens includes reasoning tokens
     maxInputTokens: 200,
   },
   xai_stream_abort: {
     mode: "xai_stream_abort",
     provider: "xai",
     model: "grok-4.6",
-    apiMode: "Chat Completions SSE stream, client abort (no documented cancel endpoint)",
+    apiMode: "Chat Completions SSE stream, client abort (no documented per-request cancel/status endpoint)",
     envKey: "XAI_API_KEY",
-    maxInputUsdPerM: 5,
-    maxOutputUsdPerM: 25,
+    inputUsdPerM: 2,
+    outputUsdPerM: 6,
+    pricingSource: "docs.x.ai/developers/models/grok-4.6",
+    pricingVerifiedOn: "2026-10-23",
+    providerMaxOutputTokens: 450_000,
     maxOutputTokens: 1024,
+    outputBillMultiplier: 2, // reasoning tokens may not be bounded by max_tokens
     maxInputTokens: 200,
   },
   openrouter_stream_abort: {
     mode: "openrouter_stream_abort",
     provider: "openrouter",
-    model: "google/gemini-2.5-flash-lite",
-    apiMode: "Chat Completions SSE stream abort + GET /api/v1/generation?id=",
+    model: "openai/gpt-5.6-luna",
+    apiMode:
+      "Chat Completions SSE stream abort, upstream pinned to OpenAI (cancellation-supported); verify via GET /api/v1/generation?id=",
     envKey: "OPENROUTER_API_KEY",
-    maxInputUsdPerM: 1,
-    maxOutputUsdPerM: 5,
+    inputUsdPerM: 0.2,
+    outputUsdPerM: 1.2,
+    pricingSource: "openrouter.ai/api/v1/models/openai/gpt-5.6-luna/endpoints (provider OpenAI)",
+    pricingVerifiedOn: "2026-10-23",
+    providerMaxOutputTokens: 128_000,
     maxOutputTokens: 1024,
+    outputBillMultiplier: 1,
     maxInputTokens: 200,
   },
   gemini_background_interactions: {
     mode: "gemini_background_interactions",
     provider: "gemini",
-    model: "gemini-3.6-flash",
-    apiMode: "Interactions API, background=true, POST /v1beta/interactions/{id}/cancel",
+    model: "gemini-3.8-flash",
+    apiMode:
+      "Interactions API background=true; POST /v1beta/interactions/{id}/cancel; verify via GET /v1beta/interactions/{id}",
     envKey: "GEMINI_API_KEY",
-    maxInputUsdPerM: 1,
-    maxOutputUsdPerM: 5,
+    inputUsdPerM: 0.75,
+    outputUsdPerM: 3.75, // includes thinking tokens; valid through 2026-12-31
+    pricingSource: "ai.google.dev/gemini-api/docs/pricing (Gemini 3.8 Flash, paid tier)",
+    pricingVerifiedOn: "2026-10-23",
+    providerMaxOutputTokens: 65_536,
     maxOutputTokens: 1024,
+    outputBillMultiplier: 2, // thinking tokens billed as output
     maxInputTokens: 200,
   },
 };
 
 export const MAX_BILLABLE_CALLS_PER_MODE = 1;
 export const DEFAULT_TOTAL_BUDGET_USD = 0.1;
+export const GEMINI_API_REVISION = "2026-05-20";
 
 export function worstCaseCostUsd(c: ModeConfig): number {
   const usd =
-    (c.maxInputTokens * c.maxInputUsdPerM + c.maxOutputTokens * c.maxOutputUsdPerM) / 1_000_000;
+    (c.maxInputTokens * c.inputUsdPerM +
+      c.maxOutputTokens * c.outputBillMultiplier * c.outputUsdPerM) /
+    1_000_000;
   return Math.ceil(usd * 1e6) / 1e6;
 }
 
@@ -122,13 +161,18 @@ export type ModeResult = {
   evidence: string[];
   providerRequestId: string | null;
   providerFinalStatus: string | null;
+  /** Upstream that actually served the request, when the provider reports it. */
+  servedBy: string | null;
+  timestamps: Record<string, string | number | null>;
   usage: Usage;
-  /** Local estimate from usage x upper-bound prices; null without usage. */
+  /** Local estimate: reported usage x list prices. null without usage. */
   estimatedCostUsd: number | null;
-  /** Only when the provider itself reports a billed amount (OpenRouter total_cost). */
+  /** Only a provider-reported billed amount (OpenRouter total_cost). */
   confirmedBilledCostUsd: number | null;
   worstCaseCostUsd: number;
   billableCreateRequests: number;
+  /** True when the create request may have been billed without a known result. */
+  possiblyBilledUnknown: boolean;
   elapsedMs: number;
 };
 
@@ -137,16 +181,35 @@ export type Deps = {
   sleep: (ms: number) => Promise<void>;
   now: () => number;
   env: (key: string) => string | undefined;
+  /** Resolves when a single request has waited too long. */
+  requestTimeout?: (ms: number) => Promise<void>;
+  ledger?: Ledger;
+  newId?: () => string;
 };
 
 const STATUS_POLLS = 20;
 const POLL_MS = 500;
+const REQUEST_TIMEOUT_MS = 60_000;
+
+class RequestTimeoutError extends Error {
+  override readonly name = "RequestTimeoutError";
+}
+
+/** Wraps fetch with a hard timeout; a timed-out request is aborted, never retried. */
+async function timedFetch(d: Deps, url: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const outer = init.signal;
+  outer?.addEventListener("abort", () => controller.abort());
+  const timeout = (d.requestTimeout ?? ((ms) => d.sleep(ms)))(REQUEST_TIMEOUT_MS).then(() => {
+    controller.abort();
+    throw new RequestTimeoutError("timeout");
+  });
+  return Promise.race([d.fetch(url, { ...init, signal: controller.signal }), timeout]);
+}
 
 function estimate(c: ModeConfig, u: Usage): number | null {
   if (!u || (u.inputTokens == null && u.outputTokens == null)) return null;
-  const usd =
-    ((u.inputTokens ?? 0) * c.maxInputUsdPerM + (u.outputTokens ?? 0) * c.maxOutputUsdPerM) /
-    1_000_000;
+  const usd = ((u.inputTokens ?? 0) * c.inputUsdPerM + (u.outputTokens ?? 0) * c.outputUsdPerM) / 1_000_000;
   return Math.round(usd * 1e8) / 1e8;
 }
 
@@ -154,10 +217,14 @@ const num = (v: unknown): number | null => (typeof v === "number" && Number.isFi
 
 /** Only safe identifiers/status strings may enter results. */
 export function safeToken(v: unknown): string | null {
-  return typeof v === "string" && /^[A-Za-z0-9_.:\-]{1,160}$/.test(v) ? v : null;
+  return typeof v === "string" && /^[A-Za-z0-9_.:\- ]{1,160}$/.test(v) ? v : null;
 }
 
-function base(c: ModeConfig): Omit<ModeResult, "outcome" | "elapsedMs"> {
+const iso = (d: Deps) => new Date(d.now()).toISOString();
+
+type Partial0 = Omit<ModeResult, "outcome" | "elapsedMs">;
+
+function base(c: ModeConfig): Partial0 {
   return {
     mode: c.mode,
     provider: c.provider,
@@ -166,156 +233,164 @@ function base(c: ModeConfig): Omit<ModeResult, "outcome" | "elapsedMs"> {
     evidence: [],
     providerRequestId: null,
     providerFinalStatus: null,
+    servedBy: null,
+    timestamps: {},
     usage: null,
     estimatedCostUsd: null,
     confirmedBilledCostUsd: null,
     worstCaseCostUsd: worstCaseCostUsd(c),
     billableCreateRequests: 0,
+    possiblyBilledUnknown: false,
   };
 }
 
-// ---------------------------------------------------------------- OpenAI
+const createOutcome = (status: number): Outcome =>
+  status === 400 || status === 404 || status === 422 ? "unsupported" : "cancel_failed";
 
-async function runOpenAi(c: ModeConfig, key: string, d: Deps) {
+// --------------------------------------- Background (OpenAI Responses, Gemini Interactions)
+
+type BackgroundSpec = {
+  createUrl: string;
+  cancelUrl: (id: string) => string;
+  getUrl: (id: string) => string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  terminalCompleted: string[];
+  running: string[];
+  usage: (body: any) => Usage;
+};
+
+async function runBackground(c: ModeConfig, spec: BackgroundSpec, d: Deps): Promise<Omit<ModeResult, "elapsedMs">> {
   const r = base(c);
-  const h = { authorization: `Bearer ${key}`, "content-type": "application/json" };
   r.billableCreateRequests = 1;
-  const create = await d.fetch("https://api.openai.com/v1/responses", {
+  r.timestamps["createSentAt"] = iso(d);
+  const create = await timedFetch(d, spec.createUrl, {
     method: "POST",
-    headers: h,
-    body: JSON.stringify({
+    headers: spec.headers,
+    body: JSON.stringify(spec.body),
+  });
+  r.timestamps["createAnsweredAt"] = iso(d);
+  if (!create.ok) {
+    r.evidence.push(`create HTTP ${create.status}`);
+    return { ...r, outcome: createOutcome(create.status) };
+  }
+  const created = (await create.json()) as any;
+  const id = safeToken(created?.id);
+  r.providerRequestId = id;
+  r.timestamps["providerCreatedAt"] = num(created?.created_at) ?? safeToken(created?.created);
+  if (!id) {
+    r.possiblyBilledUnknown = true;
+    r.evidence.push("create returned no id; cannot cancel or verify");
+    return { ...r, outcome: "cancel_failed" };
+  }
+  const createdStatus = safeToken(created?.status);
+  r.evidence.push(`created status=${createdStatus}`);
+  if (createdStatus && spec.terminalCompleted.includes(createdStatus)) {
+    return finalize(c, r, spec, created, "already_completed");
+  }
+
+  r.timestamps["cancelSentAt"] = iso(d);
+  try {
+    const cancel = await timedFetch(d, spec.cancelUrl(id), { method: "POST", headers: spec.headers });
+    r.evidence.push(`cancel HTTP ${cancel.status} (not used as proof)`);
+  } catch (e) {
+    r.evidence.push(`cancel request error ${safeToken((e as Error)?.name) ?? "unknown"}`);
+  }
+
+  // Independent authoritative retrieval decides the outcome.
+  let last: any = null;
+  let status: string | null = null;
+  let reachable = false;
+  for (let i = 0; i < STATUS_POLLS; i++) {
+    await d.sleep(POLL_MS);
+    try {
+      const g = await timedFetch(d, spec.getUrl(id), { headers: spec.headers });
+      if (g.ok) {
+        reachable = true;
+        last = await g.json();
+        status = safeToken(last?.status);
+        if (status && !spec.running.includes(status)) break;
+      }
+    } catch {
+      /* status read failures are free; keep polling within bound */
+    }
+  }
+  r.timestamps["verifiedAt"] = iso(d);
+  r.evidence.push(reachable ? `independent GET status=${status}` : "status endpoint unavailable");
+  if (!reachable) {
+    r.possiblyBilledUnknown = true;
+    return { ...r, outcome: "cancel_failed" };
+  }
+  if (status === "cancelled") return finalize(c, r, spec, last, "cancelled_upstream_confirmed");
+  if (status && spec.terminalCompleted.includes(status)) return finalize(c, r, spec, last, "already_completed");
+  r.possiblyBilledUnknown = true;
+  return finalize(c, r, spec, last, "cancel_failed");
+}
+
+function finalize(c: ModeConfig, r: Partial0, spec: BackgroundSpec, body: any, outcome: Outcome) {
+  r.providerFinalStatus = safeToken(body?.status);
+  r.timestamps["providerCompletedAt"] = num(body?.completed_at) ?? safeToken(body?.updated);
+  r.usage = spec.usage(body);
+  r.estimatedCostUsd = estimate(c, r.usage);
+  if (outcome === "cancel_failed" && !r.usage) r.possiblyBilledUnknown = true;
+  return { ...r, outcome };
+}
+
+function openAiSpec(c: ModeConfig, key: string): BackgroundSpec {
+  const root = "https://api.openai.com/v1/responses";
+  return {
+    createUrl: root,
+    cancelUrl: (id) => `${root}/${id}/cancel`,
+    getUrl: (id) => `${root}/${id}`,
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: { model: c.model, input: NEUTRAL_PROMPT, background: true, store: true, max_output_tokens: c.maxOutputTokens },
+    terminalCompleted: ["completed", "incomplete", "failed"],
+    running: ["queued", "in_progress"],
+    usage: (b) =>
+      b?.usage
+        ? {
+            inputTokens: num(b.usage.input_tokens),
+            outputTokens: num(b.usage.output_tokens),
+            reasoningTokens: num(b.usage.output_tokens_details?.reasoning_tokens),
+            source: "openai.responses.usage",
+          }
+        : null,
+  };
+}
+
+function geminiSpec(c: ModeConfig, key: string): BackgroundSpec {
+  const root = "https://generativelanguage.googleapis.com/v1beta/interactions";
+  return {
+    createUrl: root,
+    cancelUrl: (id) => `${root}/${id}/cancel`,
+    getUrl: (id) => `${root}/${id}`,
+    headers: { "x-goog-api-key": key, "content-type": "application/json", "api-revision": GEMINI_API_REVISION },
+    body: {
       model: c.model,
       input: NEUTRAL_PROMPT,
       background: true,
       store: true,
-      max_output_tokens: c.maxOutputTokens,
-    }),
-  });
-  if (!create.ok) {
-    r.evidence.push(`create HTTP ${create.status}`);
-    return { ...r, outcome: create.status === 400 || create.status === 404 ? "unsupported" : "cancel_failed" } as const;
-  }
-  const created = (await create.json()) as any;
-  const id = safeToken(created?.id);
-  r.providerRequestId = id;
-  if (!id) return { ...r, outcome: "cancel_failed" as const, evidence: ["no response id"] };
-  let status = safeToken(created?.status);
-  r.evidence.push(`created status=${status}`);
-  if (status === "completed" || status === "failed" || status === "incomplete")
-    return finalizeOpenAi(c, r, created, "already_completed");
-
-  const cancel = await d.fetch(`https://api.openai.com/v1/responses/${id}/cancel`, {
-    method: "POST",
-    headers: h,
-  });
-  r.evidence.push(`cancel HTTP ${cancel.status}`);
-  let last: any = cancel.ok ? await cancel.json() : null;
-  for (let i = 0; i < STATUS_POLLS; i++) {
-    status = safeToken(last?.status);
-    if (status && status !== "queued" && status !== "in_progress") break;
-    await d.sleep(POLL_MS);
-    const g = await d.fetch(`https://api.openai.com/v1/responses/${id}`, { headers: h });
-    last = g.ok ? await g.json() : last;
-  }
-  r.evidence.push(`authoritative GET status=${status}`);
-  if (status === "cancelled") return finalizeOpenAi(c, r, last, "cancelled_upstream_confirmed");
-  if (status === "completed" || status === "incomplete")
-    return finalizeOpenAi(c, r, last, "already_completed");
-  return finalizeOpenAi(c, r, last, "cancel_failed");
-}
-
-function finalizeOpenAi(c: ModeConfig, r: ReturnType<typeof base>, body: any, outcome: Outcome) {
-  r.providerFinalStatus = safeToken(body?.status);
-  const u = body?.usage;
-  r.usage = u
-    ? {
-        inputTokens: num(u.input_tokens),
-        outputTokens: num(u.output_tokens),
-        reasoningTokens: num(u.output_tokens_details?.reasoning_tokens),
-        source: "openai.responses.usage",
-      }
-    : null;
-  r.estimatedCostUsd = estimate(c, r.usage);
-  return { ...r, outcome };
-}
-
-// ---------------------------------------------------------------- Gemini
-
-async function runGemini(c: ModeConfig, key: string, d: Deps) {
-  const r = base(c);
-  const h = { "x-goog-api-key": key, "content-type": "application/json" };
-  const root = "https://generativelanguage.googleapis.com/v1beta/interactions";
-  r.billableCreateRequests = 1;
-  const create = await d.fetch(root, {
-    method: "POST",
-    headers: h,
-    body: JSON.stringify({
-      model: c.model,
-      input: NEUTRAL_PROMPT,
-      background: true,
       generation_config: { max_output_tokens: c.maxOutputTokens },
-    }),
-  });
-  if (!create.ok) {
-    r.evidence.push(`create HTTP ${create.status}`);
-    // Background mode may be restricted to specific agents/models.
-    return { ...r, outcome: create.status === 400 || create.status === 404 ? "unsupported" : "cancel_failed" } as const;
-  }
-  const created = (await create.json()) as any;
-  const id = safeToken(created?.id);
-  r.providerRequestId = id;
-  if (!id) return { ...r, outcome: "cancel_failed" as const, evidence: ["no interaction id"] };
-  let status = safeToken(created?.status);
-  r.evidence.push(`created status=${status}`);
-  if (status === "completed" || status === "failed")
-    return finalizeGemini(c, r, created, "already_completed");
-
-  const cancel = await d.fetch(`${root}/${id}/cancel`, { method: "POST", headers: h });
-  r.evidence.push(`cancel HTTP ${cancel.status}`);
-  let last: any = cancel.ok ? await cancel.json().catch(() => null) : null;
-  for (let i = 0; i < STATUS_POLLS; i++) {
-    status = safeToken(last?.status);
-    if (status && status !== "in_progress" && status !== "queued") break;
-    await d.sleep(POLL_MS);
-    const g = await d.fetch(`${root}/${id}`, { headers: h });
-    last = g.ok ? await g.json() : last;
-  }
-  r.evidence.push(`authoritative GET status=${status}`);
-  if (status === "cancelled") return finalizeGemini(c, r, last, "cancelled_upstream_confirmed");
-  if (status === "completed") return finalizeGemini(c, r, last, "already_completed");
-  return finalizeGemini(c, r, last, "cancel_failed");
-}
-
-function finalizeGemini(c: ModeConfig, r: ReturnType<typeof base>, body: any, outcome: Outcome) {
-  r.providerFinalStatus = safeToken(body?.status);
-  const u = body?.usage;
-  r.usage = u
-    ? {
-        inputTokens: num(u.total_input_tokens),
-        outputTokens: num(u.total_output_tokens),
-        reasoningTokens: num(u.total_thought_tokens),
-        source: "gemini.interactions.usage",
-      }
-    : null;
-  r.estimatedCostUsd = estimate(c, r.usage);
-  return { ...r, outcome };
+    },
+    terminalCompleted: ["completed", "failed"],
+    running: ["in_progress", "queued"],
+    usage: (b) =>
+      b?.usage
+        ? {
+            inputTokens: num(b.usage.total_input_tokens),
+            outputTokens: num(b.usage.total_output_tokens),
+            reasoningTokens: num(b.usage.total_thought_tokens),
+            source: "gemini.interactions.usage",
+          }
+        : null,
+  };
 }
 
 // ------------------------------------------------- Streaming (xAI, OpenRouter)
 
-/**
- * Reads SSE until the first content/reasoning delta proves generation started,
- * then aborts. Returns the provider id seen in frames and whether a terminal
- * finish_reason arrived before the abort.
- */
-async function streamUntilStartedThenAbort(
-  url: string,
-  key: string,
-  body: Record<string, unknown>,
-  d: Deps,
-) {
+async function streamUntilStartedThenAbort(url: string, key: string, body: Record<string, unknown>, d: Deps) {
   const controller = new AbortController();
-  const res = await d.fetch(url, {
+  const res = await timedFetch(d, url, {
     method: "POST",
     signal: controller.signal,
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
@@ -323,7 +398,7 @@ async function streamUntilStartedThenAbort(
   });
   if (!res.ok || !res.body) {
     controller.abort();
-    return { httpStatus: res.status, id: null, started: false, finished: false, aborted: false };
+    return { httpStatus: res.status, id: null as string | null, started: false, finished: false };
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -369,29 +444,33 @@ async function streamUntilStartedThenAbort(
       /* already aborted */
     }
   }
-  return { httpStatus: res.status, id, started, finished, aborted: !finished };
+  return { httpStatus: res.status, id, started, finished };
 }
 
-async function runXai(c: ModeConfig, key: string, d: Deps) {
+async function runXai(c: ModeConfig, key: string, d: Deps): Promise<Omit<ModeResult, "elapsedMs">> {
   const r = base(c);
   r.billableCreateRequests = 1;
+  r.timestamps["createSentAt"] = iso(d);
   const s = await streamUntilStartedThenAbort(
     "https://api.x.ai/v1/chat/completions",
     key,
     { model: c.model, messages: [{ role: "user", content: NEUTRAL_PROMPT }], max_tokens: c.maxOutputTokens },
     d,
   );
+  r.timestamps["abortedAt"] = iso(d);
   r.providerRequestId = s.id;
   r.evidence.push(`stream HTTP ${s.httpStatus}, started=${s.started}, finished=${s.finished}`);
-  if (s.httpStatus !== 200) return { ...r, outcome: s.httpStatus === 400 || s.httpStatus === 404 ? ("unsupported" as const) : ("cancel_failed" as const) };
-  if (s.finished) return { ...r, outcome: "already_completed" as const };
-  r.evidence.push("client abort sent; xAI exposes no authoritative per-request status/cancel endpoint");
-  return { ...r, outcome: "connection_aborted_unconfirmed" as const };
+  if (s.httpStatus !== 200) return { ...r, outcome: createOutcome(s.httpStatus) };
+  if (s.finished) return { ...r, outcome: "already_completed" };
+  r.possiblyBilledUnknown = true;
+  r.evidence.push("client abort sent; xAI documents no per-request status/cancel endpoint to verify");
+  return { ...r, outcome: "connection_aborted_unconfirmed" };
 }
 
-async function runOpenRouter(c: ModeConfig, key: string, d: Deps) {
+async function runOpenRouter(c: ModeConfig, key: string, d: Deps): Promise<Omit<ModeResult, "elapsedMs">> {
   const r = base(c);
   r.billableCreateRequests = 1;
+  r.timestamps["createSentAt"] = iso(d);
   const s = await streamUntilStartedThenAbort(
     "https://openrouter.ai/api/v1/chat/completions",
     key,
@@ -399,28 +478,41 @@ async function runOpenRouter(c: ModeConfig, key: string, d: Deps) {
       model: c.model,
       messages: [{ role: "user", content: NEUTRAL_PROMPT }],
       max_tokens: c.maxOutputTokens,
-      provider: { allow_fallbacks: false },
+      // Pin to an upstream documented as supporting stream cancellation.
+      provider: { order: ["openai"], only: ["openai"], allow_fallbacks: false },
     },
     d,
   );
+  r.timestamps["abortedAt"] = iso(d);
   r.providerRequestId = s.id;
   r.evidence.push(`stream HTTP ${s.httpStatus}, started=${s.started}, finished=${s.finished}`);
-  if (s.httpStatus !== 200) return { ...r, outcome: s.httpStatus === 400 || s.httpStatus === 404 ? ("unsupported" as const) : ("cancel_failed" as const) };
-  if (!s.id) return { ...r, outcome: "connection_aborted_unconfirmed" as const };
+  if (s.httpStatus !== 200) return { ...r, outcome: createOutcome(s.httpStatus) };
+  if (!s.id) {
+    r.possiblyBilledUnknown = true;
+    return { ...r, outcome: "connection_aborted_unconfirmed" };
+  }
 
   // Free metadata endpoint; may 404 until the generation record is written.
   let gen: any = null;
   for (let i = 0; i < STATUS_POLLS && !gen; i++) {
     await d.sleep(POLL_MS * 2);
-    const g = await d.fetch(`https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(s.id)}`, {
-      headers: { authorization: `Bearer ${key}` },
-    });
-    if (g.ok) gen = ((await g.json()) as any)?.data ?? null;
+    try {
+      const g = await timedFetch(d, `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(s.id)}`, {
+        headers: { authorization: `Bearer ${key}` },
+      });
+      if (g.ok) gen = ((await g.json()) as any)?.data ?? null;
+    } catch {
+      /* free read; bounded polling */
+    }
   }
+  r.timestamps["verifiedAt"] = iso(d);
   if (!gen) {
+    r.possiblyBilledUnknown = true;
     r.evidence.push("generation record not available");
-    return { ...r, outcome: s.finished ? ("already_completed" as const) : ("connection_aborted_unconfirmed" as const) };
+    return { ...r, outcome: s.finished ? "already_completed" : "connection_aborted_unconfirmed" };
   }
+  r.servedBy = safeToken(gen.provider_name);
+  r.timestamps["providerCreatedAt"] = safeToken(gen.created_at);
   r.usage = {
     inputTokens: num(gen.native_tokens_prompt) ?? num(gen.tokens_prompt),
     outputTokens: num(gen.native_tokens_completion) ?? num(gen.tokens_completion),
@@ -429,11 +521,21 @@ async function runOpenRouter(c: ModeConfig, key: string, d: Deps) {
   };
   r.estimatedCostUsd = estimate(c, r.usage);
   r.confirmedBilledCostUsd = num(gen.total_cost);
-  r.providerFinalStatus = gen.cancelled === true ? "cancelled" : safeToken(gen.finish_reason) ?? safeToken(gen.native_finish_reason);
-  r.evidence.push(`generation.cancelled=${gen.cancelled === true}`);
-  if (gen.cancelled === true) return { ...r, outcome: "cancelled_upstream_confirmed" as const };
-  if (s.finished || r.providerFinalStatus) return { ...r, outcome: "already_completed" as const };
-  return { ...r, outcome: "connection_aborted_unconfirmed" as const };
+  if (r.confirmedBilledCostUsd == null) r.evidence.push("total_cost not reported; billed cost unknown");
+  const cancelled = gen.cancelled === true;
+  r.providerFinalStatus = cancelled
+    ? "cancelled"
+    : (safeToken(gen.finish_reason) ?? safeToken(gen.native_finish_reason));
+  const supported = !!r.servedBy && OPENROUTER_CANCEL_SUPPORTED_UPSTREAMS.includes(r.servedBy);
+  r.evidence.push(`generation.cancelled=${cancelled}, provider_name=${r.servedBy}, cancellation-supported=${supported}`);
+  if (cancelled && supported) return { ...r, outcome: "cancelled_upstream_confirmed" };
+  if (!supported) {
+    r.possiblyBilledUnknown = r.confirmedBilledCostUsd == null;
+    return { ...r, outcome: "unsupported" };
+  }
+  if (s.finished) return { ...r, outcome: "already_completed" };
+  r.possiblyBilledUnknown = r.confirmedBilledCostUsd == null;
+  return { ...r, outcome: "connection_aborted_unconfirmed" };
 }
 
 // ---------------------------------------------------------------- Runner
@@ -443,7 +545,7 @@ export type RunOptions = {
   live: boolean;
   confirmSpendUsd: number | null;
   totalBudgetUsd: number;
-  /** Billable create requests already recorded in the ledger, per mode. */
+  /** Extra prior calls/spend on top of what the ledger holds. */
   priorCalls: Partial<Record<ModeId, number>>;
   priorSpentUpperUsd: number;
 };
@@ -464,36 +566,108 @@ export function admit(o: RunOptions): { admissions: Admission[]; totalWorstCaseU
   return { admissions, totalWorstCaseUsd: Math.round((running - o.priorSpentUpperUsd) * 1e6) / 1e6 };
 }
 
-export async function runHarness(o: RunOptions, d: Deps): Promise<{ admissions: Admission[]; results: ModeResult[] }> {
-  const { admissions, totalWorstCaseUsd } = admit(o);
+/** Every reservation (completed or not) counts as a billable call at worst-case cost. */
+export function ledgerTotals(reservations: Reservation[]) {
+  const calls: Partial<Record<ModeId, number>> = {};
+  let spent = 0;
+  for (const r of reservations) {
+    calls[r.mode] = (calls[r.mode] ?? 0) + 1;
+    spent += r.worstCaseCostUsd;
+  }
+  return { calls, spentUpperUsd: Math.round(spent * 1e6) / 1e6 };
+}
+
+export async function runHarness(
+  o: RunOptions,
+  d: Deps,
+): Promise<{ admissions: Admission[]; results: ModeResult[] }> {
+  const ledger = d.ledger ?? new MemoryLedger();
+  const newId = d.newId ?? (() => crypto.randomUUID());
+  const prior = ledgerTotals(ledger.read().reservations);
+  const merged: RunOptions = {
+    ...o,
+    priorCalls: Object.fromEntries(
+      Object.keys(MODES).map((m) => [m, (o.priorCalls[m as ModeId] ?? 0) + (prior.calls[m as ModeId] ?? 0)]),
+    ),
+    priorSpentUpperUsd: o.priorSpentUpperUsd + prior.spentUpperUsd,
+  };
+  const { admissions, totalWorstCaseUsd } = admit(merged);
   if (!o.live) return { admissions, results: [] };
-  if (o.confirmSpendUsd == null || o.confirmSpendUsd < totalWorstCaseUsd || o.confirmSpendUsd > o.totalBudgetUsd)
+  if (
+    o.confirmSpendUsd == null ||
+    o.confirmSpendUsd < totalWorstCaseUsd ||
+    o.confirmSpendUsd > o.totalBudgetUsd
+  )
     throw new Error("Live run refused: --confirm-spend-usd must be >= worst case and <= total budget.");
+
+  ledger.acquireLock();
   const results: ModeResult[] = [];
-  for (const a of admissions) {
-    if (!a.admitted) continue;
-    const c = MODES[a.mode];
-    const key = d.env(c.envKey);
-    const t0 = d.now();
-    if (!key) {
-      results.push({ ...base(c), outcome: "unsupported", evidence: ["server secret not configured"], elapsedMs: 0 });
-      continue;
+  try {
+    for (const a of admissions) {
+      if (!a.admitted) continue;
+      const c = MODES[a.mode];
+      const key = d.env(c.envKey);
+      if (!key) {
+        results.push({ ...base(c), outcome: "unsupported", evidence: ["server secret not configured"], elapsedMs: 0 });
+        continue;
+      }
+
+      // Durable reservation BEFORE dispatch. Re-read under the lock.
+      const data = ledger.read();
+      if (data.reservations.some((x) => x.mode === a.mode))
+        throw new Error(`Mode ${a.mode} already has a reservation; refusing to dispatch again.`);
+      const reservation: Reservation = {
+        reservationId: newId(),
+        mode: a.mode,
+        reservedAt: iso(d),
+        worstCaseCostUsd: a.worstCaseCostUsd,
+        state: "reserved",
+        completedAt: null,
+        result: null,
+      };
+      data.reservations.push(reservation);
+      ledger.write(data); // throws => nothing dispatched
+
+      const t0 = d.now();
+      let result: ModeResult;
+      try {
+        const out =
+          c.provider === "openai"
+            ? await runBackground(c, openAiSpec(c, key), d)
+            : c.provider === "gemini"
+              ? await runBackground(c, geminiSpec(c, key), d)
+              : c.provider === "xai"
+                ? await runXai(c, key, d)
+                : await runOpenRouter(c, key, d);
+        result = { ...out, elapsedMs: d.now() - t0 };
+      } catch (e) {
+        // No retry: the request may have reached the provider and been billed.
+        result = {
+          ...base(c),
+          billableCreateRequests: 1,
+          possiblyBilledUnknown: true,
+          outcome: "cancel_failed",
+          evidence: [`error ${safeToken(e instanceof Error ? e.name : "") ?? "unknown"}; possibly billed`],
+          elapsedMs: d.now() - t0,
+        };
+      }
+      results.push(result);
+      try {
+        const after = ledger.read();
+        const entry = after.reservations.find((x) => x.reservationId === reservation.reservationId);
+        if (entry) {
+          entry.state = "completed";
+          entry.completedAt = iso(d);
+          entry.result = result;
+          ledger.write(after);
+        }
+      } catch {
+        // Reservation stays "reserved": still blocks re-dispatch and counts in budget.
+        result.evidence.push("ledger completion write failed; reservation remains blocking");
+      }
     }
-    const run =
-      c.provider === "openai" ? runOpenAi : c.provider === "gemini" ? runGemini : c.provider === "xai" ? runXai : runOpenRouter;
-    try {
-      const r = await run(c, key, d);
-      results.push({ ...r, elapsedMs: d.now() - t0 });
-    } catch (e) {
-      // No retry: a thrown request may still have been billed.
-      results.push({
-        ...base(c),
-        billableCreateRequests: 1,
-        outcome: "cancel_failed",
-        evidence: [`error ${safeToken(e instanceof Error ? e.name : "") ?? "unknown"}`],
-        elapsedMs: d.now() - t0,
-      });
-    }
+  } finally {
+    ledger.releaseLock();
   }
   return { admissions, results };
 }
