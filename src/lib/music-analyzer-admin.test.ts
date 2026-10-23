@@ -5,6 +5,22 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
+describe("Installed AI model compatibility verification", () => {
+  test("offers a model-specific verification action without automatic enabling", async () => {
+    const admin = await source("./ai-model-admin.functions.ts");
+    const panel = await source("../components/promptbeats/AiModelsPanel.tsx");
+    expect(admin).toContain("verifyInstalledAiModelCompatibility");
+    expect(admin).toContain("testSingleProviderModelCompatibility");
+    expect(admin).toContain("generator_compatible: generatorCompatible");
+    expect(admin).toContain("quality_check_compatible: qualityCheckCompatible");
+    expect(panel).toContain("verifyInstalledAiModelCompatibility");
+    expect(panel).toContain("disabled={!generatorCompatible}");
+    expect(panel).toContain("disabled={!qualityCompatible}");
+    expect(panel).toContain('"Επαλήθευση"');
+    expect(panel).toContain("Small charges may apply");
+  });
+});
+
 describe("Admin Music Analyzer model discovery", () => {
   test("uses catalog modalities when available and live audio probes when catalogs omit them", async () => {
     const registry = await source("./ai-provider-registry.server.ts");

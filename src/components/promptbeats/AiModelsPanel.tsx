@@ -26,6 +26,7 @@ import {
   runAiProviderCompatibilityTests,
   setAdminAiModelDefault,
   updateAdminAiModel,
+  verifyInstalledAiModelCompatibility,
   type AdminAiModel,
 } from "@/lib/ai-model-admin.functions";
 import {
@@ -173,6 +174,25 @@ function AiModelEditor({
       ),
   });
 
+  const verifyCompatibility = useMutation({
+    mutationFn: () => verifyInstalledAiModelCompatibility({ data: { id: model.id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
+      toast.success(
+        el
+          ? "Η επαλήθευση ολοκληρώθηκε. Ενεργοποιήστε όποια λειτουργία πέρασε τον έλεγχο."
+          : "Verification finished. Enable the features that passed.",
+      );
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Compatibility verification failed"),
+  });
+
+  const generatorCompatible =
+    model.generatorCompatible || verifyCompatibility.data?.generatorCompatible === true;
+  const qualityCompatible =
+    model.qualityCheckCompatible || verifyCompatibility.data?.qualityCheckCompatible === true;
+
   const mutation = useMutation({
     mutationFn: async () => {
       const parsedInput = toNullableNumber(inputPrice);
@@ -286,6 +306,72 @@ function AiModelEditor({
               {t("aiModels.defaultProtection")}
             </div>
           )}
+
+          <div className="mb-5 rounded-2xl border border-white/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">
+                  {el ? "Επαλήθευση συμβατότητας" : "Compatibility verification"}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {el
+                    ? "Δοκιμάζει ξεχωριστά Generator και Quality Check με μικρές κλήσεις στον πραγματικό πάροχο. Μπορεί να υπάρξει μικρή χρέωση. Δεν ενεργοποιεί αυτόματα το μοντέλο."
+                    : "Tests Generator and Quality Check separately with small real-provider calls. Small charges may apply. Does not enable the model automatically."}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={verifyCompatibility.isPending || mutation.isPending}
+                onClick={() => verifyCompatibility.mutate()}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50"
+              >
+                <SearchCheck
+                  className={cn("h-4 w-4", verifyCompatibility.isPending && "animate-pulse")}
+                />
+                {verifyCompatibility.isPending
+                  ? el
+                    ? "Επαλήθευση…"
+                    : "Verifying…"
+                  : el
+                    ? "Επαλήθευση"
+                    : "Verify"}
+              </button>
+            </div>
+            {verifyCompatibility.data && (
+              <div className="mt-3 space-y-1 text-xs">
+                <p>
+                  {el ? "Generator:" : "Generator:"}{" "}
+                  {verifyCompatibility.data.generatorCompatible
+                    ? el
+                      ? "Επαληθεύτηκε"
+                      : "Verified"
+                    : el
+                      ? "Δεν επαληθεύτηκε"
+                      : "Not verified"}
+                </p>
+                <p>
+                  Quality Check:{" "}
+                  {verifyCompatibility.data.qualityCheckCompatible
+                    ? el
+                      ? "Επαληθεύτηκε"
+                      : "Verified"
+                    : el
+                      ? "Δεν επαληθεύτηκε"
+                      : "Not verified"}
+                </p>
+                {verifyCompatibility.data.generatorError && (
+                  <p className="text-amber-200">
+                    Generator: {verifyCompatibility.data.generatorError}
+                  </p>
+                )}
+                {verifyCompatibility.data.qualityCheckError && (
+                  <p className="text-amber-200">
+                    Quality Check: {verifyCompatibility.data.qualityCheckError}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -412,7 +498,7 @@ function AiModelEditor({
               <input
                 type="checkbox"
                 checked={generatorEnabled}
-                disabled={!model.generatorCompatible}
+                disabled={!generatorCompatible}
                 onChange={(e) => setGeneratorEnabled(e.target.checked)}
               />
               {t("aiModels.useGenerator")}
@@ -421,7 +507,7 @@ function AiModelEditor({
               <input
                 type="checkbox"
                 checked={qualityEnabled}
-                disabled={!model.qualityCheckCompatible}
+                disabled={!qualityCompatible}
                 onChange={(e) => setQualityEnabled(e.target.checked)}
               />
               {t("aiModels.useQualityCheck")}
