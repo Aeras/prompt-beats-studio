@@ -1614,7 +1614,20 @@ async function generateFinalFromEvidence(args: {
       body: JSON.stringify({
         model: V1_OPENROUTER_SYNTHESIS_MODEL,
         messages: [
-          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: [
+              ANALYZER_SYSTEM_PROMPT,
+              "OPENROUTER JSON OUTPUT CONTRACT — MANDATORY.",
+              "Return exactly one JSON object matching the schema below, with every required field.",
+              "Do not rename fields, replace fields with prose, or omit fields when uncertain.",
+              "generatorReady.mood MUST be a non-empty string, never an object or array.",
+              "generatorReady.bpm MUST be an object with approximate, rangeMin, rangeMax as numbers from 20 to 300 or null; confidence must be high, medium, or low; notes must be a string.",
+              "For an uncertain BPM, use null numeric values and explain uncertainty in bpm.notes.",
+              "Use only Stage A evidence. Never invent a musical claim to fill a required field.",
+              JSON.stringify(ANALYZER_RESPONSE_SCHEMA),
+            ].join("\\n\\n"),
+          },
           { role: "user", content: context },
         ],
         response_format: { type: "json_object" },
