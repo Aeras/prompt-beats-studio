@@ -210,6 +210,7 @@ async function timedFetch(d: Deps, url: string, init: RequestInit = {}): Promise
     controller.abort();
     throw new RequestTimeoutError("timeout");
   });
+  timeout.catch(() => {});
   try {
     return await Promise.race([d.fetch(url, { ...init, signal: controller.signal }), timeout]);
   } finally {
