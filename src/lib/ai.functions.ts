@@ -1991,14 +1991,12 @@ export async function runSongGeneration(
           ? 16384
           : 8192,
       schema: schemas.song,
-      // MiMo-V2.6-Flash consumed 8191 of 8192 completion tokens as reasoning
-      // with no final text. Start with lower reasoning effort only for MiMo
-      // generator calls; preserve the output cap and all other models.
+      // MiMo-V2.6-Flash spent 8191/8192 output tokens on reasoning
+      // and returned an empty response. For songwriting, disable thinking
+      // explicitly rather than allocating more completion tokens.
       reasoningEffort:
-        provider === "openrouter" &&
-        model.startsWith("xiaomi/mimo-v2.6-") &&
-        (reasoningEffort == null || reasoningEffort === "medium")
-          ? "low"
+        provider === "openrouter" && model.startsWith("xiaomi/mimo-v2.6-")
+          ? "none"
           : (reasoningEffort ?? "medium"),
     });
   } catch (err) {
