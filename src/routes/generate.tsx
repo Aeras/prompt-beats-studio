@@ -1487,8 +1487,11 @@ function GeneratePage() {
     }
     if (job.status === "cancelled") {
       setBusy(false);
+      setStopRequested(false);
       setGenerationResultModel(null);
-      setStatus(null);
+      setStatus(job.cancellationOutcome === "cancelled_before_start"
+        ? (appLanguage === "el" ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση." : "Cancelled before the provider request.")
+        : (appLanguage === "el" ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί." : "Local job stopped. Provider cancellation and billing are unconfirmed."));
       setJobId(null);
       rememberJob(null);
       return;
@@ -1505,7 +1508,10 @@ function GeneratePage() {
     rememberJob(job.jobId);
     setJobId(job.jobId);
     setBusy(true);
-    setStatus(t("generator.generating"));
+    if (job.cancelRequestedAt) setStopRequested(true);
+    setStatus(job.cancelRequestedAt
+      ? (appLanguage === "el" ? "Η διακοπή έχει ζητηθεί και εκκρεμεί." : "Cancellation has been requested.")
+      : t("generator.generating"));
   }
 
   const { data: jobData, refetch: refetchJob } = useQuery({
@@ -2343,6 +2349,7 @@ function GeneratePage() {
       return;
     }
     if (busy || jobId || checking || qualityActionId) return;
+    setStopRequested(false);
     setBusy(true);
     setStatus(t("generator.starting"));
     setSaved(false);
@@ -2726,6 +2733,7 @@ function GeneratePage() {
     setQualityCheckResultModel(null);
     setSongContext(null);
     setJobId(null);
+    setStopRequested(false);
     rememberJob(null);
     pendingKey.current = null;
     setQualityActionId(null);
@@ -3947,12 +3955,7 @@ function GeneratePage() {
                       : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
                   }`}
                 >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="h-4 w-4" />
-                  )}{" "}
-                  {t("generator.generate")}
+                  <Wand2 className="h-4 w-4" /> {t("generator.generate")}
                   </button>
                 )}
                 <span className="text-xs text-muted-foreground">
