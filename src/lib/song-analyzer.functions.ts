@@ -1590,9 +1590,11 @@ async function generateFinalFromEvidence(args: {
 
   if (!args.apiKey) {
     throw new Error(
-      analyzerProvider(args.model) === "openai"
-        ? "OpenAI API is not configured"
-        : "Gemini API is not configured",
+      args.model === V1_OPENROUTER_SYNTHESIS_MODEL
+        ? "OpenRouter API is not configured"
+        : analyzerProvider(args.model) === "openai"
+          ? "OpenAI API is not configured"
+          : "Gemini API is not configured",
     );
   }
 
