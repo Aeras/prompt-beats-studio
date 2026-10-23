@@ -108,7 +108,8 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     if (cancellationCheckInFlight || cancellationController.signal.aborted) return;
     cancellationCheckInFlight = true;
     try {
-      const { data } = await db.from("ai_quality_check_actions")
+      const { data } = await db
+        .from("ai_quality_check_actions")
         .select("cancel_requested_at")
         .eq("id", action.id)
         .maybeSingle();
@@ -118,7 +119,9 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       cancellationCheckInFlight = false;
     }
   };
-  const cancellationTimer = setInterval(() => { void checkCancellation().catch(() => {}); }, 750);
+  const cancellationTimer = setInterval(() => {
+    void checkCancellation().catch(() => {});
+  }, 750);
   const cancellationReported = async (outcome: string) => {
     upstreamCancellationOutcome =
       outcome === "cancelled_upstream_confirmed"
@@ -254,7 +257,8 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     if (cancellationController.signal.aborted) {
       // The provider transport is interrupted; only the native provider
       // acknowledgement may authorize confirmed-upstream classification.
-      await db.from("ai_quality_check_actions")
+      await db
+        .from("ai_quality_check_actions")
         .update({
           status: "cancelled",
           cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",

@@ -141,12 +141,9 @@ export const requestQualityCheckCancellation = createServerFn({ method: "POST" }
       "request_quality_check_cancellation",
       { _action_id: data.actionId },
     );
-    const parsed = z.enum([
-      "REQUESTED",
-      "ALREADY_REQUESTED",
-      "CANCELLED_BEFORE_START",
-      "ALREADY_FINAL",
-    ]).safeParse(result);
+    const parsed = z
+      .enum(["REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL"])
+      .safeParse(result);
     if (error || !parsed.success)
       throw new Error("The Quality Check cancellation request could not be saved.");
     return { outcome: parsed.data };
