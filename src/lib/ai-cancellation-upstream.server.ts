@@ -72,7 +72,7 @@ export async function cancelBackgroundOperation(
     provider === "openai"
       ? `https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`
       : `https://generativelanguage.googleapis.com/v1beta/interactions/${encodeURIComponent(remoteId)}`;
-  const headers =
+  const headers: Record<string, string> =
     provider === "openai" ? { authorization: `Bearer ${secret}` } : { "x-goog-api-key": secret };
   let cancelHttpStatus: number | null = null;
   let cancelFailed = false;
