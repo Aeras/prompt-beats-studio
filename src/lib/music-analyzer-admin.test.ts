@@ -1,3 +1,16 @@
+describe("Music Analyzer V1 automatic Stage B provider", () => {
+  test("uses OpenRouter Argon instead of hidden direct Gemini Flash when listening provider is not Gemini", async () => {
+    const analyzer = await source("./song-analyzer.functions.ts");
+    expect(analyzer).toContain('const V1_OPENROUTER_SYNTHESIS_MODEL = "google/gemini-4-argon"');
+    expect(analyzer).toContain('provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL');
+    expect(analyzer).toContain('synthesisModel === data.model ? apiKey : process.env["OPENROUTER_API_KEY"]');
+    expect(analyzer).toContain('https://openrouter.ai/api/v1/chat/completions');
+    expect(analyzer).toContain('provider: provider === "gemini" ? "gemini" : "openrouter"');
+    expect(analyzer).toContain('response_format: { type: "json_object" }');
+    expect(analyzer).toContain('parseStructured(text, songAnalysisResultSchema, args.model, stage)');
+  });
+});
+
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 
