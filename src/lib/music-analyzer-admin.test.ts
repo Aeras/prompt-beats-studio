@@ -78,7 +78,7 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(analyzer).toContain('"https://openrouter.ai/api/v1/chat/completions"');
     expect(analyzer).toContain('type: "input_audio"');
     expect(analyzer).toContain('process.env["OPENROUTER_API_KEY"]');
-    expect(analyzer).toContain('provider === "gemini" ? data.model : "gemini-3.8-flash"');
+    expect(analyzer).toContain('provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL');
   });
 
   test("renders the Music Analyzer discovery control at the bottom of AI Models admin", async () => {
