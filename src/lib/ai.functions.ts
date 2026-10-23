@@ -907,6 +907,8 @@ type ModelCall = {
   maxTokens?: number;
   schema?: Record<string, unknown>;
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
+  abortSignal?: AbortSignal;
+  onCancellationResult?: (outcome: string) => void | Promise<void>;
 };
 type NormalizedUsage = {
   inputTokens: number | null;
