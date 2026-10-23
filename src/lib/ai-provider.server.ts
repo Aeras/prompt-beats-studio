@@ -837,7 +837,8 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
-  const payload = (await res.json()) as {
+  let payload = (await res.json()) as {
+    id?: string | null;
     status?: string | null;
     model?: string | null;
     incomplete_details?: { reason?: string | null } | null;
@@ -853,6 +854,47 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
       output_tokens_details?: { reasoning_tokens?: number };
     };
   };
+
+  if (cancellableBackground) {
+    const remoteId = payload.id;
+    if (!remoteId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(remoteId))
+      throw new Error("OpenAI did not return a usable background response ID.");
+    const headers = { authorization: `Bearer ${apiKey}` };
+    let terminal = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    const deadline = Date.now() + providerRequestTimeoutMs(call);
+    while (!terminal && Date.now() < deadline) {
+      if (call.abortSignal?.aborted) {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        const cancelled = await cancelBackgroundOperation("openai", remoteId, apiKey, {
+          polls: 12,
+          pollIntervalMs: 350,
+        });
+        // The durable runner records a local cancelled state separately from
+        // authoritative upstream status until durable attempt tracking exists.
+        console.info("[ai-provider] openai_background_cancel", {
+          outcome: cancelled.outcome,
+          verifiedByGet: cancelled.verifiedByGet,
+        });
+        throw new Error("Generation cancellation requested.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const statusRes = await fetch(`https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`, {
+        headers,
+        signal: AbortSignal.timeout(Math.min(15000, providerRequestTimeoutMs(call))),
+      });
+      if (!statusRes.ok) throw new Error("OpenAI background status retrieval failed.");
+      payload = (await statusRes.json()) as typeof payload;
+      terminal = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    }
+    if (call.abortSignal?.aborted) {
+      if (!terminal || payload.status !== "cancelled") {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        await cancelBackgroundOperation("openai", remoteId, apiKey);
+      }
+      throw new Error("Generation cancellation requested.");
+    }
+    if (!terminal) throw new Error("OpenAI background request exceeded its status deadline.");
+  }
 
   const text =
     payload.output
@@ -954,14 +996,22 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
       : {}),
   };
 
+  // The tested model has authoritative background cancellation. Other models
+  // retain the historical transport until their background compatibility is
+  // verified; a local abort alone must not be called upstream cancellation.
+  const cancellableBackground = !!call.abortSignal && model === "gpt-5.6-luna";
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    signal: providerRequestSignal(call),
+    // Keep initial creation response available even if cancellation is
+    // requested concurrently: it contains the ID needed to cancel upstream.
+    signal: cancellableBackground
+      ? AbortSignal.timeout(providerRequestTimeoutMs(call))
+      : providerRequestSignal(call),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(cancellableBackground ? { ...body, background: true, store: true } : body),
   });
 
   if (!res.ok) {
