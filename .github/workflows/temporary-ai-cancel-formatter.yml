@@ -1,0 +1,36 @@
+name: Temporary AI cancellation formatter
+on:
+  push:
+    branches:
+      - feat/ai-cancellation-provider-foundation-20261023
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/ai-cancellation-provider-foundation-20261023
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Format only AI cancellation PR files
+        run: |
+          bunx prettier --write \
+            src/lib/ai-cancellation-upstream.server.ts \
+            src/lib/ai-cancellation-upstream.server.test.ts \
+            src/lib/ai-provider.server.ts \
+            src/lib/ai.functions.ts \
+            src/lib/generation-jobs.server.ts \
+            src/lib/generation-jobs.functions.ts \
+            src/routes/generate.tsx
+      - name: Commit formatting only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/ai-cancellation-upstream.server.ts src/lib/ai-cancellation-upstream.server.test.ts src/lib/ai-provider.server.ts src/lib/ai.functions.ts src/lib/generation-jobs.server.ts src/lib/generation-jobs.functions.ts src/routes/generate.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "style: format AI cancellation implementation"
+            git push origin HEAD:feat/ai-cancellation-provider-foundation-20261023
+          fi
