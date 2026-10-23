@@ -1961,6 +1961,7 @@ export async function runSongGeneration(
   userId: string,
   generationId: string | null,
   abortSignal?: AbortSignal,
+  onCancellationResult?: (outcome: string) => void | Promise<void>,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
@@ -1982,6 +1983,7 @@ export async function runSongGeneration(
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       abortSignal,
+      onCancellationResult,
       prompt:
         !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
       // Keep the historical 8K cap for all other providers/models. These two
@@ -2090,6 +2092,7 @@ export async function runLyricsSectionEdit(
   userId: string,
   generationId: string | null,
   abortSignal?: AbortSignal,
+  onCancellationResult?: (outcome: string) => void | Promise<void>,
 ): Promise<{
   result: z.infer<typeof lyricsSectionEditOutputSchema>;
   provider: string;
@@ -2108,6 +2111,7 @@ export async function runLyricsSectionEdit(
       system: LYRICS_SECTION_EDIT_SYSTEM_PROMPT,
       prompt: buildLyricsSectionEditPrompt(data.sectionEdit),
       abortSignal,
+      onCancellationResult,
       maxTokens: 4096,
       schema: schemas.lyricsSectionEdit,
       reasoningEffort: reasoningEffort ?? "medium",
