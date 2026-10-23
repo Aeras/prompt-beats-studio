@@ -1222,7 +1222,8 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
-  const payload = (await res.json()) as {
+  let payload = (await res.json()) as {
+    id?: string | null;
     status?: string | null;
     model?: string | null;
     incomplete_details?: { reason?: string | null } | null;
@@ -1243,6 +1244,43 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
       total_tokens?: number;
     };
   };
+
+  if (cancellableBackground) {
+    const responseId = payload.id;
+    if (!responseId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(responseId))
+      throw new Error("OpenAI background response ID was not returned.");
+    const headers = { authorization: `Bearer ${apiKey}` };
+    let done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    const deadline = Date.now() + providerRequestTimeoutMs(call);
+    while (!done && Date.now() < deadline) {
+      if (call.abortSignal?.aborted) {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        await call.onCancellationResult?.(outcome.outcome);
+        throw new Error("Generation cancellation requested.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const statusRes = await fetch(
+        `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`,
+        { method: "GET", headers, signal: AbortSignal.timeout(15000) },
+      );
+      if (!statusRes.ok) throw new Error("OpenAI background status could not be retrieved.");
+      payload = (await statusRes.json()) as typeof payload;
+      done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    }
+    if (call.abortSignal?.aborted) {
+      if (payload.status !== "cancelled") {
+        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        await call.onCancellationResult?.(outcome.outcome);
+      } else {
+        await call.onCancellationResult?.("cancelled_upstream_confirmed");
+      }
+      throw new Error("Generation cancellation requested.");
+    }
+    if (!done || payload.status !== "completed")
+      throw new Error("The OpenAI background generation did not complete successfully.");
+  }
 
   const text =
     payload.output
