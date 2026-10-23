@@ -1984,8 +1984,8 @@ export async function runSongGeneration(
           : buildPrompt(data);
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
-      abortSignal,
-      onCancellationResult,
+      ...(abortSignal ? { abortSignal } : {}),
+      ...(onCancellationResult ? { onCancellationResult } : {}),
       prompt:
         !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
       // Keep the historical 8K cap for all other providers/models. These two
@@ -2112,8 +2112,8 @@ export async function runLyricsSectionEdit(
     generated = await call({
       system: LYRICS_SECTION_EDIT_SYSTEM_PROMPT,
       prompt: buildLyricsSectionEditPrompt(data.sectionEdit),
-      abortSignal,
-      onCancellationResult,
+      ...(abortSignal ? { abortSignal } : {}),
+      ...(onCancellationResult ? { onCancellationResult } : {}),
       maxTokens: 4096,
       schema: schemas.lyricsSectionEdit,
       reasoningEffort: reasoningEffort ?? "medium",
