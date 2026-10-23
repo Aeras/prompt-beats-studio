@@ -74,7 +74,8 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   const cancellationController = new AbortController();
   let upstreamCancellationOutcome: string | null = null;
   const recordRemoteOperation = async (provider: "openai" | "gemini", remoteId: string) => {
-    const { error } = await db.from("ai_generation_jobs")
+    const { error } = await db
+      .from("ai_generation_jobs")
       .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
       .eq("id", job.id)
       .eq("status", "processing");

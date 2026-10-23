@@ -827,7 +827,10 @@ export async function runDurableQualityCheck(
   beforeProvider: (meta: { provider: string; model: string }) => Promise<void>,
   abortSignal?: AbortSignal,
   onCancellationResult?: (outcome: string) => void | Promise<void>,
-  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{
   quality: QualityReport | null;
   provider: string;

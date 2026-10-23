@@ -40,7 +40,10 @@ export type ModelCall = {
   abortSignal?: AbortSignal;
   /** Reports independently verified upstream cancellation to the durable job. */
   onCancellationResult?: (outcome: string) => void | Promise<void>;
-  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>;
 };
 
 export type ModelResult = {

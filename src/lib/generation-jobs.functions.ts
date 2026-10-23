@@ -488,21 +488,22 @@ export const requestGenerationJobCancellation = createServerFn({ method: "POST" 
       // The remote operation may outlive the original worker. Cancel it through
       // the provider as well, using server-only credentials and ownership check.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: job } = await supabaseAdmin.from("ai_generation_jobs")
+      const { data: job } = await supabaseAdmin
+        .from("ai_generation_jobs")
         .select("cancellation_remote_provider,cancellation_remote_id")
         .eq("id", data.jobId)
         .eq("user_id", context.userId)
         .maybeSingle();
       if (job) {
-        const { cancelPersistedBackgroundOperation } = await import(
-          "@/lib/cancel-persisted-ai-operation.server"
-        );
+        const { cancelPersistedBackgroundOperation } =
+          await import("@/lib/cancel-persisted-ai-operation.server");
         const outcome = await cancelPersistedBackgroundOperation(
           (job as any).cancellation_remote_provider,
           (job as any).cancellation_remote_id,
         );
         if (outcome === "cancelled_upstream_confirmed") {
-          await (supabaseAdmin as any).from("ai_generation_jobs")
+          await (supabaseAdmin as any)
+            .from("ai_generation_jobs")
             .update({
               status: "cancelled",
               cancellation_outcome: "cancelled_upstream_confirmed",

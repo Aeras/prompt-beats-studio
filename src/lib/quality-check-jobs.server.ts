@@ -123,7 +123,8 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     void checkCancellation().catch(() => {});
   }, 750);
   const remoteCreated = async (provider: "openai" | "gemini", remoteId: string) => {
-    const { error } = await db.from("ai_quality_check_actions")
+    const { error } = await db
+      .from("ai_quality_check_actions")
       .update({ cancellation_remote_id: remoteId, cancellation_remote_provider: provider })
       .eq("id", action.id)
       .eq("status", "processing");

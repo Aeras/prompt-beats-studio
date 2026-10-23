@@ -909,7 +909,10 @@ type ModelCall = {
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   abortSignal?: AbortSignal;
   onCancellationResult?: (outcome: string) => void | Promise<void>;
-  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>;
 };
 type NormalizedUsage = {
   inputTokens: number | null;
@@ -1965,7 +1968,10 @@ export async function runSongGeneration(
   generationId: string | null,
   abortSignal?: AbortSignal,
   onCancellationResult?: (outcome: string) => void | Promise<void>,
-  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
@@ -2098,7 +2104,10 @@ export async function runLyricsSectionEdit(
   generationId: string | null,
   abortSignal?: AbortSignal,
   onCancellationResult?: (outcome: string) => void | Promise<void>,
-  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (
+    provider: "openai" | "gemini",
+    remoteId: string,
+  ) => void | Promise<void>,
 ): Promise<{
   result: z.infer<typeof lyricsSectionEditOutputSchema>;
   provider: string;
