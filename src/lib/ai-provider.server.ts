@@ -866,9 +866,143 @@ async function callGroq(model: string, call: ModelCall): Promise<ModelResult> {
   );
 }
 
+/**
+ * Streaming transport for the upstream/model combination verified in the
+ * isolated OpenRouter test. Do not enable for arbitrary routed providers.
+ */
+async function callOpenRouterCancellable(
+  model: string,
+  call: ModelCall,
+  apiKey: string,
+): Promise<ModelResult> {
+  let remoteId: string | null = null;
+  let text = "";
+  let stopReason: string | null = null;
+  let usage: ModelResult["usage"] = null;
+  let completed = false;
+  const signal = providerRequestSignal(call);
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      signal,
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: call.system },
+          { role: "user", content: call.prompt },
+        ],
+        max_tokens: call.maxTokens ?? 8192,
+        response_format: call.schema ? { type: "json_object" } : undefined,
+        ...(call.reasoningEffort
+          ? { reasoning: { effort: call.reasoningEffort } }
+          : {}),
+        provider: { only: ["OpenAI"], allow_fallbacks: false },
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
+    });
+    if (!res.ok || !res.body)
+      throw new Error("OpenRouter streaming request failed.");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        buffer += decoder.decode(next.value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (data === "[DONE]") {
+            completed = true;
+            break;
+          }
+          let event: any;
+          try {
+            event = JSON.parse(data);
+          } catch {
+            continue;
+          }
+          if (!remoteId && typeof event.id === "string" &&
+              /^[A-Za-z0-9_.:-]{1,160}$/.test(event.id))
+            remoteId = event.id;
+          const choice = event.choices?.[0];
+          if (typeof choice?.delta?.content === "string")
+            text += choice.delta.content;
+          if (typeof choice?.finish_reason === "string")
+            stopReason = choice.finish_reason;
+          if (event.usage) {
+            const u = event.usage;
+            usage = {
+              inputTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : null,
+              outputTokens: typeof u.completion_tokens === "number" ? u.completion_tokens : null,
+              totalTokens: typeof u.total_tokens === "number" ? u.total_tokens : null,
+              reasoningTokens: typeof u.completion_tokens_details?.reasoning_tokens === "number"
+                ? u.completion_tokens_details.reasoning_tokens : null,
+            };
+          }
+        }
+        if (completed) break;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  } catch (error) {
+    if (!call.abortSignal?.aborted) throw error;
+  }
+  if (call.abortSignal?.aborted) {
+    let confirmed = false;
+    if (remoteId) {
+      for (let i = 0; i < 12; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        try {
+          const status = await fetch(
+            `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(remoteId)}`,
+            {
+              headers: { authorization: `Bearer ${apiKey}` },
+              signal: AbortSignal.timeout(10000),
+            },
+          );
+          if (!status.ok) continue;
+          const data = ((await status.json()) as any)?.data;
+          if (data?.cancelled === true && data?.provider_name === "OpenAI") {
+            confirmed = true;
+            break;
+          }
+        } catch {
+          // Metadata is eventually consistent; never claim success on errors.
+        }
+      }
+    }
+    await call.onCancellationResult?.(
+      confirmed ? "cancelled_upstream_confirmed" : "connection_aborted_unconfirmed",
+    );
+    throw new Error("Generation cancellation requested.");
+  }
+  if (!completed)
+    throw new Error("The OpenRouter stream ended without a terminal frame.");
+  return {
+    text,
+    stopReason: stopReason === "stop" ? "end_turn" :
+      stopReason === "length" ? "max_tokens" : stopReason,
+    usage,
+    provider: "openrouter",
+    model,
+  };
+}
+
 async function callOpenRouter(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["OPENROUTER_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
+  if (call.abortSignal && model === "openai/gpt-5.6-luna")
+    return callOpenRouterCancellable(model, call, apiKey);
   return callOpenAiCompatible(
     "openrouter",
     "https://openrouter.ai/api/v1/chat/completions",
