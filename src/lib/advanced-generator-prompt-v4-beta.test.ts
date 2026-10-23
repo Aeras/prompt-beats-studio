@@ -149,7 +149,7 @@ describe("V4 BETA prompt", () => {
     expect(generation).toContain('provider === "openrouter"');
     expect(generation).toContain('? "none"');
     const adapter = readFileSync("src/lib/ai-provider.server.ts", "utf8");
-    expect(adapter).toContain("call.reasoningEffort === \"none\"");
+    expect(adapter).toContain('call.reasoningEffort === "none"');
     expect(adapter).toContain("enabled: false");
     expect(generation).toContain(": 8192");
   });
