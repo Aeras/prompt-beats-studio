@@ -146,8 +146,10 @@ describe("V4 BETA prompt", () => {
       ?.split("export async function runLyricsSectionEdit(")[0];
     expect(generation).toContain('model.startsWith("xiaomi/mimo-v2.6-")');
     expect(generation).toContain('provider === "openrouter"');
-    expect(generation).toContain('reasoningEffort === "medium"');
-    expect(generation).toContain('? "low"');
+    expect(generation).toContain('? "none"');
+    const adapter = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    expect(adapter).toContain("call.reasoningEffort === \"none\"");
+    expect(adapter).toContain("enabled: false");
     expect(generation).toContain(": 8192");
   });
 
