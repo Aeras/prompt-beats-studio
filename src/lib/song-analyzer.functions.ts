@@ -1362,7 +1362,11 @@ async function generateAudioEvidence(args: {
               ],
             },
           ],
-          max_completion_tokens: 8192,
+          // MiMo may exhaust the completion budget on hidden reasoning before
+          // completing the Stage A JSON. Reserve output for audible evidence.
+          ...(args.provider === "openrouter" && /^xiaomi\\/mimo-v2\\.6-/i.test(args.model)
+            ? { reasoning: { enabled: false }, max_completion_tokens: 16_384 }
+            : { max_completion_tokens: 8192 }),
           temperature: 0.1,
         }),
         signal: AbortSignal.timeout(5 * 60 * 1000),
