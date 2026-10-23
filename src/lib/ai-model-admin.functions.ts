@@ -382,6 +382,67 @@ export const runAiProviderCompatibilityTests = createServerFn({ method: "POST" }
     };
   });
 
+/**
+ * Explicit admin-triggered compatibility verification for an *installed* model.
+ * This executes two small provider probes and may incur minimal provider charges.
+ * Never infer cross-provider compatibility from a shared display name.
+ */
+export const verifyInstalledAiModelCompatibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("ai_models" as never)
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error || !row) throw new Error("AI model not found.");
+    const model = row as any;
+    const providerId = providerIdSchema.parse(model.provider);
+    const { testSingleProviderModelCompatibility } =
+      await import("@/lib/ai-provider-registry.server");
+    const result = await testSingleProviderModelCompatibility(providerId, {
+      id: String(model.provider_model_id),
+      name: String(model.display_name),
+      ownedBy: null,
+      contextWindow: model.context_window == null ? null : Number(model.context_window),
+      deprecated: model.deprecated === true,
+      installed: false, // Run an actual test; the discovery bulk path skips installed rows.
+    });
+
+    // Only upgrade positively verified capabilities. Inconclusive/transient
+    // provider failures cannot silently disable existing working installations.
+    const generatorCompatible = model.generator_compatible === true || result.generatorCompatible;
+    const qualityCheckCompatible =
+      model.quality_check_compatible === true || result.qualityCheckCompatible;
+    const now = new Date().toISOString();
+    const { error: updateError } = await supabaseAdmin
+      .from("ai_models" as never)
+      .update({
+        generator_compatible: generatorCompatible,
+        quality_check_compatible: qualityCheckCompatible,
+        last_checked_at: now,
+        updated_at: now,
+      } as never)
+      .eq("id", data.id);
+    if (updateError) throw new Error("Could not save model compatibility verification.");
+    await supabaseAdmin.from("admin_audit_log").insert({
+      admin_user_id: context.userId,
+      target_user_id: null,
+      action: "VERIFY_AI_MODEL_COMPATIBILITY",
+      details: {
+        provider: providerId,
+        model: model.provider_model_id,
+        result: result.status,
+        generator_passed: result.generatorCompatible,
+        quality_check_passed: result.qualityCheckCompatible,
+      },
+    });
+    return { ...result, generatorCompatible, qualityCheckCompatible };
+  });
+
 const addDiscoveredModelInput = z.object({
   providerId: providerIdSchema,
   modelId: z.string().trim().min(1).max(240),
