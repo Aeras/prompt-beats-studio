@@ -775,9 +775,7 @@ function QualityPanel({
               aria-label="Επιβεβαίωση διακοπής Quality Check"
               className="w-full rounded-xl border border-orange-500/30 bg-orange-950/20 p-3 text-xs"
             >
-              <p>
-                Θέλεις να διακόψεις τον έλεγχο ποιότητας;
-              </p>
+              <p>Θέλεις να διακόψεις τον έλεγχο ποιότητας;</p>
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -2768,11 +2766,7 @@ function GeneratePage() {
         setBusy(false);
         setJobId(null);
         rememberJob(null);
-        setStatus(
-          appLanguage === "el"
-            ? "Η δημιουργία διακόπηκε."
-            : "Generation stopped.",
-        );
+        setStatus(appLanguage === "el" ? "Η δημιουργία διακόπηκε." : "Generation stopped.");
       } else if (outcome === "ALREADY_FINAL") {
         setStatus(
           appLanguage === "el"
@@ -2782,9 +2776,7 @@ function GeneratePage() {
       } else {
         setStopRequested(true);
         setStatus(
-          appLanguage === "el"
-            ? "Γίνεται διακοπή της δημιουργίας..."
-            : "Stopping generation...",
+          appLanguage === "el" ? "Γίνεται διακοπή της δημιουργίας..." : "Stopping generation...",
         );
       }
     } catch {
