@@ -1622,7 +1622,9 @@ async function generateFinalFromEvidence(args: {
     args.onUsage(normalizedOpenAiUsage(payload));
     if (!response.ok) {
       logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
-      throw new Error(payload?.error?.message || `OpenRouter synthesis failed (${response.status})`);
+      throw new Error(
+        payload?.error?.message || `OpenRouter synthesis failed (${response.status})`,
+      );
     }
     const choice = payload?.choices?.[0];
     const finishReason = choice?.finish_reason ?? null;
