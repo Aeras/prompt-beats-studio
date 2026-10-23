@@ -16,6 +16,8 @@ describe("Music Analyzer V1 automatic Stage B provider", () => {
       'synthesisModel === data.model ? apiKey : process.env["OPENROUTER_API_KEY"]',
     );
     expect(analyzer).toContain("https://openrouter.ai/api/v1/chat/completions");
+    expect(analyzer).toContain("JSON.stringify(ANALYZER_RESPONSE_SCHEMA)");
+    expect(analyzer).toContain("generatorReady.mood MUST be a non-empty string");
     expect(analyzer).toContain('provider: provider === "gemini" ? "gemini" : "openrouter"');
     expect(analyzer).toContain('response_format: { type: "json_object" }');
     expect(analyzer).toContain(
