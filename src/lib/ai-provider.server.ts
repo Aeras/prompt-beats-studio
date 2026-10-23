@@ -900,7 +900,9 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   try {
     res = await fetch("https://api.x.ai/v1/responses", {
       method: "POST",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: call.abortSignal
+        ? AbortSignal.any([AbortSignal.timeout(timeoutMs), call.abortSignal])
+        : AbortSignal.timeout(timeoutMs),
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
