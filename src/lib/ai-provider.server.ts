@@ -38,6 +38,8 @@ export type ModelCall = {
   requestTimeoutMs?: number;
   /** Caller-driven cancellation, separate from the transport timeout. */
   abortSignal?: AbortSignal;
+  /** Reports independently verified upstream cancellation to the durable job. */
+  onCancellationResult?: (outcome: string) => void | Promise<void>;
 };
 
 export type ModelResult = {
@@ -871,6 +873,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
         });
         // The durable runner records a local cancelled state separately from
         // authoritative upstream status until durable attempt tracking exists.
+        await call.onCancellationResult?.(cancelled.outcome);
         console.info("[ai-provider] openai_background_cancel", {
           outcome: cancelled.outcome,
           verifiedByGet: cancelled.verifiedByGet,
@@ -889,7 +892,8 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
     if (call.abortSignal?.aborted) {
       if (!terminal || payload.status !== "cancelled") {
         const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-        await cancelBackgroundOperation("openai", remoteId, apiKey);
+        const cancelled = await cancelBackgroundOperation("openai", remoteId, apiKey);
+        await call.onCancellationResult?.(cancelled.outcome);
       }
       throw new Error("Generation cancellation requested.");
     }
