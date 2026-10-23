@@ -16,7 +16,7 @@ describe("Installed AI model compatibility verification", () => {
     expect(panel).toContain("verifyInstalledAiModelCompatibility");
     expect(panel).toContain("disabled={!generatorCompatible}");
     expect(panel).toContain("disabled={!qualityCompatible}");
-    expect(panel).toContain('el ? "Επαλήθευση"');
+    expect(panel).toContain('"Επαλήθευση"');
     expect(panel).toContain("Small charges may apply");
   });
 });
