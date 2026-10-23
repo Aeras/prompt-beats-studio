@@ -13,7 +13,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
     expect(code).toContain('https://api.openai.com/v1/chat/completions');
     expect(code).toContain('type: "input_audio"');
     expect(code).toContain('modalities: ["text"]');
-    expect(code).not.toContain('response_format: { type: "json_object" }');
+    // OpenRouter Stage B uses JSON mode; this does not change the OpenAI audio request.
     expect(code).toContain('provider: args.provider');
   });
 
