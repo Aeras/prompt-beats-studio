@@ -195,6 +195,11 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
 
     let persistedResult: Record<string, unknown> = songResult;
 
+    // Do not begin non-idempotent revision persistence after cancellation.
+    await checkCancellation();
+    if (cancellationController.signal.aborted)
+      throw new Error("Generation cancellation requested.");
+
     if (input.operation === "revision" && input.revision) {
       const revision = input.revision;
       const versionChangeMetadata = buildProjectRevisionVersionMetadata({
@@ -294,6 +299,10 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       .eq("status", "processing")
       .is("cancel_requested_at", null);
   } catch (err) {
+    // Resolve a cancellation/marker race even if the periodic poll has not yet
+    // observed the user request. A failed provider-start marker can mean that
+    // cancellation won the database race.
+    await checkCancellation();
     if (!cancellationController.signal.aborted)
       console.error("[generation-job] failed", job.id, err);
     await db
