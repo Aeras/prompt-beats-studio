@@ -176,7 +176,7 @@ function AiModelEditor({
 
   const verifyCompatibility = useMutation({
     mutationFn: () => verifyInstalledAiModelCompatibility({ data: { id: model.id } }),
-    onSuccess: (result) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
       toast.success(
         el
