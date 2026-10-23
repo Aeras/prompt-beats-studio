@@ -72,6 +72,12 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   // signals the in-flight transport, but a socket abort is NOT necessarily an
   // authoritative upstream cancellation.
   const cancellationController = new AbortController();
+  let upstreamCancellationOutcome: string | null = null;
+  const recordUpstreamCancellation = async (outcome: string) => {
+    upstreamCancellationOutcome = outcome === "cancelled_upstream_confirmed"
+      ? "cancelled_upstream_confirmed"
+      : "connection_aborted_unconfirmed";
+  };
   let cancellationCheckInFlight = false;
   const checkCancellation = async () => {
     if (cancellationCheckInFlight || cancellationController.signal.aborted) return;
@@ -129,7 +135,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       throw new Error("The generation could not be started. Please try again.");
 
     if (input.operation === "lyrics_section_edit") {
-      const out = await runLyricsSectionEdit(input, job.user_id, job.generation_id, cancellationController.signal);
+      const out = await runLyricsSectionEdit(input, job.user_id, job.generation_id, cancellationController.signal, recordUpstreamCancellation);
       await db
         .from("ai_generation_jobs")
         .update({
@@ -151,7 +157,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // existing Additional Instructions channel so the same provider call is
     // explicitly told to enrich Music Style from useful Producer's Note cues.
     const runtimeInput = withAdvancedSunoEnrichmentInstruction(input);
-    const out = await runSongGeneration(runtimeInput, job.user_id, job.generation_id, cancellationController.signal);
+    const out = await runSongGeneration(runtimeInput, job.user_id, job.generation_id, cancellationController.signal, recordUpstreamCancellation);
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
       input.targetPlatform === "suno" &&
@@ -276,7 +282,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       .from("ai_generation_jobs")
       .update({
         status: cancellationController.signal.aborted ? "cancelled" : "failed",
-        ...(cancellationController.signal.aborted ? { cancellation_outcome: "connection_aborted_unconfirmed" } : {}),
+        ...(cancellationController.signal.aborted ? { cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed" } : {}),
         error: safeErrorMessage(err),
         attempts: (job.attempts ?? 0) + 1,
         completed_at: new Date().toISOString(),
@@ -292,7 +298,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   await db.from("ai_generation_jobs")
     .update({
       status: "cancelled",
-      cancellation_outcome: "connection_aborted_unconfirmed",
+      cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
       result: null,
       completed_at: new Date().toISOString(),
     })
