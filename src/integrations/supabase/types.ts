@@ -3619,6 +3619,7 @@ export type Database = {
         Returns: Json
       }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      request_generation_job_cancellation: { Args: { _job_id: string }; Returns: string }
       duplicate_prompt_project_to_folder: {
         Args: {
           _destination_folder_id: string
