@@ -5,6 +5,25 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
+describe("Music Analyzer V1 automatic Stage B provider", () => {
+  test("uses OpenRouter Argon instead of hidden direct Gemini Flash when listening provider is not Gemini", async () => {
+    const analyzer = await source("./song-analyzer.functions.ts");
+    expect(analyzer).toContain('const V1_OPENROUTER_SYNTHESIS_MODEL = "google/gemini-4-argon"');
+    expect(analyzer).toContain(
+      'provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL',
+    );
+    expect(analyzer).toContain(
+      'synthesisModel === data.model ? apiKey : process.env["OPENROUTER_API_KEY"]',
+    );
+    expect(analyzer).toContain("https://openrouter.ai/api/v1/chat/completions");
+    expect(analyzer).toContain('provider: provider === "gemini" ? "gemini" : "openrouter"');
+    expect(analyzer).toContain('response_format: { type: "json_object" }');
+    expect(analyzer).toContain(
+      "parseStructured(text, songAnalysisResultSchema, args.model, stage)",
+    );
+  });
+});
+
 describe("Installed AI model compatibility verification", () => {
   test("offers a model-specific verification action without automatic enabling", async () => {
     const admin = await source("./ai-model-admin.functions.ts");
@@ -65,7 +84,9 @@ describe("Admin Music Analyzer model discovery", () => {
     expect(analyzer).toContain('"https://openrouter.ai/api/v1/chat/completions"');
     expect(analyzer).toContain('type: "input_audio"');
     expect(analyzer).toContain('process.env["OPENROUTER_API_KEY"]');
-    expect(analyzer).toContain('provider === "gemini" ? data.model : "gemini-3.8-flash"');
+    expect(analyzer).toContain(
+      'provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL',
+    );
   });
 
   test("renders the Music Analyzer discovery control at the bottom of AI Models admin", async () => {

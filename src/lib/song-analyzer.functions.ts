@@ -71,6 +71,7 @@ const BUILTIN_SONG_ANALYZER_MODEL_CONFIGS: readonly SongAnalyzerModelConfig[] = 
 ];
 
 export const DEFAULT_SONG_ANALYZER_MODEL = "gemini-3.8-flash";
+const V1_OPENROUTER_SYNTHESIS_MODEL = "google/gemini-4-argon";
 export const SONG_ANALYZER_MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 const confidenceSchema = z.enum(["high", "medium", "low"]);
@@ -1589,10 +1590,57 @@ async function generateFinalFromEvidence(args: {
 
   if (!args.apiKey) {
     throw new Error(
-      analyzerProvider(args.model) === "openai"
-        ? "OpenAI API is not configured"
-        : "Gemini API is not configured",
+      args.model === V1_OPENROUTER_SYNTHESIS_MODEL
+        ? "OpenRouter API is not configured"
+        : analyzerProvider(args.model) === "openai"
+          ? "OpenAI API is not configured"
+          : "Gemini API is not configured",
     );
+  }
+
+  // V1 automatic Stage B for non-Gemini audio models uses the separately
+  // installed OpenRouter Argon route. This is NOT the direct Google API.
+  if (args.model === V1_OPENROUTER_SYNTHESIS_MODEL) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${args.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: V1_OPENROUTER_SYNTHESIS_MODEL,
+        messages: [
+          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+          { role: "user", content: context },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 16_384,
+      }),
+      signal: AbortSignal.timeout(5 * 60 * 1000),
+    });
+    const payload = (await response.json()) as any;
+    args.onUsage(normalizedOpenAiUsage(payload));
+    if (!response.ok) {
+      logStage(args.model, stage, "provider_error", payload?.error?.message ?? response.status);
+      throw new Error(
+        payload?.error?.message || `OpenRouter synthesis failed (${response.status})`,
+      );
+    }
+    const choice = payload?.choices?.[0];
+    const finishReason = choice?.finish_reason ?? null;
+    if (finishReason && finishReason !== "stop") {
+      logStage(args.model, stage, "non_success_stop_reason", finishReason);
+      throw new Error(`OpenRouter synthesis stopped before completion: ${finishReason}`);
+    }
+    const text = typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    if (!text) {
+      logStage(args.model, stage, "missing_json");
+      throw new Error("OpenRouter synthesis returned no JSON");
+    }
+    const final = parseStructured(text, songAnalysisResultSchema, args.model, stage);
+    const gated = applyEvidenceGate(final, args.evidence);
+    logStage(args.model, stage, "success");
+    return gated;
   }
 
   if (analyzerProvider(args.model) === "openai") {
@@ -1930,11 +1978,11 @@ export const analyzeSong = createServerFn({ method: "POST" })
         }
 
         const synthesisModel: SongAnalyzerModelId =
-          provider === "gemini" ? data.model : "gemini-3.8-flash";
+          provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL;
         const synthesisApiKey =
-          synthesisModel === data.model ? apiKey : process.env["GEMINI_API_KEY"];
+          synthesisModel === data.model ? apiKey : process.env["OPENROUTER_API_KEY"];
         if (!synthesisApiKey) {
-          throw new Error("Gemini API is not configured");
+          throw new Error("OpenRouter API is not configured");
         }
 
         let synthesisUsage: ReturnType<typeof normalizedUsage> = null;
@@ -1952,7 +2000,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
           });
           await recordStageUsage({
             userId: context.userId,
-            provider: "gemini",
+            provider: provider === "gemini" ? "gemini" : "openrouter",
             model: synthesisModel,
             stage: "final_synthesis",
             usage: synthesisUsage,
