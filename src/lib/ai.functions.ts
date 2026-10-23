@@ -909,6 +909,7 @@ type ModelCall = {
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   abortSignal?: AbortSignal;
   onCancellationResult?: (outcome: string) => void | Promise<void>;
+  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>;
 };
 type NormalizedUsage = {
   inputTokens: number | null;
@@ -1964,6 +1965,7 @@ export async function runSongGeneration(
   generationId: string | null,
   abortSignal?: AbortSignal,
   onCancellationResult?: (outcome: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
@@ -1986,6 +1988,7 @@ export async function runSongGeneration(
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       ...(abortSignal ? { abortSignal } : {}),
       ...(onCancellationResult ? { onCancellationResult } : {}),
+      ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
       prompt:
         !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
       // Keep the historical 8K cap for all other providers/models. These two
@@ -2095,6 +2098,7 @@ export async function runLyricsSectionEdit(
   generationId: string | null,
   abortSignal?: AbortSignal,
   onCancellationResult?: (outcome: string) => void | Promise<void>,
+  onRemoteOperationCreated?: (provider: "openai" | "gemini", remoteId: string) => void | Promise<void>,
 ): Promise<{
   result: z.infer<typeof lyricsSectionEditOutputSchema>;
   provider: string;
@@ -2114,6 +2118,7 @@ export async function runLyricsSectionEdit(
       prompt: buildLyricsSectionEditPrompt(data.sectionEdit),
       ...(abortSignal ? { abortSignal } : {}),
       ...(onCancellationResult ? { onCancellationResult } : {}),
+      ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
       maxTokens: 4096,
       schema: schemas.lyricsSectionEdit,
       reasoningEffort: reasoningEffort ?? "medium",
