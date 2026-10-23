@@ -640,7 +640,12 @@ async function callOpenAiCompatible(
       ],
       max_tokens: call.maxTokens ?? 8192,
       ...(providerName === "openrouter" && call.reasoningEffort
-        ? { reasoning: { effort: call.reasoningEffort } }
+        ? {
+            reasoning:
+              model.startsWith("xiaomi/mimo-v2.6-") && call.reasoningEffort === "none"
+                ? { enabled: false }
+                : { effort: call.reasoningEffort },
+          }
         : {}),
       // GLM finished normally on OpenRouter but repeatedly returned a response
       // that failed our four-field song contract. Request JSON mode for this
