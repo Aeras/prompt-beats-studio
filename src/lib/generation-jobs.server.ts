@@ -182,6 +182,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       job.generation_id,
       cancellationController.signal,
       recordUpstreamCancellation,
+      recordRemoteOperation,
     );
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
