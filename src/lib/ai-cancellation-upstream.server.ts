@@ -80,7 +80,7 @@ export async function cancelBackgroundOperation(
     const cancel = await fetchFn(`${url}/cancel`, {
       method: "POST",
       headers,
-      signal: deps.signal,
+      ...(deps.signal ? { signal: deps.signal } : {}),
     });
     cancelHttpStatus = cancel.status;
     cancelFailed = !cancel.ok;
