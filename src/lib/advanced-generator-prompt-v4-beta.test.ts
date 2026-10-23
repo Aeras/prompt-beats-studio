@@ -154,6 +154,20 @@ describe("V4 BETA prompt", () => {
     expect(generation).toContain(": 8192");
   });
 
+  it("disables Qwen3.8 Flash reasoning only for OpenRouter song generation", () => {
+    const generator = readFileSync("src/lib/ai.functions.ts", "utf8");
+    const song = generator
+      .split("export async function runSongGeneration(")[1]
+      ?.split("export async function runLyricsSectionEdit(")[0];
+    expect(song).toContain('model === "qwen/qwen3.8-flash"');
+    expect(song).toContain('? "none"');
+    expect(song).toContain(": 8192");
+
+    const adapter = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    expect(adapter).toContain('model === "qwen/qwen3.8-flash"');
+    expect(adapter).toContain("enabled: false");
+  });
+
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
     const guard = runner.indexOf('input.promptVersion === "v4_beta"');
