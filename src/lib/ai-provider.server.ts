@@ -1098,54 +1098,6 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
     };
   };
 
-  if (cancellableBackground) {
-    const remoteId = payload.id;
-    if (!remoteId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(remoteId))
-      throw new Error("OpenAI did not return a usable background response ID.");
-    const headers = { authorization: `Bearer ${apiKey}` };
-    let terminal = ["completed", "failed", "incomplete", "cancelled"].includes(
-      payload.status ?? "",
-    );
-    const deadline = Date.now() + providerRequestTimeoutMs(call);
-    while (!terminal && Date.now() < deadline) {
-      if (call.abortSignal?.aborted) {
-        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-        const cancelled = await cancelBackgroundOperation("openai", remoteId, apiKey, {
-          polls: 12,
-          pollIntervalMs: 350,
-        });
-        // The durable runner records a local cancelled state separately from
-        // authoritative upstream status until durable attempt tracking exists.
-        await call.onCancellationResult?.(cancelled.outcome);
-        console.info("[ai-provider] openai_background_cancel", {
-          outcome: cancelled.outcome,
-          verifiedByGet: cancelled.verifiedByGet,
-        });
-        throw new Error("Generation cancellation requested.");
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const statusRes = await fetch(
-        `https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`,
-        {
-          headers,
-          signal: AbortSignal.timeout(Math.min(15000, providerRequestTimeoutMs(call))),
-        },
-      );
-      if (!statusRes.ok) throw new Error("OpenAI background status retrieval failed.");
-      payload = (await statusRes.json()) as typeof payload;
-      terminal = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
-    }
-    if (call.abortSignal?.aborted) {
-      if (!terminal || payload.status !== "cancelled") {
-        const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-        const cancelled = await cancelBackgroundOperation("openai", remoteId, apiKey);
-        await call.onCancellationResult?.(cancelled.outcome);
-      }
-      throw new Error("Generation cancellation requested.");
-    }
-    if (!terminal) throw new Error("OpenAI background request exceeded its status deadline.");
-  }
-
   const text =
     payload.output
       ?.filter((item) => item.type === "message")
