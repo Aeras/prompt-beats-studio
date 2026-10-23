@@ -759,7 +759,7 @@ function QualityPanel({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            {stopRequested ? "Η διακοπή ζητήθηκε / Cancellation requested" : t("quality.checking")}
+            {stopRequested ? "Ζητήθηκε διακοπή / Stop requested" : t("quality.checking")}
           </p>
           <button
             type="button"
@@ -775,9 +775,7 @@ function QualityPanel({
               aria-label="Επιβεβαίωση διακοπής Quality Check"
               className="w-full rounded-xl border border-orange-500/30 bg-orange-950/20 p-3 text-xs"
             >
-              <p>
-                Να ζητηθεί διακοπή του Quality Check; Η χρέωση στον provider μπορεί να συνεχιστεί.
-              </p>
+              <p>Θέλεις να διακόψεις τον έλεγχο ποιότητας;</p>
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -1541,15 +1539,15 @@ function GeneratePage() {
       setStatus(
         job.cancellationOutcome === "cancelled_before_start"
           ? appLanguage === "el"
-            ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση."
-            : "Cancelled before the provider request."
+            ? "Η δημιουργία διακόπηκε."
+            : "Generation stopped."
           : job.cancellationOutcome === "cancelled_upstream_confirmed"
             ? appLanguage === "el"
-              ? "Η ακύρωση επιβεβαιώθηκε από τον AI provider."
-              : "Cancellation confirmed by the AI provider."
+              ? "Η δημιουργία διακόπηκε."
+              : "Generation stopped."
             : appLanguage === "el"
-              ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί."
-              : "Local job stopped. Provider cancellation and billing are unconfirmed.",
+              ? "Η δημιουργία διακόπηκε."
+              : "Generation stopped.",
       );
       setJobId(null);
       rememberJob(null);
@@ -1571,8 +1569,8 @@ function GeneratePage() {
     setStatus(
       job.cancelRequestedAt
         ? appLanguage === "el"
-          ? "Η διακοπή έχει ζητηθεί και εκκρεμεί."
-          : "Cancellation has been requested."
+          ? "Γίνεται διακοπή της δημιουργίας..."
+          : "Stopping generation..."
         : t("generator.generating"),
     );
   }
@@ -1678,7 +1676,7 @@ function GeneratePage() {
         setQualityActionId(null);
         rememberQualityJob(null);
         pendingQualityKey.current = null;
-        setCheckError("Το Quality Check ακυρώθηκε πριν ξεκινήσει.");
+        setCheckError("Ο έλεγχος ποιότητας διακόπηκε.");
       } else if (outcome === "ALREADY_FINAL") {
         setCheckError("Το Quality Check είχε ήδη ολοκληρωθεί.");
       } else {
@@ -1718,10 +1716,10 @@ function GeneratePage() {
       pendingQualityKey.current = null;
       setCheckError(
         job.cancellationOutcome === "cancelled_before_start"
-          ? "Το Quality Check ακυρώθηκε πριν από την κλήση στον provider."
+          ? "Ο έλεγχος ποιότητας διακόπηκε."
           : job.cancellationOutcome === "cancelled_upstream_confirmed"
-            ? "Ο AI provider επιβεβαίωσε την ακύρωση του Quality Check."
-            : "Το Quality Check διακόπηκε τοπικά· η upstream ακύρωση δεν επιβεβαιώθηκε.",
+            ? "Ο έλεγχος ποιότητας διακόπηκε."
+            : "Ο έλεγχος ποιότητας διακόπηκε.",
       );
       return;
     }
@@ -2768,11 +2766,7 @@ function GeneratePage() {
         setBusy(false);
         setJobId(null);
         rememberJob(null);
-        setStatus(
-          appLanguage === "el"
-            ? "Η εργασία ακυρώθηκε πριν σταλεί στον provider."
-            : "Cancelled before the provider request started.",
-        );
+        setStatus(appLanguage === "el" ? "Η δημιουργία διακόπηκε." : "Generation stopped.");
       } else if (outcome === "ALREADY_FINAL") {
         setStatus(
           appLanguage === "el"
@@ -2782,9 +2776,7 @@ function GeneratePage() {
       } else {
         setStopRequested(true);
         setStatus(
-          appLanguage === "el"
-            ? "Ζητήθηκε διακοπή. Αναμονή επιβεβαίωσης από τον server — η upstream ακύρωση δεν είναι εγγυημένη."
-            : "Stop requested. Awaiting server confirmation; upstream cancellation is not guaranteed.",
+          appLanguage === "el" ? "Γίνεται διακοπή της δημιουργίας..." : "Stopping generation...",
         );
       }
     } catch {
@@ -4115,8 +4107,8 @@ function GeneratePage() {
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {appLanguage === "el"
-                        ? "Θα ζητηθεί πραγματική διακοπή της κλήσης. Αν ο provider δεν την επιβεβαιώσει, ενδέχεται να συνεχιστεί η χρέωση."
-                        : "We will request a real provider interruption. Billing may continue if the provider does not confirm cancellation."}
+                        ? "Θέλεις να διακόψεις τη δημιουργία του τραγουδιού;"
+                        : "Do you want to stop generating this song?"}
                     </p>
                     <div className="flex justify-end gap-3">
                       <button
