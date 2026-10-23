@@ -430,8 +430,7 @@ async function callGeminiBackground(
         : { response_format: { type: "text", mime_type: "application/json" } }),
     }),
   });
-  if (!create.ok)
-    throw new Error("The Gemini background request was rejected.");
+  if (!create.ok) throw new Error("The Gemini background request was rejected.");
   let interaction = (await create.json()) as {
     id?: string;
     status?: string;
@@ -490,19 +489,21 @@ async function callGeminiBackground(
   const u = interaction.usage;
   const inputTokens = u?.total_input_tokens ?? null;
   const outputTokens = u?.total_output_tokens ?? null;
-  const totalTokens = u?.total_tokens ??
+  const totalTokens =
+    u?.total_tokens ??
     (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
   return {
     text,
     stopReason: "end_turn",
-    usage: inputTokens == null && outputTokens == null && totalTokens == null
-      ? null
-      : {
-          inputTokens,
-          outputTokens,
-          totalTokens,
-          reasoningTokens: u?.total_thought_tokens ?? null,
-        },
+    usage:
+      inputTokens == null && outputTokens == null && totalTokens == null
+        ? null
+        : {
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            reasoningTokens: u?.total_thought_tokens ?? null,
+          },
     provider: "gemini",
     model,
   };
@@ -897,16 +898,13 @@ async function callOpenRouterCancellable(
         ],
         max_tokens: call.maxTokens ?? 8192,
         response_format: call.schema ? { type: "json_object" } : undefined,
-        ...(call.reasoningEffort
-          ? { reasoning: { effort: call.reasoningEffort } }
-          : {}),
+        ...(call.reasoningEffort ? { reasoning: { effort: call.reasoningEffort } } : {}),
         provider: { only: ["OpenAI"], allow_fallbacks: false },
         stream: true,
         stream_options: { include_usage: true },
       }),
     });
-    if (!res.ok || !res.body)
-      throw new Error("OpenRouter streaming request failed.");
+    if (!res.ok || !res.body) throw new Error("OpenRouter streaming request failed.");
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -930,22 +928,25 @@ async function callOpenRouterCancellable(
           } catch {
             continue;
           }
-          if (!remoteId && typeof event.id === "string" &&
-              /^[A-Za-z0-9_.:-]{1,160}$/.test(event.id))
+          if (
+            !remoteId &&
+            typeof event.id === "string" &&
+            /^[A-Za-z0-9_.:-]{1,160}$/.test(event.id)
+          )
             remoteId = event.id;
           const choice = event.choices?.[0];
-          if (typeof choice?.delta?.content === "string")
-            text += choice.delta.content;
-          if (typeof choice?.finish_reason === "string")
-            stopReason = choice.finish_reason;
+          if (typeof choice?.delta?.content === "string") text += choice.delta.content;
+          if (typeof choice?.finish_reason === "string") stopReason = choice.finish_reason;
           if (event.usage) {
             const u = event.usage;
             usage = {
               inputTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : null,
               outputTokens: typeof u.completion_tokens === "number" ? u.completion_tokens : null,
               totalTokens: typeof u.total_tokens === "number" ? u.total_tokens : null,
-              reasoningTokens: typeof u.completion_tokens_details?.reasoning_tokens === "number"
-                ? u.completion_tokens_details.reasoning_tokens : null,
+              reasoningTokens:
+                typeof u.completion_tokens_details?.reasoning_tokens === "number"
+                  ? u.completion_tokens_details.reasoning_tokens
+                  : null,
             };
           }
         }
@@ -986,12 +987,11 @@ async function callOpenRouterCancellable(
     );
     throw new Error("Generation cancellation requested.");
   }
-  if (!completed)
-    throw new Error("The OpenRouter stream ended without a terminal frame.");
+  if (!completed) throw new Error("The OpenRouter stream ended without a terminal frame.");
   return {
     text,
-    stopReason: stopReason === "stop" ? "end_turn" :
-      stopReason === "length" ? "max_tokens" : stopReason,
+    stopReason:
+      stopReason === "stop" ? "end_turn" : stopReason === "length" ? "max_tokens" : stopReason,
     usage,
     provider: "openrouter",
     model,
