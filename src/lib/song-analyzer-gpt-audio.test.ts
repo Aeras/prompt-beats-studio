@@ -8,10 +8,12 @@ async function source(path: string) {
 describe("Music Analyzer Xiaomi audio evidence output", () => {
   test("disables hidden reasoning and reserves adequate JSON output only for OpenRouter MiMo V2.6", async () => {
     const code = await source("./song-analyzer.functions.ts");
-    expect(code).toContain('args.provider === "openrouter" && /^xiaomi\\/mimo-v2\\.6-/i.test(args.model)');
-    expect(code).toContain('reasoning: { enabled: false }, max_completion_tokens: 16_384');
-    expect(code).toContain('max_completion_tokens: 8192');
-    expect(code).toContain('Audio provider evidence extraction stopped before completion:');
+    expect(code).toContain(
+      'args.provider === "openrouter" && /^xiaomi\\/mimo-v2\\.6-/i.test(args.model)',
+    );
+    expect(code).toContain("reasoning: { enabled: false }, max_completion_tokens: 16_384");
+    expect(code).toContain("max_completion_tokens: 8192");
+    expect(code).toContain("Audio provider evidence extraction stopped before completion:");
   });
 });
 
