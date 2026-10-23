@@ -1080,7 +1080,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
-  let payload = (await res.json()) as {
+  const payload = (await res.json()) as {
     id?: string | null;
     status?: string | null;
     model?: string | null;
