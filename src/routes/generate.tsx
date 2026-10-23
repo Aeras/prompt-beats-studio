@@ -72,6 +72,7 @@ import {
 import {
   getLatestQualityCheckJob,
   getQualityCheckJob,
+  requestQualityCheckCancellation,
   startQualityCheckJob,
   type QualityCheckJob,
 } from "@/lib/quality-check-jobs.functions";
@@ -687,6 +688,9 @@ function QualityPanel({
   quality,
   checking,
   onCheck,
+  onStop,
+  stopAvailable,
+  stopRequested,
   checkError,
   confirm,
   setConfirm,
@@ -707,6 +711,9 @@ function QualityPanel({
   quality: QualityReport | null;
   checking: boolean;
   onCheck: () => void;
+  onStop: () => void;
+  stopAvailable: boolean;
+  stopRequested: boolean;
   checkError: string | null;
   confirm: "check" | "recheck" | null;
   setConfirm: (v: "check" | "recheck" | null) => void;
@@ -726,6 +733,7 @@ function QualityPanel({
 }) {
   const { t } = useI18n();
   const mode = quality ? "recheck" : "check";
+  const [confirmStopQuality, setConfirmStopQuality] = useState(false);
   return (
     <div className="rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-5">
       <div className="flex items-center gap-2">
@@ -748,9 +756,33 @@ function QualityPanel({
         />
       )}
       {checking && (
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t("quality.checking")}
-        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {stopRequested
+              ? "Η διακοπή ζητήθηκε / Cancellation requested"
+              : t("quality.checking")}
+          </p>
+          <button type="button" disabled={!stopAvailable || stopRequested}
+            className="rounded-lg border border-orange-500/50 px-3 py-1.5 text-xs font-semibold text-orange-300 disabled:opacity-50"
+            onClick={() => setConfirmStopQuality(true)}>
+            <Square className="mr-1 inline h-3 w-3" /> Διακοπή / Stop
+          </button>
+          {confirmStopQuality && (
+            <div role="dialog" aria-label="Επιβεβαίωση διακοπής Quality Check"
+              className="w-full rounded-xl border border-orange-500/30 bg-orange-950/20 p-3 text-xs">
+              <p>Να ζητηθεί διακοπή του Quality Check; Η χρέωση στον provider μπορεί να συνεχιστεί.</p>
+              <div className="mt-2 flex justify-end gap-2">
+                <button type="button" className="rounded border px-3 py-1"
+                  onClick={() => setConfirmStopQuality(false)}>Άκυρο</button>
+                <button type="button" className="rounded bg-orange-600 px-3 py-1 text-white"
+                  onClick={() => { setConfirmStopQuality(false); onStop(); }}>
+                  Επιβεβαίωση διακοπής
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {!checking && (
         <div className="mt-4 space-y-3">
@@ -1616,7 +1648,29 @@ function GeneratePage() {
   }, [importedRecoveryKey, importedResultActive, result, quality]);
 
   const [qualityActionId, setQualityActionId] = useState<string | null>(null);
+  const [qualityStopRequested, setQualityStopRequested] = useState(false);
   const pendingQualityKey = useRef<string | null>(null);
+  const stopQualityCheck = async () => {
+    if (!qualityActionId || qualityStopRequested) return;
+    try {
+      const { outcome } = await requestQualityCheckCancellation({
+        data: { actionId: qualityActionId },
+      });
+      if (outcome === "CANCELLED_BEFORE_START") {
+        setChecking(false);
+        setQualityActionId(null);
+        rememberQualityJob(null);
+        pendingQualityKey.current = null;
+        setCheckError("Το Quality Check ακυρώθηκε πριν ξεκινήσει.");
+      } else if (outcome === "ALREADY_FINAL") {
+        setCheckError("Το Quality Check είχε ήδη ολοκληρωθεί.");
+      } else {
+        setQualityStopRequested(true);
+      }
+    } catch {
+      setCheckError("Δεν ήταν δυνατή η αποστολή της διακοπής.");
+    }
+  };
   function rememberQualityJob(id: string | null) {
     if (typeof window === "undefined") return;
     if (id) window.localStorage.setItem(qualityJobStorageKey, id);
@@ -1624,6 +1678,7 @@ function GeneratePage() {
   }
   function applyQualityJob(job: QualityCheckJob) {
     if (job.status === "completed") {
+      setQualityStopRequested(false);
       if (job.qualityReport) {
         setQuality(job.qualityReport);
         setQualityCheckResultModel(job.model);
@@ -1638,6 +1693,19 @@ function GeneratePage() {
       void queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
       return;
     }
+    if (job.status === "cancelled") {
+      setQualityStopRequested(false);
+      setChecking(false);
+      setQualityActionId(null);
+      rememberQualityJob(null);
+      pendingQualityKey.current = null;
+      setCheckError(job.cancellationOutcome === "cancelled_before_start"
+        ? "Το Quality Check ακυρώθηκε πριν από την κλήση στον provider."
+        : job.cancellationOutcome === "cancelled_upstream_confirmed"
+          ? "Ο AI provider επιβεβαίωσε την ακύρωση του Quality Check."
+          : "Το Quality Check διακόπηκε τοπικά· η upstream ακύρωση δεν επιβεβαιώθηκε.");
+      return;
+    }
     if (job.status === "failed") {
       setCheckError(localizeAiError(job.error, "quality.unavailable", t));
       setChecking(false);
@@ -1648,6 +1716,7 @@ function GeneratePage() {
       return;
     }
     rememberQualityJob(job.actionId);
+    if (job.cancelRequestedAt) setQualityStopRequested(true);
     setQualityActionId(job.actionId);
     setChecking(true);
     setCheckError(null);
@@ -4200,6 +4269,9 @@ function GeneratePage() {
                 quality={quality}
                 checking={checking}
                 onCheck={runCheck}
+                onStop={() => void stopQualityCheck()}
+                stopAvailable={!!qualityActionId}
+                stopRequested={qualityStopRequested}
                 checkError={checkError}
                 confirm={confirm}
                 setConfirm={setConfirm}
