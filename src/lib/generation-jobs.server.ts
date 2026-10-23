@@ -169,6 +169,18 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         .eq("id", job.id)
         .eq("status", "processing")
         .is("cancel_requested_at", null);
+      // A cancellation arriving between provider completion and the guarded
+      // result write must not strand a section-edit job in processing.
+      await db.from("ai_generation_jobs")
+        .update({
+          status: "cancelled",
+          cancellation_outcome: upstreamCancellationOutcome ?? "connection_aborted_unconfirmed",
+          result: null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id)
+        .eq("status", "processing")
+        .not("cancel_requested_at", "is", null);
       return { ran: true };
     }
 
