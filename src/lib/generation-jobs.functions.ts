@@ -452,3 +452,25 @@ export const dismissGenerationJob = createServerFn({ method: "POST" })
     }
     return { outcome: parsed.data };
   });
+
+/**
+ * Requests real interruption of a generation job.
+ * Unlike dismissGenerationJob, processing work is not merely hidden: the
+ * runner observes the persisted flag and interrupts its provider transport.
+ * Provider-side savings must not be assumed from this response alone.
+ */
+export const requestGenerationJobCancellation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await context.supabase.rpc(
+      "request_generation_job_cancellation",
+      { _job_id: data.jobId },
+    );
+    const parsed = z.enum([
+      "REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL",
+    ]).safeParse(result);
+    if (error || !parsed.success)
+      throw new Error("The generation cancellation request could not be saved.");
+    return { outcome: parsed.data };
+  });
