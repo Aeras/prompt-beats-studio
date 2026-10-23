@@ -146,5 +146,36 @@ export const requestQualityCheckCancellation = createServerFn({ method: "POST" }
       .safeParse(result);
     if (error || !parsed.success)
       throw new Error("The Quality Check cancellation request could not be saved.");
+    if (parsed.data === "REQUESTED" || parsed.data === "ALREADY_REQUESTED") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: action } = await supabaseAdmin.from("ai_quality_check_actions")
+        .select("cancellation_remote_provider,cancellation_remote_id")
+        .eq("id", data.actionId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (action) {
+        const { cancelPersistedBackgroundOperation } = await import(
+          "@/lib/cancel-persisted-ai-operation.server"
+        );
+        const outcome = await cancelPersistedBackgroundOperation(
+          (action as any).cancellation_remote_provider,
+          (action as any).cancellation_remote_id,
+        );
+        if (outcome === "cancelled_upstream_confirmed") {
+          await (supabaseAdmin as any).from("ai_quality_check_actions")
+            .update({
+              status: "cancelled",
+              cancellation_outcome: "cancelled_upstream_confirmed",
+              quality_report: null,
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", data.actionId)
+            .eq("user_id", context.userId)
+            .eq("status", "processing")
+            .not("cancel_requested_at", "is", null);
+        }
+      }
+    }
     return { outcome: parsed.data };
   });
