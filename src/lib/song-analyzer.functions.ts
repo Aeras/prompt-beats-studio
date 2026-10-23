@@ -1626,7 +1626,7 @@ async function generateFinalFromEvidence(args: {
               "For an uncertain BPM, use null numeric values and explain uncertainty in bpm.notes.",
               "Use only Stage A evidence. Never invent a musical claim to fill a required field.",
               JSON.stringify(ANALYZER_RESPONSE_SCHEMA),
-            ].join("\\n\\n"),
+            ].join("\n\n"),
           },
           { role: "user", content: context },
         ],
