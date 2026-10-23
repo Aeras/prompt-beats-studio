@@ -143,6 +143,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       .eq("id", actionId)
       .eq("status", "processing")
       .is("provider_started_at", null);
+    clearInterval(cancellationTimer);
     return { ran: true };
   }
 
