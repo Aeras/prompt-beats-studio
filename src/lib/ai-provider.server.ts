@@ -406,6 +406,108 @@ async function collectGeminiSse(
   return { text, finish, usageMetadata };
 }
 
+async function callGeminiBackground(
+  model: string,
+  call: ModelCall,
+  apiKey: string,
+  maxOutputTokens: number,
+): Promise<ModelResult> {
+  const url = "https://generativelanguage.googleapis.com/v1beta/interactions";
+  const headers = { "x-goog-api-key": apiKey, "content-type": "application/json" };
+  // Background response IDs must arrive even when the user stops immediately.
+  const create = await fetch(url, {
+    method: "POST",
+    headers,
+    signal: AbortSignal.timeout(providerRequestTimeoutMs(call)),
+    body: JSON.stringify({
+      model,
+      input: call.prompt,
+      system_instruction: call.system,
+      background: true,
+      generation_config: { max_output_tokens: maxOutputTokens },
+      ...(call.schema
+        ? { response_format: { type: "text", mime_type: "application/json", schema: call.schema } }
+        : { response_format: { type: "text", mime_type: "application/json" } }),
+    }),
+  });
+  if (!create.ok)
+    throw new Error("The Gemini background request was rejected.");
+  let interaction = (await create.json()) as {
+    id?: string;
+    status?: string;
+    output_text?: string;
+    steps?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+    usage?: {
+      total_input_tokens?: number;
+      total_output_tokens?: number;
+      total_thought_tokens?: number;
+      total_tokens?: number;
+    };
+  };
+  const id = interaction.id;
+  if (!id || !/^[A-Za-z0-9_.:-]{1,160}$/.test(id))
+    throw new Error("Gemini did not return a usable background interaction ID.");
+
+  const deadline = Date.now() + providerRequestTimeoutMs(call);
+  const terminal = new Set(["completed", "failed", "cancelled"]);
+  while (!terminal.has(interaction.status ?? "") && Date.now() < deadline) {
+    if (call.abortSignal?.aborted) {
+      const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      await call.onCancellationResult?.(cancelled.outcome);
+      throw new Error("Generation cancellation requested.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const check = await fetch(`${url}/${encodeURIComponent(id)}`, {
+      headers,
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!check.ok) throw new Error("Gemini background status retrieval failed.");
+    interaction = (await check.json()) as typeof interaction;
+  }
+  if (call.abortSignal?.aborted) {
+    if (interaction.status !== "cancelled") {
+      const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      await call.onCancellationResult?.(cancelled.outcome);
+    } else {
+      await call.onCancellationResult?.("cancelled_upstream_confirmed");
+    }
+    throw new Error("Generation cancellation requested.");
+  }
+  if (interaction.status !== "completed")
+    throw new Error("The Gemini background request was not completed.");
+
+  const text =
+    interaction.output_text ??
+    interaction.steps
+      ?.filter((step) => step.type === "model_output")
+      .flatMap((step) => step.content ?? [])
+      .filter((part) => part.type === "text")
+      .map((part) => part.text ?? "")
+      .join("") ??
+    "";
+  const u = interaction.usage;
+  const inputTokens = u?.total_input_tokens ?? null;
+  const outputTokens = u?.total_output_tokens ?? null;
+  const totalTokens = u?.total_tokens ??
+    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
+  return {
+    text,
+    stopReason: "end_turn",
+    usage: inputTokens == null && outputTokens == null && totalTokens == null
+      ? null
+      : {
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          reasoningTokens: u?.total_thought_tokens ?? null,
+        },
+    provider: "gemini",
+    model,
+  };
+}
+
 async function callGemini(model: string, call: ModelCall): Promise<ModelResult> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
@@ -422,6 +524,9 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   const timeoutMs = isArgon ? 15 * 60 * 1000 : providerRequestTimeoutMs(call);
   const requestedOutput = (call.maxTokens ?? 8192) * 2;
   const maxOutputTokens = isArgon ? Math.max(requestedOutput, 32_768) : requestedOutput;
+
+  if (call.abortSignal && model === "gemini-3.8-flash")
+    return callGeminiBackground(model, call, apiKey, maxOutputTokens);
 
   // Gemini 4 Argon requires a newer SDK than the version currently pinned by
   // PromptBeats. Use the stable REST generateContent contract directly so the
