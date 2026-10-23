@@ -474,12 +474,15 @@ export const requestGenerationJobCancellation = createServerFn({ method: "POST" 
     // will be refreshed during the normal schema-type generation workflow.
     // Keep the RPC method bound to its Supabase client. Detaching this.rpc
     // loses the PostgREST client's internal context before any HTTP request.
-    const { data: result, error } = await (context.supabase as unknown as {
+    const rpcClient = context.supabase as unknown as {
       rpc: (
         name: "request_generation_job_cancellation",
         args: { _job_id: string },
       ) => Promise<{ data: unknown; error: unknown }>;
-    }).rpc("request_generation_job_cancellation", { _job_id: data.jobId });
+    };
+    const { data: result, error } = await rpcClient.rpc("request_generation_job_cancellation", {
+      _job_id: data.jobId,
+    });
     const parsed = z
       .enum(["REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL"])
       .safeParse(result);
