@@ -112,6 +112,8 @@ type JobRow = {
   provider: string | null;
   model: string | null;
   created_at: string;
+  cancel_requested_at: string | null;
+  cancellation_outcome: string | null;
 };
 
 export type GenerationJob = {
@@ -124,9 +126,11 @@ export type GenerationJob = {
   provider: string | null;
   model: string | null;
   createdAt: string;
+  cancelRequestedAt: string | null;
+  cancellationOutcome: string | null;
 };
 
-const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,provider,model,created_at";
+const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,provider,model,created_at,cancel_requested_at,cancellation_outcome";
 
 function toJob(row: JobRow): GenerationJob {
   const parsed = resultShape.safeParse(row.result);
@@ -141,6 +145,8 @@ function toJob(row: JobRow): GenerationJob {
     provider: row.provider,
     model: row.model,
     createdAt: row.created_at,
+    cancelRequestedAt: row.cancel_requested_at,
+    cancellationOutcome: row.cancellation_outcome,
   };
 }
 
