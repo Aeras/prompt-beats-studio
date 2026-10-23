@@ -41,7 +41,7 @@ describe("Song Analyzer GPT Audio 1.5 provider integration", () => {
   test("uses GPT Audio only for audible evidence and hands text synthesis to Gemini Flash", async () => {
     const code = await source("./song-analyzer.functions.ts");
     expect(code).toContain(
-      'provider === "gemini" ? data.model : "gemini-3.8-flash"',
+      'provider === "gemini" ? data.model : V1_OPENROUTER_SYNTHESIS_MODEL',
     );
     expect(code).toContain("model: synthesisModel");
     expect(code).toContain("apiKey: synthesisApiKey");
