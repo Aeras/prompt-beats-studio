@@ -93,7 +93,11 @@ export async function cancelBackgroundOperation(
     let status: string | null = null;
     let getOk = false;
     try {
-      const res = await fetchFn(url, { method: "GET", headers, ...(deps.signal ? { signal: deps.signal } : {}) });
+      const res = await fetchFn(url, {
+        method: "GET",
+        headers,
+        ...(deps.signal ? { signal: deps.signal } : {}),
+      });
       getOk = res.ok;
       status = await readStatus(res);
     } catch {
