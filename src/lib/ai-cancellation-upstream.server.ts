@@ -8,10 +8,7 @@
  */
 export type BackgroundProvider = "openai" | "gemini";
 export type CancelOutcome =
-  | "cancelled_upstream_confirmed"
-  | "already_completed"
-  | "cancel_unconfirmed"
-  | "cancel_failed";
+  "cancelled_upstream_confirmed" | "already_completed" | "cancel_unconfirmed" | "cancel_failed";
 
 export type CancelResult = {
   provider: BackgroundProvider;
@@ -31,7 +28,17 @@ type Dependencies = {
 };
 
 const safeId = (s: string) => /^[A-Za-z0-9_.:-]{1,160}$/.test(s);
-const statuses = new Set(["queued", "in_progress", "running", "pending", "cancelled", "completed", "failed", "incomplete", "expired"]);
+const statuses = new Set([
+  "queued",
+  "in_progress",
+  "running",
+  "pending",
+  "cancelled",
+  "completed",
+  "failed",
+  "incomplete",
+  "expired",
+]);
 
 function statusOf(json: unknown): string | null {
   if (!json || typeof json !== "object") return null;
@@ -57,15 +64,16 @@ export async function cancelBackgroundOperation(
   if (!safeId(remoteId)) throw new Error("Invalid remote operation identifier.");
   if (!secret) throw new Error("Provider secret missing.");
   const fetchFn = deps.fetchFn ?? fetch;
-  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep =
+    deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const polls = Math.max(1, Math.min(deps.polls ?? 20, 30));
   const interval = Math.max(0, deps.pollIntervalMs ?? 500);
-  const url = provider === "openai"
-    ? `https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`
-    : `https://generativelanguage.googleapis.com/v1beta/interactions/${encodeURIComponent(remoteId)}`;
-  const headers = provider === "openai"
-    ? { authorization: `Bearer ${secret}` }
-    : { "x-goog-api-key": secret };
+  const url =
+    provider === "openai"
+      ? `https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`
+      : `https://generativelanguage.googleapis.com/v1beta/interactions/${encodeURIComponent(remoteId)}`;
+  const headers =
+    provider === "openai" ? { authorization: `Bearer ${secret}` } : { "x-goog-api-key": secret };
   let cancelHttpStatus: number | null = null;
   let cancelFailed = false;
   try {
@@ -92,9 +100,23 @@ export async function cancelBackgroundOperation(
       // A transient read error is inconclusive, never a successful cancel.
     }
     if (getOk && status === "cancelled")
-      return { provider, outcome: "cancelled_upstream_confirmed", finalStatus: status, cancelHttpStatus, verifiedByGet: true, requestId: remoteId };
+      return {
+        provider,
+        outcome: "cancelled_upstream_confirmed",
+        finalStatus: status,
+        cancelHttpStatus,
+        verifiedByGet: true,
+        requestId: remoteId,
+      };
     if (getOk && ["completed", "failed", "incomplete", "expired"].includes(status ?? ""))
-      return { provider, outcome: "already_completed", finalStatus: status, cancelHttpStatus, verifiedByGet: true, requestId: remoteId };
+      return {
+        provider,
+        outcome: "already_completed",
+        finalStatus: status,
+        cancelHttpStatus,
+        verifiedByGet: true,
+        requestId: remoteId,
+      };
     if (i < polls - 1) await sleep(interval);
   }
   return {

@@ -1489,11 +1489,19 @@ function GeneratePage() {
       setBusy(false);
       setStopRequested(false);
       setGenerationResultModel(null);
-      setStatus(job.cancellationOutcome === "cancelled_before_start"
-        ? (appLanguage === "el" ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση." : "Cancelled before the provider request.")
-        : job.cancellationOutcome === "cancelled_upstream_confirmed"
-          ? (appLanguage === "el" ? "Η ακύρωση επιβεβαιώθηκε από τον AI provider." : "Cancellation confirmed by the AI provider.")
-          : (appLanguage === "el" ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί." : "Local job stopped. Provider cancellation and billing are unconfirmed."));
+      setStatus(
+        job.cancellationOutcome === "cancelled_before_start"
+          ? appLanguage === "el"
+            ? "Η εργασία ακυρώθηκε πριν ξεκινήσει η κλήση."
+            : "Cancelled before the provider request."
+          : job.cancellationOutcome === "cancelled_upstream_confirmed"
+            ? appLanguage === "el"
+              ? "Η ακύρωση επιβεβαιώθηκε από τον AI provider."
+              : "Cancellation confirmed by the AI provider."
+            : appLanguage === "el"
+              ? "Η εργασία διακόπηκε τοπικά. Η upstream ακύρωση και η χρέωση δεν έχουν επιβεβαιωθεί."
+              : "Local job stopped. Provider cancellation and billing are unconfirmed.",
+      );
       setJobId(null);
       rememberJob(null);
       return;
@@ -1511,9 +1519,13 @@ function GeneratePage() {
     setJobId(job.jobId);
     setBusy(true);
     if (job.cancelRequestedAt) setStopRequested(true);
-    setStatus(job.cancelRequestedAt
-      ? (appLanguage === "el" ? "Η διακοπή έχει ζητηθεί και εκκρεμεί." : "Cancellation has been requested.")
-      : t("generator.generating"));
+    setStatus(
+      job.cancelRequestedAt
+        ? appLanguage === "el"
+          ? "Η διακοπή έχει ζητηθεί και εκκρεμεί."
+          : "Cancellation has been requested."
+        : t("generator.generating"),
+    );
   }
 
   const { data: jobData, refetch: refetchJob } = useQuery({
@@ -2668,17 +2680,31 @@ function GeneratePage() {
         setBusy(false);
         setJobId(null);
         rememberJob(null);
-        setStatus(appLanguage === "el" ? "Η εργασία ακυρώθηκε πριν σταλεί στον provider." : "Cancelled before the provider request started.");
+        setStatus(
+          appLanguage === "el"
+            ? "Η εργασία ακυρώθηκε πριν σταλεί στον provider."
+            : "Cancelled before the provider request started.",
+        );
       } else if (outcome === "ALREADY_FINAL") {
-        setStatus(appLanguage === "el" ? "Η εργασία είχε ήδη ολοκληρωθεί." : "The job had already finished.");
+        setStatus(
+          appLanguage === "el"
+            ? "Η εργασία είχε ήδη ολοκληρωθεί."
+            : "The job had already finished.",
+        );
       } else {
         setStopRequested(true);
-        setStatus(appLanguage === "el"
-          ? "Ζητήθηκε διακοπή. Αναμονή επιβεβαίωσης από τον server — η upstream ακύρωση δεν είναι εγγυημένη."
-          : "Stop requested. Awaiting server confirmation; upstream cancellation is not guaranteed.");
+        setStatus(
+          appLanguage === "el"
+            ? "Ζητήθηκε διακοπή. Αναμονή επιβεβαίωσης από τον server — η upstream ακύρωση δεν είναι εγγυημένη."
+            : "Stop requested. Awaiting server confirmation; upstream cancellation is not guaranteed.",
+        );
       }
     } catch {
-      setStatus(appLanguage === "el" ? "Δεν ήταν δυνατή η αποστολή της εντολής διακοπής." : "Could not submit the cancellation request.");
+      setStatus(
+        appLanguage === "el"
+          ? "Δεν ήταν δυνατή η αποστολή της εντολής διακοπής."
+          : "Could not submit the cancellation request.",
+      );
       setConfirmStop(false);
     } finally {
       setStoppingGeneration(false);
@@ -3939,25 +3965,36 @@ function GeneratePage() {
               )}
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 {busy ? (
-                  <button type="button" onClick={() => setConfirmStop(true)}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmStop(true)}
                     disabled={!jobId || stoppingGeneration || stopRequested}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/50 bg-orange-600/20 px-5 py-3 text-sm font-semibold text-orange-200 transition-colors hover:bg-orange-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-                    {stoppingGeneration || stopRequested
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <Square className="h-4 w-4" />}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/50 bg-orange-600/20 px-5 py-3 text-sm font-semibold text-orange-200 transition-colors hover:bg-orange-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {stoppingGeneration || stopRequested ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
                     {appLanguage === "el"
-                      ? (stopRequested ? "Διακοπή σε εξέλιξη..." : "Διακοπή")
-                      : (stopRequested ? "Stopping..." : "Stop")}
+                      ? stopRequested
+                        ? "Διακοπή σε εξέλιξη..."
+                        : "Διακοπή"
+                      : stopRequested
+                        ? "Stopping..."
+                        : "Stop"}
                   </button>
                 ) : (
-                  <button onClick={handleGenerateClick} disabled={generationActionDisabled}
-                  className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
-                    ready
-                      ? "glow-neon"
-                      : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
-                  }`}
-                >
-                  <Wand2 className="h-4 w-4" /> {t("generator.generate")}
+                  <button
+                    onClick={handleGenerateClick}
+                    disabled={generationActionDisabled}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale sm:w-auto ${
+                      ready
+                        ? "glow-neon"
+                        : "opacity-75 saturate-75 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_16%,transparent)]"
+                    }`}
+                  >
+                    <Wand2 className="h-4 w-4" /> {t("generator.generate")}
                   </button>
                 )}
                 <span className="text-xs text-muted-foreground">
@@ -3968,33 +4005,54 @@ function GeneratePage() {
               </div>
             </div>
 
-            {confirmStop && jobId && createPortal(
-               <div role="dialog" aria-modal="true" aria-labelledby="stop-generation-title"
-                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-                 onClick={() => !stoppingGeneration && setConfirmStop(false)}>
-                 <div className="w-full max-w-sm space-y-4 rounded-2xl border border-orange-500/30 bg-[#0e0e12] p-6 shadow-2xl"
-                   onClick={(event) => event.stopPropagation()}>
-                   <h3 id="stop-generation-title" className="text-base font-semibold text-foreground">
-                     {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm cancellation"}
-                   </h3>
-                   <p className="text-xs text-muted-foreground">
-                     {appLanguage === "el"
-                       ? "Θα ζητηθεί πραγματική διακοπή της κλήσης. Αν ο provider δεν την επιβεβαιώσει, ενδέχεται να συνεχιστεί η χρέωση."
-                       : "We will request a real provider interruption. Billing may continue if the provider does not confirm cancellation."}
-                   </p>
-                   <div className="flex justify-end gap-3">
-                     <button type="button" disabled={stoppingGeneration} onClick={() => setConfirmStop(false)}
-                       className="rounded-xl border border-white/10 px-4 py-2 text-xs text-foreground">
-                       {appLanguage === "el" ? "Άκυρο" : "Back"}
-                     </button>
-                     <button type="button" disabled={stoppingGeneration} onClick={() => void stopGeneration()}
-                       className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                       {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm stop"}
-                     </button>
-                   </div>
-                 </div>
-               </div>, document.body)}
-             {confirmClear &&
+            {confirmStop &&
+              jobId &&
+              createPortal(
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="stop-generation-title"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                  onClick={() => !stoppingGeneration && setConfirmStop(false)}
+                >
+                  <div
+                    className="w-full max-w-sm space-y-4 rounded-2xl border border-orange-500/30 bg-[#0e0e12] p-6 shadow-2xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <h3
+                      id="stop-generation-title"
+                      className="text-base font-semibold text-foreground"
+                    >
+                      {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm cancellation"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {appLanguage === "el"
+                        ? "Θα ζητηθεί πραγματική διακοπή της κλήσης. Αν ο provider δεν την επιβεβαιώσει, ενδέχεται να συνεχιστεί η χρέωση."
+                        : "We will request a real provider interruption. Billing may continue if the provider does not confirm cancellation."}
+                    </p>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        disabled={stoppingGeneration}
+                        onClick={() => setConfirmStop(false)}
+                        className="rounded-xl border border-white/10 px-4 py-2 text-xs text-foreground"
+                      >
+                        {appLanguage === "el" ? "Άκυρο" : "Back"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={stoppingGeneration}
+                        onClick={() => void stopGeneration()}
+                        className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {appLanguage === "el" ? "Επιβεβαίωση διακοπής" : "Confirm stop"}
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
+            {confirmClear &&
               createPortal(
                 <div
                   role="dialog"

@@ -130,7 +130,8 @@ export type GenerationJob = {
   cancellationOutcome: string | null;
 };
 
-const JOB_COLUMNS = "id,status,result,input_payload,error,generation_id,provider,model,created_at,cancel_requested_at,cancellation_outcome";
+const JOB_COLUMNS =
+  "id,status,result,input_payload,error,generation_id,provider,model,created_at,cancel_requested_at,cancellation_outcome";
 
 function toJob(row: JobRow): GenerationJob {
   const parsed = resultShape.safeParse(row.result);
@@ -475,13 +476,12 @@ export const requestGenerationJobCancellation = createServerFn({ method: "POST" 
       name: "request_generation_job_cancellation",
       args: { _job_id: string },
     ) => Promise<{ data: unknown; error: unknown }>;
-    const { data: result, error } = await cancellationRpc(
-      "request_generation_job_cancellation",
-      { _job_id: data.jobId },
-    );
-    const parsed = z.enum([
-      "REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL",
-    ]).safeParse(result);
+    const { data: result, error } = await cancellationRpc("request_generation_job_cancellation", {
+      _job_id: data.jobId,
+    });
+    const parsed = z
+      .enum(["REQUESTED", "ALREADY_REQUESTED", "CANCELLED_BEFORE_START", "ALREADY_FINAL"])
+      .safeParse(result);
     if (error || !parsed.success)
       throw new Error("The generation cancellation request could not be saved.");
     return { outcome: parsed.data };

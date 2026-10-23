@@ -27,7 +27,9 @@ describe("authoritative AI background cancellation", () => {
     let gets = 0;
     const result = await cancelBackgroundOperation("gemini", "int_1", secret, {
       fetchFn: (async (_: string, init: RequestInit) =>
-        init.method === "POST" ? response("in_progress") : response(++gets < 3 ? "in_progress" : "cancelled")) as typeof fetch,
+        init.method === "POST"
+          ? response("in_progress")
+          : response(++gets < 3 ? "in_progress" : "cancelled")) as typeof fetch,
       sleep: async () => {},
       polls: 3,
     });
@@ -70,9 +72,14 @@ describe("authoritative AI background cancellation", () => {
   });
   test("bad operation id is rejected before network access", async () => {
     let called = false;
-    await expect(cancelBackgroundOperation("openai", "../other", secret, {
-      fetchFn: (async () => { called = true; return response("cancelled"); }) as typeof fetch,
-    })).rejects.toThrow();
+    await expect(
+      cancelBackgroundOperation("openai", "../other", secret, {
+        fetchFn: (async () => {
+          called = true;
+          return response("cancelled");
+        }) as typeof fetch,
+      }),
+    ).rejects.toThrow();
     expect(called).toBe(false);
   });
 });

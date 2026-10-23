@@ -862,7 +862,9 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
     if (!remoteId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(remoteId))
       throw new Error("OpenAI did not return a usable background response ID.");
     const headers = { authorization: `Bearer ${apiKey}` };
-    let terminal = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
+    let terminal = ["completed", "failed", "incomplete", "cancelled"].includes(
+      payload.status ?? "",
+    );
     const deadline = Date.now() + providerRequestTimeoutMs(call);
     while (!terminal && Date.now() < deadline) {
       if (call.abortSignal?.aborted) {
@@ -881,10 +883,13 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
         throw new Error("Generation cancellation requested.");
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const statusRes = await fetch(`https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`, {
-        headers,
-        signal: AbortSignal.timeout(Math.min(15000, providerRequestTimeoutMs(call))),
-      });
+      const statusRes = await fetch(
+        `https://api.openai.com/v1/responses/${encodeURIComponent(remoteId)}`,
+        {
+          headers,
+          signal: AbortSignal.timeout(Math.min(15000, providerRequestTimeoutMs(call))),
+        },
+      );
       if (!statusRes.ok) throw new Error("OpenAI background status retrieval failed.");
       payload = (await statusRes.json()) as typeof payload;
       terminal = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
