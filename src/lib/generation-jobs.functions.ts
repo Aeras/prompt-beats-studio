@@ -392,7 +392,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     if (!row) return { job: null };
     // Never re-signals execution: the database owns starting and recovering
     // jobs, so polling can never cause a second provider call.
-    return { job: toJob(row as JobRow) };
+    return { job: toJob(row as unknown as JobRow) };
   });
 
 /**
@@ -414,7 +414,7 @@ export const getLatestGenerationJob = createServerFn({ method: "POST" })
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(20);
-    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+    const row = ((rows ?? []) as unknown as JobRow[]).find((candidate) => {
       const parsed = inputShape.safeParse(candidate.input_payload);
       return parsed.success && parsed.data.operation !== "lyrics_section_edit";
     });
@@ -433,7 +433,7 @@ export const getLatestLyricsSectionEditJob = createServerFn({ method: "POST" })
       .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(20);
-    const row = ((rows ?? []) as JobRow[]).find((candidate) => {
+    const row = ((rows ?? []) as unknown as JobRow[]).find((candidate) => {
       const parsed = inputShape.safeParse(candidate.input_payload);
       return parsed.success && parsed.data.operation === "lyrics_section_edit";
     });
