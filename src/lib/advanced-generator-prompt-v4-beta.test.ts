@@ -130,6 +130,15 @@ describe("V4 BETA prompt", () => {
     expect(ai).toContain("responseLength: raw.length");
   });
 
+  it("records safe OpenRouter generation stop and missing-field diagnostics", () => {
+    const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
+    expect(ai).toContain("[ai] generation_non_success_stop");
+    expect(ai).toContain("reasoningTokens: generated.usage?.reasoningTokens ?? null");
+    expect(ai).toContain("returnedKeys,");
+    expect(ai).toContain("Object.prototype.hasOwnProperty.call(decoded, key)");
+    expect(ai).toContain("issue.path.join");
+  });
+
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
     const runner = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
     const guard = runner.indexOf('input.promptVersion === "v4_beta"');
