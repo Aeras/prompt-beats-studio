@@ -141,13 +141,14 @@ describe("V4 BETA prompt", () => {
 
   it("bounds MiMo generator reasoning without modifying other provider budgets", () => {
     const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
-    const generation = ai.split("export async function runSongGeneration(")[1]
+    const generation = ai
+      .split("export async function runSongGeneration(")[1]
       ?.split("export async function runLyricsSectionEdit(")[0];
     expect(generation).toContain('model.startsWith("xiaomi/mimo-v2.6-")');
     expect(generation).toContain('provider === "openrouter"');
     expect(generation).toContain('reasoningEffort === "medium"');
     expect(generation).toContain('? "low"');
-    expect(generation).toContain(': 8192');
+    expect(generation).toContain(": 8192");
   });
 
   it("job runner re-verifies Super Admin Advanced before running V4 BETA", () => {
