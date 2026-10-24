@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-const migrationPath =
-  "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql";
+const migrationPath = "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql";
 
 describe("PB-AUD-014 atomic revision finalization contract", () => {
   test("locks the job before mutation and rejects cancellation", async () => {
