@@ -251,6 +251,9 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       });
 
       if (!revision.projectId) {
+        await checkCancellation();
+        if (cancellationController.signal.aborted)
+          throw new Error("Generation cancellation requested.");
         const { data: replaced, error: replaceError } = await db
           .from("saved_prompts")
           .update({
@@ -282,6 +285,9 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         }
         persistedResult = out.result;
       } else {
+        await checkCancellation();
+        if (cancellationController.signal.aborted)
+          throw new Error("Generation cancellation requested.");
         const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
           _user_id: job.user_id,
           _job_id: job.id,
