@@ -29,10 +29,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
     const { data: sub, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, status")
       .eq("user_id", userId)
       .maybeSingle();
     if (subscriptionError) throw new Error("Could not prepare billing. Please try again.");
+    if (sub?.status === "active" || sub?.status === "trialing") {
+      throw new Error("An active subscription already exists. Use billing management.");
+    }
 
     let customerId = sub?.stripe_customer_id ?? null;
     if (!customerId) {
