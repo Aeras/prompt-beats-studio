@@ -344,7 +344,10 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // cancellation won the database race.
     await checkCancellation();
     if (!cancellationController.signal.aborted)
-      console.error("[generation-job] failed", job.id, err);
+      console.error("[generation-job] failed", {
+        jobId: job.id,
+        errorType: err instanceof Error ? err.name : "unknown",
+      });
     await db
       .from("ai_generation_jobs")
       .update({
