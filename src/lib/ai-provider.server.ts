@@ -599,12 +599,10 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     );
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as any;
-      const message = payload?.error?.message;
       const providerCode = typeof payload?.error?.status === "string" ? payload.error.status : null;
       console.error("[ai-provider] Gemini 4 Argon request failed", {
         status: response.status,
         providerCode,
-        // Never record provider response text: it may echo user input.
       });
       throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
