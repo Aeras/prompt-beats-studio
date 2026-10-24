@@ -13,7 +13,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
-import { assertGenerationInputLimits, assertGenerationRequestBudget } from "@/lib/generator-input-limits";
+import {
+  assertGenerationInputLimits,
+  assertGenerationRequestBudget,
+} from "@/lib/generator-input-limits";
 import {
   diffGeneratorSnapshots,
   generatorInputSnapshotSchema,
