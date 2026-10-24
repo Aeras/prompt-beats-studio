@@ -725,8 +725,7 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(`[ai-provider] Mistral request failed (${res.status})`, errorBody.slice(0, 1000));
+    console.error(`[ai-provider] Mistral request failed (${res.status})`);
     if (res.status === 429) {
       throw new Error(
         "This AI model has reached its request limit on the connected Mistral account. Please try another model or try again later.",
@@ -1120,11 +1119,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(
-      `[ai-provider] xAI Responses request failed (${res.status})`,
-      errorBody.slice(0, 2000),
-    );
+    console.error(`[ai-provider] xAI Responses request failed (${res.status})`);
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
@@ -1272,8 +1267,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(`[ai-provider] OpenAI request failed (${res.status})`, errorBody.slice(0, 1000));
+    console.error(`[ai-provider] OpenAI request failed (${res.status})`);
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
