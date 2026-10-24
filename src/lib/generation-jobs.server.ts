@@ -14,6 +14,7 @@
  * - Only the service-role client (server-only) writes job state.
  */
 import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/lib/ai.functions";
+import { AiProviderHttpError } from "@/lib/ai-provider.server";
 import { withAdvancedSunoEnrichmentInstruction } from "@/lib/advanced-suno-enrichment";
 import { fitMusicStyleToPlatform } from "@/lib/music-style-limits";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
@@ -32,6 +33,9 @@ async function admin(): Promise<AdminClient> {
 }
 
 function safeErrorMessage(err: unknown): string {
+  if (err instanceof AiProviderHttpError) {
+    return `The AI provider rejected this request (HTTP ${err.httpStatus}). Please try another model or contact support.`;
+  }
   const raw = err instanceof Error ? err.message : "The generation failed.";
   if (raw === "The AI response was incomplete. Please try again.") return raw;
   if (raw === "The AI returned an incomplete or invalid response. Please try again.") return raw;
