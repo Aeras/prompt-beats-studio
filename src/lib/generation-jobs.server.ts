@@ -233,14 +233,14 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       });
     }
 
-    let persistedResult: Record<string, unknown> = songResult;
-
-    // Do not begin non-idempotent revision persistence after cancellation.
-    await checkCancellation();
-    if (cancellationController.signal.aborted)
-      throw new Error("Generation cancellation requested.");
-
+    // Revision persistence and job completion must share one database transaction.
+    // The RPC locks the job row, so cancellation cannot interleave between a
+    // saved-prompt write and the completed status transition.
     if (input.operation === "revision" && input.revision) {
+      await checkCancellation();
+      if (cancellationController.signal.aborted)
+        throw new Error("Generation cancellation requested.");
+
       const revision = input.revision;
       const versionChangeMetadata = buildProjectRevisionVersionMetadata({
         revisionRequest: revision.revisionRequest,
@@ -249,53 +249,16 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         beforeLyrics: revision.baseVersion.lyrics,
         afterLyrics: out.result.lyrics,
       });
-
-      if (!revision.projectId) {
-        await checkCancellation();
-        if (cancellationController.signal.aborted)
-          throw new Error("Generation cancellation requested.");
-        const { data: replaced, error: replaceError } = await db
-          .from("saved_prompts")
-          .update({
-            title: out.result.title,
-            tags: out.result.tags,
-            lyrics: out.result.lyrics,
-            note: out.result.note,
-            theme: input.theme,
-            genre: input.genre,
-            mood: input.mood,
-            language: input.language,
-            generator_input_snapshot: revision.desiredSnapshot,
-            revision_request: revision.revisionRequest,
-            version_change_metadata: versionChangeMetadata,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", revision.basePromptId)
-          .eq("user_id", job.user_id)
-          .is("project_id", null)
-          .select("id")
-          .maybeSingle();
-        if (replaceError || !replaced) {
-          console.error(
-            "[generation-job] standalone revision replace failed",
-            job.id,
-            replaceError?.message,
-          );
-          throw new Error("The standalone Prompt could not be replaced.");
-        }
-        persistedResult = out.result;
-      } else {
-        await checkCancellation();
-        if (cancellationController.signal.aborted)
-          throw new Error("Generation cancellation requested.");
-        const { data: saved, error: saveError } = await db.rpc("create_prompt_revision_version", {
-          _user_id: job.user_id,
+      const { data: finalized, error: finalizeError } = await db.rpc(
+        "finalize_generation_revision_atomic",
+        {
           _job_id: job.id,
+          _user_id: job.user_id,
           _project_id: revision.projectId,
           _parent_prompt_id: revision.basePromptId,
           _revision_request: revision.revisionRequest,
-          _generator_input_snapshot: revision.desiredSnapshot,
-          _version_change_metadata: versionChangeMetadata,
+          _snapshot: revision.desiredSnapshot,
+          _metadata: versionChangeMetadata,
           _title: out.result.title,
           _tags: out.result.tags,
           _lyrics: out.result.lyrics,
@@ -304,46 +267,34 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
           _genre: input.genre,
           _mood: input.mood,
           _language: input.language,
-        });
-        if (saveError) {
-          console.error("[generation-job] revision save failed", job.id, saveError.message);
-          throw new Error("The revision version could not be saved.");
-        }
-        const meta = saved as {
-          id?: string;
-          project_id?: string;
-          version_number?: number;
-          parent_prompt_id?: string;
-        } | null;
-        if (!meta?.id || !meta.project_id || !meta.version_number || !meta.parent_prompt_id) {
-          throw new Error("The revision version could not be saved.");
-        }
-        persistedResult = {
-          ...out.result,
-          revisionMeta: {
-            savedPromptId: meta.id,
-            projectId: meta.project_id,
-            versionNumber: meta.version_number,
-            parentPromptId: meta.parent_prompt_id,
-          },
-        };
+          _provider: out.provider,
+          _model: out.model,
+          _result: songResult,
+          _attempts: (job.attempts ?? 0) + 1,
+        },
+      );
+      if (finalizeError || !finalized) {
+        throw new Error("The revision could not be finalized.");
       }
+    } else {
+      await checkCancellation();
+      if (cancellationController.signal.aborted)
+        throw new Error("Generation cancellation requested.");
+      await db
+        .from("ai_generation_jobs")
+        .update({
+          status: "completed",
+          result: songResult,
+          provider: out.provider,
+          model: out.model,
+          error: null,
+          attempts: (job.attempts ?? 0) + 1,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id)
+        .eq("status", "processing")
+        .is("cancel_requested_at", null);
     }
-
-    await db
-      .from("ai_generation_jobs")
-      .update({
-        status: "completed",
-        result: persistedResult,
-        provider: out.provider,
-        model: out.model,
-        error: null,
-        attempts: (job.attempts ?? 0) + 1,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", job.id)
-      .eq("status", "processing")
-      .is("cancel_requested_at", null);
   } catch (err) {
     // Resolve a cancellation/marker race even if the periodic poll has not yet
     // observed the user request. A failed provider-start marker can mean that
