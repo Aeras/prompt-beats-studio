@@ -46,7 +46,7 @@ export const getMyModeration = createServerFn({ method: "GET" })
 /** Admin-only: read a creator's ban status (kept off public profile reads). */
 export const getUserBanStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ userId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: allowed, error: capabilityError } = await context.supabase.rpc(
       "has_moderation_capability" as never,
@@ -72,7 +72,7 @@ export const setUserBanned = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        userId: z.string().uuid(),
+        userId: z.string().guid(),
         banned: z.boolean(),
         reasonCode: accountBlockReasonCode.nullish(),
         reasonText: z.string().trim().max(500).nullish(),

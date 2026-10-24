@@ -138,7 +138,7 @@ export const addSelectedFeatureUser = createServerFn({ method: "POST" })
     z
       .object({
         featureKey: featureKeySchema,
-        userId: z.string().uuid(),
+        userId: z.string().guid(),
       })
       .parse(input),
   )
@@ -158,7 +158,7 @@ export const removeSelectedFeatureUser = createServerFn({ method: "POST" })
     z
       .object({
         featureKey: featureKeySchema,
-        userId: z.string().uuid(),
+        userId: z.string().guid(),
       })
       .parse(input),
   )

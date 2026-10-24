@@ -120,7 +120,7 @@ async function resolveExternalTrackSource(sourceType: ExternalTrackSourceType, r
 
 export const incrementTrackPlay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
     const { data: plays, error } = await supabase.rpc("increment_track_play", {
@@ -172,7 +172,7 @@ export const listPublishedTracks = createServerFn({ method: "GET" }).handler(asy
 });
 
 export const getPublicTrackById = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data }) => {
     const { createPublicServerClient, getUserIdFromRequest } =
       await import("@/lib/supabase-public.server");
@@ -229,7 +229,7 @@ export const listMyTracks = createServerFn({ method: "GET" })
 
 export const getMyTrackForEdit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: track, error } = await (supabaseAdmin.from("tracks") as any)
@@ -315,7 +315,7 @@ export const updateTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         title: z.string().trim().min(1).max(120),
         genre: z.string().trim().min(1).max(60),
         prompt: z.string().trim().max(4000).default(""),
@@ -480,7 +480,7 @@ export const discardUploads = createServerFn({ method: "POST" })
 
 export const deleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: result, error } = await context.supabase.rpc("delete_track_with_cleanup", {
       _track_id: data.id,
@@ -502,8 +502,8 @@ export const deleteTrack = createServerFn({ method: "POST" })
 const trendingRows = z
   .array(
     z.object({
-      id: z.string().uuid(),
-      user_id: z.string().uuid(),
+      id: z.string().guid(),
+      user_id: z.string().guid(),
       title: z.string(),
       genre: z.string(),
       prompt: z.string(),

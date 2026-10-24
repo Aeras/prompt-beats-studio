@@ -146,7 +146,7 @@ describe("Lyrics Review Phase 1 integration", () => {
   test("Generator handoff contract keeps actual lyrics out of route query parameters", async () => {
     const route = await source("src/routes/lyrics-review.tsx");
     const handoff = await source("src/lib/lyrics-review-handoff.shared.ts");
-    expect(route).toContain("handoff: z.string().uuid().optional()");
+    expect(route).toContain("handoff: z.string().guid().optional()");
     expect(route).not.toContain("lyrics: z.string().optional()");
     expect(handoff).toContain("window.sessionStorage.setItem");
     expect(handoff).toContain("reviewedLyrics");

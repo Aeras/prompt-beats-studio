@@ -7,10 +7,10 @@ import { workspaceSaveInputSchema } from "@/lib/lyrics-workspace.shared";
 import { buildLyricsWorkspaceVersionMetadata } from "@/lib/project-version-history.shared";
 
 const saveResultSchema = z.object({
-  id: z.string().uuid(),
-  project_id: z.string().uuid(),
+  id: z.string().guid(),
+  project_id: z.string().guid(),
   version_number: z.number().int().positive(),
-  parent_prompt_id: z.string().uuid(),
+  parent_prompt_id: z.string().guid(),
   version_label: z.string().nullable(),
 });
 

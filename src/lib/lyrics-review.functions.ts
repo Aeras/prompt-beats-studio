@@ -13,12 +13,12 @@ import {
 import { buildLyricsReviewVersionMetadata } from "@/lib/project-version-history.shared";
 
 const projectContextInput = z.object({
-  projectId: z.string().uuid(),
-  versionId: z.string().uuid().nullish(),
+  projectId: z.string().guid(),
+  versionId: z.string().guid().nullish(),
 });
 
 const projectVersionRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   version_number: z.number().int().positive().nullable(),
   version_label: z.string().nullable(),
   custom_name: z.string().nullable(),
@@ -31,22 +31,22 @@ const projectVersionRowSchema = z.object({
   lyrics: z.string().nullable(),
   note: z.string().nullable(),
   generator_input_snapshot: z.unknown().nullable(),
-  parent_prompt_id: z.string().uuid().nullable(),
+  parent_prompt_id: z.string().guid().nullable(),
   created_at: z.string(),
 });
 
 const saveInput = z.object({
-  projectId: z.string().uuid(),
-  basePromptId: z.string().uuid(),
+  projectId: z.string().guid(),
+  basePromptId: z.string().guid(),
   lyrics: z.string().min(1).max(12000),
   mode: z.enum(["new_version", "replace_latest"]),
 });
 
 const saveResultSchema = z.object({
-  id: z.string().uuid(),
-  project_id: z.string().uuid(),
+  id: z.string().guid(),
+  project_id: z.string().guid(),
   version_number: z.number().int().positive(),
-  parent_prompt_id: z.string().uuid().nullable(),
+  parent_prompt_id: z.string().guid().nullable(),
   version_label: z.string().nullable().optional(),
   replaced: z.boolean().optional(),
 });
@@ -310,7 +310,7 @@ export const startLyricsReviewSectionEditJob = createServerFn({ method: "POST" }
     }
 
     const parsedRow = z
-      .object({ id: z.string().uuid(), input_payload: z.unknown() })
+      .object({ id: z.string().guid(), input_payload: z.unknown() })
       .passthrough()
       .safeParse(raw);
     if (!parsedRow.success) throw new Error("The Lyrics Review request could not be started.");

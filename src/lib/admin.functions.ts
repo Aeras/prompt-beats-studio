@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSafeOwnedAudioKey, isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
-const adminUserId = z.string().uuid();
+const adminUserId = z.string().guid();
 const accessMode = z.enum(["inherit", "custom"]);
 export const BLOCK_REASONS = [
   { code: "platform_rules", label: "Violation of platform rules" },
@@ -594,7 +594,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 
 export const retryAccountStorageCleanup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ cleanupId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ cleanupId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -643,7 +643,7 @@ export const listAdminRegistrationBlocks = createServerFn({ method: "POST" })
 
 export const removeAdminRegistrationBlock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ blockId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ blockId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { error } = await context.supabase.rpc("admin_remove_registration_block", {

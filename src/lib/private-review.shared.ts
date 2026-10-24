@@ -11,12 +11,12 @@ export type PrivateReviewState = (typeof PRIVATE_REVIEW_STATES)[number];
 
 export const privateReviewSnapshotSchema = z.object({
   sourceType: z.enum(PRIVATE_REVIEW_SOURCE_TYPES).default("project_version"),
-  projectId: z.string().uuid().nullable().default(null),
+  projectId: z.string().guid().nullable().default(null),
   projectName: z.string().default(""),
-  versionId: z.string().uuid().nullable().default(null),
+  versionId: z.string().guid().nullable().default(null),
   versionNumber: z.number().int().positive().nullable().default(null),
   versionLabel: z.string().nullable().default(null),
-  trackId: z.string().uuid().nullable().optional().default(null),
+  trackId: z.string().guid().nullable().optional().default(null),
   title: z.string(),
   customName: z.string().nullable().default(null),
   theme: z.string().default(""),
@@ -32,7 +32,7 @@ export const privateReviewSnapshotSchema = z.object({
 export type PrivateReviewSnapshot = z.infer<typeof privateReviewSnapshotSchema>;
 
 export const privateReviewAudioSchema = z.object({
-  trackId: z.string().uuid(),
+  trackId: z.string().guid(),
   title: z.string(),
   durationSeconds: z.number().nullable(),
   coverUrl: z.string().nullable(),
@@ -40,19 +40,19 @@ export const privateReviewAudioSchema = z.object({
 });
 
 export const privateReviewCommentSchema = z.object({
-  id: z.string().uuid(),
-  threadReviewerId: z.string().uuid(),
+  id: z.string().guid(),
+  threadReviewerId: z.string().guid(),
   threadReviewerName: z.string().optional(),
   authorType: z.enum(["reviewer", "creator"]),
-  authorReviewerId: z.string().uuid().nullable(),
+  authorReviewerId: z.string().guid().nullable(),
   authorName: z.string(),
-  parentCommentId: z.string().uuid().nullable(),
+  parentCommentId: z.string().guid().nullable(),
   body: z.string(),
   createdAt: z.string(),
 });
 
 export const privateReviewReviewerSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   displayName: z.string(),
   createdAt: z.string().optional(),
   lastSeenAt: z.string().optional(),
@@ -72,9 +72,9 @@ export const privateReviewLinkInfoSchema = z.discriminatedUnion("state", [
 
 export const privateReviewSessionSchema = z.object({
   state: z.enum(["active", "closed", "expired"]),
-  sessionId: z.string().uuid(),
+  sessionId: z.string().guid(),
   sourceType: z.enum(PRIVATE_REVIEW_SOURCE_TYPES).default("project_version"),
-  sourceTrackId: z.string().uuid().nullable().default(null),
+  sourceTrackId: z.string().guid().nullable().default(null),
   snapshot: privateReviewSnapshotSchema,
   creatorMessage: z.string(),
   commentVisibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
@@ -87,11 +87,11 @@ export const privateReviewSessionSchema = z.object({
 });
 
 export const privateReviewOwnerSessionSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   sourceType: z.enum(PRIVATE_REVIEW_SOURCE_TYPES).default("project_version"),
-  sourceTrackId: z.string().uuid().nullable().default(null),
-  projectId: z.string().uuid().nullable(),
-  versionPromptId: z.string().uuid().nullable(),
+  sourceTrackId: z.string().guid().nullable().default(null),
+  projectId: z.string().guid().nullable(),
+  versionPromptId: z.string().guid().nullable(),
   projectName: z.string(),
   versionNumber: z.number().int().positive().nullable(),
   versionLabel: z.string().nullable(),
@@ -111,11 +111,11 @@ export const privateReviewOwnerSessionSchema = z.object({
 });
 
 export const privateReviewOwnerListItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   sourceType: z.enum(PRIVATE_REVIEW_SOURCE_TYPES).default("project_version"),
-  sourceTrackId: z.string().uuid().nullable().default(null),
-  projectId: z.string().uuid().nullable(),
-  versionPromptId: z.string().uuid().nullable(),
+  sourceTrackId: z.string().guid().nullable().default(null),
+  projectId: z.string().guid().nullable(),
+  versionPromptId: z.string().guid().nullable(),
   projectName: z.string(),
   versionNumber: z.number().int().positive().nullable(),
   versionLabel: z.string().nullable(),

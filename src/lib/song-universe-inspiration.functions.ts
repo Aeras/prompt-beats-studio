@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 
 async function requireOwnedUniverse(supabase: any, universeId: string, userId: string) {
   const { data, error } = await supabase

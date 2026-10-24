@@ -1194,12 +1194,7 @@ function logStage(
   });
 }
 
-function parseStructured<T>(
-  text: string,
-  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
-  model: string,
-  stage: string,
-): T {
+function parseStructured<T>(text: string, schema: z.ZodType<T>, model: string, stage: string): T {
   const trimmed = text.trim();
   const fenced = trimmed.startsWith("```") && trimmed.endsWith("```");
   const jsonText = fenced
@@ -2152,7 +2147,7 @@ export const savedSongAnalysisResultSchema = songAnalysisResultSchema.extend({
 
 const saveAnalysisInput = z.object({
   name: z.string().trim().min(1).max(200),
-  projectId: z.string().uuid().nullable().optional(),
+  projectId: z.string().guid().nullable().optional(),
   model: z.string().trim().min(1).max(240),
   result: savedSongAnalysisResultSchema,
 });
@@ -2214,9 +2209,9 @@ export const listSongAnalyses = createServerFn({ method: "GET" })
   });
 
 const updateAnalysisInput = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string().trim().min(1).max(200).optional(),
-  projectId: z.string().uuid().nullable().optional(),
+  projectId: z.string().guid().nullable().optional(),
 });
 
 export const updateSongAnalysisOrganization = createServerFn({ method: "POST" })
@@ -2243,7 +2238,7 @@ export const updateSongAnalysisOrganization = createServerFn({ method: "POST" })
 
 export const deleteSongAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_analyzer");
     const supabase = context.supabase as any;

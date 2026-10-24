@@ -37,8 +37,8 @@ export const generatorInputSnapshotSchema = z.object({
 export type GeneratorInputSnapshot = z.infer<typeof generatorInputSnapshotSchema>;
 
 export const revisionBaseVersionSchema = z.object({
-  id: z.string().uuid(),
-  projectId: z.string().uuid().nullable(),
+  id: z.string().guid(),
+  projectId: z.string().guid().nullable(),
   versionNumber: z.number().int().positive().nullable(),
   versionLabel: z.string().nullable(),
   customName: z.string().nullable(),
@@ -55,8 +55,8 @@ export const revisionBaseVersionSchema = z.object({
 export type RevisionBaseVersion = z.infer<typeof revisionBaseVersionSchema>;
 
 export const revisionJobContextSchema = z.object({
-  projectId: z.string().uuid().nullable(),
-  basePromptId: z.string().uuid(),
+  projectId: z.string().guid().nullable(),
+  basePromptId: z.string().guid(),
   revisionRequest: z.string().trim().min(1).max(3000),
   baseVersion: revisionBaseVersionSchema,
   baseSnapshot: generatorInputSnapshotSchema.nullable(),

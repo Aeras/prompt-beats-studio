@@ -114,35 +114,35 @@ export type ModerationCaseDetail = {
   permissions: ModerationCasePermissions;
 };
 
-const caseIdSchema = z.object({ caseId: z.string().uuid() });
-const reportIdSchema = z.object({ reportId: z.string().uuid() });
+const caseIdSchema = z.object({ caseId: z.string().guid() });
+const reportIdSchema = z.object({ reportId: z.string().guid() });
 const messageSchema = z.object({
-  caseId: z.string().uuid(),
+  caseId: z.string().guid(),
   messageType: z.enum(CASE_MESSAGE_TYPES),
   body: z.string().trim().min(1).max(5000),
 });
 const noteSchema = z.object({
-  caseId: z.string().uuid(),
+  caseId: z.string().guid(),
   body: z.string().trim().min(1).max(5000),
 });
 const decisionSchema = z.object({
-  caseId: z.string().uuid(),
+  caseId: z.string().guid(),
   outcome: z.enum(CASE_OUTCOMES),
   reason: z.string().trim().min(1).max(2000),
   actionSummary: z.string().trim().max(2000).optional(),
   appealEligible: z.boolean().default(true),
 });
 const appealSchema = z.object({
-  caseId: z.string().uuid(),
+  caseId: z.string().guid(),
   statement: z.string().trim().min(1).max(5000),
 });
 const reassignSchema = z.object({
-  caseId: z.string().uuid(),
-  assigneeId: z.string().uuid().nullable(),
+  caseId: z.string().guid(),
+  assigneeId: z.string().guid().nullable(),
 });
 const finalSchema = z
   .object({
-    caseId: z.string().uuid(),
+    caseId: z.string().guid(),
     action: z.enum(CASE_FINAL_ACTIONS),
     overrideOutcome: z.enum(CASE_OUTCOMES).optional(),
     overrideReason: z.string().trim().max(2000).optional(),

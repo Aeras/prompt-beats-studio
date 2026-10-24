@@ -6,9 +6,9 @@ export const AUDIO_REVISION_CHANGE_MAX = 1200;
 export const AUDIO_REVISION_BRIEF_MAX = 600;
 
 export const audioRevisionIntentSourceSchema = z.object({
-  projectId: z.string().uuid(),
-  versionId: z.string().uuid(),
-  trackId: z.string().uuid(),
+  projectId: z.string().guid(),
+  versionId: z.string().guid(),
+  trackId: z.string().guid(),
 });
 
 export const createAudioRevisionIntentSchema = audioRevisionIntentSourceSchema.extend({
@@ -16,7 +16,7 @@ export const createAudioRevisionIntentSchema = audioRevisionIntentSourceSchema.e
 });
 
 export const getAudioRevisionIntentSchema = audioRevisionIntentSourceSchema.extend({
-  intentId: z.string().uuid().optional(),
+  intentId: z.string().guid().optional(),
 });
 
 export const unresolvedRevisionSuggestionSchema = z.object({
@@ -28,7 +28,7 @@ export const unresolvedRevisionSuggestionSchema = z.object({
 });
 
 export const updateAudioRevisionIntentSchema = audioRevisionIntentSourceSchema.extend({
-  intentId: z.string().uuid(),
+  intentId: z.string().guid(),
   expectedLockVersion: z.number().int().nonnegative(),
   userRequest: z.string().trim().max(AUDIO_REVISION_INTENT_REQUEST_MAX),
   acceptedKeep: z.string().trim().max(AUDIO_REVISION_KEEP_MAX).default(""),
@@ -38,8 +38,8 @@ export const updateAudioRevisionIntentSchema = audioRevisionIntentSourceSchema.e
 });
 
 export const requestAudioRevisionIntentTranslationSchema = audioRevisionIntentSourceSchema.extend({
-  intentId: z.string().uuid(),
-  requestKey: z.string().uuid(),
+  intentId: z.string().guid(),
+  requestKey: z.string().guid(),
   model: z.string().trim().min(1).max(240).optional(),
 });
 

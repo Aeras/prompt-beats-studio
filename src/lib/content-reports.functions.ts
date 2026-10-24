@@ -66,7 +66,7 @@ export const submitTrackReport = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        trackId: z.string().uuid(),
+        trackId: z.string().guid(),
         category: categorySchema,
         details: z.string().trim().max(2000).optional(),
         supportingUrl: z.string().trim().url().max(1000).optional().or(z.literal("")),
@@ -112,7 +112,7 @@ export const listContentReports = createServerFn({ method: "POST" })
 
 export const getContentReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ reportId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ reportId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await (context.supabase as any).rpc("get_content_report", {
       _report_id: data.reportId,
@@ -126,7 +126,7 @@ export const reviewContentReport = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        reportId: z.string().uuid(),
+        reportId: z.string().guid(),
         status: statusSchema,
         resolution: z.string().trim().max(1000).optional(),
         moderatorNotes: z.string().trim().max(2000).optional(),

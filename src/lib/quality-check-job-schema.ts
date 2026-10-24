@@ -19,7 +19,7 @@ export const durableQualityCheckInput = z.object({
     note: z.string().trim().min(1).max(6000),
   }),
   qualityCheckModel: z.string().trim().min(1).max(240).nullish(),
-  generationId: z.string().uuid().nullish(),
+  generationId: z.string().guid().nullish(),
 });
 
 const issueList = z.array(z.string().trim().min(1).max(600)).max(30);

@@ -65,8 +65,8 @@ const generationOutput = z.object({
 const savedInput = z.object({
   title: z.string().trim().max(200).default(""),
   custom_name: z.string().trim().max(200).nullable().optional(),
-  project_id: z.string().uuid().nullable().optional(),
-  folder_id: z.string().uuid().nullable().optional(),
+  project_id: z.string().guid().nullable().optional(),
+  folder_id: z.string().guid().nullable().optional(),
   version_number: z.number().int().positive().nullable().optional(),
   version_label: z.string().trim().max(120).nullable().optional(),
   generator_input_snapshot: generatorInputSnapshotSchema.nullable().optional(),
@@ -2240,7 +2240,7 @@ async function consumeCreation(
     provider,
     model,
   });
-  const parsed = z.string().uuid().safeParse(inserted);
+  const parsed = z.string().guid().safeParse(inserted);
   if (!parsed.success) throw new Error("The action could not be recorded. Please try again.");
   return parsed.data;
 }
@@ -2255,10 +2255,10 @@ const qualityCheckInput = z.object({
   production: generateInput.shape.production,
   instructions: generateInput.shape.instructions,
   result: generationOutput,
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: z.string().guid(),
   qualityCheckModel: z.string().trim().min(1).max(240).nullish(),
   /** Optional: links the check to the originating generation for analytics. */
-  generationId: z.string().uuid().nullish(),
+  generationId: z.string().guid().nullish(),
 });
 
 const qualityCheckClaim = z.object({
@@ -2507,7 +2507,7 @@ export const listSavedPrompts = createServerFn({ method: "GET" })
 
 export const listPromptProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
@@ -2534,7 +2534,7 @@ export const listPromptProjectVersions = createServerFn({ method: "POST" })
 export const updateVersionBranchLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid(), label: z.string().max(120) }).parse(input),
+    z.object({ id: z.string().guid(), label: z.string().max(120) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const label = data.label.trim() || null;
@@ -2551,7 +2551,7 @@ export const updateVersionBranchLabel = createServerFn({ method: "POST" })
 
 export const listProjectVersionHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: project, error: projectError } = await context.supabase
       .from("prompt_projects")
@@ -2609,7 +2609,7 @@ export const updateVersionUserNote = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         note: z.string().max(1000),
       })
       .parse(input),
@@ -2632,8 +2632,8 @@ export const setPreferredProjectVersion = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        promptId: z.string().uuid().nullable(),
+        projectId: z.string().guid(),
+        promptId: z.string().guid().nullable(),
       })
       .parse(input),
   )
@@ -2667,9 +2667,9 @@ export const getProjectVersionsForCompare = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        leftId: z.string().uuid(),
-        rightId: z.string().uuid(),
+        projectId: z.string().guid(),
+        leftId: z.string().guid(),
+        rightId: z.string().guid(),
       })
       .parse(input),
   )
@@ -2730,8 +2730,8 @@ export const getPromptRevisionBase = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid().nullable(),
-        basePromptId: z.string().uuid(),
+        projectId: z.string().guid().nullable(),
+        basePromptId: z.string().guid(),
       })
       .parse(input),
   )
@@ -2775,7 +2775,7 @@ export const getPromptRevisionBase = createServerFn({ method: "POST" })
 
 export const deleteSavedPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("saved_prompts")
@@ -2805,7 +2805,7 @@ export const createPromptProject = createServerFn({ method: "POST" })
     z
       .object({
         name: z.string().trim().min(1).max(120),
-        folderId: z.string().uuid().nullable().optional(),
+        folderId: z.string().guid().nullable().optional(),
       })
       .parse(input),
   )
@@ -2839,7 +2839,7 @@ export const createPromptProject = createServerFn({ method: "POST" })
 export const renamePromptProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).parse(input),
+    z.object({ id: z.string().guid(), name: z.string().trim().min(1).max(120) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -2856,7 +2856,7 @@ export const updatePromptProjectCreationNotes = createServerFn({ method: "POST" 
   .inputValidator((input: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         creationNotes: z.string().max(6000),
       })
       .parse(input),
@@ -2879,8 +2879,8 @@ export const deletePromptProject = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
-        deletePromptIds: z.array(z.string().uuid()).max(500).default([]),
+        id: z.string().guid(),
+        deletePromptIds: z.array(z.string().guid()).max(500).default([]),
       })
       .parse(input),
   )
@@ -2925,9 +2925,9 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         custom_name: z.string().trim().max(200).nullable().optional(),
-        project_id: z.string().uuid().nullable().optional(),
+        project_id: z.string().guid().nullable().optional(),
         version_number: z.number().int().positive().nullable().optional(),
         version_label: z.string().trim().max(120).nullable().optional(),
         theme: z.string().max(500).nullable().optional(),
@@ -3055,7 +3055,7 @@ export const updateSavedPromptOrganization = createServerFn({ method: "POST" })
 
 export const detachSavedPromptFromProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: result, error } = await (context.supabase as any).rpc(
       "detach_prompt_project_version",
@@ -3068,7 +3068,7 @@ export const detachSavedPromptFromProject = createServerFn({ method: "POST" })
 export const copySavedPromptToProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid(), destinationProjectId: z.string().uuid() }).parse(input),
+    z.object({ id: z.string().guid(), destinationProjectId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: result, error } = await (context.supabase as any).rpc(
@@ -3086,7 +3086,7 @@ export const copySavedPromptToProject = createServerFn({ method: "POST" })
 export const moveSavedPromptToProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid(), destinationProjectId: z.string().uuid() }).parse(input),
+    z.object({ id: z.string().guid(), destinationProjectId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: result, error } = await (context.supabase as any).rpc(

@@ -44,7 +44,7 @@ describe("PB-007 Follow-up II route contracts", () => {
   it("isolates fresh session drafts, jobs and handoffs", () => {
     for (const token of [
       'start: z.enum(["new"]).optional()',
-      "session: z.string().uuid().optional()",
+      "session: z.string().guid().optional()",
       "generator:fresh:",
       "pb:generation-job:fresh:",
       "if (freshSession) return;",

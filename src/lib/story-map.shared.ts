@@ -13,7 +13,7 @@ export const storyMapProgressionTypeSchema = z.enum(STORY_MAP_PROGRESSION_TYPES)
 export type StoryMapProgressionType = z.infer<typeof storyMapProgressionTypeSchema>;
 
 export const storyMapBeatSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().guid().optional(),
   position: z.number().int().min(0).max(100),
   title: z.string().trim().min(1).max(120),
   whatHappens: z.string().trim().max(1200).default(""),
@@ -43,8 +43,8 @@ export const storyMapDraftSchema = z.object({
 export type StoryMapDraft = z.infer<typeof storyMapDraftSchema>;
 
 export const storyMapRecordSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
   title: z.string().trim().min(1).max(160),
   concept: z.string().trim().min(3).max(3000),
   theme: z.string().trim().max(500).nullable(),
@@ -58,8 +58,8 @@ export const storyMapRecordSchema = z.object({
   centralChange: z.string().trim().max(700).nullable(),
   turningPoint: z.string().trim().max(700).nullable(),
   resolution: z.string().trim().max(700).nullable(),
-  projectId: z.string().uuid().nullable(),
-  sourceProjectVersionId: z.string().uuid().nullable(),
+  projectId: z.string().guid().nullable(),
+  sourceProjectVersionId: z.string().guid().nullable(),
   sourceLyricsUpdatedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -112,9 +112,9 @@ export const STORY_MAP_SONG_SETUP_HANDOFF_KEY = "pb:story-map-song-setup";
 export const storyMapSongSetupHandoffSchema = z
   .object({
     version: z.literal(1),
-    storyMapId: z.string().uuid(),
+    storyMapId: z.string().guid(),
     storyMapTitle: z.string().trim().min(1).max(160),
-    projectId: z.string().uuid().nullable(),
+    projectId: z.string().guid().nullable(),
     concept: z.string().trim().min(3).max(3000),
     progressionType: storyMapProgressionTypeSchema.nullable(),
     summary: z.string().trim().max(1500).nullable(),

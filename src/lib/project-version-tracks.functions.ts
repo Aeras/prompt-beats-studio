@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const idsSchema = z.array(z.string().uuid()).min(1).max(50);
+const idsSchema = z.array(z.string().guid()).min(1).max(50);
 
 type LinkableTrack = {
   id: string;
@@ -45,8 +45,8 @@ export const listProjectVersionLinkedTracks = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        versionId: z.string().uuid(),
+        projectId: z.string().guid(),
+        versionId: z.string().guid(),
       })
       .parse(input),
   )
@@ -122,8 +122,8 @@ export const listLinkableProjectTracks = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        versionId: z.string().uuid(),
+        projectId: z.string().guid(),
+        versionId: z.string().guid(),
         search: z.string().trim().max(120).optional().default(""),
       })
       .parse(input),
@@ -175,8 +175,8 @@ export const linkProjectVersionTracks = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        versionId: z.string().uuid(),
+        projectId: z.string().guid(),
+        versionId: z.string().guid(),
         trackIds: idsSchema,
       })
       .parse(input),
@@ -199,9 +199,9 @@ export const unlinkProjectVersionTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        versionId: z.string().uuid(),
-        trackId: z.string().uuid(),
+        projectId: z.string().guid(),
+        versionId: z.string().guid(),
+        trackId: z.string().guid(),
       })
       .parse(input),
   )
@@ -223,9 +223,9 @@ export const setPrimaryProjectVersionTrack = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
-        versionId: z.string().uuid(),
-        trackId: z.string().uuid().nullable(),
+        projectId: z.string().guid(),
+        versionId: z.string().guid(),
+        trackId: z.string().guid().nullable(),
       })
       .parse(input),
   )

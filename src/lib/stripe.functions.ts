@@ -15,7 +15,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     z
       .object({
         plan: z.literal("pro"),
-        checkoutAttemptId: z.string().uuid(),
+        checkoutAttemptId: z.string().guid(),
       })
       .strict()
       .parse(input),

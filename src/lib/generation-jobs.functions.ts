@@ -31,7 +31,7 @@ import { parseLyricsSections } from "@/lib/lyrics-sections";
 import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
 const jobInput = z.object({
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: z.string().guid(),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().trim().min(3).max(2000),
   genre: z.string().trim().min(1).max(8000),
@@ -49,8 +49,8 @@ const jobInput = z.object({
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: z
     .object({
-      projectId: z.string().uuid().nullable(),
-      basePromptId: z.string().uuid(),
+      projectId: z.string().guid().nullable(),
+      basePromptId: z.string().guid(),
       revisionRequest: z.string().trim().min(1).max(3000),
       desiredSnapshot: generatorInputSnapshotSchema,
     })
@@ -59,10 +59,10 @@ const jobInput = z.object({
 });
 
 const revisionMetaShape = z.object({
-  savedPromptId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  savedPromptId: z.string().guid(),
+  projectId: z.string().guid(),
   versionNumber: z.number().int().positive(),
-  parentPromptId: z.string().uuid(),
+  parentPromptId: z.string().guid(),
 });
 
 const songResultShape = z.object({
@@ -385,7 +385,7 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
 /** Polls one job. Ownership is enforced by row-level security. */
 export const getGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ jobId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
     const { data: row } = await supabase
@@ -451,7 +451,7 @@ export const getLatestLyricsSectionEditJob = createServerFn({ method: "POST" })
  */
 export const dismissGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ jobId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
     const { data: result, error } = await supabase.rpc("dismiss_generation_job", {
@@ -472,7 +472,7 @@ export const dismissGenerationJob = createServerFn({ method: "POST" })
  */
 export const requestGenerationJobCancellation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ jobId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     // The RPC is introduced in this PR's migration; generated Supabase types
     // will be refreshed during the normal schema-type generation workflow.

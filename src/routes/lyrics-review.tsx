@@ -48,9 +48,9 @@ import { useDraftAutosave } from "@/lib/draft-autosave";
 
 const searchSchema = z.object({
   source: z.enum(["project", "generator"]).optional(),
-  project: z.string().uuid().optional(),
-  version: z.string().uuid().optional(),
-  handoff: z.string().uuid().optional(),
+  project: z.string().guid().optional(),
+  version: z.string().guid().optional(),
+  handoff: z.string().guid().optional(),
 });
 
 export const Route = createFileRoute("/lyrics-review")({

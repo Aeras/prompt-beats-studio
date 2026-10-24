@@ -13,7 +13,7 @@ const generatorResultSchema = z.object({
 
 export const lyricsReviewGeneratorHandoffSchema = z.object({
   schemaVersion: z.literal(1),
-  id: z.string().uuid(),
+  id: z.string().guid(),
   source: z.literal("generator"),
   createdAt: z.string(),
   snapshot: generatorInputSnapshotSchema,
@@ -22,7 +22,7 @@ export const lyricsReviewGeneratorHandoffSchema = z.object({
   generatorState: z.object({
     quality: z.unknown().nullable(),
     songContext: z.unknown().nullable(),
-    generationId: z.string().uuid().nullable(),
+    generationId: z.string().guid().nullable(),
     generationModel: z.string(),
     generationModelChosen: z.boolean(),
     generationResultModel: z.string().nullable(),
@@ -44,10 +44,10 @@ export const lyricsReviewGeneratorHandoffSchema = z.object({
     revisionRequest: z.string(),
     revisionMeta: z
       .object({
-        savedPromptId: z.string().uuid(),
-        projectId: z.string().uuid(),
+        savedPromptId: z.string().guid(),
+        projectId: z.string().guid(),
         versionNumber: z.number().int().positive(),
-        parentPromptId: z.string().uuid(),
+        parentPromptId: z.string().guid(),
       })
       .nullable(),
   }),

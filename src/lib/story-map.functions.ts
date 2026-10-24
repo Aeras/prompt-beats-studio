@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
@@ -10,7 +11,7 @@ import {
   type StoryMapRecord,
 } from "@/lib/story-map.shared";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
 const createSchema = z.object({
@@ -21,7 +22,7 @@ const createSchema = z.object({
   narrator: optionalText(700).default(null),
   pointOfView: optionalText(400).default(null),
   desiredEnding: optionalText(700).default(null),
-  projectId: z.string().uuid().nullable().optional().default(null),
+  projectId: z.string().guid().nullable().optional().default(null),
 });
 
 const updateSchema = z
@@ -40,9 +41,9 @@ const updateSchema = z
     centralChange: optionalText(700),
     turningPoint: optionalText(700),
     resolution: optionalText(700),
-    projectId: z.string().uuid().nullable().optional(),
-    sourceProjectVersionId: z.string().uuid().nullable().optional(),
-    sourceLyricsUpdatedAt: z.string().datetime().nullable().optional(),
+    projectId: z.string().guid().nullable().optional(),
+    sourceProjectVersionId: z.string().guid().nullable().optional(),
+    sourceLyricsUpdatedAt: z.string().regex(compatibleUtcDateTimePattern).nullable().optional(),
   })
   .refine(
     (value) => Object.keys(value).some((key) => key !== "storyMapId"),

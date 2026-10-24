@@ -10,9 +10,9 @@ export const INSPIRATION_WALL_SONG_SETUP_HANDOFF_KEY = "pb:inspiration-wall-song
 export const inspirationWallSongSetupHandoffSchema = z
   .object({
     version: z.literal(1),
-    wallId: z.string().uuid(),
+    wallId: z.string().guid(),
     wallTitle: z.string().trim().min(1).max(120),
-    connectedProjectId: z.string().uuid().nullable(),
+    connectedProjectId: z.string().guid().nullable(),
     direction: inspirationWallCreativeDirectionSchema,
   })
   .strict();

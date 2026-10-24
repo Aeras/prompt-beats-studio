@@ -28,10 +28,10 @@ import { listProjectVersionLinkedTracks } from "@/lib/project-version-tracks.fun
 
 export const Route = createFileRoute("/audio-revision")({
   validateSearch: z.object({
-    project: z.string().uuid().optional(),
-    version: z.string().uuid().optional(),
-    track: z.string().uuid().optional(),
-    intent: z.string().uuid().optional(),
+    project: z.string().guid().optional(),
+    version: z.string().guid().optional(),
+    track: z.string().guid().optional(),
+    intent: z.string().guid().optional(),
   }),
   head: () => ({
     meta: [

@@ -1,17 +1,18 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { compatibleOffsetDateTimePattern } from "@/lib/validation-datetime";
 import { buildR2ObjectUrl, headR2Object } from "./r2.server";
 import { assertSafeOwnedAudioKey } from "./storage-paths";
 
 const receiptSchema = z.object({
   key: z.string(),
-  owner_id: z.string().uuid(),
+  owner_id: z.string().guid(),
   size: z.number().int().positive(),
   mime: z.enum(["audio/mpeg", "audio/wav"]),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
   canonical_url: z.string().url(),
   status: z.enum(["pending", "finalized", "discarded"]),
-  expires_at: z.string().datetime({ offset: true }),
+  expires_at: z.string().regex(compatibleOffsetDateTimePattern),
   consumed_at: z.string().nullable(),
   etag: z.string().nullable(),
 });

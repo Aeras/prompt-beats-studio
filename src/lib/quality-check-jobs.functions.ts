@@ -20,7 +20,7 @@ import {
 const statusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
 
 const rawJobSchema = z.object({
-  actionId: z.string().uuid(),
+  actionId: z.string().guid(),
   status: statusSchema,
   qualityReport: z.unknown().nullish(),
   provider: z.string().nullish(),
@@ -60,7 +60,7 @@ function toJob(raw: unknown): QualityCheckJob {
 }
 
 const startInput = durableQualityCheckInput.extend({
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: z.string().guid(),
 });
 
 /**
@@ -103,7 +103,7 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
 /** Polls one caller-owned QC action through the protected RPC projection. */
 export const getQualityCheckJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ actionId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ actionId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: raw, error } = await (context.supabase as any).rpc("get_quality_check_job", {
       _action_id: data.actionId,
@@ -119,7 +119,7 @@ export const getQualityCheckJob = createServerFn({ method: "POST" })
 export const getLatestQualityCheckJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ generationId: z.string().uuid().nullish() }).parse(input ?? {}),
+    z.object({ generationId: z.string().guid().nullish() }).parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { data: raw, error } = await (context.supabase as any).rpc(
@@ -135,7 +135,7 @@ export type QualityCheckJobInput = DurableQualityCheckInput;
 /** Request provider cancellation of a caller-owned Quality Check job. */
 export const requestQualityCheckCancellation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ actionId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ actionId: z.string().guid() }).parse(input))
   .handler(async ({ context, data }) => {
     const { data: result, error } = await (context.supabase as any).rpc(
       "request_quality_check_cancellation",

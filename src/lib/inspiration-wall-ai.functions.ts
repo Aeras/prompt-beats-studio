@@ -16,7 +16,7 @@ import {
   type InspirationWallCreativeDirection,
 } from "@/lib/inspiration-wall.shared";
 
-const wallIdSchema = z.string().uuid();
+const wallIdSchema = z.string().guid();
 const MAX_IMAGE_CONTEXT_BYTES = 20 * 1024 * 1024;
 
 const CREATIVE_DIRECTION_RESPONSE_SCHEMA: Record<string, unknown> = {

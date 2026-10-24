@@ -160,11 +160,11 @@ export const Route = createFileRoute("/generate")({
   validateSearch: z.object({
     mode: z.enum(["revision"]).optional(),
     workspace: z.enum(["lyrics"]).optional(),
-    project: z.string().uuid().optional(),
-    base: z.string().uuid().optional(),
+    project: z.string().guid().optional(),
+    base: z.string().guid().optional(),
     presets: z.enum(["open"]).optional(),
     start: z.enum(["new"]).optional(),
-    session: z.string().uuid().optional(),
+    session: z.string().guid().optional(),
   }),
   head: () => ({
     meta: [

@@ -136,7 +136,7 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   mimeType: string;
   stage0Evidence: Stage0DspEvidence;
   schema: Record<string, unknown>;
-  validator: z.ZodType<T, z.ZodTypeDef, unknown>;
+  validator: z.ZodType<T>;
   markProviderStarted: () => Promise<void>;
   recordUsage: (usage: NormalizedUsage | null, success: boolean) => Promise<void>;
   observeUsage?: (usage: NormalizedUsage | null) => Promise<void>;

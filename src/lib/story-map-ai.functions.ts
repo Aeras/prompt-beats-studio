@@ -16,7 +16,7 @@ import {
   type StoryMapDraft,
 } from "@/lib/story-map.shared";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 const optionalModelSchema = z.string().trim().max(240).nullable().optional();
 
 const STORY_MAP_RESPONSE_SCHEMA: Record<string, unknown> = {

@@ -116,7 +116,7 @@ export const getAdminAiModels = createServerFn({ method: "GET" })
   });
 
 const modelUpdateInput = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   displayName: z.string().trim().min(1).max(120),
   status: statusSchema,
   accessPolicy: accessPolicySchema,
@@ -389,7 +389,7 @@ export const runAiProviderCompatibilityTests = createServerFn({ method: "POST" }
  */
 export const verifyInstalledAiModelCompatibility = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -542,7 +542,7 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
   });
 
 const healthModelInput = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
 });
 
 type HealthState = "healthy" | "degraded" | "failing";

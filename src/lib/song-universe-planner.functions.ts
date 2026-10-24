@@ -28,7 +28,7 @@ import {
 } from "@/lib/song-universe-planner.shared";
 import { songUniverseAnalysisSchema } from "@/lib/song-universe.shared";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 const optionalModelSchema = z.string().trim().max(240).nullable().optional();
 const PLANNER_SCHEMA_VERSION = "next-song-brief:v1";
 

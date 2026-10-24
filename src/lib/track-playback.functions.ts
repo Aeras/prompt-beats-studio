@@ -3,7 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 export const getTrackPlaybackUrl = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().guid() }).parse(input))
   .handler(async ({ data }) => {
     const [{ supabaseAdmin }, { getUserIdFromRequest }, { isSafeOwnedAudioKey }] =
       await Promise.all([

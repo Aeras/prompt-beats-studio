@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getServerSupabaseAdminConfig } from "@/integrations/supabase/config.server";
@@ -21,19 +22,19 @@ const reviewerKeySchema = z.string().trim().min(40).max(100);
 const commonCreateInput = {
   creatorMessage: z.string().trim().max(1000).default(""),
   commentVisibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
-  expiresAt: z.string().datetime(),
+  expiresAt: z.string().regex(compatibleUtcDateTimePattern),
   pin: z.string().min(4).max(20).nullable().optional(),
 };
 
 const createInput = z.object({
-  projectId: z.string().uuid(),
-  versionPromptId: z.string().uuid(),
+  projectId: z.string().guid(),
+  versionPromptId: z.string().guid(),
   ...commonCreateInput,
-  sharedTrackId: z.string().uuid().nullable().optional(),
+  sharedTrackId: z.string().guid().nullable().optional(),
 });
 
 const createTrackInput = z.object({
-  trackId: z.string().uuid(),
+  trackId: z.string().guid(),
   ...commonCreateInput,
   includePrompt: z.boolean().default(false),
   includeLyrics: z.boolean().default(false),
@@ -73,13 +74,13 @@ export const createPrivateReviewSession = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         token: z.string(),
-        project_id: z.string().uuid(),
-        version_prompt_id: z.string().uuid(),
+        project_id: z.string().guid(),
+        version_prompt_id: z.string().guid(),
         comment_visibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
         include_audio: z.boolean(),
-        shared_track_id: z.string().uuid().nullable(),
+        shared_track_id: z.string().guid().nullable(),
         created_at: z.string(),
         expires_at: z.string(),
       })
@@ -106,10 +107,10 @@ export const createPrivateTrackReviewSession = createServerFn({ method: "POST" }
     if (error) throw new Error(error.message);
     return z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         token: z.string(),
         source_type: z.enum(PRIVATE_REVIEW_SOURCE_TYPES),
-        source_track_id: z.string().uuid(),
+        source_track_id: z.string().guid(),
         comment_visibility: z.enum(PRIVATE_REVIEW_VISIBILITIES),
         include_audio: z.boolean(),
         include_prompt: z.boolean(),
@@ -192,7 +193,7 @@ export const joinPrivateReviewSession = createServerFn({ method: "POST" })
     }
     return z
       .object({
-        reviewer_id: z.string().uuid(),
+        reviewer_id: z.string().guid(),
         reviewer_key: z.string(),
         display_name: z.string(),
       })
@@ -245,7 +246,7 @@ export const addPrivateReviewComment = createServerFn({ method: "POST" })
         token: tokenSchema,
         reviewerKey: reviewerKeySchema,
         body: z.string().trim().min(1).max(2000),
-        parentCommentId: z.string().uuid().nullable().optional(),
+        parentCommentId: z.string().guid().nullable().optional(),
       })
       .parse(input),
   )
@@ -264,7 +265,7 @@ export const addPrivateReviewComment = createServerFn({ method: "POST" })
       if (error.message.includes("closed")) throw new Error("This review is read-only now.");
       throw new Error("The comment could not be posted.");
     }
-    return z.object({ id: z.string().uuid(), created_at: z.string() }).parse(raw);
+    return z.object({ id: z.string().guid(), created_at: z.string() }).parse(raw);
   });
 
 export const listMyPrivateReviewSessions = createServerFn({ method: "POST" })
@@ -272,8 +273,8 @@ export const listMyPrivateReviewSessions = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        projectId: z.string().uuid().nullable().optional(),
-        trackId: z.string().uuid().nullable().optional(),
+        projectId: z.string().guid().nullable().optional(),
+        trackId: z.string().guid().nullable().optional(),
       })
       .parse(input ?? {}),
   )
@@ -294,8 +295,8 @@ export const getMyPrivateReviewSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        sessionId: z.string().uuid(),
-        reviewerId: z.string().uuid().nullable().optional(),
+        sessionId: z.string().guid(),
+        reviewerId: z.string().guid().nullable().optional(),
       })
       .parse(input),
   )
@@ -313,7 +314,7 @@ export const getMyPrivateReviewSession = createServerFn({ method: "POST" })
 
 export const closePrivateReviewSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ sessionId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ sessionId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).rpc("close_private_review_session", {
       _session_id: data.sessionId,
@@ -327,8 +328,8 @@ export const addPrivateReviewCreatorReply = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        sessionId: z.string().uuid(),
-        parentCommentId: z.string().uuid(),
+        sessionId: z.string().guid(),
+        parentCommentId: z.string().guid(),
         body: z.string().trim().min(1).max(2000),
       })
       .parse(input),
@@ -344,5 +345,5 @@ export const addPrivateReviewCreatorReply = createServerFn({ method: "POST" })
       },
     );
     if (error) throw new Error(error.message);
-    return z.object({ id: z.string().uuid(), created_at: z.string() }).parse(raw);
+    return z.object({ id: z.string().guid(), created_at: z.string() }).parse(raw);
   });

@@ -402,7 +402,7 @@ function endpointFixture(allowed = true) {
   const durable = isolated<{
     execute: typeof import("./ai-auxiliary-idempotency.server").executeDurableAuxiliaryAiRequest;
   }>(`${durableSource}\nexports.execute=executeDurableAuxiliaryAiRequest;`, {
-    auxiliaryRequestKeySchema: z.string().uuid(),
+    auxiliaryRequestKeySchema: z.string().guid(),
     markAuxiliaryAiProviderStarted: async () => {
       events.push("started");
     },
@@ -431,7 +431,7 @@ function endpointFixture(allowed = true) {
       createHash,
       stage0DspEvidenceSchema,
       analyzerAudioMimeSchema,
-      auxiliaryRequestKeySchema: z.string().uuid(),
+      auxiliaryRequestKeySchema: z.string().guid(),
       analyzerV2ProvenanceSchema,
       essentiaOnlyEvidence,
       createServerFn: () => ({

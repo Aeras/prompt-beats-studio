@@ -6,7 +6,7 @@ import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { throwSafeServerError } from "@/lib/server-error";
 
 const shareLinkInput = z.object({
-  trackId: z.string().uuid(),
+  trackId: z.string().guid(),
   includePrompt: z.boolean().default(false),
   includeLyrics: z.boolean().default(false),
 });
@@ -84,7 +84,7 @@ export const updateTrackShareLink = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        shareId: z.string().uuid(),
+        shareId: z.string().guid(),
         includePrompt: z.boolean(),
         includeLyrics: z.boolean(),
       })
@@ -108,7 +108,7 @@ export const updateTrackShareLink = createServerFn({ method: "POST" })
 
 export const revokeTrackShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ shareId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ shareId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("revoke_track_share_link", {
       _share_id: data.shareId,
@@ -124,7 +124,7 @@ export const revokeTrackShareLink = createServerFn({ method: "POST" })
 
 export const recordTrackPublicShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "sharing_public_links");
     const { error } = await context.supabase.rpc("record_track_public_share", {
