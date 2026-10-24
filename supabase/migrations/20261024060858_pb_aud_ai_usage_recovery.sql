@@ -207,7 +207,18 @@ BEGIN
     next_recovery_at = now() + interval '15 minutes'
     WHERE id = _id AND lease_token = _lease_token RETURNING * INTO e;
   IF NOT FOUND THEN RETURN; END IF;
-  IF e.result IS NULL AND (e.remote_id IS NULL OR e.recovery_attempts >= 8) THEN
+  UPDATE public.ai_generation_jobs SET status='cancelled',completed_at=now(),result=NULL,error=NULL,
+    cancellation_outcome=CASE WHEN e.remote_provider IS NOT NULL AND e.result->>'stopReason'='cancelled'
+      THEN 'cancelled_upstream_confirmed' ELSE COALESCE(cancellation_outcome,'connection_aborted_unconfirmed') END
+    WHERE id=e.job_id AND user_id=e.user_id AND status='processing' AND cancel_requested_at IS NOT NULL;
+  UPDATE public.ai_quality_check_actions SET status='cancelled',completed_at=now(),quality_report=NULL,error=NULL,
+    cancellation_outcome=CASE WHEN e.remote_provider IS NOT NULL AND e.result->>'stopReason'='cancelled'
+      THEN 'cancelled_upstream_confirmed' ELSE COALESCE(cancellation_outcome,'connection_aborted_unconfirmed') END
+    WHERE id=e.quality_action_id AND user_id=e.user_id AND status='processing' AND cancel_requested_at IS NOT NULL;
+  -- Existing synchronous transports can run for 30 minutes. Do not fail a
+  -- live request at the first 15-minute recovery sweep.
+  IF e.result IS NULL AND ((e.remote_id IS NULL AND e.created_at < now() - interval '45 minutes')
+    OR e.recovery_attempts >= 8) THEN
     UPDATE public.ai_generation_jobs SET status='failed',completed_at=now(),
       error='The provider outcome could not be recovered. Usage may still be billed. Start a new request explicitly.'
       WHERE id=e.job_id AND user_id=e.user_id AND status='processing' AND cancel_requested_at IS NULL;
@@ -232,8 +243,8 @@ BEGIN
         AND e.user_id = j.user_id AND e.result IS NOT NULL)
     RETURNING to_jsonb(j) INTO v_job;
   ELSIF _kind = 'quality_check' THEN
-    UPDATE public.ai_quality_check_actions j SET recovery_until = now() + interval '15 minutes'
-    WHERE j.id = _id AND j.status = 'processing' AND j.cancel_requested_at IS NULL
+    UPDATE public.ai_quality_check_actions j SET recovery_until = now() + interval '15 minutes',status='processing'
+    WHERE j.id = _id AND j.status IN ('processing','failed') AND j.cancel_requested_at IS NULL
       AND (j.recovery_until IS NULL OR j.recovery_until < now())
       AND j.started_at < now() - interval '15 minutes'
       AND EXISTS (SELECT 1 FROM public.ai_provider_executions e WHERE e.quality_action_id = j.id
@@ -267,7 +278,7 @@ RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path = public, pg_catalog
    UNION ALL
    SELECT j.id FROM public.ai_quality_check_actions j
    JOIN public.ai_provider_executions e ON e.quality_action_id = j.id AND e.user_id = j.user_id
-   WHERE _kind = 'quality_check' AND j.status = 'processing' AND j.cancel_requested_at IS NULL
+   WHERE _kind = 'quality_check' AND j.status IN ('processing','failed') AND j.cancel_requested_at IS NULL
      AND j.started_at < now() - interval '15 minutes' AND e.result IS NOT NULL
      AND (j.recovery_until IS NULL OR j.recovery_until < now())
    LIMIT LEAST(GREATEST(_limit,1),20)

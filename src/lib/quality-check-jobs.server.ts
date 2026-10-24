@@ -58,8 +58,14 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
 
   if (readError) throw new Error("The quality check job could not be read by the worker.");
 
-  if (!existing || existing.status === "completed" || existing.status === "failed") {
+  if (!existing || existing.status === "completed") {
     return { ran: false };
+  }
+  let recovered: Record<string, unknown> | null = null;
+  if (existing.status === "failed") {
+    const { claimRecoveredJob } = await import("./ai-execution.server");
+    recovered = await claimRecoveredJob("quality_check", actionId);
+    if (!recovered) return { ran: false };
   }
 
   if (
@@ -72,7 +78,6 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     return { ran: true };
   }
 
-  let recovered: Record<string, unknown> | null = null;
   if (existing.status === "processing") {
     // provider_started_at means a request may already be in flight. Never issue
     // a duplicate provider call from a recovery run.

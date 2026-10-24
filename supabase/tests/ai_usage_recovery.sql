@@ -7,7 +7,8 @@ INSERT INTO auth.users(id,email) VALUES
  ('11111111-1111-4111-8111-111111111111','usage-owner@example.invalid'),
  ('22222222-2222-4222-8222-222222222222','usage-other@example.invalid');
 DO $$
-DECLARE p jsonb; n integer; blocked boolean := false; ids uuid[]; receipt uuid := '33333333-3333-4333-8333-333333333333';
+DECLARE p jsonb; n integer; blocked boolean := false; ids uuid[]; token uuid;
+ receipt uuid := '33333333-3333-4333-8333-333333333333';
 BEGIN
   IF has_table_privilege('anon','public.ai_provider_executions','SELECT')
     OR has_table_privilege('authenticated','public.ai_provider_executions','INSERT')
@@ -66,6 +67,44 @@ BEGIN
     next_recovery_at=now()-interval '1 second' WHERE id=receipt;
   IF EXISTS (SELECT 1 FROM public.claim_ai_execution_recovery_internal() WHERE id=receipt)
     THEN RAISE EXCEPTION 'unbounded recovery retries'; END IF;
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload,started_at)
+    VALUES ('77777777-7777-4777-8777-777777777777','11111111-1111-4111-8111-111111111111',
+      gen_random_uuid(),'processing','{"operation":"generate"}',now()-interval '20 minutes');
+  receipt := '88888888-8888-4888-8888-888888888888';
+  PERFORM public.begin_ai_execution_internal(receipt,'11111111-1111-4111-8111-111111111111',
+    'generate','openai','fixture',NULL,'77777777-7777-4777-8777-777777777777',NULL);
+  UPDATE public.ai_provider_executions SET created_at=now()-interval '20 minutes',
+    next_recovery_at=now()-interval '1 second' WHERE id=receipt;
+  PERFORM public.claim_ai_execution_recovery_internal();
+  SELECT lease_token INTO token FROM public.ai_provider_executions WHERE id=receipt;
+  PERFORM public.release_ai_execution_recovery_internal(receipt,token);
+  IF (SELECT status FROM public.ai_generation_jobs WHERE id='77777777-7777-4777-8777-777777777777') <> 'processing'
+    THEN RAISE EXCEPTION 'live long-running transport was failed prematurely'; END IF;
+  UPDATE public.ai_provider_executions SET created_at=now()-interval '46 minutes',
+    next_recovery_at=now()-interval '1 second' WHERE id=receipt;
+  PERFORM public.claim_ai_execution_recovery_internal();
+  SELECT lease_token INTO token FROM public.ai_provider_executions WHERE id=receipt;
+  PERFORM public.release_ai_execution_recovery_internal(receipt,token);
+  IF (SELECT status FROM public.ai_generation_jobs WHERE id='77777777-7777-4777-8777-777777777777') <> 'failed'
+    THEN RAISE EXCEPTION 'unrecoverable orphan remained processing forever'; END IF;
+  PERFORM public.checkpoint_ai_execution_internal(receipt,'11111111-1111-4111-8111-111111111111',
+    '{"text":"recovered output","usage":null,"provider":"openai","model":"fixture","stopReason":"end_turn"}');
+  IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NULL
+    THEN RAISE EXCEPTION 'late provider result could not be safely claimed'; END IF;
+  IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NOT NULL
+    THEN RAISE EXCEPTION 'two workers claimed the same application recovery'; END IF;
+  UPDATE public.ai_generation_jobs SET cancel_requested_at=now(),recovery_until=NULL
+    WHERE id='77777777-7777-4777-8777-777777777777';
+  IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NOT NULL
+    THEN RAISE EXCEPTION 'cancelled work selected for application publication'; END IF;
+  PERFORM public.settle_ai_usage_internal(p || jsonb_build_object('id',receipt));
+  PERFORM public.claim_ai_execution_recovery_internal();
+  SELECT lease_token INTO token FROM public.ai_provider_executions WHERE id=receipt;
+  PERFORM public.release_ai_execution_recovery_internal(receipt,token);
+  IF (SELECT status FROM public.ai_generation_jobs WHERE id='77777777-7777-4777-8777-777777777777') <> 'cancelled'
+    THEN RAISE EXCEPTION 'orphan cancellation remained processing'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.ai_usage_logs WHERE id=receipt AND total_tokens=120)
+    THEN RAISE EXCEPTION 'cancelled application lost observed provider usage'; END IF;
 END;
 $$;
 ROLLBACK;
