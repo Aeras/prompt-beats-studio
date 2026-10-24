@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 import {
   trackedCaller,
   type ExecutionContext,
@@ -80,6 +83,73 @@ function fixture() {
   };
 }
 describe("AI accounting and recovery failure matrix (offline)", () => {
+  test("actual Anthropic SSE adapter preserves normalized cache receipts on completion and interruption", async () => {
+    const source = ts.createSourceFile(
+      "provider.ts",
+      readFileSync(new URL("./ai-provider.server.ts", import.meta.url), "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const declaration = source.statements.find(
+      (statement) =>
+        ts.isFunctionDeclaration(statement) && statement.name?.text === "callAnthropic",
+    );
+    if (!declaration) throw new Error("Anthropic adapter missing");
+    const javascript = ts.transpileModule(declaration.getText(source), {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    for (const interrupted of [false, true]) {
+      const observed: Array<ModelResult["usage"]> = [];
+      const frames = [
+        {
+          type: "message_start",
+          message: {
+            usage: {
+              input_tokens: 10,
+              output_tokens: 0,
+              cache_read_input_tokens: 80,
+              cache_creation_input_tokens: 10,
+            },
+          },
+        },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 20 } },
+        ...(interrupted ? [{ type: "error", error: { type: "overloaded_error" } }] : []),
+      ]
+        .map((frame) => `data: ${JSON.stringify(frame)}\n\n`)
+        .join("");
+      // Execute only the real adapter function with an injected fetch; no global env/key/network changes.
+      const adapter = runInNewContext(`${javascript}; callAnthropic`, {
+        process: { env: { ANTHROPIC_API_KEY: "offline-fixture-not-a-key" } },
+        fetch: async () => new Response(frames),
+        providerRequestSignal: () => new AbortController().signal,
+        TextDecoder,
+        usageEvidence,
+        console: { info() {}, error() {} },
+      }) as (model: string, call: ModelCall) => Promise<ModelResult>;
+      const pending = adapter("fixture", {
+        ...input,
+        onUsageObserved: async (receipt) => {
+          observed.push(receipt);
+        },
+      });
+      if (interrupted) await expect(pending).rejects.toThrow();
+      else
+        expect((await pending).usage).toMatchObject({
+          inputTokens: 100,
+          outputTokens: 20,
+          totalTokens: 120,
+          cachedInputTokens: 80,
+          cacheWriteTokens: 10,
+        });
+      expect(observed.at(-1)).toMatchObject({
+        inputTokens: 100,
+        outputTokens: 20,
+        totalTokens: 120,
+        cachedInputTokens: 80,
+        cacheWriteTokens: 10,
+      });
+    }
+  });
   test("successful response is checkpointed and accounted before returning", async () => {
     const f = fixture();
     const call = trackedCaller(async () => result, "openai", "fixture", context, f.deps);
@@ -400,7 +470,7 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
           prompt_tokens: 100,
           completion_tokens: 20,
           total_tokens: 120,
-          prompt_tokens_details: { cached_tokens: 25 },
+          prompt_tokens_details: { cached_tokens: 25, cache_write_tokens: 5 },
           completion_tokens_details: { reasoning_tokens: 10 },
           cost: 0.012,
         },
@@ -410,7 +480,60 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
     expect(evidence?.outputTokens).toBe(20);
     expect(evidence?.reasoningTokens).toBe(10);
     expect(evidence?.cachedInputTokens).toBe(25);
+    expect(evidence?.cacheWriteTokens).toBe(5);
     expect(evidence?.providerReportedCostUsd).toBe(0.012);
+  });
+  test("Gemini GenerateContent includes thoughts once, including interrupted partial receipts", () => {
+    const receipt = usageEvidence(
+      {
+        usageMetadata: {
+          promptTokenCount: 100,
+          candidatesTokenCount: 20,
+          thoughtsTokenCount: 80,
+          cachedContentTokenCount: 25,
+          totalTokenCount: 200,
+        },
+      },
+      "gemini",
+    );
+    expect(receipt).toMatchObject({
+      inputTokens: 100,
+      outputTokens: 100,
+      reasoningTokens: 80,
+      totalTokens: 200,
+      cachedInputTokens: 25,
+    });
+    expect(usageEvidence({ usageMetadata: { thoughtsTokenCount: 80 } }, "gemini")).toMatchObject({
+      inputTokens: null,
+      outputTokens: 80,
+      totalTokens: null,
+    });
+    expect(
+      usageEvidence({ usage: { total_output_tokens: 100, total_thought_tokens: 80 } }, "gemini"),
+    ).toMatchObject({ outputTokens: 100, reasoningTokens: 80 });
+  });
+  test("Anthropic input includes uncached, cache read and cache creation without changing other providers", () => {
+    const raw = {
+      usage: {
+        input_tokens: 10,
+        output_tokens: 20,
+        cache_read_input_tokens: 80,
+        cache_creation_input_tokens: 10,
+      },
+    };
+    expect(usageEvidence(raw, "anthropic")).toMatchObject({
+      inputTokens: 100,
+      outputTokens: 20,
+      totalTokens: 120,
+      cachedInputTokens: 80,
+      cacheWriteTokens: 10,
+    });
+    expect(usageEvidence(raw, "openai")?.inputTokens).toBe(10);
+    expect(usageEvidence({ usage: { input_tokens: 10 } }, "anthropic")).toMatchObject({
+      inputTokens: 10,
+      outputTokens: null,
+      totalTokens: null,
+    });
   });
   test("invalid usage values and raw private fields are not trusted", () => {
     expect(usageEvidence({ usage: { input_tokens: -1, output_tokens: "20" } })).toBeNull();

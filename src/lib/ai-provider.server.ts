@@ -276,15 +276,20 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
           .map((line) => line.slice(5).trimStart())
           .join("\n");
         if (data) processEvent(data);
-        if (inputTokens !== null || outputTokens !== null)
-          await call.onUsageObserved?.({
-            inputTokens,
-            outputTokens,
-            totalTokens:
-              inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens,
-            cachedInputTokens,
-            cacheWriteTokens,
-          });
+        if (inputTokens !== null || outputTokens !== null) {
+          const observed = usageEvidence(
+            {
+              usage: {
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                cache_read_input_tokens: cachedInputTokens,
+                cache_creation_input_tokens: cacheWriteTokens,
+              },
+            },
+            "anthropic",
+          );
+          if (observed) await call.onUsageObserved?.(observed);
+        }
         boundary = buffer.indexOf("\n\n");
       }
 
@@ -319,16 +324,17 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     cachedInputTokens == null &&
     cacheWriteTokens == null
       ? null
-      : {
-          inputTokens,
-          outputTokens,
-          totalTokens:
-            inputTokens == null && outputTokens == null
-              ? null
-              : (inputTokens ?? 0) + (outputTokens ?? 0),
-          cachedInputTokens,
-          cacheWriteTokens,
-        };
+      : usageEvidence(
+          {
+            usage: {
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              cache_read_input_tokens: cachedInputTokens,
+              cache_creation_input_tokens: cacheWriteTokens,
+            },
+          },
+          "anthropic",
+        );
 
   console.info("[ai-provider] Anthropic stream completed", {
     model,
@@ -666,7 +672,13 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   const usage =
     inputTokens == null && outputTokens == null && totalTokens == null
       ? null
-      : { inputTokens, outputTokens, totalTokens };
+      : {
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          cachedInputTokens: um?.cachedContentTokenCount ?? null,
+          reasoningTokens: um?.thoughtsTokenCount ?? null,
+        };
   return { text, stopReason, usage, provider: "gemini", model };
 }
 
@@ -877,20 +889,7 @@ async function callOpenAiCompatible(
           : null,
     });
   }
-  const inputTokens = payload.usage?.prompt_tokens ?? null;
-  const outputTokens = payload.usage?.completion_tokens ?? null;
-  const totalTokens =
-    payload.usage?.total_tokens ??
-    (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
-  const usage =
-    inputTokens == null && outputTokens == null && totalTokens == null
-      ? null
-      : {
-          inputTokens,
-          outputTokens,
-          totalTokens,
-          reasoningTokens: payload.usage?.completion_tokens_details?.reasoning_tokens ?? null,
-        };
+  const usage = usageEvidence(payload, providerName);
   return { text, stopReason, usage, provider: providerName, model };
 }
 
@@ -979,16 +978,7 @@ async function callOpenRouterCancellable(
           if (typeof choice?.finish_reason === "string") stopReason = choice.finish_reason;
           if (event.usage) {
             await observeUsage(call, event);
-            const u = event.usage;
-            usage = {
-              inputTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : null,
-              outputTokens: typeof u.completion_tokens === "number" ? u.completion_tokens : null,
-              totalTokens: typeof u.total_tokens === "number" ? u.total_tokens : null,
-              reasoningTokens:
-                typeof u.completion_tokens_details?.reasoning_tokens === "number"
-                  ? u.completion_tokens_details.reasoning_tokens
-                  : null,
-            };
+            usage = usageEvidence(event, "openrouter");
           }
         }
         if (completed) break;

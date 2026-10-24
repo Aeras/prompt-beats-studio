@@ -48,13 +48,30 @@ function tokens(value: unknown): number | null {
 export function usageEvidence(payload: unknown, provider?: string): NormalizedUsage | null {
   const p = object(payload);
   const u = object(p.usage ?? p.usageMetadata ?? p);
-  const input = tokens(
+  let input = tokens(
     u.input_tokens ?? u.prompt_tokens ?? u.promptTokenCount ?? u.total_input_tokens,
   );
-  const output = tokens(
+  let output = tokens(
     u.output_tokens ?? u.completion_tokens ?? u.candidatesTokenCount ?? u.total_output_tokens,
   );
-  const total = tokens(u.total_tokens ?? u.totalTokenCount);
+  // GenerateContent candidates exclude thoughts; OpenAI-compatible output already includes them.
+  if (u.candidatesTokenCount !== undefined || u.thoughtsTokenCount !== undefined) {
+    const candidates = tokens(u.candidatesTokenCount);
+    const thoughts = tokens(u.thoughtsTokenCount);
+    output =
+      candidates === null && thoughts === null ? null : tokens((candidates ?? 0) + (thoughts ?? 0));
+  }
+  // Anthropic input_tokens is uncached input, unlike OpenAI-compatible prompt_tokens.
+  if (provider === "anthropic" && input !== null) {
+    input = tokens(
+      input +
+        (tokens(u.cache_read_input_tokens) ?? 0) +
+        (tokens(u.cache_creation_input_tokens) ?? 0),
+    );
+  }
+  const total =
+    tokens(u.total_tokens ?? u.totalTokenCount) ??
+    (input === null || output === null ? null : tokens(input + output));
   const cost = provider === "openrouter" ? (u.cost ?? u.total_cost) : null;
   const knownCost = typeof cost === "number" && Number.isFinite(cost) && cost >= 0 ? cost : null;
   if (input === null && output === null && total === null && knownCost === null) return null;
@@ -68,7 +85,8 @@ export function usageEvidence(payload: unknown, provider?: string): NormalizedUs
         u.cache_read_input_tokens,
     ),
     cacheWriteTokens: tokens(
-      u.cache_creation_input_tokens ?? object(u.input_tokens_details).cache_write_tokens,
+      u.cache_creation_input_tokens ??
+        object(u.input_tokens_details ?? u.prompt_tokens_details).cache_write_tokens,
     ),
     reasoningTokens: tokens(
       object(u.output_tokens_details ?? u.completion_tokens_details).reasoning_tokens ??

@@ -37,6 +37,11 @@
 
 ### Provider-specific evidence
 
+- Gemini GenerateContent: `outputTokens = candidatesTokenCount + thoughtsTokenCount`, με reasoning breakdown χωριστά. Ισχύει και για partial stream receipts· OpenAI/OpenRouter output και Gemini Interactions `total_output_tokens` **δεν** προσαυξάνονται ξανά. [Google usage metadata contract](https://ai.google.dev/api/generate-content#UsageMetadata).
+- Anthropic Messages: normalized input = uncached `input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`, τόσο στην παρατήρηση SSE όσο και στο τελικό receipt. Η υπάρχουσα cost function αφαιρεί τα cache subsets από το κανονικό input και εφαρμόζει τις ξεχωριστές registry τιμές· δεν τιμολογούνται ξανά ως uncached. [Anthropic cache accounting contract](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#tracking-cache-performance). Άγνωστο output παραμένει null, όχι τεχνητό μηδέν. Δεν αλλάζει caching policy, TTL ή pricing registry.
+- OpenRouter shared JSON/SSE adapters διατηρούν `prompt_tokens_details.cache_write_tokens`, cached/reasoning splits και reported cost στο τελικό normalized result, όχι μόνο στο observer. [OpenRouter receipt example](https://openrouter.ai/blog/tutorials/prompt-caching-sticky-routing/).
+- Terminal checkpoint χωρίς νέο receipt δεν μετατρέπει την προηγούμενη observed partial usage σε επιβεβαιωμένη final receipt. SQL final enrichment διατηρεί γνωστά πεδία όταν το νεότερο receipt δεν τα περιέχει, ενώ επιτρέπει authoritative non-null τελικούς μετρητές.
+
 - OpenAI Responses / Gemini Interactions background: durable remote IDs, GET retrieval και cancellation evidence. Καμία νέα background δυνατότητα δεν ενεργοποιείται σε άλλο μοντέλο.
 - OpenRouter shared adapter: completion/input/reasoning/cache στοιχεία και reported cost από γνωστά receipt fields. Μόνο OpenRouter cost fields χαρακτηρίζονται USD από αυτόν τον normalizer.
 - Anthropic/OpenRouter streaming και Gemini Argon SSE: observed usage μπορεί να αποθηκευτεί πριν το stream throw/cancel. Η ακύρωση transport δεν ισοδυναμεί με upstream stop.
@@ -109,6 +114,16 @@ Migration: `supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql`.
 - Full Bun, strict TS, changed-source ESLint/Prettier, production build και exact-head CI evidence καταγράφονται στο PR.
 
 ## Rollout / rollback — οδηγίες, όχι εκτέλεση
+
+### Τελική τοπική επαλήθευση (24/10/2026)
+
+- Frozen lockfile install: 542 installs / 668 packages, χωρίς αλλαγή dependency ή lockfile.
+- Full offline Bun suite: **995 PASS, 0 FAIL**, 150 αρχεία (περιλαμβάνει 25 accounting/recovery tests).
+- Πραγματικός Anthropic SSE adapter με injected fetch: completion και interruption, σωστό normalized input και cache breakdown. Δεν χρησιμοποιούνται πραγματικά secrets ή provider endpoints.
+- PostgreSQL/WASM actual migration/SQL assertions: PASS, περιλαμβάνει Anthropic split pricing και partial-evidence preservation. Full historical Supabase replay και δύο PostgreSQL-session races επαληθεύονται από το mandatory Database Replay CI, όχι από το WASM fixture.
+- ESLint changed source, Prettier, strict TypeScript, production build και diff integrity: τελική επαλήθευση μαζί με τα exact-head CI links στο PR #404.
+
+AUD-011/013/022/023: οι τεκμηριωμένες source-level αιτίες διορθώνονται και καλύπτονται με offline/SQL tests. AUD-012: durable reconciliation, bounded recovery και no-blind-redispatch υλοποιούνται για supported background APIs. Η ζωντανή provider retention/GET συμβατότητα και το create-before-remote-ID crash window παραμένουν ρητά μη εγγυημένα· δεν δηλώνεται πλήρης παραγωγική επίλυση ή exactly-once provider execution.
 
 1. Απαιτείται ξεχωριστή έγκριση deployment. Πρώτα additive migration, έπειτα νέα workers/application.
 2. Drain/stop παλιούς workers για καθαρό cutover: παλιός κώδικας μπορεί ακόμη να γράφει χωρίς execution identity. Το PR δεν υπόσχεται διόρθωση writes από παλιό binary.

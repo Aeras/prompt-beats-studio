@@ -3,6 +3,9 @@ BEGIN;
 INSERT INTO public.ai_models(provider,provider_model_id,display_name,pricing_status,
  input_price_per_million,output_price_per_million,cached_input_price_per_million)
  VALUES ('openai','fixture','Offline usage fixture','verified',2,10,0.5);
+INSERT INTO public.ai_models(provider,provider_model_id,display_name,pricing_status,
+ input_price_per_million,output_price_per_million,cached_input_price_per_million,cache_write_price_per_million)
+ VALUES ('anthropic','fixture-anthropic','Offline Anthropic cache fixture','verified',2,10,0.5,2.5);
 INSERT INTO auth.users(id,email) VALUES
  ('11111111-1111-4111-8111-111111111111','usage-owner@example.invalid'),
  ('22222222-2222-4222-8222-222222222222','usage-other@example.invalid');
@@ -55,6 +58,20 @@ BEGIN
     THEN RAISE EXCEPTION 'genuine second execution not aggregated separately'; END IF;
   IF EXISTS (SELECT 1 FROM public.ai_usage_logs WHERE user_id='22222222-2222-4222-8222-222222222222')
     THEN RAISE EXCEPTION 'usage contaminated another account'; END IF;
+  PERFORM public.settle_ai_usage_internal(p || jsonb_build_object(
+    'id','99999999-9999-4999-8999-999999999999','provider','anthropic','model','fixture-anthropic',
+    'input_tokens',100,'cached_input_tokens',80,'cache_write_tokens',10,
+    'output_tokens',20,'total_tokens',120,'reasoning_tokens',NULL,'provider_reported_cost_usd',NULL));
+  IF (SELECT estimated_cost_usd FROM public.ai_usage_logs WHERE id='99999999-9999-4999-8999-999999999999') <> 0.000285
+    THEN RAISE EXCEPTION 'Anthropic normalized total must price each cache subset once'; END IF;
+  PERFORM public.settle_ai_usage_internal(p || jsonb_build_object(
+    'id','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','provider_usage_state','partial'));
+  PERFORM public.settle_ai_usage_internal(p || jsonb_build_object(
+    'id','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','provider_usage_state','final',
+    'input_tokens',NULL,'output_tokens',NULL,'total_tokens',NULL,'reasoning_tokens',NULL,'cached_input_tokens',NULL));
+  IF NOT EXISTS (SELECT 1 FROM public.ai_usage_logs WHERE id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    AND input_tokens=100 AND output_tokens=20 AND total_tokens=120 AND reasoning_tokens=10 AND cached_input_tokens=25)
+    THEN RAISE EXCEPTION 'terminal response without receipt erased partial evidence'; END IF;
   UPDATE public.ai_provider_executions SET next_recovery_at=now()-interval '1 second' WHERE id=receipt;
   SELECT array_agg(id) INTO ids FROM public.claim_ai_execution_recovery_internal();
   IF NOT receipt=ANY(ids) THEN RAISE EXCEPTION 'recovery claim missing'; END IF;

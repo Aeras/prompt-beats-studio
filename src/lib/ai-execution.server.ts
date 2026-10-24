@@ -162,6 +162,7 @@ export function trackedCaller(
         provider: result.provider,
         model: result.model,
         usage: receipt.usage,
+        usageState: result.usage ? "final" : receipt.usage ? "partial" : "unknown",
         success: result.stopReason === "end_turn",
       });
       return receipt;
@@ -236,7 +237,7 @@ export async function reconcileAiExecutions(): Promise<void> {
         operation: row.operation,
         provider: row.provider,
         model: row.model,
-        usageState: result ? "final" : row.observed_usage ? "partial" : "unknown",
+        usageState: result?.usage ? "final" : row.observed_usage ? "partial" : "unknown",
         usage: result?.usage ?? row.observed_usage,
         success: result?.stopReason === "end_turn",
       });

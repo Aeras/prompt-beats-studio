@@ -127,8 +127,13 @@ BEGIN
     OR v_row.operation IS DISTINCT FROM _payload->>'operation'
   THEN RAISE EXCEPTION 'usage execution identity mismatch'; END IF;
   IF _payload->>'provider_usage_state' = 'final' AND v_row.provider_usage_state IN ('unknown','partial') THEN
-    UPDATE public.ai_usage_logs SET input_tokens = NULL, output_tokens = NULL, total_tokens = NULL,
-      cached_input_tokens = NULL, cache_write_tokens = NULL, reasoning_tokens = NULL,
+    UPDATE public.ai_usage_logs SET
+      input_tokens = COALESCE(NULLIF(_payload->>'input_tokens','')::integer,input_tokens),
+      output_tokens = COALESCE(NULLIF(_payload->>'output_tokens','')::integer,output_tokens),
+      total_tokens = COALESCE(NULLIF(_payload->>'total_tokens','')::integer,total_tokens),
+      cached_input_tokens = COALESCE(NULLIF(_payload->>'cached_input_tokens','')::integer,cached_input_tokens),
+      cache_write_tokens = COALESCE(NULLIF(_payload->>'cache_write_tokens','')::integer,cache_write_tokens),
+      reasoning_tokens = COALESCE(NULLIF(_payload->>'reasoning_tokens','')::integer,reasoning_tokens),
       estimated_cost_usd = NULL WHERE id = v_id;
   ELSIF _payload->>'provider_usage_state' = 'partial' AND v_row.provider_usage_state IN ('unknown','partial') THEN
     UPDATE public.ai_usage_logs SET
