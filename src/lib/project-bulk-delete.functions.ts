@@ -3,13 +3,13 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const projectIdSchema = z.string().uuid();
+const projectIdSchema = z.string().guid();
 
 const bulkDeletePlansSchema = z
   .array(
     z.object({
       projectId: projectIdSchema,
-      deletePromptIds: z.array(z.string().uuid()).max(500).default([]),
+      deletePromptIds: z.array(z.string().guid()).max(500).default([]),
     }),
   )
   .min(1)
@@ -55,7 +55,9 @@ export const previewBulkDeletePromptProjects = createServerFn({ method: "POST" }
 
     const universeByProject = new Map<string, { id: string; title: string }>();
     for (const row of memberships ?? []) {
-      const universe = Array.isArray(row.song_universes) ? row.song_universes[0] : row.song_universes;
+      const universe = Array.isArray(row.song_universes)
+        ? row.song_universes[0]
+        : row.song_universes;
       if (row.project_id && universe?.id && universe?.title) {
         universeByProject.set(row.project_id, { id: universe.id, title: universe.title });
       }
@@ -102,7 +104,9 @@ export const bulkDeletePromptProjects = createServerFn({ method: "POST" })
     return {
       ok: true,
       deletedProjectCount:
-        typeof result?.deletedProjectCount === "number" ? result.deletedProjectCount : projectIds.length,
+        typeof result?.deletedProjectCount === "number"
+          ? result.deletedProjectCount
+          : projectIds.length,
       deletedPromptCount:
         typeof result?.deletedPromptCount === "number"
           ? result.deletedPromptCount

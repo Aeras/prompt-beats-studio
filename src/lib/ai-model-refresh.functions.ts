@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AiProviderId, DiscoveredProviderModel } from "@/lib/ai-provider-registry.server";
@@ -20,14 +21,14 @@ const providerIdSchema = z.enum([
   "nvidia",
 ]);
 
-const checkOneInput = z.object({ id: z.string().uuid() });
+const checkOneInput = z.object({ id: z.string().guid() });
 const saveSourceInput = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   pricingSource: z
     .enum(["provider_metadata", "official_docs", "verified_catalog", "unverified"])
     .nullable(),
   pricingSourceUrl: z.string().url().max(1000).nullable(),
-  pricingCheckedAt: z.string().datetime().nullable(),
+  pricingCheckedAt: z.string().regex(compatibleUtcDateTimePattern).nullable(),
 });
 
 async function requireAdmin(supabase: any) {
@@ -42,11 +43,7 @@ type PricingValues = {
   cacheWritePricePerMillion: number | null;
 };
 
-type PricingSource =
-  | "provider_metadata"
-  | "official_docs"
-  | "verified_catalog"
-  | "unverified";
+type PricingSource = "provider_metadata" | "official_docs" | "verified_catalog" | "unverified";
 
 type PricingResolution = PricingValues & {
   status: "verified" | "partial" | "unverified";
@@ -202,8 +199,7 @@ async function fetchOfficialPricingText(url: string) {
 }
 
 function displayAlias(provider: AiProviderId, modelId: string) {
-  if (provider === "anthropic")
-    return modelId.replace(/^claude-/, "claude ").replace(/-/g, " ");
+  if (provider === "anthropic") return modelId.replace(/^claude-/, "claude ").replace(/-/g, " ");
   if (provider === "gemini") return modelId.replace(/-/g, " ");
   return modelId;
 }
@@ -248,18 +244,12 @@ function tryParseOfficialPricing(
   const nearby = text.slice(Math.max(0, index - 300), index + 2200);
 
   if (provider === "xai") {
-    const input = labelledDollar(
-      nearby,
-      /Input(?:\s+Tokens?)?\s*\$\s*([0-9]+(?:\.[0-9]+)?)/i,
-    );
+    const input = labelledDollar(nearby, /Input(?:\s+Tokens?)?\s*\$\s*([0-9]+(?:\.[0-9]+)?)/i);
     const cached = labelledDollar(
       nearby,
       /Cached(?:\s+(?:input\s+)?tokens?)?\s*\$\s*([0-9]+(?:\.[0-9]+)?)/i,
     );
-    const output = labelledDollar(
-      nearby,
-      /Output(?:\s+Tokens?)?\s*\$\s*([0-9]+(?:\.[0-9]+)?)/i,
-    );
+    const output = labelledDollar(nearby, /Output(?:\s+Tokens?)?\s*\$\s*([0-9]+(?:\.[0-9]+)?)/i);
     const parsed = {
       inputPricePerMillion: input,
       cachedInputPricePerMillion: cached,
@@ -302,10 +292,7 @@ function tryParseOfficialPricing(
   return null;
 }
 
-async function resolvePricing(
-  provider: AiProviderId,
-  modelId: string,
-): Promise<PricingResolution> {
+async function resolvePricing(provider: AiProviderId, modelId: string): Promise<PricingResolution> {
   const checkedAt = new Date().toISOString();
   const sourceUrl = officialPricingUrl(provider, modelId);
   if (sourceUrl) {
@@ -376,9 +363,7 @@ function providerFamily(provider: string, id: string) {
 }
 
 function versionVector(id: string) {
-  return (id.match(/\d+(?:\.\d+)?/g) ?? []).flatMap((part) =>
-    part.split(".").map(Number),
-  );
+  return (id.match(/\d+(?:\.\d+)?/g) ?? []).flatMap((part) => part.split(".").map(Number));
 }
 
 function compareVersion(a: string, b: string) {
@@ -451,15 +436,13 @@ async function inspectModel(
     if (differentNumber(row.input_price_per_million, pricing.inputPricePerMillion))
       changes.push({
         field: "inputPricePerMillion",
-        current:
-          row.input_price_per_million == null ? null : Number(row.input_price_per_million),
+        current: row.input_price_per_million == null ? null : Number(row.input_price_per_million),
         suggested: pricing.inputPricePerMillion,
       });
     if (differentNumber(row.output_price_per_million, pricing.outputPricePerMillion))
       changes.push({
         field: "outputPricePerMillion",
-        current:
-          row.output_price_per_million == null ? null : Number(row.output_price_per_million),
+        current: row.output_price_per_million == null ? null : Number(row.output_price_per_million),
         suggested: pricing.outputPricePerMillion,
       });
     if (differentNumber(row.cached_input_price_per_million, pricing.cachedInputPricePerMillion))
@@ -600,9 +583,7 @@ export const checkAllAdminAiModelsForUpdates = createServerFn({ method: "POST" }
         total: reports.length,
         upToDate: reports.filter(
           (report) =>
-            !report.error &&
-            report.changes.length === 0 &&
-            report.likelySuccessors.length === 0,
+            !report.error && report.changes.length === 0 && report.likelySuccessors.length === 0,
         ).length,
         changed: reports.filter((report) => report.changes.length > 0).length,
         newerVersion: reports.filter((report) => report.likelySuccessors.length > 0).length,

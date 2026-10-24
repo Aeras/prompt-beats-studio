@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
-const querySchema = z.object({ trackId: z.string().uuid() });
+const querySchema = z.object({ trackId: z.string().guid() });
 
 function downloadFileName(title: string, audioKey: string) {
   const extension = audioKey.toLowerCase().endsWith(".wav") ? "wav" : "mp3";

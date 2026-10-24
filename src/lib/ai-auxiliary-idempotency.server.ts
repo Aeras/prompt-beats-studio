@@ -7,7 +7,7 @@ import {
   markAuxiliaryAiProviderStarted,
 } from "@/lib/ai-finalization.server";
 
-export const auxiliaryRequestKeySchema = z.string().uuid();
+export const auxiliaryRequestKeySchema = z.string().guid();
 
 type Claim = {
   status?: "claimed" | "completed" | "processing" | "failed" | "rate_limited";

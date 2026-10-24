@@ -101,7 +101,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
 
 /** Public artist page data by profile id, including track prompts. */
 export const getPublicArtistById = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ id: z.string().guid() }).parse(input))
   .handler(async ({ data }) => {
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const supabase = createPublicServerClient();

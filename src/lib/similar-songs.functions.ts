@@ -25,7 +25,7 @@ export const listSimilarSongs = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        trackId: z.string().uuid(),
+        trackId: z.string().guid(),
         limit: z.number().int().min(1).max(20).default(12),
       })
       .parse(input),

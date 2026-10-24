@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const folderIdSchema = z.string().uuid();
+const folderIdSchema = z.string().guid();
 const nullableFolderIdSchema = folderIdSchema.nullable().optional();
 const folderNameSchema = z.string().trim().min(1).max(120);
 
@@ -23,12 +23,12 @@ const moveFolderInput = z.object({
 });
 
 const moveProjectInput = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().guid(),
   destinationFolderId: nullableFolderIdSchema,
 });
 
 const movePromptInput = z.object({
-  promptId: z.string().uuid(),
+  promptId: z.string().guid(),
   destinationFolderId: nullableFolderIdSchema,
 });
 
@@ -44,13 +44,13 @@ const searchScopeInput = z.object({
   query: z.string().trim().min(1).max(200),
 });
 const duplicateProjectInput = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().guid(),
   destinationFolderId: nullableFolderIdSchema,
   newName: z.string().trim().min(1).max(120),
 });
 
 const duplicatePromptInput = z.object({
-  promptId: z.string().uuid(),
+  promptId: z.string().guid(),
   destinationFolderId: nullableFolderIdSchema,
   newName: z.string().trim().min(1).max(200),
 });

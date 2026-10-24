@@ -39,7 +39,7 @@ export function resolveLyricsWorkspaceLanguage(
 }
 
 export const lyricsSectionEditRequestSchema = z.object({
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: z.string().guid(),
   feature: z.enum(["lyrics_workspace", "lyrics_review"]).default("lyrics_workspace"),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   fullLyrics: z.string().min(1).max(12000),
@@ -55,8 +55,8 @@ export const lyricsSectionEditRequestSchema = z.object({
   language: z.string().trim().min(1).max(80),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   generatorInputSnapshot: generatorInputSnapshotSchema.nullable().default(null),
-  projectId: z.string().uuid().nullish(),
-  basePromptId: z.string().uuid().nullish(),
+  projectId: z.string().guid().nullish(),
+  basePromptId: z.string().guid().nullish(),
 });
 
 export const lyricsSectionContextSchema = z.object({
@@ -76,8 +76,8 @@ export const lyricsSectionContextSchema = z.object({
   language: z.string().trim().min(1).max(80),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   generatorInputSnapshot: generatorInputSnapshotSchema.nullable().default(null),
-  projectId: z.string().uuid().nullish(),
-  basePromptId: z.string().uuid().nullish(),
+  projectId: z.string().guid().nullish(),
+  basePromptId: z.string().guid().nullish(),
 });
 
 export const lyricsSectionEditJobSchema = z.object({
@@ -97,8 +97,8 @@ export type LyricsSectionEditOutput = z.infer<typeof lyricsSectionEditOutputSche
 export type LyricsSectionEditContext = z.infer<typeof lyricsSectionContextSchema>;
 
 export const workspaceSaveInputSchema = z.object({
-  projectId: z.string().uuid().nullable(),
-  basePromptId: z.string().uuid(),
+  projectId: z.string().guid().nullable(),
+  basePromptId: z.string().guid(),
   lyrics: z.string().min(1).max(12000),
   versionLabel: z.string().trim().min(1).max(120).default("Lyrics edit"),
 });

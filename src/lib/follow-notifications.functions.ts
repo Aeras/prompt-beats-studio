@@ -4,16 +4,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
-const userIdInput = z.object({ userId: z.string().uuid() });
+const userIdInput = z.object({ userId: z.string().guid() });
 const followListInput = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().guid(),
   mode: z.enum(["followers", "following"]),
   page: z.number().int().min(0).max(500).default(0),
 });
 const notificationPageInput = z.object({
   page: z.number().int().min(0).max(500).default(0),
 });
-const notificationIdInput = z.object({ notificationId: z.string().uuid() });
+const notificationIdInput = z.object({ notificationId: z.string().guid() });
 const preferencesInput = z.object({
   newTrackEnabled: z.boolean(),
   newFollowerEnabled: z.boolean(),

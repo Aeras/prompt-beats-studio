@@ -155,7 +155,7 @@ describe("Library folders foundation", () => {
     const ai = await source("src/lib/ai.functions.ts");
     const library = await source("src/routes/library.tsx");
 
-    expect(ai).toContain("folderId: z.string().uuid().nullable().optional()");
+    expect(ai).toContain("folderId: z.string().guid().nullable().optional()");
     expect(ai).toContain("folder_id: data.folderId ?? null");
     expect(library).toContain('folderId: view === "analyses" ? null : currentFolderId');
   });
@@ -333,7 +333,7 @@ describe("Library folders foundation", () => {
     expect(generator).toContain("saveFolderPath");
     expect(generator).toContain("folderId: saveFolderId");
     expect(generator).toContain("folder_id: projectId ? null : saveFolderId");
-    expect(ai).toContain("folder_id: z.string().uuid().nullable().optional()");
+    expect(ai).toContain("folder_id: z.string().guid().nullable().optional()");
     expect(ai).toContain("Project versions inherit the Project folder");
   });
 
@@ -367,7 +367,7 @@ describe("Library folders foundation", () => {
     expect(library).toContain("deletePromptIds");
     expect(dialog).toContain("Διαγραφή και prompts από αυτό το Project");
     expect(dialog).toContain("Delete Project + all prompts");
-    expect(ai).toContain("deletePromptIds: z.array(z.string().uuid()).max(500).default([])");
+    expect(ai).toContain("deletePromptIds: z.array(z.string().guid()).max(500).default([])");
     expect(ai).toContain("One or more selected prompts do not belong to this project.");
     expect(ai).toContain("deletedPromptCount");
   });

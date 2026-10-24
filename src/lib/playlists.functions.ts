@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedCoverPath } from "@/lib/storage-paths";
 
-const playlistIdSchema = z.object({ playlistId: z.string().uuid() });
+const playlistIdSchema = z.object({ playlistId: z.string().guid() });
 const nameSchema = z.string().trim().min(1).max(80);
 const coverUrlSchema = z.string().url().max(1000).nullable();
 
@@ -198,7 +198,7 @@ export const createPlaylist = createServerFn({ method: "POST" })
     z
       .object({
         name: nameSchema,
-        trackId: z.string().uuid().optional(),
+        trackId: z.string().guid().optional(),
         coverUrl: coverUrlSchema.optional(),
       })
       .parse(input),
@@ -244,7 +244,7 @@ export const updatePlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
-      .object({ playlistId: z.string().uuid(), name: nameSchema, coverUrl: coverUrlSchema })
+      .object({ playlistId: z.string().guid(), name: nameSchema, coverUrl: coverUrlSchema })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -293,7 +293,7 @@ export const deletePlaylist = createServerFn({ method: "POST" })
 export const addTrackToPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input),
+    z.object({ playlistId: z.string().guid(), trackId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
@@ -333,7 +333,7 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
 export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ playlistId: z.string().uuid(), trackId: z.string().uuid() }).parse(input),
+    z.object({ playlistId: z.string().guid(), trackId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
@@ -350,7 +350,7 @@ export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
 export const reorderPlaylistTracks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ playlistId: z.string().uuid(), trackIds: z.array(z.string().uuid()) }).parse(input),
+    z.object({ playlistId: z.string().guid(), trackIds: z.array(z.string().guid()) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "playlists");
@@ -391,7 +391,7 @@ export const listFavoriteTracks = createServerFn({ method: "GET" })
 
 export const toggleFavorite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ trackId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "favorites");
     const { data: existing, error: existingError } = await (context.supabase as any)

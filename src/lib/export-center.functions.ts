@@ -10,8 +10,8 @@ import {
   type PromptExportSource,
 } from "@/lib/export-center.shared";
 
-const promptExportInput = z.object({ promptId: z.string().uuid() });
-const projectExportInput = z.object({ projectId: z.string().uuid() });
+const promptExportInput = z.object({ promptId: z.string().guid() });
+const projectExportInput = z.object({ projectId: z.string().guid() });
 
 type PromptRow = {
   title: string | null;

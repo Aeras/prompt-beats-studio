@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSafeOwnedAudioKey } from "@/lib/storage-paths";
 
-const trackIdInput = z.object({ trackId: z.string().uuid() });
+const trackIdInput = z.object({ trackId: z.string().guid() });
 
 function downloadFileName(title: string, audioKey: string) {
   const extension = audioKey.toLowerCase().endsWith(".wav") ? "wav" : "mp3";
@@ -34,7 +34,7 @@ export const getTrackDownloadPermission = createServerFn({ method: "POST" })
 export const getTrackDownloadAvailability = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ trackIds: z.array(z.string().uuid()).max(100) }).parse(input),
+    z.object({ trackIds: z.array(z.string().guid()).max(100) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const ids = [...new Set(data.trackIds)];
@@ -56,7 +56,7 @@ export const getTrackDownloadAvailability = createServerFn({ method: "POST" })
 export const setTrackDownloadPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ trackId: z.string().uuid(), allowDownload: z.boolean() }).parse(input),
+    z.object({ trackId: z.string().guid(), allowDownload: z.boolean() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: track, error: readError } = await (context.supabase.from("tracks") as any)

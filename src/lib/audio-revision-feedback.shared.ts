@@ -2,11 +2,11 @@ import { z } from "zod";
 
 export const audioRevisionFeedbackInputSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid(),
-    trackId: z.string().uuid(),
-    revisionIntentId: z.string().uuid().nullable().optional().default(null),
+    idempotencyKey: z.string().guid(),
+    projectId: z.string().guid(),
+    versionId: z.string().guid(),
+    trackId: z.string().guid(),
+    revisionIntentId: z.string().guid().nullable().optional().default(null),
     keep: z.string().trim().max(900).default(""),
     change: z.string().trim().max(1200).default(""),
     revisionBrief: z.string().trim().max(600).default(""),

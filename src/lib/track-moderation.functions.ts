@@ -18,7 +18,7 @@ export const TRACK_MODERATION_REASONS = [
 const reasonCode = z.enum(
   TRACK_MODERATION_REASONS.map((reason) => reason.code) as [string, ...string[]],
 );
-const trackId = z.string().uuid();
+const trackId = z.string().guid();
 
 export type StaffTrack = {
   id: string;

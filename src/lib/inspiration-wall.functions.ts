@@ -14,8 +14,8 @@ import {
   type InspirationWallTrackLinkRecord,
 } from "@/lib/inspiration-wall.shared";
 
-const wallIdSchema = z.string().uuid();
-const nullableProjectIdSchema = z.string().uuid().nullable();
+const wallIdSchema = z.string().guid();
+const nullableProjectIdSchema = z.string().guid().nullable();
 
 const createWallSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -58,7 +58,7 @@ const createCardSchema = z.object({
 
 const updateCardSchema = z
   .object({
-    cardId: z.string().uuid(),
+    cardId: z.string().guid(),
     type: inspirationWallCardTypeSchema.optional(),
     title: z.string().trim().max(200).nullable().optional(),
     body: z.string().max(10000).nullable().optional(),
@@ -332,7 +332,7 @@ export const updateInspirationWallCard = createServerFn({ method: "POST" })
 
 export const deleteInspirationWallCard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ cardId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ cardId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");
     const supabase = context.supabase as any;
@@ -354,7 +354,7 @@ export const deleteInspirationWallCard = createServerFn({ method: "POST" })
 export const linkInspirationWallTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ wallId: wallIdSchema, trackId: z.string().uuid() }).parse(input),
+    z.object({ wallId: wallIdSchema, trackId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");
@@ -391,7 +391,7 @@ export const linkInspirationWallTrack = createServerFn({ method: "POST" })
 export const unlinkInspirationWallTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ wallId: wallIdSchema, trackId: z.string().uuid() }).parse(input),
+    z.object({ wallId: wallIdSchema, trackId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "inspiration_wall");

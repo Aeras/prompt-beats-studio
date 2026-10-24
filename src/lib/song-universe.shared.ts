@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
 
 export const songUniverseTypeSchema = z.enum([
   "album",
@@ -109,22 +110,26 @@ const songUniverseJsonValueSchema: z.ZodType<SongUniverseJsonValue> = z.lazy(() 
     z.boolean(),
     z.null(),
     z.array(songUniverseJsonValueSchema),
-    z.record(songUniverseJsonValueSchema),
+    z.record(z.string(), songUniverseJsonValueSchema),
   ]),
 );
 
 export const songUniverseContextSnapshotSchema = z.object({
-  universeId: z.string().uuid(),
+  universeId: z.string().guid(),
   universeTitle: z.string().trim().min(1).max(160),
-  capturedAt: z.string().datetime(),
+  capturedAt: z.string().regex(compatibleUtcDateTimePattern),
   selectedItemIds: z.array(z.string()).max(200),
   inheritedItems: z.array(songUniverseBibleItemSchema).max(200),
   universeType: songUniverseTypeSchema.nullable().optional().default(null),
   historyFingerprint: z.string().max(200).nullable().optional().default(null),
-  plannerPlanId: z.string().uuid().nullable().optional().default(null),
+  plannerPlanId: z.string().guid().nullable().optional().default(null),
   plannerStrategyVersion: z.string().max(100).nullable().optional().default(null),
   plannerSchemaVersion: z.string().max(100).nullable().optional().default(null),
-  approvedNextSongBrief: z.record(songUniverseJsonValueSchema).nullable().optional().default(null),
+  approvedNextSongBrief: z
+    .record(z.string(), songUniverseJsonValueSchema)
+    .nullable()
+    .optional()
+    .default(null),
   plannedTrackCount: z.number().int().min(1).max(200).nullable().optional().default(null),
   targetPosition: z.number().int().min(0).max(199).nullable().optional().default(null),
   targetRole: z.string().trim().max(200).nullable().optional().default(null),
@@ -134,9 +139,9 @@ export type SongUniverseContextSnapshot = z.infer<typeof songUniverseContextSnap
 const songUniverseSongSetupHandoffV1Schema = z
   .object({
     version: z.literal(1),
-    universeId: z.string().uuid(),
+    universeId: z.string().guid(),
     universeTitle: z.string().trim().min(1).max(160),
-    projectId: z.string().uuid().nullable(),
+    projectId: z.string().guid().nullable(),
     selectedItems: z.array(songUniverseBibleItemSchema).min(1).max(200),
     contextSnapshot: songUniverseContextSnapshotSchema,
   })
@@ -145,12 +150,12 @@ const songUniverseSongSetupHandoffV1Schema = z
 const songUniverseSongSetupHandoffV2Schema = z
   .object({
     version: z.literal(2),
-    universeId: z.string().uuid(),
+    universeId: z.string().guid(),
     universeTitle: z.string().trim().min(1).max(160),
     universeType: songUniverseTypeSchema,
-    projectId: z.string().uuid().nullable(),
+    projectId: z.string().guid().nullable(),
     selectedItems: z.array(songUniverseBibleItemSchema).max(200),
-    approvedNextSongBrief: z.record(songUniverseJsonValueSchema),
+    approvedNextSongBrief: z.record(z.string(), songUniverseJsonValueSchema),
     contextSnapshot: songUniverseContextSnapshotSchema,
   })
   .strict();
@@ -283,7 +288,12 @@ export function buildSongUniverseContextText(
       };
   const kindLabel = el
     ? { identity: "Ταυτότητα", palette: "Παλέτα", constraint: "Περιορισμός", deviation: "Απόκλιση" }
-    : { identity: "Identity", palette: "Palette", constraint: "Constraint", deviation: "Deviation" };
+    : {
+        identity: "Identity",
+        palette: "Palette",
+        constraint: "Constraint",
+        deviation: "Deviation",
+      };
   const sectionLabel: Record<SongUniverseBibleSection, string> = el
     ? {
         core_concept: "Κεντρική ιδέα",
@@ -377,7 +387,11 @@ export function buildSongUniverseContextText(
     addValue("Κατεύθυνση σκηνικού", "Setting direction", brief["recommendedSettingDirection"]);
     addValue("Κατάσταση αφήγησης", "Narrative state", brief["narrativeState"]);
     addValue("Εξέλιξη ιστορίας", "Story progression", brief["storyProgression"]);
-    addList("Γεγονότα που δεν επαναλαμβάνονται", "Events not to repeat", brief["eventsNotToRepeat"]);
+    addList(
+      "Γεγονότα που δεν επαναλαμβάνονται",
+      "Events not to repeat",
+      brief["eventsNotToRepeat"],
+    );
     addValue(
       "Επόμενη αφηγηματική ευκαιρία",
       "Next narrative opportunity",

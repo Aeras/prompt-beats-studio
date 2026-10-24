@@ -186,7 +186,7 @@ export const createAudioRevisionFeedback = createServerFn({ method: "POST" })
 export const completeAudioRevisionFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ feedbackId: z.string().uuid(), revisionPromptId: z.string().uuid() }).parse(input),
+    z.object({ feedbackId: z.string().guid(), revisionPromptId: z.string().guid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -30,7 +30,7 @@ const providerSchema = z.enum(DONATION_PROVIDERS);
 const overrideSchema = z.enum(["inherit", "enabled", "disabled"]);
 
 const methodInputSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().guid().optional(),
   provider: providerSchema,
   customLabel: z.string().trim().max(60).nullish(),
   value: z.string().trim().min(1).max(500),
@@ -283,7 +283,7 @@ export const saveMyDonationSettings = createServerFn({ method: "POST" })
   });
 
 export const getPublicDonationMethods = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ userId: z.string().guid() }).parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const state = await readUserDonationState(supabaseAdmin, data.userId);
@@ -317,7 +317,7 @@ export const setAdminDonationGlobalSetting = createServerFn({ method: "POST" })
 
 export const getAdminUserDonationAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ userId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -329,7 +329,7 @@ export const setAdminUserDonationAccess = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        userId: z.string().uuid(),
+        userId: z.string().guid(),
         override: overrideSchema,
       })
       .parse(input),

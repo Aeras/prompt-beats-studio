@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { compatibleOffsetDateTimePattern } from "@/lib/validation-datetime";
 
 import { songUniverseTypeSchema } from "@/lib/song-universe.shared";
 
@@ -11,9 +12,7 @@ export const songUniverseSummaryCompletenessSchema = z.enum([
   "partial",
   "sparse",
 ]);
-export type SongUniverseSummaryCompleteness = z.infer<
-  typeof songUniverseSummaryCompletenessSchema
->;
+export type SongUniverseSummaryCompleteness = z.infer<typeof songUniverseSummaryCompletenessSchema>;
 
 export const songUniverseEvidenceSourceSchema = z.enum([
   "deterministic_fact",
@@ -35,10 +34,10 @@ export const songUniversePlannerEvidenceSchema = z.object({
 export type SongUniversePlannerEvidence = z.infer<typeof songUniversePlannerEvidenceSchema>;
 
 export const projectUniverseSummarySchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().guid(),
   projectTitle: z.string().trim().min(1).max(300),
   songTitle: z.string().trim().max(300).nullable().default(null),
-  versionId: z.string().uuid().nullable().default(null),
+  versionId: z.string().guid().nullable().default(null),
   versionNumber: z.number().int().nonnegative().nullable().default(null),
   theme: z.string().trim().max(2000).nullable().default(null),
   genre: z.string().trim().max(1000).nullable().default(null),
@@ -74,9 +73,9 @@ export const projectUniverseSummarySchema = z.object({
   sourceCompleteness: songUniverseSummaryCompletenessSchema.default("partial"),
   // Supabase/Postgres timestamptz values are valid ISO datetimes with explicit offsets
   // (for example +00:00), so accept both Z and offset forms at the Project Memory boundary.
-  versionUpdatedAt: z.string().datetime({ offset: true }).nullable().default(null),
-  storyMapUpdatedAt: z.string().datetime({ offset: true }).nullable().default(null),
-  updatedAt: z.string().datetime({ offset: true }).nullable().default(null),
+  versionUpdatedAt: z.string().regex(compatibleOffsetDateTimePattern).nullable().default(null),
+  storyMapUpdatedAt: z.string().regex(compatibleOffsetDateTimePattern).nullable().default(null),
+  updatedAt: z.string().regex(compatibleOffsetDateTimePattern).nullable().default(null),
 });
 export type ProjectUniverseSummary = z.infer<typeof projectUniverseSummarySchema>;
 
@@ -134,7 +133,7 @@ export type SongUniverseUsageProfile = z.infer<typeof songUniverseUsageProfileSc
 
 export const songUniverseDuplicateRiskSchema = z.object({
   level: z.enum(["none", "low", "high"]),
-  projectId: z.string().uuid().nullable().default(null),
+  projectId: z.string().guid().nullable().default(null),
   projectTitle: z.string().trim().max(300).nullable().default(null),
   similarity: z.number().min(0).max(1).nullable().default(null),
   reason: z.string().trim().max(1200).default(""),

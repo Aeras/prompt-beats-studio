@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { storyMapDraftSchema } from "@/lib/story-map.shared";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 
 async function requireOwnedMap(supabase: any, storyMapId: string, userId: string) {
   const { data, error } = await supabase

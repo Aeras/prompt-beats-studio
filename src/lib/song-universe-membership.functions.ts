@@ -6,7 +6,7 @@ import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
 export const getProjectSongUniverseMembership = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().guid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireFeatureAccess(context.supabase, "song_universe");
 

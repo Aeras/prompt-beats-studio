@@ -16,7 +16,7 @@ import {
   type SongUniverseRecord,
 } from "@/lib/song-universe.shared";
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().guid();
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -25,7 +25,7 @@ const createSchema = z.object({
   initialDirection: z.string().trim().max(4000).nullable().optional().default(null),
   plannedTrackCount: z.number().int().min(1).max(200).nullable().optional().default(null),
   arcDirection: z.string().trim().max(4000).nullable().optional().default(null),
-  storyBible: songUniverseStoryBibleSchema.optional().default({}),
+  storyBible: songUniverseStoryBibleSchema.optional().prefault({}),
   plannerContrast: songUniversePlannerContrastSettingSchema.optional().default("balanced"),
 });
 
@@ -59,8 +59,7 @@ function mapUniverse(row: any): SongUniverseRecord {
     creativeBible: songUniverseCreativeBibleSchema.parse(row.creative_bible ?? { items: [] }),
     initialDirection: row.initial_direction ?? null,
     coverObjectKey: row.cover_object_key ?? null,
-    plannedTrackCount:
-      typeof row.planned_track_count === "number" ? row.planned_track_count : null,
+    plannedTrackCount: typeof row.planned_track_count === "number" ? row.planned_track_count : null,
     arcDirection: row.arc_direction ?? null,
     storyBible: songUniverseStoryBibleSchema.parse(row.story_bible ?? {}),
     plannerContrast:
@@ -288,7 +287,9 @@ export const addProjectToSongUniverse = createServerFn({ method: "POST" })
       inheritedItems,
       universeType: universeRow.universe_type,
       plannedTrackCount:
-        typeof universeRow.planned_track_count === "number" ? universeRow.planned_track_count : null,
+        typeof universeRow.planned_track_count === "number"
+          ? universeRow.planned_track_count
+          : null,
     };
     const { data: row, error } = await supabase
       .from("song_universe_projects")
