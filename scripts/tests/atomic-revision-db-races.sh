@@ -55,7 +55,7 @@ if finalize "$job_b" 'Cancelled write' >/dev/null 2>&1; then
  exit 1
 fi
 query <<SQL
-DO $$
+DO \$\$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.ai_generation_jobs WHERE id='$job_a' AND status='completed' AND cancel_requested_at IS NULL) THEN
   RAISE EXCEPTION 'Finalization-first race did not preserve completed state';
@@ -67,7 +67,7 @@ BEGIN
   RAISE EXCEPTION 'Cancelled revision overwrote saved prompt';
  END IF;
 END;
-$$;
+\$\$;
 DELETE FROM public.ai_generation_jobs WHERE id IN ('$job_a','$job_b');
 DELETE FROM public.saved_prompts WHERE id='$prompt';
 DELETE FROM auth.users WHERE id='$owner';
