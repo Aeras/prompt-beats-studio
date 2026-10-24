@@ -14,8 +14,8 @@ INSERT INTO auth.users(id,email) VALUES ('$owner','atomic-revision-race@example.
 INSERT INTO public.saved_prompts(id,user_id,title,tags,lyrics,note)
  VALUES ('$prompt','$owner','Original','', 'Original lyrics','');
 INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
- VALUES ('$job_a','$owner','atomic-revision-race-a','processing','{}'::jsonb),
-        ('$job_b','$owner','atomic-revision-race-b','processing','{}'::jsonb);
+ VALUES ('$job_a','$owner','6e000000-0000-4000-8000-000000000014','processing','{}'::jsonb),
+        ('$job_b','$owner','6f000000-0000-4000-8000-000000000014','processing','{}'::jsonb);
 SQL
 finalize() {
  local id="$1" title="$2"
