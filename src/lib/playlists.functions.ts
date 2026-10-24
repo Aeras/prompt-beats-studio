@@ -88,7 +88,11 @@ async function assertPlaylistEligibleTrack(supabase: any, userId: string, trackI
     .eq("id", trackId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!track || track.moderation_status !== "active" || (track.is_published !== true && track.user_id !== userId))
+  if (
+    !track ||
+    track.moderation_status !== "active" ||
+    (track.is_published !== true && track.user_id !== userId)
+  )
     throw new Error("Track is unavailable");
   if (track.source_type !== "upload")
     throw new Error("Only tracks played by the PromptBeats player can be added to playlists");
