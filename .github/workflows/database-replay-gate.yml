@@ -81,6 +81,7 @@ jobs:
           bash scripts/tests/upload-receipt-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/atomic_revision_finalize.sql
           bash scripts/tests/atomic-revision-db-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/stripe_checkout_reservation.sql
 
       - name: Stop local Supabase database
         if: always()
