@@ -302,7 +302,8 @@ async function resolvePlannerModel(userId: string, requestedModel?: string | nul
   const requested = requestedModel
     ? access.modelOptions.find((option) => option.id === requestedModel)
     : null;
-  const selected = requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
+  const selected =
+    requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
   if (!selected) throw new Error("No compatible AI model is available for Song Universe Planner.");
   return selected;
 }
@@ -315,7 +316,10 @@ async function callPlannerModel(input: {
   markProviderStarted?: () => Promise<void>;
 }) {
   const selected = await resolvePlannerModel(input.userId, input.requestedModel);
-  const caller = modelCaller(selected.id, selected.provider);
+  const caller = modelCaller(selected.id, selected.provider, {
+    userId: input.userId,
+    operation: "universe_next_song_plan",
+  });
   let usage: Awaited<ReturnType<typeof caller>>["usage"] = null;
   let actualProvider = selected.provider;
   let actualModel = selected.id;
@@ -357,6 +361,7 @@ async function callPlannerModel(input: {
     };
   } finally {
     await recordAiUsage({
+      executionId: caller.executionId,
       userId: input.userId,
       provider: actualProvider,
       model: actualModel,
@@ -549,7 +554,8 @@ async function loadLatestContinuity(
   if (!parsed.success) return null;
   const fresh =
     data.source_revision === historyFingerprint ||
-    (typeof data.created_at === "string" && Date.parse(data.created_at) >= Date.parse(historyUpdatedAt));
+    (typeof data.created_at === "string" &&
+      Date.parse(data.created_at) >= Date.parse(historyUpdatedAt));
   return {
     analysis: parsed.data,
     model: typeof data.model === "string" ? data.model : null,
@@ -702,7 +708,9 @@ function applyCanonicalConstraints(
 function parsePlannerResult(
   value: unknown,
   input: {
-    universeType: Awaited<ReturnType<typeof loadSongUniverseProjectMemory>>["universe"]["universeType"];
+    universeType: Awaited<
+      ReturnType<typeof loadSongUniverseProjectMemory>
+    >["universe"]["universeType"];
     strategyVersion: string;
     targetRole: string | null;
     contrastLevel: "low" | "balanced" | "high";

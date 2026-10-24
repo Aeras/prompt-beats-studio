@@ -34,9 +34,15 @@ export type NormalizedUsage = {
   cachedInputTokens?: number | null;
   cacheWriteTokens?: number | null;
   reasoningTokens?: number | null;
+  /** Stable identity of one real dispatch, not a logical user action. */
+  executionId?: string;
+  /** Provider-reported cost is not an independently verified invoice. */
+  providerReportedCostUsd?: number | null;
 };
 
 export type UsageRecord = {
+  executionId?: string | undefined;
+  usageState?: "unknown" | "partial" | "final";
   userId: string;
   generationId?: string | null;
   provider: string;
@@ -46,7 +52,9 @@ export type UsageRecord = {
   success: boolean;
 };
 
-type UsageInsert = {
+export type UsageInsert = {
+  id: string;
+  provider_usage_state: "unknown" | "partial" | "final";
   user_id: string;
   generation_id: string | null;
   provider: string;
@@ -57,17 +65,19 @@ type UsageInsert = {
   total_tokens: number | null;
   cached_input_tokens: number | null;
   cache_write_tokens: number | null;
+  reasoning_tokens: number | null;
+  provider_reported_cost_usd: number | null;
   success: boolean;
 };
 
-function toUsageInsert(rec: UsageRecord): UsageInsert {
+export function toUsageInsert(rec: UsageRecord): UsageInsert {
   const input = rec.usage?.inputTokens ?? null;
   const output = rec.usage?.outputTokens ?? null;
-  const total =
-    rec.usage?.totalTokens ??
-    (input == null && output == null ? null : (input ?? 0) + (output ?? 0));
+  const total = rec.usage?.totalTokens ?? (input == null || output == null ? null : input + output);
 
   return {
+    id: rec.executionId ?? rec.usage?.executionId ?? crypto.randomUUID(),
+    provider_usage_state: rec.usageState ?? (rec.usage ? "final" : "unknown"),
     user_id: rec.userId,
     generation_id: rec.generationId ?? null,
     provider: rec.provider,
@@ -78,12 +88,32 @@ function toUsageInsert(rec: UsageRecord): UsageInsert {
     total_tokens: total,
     cached_input_tokens: rec.usage?.cachedInputTokens ?? null,
     cache_write_tokens: rec.usage?.cacheWriteTokens ?? null,
+    reasoning_tokens: rec.usage?.reasoningTokens ?? null,
+    provider_reported_cost_usd: rec.usage?.providerReportedCostUsd ?? null,
     success: rec.success,
   };
 }
 
 const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+
+export type UsageDelivery = {
+  settle: (payload: UsageInsert) => Promise<void>;
+  enqueue: (payload: UsageInsert) => Promise<void>;
+};
+/** Also retries a lost transport ACK; the identity never changes. */
+export async function deliverAiUsage(payload: UsageInsert, store: UsageDelivery, pause = wait) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await store.settle(payload);
+      return "recorded" as const;
+    } catch {
+      if (attempt === 0) await pause(150);
+    }
+  }
+  await store.enqueue(payload);
+  return "queued" as const;
+}
 
 /**
  * Persists one usage row per actual provider request, with the service-role
@@ -101,29 +131,38 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    let { error } = await supabaseAdmin.from("ai_usage_logs" as never).insert(payload as never);
-    if (error) {
-      await wait(150);
-      ({ error } = await supabaseAdmin.from("ai_usage_logs" as never).insert(payload as never));
-    }
-
-    if (!error) {
-      const { error: flushError } = await supabaseAdmin.rpc(
-        "flush_ai_usage_outbox" as never,
-        { _limit: 20 } as never,
-      );
-      if (flushError) console.error("[ai-usage] outbox flush failed", flushError);
+    const outcome = await deliverAiUsage(payload, {
+      settle: async (value) => {
+        const { error } = await supabaseAdmin
+          .rpc("settle_ai_usage_internal" as never, { _payload: value } as never)
+          .abortSignal(AbortSignal.timeout(10000));
+        if (error) throw new Error("Usage persistence failed.");
+      },
+      enqueue: async (value) => {
+        const { error } = await supabaseAdmin
+          .from("ai_usage_outbox" as never)
+          .upsert(
+            {
+              id: value.id,
+              payload: value,
+              last_error: "usage_delivery_failed",
+            } as never,
+            { onConflict: "id", ignoreDuplicates: true },
+          )
+          .abortSignal(AbortSignal.timeout(10000));
+        if (error) throw new Error("Usage outbox persistence failed.");
+      },
+    });
+    if (outcome === "recorded") {
+      const { error: flushError } = await supabaseAdmin
+        .rpc("flush_ai_usage_outbox" as never, { _limit: 20 } as never)
+        .abortSignal(AbortSignal.timeout(10000));
+      if (flushError) console.error("[ai-usage] outbox flush failed");
       return;
     }
 
-    const { error: outboxError } = await supabaseAdmin.from("ai_usage_outbox" as never).insert({
-      payload,
-      last_error: error.message,
-    } as never);
-    if (outboxError) throw outboxError;
-
-    console.error("[ai-usage] primary insert failed; queued durable retry", error);
+    console.error("[ai-usage] primary insert failed; queued durable retry", payload.id);
   } catch (err) {
-    console.error("[ai-usage] failed to record or queue usage", err);
+    console.error("[ai-usage] failed to record or queue usage", payload.id);
   }
 }

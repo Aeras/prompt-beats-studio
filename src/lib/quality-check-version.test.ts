@@ -97,7 +97,8 @@ describe("Gemini Argon streamed Quality Check", () => {
   test("requests SSE and reconstructs the full JSON before schema validation", () => {
     const provider = readFileSync("src/lib/ai-provider.server.ts", "utf8");
     expect(provider).toContain("gemini-4-argon:streamGenerateContent?alt=sse");
-    expect(provider).toContain("collectGeminiSse(response, model)");
+    expect(provider).toContain("collectGeminiSse(response, model, call)");
+    expect(provider).toContain("onUsageObserved");
     expect(provider).toContain('finish !== "STOP"');
     expect(provider).toContain('buffer.indexOf("\\n\\n")');
   });

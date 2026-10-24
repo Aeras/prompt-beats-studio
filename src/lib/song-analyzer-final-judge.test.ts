@@ -31,7 +31,9 @@ describe("Song Analyzer final judge architecture", () => {
 
     expect(code).toContain('getEffectiveModelAccess(userId, "ai_tools")');
     expect(code).toContain('resolveAiModelForUser(userId, "ai_tools", selectedId)');
-    expect(code).toContain("modelCaller(selected.model, selected.provider)");
+    expect(code).toMatch(/modelCaller\(\s*selected\.model,\s*selected\.provider,\s*\{/);
+    expect(code).toContain("userId: args.userId");
+    expect(code).toContain('operation: "song_analysis"');
   });
 
   test("routes Russian research through Dzen with independent cross-checks", async () => {

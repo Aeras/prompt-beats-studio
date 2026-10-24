@@ -93,6 +93,7 @@ function fixture(
     clearInterval: () => {},
     console: { error: () => {} },
     require: (name: string) => {
+      if (name.endsWith("ai-execution.server")) return { claimRecoveredJob: async () => null };
       if (name.endsWith("client.server")) return { supabaseAdmin: db };
       if (name.endsWith("quality-check-job-schema")) return { durableQualityCheckInput };
       if (name.endsWith("quality-check-core.server"))

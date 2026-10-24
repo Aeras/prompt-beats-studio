@@ -129,7 +129,10 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
         const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
         const { recordAiUsage } = await import("@/lib/ai-usage.server");
         const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.model);
-        const caller = modelCaller(resolved.model, resolved.provider);
+        const caller = modelCaller(resolved.model, resolved.provider, {
+          userId: context.userId,
+          operation: "audio_revision_intent",
+        });
         let result: Awaited<ReturnType<typeof caller>> | null = null;
 
         try {
@@ -141,6 +144,7 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
             schema: TRANSLATION_SCHEMA,
           });
           await recordAiUsage({
+            executionId: caller.executionId,
             userId: context.userId,
             provider: result.provider,
             model: result.model,
@@ -171,6 +175,7 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
         } catch (error) {
           if (!result) {
             await recordAiUsage({
+              executionId: caller.executionId,
               userId: context.userId,
               provider: resolved.provider,
               model: resolved.model,
