@@ -276,12 +276,19 @@ export const createTrack = createServerFn({ method: "POST" })
     if (data.source_type !== "upload" && !externalSource)
       throw new Error("Invalid external track link");
 
+    const uploadedAudio =
+      data.source_type === "upload" && data.audio_key
+        ? await (
+            await import("./upload-receipts.server")
+          ).requireFinalizedAudio(data.audio_key, context.userId)
+        : null;
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await (supabaseAdmin.from("tracks") as any)
       .insert({
         ...data,
         created_with: externalSource ? null : (data.created_with ?? null),
-        audio_url: externalSource?.sourceUrl ?? data.audio_url,
+        audio_url: externalSource?.sourceUrl ?? uploadedAudio?.canonical_url ?? data.audio_url,
         audio_type: externalSource ? "link" : data.audio_type,
         audio_key: externalSource ? null : (data.audio_key ?? null),
         cover_url: externalSource ? null : (data.cover_url ?? null),
@@ -346,6 +353,12 @@ export const updateTrack = createServerFn({ method: "POST" })
     if (data.source_type !== "upload" && data.source_type !== "legacy_link" && !externalSource) {
       throw new Error("Invalid external track link");
     }
+    const uploadedAudio =
+      data.source_type === "upload" && data.new_audio_key
+        ? await (
+            await import("./upload-receipts.server")
+          ).requireFinalizedAudio(data.new_audio_key, context.userId)
+        : null;
     const { data: result, error } = await context.supabase.rpc("edit_track_with_cleanup", {
       _track_id: data.id,
       _title: data.title,
@@ -357,7 +370,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       _created_with: data.source_type === "upload" ? (data.created_with ?? null) : null,
       _source_url: externalSource?.sourceUrl ?? null,
       _source_id: externalSource?.sourceId ?? null,
-      _new_audio_url: data.new_audio_url ?? null,
+      _new_audio_url: uploadedAudio?.canonical_url ?? data.new_audio_url ?? null,
       _new_audio_key: data.new_audio_key ?? null,
       _new_cover_url: data.new_cover_url ?? null,
       _allow_download: data.source_type === "upload" ? data.allow_download === true : false,

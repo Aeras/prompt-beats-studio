@@ -27,7 +27,7 @@ describe("FINAL-007 upload memory hardening", () => {
     const upload = await source("src/routes/api/upload.ts");
     const r2 = await source("src/lib/r2.server.ts");
     expect(upload).not.toContain("Uint8Array.from(bytes)");
-    expect(upload).toContain("uploadToR2(\n          key,\n          bytes,");
+    expect(upload).toMatch(/uploadToR2\(\s*key,\s*bytes,/);
     expect(r2).toContain("body: ArrayBuffer | Uint8Array");
   });
 });
