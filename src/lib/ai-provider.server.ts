@@ -204,7 +204,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
   let cacheWriteTokens: number | null = null;
 
   const processEvent = (rawData: string) => {
-    if (!rawData || rawData === "[DONE]") return;
+    if (!rawData || rawData === "[DONE]") return false;
     const event = JSON.parse(rawData) as {
       type?: string;
       message?: {
@@ -240,7 +240,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
 
     if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
       text += event.delta.text ?? "";
-      return;
+      return false;
     }
 
     if (event.type === "message_delta") {
@@ -259,6 +259,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       });
       throw new Error("The AI provider is temporarily unavailable. Please try again later.");
     }
+    return false;
   };
 
   const observeCurrentUsage = async () => {
