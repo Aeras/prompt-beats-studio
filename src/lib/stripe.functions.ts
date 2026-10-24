@@ -67,9 +67,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       has_more: boolean;
     }>("GET", "/v1/checkout/sessions", { customer: customerId, status: "open", limit: "100" });
     if (open.has_more) throw new Error("Could not verify existing checkout sessions.");
-    const existing = open.data.find((item) => item.mode === "subscription" && item.metadata?.user_id === userId);
+    const existing = open.data.find(
+      (item) => item.mode === "subscription" && item.metadata?.user_id === userId,
+    );
     if (existing) {
-      if (existing.metadata?.checkout_attempt_id === data.checkoutAttemptId && existing.url) return { id: existing.id, url: existing.url };
+      if (existing.metadata?.checkout_attempt_id === data.checkoutAttemptId && existing.url) {
+        return { id: existing.id, url: existing.url };
+      }
       throw new Error("A checkout is already in progress.");
     }
 
