@@ -3,7 +3,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getEffectiveModelAccess, modelCaller, resolveAiModelForUser } from "@/lib/ai-provider.server";
+import {
+  getEffectiveModelAccess,
+  modelCaller,
+  resolveAiModelForUser,
+} from "@/lib/ai-provider.server";
 import { recordAiUsage, type NormalizedUsage } from "@/lib/ai-usage.server";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { stage0DspEvidenceSchema } from "@/lib/song-analyzer-dsp.shared";
@@ -285,8 +289,14 @@ function buildInterpretationGuardPacket(
   stageAEvidence: StageAEvidence,
 ) {
   const notes = stageAEvidence.uncertaintyNotes ?? [];
-  const sourceResolverNotes = notes.filter((note) => /neutral source resolver|guitar guard|keyboard-family|micro-production|source-family|source identity/i.test(note));
-  const stabilityConflicts = notes.filter((note) => /stability guard|contradicted|disagree/i.test(note));
+  const sourceResolverNotes = notes.filter((note) =>
+    /neutral source resolver|guitar guard|keyboard-family|micro-production|source-family|source identity/i.test(
+      note,
+    ),
+  );
+  const stabilityConflicts = notes.filter((note) =>
+    /stability guard|contradicted|disagree/i.test(note),
+  );
   const stage0Tempo = stage0Evidence.tempo;
   return {
     tempoAmbiguous: Boolean(stage0Tempo?.ambiguous),
@@ -297,7 +307,8 @@ function buildInterpretationGuardPacket(
     stageATempoConfidence: stageAEvidence.tempo.confidence,
     sourceResolverNotes: sourceResolverNotes.slice(0, 10),
     stabilityConflicts: stabilityConflicts.slice(0, 8),
-    instruction: "Do not let BPM alone choose a genre. Narrow rhythm-defined labels require the genre evidence quorum, but the quorum must not erase a broader hybrid family supported by multiple independent cues. Preserve verified guitar technique, keyboard-family details, micro-production cues, and unresolved source alternatives.",
+    instruction:
+      "Do not let BPM alone choose a genre. Narrow rhythm-defined labels require the genre evidence quorum, but the quorum must not erase a broader hybrid family supported by multiple independent cues. Preserve verified guitar technique, keyboard-family details, micro-production cues, and unresolved source alternatives.",
   };
 }
 
@@ -379,7 +390,9 @@ Return only the requested structured JSON.`;
       }
     }
     const searchQueries = Array.isArray(metadata?.webSearchQueries)
-      ? metadata.webSearchQueries.filter((value: unknown): value is string => typeof value === "string")
+      ? metadata.webSearchQueries.filter(
+          (value: unknown): value is string => typeof value === "string",
+        )
       : [];
 
     success = true;
@@ -422,8 +435,14 @@ async function runFinalJudge(args: {
   artist?: string;
 }) {
   const selected = await resolveFinalModel(args.userId, args.requestedModel);
-  const caller = modelCaller(selected.model, selected.provider);
-  const interpretationGuardPacket = buildInterpretationGuardPacket(args.stage0Evidence, args.stageAEvidence);
+  const caller = modelCaller(selected.model, selected.provider, {
+    userId: args.userId,
+    operation: "song_analysis",
+  });
+  const interpretationGuardPacket = buildInterpretationGuardPacket(
+    args.stage0Evidence,
+    args.stageAEvidence,
+  );
   const prompt = [
     "STAGE 0 SIGNAL-DERIVED EVIDENCE:",
     JSON.stringify(args.stage0Evidence),
@@ -437,7 +456,8 @@ async function runFinalJudge(args: {
       ? `\nUSER-SUPPLIED IDENTITY (context only):\nTrack Title: ${args.trackTitle}\nArtist: ${args.artist}`
       : "",
     args.research
-      ? "\nREGIONAL / WEB RESEARCH PACKET (secondary context only):\n" + JSON.stringify(args.research)
+      ? "\nREGIONAL / WEB RESEARCH PACKET (secondary context only):\n" +
+        JSON.stringify(args.research)
       : "\nNO EXTERNAL RESEARCH PACKET WAS AVAILABLE.",
     "\nProduce the final canonical PromptBeats Analyzer JSON. Re-evaluate the style classification instead of merely paraphrasing the prior synthesis. Apply the genre evidence quorum before selecting a narrow rhythm-defined label, preserve a broader hybrid family when independently supported, and retain verified keyboard/production details.",
   ]
@@ -472,6 +492,7 @@ async function runFinalJudge(args: {
     };
   } finally {
     await recordAiUsage({
+      executionId: caller.executionId,
       userId: args.userId,
       provider: actualProvider,
       model: actualModel,
@@ -510,7 +531,8 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "song_analyzer");
 
     const serializedStageA = JSON.stringify(data.stageAEvidence);
-    if (serializedStageA.length > 160_000) throw new Error("Analyzer evidence payload is too large.");
+    if (serializedStageA.length > 160_000)
+      throw new Error("Analyzer evidence payload is too large.");
     const stageAEvidence = data.stageAEvidence as StageAEvidence;
 
     const trackTitle = data.trackTitle?.trim();

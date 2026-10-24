@@ -72,25 +72,30 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     return { ran: true };
   }
 
+  let recovered: Record<string, unknown> | null = null;
   if (existing.status === "processing") {
     // provider_started_at means a request may already be in flight. Never issue
     // a duplicate provider call from a recovery run.
-    return { ran: false };
+    const { claimRecoveredJob } = await import("./ai-execution.server");
+    recovered = await claimRecoveredJob("quality_check", actionId);
+    if (!recovered) return { ran: false };
   }
 
   const now = new Date().toISOString();
-  const { data: claimed, error: claimError } = await db
-    .from("ai_quality_check_actions")
-    .update({
-      status: "processing",
-      started_at: now,
-      updated_at: now,
-      error: null,
-    })
-    .eq("id", actionId)
-    .eq("status", "pending")
-    .select("*")
-    .maybeSingle();
+  const { data: claimed, error: claimError } = recovered
+    ? { data: recovered, error: null }
+    : await db
+        .from("ai_quality_check_actions")
+        .update({
+          status: "processing",
+          started_at: now,
+          updated_at: now,
+          error: null,
+        })
+        .eq("id", actionId)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
 
   if (claimError) throw new Error("The quality check job could not be claimed by the worker.");
   if (!claimed) return { ran: false };
@@ -174,6 +179,10 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       payload,
       action.user_id,
       async ({ provider, model }) => {
+        if (recovered) {
+          providerCommitted = true;
+          return;
+        }
         const startedAt = new Date().toISOString();
         const { data: marked, error } = await db
           .from("ai_quality_check_actions")
@@ -197,6 +206,13 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       cancellationController.signal,
       cancellationReported,
       remoteCreated,
+      {
+        userId: action.user_id,
+        operation: "quality_check",
+        qualityActionId: action.id,
+        generationId: payload.generationId,
+        recoveryOnly: !!recovered,
+      },
     );
     await checkCancellation();
     if (cancellationController.signal.aborted)
@@ -370,5 +386,10 @@ export async function recoverableQualityActionIds(limit = 5): Promise<string[]> 
     for (const row of (finalizable as { id: string }[] | null) ?? []) ids.add(row.id);
   }
 
-  return [...ids];
+  const { data: recovery } = await db.rpc("recoverable_ai_job_ids_internal", {
+    _kind: "quality_check",
+    _limit: limit,
+  });
+  for (const id of (recovery as string[] | null) ?? []) ids.add(id);
+  return [...ids].slice(0, limit);
 }

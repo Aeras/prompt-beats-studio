@@ -9,6 +9,12 @@
  * never leave the server.
  */
 import { GoogleGenAI } from "@google/genai";
+import { usageEvidence } from "./ai-usage-evidence";
+
+async function observeUsage(call: ModelCall, payload: unknown) {
+  const usage = usageEvidence(payload, call.usageProvider);
+  if (usage) await call.onUsageObserved?.(usage);
+}
 
 import { AI_MODELS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 import {
@@ -24,6 +30,9 @@ import {
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export type ModelCall = {
+  /** Internal accounting context, never included in provider request bodies. */
+  usageProvider?: string;
+  onUsageObserved?: (usage: import("./ai-usage.server").NormalizedUsage) => void | Promise<void>;
   /** System instruction shared by all providers. */
   system: string;
   /** User prompt shared by all providers. */
@@ -58,6 +67,8 @@ export type ModelResult = {
     cachedInputTokens?: number | null;
     cacheWriteTokens?: number | null;
     reasoningTokens?: number | null;
+    executionId?: string;
+    providerReportedCostUsd?: number | null;
   } | null;
   /** The provider that actually served this request. */
   provider: string;
@@ -65,7 +76,9 @@ export type ModelResult = {
   model: string;
 };
 
-export type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
+export type ModelCaller = ((call: ModelCall) => Promise<ModelResult>) & {
+  executionId?: string | undefined;
+};
 
 function providerRequestTimeoutMs(call: ModelCall) {
   if (call.requestTimeoutMs !== undefined) {
@@ -263,6 +276,15 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
           .map((line) => line.slice(5).trimStart())
           .join("\n");
         if (data) processEvent(data);
+        if (inputTokens !== null || outputTokens !== null)
+          await call.onUsageObserved?.({
+            inputTokens,
+            outputTokens,
+            totalTokens:
+              inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens,
+            cachedInputTokens,
+            cacheWriteTokens,
+          });
         boundary = buffer.indexOf("\n\n");
       }
 
@@ -339,6 +361,7 @@ export class AiProviderHttpError extends Error {
 async function collectGeminiSse(
   response: Response,
   model: string,
+  call?: ModelCall,
 ): Promise<{
   text: string;
   finish: string | null;
@@ -382,6 +405,7 @@ async function collectGeminiSse(
       let boundary = buffer.indexOf("\n\n");
       while (boundary !== -1) {
         consume(buffer.slice(0, boundary));
+        if (call) await observeUsage(call, { usageMetadata });
         buffer = buffer.slice(boundary + 2);
         boundary = buffer.indexOf("\n\n");
       }
@@ -446,6 +470,7 @@ async function callGeminiBackground(
     };
   };
   const id = interaction.id;
+  await observeUsage(call, interaction);
   if (!id || !/^[A-Za-z0-9_.:-]{1,160}$/.test(id))
     throw new Error("Gemini did not return a usable background interaction ID.");
 
@@ -455,7 +480,9 @@ async function callGeminiBackground(
   while (!terminal.has(interaction.status ?? "") && Date.now() < deadline) {
     if (call.abortSignal?.aborted) {
       const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey, {
+        onUsageObserved: call.onUsageObserved,
+      });
       await call.onCancellationResult?.(cancelled.outcome);
       throw new Error("Generation cancellation requested.");
     }
@@ -466,11 +493,14 @@ async function callGeminiBackground(
     });
     if (!check.ok) throw new Error("Gemini background status retrieval failed.");
     interaction = (await check.json()) as typeof interaction;
+    await observeUsage(call, interaction);
   }
   if (call.abortSignal?.aborted) {
     if (interaction.status !== "cancelled") {
       const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey);
+      const cancelled = await cancelBackgroundOperation("gemini", id, apiKey, {
+        onUsageObserved: call.onUsageObserved,
+      });
       await call.onCancellationResult?.(cancelled.outcome);
     } else {
       await call.onCancellationResult?.("cancelled_upstream_confirmed");
@@ -544,7 +574,9 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
         },
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: call.abortSignal
+          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), call.abortSignal])
+          : AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: call.system }] },
           contents: [{ role: "user", parts: [{ text: call.prompt }] }],
@@ -570,7 +602,7 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
       throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
 
-    const streamed = await collectGeminiSse(response, model);
+    const streamed = await collectGeminiSse(response, model, call);
     const finish = streamed.finish;
     const stopReason =
       finish === "STOP" ? "end_turn" : finish === "MAX_TOKENS" ? "max_tokens" : (finish ?? null);
@@ -666,16 +698,19 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
       body,
     });
 
-  let res = await send();
-  if (res.status === 429) {
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const waitMs =
-      Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 1500;
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-    res = await send();
-  }
+  // A new provider execution requires a new explicit attempt identity. Do not
+  // hide an extra dispatch inside one accounted request after a 429.
+  call.abortSignal?.throwIfAborted();
+  const res = await send();
 
   if (!res.ok) {
+    await observeUsage(
+      call,
+      await res
+        .clone()
+        .json()
+        .catch(() => null),
+    );
     const errorBody = await res.text();
     console.error(`[ai-provider] Mistral request failed (${res.status})`, errorBody.slice(0, 1000));
     if (res.status === 429) {
@@ -701,6 +736,7 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
   };
 
   const choice = payload.choices?.[0];
+  await observeUsage(call, payload);
   const content = choice?.message?.content;
   const text =
     typeof content === "string"
@@ -812,6 +848,7 @@ async function callOpenAiCompatible(
   };
 
   const choice = payload.choices?.[0];
+  await observeUsage(call, payload);
   const content = choice?.message?.content;
   const text =
     typeof content === "string"
@@ -941,6 +978,7 @@ async function callOpenRouterCancellable(
           if (typeof choice?.delta?.content === "string") text += choice.delta.content;
           if (typeof choice?.finish_reason === "string") stopReason = choice.finish_reason;
           if (event.usage) {
+            await observeUsage(call, event);
             const u = event.usage;
             usage = {
               inputTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : null,
@@ -976,6 +1014,14 @@ async function callOpenRouterCancellable(
           );
           if (!status.ok) continue;
           const data = ((await status.json()) as any)?.data;
+          if (data)
+            await observeUsage(call, {
+              usage: {
+                input_tokens: data.tokens_prompt,
+                output_tokens: data.tokens_completion,
+                total_cost: data.total_cost,
+              },
+            });
           if (data?.cancelled === true && data?.provider_name === "OpenAI") {
             confirmed = true;
             break;
@@ -1075,6 +1121,13 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   }
 
   if (!res.ok) {
+    await observeUsage(
+      call,
+      await res
+        .clone()
+        .json()
+        .catch(() => null),
+    );
     const errorBody = await res.text();
     console.error(
       `[ai-provider] xAI Responses request failed (${res.status})`,
@@ -1220,6 +1273,13 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
   });
 
   if (!res.ok) {
+    await observeUsage(
+      call,
+      await res
+        .clone()
+        .json()
+        .catch(() => null),
+    );
     const errorBody = await res.text();
     console.error(`[ai-provider] OpenAI request failed (${res.status})`, errorBody.slice(0, 1000));
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
@@ -1249,6 +1309,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
   };
 
   if (cancellableBackground) {
+    await observeUsage(call, payload);
     const responseId = payload.id;
     if (!responseId || !/^resp_[A-Za-z0-9_-]{1,155}$/.test(responseId))
       throw new Error("OpenAI background response ID was not returned.");
@@ -1259,7 +1320,9 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
     while (!done && Date.now() < deadline) {
       if (call.abortSignal?.aborted) {
         const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey, {
+          onUsageObserved: call.onUsageObserved,
+        });
         await call.onCancellationResult?.(outcome.outcome);
         throw new Error("Generation cancellation requested.");
       }
@@ -1270,12 +1333,15 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
       );
       if (!statusRes.ok) throw new Error("OpenAI background status could not be retrieved.");
       payload = (await statusRes.json()) as typeof payload;
+      await observeUsage(call, payload);
       done = ["completed", "failed", "incomplete", "cancelled"].includes(payload.status ?? "");
     }
     if (call.abortSignal?.aborted) {
       if (payload.status !== "cancelled") {
         const { cancelBackgroundOperation } = await import("@/lib/ai-cancellation-upstream.server");
-        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey);
+        const outcome = await cancelBackgroundOperation("openai", responseId, apiKey, {
+          onUsageObserved: call.onUsageObserved,
+        });
         await call.onCancellationResult?.(outcome.outcome);
       } else {
         await call.onCancellationResult?.("cancelled_upstream_confirmed");
@@ -1332,9 +1398,13 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
 }
 
 /** Returns a provider-agnostic caller bound to the given model. */
-export function modelCaller(model: string, providerOverride?: string): ModelCaller {
+export function modelCaller(
+  model: string,
+  providerOverride?: string,
+  context?: import("./ai-execution.server").ExecutionContext,
+): ModelCaller {
   const provider = providerOverride ?? providerOf(model);
-  return (call) => {
+  const raw: ModelCaller = (call) => {
     if (provider === "anthropic") return callAnthropic(model, call);
     if (provider === "mistral") return callMistral(model, call);
     if (provider === "groq") return callGroq(model, call);
@@ -1376,6 +1446,17 @@ export function modelCaller(model: string, providerOverride?: string): ModelCall
     if (!apiKey) throw new Error("The AI service is not configured. Please try again later.");
     return callOpenAiCompatible(provider, config.endpoint, apiKey, model, call, config.jsonMode);
   };
+  if (!context) return raw;
+  const tracked: ModelCaller = async (call) => {
+    const { trackedCaller } = await import("./ai-execution.server");
+    const invoke = trackedCaller(raw, provider, model, context);
+    try {
+      return await invoke(call);
+    } finally {
+      tracked.executionId = invoke.executionId;
+    }
+  };
+  return tracked;
 }
 
 /**

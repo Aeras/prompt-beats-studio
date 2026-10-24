@@ -929,12 +929,15 @@ type ModelResult = {
   provider: string;
   model: string;
 };
-type ModelCaller = (call: ModelCall) => Promise<ModelResult>;
+type ModelCaller = ((call: ModelCall) => Promise<ModelResult>) & {
+  executionId?: string | undefined;
+};
 
 type AiOperation = "generate" | "quality_check";
 
 /** One usage record per actual provider request, buffered until the generation id is known. */
 type PendingUsage = {
+  executionId?: string | undefined;
   operation: AiOperation;
   provider: string;
   model: string;
@@ -955,6 +958,7 @@ async function activeCaller(
   operation: "generator" | "quality_check",
   modelOverride?: string,
   userId?: string,
+  executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{
   call: ModelCaller;
   model: string;
@@ -978,7 +982,14 @@ async function activeCaller(
         };
       })();
   return {
-    call: provider.modelCaller(resolved.model, resolved.provider),
+    call: provider.modelCaller(
+      resolved.model,
+      resolved.provider,
+      executionContext ??
+        (userId
+          ? { userId, operation: operation === "generator" ? "generate" : "quality_check" }
+          : undefined),
+    ),
     model: resolved.model,
     provider: resolved.provider,
     ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
@@ -1838,6 +1849,7 @@ async function runQualityCheck(
     const ok = stopReason === "end_turn";
     if (sink) {
       sink.records.push({
+        executionId: call.executionId,
         operation: sink.operation,
         provider: res.provider,
         model: res.model,
@@ -1925,6 +1937,7 @@ async function runQualityCheck(
 
     if (sink) {
       sink.records.push({
+        executionId: call.executionId,
         operation: sink.operation,
         provider: sink.provider,
         model: sink.model,
@@ -1972,11 +1985,13 @@ export async function runSongGeneration(
     provider: "openai" | "gemini",
     remoteId: string,
   ) => void | Promise<void>,
+  executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
     data.generationModel ?? undefined,
     userId,
+    executionContext,
   );
   const records: PendingUsage[] = [];
 
@@ -2017,7 +2032,14 @@ export async function runSongGeneration(
     });
   } catch (err) {
     await flushUsage(userId, generationId, [
-      { operation: "generate", provider, model, usage: null, success: false },
+      {
+        executionId: call.executionId,
+        operation: "generate",
+        provider,
+        model,
+        usage: null,
+        success: false,
+      },
     ]);
     throw err;
   }
@@ -2025,6 +2047,7 @@ export async function runSongGeneration(
   const { text: raw, stopReason } = generated;
   const generateOk = stopReason === "end_turn";
   records.push({
+    executionId: call.executionId,
     operation: "generate",
     provider: generated.provider,
     model: generated.model,
@@ -2108,6 +2131,7 @@ export async function runLyricsSectionEdit(
     provider: "openai" | "gemini",
     remoteId: string,
   ) => void | Promise<void>,
+  executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{
   result: z.infer<typeof lyricsSectionEditOutputSchema>;
   provider: string;
@@ -2117,6 +2141,7 @@ export async function runLyricsSectionEdit(
     "generator",
     data.generationModel ?? undefined,
     userId,
+    executionContext,
   );
   const records: PendingUsage[] = [];
 
@@ -2134,13 +2159,21 @@ export async function runLyricsSectionEdit(
     });
   } catch (err) {
     await flushUsage(userId, generationId, [
-      { operation: "generate", provider, model, usage: null, success: false },
+      {
+        executionId: call.executionId,
+        operation: "generate",
+        provider,
+        model,
+        usage: null,
+        success: false,
+      },
     ]);
     throw err;
   }
 
   const ok = generated.stopReason === "end_turn";
   records.push({
+    executionId: call.executionId,
     operation: "generate",
     provider: generated.provider,
     model: generated.model,

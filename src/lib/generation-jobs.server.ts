@@ -50,7 +50,7 @@ function safeErrorMessage(err: unknown): string {
  */
 export async function executeGenerationJob(jobId: string): Promise<{ ran: boolean }> {
   const db = await admin();
-  const { data: claimed } = await db
+  let { data: claimed } = await db
     .from("ai_generation_jobs")
     .update({ status: "processing", started_at: new Date().toISOString() })
     .eq("id", jobId)
@@ -58,6 +58,12 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     .select("*")
     .maybeSingle();
 
+  let recovering = false;
+  if (!claimed) {
+    const { claimRecoveredJob } = await import("./ai-execution.server");
+    claimed = await claimRecoveredJob("generate", jobId);
+    recovering = !!claimed;
+  }
   if (!claimed) return { ran: false };
 
   const job = claimed as {
@@ -66,6 +72,13 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     generation_id: string | null;
     input_payload: unknown;
     attempts: number;
+  };
+  const executionContext = {
+    userId: job.user_id,
+    operation: "generate" as const,
+    generationId: job.generation_id,
+    jobId: job.id,
+    recoveryOnly: recovering,
   };
 
   // Database-backed cancellation works across server instances. The watcher
@@ -134,15 +147,17 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         );
       }
     }
-    const { data: marked, error: markerError } = await db
-      .from("ai_generation_jobs")
-      .update({ provider_started_at: new Date().toISOString() })
-      .eq("id", job.id)
-      .eq("status", "processing")
-      .is("provider_started_at", null)
-      .is("cancel_requested_at", null)
-      .select("id")
-      .maybeSingle();
+    const { data: marked, error: markerError } = recovering
+      ? { data: { id: job.id }, error: null }
+      : await db
+          .from("ai_generation_jobs")
+          .update({ provider_started_at: new Date().toISOString() })
+          .eq("id", job.id)
+          .eq("status", "processing")
+          .is("provider_started_at", null)
+          .is("cancel_requested_at", null)
+          .select("id")
+          .maybeSingle();
     if (markerError || !marked)
       throw new Error("The generation could not be started. Please try again.");
 
@@ -154,6 +169,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
         cancellationController.signal,
         recordUpstreamCancellation,
         recordRemoteOperation,
+        executionContext,
       );
       await db
         .from("ai_generation_jobs")
@@ -197,6 +213,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       cancellationController.signal,
       recordUpstreamCancellation,
       recordRemoteOperation,
+      executionContext,
     );
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
@@ -397,7 +414,16 @@ export async function pendingJobIds(limit = 5): Promise<string[]> {
     .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
     .order("created_at", { ascending: true })
     .limit(limit);
-  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
+  const { data: recovery } = await db.rpc("recoverable_ai_job_ids_internal", {
+    _kind: "generate",
+    _limit: limit,
+  });
+  return [
+    ...new Set([
+      ...((data as { id: string }[] | null) ?? []).map((r) => r.id),
+      ...((recovery as string[] | null) ?? []),
+    ]),
+  ].slice(0, limit);
 }
 
 // The start signal is issued by the database itself (pg_net, from

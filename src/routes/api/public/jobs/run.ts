@@ -55,6 +55,8 @@ export const Route = createFileRoute("/api/public/jobs/run")({
 
         // Sweep mode (recovery): starts work that was never picked up and
         // completes QC finalization that already has a persisted provider result.
+        const { reconcileAiExecutions } = await import("@/lib/ai-execution.server");
+        await reconcileAiExecutions();
         await reapStaleJobs();
         await reapStaleQualityChecks();
 

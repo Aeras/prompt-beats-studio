@@ -8,6 +8,7 @@ import {
   executeDurableAuxiliaryAiRequest,
 } from "./ai-auxiliary-idempotency.server";
 import { recordAiUsage } from "./ai-usage.server";
+import { beginExecution, checkpointExecution, observeExecution } from "./ai-execution.server";
 import {
   ANALYZER_RESPONSE_SCHEMA,
   requireAnalyzerAccess,
@@ -76,6 +77,8 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
               ? "OPENROUTER_API_KEY"
               : "GEMINI_API_KEY";
         const allowAdminOptIn = await analyzerV2AdminEnabled(model.provider, model.id);
+        const executionId = crypto.randomUUID();
+        const executionContext = { userId: context.userId, operation: "song_analysis" as const };
         const { result, usage } = await runSingleCallAnalyzerV2({
           allowAdminOptIn,
           model,
@@ -85,9 +88,14 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
           stage0Evidence,
           schema: ANALYZER_RESPONSE_SCHEMA,
           validator: songAnalysisResultSchema,
-          markProviderStarted,
+          markProviderStarted: async () => {
+            await markProviderStarted();
+            await beginExecution(executionId, executionContext, model.provider, model.id);
+          },
+          observeUsage: (usage) => observeExecution(executionId, context.userId, usage),
           recordUsage: (usage, success) =>
             recordAiUsage({
+              executionId,
               userId: context.userId,
               provider: model.provider,
               model: model.id,
@@ -95,6 +103,13 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
               usage,
               success,
             }),
+        });
+        await checkpointExecution(executionId, executionContext, {
+          text: JSON.stringify(result),
+          usage,
+          stopReason: "end_turn",
+          provider: model.provider,
+          model: model.id,
         });
         const provenance = analyzerV2ProvenanceSchema.parse({
           version: "v2",

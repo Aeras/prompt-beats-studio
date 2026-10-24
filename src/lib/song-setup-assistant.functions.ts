@@ -175,7 +175,10 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
         const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
         const { recordAiUsage } = await import("@/lib/ai-usage.server");
         const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.model);
-        const caller = modelCaller(resolved.model, resolved.provider);
+        const caller = modelCaller(resolved.model, resolved.provider, {
+          userId: context.userId,
+          operation: "song_setup_assistant",
+        });
         const provider = resolved.provider;
 
         let result: Awaited<ReturnType<typeof caller>> | null = null;
@@ -188,6 +191,7 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
             schema: SETUP_SCHEMA,
           });
           await recordAiUsage({
+            executionId: caller.executionId,
             userId: context.userId,
             provider: result.provider,
             model: result.model,
@@ -228,6 +232,7 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
         } catch (error) {
           if (!result) {
             await recordAiUsage({
+              executionId: caller.executionId,
               userId: context.userId,
               provider,
               model: resolved.model,

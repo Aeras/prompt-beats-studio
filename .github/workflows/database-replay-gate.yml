@@ -70,6 +70,14 @@ jobs:
       - name: Replay all migrations on a fresh local database
         run: supabase db start
 
+      - name: AI usage receipt, permissions and recovery invariants (local only)
+        run: |
+          set -euo pipefail
+          PROJECT_ID="$(sed -n 's/^project_id = "\(.*\)"/\1/p' supabase/config.toml)"
+          test -n "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_usage_recovery.sql
+          bash scripts/tests/ai-usage-db-races.sh "$PROJECT_ID"
+
       - name: Stop local Supabase database
         if: always()
         run: supabase stop --no-backup || true

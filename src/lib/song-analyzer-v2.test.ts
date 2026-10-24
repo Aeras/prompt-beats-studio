@@ -395,6 +395,7 @@ function endpointFixture(allowed = true) {
   const events: string[] = [];
   let providerCalls = 0;
   let usageRows = 0;
+  let executionRows = 0;
   const durableSource = selectedSource("src/lib/ai-auxiliary-idempotency.server.ts", [
     "executeDurableAuxiliaryAiRequest",
   ]);
@@ -421,6 +422,12 @@ function endpointFixture(allowed = true) {
     {
       z,
       Buffer,
+      crypto,
+      beginExecution: async () => {
+        executionRows++;
+      },
+      checkpointExecution: async () => {},
+      observeExecution: async () => {},
       createHash,
       stage0DspEvidenceSchema,
       analyzerAudioMimeSchema,
@@ -492,6 +499,7 @@ function endpointFixture(allowed = true) {
     events,
     calls: () => providerCalls,
     usage: () => usageRows,
+    executions: () => executionRows,
     data,
   };
 }
@@ -510,6 +518,7 @@ describe("real V2 endpoint and durable executor with isolated database doubles",
     expect(second).toEqual(first);
     expect(f.calls()).toBe(1);
     expect(f.usage()).toBe(1);
+    expect(f.executions()).toBe(1);
     expect(first.provenance.version).toBe("v2");
     expect(first.provenance.providerCalls).toBe(1);
     expect(first.result.generatorReady.analyzerVersion).toBe("v2");
@@ -530,6 +539,7 @@ describe("real V2 endpoint and durable executor with isolated database doubles",
     const f = endpointFixture();
     const result = await Promise.allSettled([f.call(), f.call()]);
     expect(result.filter((item) => item.status === "fulfilled")).toHaveLength(1);
+    expect(f.executions()).toBe(1);
     expect(f.calls()).toBe(1);
     expect(f.usage()).toBe(1);
   });

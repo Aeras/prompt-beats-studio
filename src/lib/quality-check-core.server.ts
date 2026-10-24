@@ -11,13 +11,10 @@ import {
   type QualityReport,
 } from "@/lib/quality-check-job-schema";
 
-type NormalizedUsage = {
-  inputTokens: number | null;
-  outputTokens: number | null;
-  totalTokens: number | null;
-};
+type NormalizedUsage = import("@/lib/ai-usage.server").NormalizedUsage;
 
 export type DurableQualityUsageRecord = {
+  executionId: string;
   operation: "quality_check";
   provider: string;
   model: string;
@@ -831,6 +828,7 @@ export async function runDurableQualityCheck(
     provider: "openai" | "gemini",
     remoteId: string,
   ) => void | Promise<void>,
+  executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{
   quality: QualityReport | null;
   provider: string;
@@ -856,8 +854,13 @@ export async function runDurableQualityCheck(
   );
   const model = resolved.model;
   const provider = resolved.provider;
-  const call = providerLayer.modelCaller(model, provider);
+  const call = providerLayer.modelCaller(
+    model,
+    provider,
+    executionContext ?? { userId, operation: "quality_check", generationId: data.generationId },
+  );
   const records: DurableQualityUsageRecord[] = [];
+  const executionId = crypto.randomUUID();
 
   await beforeProvider({ provider, model });
 
@@ -882,7 +885,15 @@ export async function runDurableQualityCheck(
         : {}),
     });
   } catch (err) {
-    records.push({ operation: "quality_check", provider, model, usage: null, success: false });
+    records.push({
+      executionId: call.executionId ?? executionId,
+      operation: "quality_check",
+      provider,
+      model,
+      usage: null,
+      success: false,
+    });
+    await flushDurableQualityUsage(userId, data.generationId ?? null, records);
     console.error(
       `[ai] quality_check failed model=${model}`,
       err instanceof Error ? err.message : err,
@@ -935,12 +946,16 @@ export async function runDurableQualityCheck(
   const actualModel = result.model || model;
   const ok = result.stopReason === "end_turn";
   records.push({
+    executionId: call.executionId ?? executionId,
     operation: "quality_check",
     provider: actualProvider,
     model: actualModel,
     usage: result.usage,
     success: ok,
   });
+  // Accounting is independent of cancellation, schema validation and job finalization.
+  // Later delivery retries use the same execution ID and cannot duplicate spend.
+  await flushDurableQualityUsage(userId, data.generationId ?? null, records);
 
   if (!ok) {
     console.warn("[ai] quality_check non_success_stop_reason", {

@@ -55,15 +55,7 @@ const CREATIVE_BIBLE_RESPONSE_SCHEMA: Record<string, unknown> = {
           enabled: { type: "BOOLEAN" },
           sortOrder: { type: "INTEGER" },
         },
-        required: [
-          "id",
-          "section",
-          "content",
-          "strength",
-          "recurrence",
-          "enabled",
-          "sortOrder",
-        ],
+        required: ["id", "section", "content", "strength", "recurrence", "enabled", "sortOrder"],
       },
     },
   },
@@ -166,7 +158,8 @@ async function resolveUniverseModel(userId: string, requestedModel?: string | nu
   const requested = requestedModel
     ? access.modelOptions.find((option) => option.id === requestedModel)
     : null;
-  const selected = requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
+  const selected =
+    requested ?? access.modelOptions.find((option) => option.id === access.defaultModel);
   if (!selected) throw new Error("No compatible AI model is available for Song Universe.");
   return selected;
 }
@@ -190,7 +183,10 @@ async function runStructured<T>(input: {
   markProviderStarted?: () => Promise<void>;
 }) {
   const selected = await resolveUniverseModel(input.userId, input.requestedModel);
-  const caller = modelCaller(selected.id, selected.provider);
+  const caller = modelCaller(selected.id, selected.provider, {
+    userId: input.userId,
+    operation: input.operation,
+  });
   let usage: Awaited<ReturnType<typeof caller>>["usage"] = null;
   let actualProvider = selected.provider;
   let actualModel = selected.id;
@@ -213,6 +209,7 @@ async function runStructured<T>(input: {
     return { value, model: result.model, provider: result.provider, modelLabel: selected.label };
   } finally {
     await recordAiUsage({
+      executionId: caller.executionId,
       userId: input.userId,
       provider: actualProvider,
       model: actualModel,
@@ -324,7 +321,9 @@ export const refineSongUniverseCreativeBible = createServerFn({ method: "POST" }
           data.universeId,
           context.userId,
         );
-        const current = songUniverseCreativeBibleSchema.parse(universe.creative_bible ?? { items: [] });
+        const current = songUniverseCreativeBibleSchema.parse(
+          universe.creative_bible ?? { items: [] },
+        );
         const result = await runStructured<SongUniverseCreativeBible>({
           userId: context.userId,
           requestedModel: data.model ?? null,

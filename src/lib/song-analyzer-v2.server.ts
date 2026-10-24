@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { NormalizedUsage } from "./ai-usage.server";
+import { usageEvidence } from "./ai-usage-evidence";
 import type { Stage0DspEvidence } from "./song-analyzer-dsp.shared";
 import { analyzerV2Compatibility, boundedEssentiaInput } from "./song-analyzer-v2.shared";
 
@@ -138,6 +139,7 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
   validator: z.ZodType<T, z.ZodTypeDef, unknown>;
   markProviderStarted: () => Promise<void>;
   recordUsage: (usage: NormalizedUsage | null, success: boolean) => Promise<void>;
+  observeUsage?: (usage: NormalizedUsage | null) => Promise<void>;
   fetcher?: typeof fetch;
 }) {
   const capability = analyzerV2Compatibility(args.model);
@@ -257,6 +259,14 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
       );
     }
     if (!response.ok) {
+      usage = usageEvidence(
+        await response
+          .clone()
+          .json()
+          .catch(() => null),
+        args.model.provider,
+      );
+      await args.observeUsage?.(usage);
       // Inspect only known machine codes, never echo provider messages/private content.
       const problem = z
         .object({
@@ -304,12 +314,15 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
       );
     }
     let text: string;
+    usage = usageEvidence(payload, args.model.provider);
+    await args.observeUsage?.(usage);
     if (gemini) {
       const envelope = geminiEnvelope.safeParse(payload);
       if (!envelope.success) throw new AnalyzerV2Error("INVALID_PROVIDER_ENVELOPE");
       const u = envelope.data.usageMetadata;
       if (u)
         usage = {
+          ...usage,
           inputTokens: u.promptTokenCount ?? null,
           outputTokens:
             u.candidatesTokenCount == null && u.thoughtsTokenCount == null
@@ -335,6 +348,7 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
       const u = envelope.data.usage;
       if (u)
         usage = {
+          ...usage,
           inputTokens: u.prompt_tokens ?? null,
           outputTokens: u.completion_tokens ?? null,
           totalTokens: u.total_tokens ?? null,

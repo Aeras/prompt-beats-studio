@@ -214,7 +214,10 @@ async function runStructured<T>(input: {
   markProviderStarted?: () => Promise<void>;
 }) {
   const selected = await resolveStoryMapModel(input.userId, input.requestedModel);
-  const caller = modelCaller(selected.id, selected.provider);
+  const caller = modelCaller(selected.id, selected.provider, {
+    userId: input.userId,
+    operation: input.operation,
+  });
   let usage: Awaited<ReturnType<typeof caller>>["usage"] = null;
   let actualProvider = selected.provider;
   let actualModel = selected.id;
@@ -243,6 +246,7 @@ async function runStructured<T>(input: {
     };
   } finally {
     await recordAiUsage({
+      executionId: caller.executionId,
       userId: input.userId,
       provider: actualProvider,
       model: actualModel,

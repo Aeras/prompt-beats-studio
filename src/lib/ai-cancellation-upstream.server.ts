@@ -6,6 +6,7 @@
  * background work. Callers must persist a remote ID before exposing "Stop",
  * and must fence late result writes in the database.
  */
+import { usageEvidence } from "./ai-usage-evidence";
 export type BackgroundProvider = "openai" | "gemini";
 export type CancelOutcome =
   "cancelled_upstream_confirmed" | "already_completed" | "cancel_unconfirmed" | "cancel_failed";
@@ -25,6 +26,10 @@ type Dependencies = {
   polls?: number;
   pollIntervalMs?: number;
   signal?: AbortSignal;
+  requestTimeoutMs?: number;
+  totalTimeoutMs?: number;
+  onUsageObserved?:
+    ((usage: import("./ai-usage.server").NormalizedUsage) => void | Promise<void>) | undefined;
 };
 
 const safeId = (s: string) => /^[A-Za-z0-9_.:-]{1,160}$/.test(s);
@@ -46,10 +51,16 @@ function statusOf(json: unknown): string | null {
   return typeof raw === "string" && statuses.has(raw) ? raw : null;
 }
 
-async function readStatus(response: Response): Promise<string | null> {
+async function readStatus(
+  response: Response,
+  observe?: Dependencies["onUsageObserved"],
+): Promise<string | null> {
   if (!response.ok) return null;
   try {
-    return statusOf(await response.json());
+    const payload: unknown = await response.json();
+    const usage = usageEvidence(payload);
+    if (usage) await observe?.(usage);
+    return statusOf(payload);
   } catch {
     return null;
   }
@@ -76,11 +87,46 @@ export async function cancelBackgroundOperation(
     provider === "openai" ? { authorization: `Bearer ${secret}` } : { "x-goog-api-key": secret };
   let cancelHttpStatus: number | null = null;
   let cancelFailed = false;
+  let timedOut = false;
+  const end = Date.now() + Math.max(1, Math.min(deps.totalTimeoutMs ?? 20000, 30000));
+  const bounded = async <T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    const remaining = end - Date.now();
+    if (remaining <= 0) {
+      timedOut = true;
+      throw new Error("Cancellation deadline.");
+    }
+    const controller = new AbortController();
+    const signal = deps.signal
+      ? AbortSignal.any([controller.signal, deps.signal])
+      : controller.signal;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        run(signal),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => {
+              timedOut = true;
+              controller.abort();
+              reject(new Error("Cancellation deadline."));
+            },
+            Math.min(remaining, Math.max(1, deps.requestTimeoutMs ?? 5000)),
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
   try {
-    const cancel = await fetchFn(`${url}/cancel`, {
-      method: "POST",
-      headers,
-      ...(deps.signal ? { signal: deps.signal } : {}),
+    const cancel = await bounded(async (signal) => {
+      const response = await fetchFn(`${url}/cancel`, {
+        method: "POST",
+        headers,
+        signal,
+      });
+      await readStatus(response, deps.onUsageObserved);
+      return response;
     });
     cancelHttpStatus = cancel.status;
     cancelFailed = !cancel.ok;
@@ -90,16 +136,20 @@ export async function cancelBackgroundOperation(
 
   // Independent GET is mandatory. A 200 from POST /cancel is not proof.
   for (let i = 0; i < polls; i++) {
+    if (Date.now() >= end || deps.signal?.aborted) break;
     let status: string | null = null;
     let getOk = false;
     try {
-      const res = await fetchFn(url, {
-        method: "GET",
-        headers,
-        ...(deps.signal ? { signal: deps.signal } : {}),
+      const observed = await bounded(async (signal) => {
+        const res = await fetchFn(url, {
+          method: "GET",
+          headers,
+          signal,
+        });
+        return { ok: res.ok, status: await readStatus(res, deps.onUsageObserved) };
       });
-      getOk = res.ok;
-      status = await readStatus(res);
+      getOk = observed.ok;
+      status = observed.status;
     } catch {
       // A transient read error is inconclusive, never a successful cancel.
     }
@@ -121,11 +171,17 @@ export async function cancelBackgroundOperation(
         verifiedByGet: true,
         requestId: remoteId,
       };
-    if (i < polls - 1) await sleep(interval);
+    if (i < polls - 1) {
+      try {
+        await bounded(async () => sleep(Math.min(interval, Math.max(0, end - Date.now()))));
+      } catch {
+        break;
+      }
+    }
   }
   return {
     provider,
-    outcome: cancelFailed ? "cancel_failed" : "cancel_unconfirmed",
+    outcome: cancelFailed && !timedOut ? "cancel_failed" : "cancel_unconfirmed",
     finalStatus: null,
     cancelHttpStatus,
     verifiedByGet: false,
