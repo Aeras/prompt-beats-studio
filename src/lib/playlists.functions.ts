@@ -39,7 +39,8 @@ async function loadTracksWithHandles(
   const { data: tracks, error } = await supabaseAdmin
     .from("tracks")
     .select(TRACK_COLUMNS)
-    .in("id", ids);
+    .in("id", ids)
+    .eq("moderation_status", "active");
   if (error) throw new Error(error.message);
 
   const rows = tracks ?? [];
@@ -83,11 +84,15 @@ async function getOwnedPlaylist(supabase: any, userId: string, playlistId: strin
 async function assertPlaylistEligibleTrack(supabase: any, userId: string, trackId: string) {
   const { data: track, error } = await supabase
     .from("tracks")
-    .select("id, user_id, source_type, is_published")
+    .select("id, user_id, source_type, is_published, moderation_status")
     .eq("id", trackId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!track || (track.is_published !== true && track.user_id !== userId))
+  if (
+    !track ||
+    track.moderation_status !== "active" ||
+    (track.is_published !== true && track.user_id !== userId)
+  )
     throw new Error("Track is unavailable");
   if (track.source_type !== "upload")
     throw new Error("Only tracks played by the PromptBeats player can be added to playlists");
@@ -119,6 +124,7 @@ export const listPlaylists = createServerFn({ method: "GET" })
       ? await (context.supabase.from("tracks") as any)
           .select("id, duration_seconds, cover_url, art_url")
           .in("id", trackIds)
+          .eq("moderation_status", "active")
       : { data: [], error: null };
     if (trackError) throw new Error(trackError.message);
 
