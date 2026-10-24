@@ -1,3 +1,13 @@
+/** Maximum UTF-8 request payload size before durable generation admission. */
+export const MAX_GENERATION_REQUEST_BYTES = 512 * 1024;
+
+export function assertGenerationRequestBudget(input: unknown): void {
+  const bytes = new TextEncoder().encode(JSON.stringify(input)).byteLength;
+  if (bytes > MAX_GENERATION_REQUEST_BYTES) {
+    throw new Error("Generation request is too large.");
+  }
+}
+
 export type GeneratorInputLimitSubject = {
   theme: string;
   genre: string;

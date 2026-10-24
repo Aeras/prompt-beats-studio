@@ -36,9 +36,9 @@ import {
 export const HOURLY_LIMIT = 10;
 
 const generateInput = z.object({
-  theme: z.string().trim().min(3),
-  genre: z.string().trim().min(1),
-  mood: z.string().trim().min(1),
+  theme: z.string().trim().min(3).max(2000),
+  genre: z.string().trim().min(1).max(8000),
+  mood: z.string().trim().min(1).max(1000),
   language: z.string().trim().min(1).max(40),
   targetPlatform: z
     .enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]])

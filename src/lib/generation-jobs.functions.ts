@@ -13,7 +13,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
-import { assertGenerationInputLimits } from "@/lib/generator-input-limits";
+import {
+  assertGenerationInputLimits,
+  assertGenerationRequestBudget,
+} from "@/lib/generator-input-limits";
 import {
   diffGeneratorSnapshots,
   generatorInputSnapshotSchema,
@@ -30,15 +33,15 @@ import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 const jobInput = z.object({
   idempotencyKey: z.string().uuid(),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
-  theme: z.string().trim().min(3),
-  genre: z.string().trim().min(1),
-  mood: z.string().trim().min(1),
+  theme: z.string().trim().min(3).max(2000),
+  genre: z.string().trim().min(1).max(8000),
+  mood: z.string().trim().min(1).max(1000),
   language: z.string().trim().min(1).max(80),
   generationModel: z.string().trim().min(1).max(240).nullish(),
   promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
   advanced: z.boolean().default(false),
-  baseMusicStyle: z.string().trim().default(""),
-  instruments: z.string().trim().default(""),
+  baseMusicStyle: z.string().trim().max(4000).default(""),
+  instruments: z.string().trim().max(2000).default(""),
   structure: z.string().trim().max(600).default(""),
   songBlueprint: songBlueprintSchema,
   production: z.string().trim().max(2000).default(""),
@@ -164,6 +167,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
+    assertGenerationRequestBudget(data);
     await requireFeatureAccess(context.supabase, "ai_generator");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
