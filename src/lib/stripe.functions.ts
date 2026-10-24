@@ -15,11 +15,12 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     z
       .object({
         plan: z.literal("pro"),
+        checkoutAttemptId: z.string().uuid(),
       })
       .strict()
       .parse(input),
   )
-  .handler(async ({ context }) => {
+  .handler(async ({ context, data }) => {
     const { getStripeProPriceId, getTrustedAppOrigin, stripeRequest } =
       await import("@/lib/stripe.server");
     const { supabase, userId, claims } = context;
@@ -68,6 +69,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         cancel_url: `${appOrigin}/?checkout=cancelled`,
         "metadata[user_id]": userId,
       },
+      { idempotencyKey: `promptbeats-checkout-${userId}-${data.checkoutAttemptId}` },
     );
 
     return { id: session.id, url: session.url };
