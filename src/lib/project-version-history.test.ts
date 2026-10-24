@@ -184,7 +184,8 @@ describe("Version history writer contracts", () => {
     const atomicMigration = await Bun.file(
       "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql",
     ).text();
-    expect(atomicMigration).toContain("_version_change_metadata");
+    expect(atomicMigration).toContain("version_change_metadata = _metadata");
+    expect(atomicMigration).toContain("_snapshot, _metadata, _title");
     expect(ai).toContain("Project versions cannot be moved between projects");
     expect(ai).toContain("buildManualVersionMetadata({");
   });
