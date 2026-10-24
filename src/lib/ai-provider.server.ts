@@ -1390,7 +1390,7 @@ export function modelCaller(
   const raw: ModelCaller = (call) => {
     // Emergency operator brake. Check at dispatch rather than at page load so
     // already-queued jobs cannot bypass a newly activated stop.
-    if (process.env.PROMPTBEATS_AI_DISPATCH_DISABLED === "true") {
+    if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true") {
       throw new Error("AI generation is temporarily unavailable.");
     }
     if (provider === "anthropic") return callAnthropic(model, call);
