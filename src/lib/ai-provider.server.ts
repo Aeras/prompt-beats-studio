@@ -235,7 +235,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       outputTokens = usage?.output_tokens ?? outputTokens;
       cachedInputTokens = usage?.cache_read_input_tokens ?? cachedInputTokens;
       cacheWriteTokens = usage?.cache_creation_input_tokens ?? cacheWriteTokens;
-      return;
+      return usage !== undefined;
     }
 
     if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
@@ -246,7 +246,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     if (event.type === "message_delta") {
       reason = event.delta?.stop_reason ?? reason;
       outputTokens = event.usage?.output_tokens ?? outputTokens;
-      return;
+      return event.usage !== undefined;
     }
 
     if (event.type === "error") {
@@ -261,6 +261,20 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     }
   };
 
+  const observeCurrentUsage = async () => {
+    const observed = usageEvidence(
+      {
+        usage: {
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          cache_read_input_tokens: cachedInputTokens,
+          cache_creation_input_tokens: cacheWriteTokens,
+        },
+      },
+      "anthropic",
+    );
+    if (observed) await call.onUsageObserved?.(observed);
+  };
   try {
     while (true) {
       const { value, done } = await reader.read();
@@ -275,21 +289,8 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
           .filter((line) => line.startsWith("data:"))
           .map((line) => line.slice(5).trimStart())
           .join("\n");
-        if (data) processEvent(data);
-        if (inputTokens !== null || outputTokens !== null) {
-          const observed = usageEvidence(
-            {
-              usage: {
-                input_tokens: inputTokens,
-                output_tokens: outputTokens,
-                cache_read_input_tokens: cachedInputTokens,
-                cache_creation_input_tokens: cacheWriteTokens,
-              },
-            },
-            "anthropic",
-          );
-          if (observed) await call.onUsageObserved?.(observed);
-        }
+        const usageChanged = data ? processEvent(data) : false;
+        if (usageChanged) await observeCurrentUsage();
         boundary = buffer.indexOf("\n\n");
       }
 
@@ -303,7 +304,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
         .filter((line) => line.startsWith("data:"))
         .map((line) => line.slice(5).trimStart())
         .join("\n");
-      if (data) processEvent(data);
+      if (data && processEvent(data)) await observeCurrentUsage();
     }
   } catch (error) {
     console.error("[ai-provider] Anthropic stream interrupted", {

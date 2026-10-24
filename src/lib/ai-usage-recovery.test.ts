@@ -112,6 +112,8 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
             },
           },
         },
+        { type: "content_block_delta", delta: { type: "text_delta", text: "fixture" } },
+        { type: "content_block_delta", delta: { type: "text_delta", text: " text" } },
         { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 20 } },
         ...(interrupted ? [{ type: "error", error: { type: "overloaded_error" } }] : []),
       ]
@@ -148,6 +150,7 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
         cachedInputTokens: 80,
         cacheWriteTokens: 10,
       });
+      expect(observed).toHaveLength(2); // Never write a database receipt per text fragment.
     }
   });
   test("successful response is checkpointed and accounted before returning", async () => {
