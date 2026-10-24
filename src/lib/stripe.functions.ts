@@ -38,6 +38,17 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       throw new Error("An active subscription already exists. Use billing management.");
     }
 
+    // Atomically reserve one Checkout attempt per account across all workers.
+    // Replays of the same UUID are allowed; distinct concurrent UUIDs are rejected.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: reserved, error: reservationError } = await supabaseAdmin.rpc(
+      "reserve_stripe_checkout_attempt" as never,
+      { _user_id: userId, _attempt_id: data.checkoutAttemptId } as never,
+    );
+    if (reservationError || reserved !== true) {
+      throw new Error("A checkout is already in progress. Please try again later.");
+    }
+
     let customerId = sub?.stripe_customer_id ?? null;
     if (!customerId) {
       const customer = await stripeRequest<{ id: string }>(
@@ -50,7 +61,6 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         { idempotencyKey: `promptbeats-customer-${userId}` },
       );
       customerId = customer.id;
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: customerPersistError } = await supabaseAdmin
         .from("subscriptions")
         .upsert({ user_id: userId, stripe_customer_id: customerId }, { onConflict: "user_id" });
