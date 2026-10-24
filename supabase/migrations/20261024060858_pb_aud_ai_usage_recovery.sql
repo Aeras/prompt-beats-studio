@@ -26,6 +26,7 @@ CREATE TABLE public.ai_provider_executions (
   updated_at timestamptz NOT NULL DEFAULT now(),
   next_recovery_at timestamptz NOT NULL DEFAULT now() + interval '15 minutes',
   recovery_attempts integer NOT NULL DEFAULT 0 CHECK (recovery_attempts BETWEEN 0 AND 8),
+  application_recovery_attempts integer NOT NULL DEFAULT 0 CHECK (application_recovery_attempts BETWEEN 0 AND 8),
   lease_token uuid,
   lease_until timestamptz,
   CHECK (job_id IS NULL OR quality_action_id IS NULL)
@@ -89,7 +90,7 @@ CREATE FUNCTION public.checkpoint_ai_execution_internal(_id uuid, _user_id uuid,
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_catalog AS $$
 BEGIN
   UPDATE public.ai_provider_executions SET result = COALESCE(result, _result),
-    observed_usage = CASE WHEN result IS NULL THEN NULLIF(_result->'usage','null'::jsonb) ELSE observed_usage END,
+    observed_usage = CASE WHEN result IS NULL THEN COALESCE(NULLIF(_result->'usage','null'::jsonb),observed_usage) ELSE observed_usage END,
     state = 'response_observed', updated_at = now(), next_recovery_at = now()
   WHERE id = _id AND user_id = _user_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'execution checkpoint rejected'; END IF;
@@ -245,7 +246,7 @@ BEGIN
       AND j.started_at < now() - interval '15 minutes'
       AND COALESCE(j.input_payload->>'operation','generate') <> 'revision'
       AND EXISTS (SELECT 1 FROM public.ai_provider_executions e WHERE e.job_id = j.id
-        AND e.user_id = j.user_id AND e.result IS NOT NULL)
+        AND e.user_id = j.user_id AND e.result IS NOT NULL AND e.application_recovery_attempts < 8)
     RETURNING to_jsonb(j) INTO v_job;
   ELSIF _kind = 'quality_check' THEN
     UPDATE public.ai_quality_check_actions j SET recovery_until = now() + interval '15 minutes',status='processing'
@@ -253,8 +254,14 @@ BEGIN
       AND (j.recovery_until IS NULL OR j.recovery_until < now())
       AND j.started_at < now() - interval '15 minutes'
       AND EXISTS (SELECT 1 FROM public.ai_provider_executions e WHERE e.quality_action_id = j.id
-        AND e.user_id = j.user_id AND e.result IS NOT NULL)
+        AND e.user_id = j.user_id AND e.result IS NOT NULL AND e.application_recovery_attempts < 8)
     RETURNING to_jsonb(j) INTO v_job;
+  END IF;
+  IF v_job IS NOT NULL THEN
+    UPDATE public.ai_provider_executions SET application_recovery_attempts = application_recovery_attempts + 1
+      WHERE ((_kind = 'generate' AND job_id = _id) OR (_kind = 'quality_check' AND quality_action_id = _id))
+        AND application_recovery_attempts < 8;
+    IF NOT FOUND THEN RAISE EXCEPTION 'application recovery exhausted'; END IF;
   END IF;
   RETURN v_job;
 END;
@@ -301,14 +308,14 @@ RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path = public, pg_catalog
    SELECT j.id FROM public.ai_generation_jobs j
    JOIN public.ai_provider_executions e ON e.job_id = j.id AND e.user_id = j.user_id
    WHERE _kind = 'generate' AND j.status IN ('processing','failed') AND j.cancel_requested_at IS NULL
-     AND j.started_at < now() - interval '15 minutes' AND e.result IS NOT NULL
+     AND j.started_at < now() - interval '15 minutes' AND e.result IS NOT NULL AND e.application_recovery_attempts < 8
      AND COALESCE(j.input_payload->>'operation','generate') <> 'revision'
      AND (j.recovery_until IS NULL OR j.recovery_until < now())
    UNION ALL
    SELECT j.id FROM public.ai_quality_check_actions j
    JOIN public.ai_provider_executions e ON e.quality_action_id = j.id AND e.user_id = j.user_id
    WHERE _kind = 'quality_check' AND j.status IN ('processing','failed') AND j.cancel_requested_at IS NULL
-     AND j.started_at < now() - interval '15 minutes' AND e.result IS NOT NULL
+     AND j.started_at < now() - interval '15 minutes' AND e.result IS NOT NULL AND e.application_recovery_attempts < 8
      AND (j.recovery_until IS NULL OR j.recovery_until < now())
    LIMIT LEAST(GREATEST(_limit,1),20)
  ) selected;

@@ -104,12 +104,25 @@ BEGIN
   PERFORM public.release_ai_execution_recovery_internal(receipt,token);
   IF (SELECT status FROM public.ai_generation_jobs WHERE id='77777777-7777-4777-8777-777777777777') <> 'failed'
     THEN RAISE EXCEPTION 'unrecoverable orphan remained processing forever'; END IF;
+  PERFORM public.observe_ai_execution_usage_internal(receipt,'11111111-1111-4111-8111-111111111111',
+    '{"inputTokens":100,"outputTokens":20,"totalTokens":120}');
   PERFORM public.checkpoint_ai_execution_internal(receipt,'11111111-1111-4111-8111-111111111111',
     '{"text":"recovered output","usage":null,"provider":"openai","model":"fixture","stopReason":"end_turn"}');
+  IF NOT EXISTS (SELECT 1 FROM public.ai_provider_executions WHERE id=receipt AND observed_usage->>'totalTokens'='120')
+    THEN RAISE EXCEPTION 'output checkpoint without usage erased observed receipt'; END IF;
   IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NULL
     THEN RAISE EXCEPTION 'late provider result could not be safely claimed'; END IF;
   IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NOT NULL
     THEN RAISE EXCEPTION 'two workers claimed the same application recovery'; END IF;
+  FOR n IN 1..7 LOOP
+    UPDATE public.ai_generation_jobs SET recovery_until=NULL WHERE id='77777777-7777-4777-8777-777777777777';
+    IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NULL
+      THEN RAISE EXCEPTION 'bounded application retry unavailable before cap'; END IF;
+  END LOOP;
+  UPDATE public.ai_generation_jobs SET recovery_until=NULL WHERE id='77777777-7777-4777-8777-777777777777';
+  IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NOT NULL
+    OR public.recoverable_ai_job_ids_internal('generate',5) <> '[]'::jsonb
+    THEN RAISE EXCEPTION 'invalid cached output could retry without a bound'; END IF;
   UPDATE public.ai_generation_jobs SET cancel_requested_at=now(),recovery_until=NULL
     WHERE id='77777777-7777-4777-8777-777777777777';
   IF public.claim_ai_recovered_job_internal('generate','77777777-7777-4777-8777-777777777777') IS NOT NULL

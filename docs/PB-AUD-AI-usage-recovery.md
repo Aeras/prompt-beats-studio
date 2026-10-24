@@ -92,6 +92,8 @@ Orphan failure χωρίς remote ID/result απαιτεί ηλικία τουλ�
 
 Late cached QC output μπορεί να επαναφέρει και failed action μόνο μέσω service-side claim, χωρίς cancellation και χωρίς νέα κλήση. Orphaned processing cancellation γίνεται terminal cancelled με άγνωστο upstream outcome, εκτός αν υπάρχει έγκυρο terminal provider evidence· η πραγματική usage δεν σβήνεται.
 
+Η επανεπεξεργασία cached application output έχει επίσης χωριστό durable όριο **8 claims ανά execution** (`application_recovery_attempts`), ώστε invalid output να μη δημιουργεί ατέρμονα validation/finalization retries. Μετά το όριο παραμένει διαθέσιμο μόνο ως operator evidence· δεν γίνεται νέο provider dispatch. Output checkpoint χωρίς usage δεν διαγράφει ήδη observed receipt.
+
 Migration: `supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql`.
 
 - Service-only `ai_provider_executions`, RLS enabled, ρητά revoked PUBLIC/anon/authenticated.
