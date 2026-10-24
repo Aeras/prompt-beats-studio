@@ -399,7 +399,11 @@ describe("Library folders foundation", () => {
     expect(dialogs).toContain("Προσθήκη σε Project");
     expect(ai).toContain("patch.folder_id = null");
     expect(ai).toContain("patch.lyrics = data.lyrics");
-    expect(jobs).toContain("standalone revision replace failed");
-    expect(jobs).toContain('.is("project_id", null)');
+    expect(jobs).toContain('"finalize_generation_revision_atomic"');
+    const migration = await source(
+      "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql",
+    );
+    expect(migration).toContain("Standalone revision target not found");
+    expect(migration).toContain("project_id IS NULL");
   });
 });
