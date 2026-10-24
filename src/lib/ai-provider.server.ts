@@ -599,13 +599,10 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     );
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as any;
-      const message = payload?.error?.message;
       const providerCode = typeof payload?.error?.status === "string" ? payload.error.status : null;
       console.error("[ai-provider] Gemini 4 Argon request failed", {
         status: response.status,
         providerCode,
-        // Truncated provider detail is server-only. Never expose model request or API key.
-        error: typeof message === "string" ? message.slice(0, 300) : "unknown",
       });
       throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
@@ -725,8 +722,7 @@ async function callMistral(model: string, call: ModelCall): Promise<ModelResult>
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(`[ai-provider] Mistral request failed (${res.status})`, errorBody.slice(0, 1000));
+    console.error(`[ai-provider] Mistral request failed (${res.status})`);
     if (res.status === 429) {
       throw new Error(
         "This AI model has reached its request limit on the connected Mistral account. Please try another model or try again later.",
@@ -1107,7 +1103,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   } catch (error) {
     console.error(
       `[ai-provider] xAI request failed before response (${model})`,
-      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.name : "unknown",
     );
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
@@ -1120,11 +1116,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(
-      `[ai-provider] xAI Responses request failed (${res.status})`,
-      errorBody.slice(0, 2000),
-    );
+    console.error(`[ai-provider] xAI Responses request failed (${res.status})`);
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
@@ -1272,8 +1264,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
         .json()
         .catch(() => null),
     );
-    const errorBody = await res.text();
-    console.error(`[ai-provider] OpenAI request failed (${res.status})`, errorBody.slice(0, 1000));
+    console.error(`[ai-provider] OpenAI request failed (${res.status})`);
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
 
