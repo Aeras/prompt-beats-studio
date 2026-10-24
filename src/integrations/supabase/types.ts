@@ -176,6 +176,10 @@ export type Database = {
       ai_generation_jobs: {
         Row: {
           attempts: number
+          cancel_requested_at: string | null
+          cancellation_outcome: string | null
+          cancellation_remote_id: string | null
+          cancellation_remote_provider: string | null
           completed_at: string | null
           created_at: string
           dismissed_at: string | null
@@ -187,6 +191,7 @@ export type Database = {
           model: string | null
           provider: string | null
           provider_started_at: string | null
+          recovery_until: string | null
           result: Json | null
           started_at: string | null
           status: string
@@ -195,6 +200,10 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          cancel_requested_at?: string | null
+          cancellation_outcome?: string | null
+          cancellation_remote_id?: string | null
+          cancellation_remote_provider?: string | null
           completed_at?: string | null
           created_at?: string
           dismissed_at?: string | null
@@ -206,6 +215,7 @@ export type Database = {
           model?: string | null
           provider?: string | null
           provider_started_at?: string | null
+          recovery_until?: string | null
           result?: Json | null
           started_at?: string | null
           status?: string
@@ -214,6 +224,10 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          cancel_requested_at?: string | null
+          cancellation_outcome?: string | null
+          cancellation_remote_id?: string | null
+          cancellation_remote_provider?: string | null
           completed_at?: string | null
           created_at?: string
           dismissed_at?: string | null
@@ -225,6 +239,7 @@ export type Database = {
           model?: string | null
           provider?: string | null
           provider_started_at?: string | null
+          recovery_until?: string | null
           result?: Json | null
           started_at?: string | null
           status?: string
@@ -380,8 +395,96 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_provider_executions: {
+        Row: {
+          application_recovery_attempts: number
+          created_at: string
+          generation_id: string | null
+          id: string
+          job_id: string | null
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          next_recovery_at: string
+          observed_usage: Json | null
+          operation: string
+          provider: string
+          quality_action_id: string | null
+          recovery_attempts: number
+          remote_id: string | null
+          remote_provider: string | null
+          result: Json | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_recovery_attempts?: number
+          created_at?: string
+          generation_id?: string | null
+          id: string
+          job_id?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          model: string
+          next_recovery_at?: string
+          observed_usage?: Json | null
+          operation: string
+          provider: string
+          quality_action_id?: string | null
+          recovery_attempts?: number
+          remote_id?: string | null
+          remote_provider?: string | null
+          result?: Json | null
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_recovery_attempts?: number
+          created_at?: string
+          generation_id?: string | null
+          id?: string
+          job_id?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          model?: string
+          next_recovery_at?: string
+          observed_usage?: Json | null
+          operation?: string
+          provider?: string
+          quality_action_id?: string | null
+          recovery_attempts?: number
+          remote_id?: string | null
+          remote_provider?: string | null
+          result?: Json | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_executions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_provider_executions_quality_action_id_fkey"
+            columns: ["quality_action_id"]
+            isOneToOne: true
+            referencedRelation: "ai_quality_check_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_quality_check_actions: {
         Row: {
+          cancel_requested_at: string | null
+          cancellation_outcome: string | null
+          cancellation_remote_id: string | null
+          cancellation_remote_provider: string | null
           completed_at: string | null
           consumed_generation_id: string | null
           created_at: string
@@ -393,12 +496,17 @@ export type Database = {
           provider: string | null
           provider_started_at: string | null
           quality_report: Json | null
+          recovery_until: string | null
           started_at: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          cancel_requested_at?: string | null
+          cancellation_outcome?: string | null
+          cancellation_remote_id?: string | null
+          cancellation_remote_provider?: string | null
           completed_at?: string | null
           consumed_generation_id?: string | null
           created_at?: string
@@ -410,12 +518,17 @@ export type Database = {
           provider?: string | null
           provider_started_at?: string | null
           quality_report?: Json | null
+          recovery_until?: string | null
           started_at?: string | null
           status: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          cancel_requested_at?: string | null
+          cancellation_outcome?: string | null
+          cancellation_remote_id?: string | null
+          cancellation_remote_provider?: string | null
           completed_at?: string | null
           consumed_generation_id?: string | null
           created_at?: string
@@ -427,6 +540,7 @@ export type Database = {
           provider?: string | null
           provider_started_at?: string | null
           quality_report?: Json | null
+          recovery_until?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -458,6 +572,9 @@ export type Database = {
           output_tokens: number | null
           pricing_status_at_recording: string | null
           provider: string
+          provider_reported_cost_usd: number | null
+          provider_usage_state: string
+          reasoning_tokens: number | null
           success: boolean
           total_tokens: number | null
           user_id: string | null
@@ -477,6 +594,9 @@ export type Database = {
           output_tokens?: number | null
           pricing_status_at_recording?: string | null
           provider: string
+          provider_reported_cost_usd?: number | null
+          provider_usage_state?: string
+          reasoning_tokens?: number | null
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null
@@ -496,6 +616,9 @@ export type Database = {
           output_tokens?: number | null
           pricing_status_at_recording?: string | null
           provider?: string
+          provider_reported_cost_usd?: number | null
+          provider_usage_state?: string
+          reasoning_tokens?: number | null
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null
@@ -3422,6 +3545,10 @@ export type Database = {
         Returns: Json
       }
       admit_track_upload: { Args: never; Returns: boolean }
+      ai_execution_cancel_requested_internal: {
+        Args: { _id: string; _user_id: string }
+        Returns: boolean
+      }
       app_role_rank: { Args: { _role: string }; Returns: number }
       approve_initial_case_decision: {
         Args: { _case_id: string }
@@ -3430,6 +3557,19 @@ export type Database = {
       backfill_pending_ai_usage_costs: {
         Args: { p_model: string }
         Returns: number
+      }
+      begin_ai_execution_internal: {
+        Args: {
+          _generation_id: string
+          _id: string
+          _job_id: string
+          _model: string
+          _operation: string
+          _provider: string
+          _quality_action_id: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       bulk_delete_prompt_projects: { Args: { _plans: Json }; Returns: Json }
       can_manage_track_storage_cleanup: {
@@ -3452,6 +3592,45 @@ export type Database = {
           _owner_id: string
           _track_id: string
         }
+        Returns: Json
+      }
+      checkpoint_ai_execution_internal: {
+        Args: { _id: string; _result: Json; _user_id: string }
+        Returns: undefined
+      }
+      claim_ai_execution_recovery_internal: {
+        Args: never
+        Returns: {
+          application_recovery_attempts: number
+          created_at: string
+          generation_id: string | null
+          id: string
+          job_id: string | null
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          next_recovery_at: string
+          observed_usage: Json | null
+          operation: string
+          provider: string
+          quality_action_id: string | null
+          recovery_attempts: number
+          remote_id: string | null
+          remote_provider: string | null
+          result: Json | null
+          state: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ai_provider_executions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_ai_recovered_job_internal: {
+        Args: { _id: string; _kind: string }
         Returns: Json
       }
       claim_auxiliary_ai_request: {
@@ -3802,6 +3981,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_ai_execution_remote_internal: {
+        Args: {
+          _id: string
+          _provider: string
+          _remote_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       mark_auxiliary_ai_provider_started: {
         Args: {
           _execution_token: string
@@ -3855,6 +4043,10 @@ export type Database = {
         Args: { _email: string }
         Returns: string
       }
+      observe_ai_execution_usage_internal: {
+        Args: { _id: string; _usage: Json; _user_id: string }
+        Returns: undefined
+      }
       private_review_link_info: { Args: { _token: string }; Returns: Json }
       process_stripe_subscription_event: {
         Args: {
@@ -3898,6 +4090,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      read_ai_execution_internal: {
+        Args: { _job_id: string; _quality_action_id: string; _user_id: string }
+        Returns: Json
+      }
+      reap_unjournaled_ai_jobs_internal: { Args: never; Returns: number }
       reassign_moderation_case: {
         Args: { _case_id: string; _new_assignee?: string }
         Returns: undefined
@@ -3918,8 +4115,16 @@ export type Database = {
         Args: { _track_id: string }
         Returns: undefined
       }
+      recoverable_ai_job_ids_internal: {
+        Args: { _kind: string; _limit?: number }
+        Returns: Json
+      }
       refresh_public_staff_badge: {
         Args: { _user_id: string }
+        Returns: undefined
+      }
+      release_ai_execution_recovery_internal: {
+        Args: { _id: string; _lease_token: string }
         Returns: undefined
       }
       release_quality_check: {
@@ -3981,6 +4186,14 @@ export type Database = {
           _track_id: string
         }
         Returns: Json
+      }
+      request_generation_job_cancellation: {
+        Args: { _job_id: string }
+        Returns: string
+      }
+      request_quality_check_cancellation: {
+        Args: { _action_id: string }
+        Returns: string
       }
       review_content_report: {
         Args: {
@@ -4048,6 +4261,11 @@ export type Database = {
       }
       set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
+        Returns: undefined
+      }
+      settle_ai_usage_internal: { Args: { _payload: Json }; Returns: undefined }
+      skip_ai_execution_internal: {
+        Args: { _id: string; _user_id: string }
         Returns: undefined
       }
       staff_complete_track_storage_cleanup: {
