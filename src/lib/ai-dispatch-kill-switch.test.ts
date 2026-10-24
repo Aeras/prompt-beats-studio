@@ -8,9 +8,9 @@ describe("PB-AUD-015 emergency provider dispatch stop", () => {
     try {
       process.env.PROMPTBEATS_AI_DISPATCH_DISABLED = "true";
       const call = modelCaller("test-model", "unsupported-test-provider");
-      await expect(Promise.resolve().then(() => call({ system: "test", prompt: "test" }))).rejects.toThrow(
-        "AI generation is temporarily unavailable.",
-      );
+      await expect(
+        Promise.resolve().then(() => call({ system: "test", prompt: "test" })),
+      ).rejects.toThrow("AI generation is temporarily unavailable.");
     } finally {
       if (previous === undefined) delete process.env.PROMPTBEATS_AI_DISPATCH_DISABLED;
       else process.env.PROMPTBEATS_AI_DISPATCH_DISABLED = previous;
