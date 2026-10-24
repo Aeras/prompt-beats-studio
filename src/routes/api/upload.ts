@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifiedAudioType } from "@/lib/audio-upload";
 
 const MAX_BYTES = 50 * 1024 * 1024;
 // Allows a small multipart envelope while bounding unknown/chunked request bodies.
 const MAX_REQUEST_BYTES = 52 * 1024 * 1024;
-const ALLOWED = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave"]);
 type MultipartFile = { name: string; type: string; bytes: Uint8Array };
 
 async function readBoundedBody(request: Request, declaredLength?: number): Promise<Uint8Array> {
@@ -101,7 +101,14 @@ function findValidBoundary(
 function parseMultipartFile(contentType: string, body: Uint8Array): MultipartFile | null {
   const boundaryMatch = /(?:^|;)\s*boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(contentType);
   const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2];
-  if (!boundary || boundary.length > 200) return null;
+  if (
+    !/^multipart\/form-data\s*;/i.test(contentType) ||
+    !boundary ||
+    boundary.length > 70 ||
+    !/^[0-9A-Za-z'()+_,\-./:=? ]+$/.test(boundary) ||
+    boundary.endsWith(" ")
+  )
+    return null;
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   const marker = encoder.encode(`--${boundary}`);
@@ -112,7 +119,7 @@ function parseMultipartFile(contentType: string, body: Uint8Array): MultipartFil
     if (delimiter.kind === "final") return null;
     const headersStart = delimiter.position + marker.length + 2;
     const headersEnd = findBytes(body, headerEnd, headersStart);
-    if (headersEnd < 0) return null;
+    if (headersEnd < 0 || headersEnd - headersStart > 16384) return null;
     const headers = decoder.decode(body.subarray(headersStart, headersEnd));
     const disposition =
       /content-disposition:\s*form-data;[^\r\n]*\bname="([^"]+)"[^\r\n]*\bfilename="([^"]*)"/i.exec(
@@ -120,13 +127,15 @@ function parseMultipartFile(contentType: string, body: Uint8Array): MultipartFil
       );
     const dataStart = headersEnd + headerEnd.length;
     const nextDelimiter = findValidBoundary(body, marker, dataStart);
-    if (!nextDelimiter) return null;
-    if (disposition?.[1] === "file" && !foundFile) {
+    if (!nextDelimiter || nextDelimiter.position < dataStart + 2) return null;
+    if (disposition?.[1] === "file") {
+      if (foundFile) return null;
       const type = /content-type:\s*([^\r\n]+)/i.exec(headers)?.[1]?.trim() ?? "";
       foundFile = {
         name: disposition[2] ?? "",
         type,
-        bytes: body.subarray(dataStart, nextDelimiter.position),
+        // Only the delimiter's framing CRLF, not a genuine file suffix.
+        bytes: body.subarray(dataStart, nextDelimiter.position - 2),
       };
     }
     if (nextDelimiter.kind === "final") return foundFile;
@@ -200,46 +209,42 @@ export const Route = createFileRoute("/api/upload")({
             status: 413,
           });
         }
-        const type = parsed.type.toLowerCase();
-        const isAudioName = /\.(mp3|wav)$/i.test(parsed.name);
-        if (!ALLOWED.has(type) && !isAudioName) {
+        const format = verifiedAudioType(parsed.name, parsed.type, parsed.bytes);
+        if (!format) {
           return new Response(JSON.stringify({ error: "Only .mp3 and .wav files are allowed" }), {
             status: 415,
           });
         }
 
         const bytes = parsed.bytes;
-        const isWav =
-          bytes.length >= 12 &&
-          String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
-          String.fromCharCode(...bytes.slice(8, 12)) === "WAVE";
-        const isMp3 =
-          bytes.length >= 3 &&
-          ((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) ||
-            (bytes[0] === 0xff && ((bytes[1] ?? 0) & 0xe0) === 0xe0));
-        const extension = parsed.name.split(".").pop()?.toLowerCase();
-        if (
-          (extension === "wav" && !isWav) ||
-          (extension === "mp3" && !isMp3) ||
-          (!isWav && !isMp3)
-        ) {
-          return new Response(
-            JSON.stringify({ error: "The uploaded file is not a valid MP3 or WAV audio file" }),
-            {
-              status: 415,
-            },
+        const { buildObjectKey, uploadToR2 } = await import("@/lib/r2.server");
+        const { beginAudioUpload, finalizeAudioUpload, queueFailedAudioUpload } =
+          await import("@/lib/upload-receipts.server");
+        const fileName = /\.(mp3|wav)$/i.test(parsed.name)
+          ? parsed.name
+          : `${parsed.name || "audio"}.${format.extension}`;
+        const key = buildObjectKey(userId, fileName);
+        let registered = false;
+        try {
+          const receipt = await beginAudioUpload(userId, key, bytes, format.mime);
+          registered = true;
+          const { url } = await uploadToR2(key, bytes, format.mime, receipt.sha256);
+          await finalizeAudioUpload(receipt);
+          return Response.json({ key, url });
+        } catch {
+          // A rejected registration must never clean up a pre-existing key.
+          if (registered) {
+            try {
+              await queueFailedAudioUpload(key, userId);
+            } catch {
+              console.error("[upload] cleanup remains unresolved");
+            }
+          }
+          return Response.json(
+            { error: "The audio upload could not be finalized. Please try again." },
+            { status: 502 },
           );
         }
-
-        const { buildObjectKey, uploadToR2 } = await import("@/lib/r2.server");
-        const key = buildObjectKey(userId, parsed.name);
-        const { url } = await uploadToR2(
-          key,
-          bytes,
-          type || (extension === "wav" ? "audio/wav" : "audio/mpeg"),
-        );
-
-        return Response.json({ key, url });
       },
     },
   },

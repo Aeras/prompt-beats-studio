@@ -186,6 +186,10 @@ export const createUploadedTrackWithIdentity = createServerFn({ method: "POST" }
     if (!isSafeOwnedAudioKey(data.audio_key, context.userId)) {
       throw new Error("Invalid uploaded audio reference");
     }
+    const { requireFinalizedAudio } = await import("./upload-receipts.server");
+    const receipt = await requireFinalizedAudio(data.audio_key, context.userId);
+    if (receipt.sha256 !== data.audio_content_hash)
+      throw new Error("Audio checksum does not match the uploaded file.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: duplicateRows, error: duplicateError } = await (
@@ -212,7 +216,7 @@ export const createUploadedTrackWithIdentity = createServerFn({ method: "POST" }
         genre: data.genre,
         prompt: data.prompt,
         lyrics: data.lyrics,
-        audio_url: data.audio_url,
+        audio_url: receipt.canonical_url,
         audio_type: "upload",
         source_type: "upload",
         source_url: null,
@@ -220,7 +224,7 @@ export const createUploadedTrackWithIdentity = createServerFn({ method: "POST" }
         created_with: data.created_with,
         audio_key: data.audio_key,
         duration_seconds: data.duration_seconds,
-        audio_content_hash: data.audio_content_hash,
+        audio_content_hash: receipt.sha256,
         audio_fingerprint: data.audio_fingerprint,
         cover_url: data.cover_url ?? null,
         is_published: data.is_published,

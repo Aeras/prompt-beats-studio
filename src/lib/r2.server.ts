@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch";
+import { createHash } from "node:crypto";
 
 import { assertSafeOwnedAudioKey } from "@/lib/storage-paths";
 
@@ -20,7 +21,9 @@ export function getR2Client() {
 
 export function buildObjectKey(userId: string, fileName: string) {
   const clean = fileName.toLowerCase().replace(/[^a-z0-9.\-_]/g, "-");
-  return `tracks/${userId}/${Date.now()}-${clean}`;
+  const key = `tracks/${userId}/${crypto.randomUUID()}-${clean.slice(-180)}`;
+  assertSafeOwnedAudioKey(key, userId);
+  return key;
 }
 
 /** Canonical private R2 object URL. It is not intended for browser playback. */
@@ -45,6 +48,7 @@ export async function uploadToR2(
   key: string,
   body: ArrayBuffer | Uint8Array,
   contentType: string,
+  sha256?: string,
 ): Promise<{ key: string; url: string }> {
   const { endpoint, bucket } = getR2Config();
   const client = getR2Client();
@@ -55,12 +59,34 @@ export async function uploadToR2(
   const res = await client.fetch(`${endpoint}/${bucket}/${key}`, {
     method: "PUT",
     body: requestBody,
-    headers: { "content-type": contentType },
+    headers: {
+      "content-type": contentType,
+      "content-md5": createHash("md5")
+        .update(body instanceof Uint8Array ? body : new Uint8Array(body))
+        .digest("base64"),
+      "content-disposition": "attachment",
+      ...(sha256 ? { "x-amz-meta-sha256": sha256 } : {}),
+    },
   });
   if (!res.ok) {
-    throw new Error(`R2 upload failed (${res.status}): ${await res.text()}`);
+    throw new Error(`R2 upload failed (${res.status})`);
   }
   return { key, url: buildR2ObjectUrl(key) };
+}
+
+/** Metadata-only verification against the private, server-configured origin. */
+export async function headR2Object(key: string) {
+  const response = await getR2Client().fetch(buildR2ObjectUrl(key), {
+    method: "HEAD",
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error("Uploaded audio object is unavailable.");
+  return {
+    size: Number(response.headers.get("content-length")),
+    mime: response.headers.get("content-type"),
+    sha256: response.headers.get("x-amz-meta-sha256"),
+    etag: response.headers.get("etag"),
+  };
 }
 
 /** Deletes an object from R2. */
