@@ -76,6 +76,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         success_url: `${appOrigin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appOrigin}/?checkout=cancelled`,
         "metadata[user_id]": userId,
+        "metadata[checkout_attempt_id]": data.checkoutAttemptId,
       },
       { idempotencyKey: `promptbeats-checkout-${userId}-${data.checkoutAttemptId}` },
     );
