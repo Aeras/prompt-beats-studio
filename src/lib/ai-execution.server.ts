@@ -201,6 +201,7 @@ export async function claimRecoveredJob(kind: "generate" | "quality_check", id: 
 }
 
 export async function reconcileAiExecutions(): Promise<void> {
+  await write("reap_unjournaled_ai_jobs_internal", {});
   const rows = (await write("claim_ai_execution_recovery_internal", {})) as Array<
     Execution & { lease_token: string }
   >;

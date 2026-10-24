@@ -256,6 +256,30 @@ END;
 $$;
 
 -- No browser role can write/read receipts or invoke privileged recovery.
+CREATE FUNCTION public.reap_unjournaled_ai_jobs_internal()
+RETURNS integer LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_catalog AS $$
+DECLARE n integer; m integer;
+BEGIN
+  -- Covers old workers and a crash between the existing provider-start fence
+  -- and the new journal INSERT. No inference about spend or new dispatch.
+  UPDATE public.ai_generation_jobs j SET status=CASE WHEN cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,
+    completed_at=now(),error='Provider execution/usage is unknown; no automatic retry was made.',
+    cancellation_outcome=CASE WHEN cancel_requested_at IS NOT NULL
+      THEN COALESCE(cancellation_outcome,'connection_aborted_unconfirmed') ELSE cancellation_outcome END
+  WHERE status='processing' AND provider_started_at < now()-interval '45 minutes' AND result IS NULL
+    AND NOT EXISTS (SELECT 1 FROM public.ai_provider_executions e WHERE e.job_id=j.id);
+  GET DIAGNOSTICS n = ROW_COUNT;
+  UPDATE public.ai_quality_check_actions j SET status=CASE WHEN cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,
+    completed_at=now(),error='Provider execution/usage is unknown; no automatic retry was made.',
+    cancellation_outcome=CASE WHEN cancel_requested_at IS NOT NULL
+      THEN COALESCE(cancellation_outcome,'connection_aborted_unconfirmed') ELSE cancellation_outcome END
+  WHERE status='processing' AND provider_started_at < now()-interval '45 minutes' AND quality_report IS NULL
+    AND NOT EXISTS (SELECT 1 FROM public.ai_provider_executions e WHERE e.quality_action_id=j.id);
+  GET DIAGNOSTICS m = ROW_COUNT;
+  RETURN n+m;
+END;
+$$;
+
 CREATE FUNCTION public.ai_execution_cancel_requested_internal(_id uuid, _user_id uuid)
 RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = public, pg_catalog AS $$
  SELECT EXISTS (
@@ -294,7 +318,7 @@ BEGIN
       'skip_ai_execution_internal','checkpoint_ai_execution_internal','read_ai_execution_internal',
       'settle_ai_usage_internal','claim_ai_execution_recovery_internal',
       'release_ai_execution_recovery_internal','claim_ai_recovered_job_internal','flush_ai_usage_outbox',
-      'recoverable_ai_job_ids_internal','ai_execution_cancel_requested_internal')
+      'recoverable_ai_job_ids_internal','ai_execution_cancel_requested_internal','reap_unjournaled_ai_jobs_internal')
   LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated',f.signature);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.signature);

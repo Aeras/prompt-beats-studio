@@ -83,6 +83,8 @@
 
 Orphan failure χωρίς remote ID/result απαιτεί ηλικία τουλάχιστον **45 λεπτών**, ώστε να μην τερματίζεται λανθασμένα νόμιμο υπάρχον transport διάρκειας έως 30 λεπτών. Τα GET-only sweeps μπορούν να αρχίσουν νωρίτερα χωρίς νέο provider create.
 
+Παλιό ή interrupted job με provider-start marker αλλά χωρίς journal, πάνω από 45 λεπτά, γίνεται terminal με ρητό unknown execution/usage error. Δεν εκδίδεται νέο provider request και δεν κατασκευάζεται financial receipt για ιστορική εργασία χωρίς στοιχεία.
+
 Late cached QC output μπορεί να επαναφέρει και failed action μόνο μέσω service-side claim, χωρίς cancellation και χωρίς νέα κλήση. Orphaned processing cancellation γίνεται terminal cancelled με άγνωστο upstream outcome, εκτός αν υπάρχει έγκυρο terminal provider evidence· η πραγματική usage δεν σβήνεται.
 
 Migration: `supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql`.

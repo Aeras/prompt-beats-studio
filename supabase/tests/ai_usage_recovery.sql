@@ -105,6 +105,18 @@ BEGIN
     THEN RAISE EXCEPTION 'orphan cancellation remained processing'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.ai_usage_logs WHERE id=receipt AND total_tokens=120)
     THEN RAISE EXCEPTION 'cancelled application lost observed provider usage'; END IF;
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload,started_at,provider_started_at)
+    VALUES ('99999999-9999-4999-8999-999999999999','11111111-1111-4111-8111-111111111111',
+      gen_random_uuid(),'processing','{}',now()-interval '46 minutes',now()-interval '46 minutes'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111',
+      gen_random_uuid(),'processing','{}',now()-interval '20 minutes',now()-interval '20 minutes');
+  PERFORM public.reap_unjournaled_ai_jobs_internal();
+  IF NOT EXISTS (SELECT 1 FROM public.ai_generation_jobs WHERE id='99999999-9999-4999-8999-999999999999'
+    AND status='failed' AND error LIKE '%unknown%')
+    THEN RAISE EXCEPTION 'unjournaled orphan not classified honestly'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.ai_generation_jobs WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    AND status='processing')
+    THEN RAISE EXCEPTION 'unjournaled live request failed prematurely'; END IF;
 END;
 $$;
 ROLLBACK;
