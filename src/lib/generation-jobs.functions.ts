@@ -13,7 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "@/lib/ai-target-platforms";
-import { assertGenerationInputLimits } from "@/lib/generator-input-limits";
+import { assertGenerationInputLimits, assertGenerationRequestBudget } from "@/lib/generator-input-limits";
 import {
   diffGeneratorSnapshots,
   generatorInputSnapshotSchema,
@@ -164,6 +164,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
+    assertGenerationRequestBudget(data);
     await requireFeatureAccess(context.supabase, "ai_generator");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
