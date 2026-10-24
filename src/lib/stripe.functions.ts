@@ -57,6 +57,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (customerPersistError) throw new Error("Could not prepare billing. Please try again.");
     }
 
+    const open = await stripeRequest<{ data: Array<{ id: string; url: string | null; mode: string; metadata?: { user_id?: string; checkout_attempt_id?: string } }>; has_more: boolean }>("GET", "/v1/checkout/sessions", { customer: customerId, status: "open", limit: "100" });
+    if (open.has_more) throw new Error("Could not verify existing checkout sessions.");
+    const existing = open.data.find((item) => item.mode === "subscription" && item.metadata?.user_id === userId);
+    if (existing) {
+      if (existing.metadata?.checkout_attempt_id === data.checkoutAttemptId && existing.url) return { id: existing.id, url: existing.url };
+      throw new Error("A checkout is already in progress.");
+    }
+
     const session = await stripeRequest<{ id: string; url: string }>(
       "POST",
       "/v1/checkout/sessions",
