@@ -604,8 +604,7 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
       console.error("[ai-provider] Gemini 4 Argon request failed", {
         status: response.status,
         providerCode,
-        // Truncated provider detail is server-only. Never expose model request or API key.
-        error: typeof message === "string" ? message.slice(0, 300) : "unknown",
+        // Never record provider response text: it may echo user input.
       });
       throw new AiProviderHttpError("gemini", response.status, providerCode);
     }
@@ -1106,7 +1105,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   } catch (error) {
     console.error(
       `[ai-provider] xAI request failed before response (${model})`,
-      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.name : "unknown",
     );
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
