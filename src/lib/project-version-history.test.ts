@@ -180,7 +180,11 @@ describe("Version history writer contracts", () => {
     expect(workspace).toContain("buildLyricsWorkspaceVersionMetadata({");
     expect(workspace).toContain("_version_change_metadata: versionChangeMetadata");
     expect(jobs).toContain("buildProjectRevisionVersionMetadata({");
-    expect(jobs).toContain("_version_change_metadata: versionChangeMetadata");
+    expect(jobs).toContain("_metadata: versionChangeMetadata");
+    const atomicMigration = await Bun.file(
+      "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql",
+    ).text();
+    expect(atomicMigration).toContain("_version_change_metadata");
     expect(ai).toContain("Project versions cannot be moved between projects");
     expect(ai).toContain("buildManualVersionMetadata({");
   });
