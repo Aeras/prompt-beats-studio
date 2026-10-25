@@ -478,8 +478,8 @@ export function InstalledAiModelsTable({
           </h4>
           <p id="uninstall-description" className="mt-2 text-sm">
             {el
-              ? "Διαγράφονται μόνο οι εγκατεστημένες καταχωρίσεις. Ιστορικά τραγούδια, αποτελέσματα και οικονομικές καταγραφές διατηρούνται. Για επανεγκατάσταση απαιτείται νέος εντοπισμός και έλεγχος παρόχου."
-              : "Only installed registry entries are deleted. Past songs, results and financial records remain. Reinstallation requires fresh provider discovery and checks."}
+              ? "Θέλεις να απεγκαταστήσεις οριστικά τα επιλεγμένα μοντέλα;"
+              : "Permanently uninstall the selected models?"}
           </p>
           <ul className="my-3 space-y-2 text-sm">
             {selected.map((model) => (
