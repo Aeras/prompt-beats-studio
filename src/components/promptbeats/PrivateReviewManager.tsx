@@ -96,8 +96,9 @@ export function PrivateReviewManager({
   // Opening review history from the Library should show the newest session's
   // full feedback immediately, without requiring another tap.
   useEffect(() => {
-    if (!historyOnly || selectedSessionId || !sessions.data?.length) return;
-    setSelectedSessionId(sessions.data[0].id);
+    const newestSession = sessions.data?.[0];
+    if (!historyOnly || selectedSessionId || !newestSession) return;
+    setSelectedSessionId(newestSession.id);
   }, [historyOnly, selectedSessionId, sessions.data]);
 
   const linkedTracks = useQuery({
