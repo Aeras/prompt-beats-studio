@@ -22,8 +22,7 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
     queryFn: () => listMyPrivateReviewSessions({ data: {} }),
   });
   const deleteTrackReviews = useMutation({
-    mutationFn: (trackId: string) =>
-      deleteFinishedPrivateReviewTrack({ data: { trackId } }),
+    mutationFn: (trackId: string) => deleteFinishedPrivateReviewTrack({ data: { trackId } }),
     onSuccess: async () => {
       setSelectedTrackId(null);
       await Promise.all([
@@ -100,9 +99,11 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
             return (
               <div key={track.id}>
                 <div className="flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTrackId(selectedTrackId === track.id ? null : track.id)}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedTrackId(selectedTrackId === track.id ? null : track.id)
+                    }
                   aria-expanded={selectedTrackId === track.id}
                   className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 >
