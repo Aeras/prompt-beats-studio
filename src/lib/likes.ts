@@ -69,14 +69,30 @@ export function useLikes(trackId: string, enabled = true) {
           count: Math.max(0, prev.count + (wasLiked ? -1 : 1)),
         });
       }
-      return { prev };
+      // Keep the Liked Tracks library immediately in sync when removing a like.
+      // For additions, refetch the authorized server projection (visibility and
+      // moderation filters must not be bypassed by inserting a raw card).
+      const libraryKey = ["library", "liked", userId];
+      await queryClient.cancelQueries({ queryKey: libraryKey });
+      const previousLibrary = queryClient.getQueryData<{ tracks: Array<{ id: string }> }>(libraryKey);
+      if (wasLiked && previousLibrary) {
+        queryClient.setQueryData(libraryKey, {
+          ...previousLibrary,
+          tracks: previousLibrary.tracks.filter((track) => track.id !== trackId),
+        });
+      }
+      return { prev, previousLibrary, libraryKey };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+      if (ctx?.previousLibrary) queryClient.setQueryData(ctx.libraryKey, ctx.previousLibrary);
     },
     onSettled: () => {
       mutationInFlightRef.current = false;
-      void queryClient.invalidateQueries({ queryKey: key });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: ["library", "liked", userId] }),
+      ]);
     },
   });
 
