@@ -101,6 +101,9 @@ jobs:
           bun scripts/check-beta-features.ts --sql | docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/beta_feature_lifecycle.sql
           bash scripts/tests/beta-lifecycle-races.sh "$PROJECT_ID"
+          bun scripts/tests/library-drift-reproduction.ts "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/library_folder_reconciliation.sql
+          bash scripts/tests/library-folder-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database
         if: always()
