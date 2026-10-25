@@ -269,9 +269,25 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_uninstall_guard: {
+        Row: {
+          provider_model_id: string
+          removed_at: string
+        }
+        Insert: {
+          provider_model_id: string
+          removed_at?: string
+        }
+        Update: {
+          provider_model_id?: string
+          removed_at?: string
+        }
+        Relationships: []
+      }
       ai_models: {
         Row: {
           access_policy: string
+          admin_revision: number
           cache_write_price_per_million: number | null
           cached_input_price_per_million: number | null
           context_window: number | null
@@ -313,6 +329,7 @@ export type Database = {
         }
         Insert: {
           access_policy?: string
+          admin_revision?: number
           cache_write_price_per_million?: number | null
           cached_input_price_per_million?: number | null
           context_window?: number | null
@@ -354,6 +371,7 @@ export type Database = {
         }
         Update: {
           access_policy?: string
+          admin_revision?: number
           cache_write_price_per_million?: number | null
           cached_input_price_per_million?: number | null
           context_window?: number | null
@@ -721,6 +739,119 @@ export type Database = {
           sha256?: string
           size?: number
           status?: string
+        }
+        Relationships: []
+      }
+      beta_feature_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          feature_key: string | null
+          id: number
+          new_state: Json
+          previous_state: Json
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          feature_key?: string | null
+          id?: never
+          new_state: Json
+          previous_state: Json
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          feature_key?: string | null
+          id?: never
+          new_state?: Json
+          previous_state?: Json
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beta_feature_events_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "beta_features"
+            referencedColumns: ["feature_key"]
+          },
+        ]
+      }
+      beta_features: {
+        Row: {
+          description: string
+          display_name: string
+          feature_key: string
+          registered_at: string
+          revision: number
+          stage: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string
+          display_name: string
+          feature_key: string
+          registered_at?: string
+          revision?: number
+          stage?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string
+          display_name?: string
+          feature_key?: string
+          registered_at?: string
+          revision?: number
+          stage?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      beta_testers: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contact_admission_receipts: {
+        Row: {
+          created_at: string
+          email_hash: string
+          nonce_hash: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_hash: string
+          nonce_hash: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_hash?: string
+          nonce_hash?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1718,6 +1849,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "private_review_reviewers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "private_review_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_review_session_admissions: {
+        Row: {
+          attempt_count: number
+          bucket_start: string
+          pin_failure_count: number
+          session_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          bucket_start: string
+          pin_failure_count?: number
+          session_id: string
+        }
+        Update: {
+          attempt_count?: number
+          bucket_start?: string
+          pin_failure_count?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_review_session_admissions_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "private_review_sessions"
@@ -3542,6 +3702,10 @@ export type Database = {
         Args: { _body: string; _case_id: string }
         Returns: string
       }
+      add_playlist_track_atomic: {
+        Args: { _playlist_id: string; _track_id: string }
+        Returns: string
+      }
       add_private_review_comment: {
         Args: {
           _body: string
@@ -3555,6 +3719,7 @@ export type Database = {
         Args: { _body: string; _parent_comment_id: string; _session_id: string }
         Returns: Json
       }
+      admin_ai_model_controls: { Args: never; Returns: Json }
       admin_begin_account_deletion: {
         Args: { _target_user_id: string }
         Returns: string
@@ -3577,9 +3742,17 @@ export type Database = {
         Returns: Json
       }
       admin_overview: { Args: never; Returns: Json }
+      admin_patch_ai_model: {
+        Args: { _expected_revision: number; _id: string; _patch: Json }
+        Returns: Json
+      }
       admin_remove_registration_block: {
         Args: { _block_id: string }
         Returns: undefined
+      }
+      admin_set_ai_model_default: {
+        Args: { _model: string; _operation: string }
+        Returns: Json
       }
       admin_set_creator_donation_access: {
         Args: { _override: string; _target_user_id: string }
@@ -3621,6 +3794,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_uninstall_ai_models: {
+        Args: { _confirmed: boolean; _models: Json }
+        Returns: Json
+      }
       admin_user_detail: { Args: { _target_user_id: string }; Returns: Json }
       admit_auxiliary_ai_request: {
         Args: { _limit_per_hour?: number; _operation: string }
@@ -3628,6 +3805,10 @@ export type Database = {
       }
       admit_contact_request: {
         Args: { _email_hash: string; _network_hash: string }
+        Returns: boolean
+      }
+      admit_contact_request_v2: {
+        Args: { _email_hash: string; _nonce_hash: string; _user_id: string }
         Returns: boolean
       }
       admit_private_review_join: {
@@ -3639,11 +3820,17 @@ export type Database = {
         Args: { _id: string; _user_id: string }
         Returns: boolean
       }
+      ai_model_uninstall_reasons: {
+        Args: { _model: Database["public"]["Tables"]["ai_models"]["Row"] }
+        Returns: string[]
+      }
       app_role_rank: { Args: { _role: string }; Returns: number }
       approve_initial_case_decision: {
         Args: { _case_id: string }
         Returns: undefined
       }
+      assert_ai_model_admin: { Args: never; Returns: undefined }
+      assert_beta_super_admin: { Args: never; Returns: undefined }
       backfill_pending_ai_usage_costs: {
         Args: { p_model: string }
         Returns: number
@@ -3660,6 +3847,36 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      beta_account_eligible: { Args: { _user_id: string }; Returns: boolean }
+      beta_can_test: { Args: { _user_id: string }; Returns: boolean }
+      beta_feature_access_mutate: {
+        Args: {
+          _access_mode?: string
+          _feature_key: string
+          _operation: string
+          _user_id?: string
+        }
+        Returns: boolean
+      }
+      beta_feature_transition: {
+        Args: {
+          _action: string
+          _confirmed?: boolean
+          _expected_revision: number
+          _feature_key: string
+        }
+        Returns: Json
+      }
+      beta_features_list: { Args: never; Returns: Json }
+      beta_tester_detail: { Args: { _user_id: string }; Returns: Json }
+      beta_tester_set: {
+        Args: {
+          _enabled: boolean
+          _expected_enabled: boolean
+          _user_id: string
+        }
+        Returns: Json
       }
       bulk_delete_prompt_projects: { Args: { _plans: Json }; Returns: Json }
       can_manage_track_storage_cleanup: {
@@ -3794,6 +4011,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_playlist_with_track: {
+        Args: { _cover_url?: string; _name: string; _track_id?: string }
+        Returns: Json
+      }
       create_private_review_session: {
         Args: {
           _comment_visibility?: string
@@ -3878,6 +4099,14 @@ export type Database = {
       current_user_is_admin_level: { Args: never; Returns: boolean }
       current_user_is_banned: { Args: never; Returns: boolean }
       current_user_is_super_admin: { Args: never; Returns: boolean }
+      delete_finished_private_review_session: {
+        Args: { _session_id: string }
+        Returns: Json
+      }
+      delete_finished_private_review_track: {
+        Args: { _track_id: string }
+        Returns: Json
+      }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       detach_prompt_project_version: {
         Args: { _prompt_id: string; _user_id: string }
@@ -4235,6 +4464,14 @@ export type Database = {
       }
       refresh_public_staff_badge: {
         Args: { _user_id: string }
+        Returns: undefined
+      }
+      register_beta_feature: {
+        Args: {
+          _description: string
+          _display_name: string
+          _feature_key: string
+        }
         Returns: undefined
       }
       release_ai_execution_recovery_internal: {
