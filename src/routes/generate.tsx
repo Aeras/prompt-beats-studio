@@ -1539,15 +1539,15 @@ function GeneratePage() {
       setStatus(
         job.cancellationOutcome === "cancelled_before_start"
           ? appLanguage === "el"
-            ? "Η δημιουργία διακόπηκε."
-            : "Generation stopped."
+            ? "Η δημιουργία διακόπηκε πριν ξεκινήσει η επεξεργασία."
+            : "Generation stopped before processing started."
           : job.cancellationOutcome === "cancelled_upstream_confirmed"
             ? appLanguage === "el"
-              ? "Η δημιουργία διακόπηκε."
-              : "Generation stopped."
+              ? "Η διακοπή επιβεβαιώθηκε από τον πάροχο."
+              : "The provider confirmed generation was stopped."
             : appLanguage === "el"
-              ? "Η δημιουργία διακόπηκε."
-              : "Generation stopped.",
+              ? "Η διακοπή καταχωρήθηκε, αλλά δεν επιβεβαιώθηκε από τον πάροχο. Η επεξεργασία ή η χρέωση ενδέχεται να συνεχιστεί."
+              : "The stop was recorded, but the provider has not confirmed it. Processing or charges may continue.",
       );
       setJobId(null);
       rememberJob(null);
