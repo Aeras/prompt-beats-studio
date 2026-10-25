@@ -27,6 +27,13 @@ import {
   type RegistryModel,
 } from "@/lib/ai-model-registry.server";
 
+
+/** Never write an arbitrary provider-supplied string into server diagnostics. */
+function safeProviderDiagnosticCode(value: unknown): string | null {
+  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value)
+    ? value
+    : null;
+}
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export type ModelCall = {
@@ -170,7 +177,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     let errorType = "unknown";
     try {
       const parsed = JSON.parse(body) as { error?: { type?: string } };
-      errorType = parsed.error?.type ?? errorType;
+      errorType = safeProviderDiagnosticCode(parsed.error?.type) ?? errorType;
     } catch {
       // Keep diagnostics metadata-only; never log prompt/lyrics content.
     }
@@ -250,7 +257,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     }
 
     if (event.type === "error") {
-      const errorType = event.error?.type ?? "stream_error";
+      const errorType = safeProviderDiagnosticCode(event.error?.type) ?? "stream_error";
       console.error("[ai-provider] Anthropic stream error", {
         model,
         errorType,
@@ -599,7 +606,7 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
     );
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as any;
-      const providerCode = typeof payload?.error?.status === "string" ? payload.error.status : null;
+      const providerCode = safeProviderDiagnosticCode(payload?.error?.status);
       console.error("[ai-provider] Gemini 4 Argon request failed", {
         status: response.status,
         providerCode,
