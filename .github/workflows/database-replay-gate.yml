@@ -25,6 +25,14 @@ jobs:
         with:
           version: 2.118.0
 
+      - name: Setup Bun for registration verification
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked registration tooling
+        run: bun install --frozen-lockfile
+
       # The historical 20260921060300 bootstrap migration intentionally promoted
       # one already-existing verified admin account in production. A brand-new
       # database has no auth users, so the replay gate injects an ephemeral local
@@ -90,6 +98,9 @@ jobs:
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_review_finished_hard_delete.sql
           bash scripts/tests/private-review-hard-delete-races.sh "$PROJECT_ID"
           bash scripts/tests/favorites-playlists-races.sh "$PROJECT_ID"
+          bun scripts/check-beta-features.ts --sql | docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/beta_feature_lifecycle.sql
+          bash scripts/tests/beta-lifecycle-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database
         if: always()

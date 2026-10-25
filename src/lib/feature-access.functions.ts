@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isBetaFeatureKey, type BetaFeatureKey } from "@/lib/beta-feature-registry";
+import { betaFeatureKeySchema } from "@/lib/beta-features.shared";
 
 export const FEATURE_KEYS = [
   "ai_generator",
@@ -24,14 +26,19 @@ export const FEATURE_KEYS = [
   "follow_creators",
   "notifications",
 ] as const;
-export type FeatureKey = (typeof FEATURE_KEYS)[number];
+export type FeatureKey = (typeof FEATURE_KEYS)[number] | BetaFeatureKey;
 export type FeatureAccessMode = "disabled" | "admins_only" | "selected_users" | "everyone";
 
-const featureKeySchema = z.enum(FEATURE_KEYS);
+const featureKeySchema = betaFeatureKeySchema.refine(
+  (key) => (FEATURE_KEYS as readonly string[]).includes(key) || isBetaFeatureKey(key),
+  "Feature is not registered",
+);
+// Promoted database entries are administered through the existing policy UI.
+const policyKeySchema = betaFeatureKeySchema;
 const modeSchema = z.enum(["disabled", "admins_only", "selected_users", "everyone"]);
 
 export type FeatureAccessPolicy = {
-  feature_key: FeatureKey;
+  feature_key: string;
   display_name: string;
   description: string;
   access_mode: FeatureAccessMode;
@@ -83,7 +90,7 @@ export const listFeatureAccessPolicies = createServerFn({ method: "GET" })
 
 export const listSelectedFeatureUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ featureKey: featureKeySchema }).parse(input))
+  .inputValidator((input: unknown) => z.object({ featureKey: policyKeySchema }).parse(input))
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
     const { data: rows, error } = await context.supabase.rpc("feature_access_selected_users", {
@@ -117,7 +124,7 @@ export const setFeatureAccessPolicy = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        featureKey: featureKeySchema,
+        featureKey: policyKeySchema,
         accessMode: modeSchema,
       })
       .parse(input),
@@ -137,7 +144,7 @@ export const addSelectedFeatureUser = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        featureKey: featureKeySchema,
+        featureKey: policyKeySchema,
         userId: z.string().guid(),
       })
       .parse(input),
@@ -157,7 +164,7 @@ export const removeSelectedFeatureUser = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        featureKey: featureKeySchema,
+        featureKey: policyKeySchema,
         userId: z.string().guid(),
       })
       .parse(input),

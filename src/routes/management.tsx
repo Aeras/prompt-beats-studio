@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
+import { BetaFeaturesPanel, BetaTesterControl } from "@/components/promptbeats/BetaFeaturesPanel";
+import { betaCopy } from "@/i18n/beta";
 import {
   DonationGlobalAdminControl,
   DonationUserAdminControl,
@@ -65,7 +67,7 @@ export const Route = createFileRoute("/management")({
   component: ManagementPage,
 });
 type Section =
-  "overview" | "analytics" | "models" | "users" | "reports" | "registrations" | "features";
+  "overview" | "analytics" | "models" | "users" | "reports" | "registrations" | "features" | "beta";
 type ReasonCode = (typeof BLOCK_REASONS)[number]["code"];
 type T = (key: AppTranslationKey, values?: Record<string, string | number>) => string;
 const RANGES = [
@@ -181,7 +183,7 @@ function AdminNav({
   isAdmin: boolean;
   isSuperAdmin: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const items: Array<[Section, string, typeof LayoutDashboard]> = isAdmin
     ? [
         ["overview", t("management.overview"), LayoutDashboard],
@@ -193,6 +195,11 @@ function AdminNav({
         ...(isSuperAdmin
           ? [
               ["features", t("management.featureAccess"), KeyRound] as [
+                Section,
+                string,
+                typeof LayoutDashboard,
+              ],
+              ["beta", betaCopy[language].title, Sparkles] as [
                 Section,
                 string,
                 typeof LayoutDashboard,
@@ -609,6 +616,7 @@ function UserDetails({
           <X className="h-5 w-5" />
         </button>
       </div>
+      {moderation.isSuperAdmin && <BetaTesterControl userId={userId} />}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Info label={t("management.displayName")} value={data.display_name || "—"} />
         <Info label={t("management.handle")} value={data.handle ? `@${data.handle}` : "—"} />
@@ -1427,7 +1435,7 @@ function FeatureAccessPanel() {
 }
 
 function ManagementPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user, loading } = useAuth();
   const { isAdmin, isSuperAdmin, canViewUsers } = useModeration();
   const [section, setSection] = useState<Section>("overview");
@@ -1475,19 +1483,21 @@ function ManagementPage() {
     );
 
   const sectionTitle =
-    section === "overview"
-      ? t("management.overview")
-      : section === "analytics"
-        ? t("management.analyticsTitle")
-        : section === "models"
-          ? t("management.models")
-          : section === "users"
-            ? t("management.usersModeration")
-            : section === "reports"
-              ? t("management.reports")
-              : section === "features"
-                ? t("management.featureAccess")
-                : t("management.blockedRegistrations");
+    section === "beta"
+      ? betaCopy[language].title
+      : section === "overview"
+        ? t("management.overview")
+        : section === "analytics"
+          ? t("management.analyticsTitle")
+          : section === "models"
+            ? t("management.models")
+            : section === "users"
+              ? t("management.usersModeration")
+              : section === "reports"
+                ? t("management.reports")
+                : section === "features"
+                  ? t("management.featureAccess")
+                  : t("management.blockedRegistrations");
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8">
@@ -1519,6 +1529,7 @@ function ManagementPage() {
         )}
         {!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}
         {!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}
+        {!loading && isSuperAdmin && section === "beta" && <BetaFeaturesPanel />}
       </main>
     </AppShell>
   );

@@ -1,10 +1,11 @@
 # PB-BETA-20261025 — Beta Features lifecycle and managed promotion
 
-Status: IN_PROGRESS (specification only; no application changes or release).
+Status: CODE_COMPLETE_RELEASE_PENDING (implementation in Draft PR #433; verification evidence in WORK-STATUS; no production release).
 Baseline main: `7aa9a7041468415f1727888b6e8509101d5b6a78` (2026-10-25).
 Read root `AGENTS.md` and `docs/WORK-STATUS.md` before any continuation; reconcile latest main and open PRs.
 
 ## Product contract
+
 - Existing Feature Access policies and the existing 19 features remain unchanged. Do not backfill them into the Beta list.
 - New explicitly registered feature entries start in `beta`, available to eligible, active moderators/senior moderators/admins/super admins plus individually authorized ordinary users with independent `beta_tester` entitlement. Entitlement never grants administrative/moderation privileges. Banned/suspended accounts must not bypass protections.
 - Super Admin has a separate Beta Features management tab: searchable Beta and Stable listings, an Archive listing, a Beta/Stable selector, explicit Archive action and explicit **Move to Feature Access** action.
@@ -17,6 +18,7 @@ Read root `AGENTS.md` and `docs/WORK-STATUS.md` before any continuation; reconci
 - Design future subscription tiers as a future extension; do not implement payment logic now.
 
 ## Existing architecture confirmed on baseline
+
 - `src/lib/feature-access.functions.ts` enumerates 19 static FEATURE_KEYS and exposes authenticated server RPC wrappers.
 - `src/hooks/useFeatureAccess.ts` caches effective access with React Query.
 - `src/routes/management.tsx`: Super Admin FeatureAccessPanel, user details and moderation navigation.
@@ -27,6 +29,7 @@ Read root `AGENTS.md` and `docs/WORK-STATUS.md` before any continuation; reconci
 - Feature Access V2 migrations and `src/lib/feature-access-v2.test.ts` have SQL admission and regression contracts; do not rewrite historical migrations or loosen protected paths.
 
 ## Implementation boundary and risks
+
 1. Inspect latest subsequent SQL definitions/overrides of `can_use_feature`, user/account-state predicates, grants and audit CHECK constraint before forward-only migration.
 2. Model managed new-feature lifecycle separately from existing canonical Feature Access entries, preserving one stable feature identifier and auditable promotion. Choose safe default closed when metadata missing; `archived` is a management status not access revocation.
 3. Atomic server-owned transitions and permissions; ensure no momentary exposure from concurrent grants, archive and promotion.
@@ -36,9 +39,19 @@ Read root `AGENTS.md` and `docs/WORK-STATUS.md` before any continuation; reconci
 7. Archive visibility/history and future flag cleanup must not remove active production gates before replacement; do not run destructive cleanup.
 
 ## Acceptance / testing / release
+
 - Independent fixtures: ordinary user (entitled/not), moderators (active/suspended), admin, super admin, banned/deleted; beta vs stable vs archive vs managed Feature Access.
 - Verify malicious RPC, direct URL, direct table access, stale cached UI, revoke entitlement mid-session, concurrent stage changes, idempotent operations and audit log.
 - Registration convention and same-PR CI coverage; do not retroactively force historical 19 entries into beta.
 - Focused unit/integration and SQL tests, full tests, typecheck, lint/format, build; final exact-head Regression, Browser Quality, Database Replay green.
 - Coordinate additive forward migration plus app deployment; authorize and verify production migration/publish separately. No live production SQL or deployment without approval. Preserve published Git history.
 - Keep this one PR and update `docs/WORK-STATUS.md` with evidence before merge; do not mark CLOSED until operational proof.
+
+## Implementation companion
+
+See [PB-BETA-development-and-release.md](PB-BETA-development-and-release.md) for
+the explicit registration convention, security boundaries, automated checks,
+legacy compatibility and the separately authorized release/recovery procedure.
+The approved decisions above are unchanged. The initial registry is empty:
+this infrastructure release does not invent new product features or backfill
+the existing 19 entries.
