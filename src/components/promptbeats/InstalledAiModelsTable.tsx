@@ -70,8 +70,9 @@ function Choice<T extends string>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={`${button} flex min-h-11 min-w-0 max-w-full items-center gap-2 bg-[#21152f] text-purple-100`}
+        className={`${button} flex min-h-10 min-w-0 max-w-full items-center gap-2 bg-[#21152f] px-2.5 py-1.5 text-purple-100`}
         aria-label={label}
+        style={{ minHeight: "2.5rem" }}
       >
         <span className="truncate">{modelLabel(value)}</span>
         <ChevronDown size={12} className="shrink-0" />
@@ -274,11 +275,6 @@ function ModelRow({
           options={["all_users", "admin_only", "selected_users"]}
           change={(accessPolicy) => save({ accessPolicy })}
         />
-        {current("accessPolicy") === "selected_users" && manageAccess && (
-          <button className={`${button} mt-1 text-purple-200`} onClick={manageAccess}>
-            {el ? "Δικαιώματα χρηστών" : "Manage user access"}
-          </button>
-        )}
       </div>
       <div role="cell" className={`${cell} text-xs`}>
         {modelLabel(model.pricingStatus)}
@@ -327,22 +323,33 @@ export function InstalledAiModelsTable({
   const [ids, setIds] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [titleHeight, setTitleHeight] = useState(0);
+  const titleRef = useRef<HTMLDivElement>(null);
   const [left, setLeft] = useState(0);
   const trash = useRef<HTMLButtonElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+  const confirmation = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef(false);
   useEffect(() => {
     const header = document.querySelector("header");
-    if (!header) return;
-    const update = () => setOffset(header.getBoundingClientRect().height);
+    const title = titleRef.current;
+    if (!header || !title) return;
+    const update = () => {
+      setOffset(header.getBoundingClientRect().height);
+      setTitleHeight(title.getBoundingClientRect().height);
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(header);
+    observer.observe(title);
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (confirm) cancel.current?.focus();
-  }, [confirm]);
+    if (confirm) {
+      confirmation.current?.scrollIntoView({ block: "start", behavior: "instant" });
+      cancel.current?.focus({ preventScroll: true });
+    }
+  }, [confirm, offset, titleHeight]);
   const selected = data.models.filter((model) => ids.has(model.id));
   const busy = useIsMutating() > 0;
   const uninstall = useMutation({
@@ -405,7 +412,12 @@ export function InstalledAiModelsTable({
       className="rounded-2xl border border-white/10 bg-[#15101e]"
       aria-label={t("aiModels.installed")}
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-3">
+      <div
+        ref={titleRef}
+        className="sticky z-20 flex flex-wrap items-center gap-3 border-b border-white/10 bg-[#15101e] px-4 py-3"
+        style={{ top: offset }}
+        data-testid="models-sticky-toolbar"
+      >
         <button
           ref={trash}
           type="button"
@@ -447,6 +459,8 @@ export function InstalledAiModelsTable({
       </div>
       {confirm && (
         <div
+          ref={confirmation}
+          style={{ scrollMarginTop: offset + titleHeight + 12 }}
           role="alertdialog"
           aria-modal="false"
           aria-labelledby="uninstall-title"
@@ -547,7 +561,7 @@ export function InstalledAiModelsTable({
           role="rowgroup"
           data-testid="models-sticky-header"
           className="sticky z-10 overflow-hidden border-b border-white/10 bg-[#21152f]"
-          style={{ top: offset }}
+          style={{ top: offset + titleHeight }}
         >
           <div
             role="row"
