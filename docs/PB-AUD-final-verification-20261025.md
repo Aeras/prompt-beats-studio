@@ -8,13 +8,21 @@
 - One branch/PR for all work here: `codex/audit-final-verification`. The original checkout and other worktrees were not modified.
 - Production Supabase target independently resolved as **qwlksrcsovbncmretjdt**, project PromptBeats. Production access was metadata SELECT only. No migration, application setting, row, object, payment or provider execution was changed.
 
-### Actual publication evidence
+### Initial publication evidence (superseded by the release check below)
 
 The connected Lovable project API reports editor HEAD **8554aefd…**. A fresh browser inspection of **History** shows the **Published** marker on `security: resolve remaining Zod and esbuild advisories (#419)`, dated October 24, 11:51 PM in the UI. GitHub maps that merged change to **ca215c53a1e8e30cdf24c85c47ca51a0f67232b9**. The UI explicitly reports **unpublished changes available** for later editor commits.
 
 This is hosting UI evidence of the published **#419 snapshot**, not a runtime Git-SHA endpoint or cryptographic binary attestation. The available API does not expose a reliable deployed-server SHA. We do **not** equate the latest editor commit with production. PR #420's Stop messages, #421/#422 and the new corrections in this PR are not declared production-active. No publish/revert control was activated; the preview was returned to the latest history entry.
 
 Closure below is scoped to the original finding and uses the published snapshot, production schema evidence and reproducible offline verification. It is not a live penetration test or a guarantee of every provider's billing/cancellation behavior.
+
+### Subsequent publication verification — observed 2026-10-25 02:40 UTC
+
+Lovable History now places **Published** on `Merge PR #424: final audit verification and security gap closure`, corresponding to GitHub main **609678f779268016c2864baf8ca4c89140407522**. The publication popover says **Your website was updated** for `promptbeats.app`. The API editor SHA matches independently; the Published marker/popover, not that editor value or generic `is_published`, supplies the hosting release evidence. No new publish was executed during this verification.
+
+Ordinary production GET `/`, `/auth`, `/discover` each returned **200**, HTML, without an observed catastrophic SSR error page. Existing final-main [Regression](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770454), [Browser Quality](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770440) and [Database Replay](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770475) are PASS. Prior isolated behavioral/SQL verification and compatible production-schema evidence remain valid; no paid provider, authenticated write or live payment was used to simulate a new runtime test.
+
+The publish-only dependency is satisfied for **AUD-011/016/017/018/019/026**, now **CLOSED** in WORK-STATUS. Final totals: **19 CLOSED, 6 OPEN, 1 BLOCKED**. Runtime binary/SHA attestation remains unavailable; hosting UI publication evidence is explicitly distinguished from it. The initial #419 observation above is retained as historical evidence, not the current release state.
 
 ## Verified production database evidence
 
@@ -98,6 +106,6 @@ These were never marked CLOSED in the authoritative ledger. Their precise curren
 
 ## Release and rollback
 
-The new fixes require a separately authorized application publish after review/merge. **No database migration is required**; the verified additive schema is already compatible. AUD-017 requires publication of its already merged #420 UI change. Keep these states `CODE_COMPLETE_RELEASE_PENDING` until the approved published snapshot and read-only post-release checks are recorded. No paid AI or payment trial is needed to reproduce these offline contracts.
+The initial publish requirement has been satisfied by the subsequently verified existing publish of #424, including #420. **No database migration is required**; the verified additive schema is already compatible. The six former `CODE_COMPLETE_RELEASE_PENDING` findings are CLOSED with the explicit release evidence above. Hosting evidence/policy and independent OPEN work remain separate. This documentation-only update requires no new application publish, paid AI or payment trial.
 
 Rollback is a normal reviewed Git revert of the new application/test commit, with no database DROP, data rewrite, object deletion or force push. That would restore the specifically documented privacy/availability/accounting gaps, so should not be treated as remediation. Do not revert #404/#405/#412 database enforcement or publish older incompatible upload writers.

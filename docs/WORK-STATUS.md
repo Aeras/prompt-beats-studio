@@ -38,13 +38,13 @@ Copy the entry below **before the feature PR is merged**, replacing each placeho
 
 ## AUDIT-CLOSURE-20261025 — consolidated verification and release boundaries
 
-- **Status:** BLOCKED (only the explicitly unavailable hosting evidence and release authority; implementation/verification is complete in this branch).
+- **Status:** BLOCKED (AUD-021 hosting evidence only; the application publish dependency was verified complete on 2026-10-25).
 - **Scope / acceptance:** Reconcile #403–#423 and all 26 original findings, execute safe failure/race tests, fix verified residual gaps in one PR, and preserve truthful release states.
 - **Investigation:** Main `8554aefd0c3a8bbb4b57fd5540c2380266579f03`; original Reports B/C/D/E/F; actual current source and read-only production metadata; Published History #419, later changes unpublished.
-- **Execution owner:** Codex; hosting operator for the remaining unavailable ingress configuration and separately authorized publish.
+- **Execution owner:** Codex; hosting operator for the remaining unavailable ingress configuration.
 - **PR and exact HEAD:** Unified final-verification PR/HEAD and final three gate links are recorded together in its PR and the closure report.
 - **Verification:** See the dossier and final exact-HEAD CI evidence. Five real local SQL suites, four independent-connection scripts, offline tests, TypeScript, affected-source lint/format and production build. No production writes or paid calls.
-- **Release / remaining work:** No migration needed. Publish the final merged application only after separate authorization, then record the published snapshot. For AUD-021 provide trusted-IP overwrite/direct-origin configuration or an approved staging ingress; for AUD-024 approve/test a compatible CSP/frame policy. Independent OPEN policy/architecture findings are explicitly retained below.
+- **Release / remaining work:** No migration needed. Existing publish of merged application `609678f779268016c2864baf8ca4c89140407522` verified below; no new publish performed. For AUD-021 provide trusted-IP overwrite/direct-origin configuration or an approved staging ingress; for AUD-024 approve/test a compatible CSP/frame policy. Independent OPEN policy/architecture findings are explicitly retained below.
 - **Closure evidence:** Not CLOSED. Completed code work is not reopened; release/hosting blockers are not presented as missing code or hidden by green CI.
 
 ## Final finding-by-finding reconciliation — 2026-10-25
@@ -54,9 +54,18 @@ Execution owner: **Codex**. One verification/remediation branch: `codex/audit-fi
 Detailed evidence, release boundaries and reproducible commands: [final verification dossier](PB-AUD-final-verification-20261025.md).
 Final verification PR/checks and its exact HEAD are recorded together in the PR and closure report; no editor HEAD is used as production proof.
 
-Production read-only evidence: 19 exact SQL function-body matches, required RPC privileges/RLS/indexes/triggers, and existing applied migration history. Lovable History independently identifies **Published #419** (expected GitHub merge `ca215c53a1e8e30cdf24c85c47ca51a0f67232b9`); no reliable runtime-SHA endpoint exists. Later editor changes are explicitly unpublished. No production mutation was performed.
+Production read-only evidence: 19 exact SQL function-body matches, required RPC privileges/RLS/indexes/triggers, and existing applied migration history. Initial inspection identified Published #419; the subsequent release check below supersedes that publication state. No reliable runtime-SHA endpoint exists. No production mutation was performed.
 
-`CLOSED` below refers only to each finding's original acceptance contract, not a blanket security certification. New changes and #420 remain release-pending; original unimplemented policy/architecture findings are not misreported as solved by partial PRs. Final local/CI result evidence belongs to this single verification PR.
+`CLOSED` below refers only to each finding's original acceptance contract, not a blanket security certification. The six former release-pending findings were closed after the publication check below; original unimplemented policy/architecture findings are not misreported as solved by partial PRs. Final local/CI result evidence belongs to the unified verification PR.
+
+### Publication verification — 2026-10-25, observed 02:40 UTC
+
+- Lovable History places **Published** on `Merge PR #424: final audit verification and security gap closure`, mapped through GitHub to `609678f779268016c2864baf8ca4c89140407522`.
+- The publication popover says **Your website was updated**, with domain `promptbeats.app`. The API editor SHA also matches, but is only corroborating editor evidence, not the publication proof.
+- Ordinary anonymous GET `/`, `/auth` and `/discover`: **HTTP 200**, HTML, no observed catastrophic SSR error page. No authenticated write, AI call, payment, migration or new deployment was executed.
+- Existing final-main Regression, Browser Quality and Database Replay are PASS: [Regression](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770454), [Browser](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770440), [Database](https://github.com/Aeras/prompt-beats-studio/actions/runs/40154770475). Detailed behavioral verification remains the prior offline/isolated SQL evidence; the page checks are not live provider or payment tests.
+- **PB-AUD-011/016/017/018/019/026: CLOSED**. Totals: **19 CLOSED, 6 OPEN, 1 BLOCKED**, no publish-only finding pending. Runtime binary/SHA attestation remains unavailable; closure uses explicit hosting publication evidence plus the already verified compatible schema and tests.
+- The historical #419 marker is preserved as earlier evidence, not represented as the current published snapshot. This documentation-only follow-up does not require republishing application code.
 
 ### PB-AUD-001 — Multipart byte integrity
 
@@ -170,14 +179,14 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 
 ### PB-AUD-011 — Observed usage survives cancellation/failure
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-011; reconciled against #404 + final verification, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #404 + final verification is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #404 + final verification; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Tracked caller/QC cancellation and lost-ACK tests PASS. New correction preserves settlement when provider-error usage journal write fails.
-- **Release / remaining work / owner:** Publish this PR's application correction after authorized merge; no migration needed.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Application correction published in #424; no migration needed or remaining publish action.
+- **Closure evidence:** 2026-10-25 publication verification above plus tracked-caller/QC/offline usage evidence in the [dossier](PB-AUD-final-verification-20261025.md).
 
 ### PB-AUD-012 — Background reconciliation and no blind replay
 
@@ -225,47 +234,47 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 
 ### PB-AUD-016 — Moderation-aware playlists/favorites
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-016; reconciled against #408 + final verification, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #408 + final verification is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #408 + final verification; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Actual handler fixtures cover third-party locked/unpublished/missing items, owner-private content, counts/durations/covers, redaction, favorite IDs and add/remove behavior.
-- **Release / remaining work / owner:** Publish the complete projection correction in this PR; no RLS/schema change.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Complete projection correction published in #424; no RLS/schema change or remaining publish action.
+- **Closure evidence:** 2026-10-25 publication verification above plus actual-handler moderation fixtures in the [dossier](PB-AUD-final-verification-20261025.md).
 
 ### PB-AUD-017 — Honest Stop outcome messages
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-017; reconciled against #420, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #420 is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #420; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Current EL/EN UI distinguishes before-start, upstream-confirmed and unconfirmed/possibly charged outcomes; full source/browser checks cover current code.
-- **Release / remaining work / owner:** Lovable Published marker is #419, so #420 must still be published; no provider/billing logic change needed.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Published #424 includes merged #420; no provider/billing logic change or remaining publish action.
+- **Closure evidence:** 2026-10-25 publication verification above plus existing Stop-message/source/browser evidence in the [dossier](PB-AUD-final-verification-20261025.md).
 
 ### PB-AUD-018 — Checkout idempotency and recovery
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-018; reconciled against #414–#417 + final verification, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #414–#417 + final verification is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #414–#417 + final verification; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Production reservation function/ACL match; real SQL lease and independent-connection reservation races PASS; actual handler Stripe mocks cover active/trialing, retries, open sessions, failures, delayed webhook and later repurchase.
-- **Release / remaining work / owner:** Publish new customer-bound live subscription preflight to cover delayed/missing webhook projection; no payment or DB migration required.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Customer-bound subscription preflight published in #424; compatible reservation schema already verified. No payment or DB migration required.
+- **Closure evidence:** 2026-10-25 publication verification above plus Stripe mocks and SQL reservation races in the [dossier](PB-AUD-final-verification-20261025.md); no live transaction claimed.
 
 ### PB-AUD-019 — Sensitive diagnostic logging
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-019; reconciled against #407/#410/#421/#422 + final verification, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #407/#410/#421/#422 + final verification is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #407/#410/#421/#422 + final verification; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Synthetic marker captures exercise actual discovery/Anthropic/RunPod/QC/reporter/SSR paths; allowlisted labels and schema paths; central message/stack/cause expansion removed.
-- **Release / remaining work / owner:** Publish the complete logging correction; no prompts, scoring or provider calls changed.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Complete logging correction published in #424; no prompts, scoring or provider calls changed.
+- **Closure evidence:** 2026-10-25 publication verification above plus synthetic-marker/central-capture tests in the [dossier](PB-AUD-final-verification-20261025.md).
 
 ### PB-AUD-020 — Dependency advisories
 
@@ -335,11 +344,11 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 
 ### PB-AUD-026 — Generator hard input budgets
 
-- **Status:** CODE_COMPLETE_RELEASE_PENDING
+- **Status:** CLOSED
 - **Scope / acceptance:** Original PB-AUD-026; reconciled against #409 + final verification, current source and the dossier's failure matrix.
 - **Investigation:** Baseline above; #409 + final verification is historical implementation evidence, not independent release proof.
 - **Execution owner:** Codex.
 - **PR and exact HEAD:** Prior implementation #409 + final verification; unified final verification branch above, with exact final HEAD/check links in its PR.
 - **Verification:** Actual live schema per-field/nested bounds, Unicode/escaping/encoded byte ceiling and no-provider-on-oversize tests PASS; raw-RPC worker and shared generator now enforce the same aggregate budget.
-- **Release / remaining work / owner:** Publish this PR's pre-dispatch checks; existing admin/normal-user limits and saved historical content remain unchanged.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Release / remaining work / owner:** Pre-dispatch checks published in #424; existing admin/normal-user limits and saved historical content remain unchanged.
+- **Closure evidence:** 2026-10-25 publication verification above plus actual-schema/encoded-budget/no-dispatch tests in the [dossier](PB-AUD-final-verification-20261025.md).

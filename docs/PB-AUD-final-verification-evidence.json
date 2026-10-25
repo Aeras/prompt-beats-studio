@@ -131,13 +131,37 @@
   "baseline": "8554aefd0c3a8bbb4b57fd5540c2380266579f03",
   "supabaseProject": "qwlksrcsovbncmretjdt",
   "productionWritesPerformed": false,
-  "publication": {
+  "initialPublication": {
     "source": "Lovable History Published badge, fresh browser inspection",
     "snapshot": "PR #419",
     "expectedGitHubMerge": "ca215c53a1e8e30cdf24c85c47ca51a0f67232b9",
     "editorHead": "8554aefd0c3a8bbb4b57fd5540c2380266579f03",
     "laterUnpublishedChanges": true,
     "runtimeShaAttested": false
+  },
+  "publication": {
+    "observedAtUtc": "2026-10-25T02:40:00Z",
+    "source": "Lovable History Published badge and publication popover, fresh browser inspection",
+    "snapshot": "Merge PR #424: final audit verification and security gap closure",
+    "expectedGitHubMerge": "609678f779268016c2864baf8ca4c89140407522",
+    "editorHead": "609678f779268016c2864baf8ca4c89140407522",
+    "popoverStatus": "Your website was updated",
+    "domain": "promptbeats.app",
+    "runtimeShaAttested": false,
+    "newPublishPerformed": false,
+    "ordinaryGetChecks": [
+      { "path": "/", "status": 200, "catastrophicSsrErrorObserved": false },
+      { "path": "/auth", "status": 200, "catastrophicSsrErrorObserved": false },
+      { "path": "/discover", "status": 200, "catastrophicSsrErrorObserved": false }
+    ],
+    "findingsClosedAfterPublication": [
+      "PB-AUD-011",
+      "PB-AUD-016",
+      "PB-AUD-017",
+      "PB-AUD-018",
+      "PB-AUD-019",
+      "PB-AUD-026"
+    ]
   },
   "functionMatches": [
     {
