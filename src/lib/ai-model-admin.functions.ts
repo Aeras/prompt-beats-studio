@@ -16,6 +16,8 @@ async function requireAdmin(supabase: any) {
 
 export type AdminAiModel = {
   id: string;
+  adminRevision: number;
+  uninstallBlockers: string[];
   provider: string;
   providerModelId: string;
   displayName: string;
@@ -48,6 +50,8 @@ export type AdminAiModel = {
 
 const mapRow = (row: any): AdminAiModel => ({
   id: row.id,
+  adminRevision: Number(row.admin_revision ?? 0),
+  uninstallBlockers: [],
   provider: row.provider,
   providerModelId: row.provider_model_id,
   displayName: row.display_name,
@@ -96,20 +100,36 @@ export const getAdminAiModels = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await requireAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: rows, error }, generatorDefault, qualityDefault, aiToolsDefault] =
-      await Promise.all([
-        supabaseAdmin
-          .from("ai_models" as never)
-          .select("*")
-          .order("provider", { ascending: true })
-          .order("display_name", { ascending: true }),
-        readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
-        readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
-        readDefaultModel(supabaseAdmin, "ai_tools_default_model"),
-      ]);
-    if (error) throw new Error(error.message);
+    const { aiModelAdminRpc } = await import("@/lib/ai-model-admin-rpc.server");
+    const [
+      { data: rows, error },
+      generatorDefault,
+      qualityDefault,
+      aiToolsDefault,
+      legacyDefault,
+      controls,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("ai_models" as never)
+        .select("*")
+        .order("provider", { ascending: true })
+        .order("display_name", { ascending: true }),
+      readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
+      readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
+      readDefaultModel(supabaseAdmin, "ai_tools_default_model"),
+      readDefaultModel(supabaseAdmin, "ai_model"),
+      aiModelAdminRpc(context.supabase, "admin_ai_model_controls", {}),
+    ]);
+    if (error || controls.error) throw new Error("Unable to load AI model controls.");
+    const blockers = z
+      .array(z.object({ id: z.string(), blockers: z.array(z.string()) }))
+      .parse(controls.data);
     return {
-      models: ((rows ?? []) as any[]).map(mapRow),
+      models: ((rows ?? []) as any[]).map((row) => ({
+        ...mapRow(row),
+        uninstallBlockers: blockers.find((item) => item.id === row.id)?.blockers ?? [],
+      })),
+      legacyDefault,
       generatorDefault,
       qualityDefault,
       aiToolsDefault,
@@ -133,163 +153,123 @@ const modelUpdateInput = z.object({
   notes: z.string().trim().max(2000).nullable(),
 });
 
+const patchFields = modelUpdateInput.omit({ id: true }).partial().strict();
+const revisionSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+export const aiModelPatchInput = z
+  .object({
+    id: z.string().guid(),
+    expectedRevision: revisionSchema,
+    patch: patchFields.refine((value) => Object.keys(value).length > 0, "Choose a model field"),
+  })
+  .strict();
+const fieldNames: Record<keyof z.infer<typeof patchFields>, string> = {
+  displayName: "display_name",
+  status: "status",
+  accessPolicy: "access_policy",
+  generatorEnabled: "generator_enabled",
+  qualityCheckEnabled: "quality_check_enabled",
+  generatorReasoningEffort: "generator_reasoning_effort",
+  qualityCheckReasoningEffort: "quality_check_reasoning_effort",
+  inputPricePerMillion: "input_price_per_million",
+  outputPricePerMillion: "output_price_per_million",
+  cachedInputPricePerMillion: "cached_input_price_per_million",
+  cacheWritePricePerMillion: "cache_write_price_per_million",
+  pricingStatus: "pricing_status",
+  notes: "notes",
+};
+function modelMutationError(code: string | undefined) {
+  return new Error(
+    code === "PT409"
+      ? "Model settings changed. Refresh and retry."
+      : "Model change rejected. Refresh and check defaults, compatibility and active dependencies.",
+  );
+}
+async function applyModelPatch(
+  client: Parameters<typeof import("./ai-model-admin-rpc.server").aiModelAdminRpc>[0],
+  data: z.infer<typeof aiModelPatchInput>,
+) {
+  const { aiModelAdminRpc } = await import("@/lib/ai-model-admin-rpc.server");
+  const patch = Object.fromEntries(
+    Object.entries(data.patch).map(([key, value]) => [
+      fieldNames[key as keyof typeof fieldNames],
+      value,
+    ]),
+  );
+  const { data: result, error } = await aiModelAdminRpc(client, "admin_patch_ai_model", {
+    _id: data.id,
+    _patch: patch,
+    _expected_revision: data.expectedRevision,
+  });
+  if (error) throw modelMutationError(error.code);
+  const parsed = z
+    .object({ model: z.record(z.string(), z.unknown()), blockers: z.array(z.string()) })
+    .parse(result);
+  return { ok: true, model: { ...mapRow(parsed.model), uninstallBlockers: parsed.blockers } };
+}
+export const patchAdminAiModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => aiModelPatchInput.parse(input))
+  .handler(({ data, context }) => applyModelPatch(context.supabase, data));
+
 export const updateAdminAiModel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => modelUpdateInput.parse(input))
+  .inputValidator((input: unknown) =>
+    modelUpdateInput.extend({ expectedRevision: revisionSchema }).strict().parse(input),
+  )
+  .handler(({ data, context }) => {
+    const { id, expectedRevision, ...patch } = data;
+    return applyModelPatch(context.supabase, { id, expectedRevision, patch });
+  });
+
+export const aiModelUninstallInput = z
+  .object({
+    models: z
+      .array(z.object({ id: z.string().guid(), revision: revisionSchema }).strict())
+      .min(1)
+      .max(100)
+      .refine(
+        (models) => new Set(models.map((model) => model.id)).size === models.length,
+        "Duplicate model selection",
+      ),
+    confirmed: z.literal(true),
+  })
+  .strict();
+export const uninstallAdminAiModels = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => aiModelUninstallInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: current, error: currentError } = await supabaseAdmin
-      .from("ai_models" as never)
-      .select("*")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (currentError || !current) throw new Error("AI model not found.");
-
-    const row = current as any;
-    const [generatorDefault, qualityDefault, aiToolsDefault] = await Promise.all([
-      readDefaultModel(supabaseAdmin, "ai_generator_default_model"),
-      readDefaultModel(supabaseAdmin, "ai_quality_check_default_model"),
-      readDefaultModel(supabaseAdmin, "ai_tools_default_model"),
-    ]);
-
-    const isGeneratorDefault = row.provider_model_id === generatorDefault;
-    const isQualityDefault = row.provider_model_id === qualityDefault;
-    const isAiToolsDefault = row.provider_model_id === aiToolsDefault;
-    const disablingGenerator =
-      (isGeneratorDefault || isAiToolsDefault) &&
-      (data.status !== "enabled" || !data.generatorEnabled || !row.generator_compatible);
-    const disablingQuality =
-      isQualityDefault &&
-      (data.status !== "enabled" || !data.qualityCheckEnabled || !row.quality_check_compatible);
-
-    if (disablingGenerator)
-      throw new Error(
-        isAiToolsDefault && !isGeneratorDefault
-          ? "Select another AI Tools default before disabling this model."
-          : "Select another Generator default before disabling this model.",
-      );
-    if (disablingQuality)
-      throw new Error("Select another Quality Check default before disabling this model.");
-
-    if (
-      data.pricingStatus === "verified" &&
-      (data.inputPricePerMillion == null || data.outputPricePerMillion == null)
-    ) {
-      throw new Error("Verified pricing requires both input and output prices.");
-    }
-
-    const pricingChanged =
-      Number(row.input_price_per_million ?? NaN) !== Number(data.inputPricePerMillion ?? NaN) ||
-      Number(row.output_price_per_million ?? NaN) !== Number(data.outputPricePerMillion ?? NaN) ||
-      Number(row.cached_input_price_per_million ?? NaN) !==
-        Number(data.cachedInputPricePerMillion ?? NaN) ||
-      Number(row.cache_write_price_per_million ?? NaN) !==
-        Number(data.cacheWritePricePerMillion ?? NaN) ||
-      row.pricing_status !== data.pricingStatus;
-
-    const { error } = await supabaseAdmin
-      .from("ai_models" as never)
-      .update({
-        display_name: data.displayName,
-        status: data.status,
-        access_policy: data.accessPolicy,
-        generator_enabled: data.generatorEnabled,
-        quality_check_enabled: data.qualityCheckEnabled,
-        generator_reasoning_effort: data.generatorReasoningEffort,
-        quality_check_reasoning_effort: data.qualityCheckReasoningEffort,
-        input_price_per_million: data.inputPricePerMillion,
-        output_price_per_million: data.outputPricePerMillion,
-        cached_input_price_per_million: data.cachedInputPricePerMillion,
-        cache_write_price_per_million: data.cacheWritePricePerMillion,
-        pricing_status: data.pricingStatus,
-        pricing_updated_at: pricingChanged ? new Date().toISOString() : row.pricing_updated_at,
-        notes: data.notes,
-        updated_at: new Date().toISOString(),
-      } as never)
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
-
-    const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
-      admin_user_id: context.userId,
-      target_user_id: null,
-      action: "UPDATE_AI_MODEL",
-      details: {
-        model: row.provider_model_id,
-        status: data.status,
-        access_policy: data.accessPolicy,
-        generator_enabled: data.generatorEnabled,
-        quality_check_enabled: data.qualityCheckEnabled,
-        pricing_status: data.pricingStatus,
-      },
-    });
-    if (auditError)
-      console.error("[admin] AI model audit failed", { errorType: safeErrorType(auditError) });
-
-    return { ok: true };
+    const { aiModelAdminRpc } = await import("@/lib/ai-model-admin-rpc.server");
+    const { data: result, error } = await aiModelAdminRpc(
+      context.supabase,
+      "admin_uninstall_ai_models",
+      { _models: data.models, _confirmed: true },
+    );
+    if (error) throw modelMutationError(error.code);
+    return z
+      .object({
+        removed: z.array(
+          z.object({ id: z.string(), name: z.string(), model: z.string(), provider: z.string() }),
+        ),
+      })
+      .parse(result);
   });
 
 const defaultInput = z.object({
-  operation: z.enum(["generator", "quality_check", "ai_tools"]),
+  operation: z.enum(["generator", "quality_check", "ai_tools", "legacy"]),
   model: z.string().trim().min(1).max(200),
 });
-
 export const setAdminAiModelDefault = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => defaultInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: row, error } = await supabaseAdmin
-      .from("ai_models" as never)
-      .select(
-        "id,provider_model_id,status,access_policy,generator_compatible,generator_enabled,quality_check_compatible,quality_check_enabled",
-      )
-      .eq("provider_model_id", data.model)
-      .maybeSingle();
-    if (error || !row) throw new Error("AI model not found.");
-
-    const model = row as any;
-    const valid =
-      data.operation === "quality_check"
-        ? model.status === "enabled" &&
-          model.quality_check_compatible === true &&
-          model.quality_check_enabled === true
-        : model.status === "enabled" &&
-          model.generator_compatible === true &&
-          model.generator_enabled === true;
-    if (!valid) throw new Error("That model is not eligible for this default.");
-
-    const key =
-      data.operation === "generator"
-        ? "ai_generator_default_model"
-        : data.operation === "quality_check"
-          ? "ai_quality_check_default_model"
-          : "ai_tools_default_model";
-
-    const { error: updateError } = await supabaseAdmin.from("app_settings").upsert(
-      {
-        key,
-        value: { registryId: model.id, model: model.provider_model_id },
-        updated_at: new Date().toISOString(),
-        updated_by: context.userId,
-      } as never,
-      { onConflict: "key" },
+    const { aiModelAdminRpc } = await import("@/lib/ai-model-admin-rpc.server");
+    const { data: result, error } = await aiModelAdminRpc(
+      context.supabase,
+      "admin_set_ai_model_default",
+      { _operation: data.operation, _model: data.model },
     );
-    if (updateError) throw new Error(updateError.message);
-
-    const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
-      admin_user_id: context.userId,
-      target_user_id: null,
-      action: "UPDATE_AI_MODEL_DEFAULT",
-      details: { operation: data.operation, model: model.provider_model_id },
-    });
-    if (auditError)
-      console.error("[admin] AI default audit failed", { errorType: safeErrorType(auditError) });
-
-    return { ok: true, model: model.provider_model_id };
+    if (error) throw modelMutationError(error.code);
+    return { ok: true, ...z.object({ model: z.string() }).parse(result) };
   });
 
 const providerIdSchema = z.enum([

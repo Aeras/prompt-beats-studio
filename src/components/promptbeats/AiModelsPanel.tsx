@@ -1,3 +1,4 @@
+import { InstalledAiModelsTable } from "./InstalledAiModelsTable";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -203,6 +204,7 @@ function AiModelEditor({
       await updateAdminAiModel({
         data: {
           id: model.id,
+          expectedRevision: model.adminRevision,
           displayName,
           status,
           accessPolicy,
@@ -649,7 +651,7 @@ function AiModelEditor({
   );
 }
 
-export function AiModelsPanel() {
+export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () => void }) {
   const { t, language } = useI18n();
   const el = language === "el";
   const qc = useQueryClient();
@@ -876,31 +878,6 @@ export function AiModelsPanel() {
       <div className="glass rounded-2xl p-4 text-sm text-red-300">{t("aiModels.loadError")}</div>
     );
 
-  const statusLabel = (value: AdminAiModel["status"]) => {
-    if (value === "enabled") return t("aiModels.enabled");
-    if (value === "disabled") return t("aiModels.disabled");
-    if (value === "testing") return t("aiModels.testing");
-    if (value === "deprecated") return t("aiModels.deprecated");
-    return t("aiModels.archived");
-  };
-  const healthLabel = (value: AdminAiModel["healthStatus"]) => {
-    if (value === "healthy") return t("aiModels.healthy");
-    if (value === "degraded") return t("aiModels.degraded");
-    if (value === "failing") return t("aiModels.failing");
-    return t("aiModels.healthUnknown");
-  };
-  const accessLabel = (value: AdminAiModel["accessPolicy"]) =>
-    value === "admin_only"
-      ? t("aiModels.adminOnly")
-      : value === "selected_users"
-        ? t("aiModels.selectedUsers")
-        : t("aiModels.allUsers");
-  const pricingLabel = (value: AdminAiModel["pricingStatus"]) =>
-    value === "verified"
-      ? t("aiModels.verified")
-      : value === "outdated"
-        ? t("aiModels.outdated")
-        : t("aiModels.unknown");
   const compatibilityLabel = (value: string) => {
     if (value === "compatible") return el ? "Συμβατό" : "Compatible";
     if (value === "generator_only") return el ? "Μόνο Generator" : "Generator only";
@@ -1249,94 +1226,12 @@ export function AiModelsPanel() {
         </div>
       </div>
 
-      <div className="glass overflow-hidden rounded-2xl">
-        <div className="border-b border-white/10 px-4 py-3">
-          <h3 className="font-display text-sm font-semibold">{t("aiModels.installed")}</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-left text-sm">
-            <thead className="text-[11px] uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">{t("aiModels.model")}</th>
-                <th className="px-4 py-3">{t("aiModels.provider")}</th>
-                <th className="px-4 py-3">{t("aiModels.generator")}</th>
-                <th className="px-4 py-3">{t("aiModels.qualityCheck")}</th>
-                <th className="px-4 py-3">{t("aiModels.status")}</th>
-                <th className="px-4 py-3">{t("aiModels.health")}</th>
-                <th className="px-4 py-3">{t("aiModels.access")}</th>
-                <th className="px-4 py-3">{t("aiModels.pricing")}</th>
-                <th className="px-4 py-3">{t("aiModels.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.models.map((model) => (
-                <tr key={model.id} className="border-t border-white/5 align-top">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{model.displayName}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {model.providerModelId}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 capitalize">{model.provider}</td>
-                  <td className="px-4 py-3">
-                    {model.generatorCompatible && model.generatorEnabled ? (
-                      <Check className="h-4 w-4 text-emerald-300" />
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {model.qualityCheckCompatible && model.qualityCheckEnabled ? (
-                      <Check className="h-4 w-4 text-emerald-300" />
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Pill kind={model.status}>{statusLabel(model.status)}</Pill>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Pill kind={model.healthStatus}>{healthLabel(model.healthStatus)}</Pill>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Pill kind={model.accessPolicy}>{accessLabel(model.accessPolicy)}</Pill>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Pill kind={model.pricingStatus}>{pricingLabel(model.pricingStatus)}</Pill>
-                    {model.pricingStatus === "verified" && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        ${model.inputPricePerMillion ?? "—"} {el ? "είσοδος" : "in"} · $
-                        {model.outputPricePerMillion ?? "—"} {el ? "έξοδος" : "out"}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setEditing(model)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        {t("aiModels.edit")}
-                      </button>
-                      <button
-                        disabled={modelHealth.isPending && modelHealth.variables === model.id}
-                        onClick={() => modelHealth.mutate(model.id)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs disabled:opacity-50"
-                      >
-                        <HeartPulse className="h-3.5 w-3.5" />
-                        {modelHealth.isPending && modelHealth.variables === model.id
-                          ? t("aiModels.rechecking")
-                          : t("aiModels.recheck")}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <InstalledAiModelsTable
+        data={data}
+        onEdit={setEditing}
+        onHealth={(id) => modelHealth.mutate(id)}
+        manageAccess={onManageUserAccess}
+      />
 
       <div className="glass overflow-hidden rounded-2xl border border-cyan-400/20">
         <div className="border-b border-white/10 px-4 py-3">

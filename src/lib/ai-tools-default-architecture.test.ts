@@ -14,7 +14,7 @@ describe("AI Tools default architecture", () => {
     const admin = await source("src/lib/ai-model-admin.functions.ts");
     const panel = await source("src/components/promptbeats/AiModelsPanel.tsx");
     expect(admin).toContain('readDefaultModel(supabaseAdmin, "ai_tools_default_model")');
-    expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools"])');
+    expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools", "legacy"])');
     expect(panel).toContain('t("aiModels.aiToolsDefault")');
     expect(panel).toMatch(/\[\s*"ai_tools",\s*t\("aiModels\.aiToolsDefault"\)/);
     expect(panel).toContain("setDefault.mutate({ operation, model: value })");

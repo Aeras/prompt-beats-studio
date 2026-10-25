@@ -105,7 +105,12 @@ describe("September 22 production audit hardening", () => {
     const panel = await source("src/components/promptbeats/AiModelsPanel.tsx");
     const provider = await source("src/lib/ai-provider.server.ts");
 
-    expect(admin).toContain('model.status === "enabled"');
+    expect(admin).toContain('"admin_set_ai_model_default"');
+    const atomic = await source(
+      "supabase/migrations/20261025173752_ai_models_inline_admin_uninstall.sql",
+    );
+    expect(atomic).toContain("row.status<>'enabled'");
+    expect(atomic).not.toContain("row.access_policy");
     expect(admin).not.toContain("A default AI model must be available to all users.");
     expect(panel).not.toContain('m.accessPolicy === "all_users"');
     expect(panel).not.toContain("handleAccessPolicyChange");
