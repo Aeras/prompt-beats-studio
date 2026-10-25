@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { durableQualityCheckInput } from "./quality-check-job-schema";
+import * as safeDiagnostics from "./safe-diagnostics";
 
 const workerCode = ts.transpileModule(
   readFileSync("src/lib/quality-check-jobs.server.ts", "utf8"),
@@ -27,10 +28,16 @@ type Action = {
   provider_started_at?: string;
   provider?: string;
   model?: string;
+  cancel_requested_at?: string;
 };
 
 function fixture(
-  options: { readError?: boolean; claimError?: boolean; providerError?: boolean } = {},
+  options: {
+    readError?: boolean;
+    claimError?: boolean;
+    providerError?: boolean | Error;
+    cancelAfterProvider?: boolean;
+  } = {},
 ) {
   const action: Action = {
     id: "action",
@@ -39,6 +46,7 @@ function fixture(
     input_payload: payload,
   };
   const events: string[] = [];
+  const logs: unknown[] = [];
   let providerCalls = 0;
   let finalizations = 0;
   const db = {
@@ -91,8 +99,9 @@ function fixture(
     AbortController,
     setInterval: () => 1,
     clearInterval: () => {},
-    console: { error: () => {} },
+    console: { error: (...args: unknown[]) => logs.push(args) },
     require: (name: string) => {
+      if (name.endsWith("safe-diagnostics")) return safeDiagnostics;
       if (name.endsWith("ai-execution.server")) return { claimRecoveredJob: async () => null };
       if (name.endsWith("client.server")) return { supabaseAdmin: db };
       if (name.endsWith("quality-check-job-schema")) return { durableQualityCheckInput };
@@ -108,7 +117,11 @@ function fixture(
             await beforeProvider({ provider: "gemini", model: "gemini-4-argon" });
             providerCalls++;
             events.push("provider");
-            if (options.providerError) throw new Error("connection lost after provider started");
+            if (options.cancelAfterProvider) action.cancel_requested_at = new Date().toISOString();
+            if (options.providerError)
+              throw options.providerError instanceof Error
+                ? options.providerError
+                : new Error("connection lost after provider started");
             return { quality: report, provider: "gemini", model: "gemini-4-argon", records: [{}] };
           },
           flushDurableQualityUsage: async () => {
@@ -121,6 +134,7 @@ function fixture(
   return {
     action,
     events,
+    logs,
     run: () => exports.executeQualityCheckJob!(action.id),
     providerCalls: () => providerCalls,
     finalizations: () => finalizations,
@@ -128,6 +142,31 @@ function fixture(
 }
 
 describe("Quality Check worker access regression", () => {
+  test("cancellation before the provider marker never dispatches or finalizes", async () => {
+    const f = fixture();
+    f.action.cancel_requested_at = new Date().toISOString();
+    await f.run();
+    expect(f.providerCalls()).toBe(0);
+    expect(f.finalizations()).toBe(0);
+  });
+  test("cancellation after a provider reply never finalizes the QC result", async () => {
+    // Receipt settlement at the tracked boundary is independently exercised by
+    // ai-usage-recovery.test.ts; this checks the real worker's later barrier.
+    const f = fixture({ cancelAfterProvider: true });
+    await f.run();
+    expect(f.providerCalls()).toBe(1);
+    expect(f.finalizations()).toBe(0);
+  });
+  test("worker failure logs do not expose provider error bodies, names or causes", async () => {
+    const marker = "SyntheticPrivateTokenMarker";
+    const failure = Object.assign(new Error(marker), { name: marker, cause: { message: marker } });
+    const f = fixture({ providerError: failure });
+    await f.run();
+    expect(f.logs.length).toBeGreaterThan(0);
+    expect(JSON.stringify(f.logs)).not.toContain(marker);
+    expect(f.providerCalls()).toBe(1);
+    expect(f.finalizations()).toBe(0);
+  });
   test("read permission errors are failures, not successful no-op runner responses", async () => {
     const f = fixture({ readError: true });
     await expect(f.run()).rejects.toThrow("could not be read by the worker");

@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -213,7 +214,10 @@ export const addMusicAnalyzerModel = createServerFn({ method: "POST" })
         output_modalities: candidate.outputModalities,
       },
     });
-    if (auditError) console.error("[music-analyzer-admin] audit failed", auditError.message);
+    if (auditError)
+      console.error("[music-analyzer-admin] audit failed", {
+        errorType: safeErrorType(auditError),
+      });
 
     return {
       ok: true,

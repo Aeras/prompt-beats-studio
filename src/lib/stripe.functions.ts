@@ -67,6 +67,17 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (customerPersistError) throw new Error("Could not prepare billing. Please try again.");
     }
 
+    // The webhook/DB projection may lag a completed Checkout. Check the
+    // provider's customer-bound subscription state before creating another.
+    const subscriptions = await stripeRequest<{
+      data: Array<{ status: string }>;
+      has_more: boolean;
+    }>("GET", "/v1/subscriptions", { customer: customerId, status: "all", limit: "100" });
+    if (subscriptions.has_more) throw new Error("Could not verify existing subscriptions.");
+    if (subscriptions.data.some((item) => item.status === "active" || item.status === "trialing")) {
+      throw new Error("An active subscription already exists. Use billing management.");
+    }
+
     const open = await stripeRequest<{
       data: Array<{
         id: string;

@@ -9,13 +9,15 @@ owner='6a000000-0000-4000-8000-000000000014'
 prompt='6b000000-0000-4000-8000-000000000014'
 job_a='6c000000-0000-4000-8000-000000000014'
 job_b='6d000000-0000-4000-8000-000000000014'
+job_c='7d000000-0000-4000-8000-000000000014'
 query <<SQL
 INSERT INTO auth.users(id,email) VALUES ('$owner','atomic-revision-race@example.invalid');
 INSERT INTO public.saved_prompts(id,user_id,title,tags,lyrics,note)
  VALUES ('$prompt','$owner','Original','', 'Original lyrics','');
 INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
  VALUES ('$job_a','$owner','6e000000-0000-4000-8000-000000000014','processing','{}'::jsonb),
-        ('$job_b','$owner','6f000000-0000-4000-8000-000000000014','processing','{}'::jsonb);
+        ('$job_b','$owner','6f000000-0000-4000-8000-000000000014','processing','{}'::jsonb),
+        ('$job_c','$owner','7f000000-0000-4000-8000-000000000014','processing','{}'::jsonb);
 SQL
 finalize() {
  local id="$1" title="$2"
@@ -54,6 +56,21 @@ if finalize "$job_b" 'Cancelled write' >/dev/null 2>&1; then
  echo "FAIL: cancelled job created a revision" >&2
  exit 1
 fi
+# Case C: cancellation holds the row lock while finalization competes.
+# The finalizer must wait for that transaction and then reject the write.
+query <<SQL >/dev/null &
+BEGIN;
+UPDATE public.ai_generation_jobs SET cancel_requested_at=now() WHERE id='$job_c';
+SELECT pg_sleep(0.5);
+COMMIT;
+SQL
+cancel_first=$!
+sleep 0.15
+if finalize "$job_c" 'Contending cancelled write' >/dev/null 2>&1; then
+ echo 'FAIL: contending cancelled revision persisted' >&2
+ exit 1
+fi
+wait "$cancel_first"
 query <<SQL
 DO \$\$
 BEGIN
@@ -68,7 +85,7 @@ BEGIN
  END IF;
 END;
 \$\$;
-DELETE FROM public.ai_generation_jobs WHERE id IN ('$job_a','$job_b');
+DELETE FROM public.ai_generation_jobs WHERE id IN ('$job_a','$job_b','$job_c');
 DELETE FROM public.saved_prompts WHERE id='$prompt';
 DELETE FROM auth.users WHERE id='$owner';
 SQL

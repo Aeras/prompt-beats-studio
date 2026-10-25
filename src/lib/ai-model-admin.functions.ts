@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -223,7 +224,8 @@ export const updateAdminAiModel = createServerFn({ method: "POST" })
         pricing_status: data.pricingStatus,
       },
     });
-    if (auditError) console.error("[admin] AI model audit failed", auditError.message);
+    if (auditError)
+      console.error("[admin] AI model audit failed", { errorType: safeErrorType(auditError) });
 
     return { ok: true };
   });
@@ -284,7 +286,8 @@ export const setAdminAiModelDefault = createServerFn({ method: "POST" })
       action: "UPDATE_AI_MODEL_DEFAULT",
       details: { operation: data.operation, model: model.provider_model_id },
     });
-    if (auditError) console.error("[admin] AI default audit failed", auditError.message);
+    if (auditError)
+      console.error("[admin] AI default audit failed", { errorType: safeErrorType(auditError) });
 
     return { ok: true, model: model.provider_model_id };
   });
@@ -531,7 +534,8 @@ export const addDiscoveredAiModel = createServerFn({ method: "POST" })
         quality_check_compatible: compatibility.qualityCheckCompatible,
       },
     });
-    if (auditError) console.error("[admin] AI model add audit failed", auditError.message);
+    if (auditError)
+      console.error("[admin] AI model add audit failed", { errorType: safeErrorType(auditError) });
 
     return {
       ok: true,
@@ -696,7 +700,9 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
       discovered =
         discovery.models.find((candidate) => candidate.id === model.provider_model_id) ?? null;
     } catch (error) {
-      console.warn("[admin] provider discovery unavailable during model health check", error);
+      console.warn("[admin] provider discovery unavailable during model health check", {
+        errorType: safeErrorType(error),
+      });
     }
 
     const health = await evaluateInstalledModelHealth(model, discovered, discoveryAvailable);
@@ -727,7 +733,10 @@ export const recheckAdminAiModelHealth = createServerFn({ method: "POST" })
         error_code: health.errorCode,
       },
     });
-    if (auditError) console.error("[admin] AI model health audit failed", auditError.message);
+    if (auditError)
+      console.error("[admin] AI model health audit failed", {
+        errorType: safeErrorType(auditError),
+      });
 
     return {
       ok: true,
@@ -768,7 +777,9 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
       discoveryAvailable = true;
       discoveredModels = discovery.models;
     } catch (error) {
-      console.warn("[admin] provider discovery unavailable during provider health check", error);
+      console.warn("[admin] provider discovery unavailable during provider health check", {
+        errorType: safeErrorType(error),
+      });
     }
 
     let healthy = 0;
@@ -822,7 +833,10 @@ export const recheckAdminAiProviderHealth = createServerFn({ method: "POST" })
         discovery_available: discoveryAvailable,
       },
     });
-    if (auditError) console.error("[admin] AI provider health audit failed", auditError.message);
+    if (auditError)
+      console.error("[admin] AI provider health audit failed", {
+        errorType: safeErrorType(auditError),
+      });
 
     return { ok: true, checked: providerModels.length, healthy, degraded, failing };
   });

@@ -171,11 +171,16 @@ export function trackedCaller(
       const errorUsage = usageEvidence(error, provider);
       if (errorUsage) {
         observedUsage = errorUsage;
-        await journalWrite("observe_ai_execution_usage_internal", {
-          _id: id,
-          _user_id: context.userId,
-          _usage: errorUsage,
-        });
+        try {
+          await journalWrite("observe_ai_execution_usage_internal", {
+            _id: id,
+            _user_id: context.userId,
+            _usage: errorUsage,
+          });
+        } catch {
+          // The independent settlement/outbox path must still receive an
+          // observed provider receipt when the journal write is unavailable.
+        }
       }
       await persist({
         executionId: id,

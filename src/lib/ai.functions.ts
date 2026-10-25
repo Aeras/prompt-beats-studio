@@ -1,3 +1,10 @@
+import {
+  safeErrorType,
+  safeDiagnosticKeys,
+  safeIssuePath,
+  safeStopReason,
+} from "@/lib/safe-diagnostics";
+import { assertGenerationRequestBudget } from "@/lib/generator-input-limits";
 import { buildAdvancedGeneratorPromptV2 } from "@/lib/advanced-generator-prompt-v2";
 import { withV3MusicalPlanning } from "@/lib/advanced-generator-v3-review";
 import { buildAdvancedGeneratorPromptV4Beta } from "@/lib/advanced-generator-prompt-v4-beta";
@@ -1786,7 +1793,7 @@ function qualityResponseShape(value: unknown) {
   }
 
   const record = value as Record<string, unknown>;
-  const topLevelKeys = Object.keys(record);
+  const topLevelKeys = safeDiagnosticKeys(record);
   const topLevelTypes = Object.fromEntries(
     topLevelKeys.map((key) => [key, qualityResponseValueType(record[key])]),
   );
@@ -1802,7 +1809,7 @@ function qualityResponseShape(value: unknown) {
     }
 
     const nestedRecord = nestedValue as Record<string, unknown>;
-    const nestedKeys = Object.keys(nestedRecord);
+    const nestedKeys = safeDiagnosticKeys(nestedRecord);
     return [
       {
         objectKey,
@@ -1862,7 +1869,7 @@ async function runQualityCheck(
         operation,
         model,
         provider,
-        stopReason: stopReason ?? "unknown",
+        stopReason: safeStopReason(stopReason),
       });
       return null;
     }
@@ -1892,7 +1899,7 @@ async function runQualityCheck(
         provider,
         failureReason: "json_parse_error",
         responseTextLength: text.length,
-        error: err instanceof Error ? err.message : String(err),
+        errorType: safeErrorType(err),
       });
       return null;
     }
@@ -1907,9 +1914,8 @@ async function runQualityCheck(
         failureReason: "schema_validation_error",
         ...(responseShape ?? {}),
         validationIssues: parsed.error.issues.slice(0, 8).map((issue) => ({
-          path: issue.path.join(".") || "<root>",
+          path: safeIssuePath(issue.path),
           code: issue.code,
-          message: issue.message,
           ...(issue.code === "invalid_type"
             ? {
                 expected:
@@ -1932,7 +1938,7 @@ async function runQualityCheck(
     // "Quality check unavailable" impossible to diagnose from the server logs.
     console.error(
       `[ai] ${sink?.operation ?? "quality_check"} failed model=${sink?.model ?? "unknown"}`,
-      err instanceof Error ? err.message : err,
+      { errorType: safeErrorType(err) },
     );
 
     if (sink) {
@@ -1987,6 +1993,7 @@ export async function runSongGeneration(
   ) => void | Promise<void>,
   executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
+  assertGenerationRequestBudget(data);
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
     data.generationModel ?? undefined,
@@ -2059,7 +2066,7 @@ export async function runSongGeneration(
     console.warn("[ai] generation_non_success_stop", {
       provider: generated.provider,
       model: generated.model,
-      stopReason: stopReason ?? "unknown",
+      stopReason: safeStopReason(stopReason),
       outputTokens: generated.usage?.outputTokens ?? null,
       reasoningTokens: generated.usage?.reasoningTokens ?? null,
       responseLength: raw.length,
@@ -2108,7 +2115,7 @@ export async function runSongGeneration(
       reasoningTokens: generated.usage?.reasoningTokens ?? null,
       returnedKeys,
       issues: result.error.issues.map((issue) => ({
-        path: issue.path.join("."),
+        path: safeIssuePath(issue.path),
         code: issue.code,
       })),
     });
@@ -2287,10 +2294,14 @@ export const getCurrentUserAiModelAccess = createServerFn({ method: "GET" })
     ]);
 
     if (generatorResult.status === "rejected") {
-      console.warn("[ai-access] Generator model access unavailable", generatorResult.reason);
+      console.warn("[ai-access] Generator model access unavailable", {
+        errorType: safeErrorType(generatorResult.reason),
+      });
     }
     if (qualityResult.status === "rejected") {
-      console.warn("[ai-access] Quality Check model access unavailable", qualityResult.reason);
+      console.warn("[ai-access] Quality Check model access unavailable", {
+        errorType: safeErrorType(qualityResult.reason),
+      });
     }
 
     return {

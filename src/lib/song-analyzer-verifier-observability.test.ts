@@ -8,14 +8,18 @@ async function source(path: string) {
 describe("Song Analyzer verifier observability", () => {
   test("does not misclassify electronic drum kit wording as acoustic drum kit", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
-    expect(code).toContain("const programmedDrum = /drum machine|programmed.*drum|electronic.*drum/");
-    expect(code).toContain("const acousticDrum = !programmedDrum");
+    expect(code).toContain(
+      "const programmedDrum = /drum machine|programmed.*drum|electronic.*drum/",
+    );
+    expect(code.replace(/\s+/g, " ")).toContain("const acousticDrum = !programmedDrum");
   });
 
   test("records drum and keyboard verifier decisions even when they are not positive identifications", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("Stage A drum-source verifier classified the rhythm section as");
-    expect(code).toContain("Stage A keyboard-family verifier classified the material keyboard layer as");
+    expect(code).toContain(
+      "Stage A keyboard-family verifier classified the material keyboard layer as",
+    );
     expect(code).toContain("Direct cues:");
   });
 

@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -105,7 +106,8 @@ async function cleanupInspirationWallImages(supabase: any, keys: Array<string | 
   const uniqueKeys = [...new Set(keys.filter((key): key is string => Boolean(key)))];
   if (uniqueKeys.length === 0) return;
   const { error } = await supabase.storage.from("inspiration-wall-images").remove(uniqueKeys);
-  if (error) console.warn("Inspiration Wall image cleanup failed:", error.message);
+  if (error)
+    console.warn("Inspiration Wall image cleanup failed:", { errorType: safeErrorType(error) });
 }
 
 export const listInspirationWalls = createServerFn({ method: "GET" })

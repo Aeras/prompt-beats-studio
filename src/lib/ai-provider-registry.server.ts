@@ -326,10 +326,9 @@ export async function discoverProviderModels(
   }
 
   if (!response.ok) {
-    const body = await response.text();
     console.error(
       `[ai-provider-discovery] ${provider.id} models request failed (${response.status})`,
-      body.slice(0, 500),
+      { status: response.status },
     );
     if (response.status === 401 || response.status === 403)
       throw new Error("Provider authentication failed.");
@@ -936,7 +935,7 @@ async function probeModel(
       const safeError = sanitizeProviderError(body, response.status);
       console.warn(
         `[ai-compatibility] ${provider.id}/${modelId}/${operation} failed (${response.status})`,
-        safeError,
+        { status: response.status },
       );
       return { outcome: classifyHttpFailure(response.status), error: safeError };
     }

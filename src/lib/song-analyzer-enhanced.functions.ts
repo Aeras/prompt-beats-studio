@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -105,7 +106,9 @@ function extensionForMimeType(mimeType: (typeof supportedMimeTypes)[number]) {
 }
 
 function configuredTimeoutMs() {
-  const parsed = Number(process.env["RUNPOD_MUSIC_ANALYSIS_TIMEOUT_MS"] ?? DEFAULT_RUNPOD_TIMEOUT_MS);
+  const parsed = Number(
+    process.env["RUNPOD_MUSIC_ANALYSIS_TIMEOUT_MS"] ?? DEFAULT_RUNPOD_TIMEOUT_MS,
+  );
   if (!Number.isFinite(parsed)) return DEFAULT_RUNPOD_TIMEOUT_MS;
   return Math.max(60_000, Math.min(11 * 60 * 1000, Math.trunc(parsed)));
 }
@@ -151,10 +154,12 @@ function hasUsefulStyleMetadata(match: {
   return Boolean(match.genreTop || match.genres.length || match.tags.length);
 }
 
-function buildGenreConsensus(matches: Array<{
-  genreTop: string | null;
-  genres: string[];
-}>) {
+function buildGenreConsensus(
+  matches: Array<{
+    genreTop: string | null;
+    genres: string[];
+  }>,
+) {
   const counts = new Map<string, { label: string; count: number }>();
 
   for (const match of matches) {
@@ -185,7 +190,8 @@ function referenceConsensusStrength(args: {
   uniqueArtistCount: number;
   topShare: number;
 }) {
-  if (args.matchCount < REFERENCE_MEMORY_MIN_GENRE_MATCHES || args.uniqueArtistCount < 4) return "insufficient" as const;
+  if (args.matchCount < REFERENCE_MEMORY_MIN_GENRE_MATCHES || args.uniqueArtistCount < 4)
+    return "insufficient" as const;
   if (args.topShare >= 0.7 && args.uniqueArtistCount >= 6) return "strong" as const;
   if (args.topShare >= 0.5) return "moderate" as const;
   return "weak" as const;
@@ -325,7 +331,9 @@ async function runEnhancedWorker(audioUrl: string) {
       };
     }
     if (["FAILED", "CANCELLED", "TIMED_OUT"].includes(envelope.status)) {
-      throw new Error(`Enhanced analysis ${envelope.status.toLowerCase()}: ${safeRunpodError(envelope.error)}`);
+      throw new Error(
+        `Enhanced analysis ${envelope.status.toLowerCase()}: ${safeRunpodError(envelope.error)}`,
+      );
     }
 
     await sleep(RUNPOD_POLL_INTERVAL_MS);
@@ -359,7 +367,7 @@ async function deleteTemporaryAudio(deleteFromR2: (key: string) => Promise<void>
   console.error("[song-analyzer] failed to delete temporary enhanced-analysis audio", {
     key,
     attempts: TEMP_AUDIO_DELETE_ATTEMPTS,
-    error: lastError instanceof Error ? lastError.message : String(lastError),
+    errorType: safeErrorType(lastError),
   });
 }
 
@@ -419,9 +427,12 @@ export const analyzeEnhancedStage0 = createServerFn({ method: "POST" })
             ),
           };
         } catch (error) {
-          console.warn("[song-analyzer] Qdrant reference-memory lookup failed; continuing without it", {
-            message: error instanceof Error ? error.message : String(error),
-          });
+          console.warn(
+            "[song-analyzer] Qdrant reference-memory lookup failed; continuing without it",
+            {
+              errorType: safeErrorType(error),
+            },
+          );
           stage0Evidence = {
             ...stage0Evidence,
             limitations: appendLimitation(

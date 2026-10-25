@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -5,7 +6,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 
 const cancelInputSchema = z.object({
-  jobId: z.string().trim().min(1).max(240).regex(/^[A-Za-z0-9_-]+$/),
+  jobId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(240)
+    .regex(/^[A-Za-z0-9_-]+$/),
   audioKey: z.string().trim().min(1).max(500),
 });
 
@@ -33,7 +39,7 @@ async function deleteTemporaryAudio(key: string) {
       if (attempt === 3) {
         console.error("[song-analyzer] failed to delete cancelled Analyzer temp audio", {
           key,
-          error: error instanceof Error ? error.message : String(error),
+          errorType: safeErrorType(error),
         });
         return;
       }
@@ -74,10 +80,10 @@ export const cancelEnhancedStage0Job = createServerFn({ method: "POST" })
       // safe and the caller must stop polling either way.
       cancelAccepted = response.ok || response.status === 404 || response.status === 409;
       if (!cancelAccepted) {
-        const detail = await response.text().catch(() => "");
+        // Provider bodies can contain credentials or private audio metadata.
         console.warn("[song-analyzer] RunPod cancel request was not accepted", {
           status: response.status,
-          detail: detail.slice(0, 300),
+          category: "upstream_failure",
         });
       }
     } finally {

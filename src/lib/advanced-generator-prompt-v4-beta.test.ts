@@ -137,7 +137,7 @@ describe("V4 BETA prompt", () => {
     expect(ai).toContain("reasoningTokens: generated.usage?.reasoningTokens ?? null");
     expect(ai).toContain("returnedKeys,");
     expect(ai).toContain("Object.prototype.hasOwnProperty.call(decoded, key)");
-    expect(ai).toContain("issue.path.join");
+    expect(ai).toContain("safeIssuePath(issue.path)");
   });
 
   it("bounds MiMo generator reasoning without modifying other provider budgets", () => {

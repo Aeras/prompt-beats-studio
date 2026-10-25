@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { GoogleGenAI } from "@google/genai";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -557,7 +558,7 @@ export const finalizeSongAnalysis = createServerFn({ method: "POST" })
       } catch (error) {
         console.warn("[song-analyzer-final] regional research failed; continuing without it", {
           model: data.audioAnalysisModel,
-          message: error instanceof Error ? error.message : String(error),
+          errorType: safeErrorType(error),
         });
       }
     }
