@@ -27,12 +27,9 @@ import {
   type RegistryModel,
 } from "@/lib/ai-model-registry.server";
 
-
 /** Never write an arbitrary provider-supplied string into server diagnostics. */
 function safeProviderDiagnosticCode(value: unknown): string | null {
-  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value)
-    ? value
-    : null;
+  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value) ? value : null;
 }
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
