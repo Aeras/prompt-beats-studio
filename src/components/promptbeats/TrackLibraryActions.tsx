@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Bookmark, Download, ListPlus, Loader2, MoreVertical, Plus, X } from "lucide-react";
@@ -18,6 +18,8 @@ import {
   toggleFavorite,
 } from "@/lib/playlists.functions";
 import { getTrackDownloadAvailability } from "@/lib/track-download.functions";
+import { libraryActionError } from "@/lib/library-action-errors";
+import { refreshFavorites, refreshPlaylists } from "@/lib/library-cache";
 
 function fileName(title: string, mimeType: string) {
   const ext = mimeType.includes("wav") ? "wav" : "mp3";
@@ -53,6 +55,7 @@ export function TrackLibraryActions({
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const mutationPending = useRef(false);
 
   const copy =
     language === "el"
@@ -130,21 +133,23 @@ export function TrackLibraryActions({
   if (!user) return null;
 
   const favorite = async () => {
-    if (!favoritesAccess.allowed) return;
+    if (!favoritesAccess.allowed || mutationPending.current) return;
+    mutationPending.current = true;
     setBusy("favorite");
     try {
-      await toggleFavorite({ data: { trackId: track.id } });
-      await queryClient.invalidateQueries({ queryKey: ["library", "favorite-ids"] });
-      await queryClient.invalidateQueries({ queryKey: ["library", "favorites"] });
-    } catch {
-      toast.error(copy.error);
+      const result = await toggleFavorite({ data: { trackId: track.id } });
+      await refreshFavorites(queryClient, user.id, track.id, result.favorite);
+    } catch (error) {
+      toast.error(libraryActionError(error, language, "favorite"));
     } finally {
+      mutationPending.current = false;
       setBusy(null);
     }
   };
 
   const addTo = async (playlistId: string) => {
-    if (!playlistsAccess.allowed) return;
+    if (!playlistsAccess.allowed || mutationPending.current) return;
+    mutationPending.current = true;
     setBusy(playlistId);
     try {
       const result = await addTrackToPlaylist({ data: { playlistId, trackId: track.id } });
@@ -165,22 +170,23 @@ export function TrackLibraryActions({
             : `Track added to “${playlistName}”.`,
         );
       }
-      await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
-      await queryClient.invalidateQueries({ queryKey: ["library", "playlist", playlistId] });
-    } catch {
-      toast.error(copy.error);
+      await refreshPlaylists(queryClient, user.id, playlistId);
+    } catch (error) {
+      toast.error(libraryActionError(error, language, "add"));
     } finally {
+      mutationPending.current = false;
       setBusy(null);
     }
   };
 
   const createAndAdd = async () => {
-    if (!playlistsAccess.allowed) return;
+    if (!playlistsAccess.allowed || mutationPending.current) return;
     const name = newPlaylistName.trim();
     if (!name) return;
+    mutationPending.current = true;
     setBusy("create");
     try {
-      await createPlaylist({ data: { name, trackId: track.id } });
+      const result = await createPlaylist({ data: { name, trackId: track.id } });
       setNewPlaylistName("");
       setPlaylistOpen(false);
       toast.success(
@@ -188,10 +194,11 @@ export function TrackLibraryActions({
           ? `Η λίστα «${name}» δημιουργήθηκε και το τραγούδι προστέθηκε.`
           : `Playlist “${name}” was created and the track was added.`,
       );
-      await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
-    } catch {
-      toast.error(copy.error);
+      await refreshPlaylists(queryClient, user.id, result.playlist.id);
+    } catch (error) {
+      toast.error(libraryActionError(error, language, "create"));
     } finally {
+      mutationPending.current = false;
       setBusy(null);
     }
   };
@@ -254,6 +261,17 @@ export function TrackLibraryActions({
           </header>
 
           <div className="mt-5 space-y-2">
+            {playlists.isError && (
+              <div role="alert" className="rounded-2xl border border-white/10 p-4 text-sm">
+                <p>{libraryActionError(playlists.error, language, "load")}</p>
+                <button
+                  onClick={() => void playlists.refetch()}
+                  className="mt-2 text-accent underline"
+                >
+                  {language === "el" ? "Δοκίμασε ξανά" : "Retry"}
+                </button>
+              </div>
+            )}
             {(playlists.data?.playlists ?? []).map((playlist: any) => (
               <button
                 key={playlist.id}
@@ -274,11 +292,13 @@ export function TrackLibraryActions({
                 )}
               </button>
             ))}
-            {!playlists.isLoading && (playlists.data?.playlists ?? []).length === 0 && (
-              <p className="rounded-2xl border border-white/10 p-4 text-sm text-muted-foreground">
-                {copy.noPlaylists}
-              </p>
-            )}
+            {!playlists.isLoading &&
+              !playlists.isError &&
+              (playlists.data?.playlists ?? []).length === 0 && (
+                <p className="rounded-2xl border border-white/10 p-4 text-sm text-muted-foreground">
+                  {copy.noPlaylists}
+                </p>
+              )}
           </div>
 
           <div className="mt-5 border-t border-white/10 pt-5">
@@ -361,6 +381,7 @@ export function TrackLibraryActions({
             >
               {favoritesAccess.allowed && (
                 <DropdownMenu.Item
+                  disabled={Boolean(busy)}
                   onSelect={() => void favorite()}
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 focus:bg-white/10"
                 >
