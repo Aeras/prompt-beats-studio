@@ -45,3 +45,15 @@ describe("Track card action row", () => {
     expect(report).toContain("menuItem?: boolean");
   });
 });
+
+// Compact menu actions must not own the share modal: Radix unmounts the menu on selection.
+test("compact share hub persists after dropdown dismissal", async () => {
+  const card = await Bun.file("src/components/promptbeats/TrackCard.tsx").text();
+  const share = await Bun.file("src/components/promptbeats/ShareTrackButton.tsx").text();
+  expect(card).toContain("compactShareTriggerRef.current?.click()");
+  expect(card).toContain("hiddenTrigger");
+  expect(card).toContain("triggerRef={compactShareTriggerRef}");
+  expect(card).not.toContain("menuItem\n                    />");
+  expect(share).toContain("hidden={hiddenTrigger}");
+  expect(share).toContain("{modal}");
+});
