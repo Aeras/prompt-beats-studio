@@ -36,7 +36,9 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
     }
     return [...groups.entries()]
       .map(([id, group]) => ({ id, ...group }))
-      .filter((entry) => entry.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+      .filter((entry) =>
+        entry.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+      )
       .sort((a, b) => b.latestAt.localeCompare(a.latestAt));
   }, [el, search, sessions.data]);
 
@@ -63,7 +65,9 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
         </p>
       ) : tracks.length === 0 ? (
         <p className="py-6 text-sm text-muted-foreground">
-          {el ? "Δεν υπάρχουν τραγούδια με Private Reviews." : "No tracks with Private Reviews yet."}
+          {el
+            ? "Δεν υπάρχουν τραγούδια με Private Reviews."
+            : "No tracks with Private Reviews yet."}
         </p>
       ) : (
         <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
@@ -81,7 +85,8 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{track.title}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {track.sessions.length} {el ? "συνεδρίες" : "sessions"} · {comments} {el ? "σχόλια" : "comments"}
+                    {track.sessions.length} {el ? "συνεδρίες" : "sessions"} · {comments}{" "}
+                    {el ? "σχόλια" : "comments"}
                   </span>
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
