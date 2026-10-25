@@ -53,7 +53,7 @@ test("compact share hub persists after dropdown dismissal", async () => {
   expect(card).toContain("compactShareTriggerRef.current?.click()");
   expect(card).toContain("hiddenTrigger");
   expect(card).toContain("triggerRef={compactShareTriggerRef}");
-  expect(card).not.toContain("menuItem\n                    />");
+  expect(card).not.toMatch(/<ShareTrackButton[^>]*menuItem/s);
   expect(share).toContain("hidden={hiddenTrigger}");
   expect(share).toContain("{modal}");
 });
