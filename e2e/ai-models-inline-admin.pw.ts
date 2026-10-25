@@ -198,6 +198,15 @@ test("inline independent saves serialize revisions; dark custom menus and rollba
   await row.getByRole("button", { name: /^(Status|Κατάσταση):/ }).click();
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
+  expect(
+    (await row
+      .getByRole("button", { name: /^(Status|Κατάσταση):/, includeHidden: true })
+      .boundingBox())!.height,
+  ).toBeLessThan(44);
+  const menuBox = (await menu.boundingBox())!;
+  expect(menuBox.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+  expect(await menu.evaluate((e) => e.scrollHeight - e.clientHeight)).toBeLessThanOrEqual(1);
   await page.screenshot({
     path: test.info().outputPath(`dropdown-${test.info().project.name}.png`),
   });
@@ -222,9 +231,16 @@ test("bulk confirmation is above rows, keeps selection on cancel and deletes ato
   await trash.click();
   await page.getByRole("checkbox", { name: /^(Select|Επιλογή) Offline model 2$/ }).check();
   await page.getByRole("checkbox", { name: /^(Select|Επιλογή) Offline model 3$/ }).check();
+  await page.locator("[data-model-id]").last().scrollIntoViewIfNeeded();
+  await expect(trash).toBeInViewport();
   await trash.click();
   const panel = page.getByRole("alertdialog");
   await expect(panel).toBeVisible();
+  const toolbarBox = (await page.getByTestId("models-sticky-toolbar").boundingBox())!;
+  expect((await panel.boundingBox())!.y).toBeGreaterThanOrEqual(
+    toolbarBox.y + toolbarBox.height - 1,
+  );
+  await expect(panel.getByRole("button", { name: /^(Cancel|Ακύρωση)$/ })).toBeInViewport();
   await expect(panel.getByRole("button", { name: /^(Cancel|Ακύρωση)$/ })).toBeFocused();
   expect(await panel.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(54, 19, 34)");
   await page.screenshot({
@@ -259,7 +275,17 @@ test("sticky headers share page scroll, align horizontally and remain accessible
   await expect
     .poll(async () =>
       Math.abs(
-        (await header.boundingBox())!.y - (await page.locator("header").boundingBox())!.height,
+        (await header.boundingBox())!.y -
+          (await page.locator("header").boundingBox())!.height -
+          (await page.getByTestId("models-sticky-toolbar").boundingBox())!.height,
+      ),
+    )
+    .toBeLessThan(2);
+  await expect
+    .poll(async () =>
+      Math.abs(
+        (await page.getByTestId("models-sticky-toolbar").boundingBox())!.y -
+          (await page.locator("header").boundingBox())!.height,
       ),
     )
     .toBeLessThan(2);
@@ -310,6 +336,11 @@ test("defaults stay guarded; keyboard menus preserve selected-user workflow", as
   await expect(page.getByRole("menu")).toBeVisible();
   await page.getByRole("menuitem", { name: /Selected users|Επιλεγμένοι/ }).click();
   await expect.poll(() => f.writes.length).toBe(1);
-  await row.getByRole("button", { name: /Manage user access|Δικαιώματα χρηστών/ }).click();
-  await expect(page.getByPlaceholder(/Search by.*email|Αναζήτηση.*email/)).toBeVisible();
+  await expect(
+    row.getByRole("button", { name: /Manage user access|Δικαιώματα χρηστών/ }),
+  ).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /^(Access|Πρόσβαση):/ })).toContainText(
+    /Selected users|Επιλεγμένοι/,
+  );
+  expect(f.writes[0]!.patch).toEqual({ accessPolicy: "selected_users" });
 });
