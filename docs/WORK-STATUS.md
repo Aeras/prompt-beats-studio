@@ -50,7 +50,7 @@ Copy the entry below **before the feature PR is merged**, replacing each placeho
 ## Final finding-by-finding reconciliation — 2026-10-25
 
 Common investigation baseline: `8554aefd0c3a8bbb4b57fd5540c2380266579f03`.
-Execution owner: **Codex**. One verification/remediation branch: `codex/audit-final-verification`.
+Execution owner: **Codex**. One verification/remediation branch: `codex/audit-final-verification`, [PR #424](https://github.com/Aeras/prompt-beats-studio/pull/424). Implementation commit: `aef4e01a91031b230a26dff51b8a472719d88382`; subsequent evidence-only commits and exact final check SHA are recorded in that PR.
 Detailed evidence, release boundaries and reproducible commands: [final verification dossier](PB-AUD-final-verification-20261025.md).
 Final verification PR/checks and its exact HEAD are recorded together in the PR and closure report; no editor HEAD is used as production proof.
 
