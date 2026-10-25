@@ -39,6 +39,7 @@ export function TrackLibraryActions({
   menuActions = null,
   inlineActions = null,
   bare = false,
+  detailMode = false,
 }: {
   track: Track;
   compact?: boolean;
@@ -46,6 +47,7 @@ export function TrackLibraryActions({
   menuActions?: ReactNode;
   inlineActions?: ReactNode;
   bare?: boolean;
+  detailMode?: boolean;
 }) {
   const { language } = useI18n();
   const { user } = useAuth();
@@ -327,6 +329,58 @@ export function TrackLibraryActions({
       </div>,
       document.body,
     );
+
+  if (detailMode) {
+    const detailButton =
+      "grid h-11 min-w-11 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-40";
+    return (
+      <>
+        <div className="contents">
+          {favoritesAccess.allowed && (
+            <button
+              type="button"
+              onClick={() => void favorite()}
+              disabled={Boolean(busy)}
+              className={detailButton}
+              aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite}
+              title={isFavorite ? copy.removeFavorite : copy.addFavorite}
+              aria-pressed={isFavorite}
+            >
+              <Bookmark className={`h-[18px] w-[18px] ${isFavorite ? "fill-current text-accent" : ""}`} />
+            </button>
+          )}
+          {canPlaylist && (
+            <button
+              type="button"
+              className={detailButton}
+              onClick={() => setPlaylistOpen(true)}
+              aria-label={copy.playlist}
+              title={copy.playlist}
+            >
+              <ListPlus className="h-[18px] w-[18px]" />
+            </button>
+          )}
+          {hasDownloadableSource && (
+            <button
+              type="button"
+              onClick={() => void download()}
+              disabled={!canDownload || busy === "download"}
+              aria-label={canDownload ? copy.download : copy.downloadDisabled}
+              title={canDownload ? copy.download : copy.downloadDisabled}
+              className={detailButton}
+            >
+              {busy === "download" && canDownload ? (
+                <Loader2 className="h-[18px] w-[18px] animate-spin" />
+              ) : (
+                <Download className="h-[18px] w-[18px]" />
+              )}
+            </button>
+          )}
+        </div>
+        {playlistModal}
+      </>
+    );
+  }
 
   const compactIconClass = bare
     ? "grid h-9 w-7 place-items-center text-muted-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:opacity-60"
