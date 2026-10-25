@@ -97,6 +97,7 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
           initialTrackId={selectedTrackId}
           language={language}
           canCreateNew={false}
+          historyOnly
           onClose={() => setSelectedTrackId(null)}
         />
       )}
