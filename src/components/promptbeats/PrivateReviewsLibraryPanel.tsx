@@ -1,22 +1,45 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, MessageSquareText, Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, MessageSquareText, Search, Trash2 } from "lucide-react";
 
 import { PrivateReviewManager } from "@/components/promptbeats/PrivateReviewManager";
 import { useI18n } from "@/i18n";
-import { listMyPrivateReviewSessions } from "@/lib/private-review.functions";
+import {
+  deleteFinishedPrivateReviewTrack,
+  listMyPrivateReviewSessions,
+} from "@/lib/private-review.functions";
 type ReviewRow = Awaited<ReturnType<typeof listMyPrivateReviewSessions>>[number];
 
 /** Existing owner RPC already lists expired/closed history; this is only a grouped entry point. */
 export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
   const { language } = useI18n();
   const el = language === "el";
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const sessions = useQuery({
     queryKey: ["private-review-library", userId],
     queryFn: () => listMyPrivateReviewSessions({ data: {} }),
   });
+  const deleteTrackReviews = useMutation({
+    mutationFn: (trackId: string) =>
+      deleteFinishedPrivateReviewTrack({ data: { trackId } }),
+    onSuccess: async () => {
+      setSelectedTrackId(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["private-review-library"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["private-review-sessions"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["private-review-owner-session"], exact: false }),
+      ]);
+    },
+  });
+  const confirmTrackDeletion = (trackId: string, count: number) => {
+    const text = el
+      ? `Οριστική διαγραφή και των ${count} Private Reviews του τραγουδιού, μαζί με όλα τα σχόλια; Η ενέργεια δεν αναιρείται.`
+      : `Permanently delete all ${count} Private Reviews for this track, including comments? This cannot be undone.`;
+    if (window.confirm(text)) deleteTrackReviews.mutate(trackId);
+  };
+
   const tracks = useMemo(() => {
     const groups = new Map<string, { title: string; latestAt: string; sessions: ReviewRow[] }>();
     for (const session of sessions.data ?? []) {
@@ -75,12 +98,12 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
             const comments = track.sessions.reduce((sum, session) => sum + session.commentCount, 0);
             const active = track.sessions.some((session) => session.state === "active");
             return (
-              <div key={track.id}>
+              <div key={track.id} className="relative">
                 <button
                   type="button"
                   onClick={() => setSelectedTrackId(selectedTrackId === track.id ? null : track.id)}
                   aria-expanded={selectedTrackId === track.id}
-                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 pr-12 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 >
                   <MessageSquareText className="h-5 w-5 shrink-0 text-accent" />
                   <span className="min-w-0 flex-1">
@@ -94,6 +117,18 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                     {active ? (el ? "Ενεργό" : "Active") : el ? "Ιστορικό" : "History"}
                   </span>
                 </button>
+                {!active && (
+                  <button
+                    type="button"
+                    onClick={() => confirmTrackDeletion(track.id, track.sessions.length)}
+                    disabled={deleteTrackReviews.isPending}
+                    aria-label={el ? `Διαγραφή όλων των reviews για ${track.title}` : `Delete all reviews for ${track.title}`}
+                    title={el ? "Οριστική διαγραφή όλων των reviews" : "Permanently delete all reviews"}
+                    className="absolute right-2 mt-[-3.2rem] grid h-9 w-9 place-items-center text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
                 {selectedTrackId === track.id && (
                   <PrivateReviewManager
                     initialTrackId={track.id}
