@@ -75,10 +75,11 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
             const comments = track.sessions.reduce((sum, session) => sum + session.commentCount, 0);
             const active = track.sessions.some((session) => session.state === "active");
             return (
+              <div key={track.id}>
               <button
-                key={track.id}
                 type="button"
-                onClick={() => setSelectedTrackId(track.id)}
+                onClick={() => setSelectedTrackId(selectedTrackId === track.id ? null : track.id)}
+                aria-expanded={selectedTrackId === track.id}
                 className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
               >
                 <MessageSquareText className="h-5 w-5 shrink-0 text-accent" />
@@ -93,22 +94,17 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                   {active ? (el ? "Ενεργό" : "Active") : el ? "Ιστορικό" : "History"}
                 </span>
               </button>
+              {selectedTrackId === track.id && (
+                <PrivateReviewManager initialTrackId={track.id} projectName={track.title}
+                  language={language} canCreateNew={false} historyOnly inline
+                  onClose={() => setSelectedTrackId(null)} />
+              )}
+              </div>
             );
           })}
         </div>
       )}
-      {selectedTrackId && (
-        <PrivateReviewManager
-          initialTrackId={selectedTrackId}
-          projectName={
-            tracks.find((track) => track.id === selectedTrackId)?.title ?? "Private Review"
-          }
-          language={language}
-          canCreateNew={false}
-          historyOnly
-          onClose={() => setSelectedTrackId(null)}
-        />
-      )}
+
     </section>
   );
 }
