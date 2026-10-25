@@ -628,6 +628,11 @@ export function PrivateReviewManager({
                 {el ? "Φόρτωση..." : "Loading..."}
               </p>
             )}
+            {deleteMutation.isError && (
+              <p role="alert" className="mt-2 text-xs text-destructive">
+                {el ? "Η διαγραφή απέτυχε. Το review μπορεί να είναι ενεργό." : "Deletion failed. The review may still be active."}
+              </p>
+            )}
             <div className="mt-3 space-y-2">
               {(sessions.data ?? []).map((session) => (
                 <div key={session.id} className="rounded-xl border border-white/10 p-3">
