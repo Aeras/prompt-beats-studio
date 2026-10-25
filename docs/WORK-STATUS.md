@@ -403,3 +403,14 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Static regression check added; mandatory Regression / Browser Quality / Database Replay pending; production verification pending.
 - **Release:** No SQL or production changes. Publish separately, verify both mobile and desktop compact card.
 - **Remaining work / owner:** Finish CI, merge on green, approved publish and live validation before CLOSED.
+
+## PB-UX-20261025-06 — Private Reviews library and track detail icons
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Consolidated Library → Private Reviews track list grouped by owned song with session count and comments; owner may open individual historic active/expired/closed review sessions. Review creation remains only in song/project workflows, not card menus. Track detail icons order: Like, Favorite, Playlist, Download, Edit, Delete; no overflow circles or labels. Edit/Delete remain owner/moderation-controlled.
+- **Investigation:** Main after #429. Existing authenticated listMyPrivateReviewSessions returns owner-only track/project sessions and getMyPrivateReviewSession supplies detailed comments; original PrivateReviewManager already supports track filtering and feedback, so avoid duplicate backend and migrations. Existing track detail actions rendered circular download + menu and owner edit/delete, requiring dedicated icon-only rendering.
+- **Execution owner:** ChatGPT.
+- **PR and exact HEAD:** Branch `feature/pb-private-reviews-library-track-actions-20261025`, PR and CI pending.
+- **Verification:** Scoped UI contract tests added; require strict TypeScript, full regression, lint/format, build and exact-head three CI gates before merge.
+- **Release:** No migration. No publish or production action from this PR; approved publication and manual mobile/desktop verification required before CLOSED.
+- **Remaining work / owner:** Complete CI and UX review; correct failures in same PR, then merge and release separately.

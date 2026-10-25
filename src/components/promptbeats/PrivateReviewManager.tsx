@@ -31,6 +31,7 @@ type Props = {
   initialTrackId?: string;
   language: string;
   canCreateNew?: boolean;
+  historyOnly?: boolean;
   onClose: () => void;
 };
 
@@ -41,6 +42,7 @@ export function PrivateReviewManager({
   initialTrackId,
   language,
   canCreateNew = true,
+  historyOnly = false,
   onClose,
 }: Props) {
   const el = language === "el";
@@ -234,7 +236,7 @@ export function PrivateReviewManager({
           </button>
         </div>
 
-        {!canCreateNew && (
+        {!canCreateNew && !historyOnly && (
           <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
             {el
               ? "Η δημιουργία νέων Private Review links δεν είναι διαθέσιμη αυτή τη στιγμή. Μπορείς να δεις και να κλείσεις όσα links έχεις ήδη δημιουργήσει."
@@ -242,8 +244,16 @@ export function PrivateReviewManager({
           </div>
         )}
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div
+          className={
+            historyOnly ? "mt-5 grid gap-5" : "mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"
+          }
+        >
+          <section
+            className={
+              historyOnly ? "hidden" : "rounded-2xl border border-white/10 bg-black/20 p-4"
+            }
+          >
             <fieldset disabled={!canCreateNew} className={!canCreateNew ? "opacity-50" : undefined}>
               <h3 className="text-sm font-bold">{el ? "Νέο review" : "New review"}</h3>
 
