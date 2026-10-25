@@ -1,3 +1,5 @@
+import { generateAiContent } from "./guarded-google-ai.server";
+import { aiProviderFetch as fetch, aiContinuationFetch } from "./global-ai-usage.server";
 import { safeErrorType, safeProviderCode, safeStopReason } from "@/lib/safe-diagnostics";
 /**
  * Provider/model abstraction for the AI pipeline.
@@ -500,7 +502,7 @@ async function callGeminiBackground(
       throw new Error("Generation cancellation requested.");
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const check = await fetch(`${url}/${encodeURIComponent(id)}`, {
+    const check = await aiContinuationFetch(`${url}/${encodeURIComponent(id)}`, {
       headers,
       signal: AbortSignal.timeout(15000),
     });
@@ -642,7 +644,7 @@ async function callGemini(model: string, call: ModelCall): Promise<ModelResult> 
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
+  const response = await generateAiContent(ai, {
     model,
     contents: call.prompt,
     config: {
@@ -998,7 +1000,7 @@ async function callOpenRouterCancellable(
       for (let i = 0; i < 12; i++) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         try {
-          const status = await fetch(
+          const status = await aiContinuationFetch(
             `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(remoteId)}`,
             {
               headers: { authorization: `Bearer ${apiKey}` },
@@ -1315,7 +1317,7 @@ async function callOpenAI(model: string, call: ModelCall): Promise<ModelResult> 
         throw new Error("Generation cancellation requested.");
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const statusRes = await fetch(
+      const statusRes = await aiContinuationFetch(
         `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`,
         { method: "GET", headers, signal: AbortSignal.timeout(15000) },
       );

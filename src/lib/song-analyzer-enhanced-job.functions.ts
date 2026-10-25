@@ -1,3 +1,4 @@
+import { aiProviderFetch, aiContinuationFetch } from "./global-ai-usage.server";
 import { safeErrorType } from "@/lib/safe-diagnostics";
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
@@ -139,7 +140,9 @@ async function fetchRunpodJson(url: string, apiKey: string, init?: RequestInit) 
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${apiKey}`);
   headers.set("Content-Type", "application/json");
-  const response = await fetch(url, { ...init, headers, signal: AbortSignal.timeout(30_000) });
+  const response = await (
+    /\/(run|runsync)$/.test(new URL(url).pathname) ? aiProviderFetch : aiContinuationFetch
+  )(url, { ...init, headers, signal: AbortSignal.timeout(30_000) });
   const payload = await response.json().catch(() => null);
   if (!response.ok)
     throw new Error(`RunPod request failed (${response.status}): ${safeRunpodError(payload)}`);

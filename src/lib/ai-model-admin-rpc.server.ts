@@ -2,6 +2,8 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type Args = {
+  admin_get_global_ai_usage: Record<string, never>;
+  admin_set_global_ai_usage: { _enabled: boolean; _expected_revision: number };
   admin_ai_model_controls: Record<string, never>;
   admin_patch_ai_model: { _id: string; _patch: Json; _expected_revision: number };
   admin_uninstall_ai_models: { _models: Json; _confirmed: boolean };

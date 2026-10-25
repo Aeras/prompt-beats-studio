@@ -40,6 +40,7 @@ function fixture() {
   let cached: ModelResult | null = null;
   let identity = "";
   const deps: ExecutionDependencies = {
+    dispatchAdmission: async (execute) => execute(),
     read: async () =>
       cached
         ? {
@@ -84,6 +85,51 @@ function fixture() {
   };
 }
 describe("AI accounting and recovery failure matrix (offline)", () => {
+  test("global OFF refuses before execution journal and does not fabricate usage", async () => {
+    const f = fixture();
+    let calls = 0;
+    f.deps.dispatchAdmission = async () => {
+      throw new Error("AI is temporarily disabled");
+    };
+    await expect(
+      trackedCaller(
+        async () => {
+          calls++;
+          return result;
+        },
+        "openai",
+        "fixture",
+        context,
+        f.deps,
+      )(input),
+    ).rejects.toThrow("temporarily disabled");
+    expect(calls).toBe(0);
+    expect(f.events).toEqual([]);
+    expect(f.records).toEqual([]);
+  });
+  test("cached completed result is recoverable OFF without admission or another billable call", async () => {
+    const f = fixture();
+    let calls = 0;
+    const call = trackedCaller(
+      async () => {
+        calls++;
+        return result;
+      },
+      "openai",
+      "fixture",
+      context,
+      f.deps,
+    );
+    await call(input);
+    f.deps.dispatchAdmission = async () => {
+      throw new Error("disabled");
+    };
+    const recovered = await call(input);
+    expect(recovered.text).toBe(result.text);
+    expect(calls).toBe(1);
+    expect(f.records).toHaveLength(1);
+  });
+
   test("actual Anthropic SSE adapter preserves normalized cache receipts on completion and interruption", async () => {
     const source = ts.createSourceFile(
       "provider.ts",

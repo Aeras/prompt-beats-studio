@@ -101,6 +101,12 @@ function fixture(
     clearInterval: () => {},
     console: { error: (...args: unknown[]) => logs.push(args) },
     require: (name: string) => {
+      if (name.endsWith("global-ai-usage.server"))
+        return {
+          AI_DISABLED_MESSAGE:
+            "AI is temporarily disabled by an administrator. Please try again later.",
+          AI_UNAVAILABLE_MESSAGE: "AI availability could not be verified. Please try again later.",
+        };
       if (name.endsWith("safe-diagnostics")) return safeDiagnostics;
       if (name.endsWith("ai-execution.server")) return { claimRecoveredJob: async () => null };
       if (name.endsWith("client.server")) return { supabaseAdmin: db };

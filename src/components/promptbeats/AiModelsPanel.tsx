@@ -1,3 +1,4 @@
+import { GlobalAiUsageSwitch } from "./GlobalAiUsageSwitch";
 import { InstalledAiModelsTable } from "./InstalledAiModelsTable";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -911,6 +912,7 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
 
   return (
     <div className="space-y-5">
+      <GlobalAiUsageSwitch />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-bold">{t("aiModels.title")}</h2>

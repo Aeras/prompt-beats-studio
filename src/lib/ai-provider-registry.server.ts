@@ -1,3 +1,5 @@
+import { AiUsageUnavailableError } from "./global-ai-usage.server";
+import { aiProviderFetch as fetch } from "./global-ai-usage.server";
 export type AiProviderId =
   | "openai"
   | "gemini"
@@ -318,6 +320,7 @@ export async function discoverProviderModels(
   try {
     response = await fetch(url, { method: "GET", headers, signal: controller.signal });
   } catch (error) {
+    if (error instanceof AiUsageUnavailableError) throw error;
     if (error instanceof Error && error.name === "AbortError")
       throw new Error("Provider check timed out.");
     throw new Error("Could not connect to the provider.");
@@ -626,6 +629,7 @@ export async function discoverProviderAudioTextModels(
   try {
     response = await fetch(url, { method: "GET", headers, signal: controller.signal });
   } catch (error) {
+    if (error instanceof AiUsageUnavailableError) throw error;
     if (error instanceof Error && error.name === "AbortError")
       throw new Error("Provider check timed out.");
     throw new Error("Could not connect to the provider.");

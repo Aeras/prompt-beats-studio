@@ -1,3 +1,4 @@
+import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 /**
  * Client-facing API for durable song generation jobs.
  *
@@ -274,6 +275,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       _idempotency_key: idempotencyKey,
       _input: payload as Json,
     });
+    if (error?.code === "PT423") throw new Error(AI_DISABLED_MESSAGE);
     if (error) throw new Error(`The generation could not be started (${error.message}).`);
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
       return { rateLimited: true as const, job: null };
@@ -367,6 +369,7 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
       _idempotency_key: data.idempotencyKey,
       _input: payload as Json,
     });
+    if (error?.code === "PT423") throw new Error(AI_DISABLED_MESSAGE);
     if (error) throw new Error(`The section edit could not be started (${error.message}).`);
     if (raw && (raw as { rate_limited?: boolean }).rate_limited) {
       return { rateLimited: true as const, job: null };

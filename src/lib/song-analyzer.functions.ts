@@ -1,3 +1,5 @@
+import { generateAiContent } from "./guarded-google-ai.server";
+import { aiProviderFetch as fetch } from "./global-ai-usage.server";
 import { safeErrorType } from "@/lib/safe-diagnostics";
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
@@ -1800,7 +1802,7 @@ Return only the requested structured JSON.
 `.trim();
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateAiContent(ai, {
       model: args.model,
       contents: prompt,
       config: {
