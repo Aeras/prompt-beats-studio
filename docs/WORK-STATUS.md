@@ -358,3 +358,14 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Actual live schema per-field/nested bounds, Unicode/escaping/encoded byte ceiling and no-provider-on-oversize tests PASS; raw-RPC worker and shared generator now enforce the same aggregate budget.
 - **Release / remaining work / owner:** Pre-dispatch checks published in #424; existing admin/normal-user limits and saved historical content remain unchanged.
 - **Closure evidence:** 2026-10-25 publication verification above plus actual-schema/encoded-budget/no-dispatch tests in the [dossier](PB-AUD-final-verification-20261025.md).
+
+## PB-UX-20261025-01 — Live Liked Tracks synchronization
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Like and Unlike must reflect in Library → Liked Tracks without page reload; unlike removes a visible row immediately, failed mutation restores it; newly liked tracks refetch through the existing authorized server projection.
+- **Investigation:** Existing useLikes in `src/lib/likes.ts` only updates/invalidate per-track `["likes", trackId, userId]`; Library reads `["library", "liked", userId]` via `listLikedTracks`. Independent keys caused stale listing.
+- **Execution owner:** ChatGPT.
+- **PR and exact HEAD:** Branch `fix/pb-liked-library-live-sync-20261025`; record final PR HEAD after CI.
+- **Verification:** Contract test added. Browser Quality and Database Replay PASS at initial HEAD; Regression first failed on stale PR event body format and requires a fresh PR check run. Full runtime/UI verification remains outstanding.
+- **Release:** No schema change. Merge is not publish; confirm Lovable publication and UI after approval.
+- **Remaining work / owner:** Finish tests, CI and PR review, then approved publish and runtime verification.
