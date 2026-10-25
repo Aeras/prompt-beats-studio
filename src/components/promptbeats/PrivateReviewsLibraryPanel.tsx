@@ -104,33 +104,39 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                     onClick={() =>
                       setSelectedTrackId(selectedTrackId === track.id ? null : track.id)
                     }
-                  aria-expanded={selectedTrackId === track.id}
-                  className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                >
-                  <MessageSquareText className="h-5 w-5 shrink-0 text-accent" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{track.title}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {track.sessions.length} {el ? "συνεδρίες" : "sessions"} · {comments}{" "}
-                      {el ? "σχόλια" : "comments"}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {active ? (el ? "Ενεργό" : "Active") : el ? "Ιστορικό" : "History"}
-                  </span>
-                </button>
-                {!active && (
-                  <button
-                    type="button"
-                    onClick={() => confirmTrackDeletion(track.id, track.sessions.length)}
-                    disabled={deleteTrackReviews.isPending}
-                    aria-label={el ? `Διαγραφή όλων των reviews για ${track.title}` : `Delete all reviews for ${track.title}`}
-                    title={el ? "Οριστική διαγραφή όλων των reviews" : "Permanently delete all reviews"}
-                    className="mr-2 grid h-10 w-10 shrink-0 place-items-center text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    aria-expanded={selectedTrackId === track.id}
+                    className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <MessageSquareText className="h-5 w-5 shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{track.title}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {track.sessions.length} {el ? "συνεδρίες" : "sessions"} · {comments}{" "}
+                        {el ? "σχόλια" : "comments"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {active ? (el ? "Ενεργό" : "Active") : el ? "Ιστορικό" : "History"}
+                    </span>
                   </button>
-                )}
+                  {!active && (
+                    <button
+                      type="button"
+                      onClick={() => confirmTrackDeletion(track.id, track.sessions.length)}
+                      disabled={deleteTrackReviews.isPending}
+                      aria-label={
+                        el
+                          ? `Διαγραφή όλων των reviews για ${track.title}`
+                          : `Delete all reviews for ${track.title}`
+                      }
+                      title={
+                        el ? "Οριστική διαγραφή όλων των reviews" : "Permanently delete all reviews"
+                      }
+                      className="mr-2 grid h-10 w-10 shrink-0 place-items-center text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 {selectedTrackId === track.id && (
                   <PrivateReviewManager
