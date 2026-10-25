@@ -98,12 +98,13 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
             const comments = track.sessions.reduce((sum, session) => sum + session.commentCount, 0);
             const active = track.sessions.some((session) => session.state === "active");
             return (
-              <div key={track.id} className="relative">
+              <div key={track.id}>
+                <div className="flex items-center">
                 <button
                   type="button"
                   onClick={() => setSelectedTrackId(selectedTrackId === track.id ? null : track.id)}
                   aria-expanded={selectedTrackId === track.id}
-                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 pr-12 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                  className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 >
                   <MessageSquareText className="h-5 w-5 shrink-0 text-accent" />
                   <span className="min-w-0 flex-1">
@@ -124,11 +125,12 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                     disabled={deleteTrackReviews.isPending}
                     aria-label={el ? `Διαγραφή όλων των reviews για ${track.title}` : `Delete all reviews for ${track.title}`}
                     title={el ? "Οριστική διαγραφή όλων των reviews" : "Permanently delete all reviews"}
-                    className="absolute right-2 mt-[-3.2rem] grid h-9 w-9 place-items-center text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="mr-2 grid h-10 w-10 shrink-0 place-items-center text-muted-foreground hover:text-destructive disabled:opacity-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
+                </div>
                 {selectedTrackId === track.id && (
                   <PrivateReviewManager
                     initialTrackId={track.id}
