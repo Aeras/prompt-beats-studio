@@ -12,8 +12,10 @@ describe("Private Reviews library and detail actions", () => {
   });
 
   test("history is grouped by source track, not by share token", async () => {
-    const source = await Bun.file("src/components/promptbeats/PrivateReviewsLibraryPanel.tsx").text();
-    expect(source).toContain("session.sourceType !== \"track\"");
+    const source = await Bun.file(
+      "src/components/promptbeats/PrivateReviewsLibraryPanel.tsx",
+    ).text();
+    expect(source).toContain('session.sourceType !== "track"');
     expect(source).toContain("groups.get(id)");
     expect(source).toContain("historyOnly");
     expect(source).toContain("canCreateNew={false}");
