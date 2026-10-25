@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, FileText, Link2, Loader2, MessageSquareReply, Music2, X } from "lucide-react";
+import { Check, Copy, FileText, Link2, Loader2, MessageSquareReply, Music2, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -7,6 +7,7 @@ import {
   closePrivateReviewSession,
   createPrivateReviewSession,
   createPrivateTrackReviewSession,
+  deleteFinishedPrivateReviewSession,
   getMyPrivateReviewSession,
   listMyPrivateReviewSessions,
 } from "@/lib/private-review.functions";
@@ -161,6 +162,25 @@ export function PrivateReviewManager({
       ]);
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (sessionId: string) =>
+      deleteFinishedPrivateReviewSession({ data: { sessionId } }),
+    onSuccess: async (_, sessionId) => {
+      if (selectedSessionId === sessionId) setSelectedSessionId(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["private-review-sessions"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["private-review-owner-session"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["private-review-library"], exact: false }),
+      ]);
+    },
+  });
+  const confirmSessionDeletion = (id: string) => {
+    const text = el
+      ? "Οριστική διαγραφή αυτού του Private Review μαζί με σχόλια και reviewers; Δεν αναιρείται."
+      : "Permanently delete this Private Review and all comments and reviewers? This cannot be undone.";
+    if (window.confirm(text)) deleteMutation.mutate(id);
+  };
 
   const replyMutation = useMutation({
     mutationFn: () =>
@@ -621,6 +641,18 @@ export function PrivateReviewManager({
                         {session.state}
                       </p>
                     </button>
+                    {(session.state === "closed" || session.state === "expired") && (
+                      <button
+                        type="button"
+                        onClick={() => confirmSessionDeletion(session.id)}
+                        disabled={deleteMutation.isPending}
+                        title={el ? "Οριστική διαγραφή review" : "Permanently delete review"}
+                        aria-label={el ? "Οριστική διαγραφή review" : "Permanently delete review"}
+                        className="ml-auto grid h-8 w-8 place-items-center text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     {session.state === "active" && (
                       <button
                         type="button"
