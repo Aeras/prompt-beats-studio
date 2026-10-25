@@ -285,7 +285,9 @@ function TrackPage() {
               </div>
 
               <div className="flex w-full flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4">
-                <LikeButton trackId={track.id} />
+                <div className="grid h-11 min-w-11 place-items-center">
+                  <LikeButton trackId={track.id} compact />
+                </div>
                 <TrackLibraryActions
                   detailMode
                   track={{
