@@ -62,7 +62,7 @@ export const sendContactForm = createServerFn({ method: "POST" })
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Too many contact requests"))
         throw error;
-      console.error("[contact] email delivery failed", error);
+      // SMTP errors may include message content, recipients, or credentials.\n      console.error("[contact] email delivery failed", {\n        errorType: error instanceof Error ? error.name : "unknown",\n      });
       throw new Error("Contact message could not be sent. Please try again.");
     }
   });
