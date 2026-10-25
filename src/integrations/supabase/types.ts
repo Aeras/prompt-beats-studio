@@ -676,6 +676,54 @@ export type Database = {
         }
         Relationships: []
       }
+      audio_upload_receipts: {
+        Row: {
+          canonical_url: string
+          consumed_at: string | null
+          consumed_track_id: string | null
+          created_at: string
+          etag: string | null
+          expires_at: string
+          finalized_at: string | null
+          key: string
+          mime: string
+          owner_id: string
+          sha256: string
+          size: number
+          status: string
+        }
+        Insert: {
+          canonical_url: string
+          consumed_at?: string | null
+          consumed_track_id?: string | null
+          created_at?: string
+          etag?: string | null
+          expires_at?: string
+          finalized_at?: string | null
+          key: string
+          mime: string
+          owner_id: string
+          sha256: string
+          size: number
+          status?: string
+        }
+        Update: {
+          canonical_url?: string
+          consumed_at?: string | null
+          consumed_track_id?: string | null
+          created_at?: string
+          etag?: string | null
+          expires_at?: string
+          finalized_at?: string | null
+          key?: string
+          mime?: string
+          owner_id?: string
+          sha256?: string
+          size?: number
+          status?: string
+        }
+        Relationships: []
+      }
       contact_rate_admissions: {
         Row: {
           created_at: string
@@ -2819,6 +2867,30 @@ export type Database = {
           },
         ]
       }
+      stripe_checkout_reservations: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stripe_webhook_events: {
         Row: {
           event_type: string
@@ -3103,6 +3175,24 @@ export type Database = {
         }
         Update: {
           request_count?: number
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
+      track_upload_success_quota: {
+        Row: {
+          success_count: number
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          success_count?: number
+          user_id: string
+          window_started_at: string
+        }
+        Update: {
+          success_count?: number
           user_id?: string
           window_started_at?: string
         }
@@ -3876,6 +3966,30 @@ export type Database = {
         Args: { _access_mode: string; _feature_key: string }
         Returns: undefined
       }
+      finalize_generation_revision_atomic: {
+        Args: {
+          _attempts: number
+          _genre: string
+          _job_id: string
+          _language: string
+          _lyrics: string
+          _metadata: Json
+          _model: string
+          _mood: string
+          _note: string
+          _parent_prompt_id: string
+          _project_id: string
+          _provider: string
+          _result: Json
+          _revision_request: string
+          _snapshot: Json
+          _tags: string
+          _theme: string
+          _title: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       finalize_moderation_case_appeal: {
         Args: {
           _action: string
@@ -4194,6 +4308,10 @@ export type Database = {
       request_quality_check_cancellation: {
         Args: { _action_id: string }
         Returns: string
+      }
+      reserve_stripe_checkout_attempt: {
+        Args: { _attempt_id: string; _user_id: string }
+        Returns: boolean
       }
       review_content_report: {
         Args: {
