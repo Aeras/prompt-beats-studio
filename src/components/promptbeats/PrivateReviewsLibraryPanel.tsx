@@ -76,6 +76,11 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
           className="h-11 w-full rounded-xl border border-white/10 bg-black/25 pl-10 pr-3 text-sm outline-none focus:border-accent/50"
         />
       </div>
+      {deleteTrackReviews.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {el ? "Η διαγραφή απέτυχε. Ελέγξτε αν υπάρχει ενεργό review." : "Deletion failed. Check for an active review."}
+        </p>
+      )}
       {sessions.isPending ? (
         <div className="flex items-center gap-2 py-5 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
