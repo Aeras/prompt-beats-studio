@@ -22,6 +22,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Agent contract and evidence ledger gate
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -s AGENTS.md
+          test -s docs/WORK-STATUS.md
+          grep -q 'PromptBeats — mandatory agent working contract' AGENTS.md
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/pb-changed-paths.txt
+          # Documentation-only changes need no new work ledger entry.
+          if grep -Eq '^(src/|supabase/|package.json$|bun.lock$|vite.config.|server/|functions/)' /tmp/pb-changed-paths.txt; then
+            if ! grep -Fxq 'docs/WORK-STATUS.md' /tmp/pb-changed-paths.txt; then
+              echo "::error::Code/database/dependency changes must update docs/WORK-STATUS.md in the same PR."
+              exit 1
+            fi
+            python3 - <<'PY'
+          import json, os, sys
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as f:
+              body = (json.load(f).get("pull_request") or {}).get("body") or ""
+          headings = ["## Full-scope investigation", "## Implementation and ownership", "## Verification and release", "## Work ledger"]
+          missing = [h for h in headings if h not in body]
+          if missing:
+              print("::error::PR description missing required workflow sections: " + ", ".join(missing))
+              sys.exit(1)
+          PY
+          fi
+
       - name: Migration history immutability
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         env:
