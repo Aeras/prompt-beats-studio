@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { Play, Pause } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Play, Pause, Share2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Track } from "@/lib/tracks";
 import { LikeButton } from "@/components/promptbeats/LikeButton";
@@ -107,6 +108,7 @@ export function TrackCard({
   const { openExternalPlayback } = useExternalPlayback();
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
   const [similarSongsOpen, setSimilarSongsOpen] = useState(false);
+  const compactShareTriggerRef = useRef<HTMLButtonElement>(null);
   const [contentAnchor, setContentAnchor] = useState<Pick<
     DOMRect,
     "left" | "top" | "bottom" | "width"
@@ -408,15 +410,13 @@ export function TrackCard({
                 <>
                   <SimilarSongsMenuItem onOpen={() => setSimilarSongsOpen(true)} />
                   {compact && track.userId && (
-                    <ShareTrackButton
-                      trackId={track.id}
-                      ownerId={track.userId}
-                      isPublished={track.isPublished ?? true}
-                      promptIsPublic={track.promptIsPublic ?? true}
-                      lyricsIsPublic={track.lyricsIsPublic ?? true}
-                      trackTitle={track.title}
-                      menuItem
-                    />
+                    <DropdownMenu.Item
+                      onSelect={() => compactShareTriggerRef.current?.click()}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-white/10 focus:bg-white/10"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      {language === "el" ? "Κοινοποίηση" : "Share"}
+                    </DropdownMenu.Item>
                   )}
                   {track.userId && (
                     <ReportTrackControl
@@ -437,6 +437,18 @@ export function TrackCard({
           </div>
         </div>
       </div>
+      {compact && track.userId && (
+        <ShareTrackButton
+          trackId={track.id}
+          ownerId={track.userId}
+          isPublished={track.isPublished ?? true}
+          promptIsPublic={track.promptIsPublic ?? true}
+          lyricsIsPublic={track.lyricsIsPublic ?? true}
+          trackTitle={track.title}
+          hiddenTrigger
+          triggerRef={compactShareTriggerRef}
+        />
+      )}
       <SimilarSongsDialog
         trackId={track.id}
         trackTitle={track.title}
