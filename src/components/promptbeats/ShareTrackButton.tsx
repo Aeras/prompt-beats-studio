@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type Ref, type PointerEvent as ReactPointerEvent } from "react";
 import { Check, Copy, Loader2, Mail, MoreHorizontal, Share2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,8 @@ type Props = {
   compact?: boolean;
   bare?: boolean;
   menuItem?: boolean;
+  hiddenTrigger?: boolean;
+  triggerRef?: Ref<HTMLButtonElement>;
 };
 
 type ShareDestination = "whatsapp" | "facebook" | "messenger" | "viber" | "telegram" | "email";
@@ -48,6 +50,8 @@ export function ShareTrackButton({
   compact = false,
   bare = false,
   menuItem = false,
+  hiddenTrigger = false,
+  triggerRef,
 }: Props) {
   const { user } = useAuth();
   const sharingAccess = useFeatureAccess("sharing_public_links");
@@ -545,6 +549,9 @@ export function ShareTrackButton({
     <>
       <button
         type="button"
+        ref={triggerRef}
+        hidden={hiddenTrigger}
+        tabIndex={hiddenTrigger ? -1 : undefined}
         onClick={openShareHub}
         aria-label={language === "el" ? "Κοινοποίηση" : "Share"}
         className={
