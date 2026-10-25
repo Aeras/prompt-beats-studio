@@ -153,6 +153,14 @@ export async function recordAiUsage(rec: UsageRecord): Promise<void> {
         if (error) throw new Error("Usage outbox persistence failed.");
       },
     });
+    try {
+      const { attachAuxiliaryReceipt } = await import("./ai-auxiliary-model-context.server");
+      await attachAuxiliaryReceipt(payload);
+    } catch {
+      // Financial evidence has already been persisted; retain only the precise
+      // conservative uninstall blocker if its association needs reconciliation.
+      console.error("[ai-usage] auxiliary receipt association pending", payload.id);
+    }
     if (outcome === "recorded") {
       const { error: flushError } = await supabaseAdmin
         .rpc("flush_ai_usage_outbox" as never, { _limit: 20 } as never)

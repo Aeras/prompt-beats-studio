@@ -344,3 +344,20 @@ test("defaults stay guarded; keyboard menus preserve selected-user workflow", as
   );
   expect(f.writes[0]!.patch).toEqual({ accessPolicy: "selected_users" });
 });
+
+test("only active defaults block the concise uninstall confirmation", async ({ page }) => {
+  await fixture(page);
+  const trash = page.getByRole("button", { name: /^(Uninstall models|Απεγκατάσταση μοντέλων)$/ });
+  await trash.click();
+  await page.getByRole("checkbox", { name: /^(Select|Επιλογή) Offline model 1$/ }).check();
+  await trash.click();
+  const panel = page.getByRole("alertdialog");
+  await expect(panel.getByRole("button", { name: /^(Delete|Διαγραφή)$/ })).toBeDisabled();
+  await expect(panel).toContainText(/Active default|Ενεργή προεπιλογή/);
+  await page.getByRole("button", { name: /^(Cancel selection|Ακύρωση επιλογής)$/ }).click();
+  await trash.click();
+  await page.getByRole("checkbox", { name: /^(Select|Επιλογή) Offline model 2$/ }).check();
+  await trash.click();
+  await expect(panel.getByRole("button", { name: /^(Delete|Διαγραφή)$/ })).toBeEnabled();
+  await expect(panel).not.toContainText(/Reassign user access|Legacy shared fallback/);
+});

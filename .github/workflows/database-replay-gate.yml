@@ -106,6 +106,8 @@ jobs:
           bash scripts/tests/library-folder-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_models_inline_admin.sql
           bash scripts/tests/ai-model-admin-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_model_precise_dependencies.sql
+          bash scripts/tests/ai-model-precise-dependency-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database
         if: always()

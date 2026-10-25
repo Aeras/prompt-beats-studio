@@ -6,12 +6,14 @@ type RpcResult<T> = PromiseLike<{ data: T; error: RpcError }>;
 
 type InternalAiRpcClient = {
   rpc(
-    name: "mark_auxiliary_ai_provider_started_internal",
+    name: "auxiliary_model_use_start_internal",
     args: {
       _user_id: string;
       _operation: string;
       _request_key: string;
       _execution_token: string;
+      _model: string;
+      _use_id: string;
     },
   ): RpcResult<boolean>;
   rpc(
@@ -64,12 +66,16 @@ export async function markAuxiliaryAiProviderStarted(input: {
   operation: string;
   requestKey: string;
   executionToken: string;
+  model: string;
+  useId: string;
 }) {
-  const { data, error } = await internalAiRpc.rpc("mark_auxiliary_ai_provider_started_internal", {
+  const { data, error } = await internalAiRpc.rpc("auxiliary_model_use_start_internal", {
     _user_id: input.userId,
     _operation: input.operation,
     _request_key: input.requestKey,
     _execution_token: input.executionToken,
+    _model: input.model,
+    _use_id: input.useId,
   });
   if (error || data !== true) {
     throw new Error("The AI request could not start safely. Please try again.");

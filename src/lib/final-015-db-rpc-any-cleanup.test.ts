@@ -40,7 +40,7 @@ describe("FINAL-015 typed database and RPC boundaries", () => {
     expect(aiFinalization).toContain("type InternalAiRpcClient = {");
     expect(aiFinalization).toContain("supabaseAdmin as unknown as InternalAiRpcClient");
     for (const rpc of [
-      "mark_auxiliary_ai_provider_started_internal",
+      "auxiliary_model_use_start_internal",
       "complete_auxiliary_ai_request_internal",
       "fail_auxiliary_ai_request_internal",
       "mark_quality_check_provider_started_internal",

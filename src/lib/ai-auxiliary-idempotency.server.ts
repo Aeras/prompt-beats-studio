@@ -1,11 +1,8 @@
+import { auxiliaryModelContext, startAuxiliaryModel } from "./ai-auxiliary-model-context.server";
 import { z } from "zod";
 
 import type { AuxiliaryAiOperation } from "@/lib/ai-admission.server";
-import {
-  completeAuxiliaryAiRequest,
-  failAuxiliaryAiRequest,
-  markAuxiliaryAiProviderStarted,
-} from "@/lib/ai-finalization.server";
+import { completeAuxiliaryAiRequest, failAuxiliaryAiRequest } from "@/lib/ai-finalization.server";
 
 export const auxiliaryRequestKeySchema = z.string().guid();
 
@@ -26,7 +23,7 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
   userId: string;
   operation: AuxiliaryAiOperation;
   requestKey: string;
-  execute: (markProviderStarted: () => Promise<void>) => Promise<T>;
+  execute: (markProviderStarted: (model: string) => Promise<void>) => Promise<T>;
 }): Promise<T> {
   const { data, error } = await input.supabase.rpc("claim_auxiliary_ai_request", {
     _operation: input.operation,
@@ -51,37 +48,40 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
   }
 
   const executionToken = executionTokenResult.data;
-  try {
-    let providerStarted = false;
-    const markProviderStarted = async () => {
-      if (providerStarted) return;
-      await markAuxiliaryAiProviderStarted({
-        userId: input.userId,
-        operation: input.operation,
-        requestKey: input.requestKey,
-        executionToken,
-      });
-      providerStarted = true;
-    };
-
-    const result = await input.execute(markProviderStarted);
-    await completeAuxiliaryAiRequest({
+  return auxiliaryModelContext.run(
+    {
       userId: input.userId,
       operation: input.operation,
       requestKey: input.requestKey,
       executionToken,
-      result,
-    });
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message.slice(0, 500) : "auxiliary_ai_failed";
-    await failAuxiliaryAiRequest({
-      userId: input.userId,
-      operation: input.operation,
-      requestKey: input.requestKey,
-      executionToken,
-      errorMessage: message,
-    });
-    throw error;
-  }
+      uses: [],
+    },
+    async () => {
+      try {
+        const markProviderStarted = async (model: string) => {
+          await startAuxiliaryModel(model);
+        };
+        const result = await input.execute(markProviderStarted);
+        await completeAuxiliaryAiRequest({
+          userId: input.userId,
+          operation: input.operation,
+          requestKey: input.requestKey,
+          executionToken,
+          result,
+        });
+        return result;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message.slice(0, 500) : "auxiliary_ai_failed";
+        await failAuxiliaryAiRequest({
+          userId: input.userId,
+          operation: input.operation,
+          requestKey: input.requestKey,
+          executionToken,
+          errorMessage: message,
+        });
+        throw error;
+      }
+    },
+  );
 }

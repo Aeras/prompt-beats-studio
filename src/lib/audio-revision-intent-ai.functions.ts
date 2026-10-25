@@ -136,7 +136,7 @@ export const translateAudioRevisionIntent = createServerFn({ method: "POST" })
         let result: Awaited<ReturnType<typeof caller>> | null = null;
 
         try {
-          await markProviderStarted();
+          await markProviderStarted(resolved.model);
           result = await caller({
             system: SYSTEM_PROMPT,
             prompt,
