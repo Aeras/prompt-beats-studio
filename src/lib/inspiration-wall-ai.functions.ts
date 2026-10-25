@@ -286,7 +286,7 @@ export const extractInspirationWallCreativeDirection = createServerFn({ method: 
         let usage: ReturnType<typeof normalizedGeminiUsage> = null;
         let success = false;
         try {
-          await markProviderStarted();
+          await markProviderStarted(selected.id);
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selected.id)}:generateContent`,
             {

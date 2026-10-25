@@ -313,7 +313,7 @@ async function callPlannerModel(input: {
   requestedModel?: string | null;
   system: string;
   prompt: string;
-  markProviderStarted?: () => Promise<void>;
+  markProviderStarted?: (model: string) => Promise<void>;
 }) {
   const selected = await resolvePlannerModel(input.userId, input.requestedModel);
   const caller = modelCaller(selected.id, selected.provider, {
@@ -325,7 +325,7 @@ async function callPlannerModel(input: {
   let actualModel = selected.id;
   let success = false;
   try {
-    await input.markProviderStarted?.();
+    await input.markProviderStarted?.(selected.id);
     const result = await caller({
       system: input.system,
       prompt: input.prompt,

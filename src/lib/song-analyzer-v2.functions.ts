@@ -89,7 +89,7 @@ export const analyzeSongV2 = createServerFn({ method: "POST" })
           schema: ANALYZER_RESPONSE_SCHEMA,
           validator: songAnalysisResultSchema,
           markProviderStarted: async () => {
-            await markProviderStarted();
+            await markProviderStarted(model.id);
             await beginExecution(executionId, executionContext, model.provider, model.id);
           },
           observeUsage: (usage) => observeExecution(executionId, context.userId, usage),

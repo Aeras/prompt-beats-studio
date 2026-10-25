@@ -1957,7 +1957,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         let evidence: StageAEvidence;
         const stageAStartedAt = Date.now();
         try {
-          await markProviderStarted();
+          await markProviderStarted(data.model);
           evidence = await generateAudioEvidence({
             apiKey,
             provider,
@@ -2004,6 +2004,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         let result: SongAnalysisResult;
         const stageBStartedAt = Date.now();
         try {
+          await markProviderStarted(synthesisModel);
           result = await generateFinalFromEvidence({
             apiKey: synthesisApiKey,
             model: synthesisModel,
@@ -2050,6 +2051,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
         let externalUsage: ReturnType<typeof normalizedUsage> = null;
         let external: ExternalValidation | null = null;
         try {
+          await markProviderStarted(data.model);
           const validationResult = await runExternalReferenceValidation({
             apiKey,
             model: data.model,
@@ -2091,6 +2093,7 @@ export const analyzeSong = createServerFn({ method: "POST" })
 
         let reconciliationUsage: ReturnType<typeof normalizedUsage> = null;
         try {
+          await markProviderStarted(data.model);
           const reconciled = await generateFinalFromEvidence({
             apiKey,
             model: data.model,

@@ -82,15 +82,15 @@ SELECT pg_sleep(2) /*model-grant-winner*/;
 COMMIT;
 SQL
 winner=$!; wait_sleep model-grant-winner
-if error="$(query <<SQL 2>&1
+query <<SQL >/dev/null
 BEGIN;
 SELECT set_config('request.jwt.claim.sub','$actor',true);
 SET LOCAL ROLE authenticated;
 SELECT public.admin_uninstall_ai_models('[{"id":"ad100000-0000-4000-8000-000000000004","revision":0}]',true);
 COMMIT;
+DO \$\$ BEGIN IF NOT EXISTS(SELECT 1 FROM public.user_model_access WHERE user_id='$actor' AND access_mode='inherit' AND cardinality(allowed_models)=0) THEN RAISE EXCEPTION 'Concurrent grant not cleaned'; END IF; END \$\$;
 SQL
-)"; then echo 'FAIL: orphaned concurrently assigned user access' >&2; exit 1; fi
-[[ "$error" == *'active defaults or dependencies'* ]]; wait "$winner"
+wait "$winner"
 # Reverse ordering: once deletion commits, assignment must fail, not create an orphan.
 query <<SQL >/dev/null &
 BEGIN;

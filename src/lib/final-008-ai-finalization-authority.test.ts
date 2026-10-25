@@ -43,7 +43,10 @@ describe("FINAL-008 AI finalization authority", () => {
   test("auxiliary claims stay caller-bound but transitions use the server-only helper", async () => {
     const helper = await source("src/lib/ai-auxiliary-idempotency.server.ts");
     expect(helper).toContain('input.supabase.rpc("claim_auxiliary_ai_request"');
-    expect(helper).toContain("markAuxiliaryAiProviderStarted({");
+    expect(helper).toContain("startAuxiliaryModel");
+    expect(await source("src/lib/ai-auxiliary-model-context.server.ts")).toContain(
+      "markAuxiliaryAiProviderStarted({",
+    );
     expect(helper).toContain("completeAuxiliaryAiRequest({");
     expect(helper).toContain("failAuxiliaryAiRequest({");
     expect(helper).not.toContain('input.supabase.rpc("mark_auxiliary_ai_provider_started"');

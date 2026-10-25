@@ -183,7 +183,7 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
 
         let result: Awaited<ReturnType<typeof caller>> | null = null;
         try {
-          await markProviderStarted();
+          await markProviderStarted(resolved.model);
           result = await caller({
             system: SYSTEM_PROMPT,
             prompt,

@@ -12,7 +12,6 @@ import { useI18n } from "@/i18n";
 import {
   patchAdminAiModel,
   uninstallAdminAiModels,
-  setAdminAiModelDefault,
   type AdminAiModel,
 } from "@/lib/ai-model-admin.functions";
 
@@ -365,7 +364,11 @@ export function InstalledAiModelsTable({
       setConfirm(false);
       setIds(new Set());
       setSelection(false);
-      await qc.invalidateQueries({ queryKey: key });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: key }),
+        qc.invalidateQueries({ queryKey: ["admin-user"] }),
+        qc.invalidateQueries({ queryKey: ["my-ai-model-access"] }),
+      ]);
       trash.current?.focus();
       toast.success(el ? "Τα μοντέλα απεγκαταστάθηκαν." : "Models uninstalled.");
     },
@@ -378,11 +381,6 @@ export function InstalledAiModelsTable({
       await qc.invalidateQueries({ queryKey: key });
     },
   });
-  const legacy = useMutation({
-    mutationFn: (model: string) => setAdminAiModelDefault({ data: { operation: "legacy", model } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
-    onError: () => toast.error(el ? "Η προεπιλογή δεν άλλαξε." : "Default not changed."),
-  });
   useEffect(() => {
     if (restoreFocus.current && !uninstall.isPending && !confirm) {
       restoreFocus.current = false;
@@ -394,13 +392,17 @@ export function InstalledAiModelsTable({
       if (reason.startsWith("default:"))
         return `${el ? "Ενεργή προεπιλογή" : "Active default"}: ${{ ai_generator_default_model: "Generator", ai_quality_check_default_model: "Quality Check", ai_tools_default_model: "AI Tools", ai_model: el ? "Κοινή παλαιότερη προεπιλογή" : "Legacy shared fallback" }[reason.slice(8)] ?? (el ? "Προεπιλογή" : "Default")}`;
       const messages: Record<string, string> = {
-        user_access: el ? "Αναθέστε ξανά τα δικαιώματα χρηστών" : "Reassign user access",
+        legacy_fallback: el
+          ? "Ρυθμίστε τις ενεργές προεπιλογές πριν αφαιρέσετε το τελευταίο fallback"
+          : "Configure operation defaults before removing the last fallback",
         active_jobs: el ? "Εκκρεμείς εργασίες" : "Pending jobs",
         unresolved_execution: el
           ? "Εκτέλεση σε αναμονή συμφιλίωσης/ανάκτησης"
           : "Execution awaiting reconciliation/recovery",
         usage_pending: el ? "Εκκρεμής καταγραφή χρήσης" : "Pending usage accounting",
-        active_auxiliary: el ? "Εκκρεμείς βοηθητικές εργασίες" : "Unresolved auxiliary requests",
+        active_auxiliary: el
+          ? "Ενεργή εργασία ή εκκρεμής χρήση αυτού του μοντέλου"
+          : "This model has active work or unsettled usage",
         foreign_key: el ? "Εξάρτηση βάσης δεδομένων" : "Database dependency",
       };
       return messages[reason] ?? (el ? "Ενεργή εξάρτηση" : "Active dependency");
@@ -478,8 +480,8 @@ export function InstalledAiModelsTable({
           </h4>
           <p id="uninstall-description" className="mt-2 text-sm">
             {el
-              ? "Διαγράφονται μόνο οι εγκατεστημένες καταχωρίσεις. Ιστορικά τραγούδια, αποτελέσματα και οικονομικές καταγραφές διατηρούνται. Για επανεγκατάσταση απαιτείται νέος εντοπισμός και έλεγχος παρόχου."
-              : "Only installed registry entries are deleted. Past songs, results and financial records remain. Reinstallation requires fresh provider discovery and checks."}
+              ? "Θέλεις να απεγκαταστήσεις οριστικά τα επιλεγμένα μοντέλα;"
+              : "Permanently uninstall the selected models?"}
           </p>
           <ul className="my-3 space-y-2 text-sm">
             {selected.map((model) => (
@@ -493,40 +495,6 @@ export function InstalledAiModelsTable({
               </li>
             ))}
           </ul>
-          {selected.some((model) => model.uninstallBlockers.includes("user_access")) &&
-            manageAccess && (
-              <button className={button} onClick={manageAccess}>
-                {el ? "Δικαιώματα χρηστών" : "Manage user access"}
-              </button>
-            )}
-          {data.legacyDefault &&
-            selected.some((model) => model.providerModelId === data.legacyDefault) && (
-              <div className="my-3">
-                <p className="mb-2 text-xs">
-                  {el
-                    ? "Αντικατάσταση κοινής παλαιότερης προεπιλογής (δεν αλλάζει τις τρεις προεπιλογές λειτουργιών):"
-                    : "Replace legacy shared fallback (does not change the three operation defaults):"}
-                </p>
-                <Choice
-                  label="Legacy fallback"
-                  value={data.legacyDefault}
-                  options={data.models
-                    .filter(
-                      (model) =>
-                        !ids.has(model.id) &&
-                        model.status === "enabled" &&
-                        model.generatorEnabled &&
-                        model.generatorCompatible &&
-                        model.qualityCheckEnabled &&
-                        model.qualityCheckCompatible,
-                    )
-                    .map((model) => model.providerModelId)}
-                  change={(model) => {
-                    if (!legacy.isPending) legacy.mutate(model);
-                  }}
-                />
-              </div>
-            )}
           <div className="mt-4 flex gap-3">
             <button
               ref={cancel}
@@ -546,8 +514,7 @@ export function InstalledAiModelsTable({
                 ids.size !== selected.length ||
                 selected.some((model) => model.uninstallBlockers.length) ||
                 busy ||
-                uninstall.isPending ||
-                legacy.isPending
+                uninstall.isPending
               }
               onClick={() => uninstall.mutate()}
             >

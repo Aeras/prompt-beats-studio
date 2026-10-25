@@ -403,7 +403,9 @@ function endpointFixture(allowed = true) {
     execute: typeof import("./ai-auxiliary-idempotency.server").executeDurableAuxiliaryAiRequest;
   }>(`${durableSource}\nexports.execute=executeDurableAuxiliaryAiRequest;`, {
     auxiliaryRequestKeySchema: z.string().guid(),
-    markAuxiliaryAiProviderStarted: async () => {
+    auxiliaryModelContext: { run: (_scope: unknown, execute: () => unknown) => execute() },
+    startAuxiliaryModel: async (model: string) => {
+      expect(model).toBeTruthy();
       events.push("started");
     },
     completeAuxiliaryAiRequest: async (args: { requestKey: string; result: unknown }) => {

@@ -27,7 +27,9 @@ describe("F7-03 durable auxiliary AI idempotency", () => {
     const helper = await source("src/lib/ai-auxiliary-idempotency.server.ts");
     expect(helper).toContain('input.supabase.rpc("claim_auxiliary_ai_request"');
     expect(helper).toContain('from "@/lib/ai-finalization.server"');
-    expect(helper).toContain("markAuxiliaryAiProviderStarted");
+    expect(helper).toContain("startAuxiliaryModel");
+    const binding = await source("src/lib/ai-auxiliary-model-context.server.ts");
+    expect(binding).toContain("markAuxiliaryAiProviderStarted");
     expect(helper).toContain('claim.status === "completed"');
     expect(helper).toContain('claim.status === "processing"');
     expect(helper).toContain("completeAuxiliaryAiRequest");

@@ -1441,6 +1441,8 @@ export function modelCaller(
   };
   if (!context) return raw;
   const tracked: ModelCaller = async (call) => {
+    const { claimAuxiliaryModel } = await import("./ai-auxiliary-model-context.server");
+    await claimAuxiliaryModel(model);
     const { trackedCaller } = await import("./ai-execution.server");
     const invoke = trackedCaller(raw, provider, model, context);
     try {

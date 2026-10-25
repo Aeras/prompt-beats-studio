@@ -1,5 +1,7 @@
 # AI Models inline administration — PR #435
 
+> Dependency handling below records the original #435 behavior. PR #437 supersedes its blanket auxiliary/user-grant/legacy uninstall blockers. Use [the precise dependency release plan](PB-AI-MODEL-PRECISE-UNINSTALL.md) with its additional forward migration and verified old-worker cutover before releasing that change.
+
 ## Scope and compatibility
 
 Implements the three approved changes in `PB-AI-MODELS-INLINE-ADMIN-20261025.md` on the existing branch. No AI prompts, model selections, generation stages, Quality Check scoring, pricing policies, subscriptions or production data are changed. Existing advanced pricing/reasoning editor, discovery, explicit compatibility probes and health actions remain available. Tests use synthetic models and intercepted requests; no provider probes were executed.

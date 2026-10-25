@@ -54,11 +54,11 @@ SELECT pg_temp.denied($q$SELECT public.admin_uninstall_ai_models('[{"id":"ac1000
 RESET ROLE;
 SELECT pg_temp.assert((SELECT count(*)=2 FROM public.ai_models WHERE provider_model_id IN ('offline-admin-1','offline-admin-2')),'Blocked bulk is all-or-nothing');
 INSERT INTO public.user_model_access(user_id,access_mode,allowed_models) VALUES('ac000000-0000-4000-8000-000000000002','custom',ARRAY['offline-admin-3']);
-SELECT pg_temp.assert('user_access'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-3'))),'Existing user grants block uninstall, never widen to inherit');
+SELECT pg_temp.assert(NOT 'user_access'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-3'))),'User grants are cleaned during uninstall, not blockers');
 INSERT INTO public.ai_usage_outbox(payload) VALUES('{"model":"offline-admin-4"}');
 SELECT pg_temp.assert('usage_pending'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-4'))),'Pending financial evidence blocks uninstall');
 INSERT INTO public.ai_auxiliary_requests(user_id,operation,request_key) VALUES('ac000000-0000-4000-8000-000000000002','song_analyzer',gen_random_uuid());
-SELECT pg_temp.assert('active_auxiliary'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-5'))),'Unknown auxiliary model fails closed');
+SELECT pg_temp.assert(NOT 'active_auxiliary'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-5'))),'Unlabelled legacy auxiliary rows do not block unrelated registry models');
 DELETE FROM public.ai_auxiliary_requests WHERE user_id='ac000000-0000-4000-8000-000000000002';
 -- Live jobs, unresolved dispatches and recoverable results cannot be deleted.
 INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload,model) VALUES('ac200000-0000-4000-8000-000000000005','ac000000-0000-4000-8000-000000000002',gen_random_uuid(),'processing','{}','offline-admin-5');
