@@ -100,7 +100,9 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
       {selectedTrackId && (
         <PrivateReviewManager
           initialTrackId={selectedTrackId}
-          projectName={tracks.find((track) => track.id === selectedTrackId)?.title ?? "Private Review"}
+          projectName={
+            tracks.find((track) => track.id === selectedTrackId)?.title ?? "Private Review"
+          }
           language={language}
           canCreateNew={false}
           historyOnly
