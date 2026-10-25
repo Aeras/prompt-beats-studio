@@ -78,7 +78,9 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
       </div>
       {deleteTrackReviews.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {el ? "Η διαγραφή απέτυχε. Ελέγξτε αν υπάρχει ενεργό review." : "Deletion failed. Check for an active review."}
+          {el
+            ? "Η διαγραφή απέτυχε. Ελέγξτε αν υπάρχει ενεργό review."
+            : "Deletion failed. Check for an active review."}
         </p>
       )}
       {sessions.isPending ? (
