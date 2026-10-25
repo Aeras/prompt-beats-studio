@@ -31,6 +31,7 @@ import { AppShell } from "@/components/promptbeats/AppShell";
 import { TrackCard } from "@/components/promptbeats/TrackCard";
 import { PlaylistLibraryPanel } from "@/components/promptbeats/PlaylistLibraryPanel";
 import { SharedLinksPanel } from "@/components/promptbeats/SharedLinksPanel";
+import { PrivateReviewsLibraryPanel } from "@/components/promptbeats/PrivateReviewsLibraryPanel";
 import { ExportControl } from "@/components/promptbeats/ExportControl";
 import {
   TrackGridModeToggle,
@@ -361,6 +362,7 @@ function LibraryPage() {
     if (value === "tracks") return t("library.myTracks");
     if (value === "playlists") return language === "el" ? "Λίστες αναπαραγωγής" : "Playlists";
     if (value === "shared") return "Shared Links";
+    if (value === "reviews") return "Private Reviews";
     if (value === "prompts") return t("library.savedPrompts");
     if (value === "favorites") return language === "el" ? "Τα Αγαπημένα μου" : "My Favorites";
     return t("library.likedTracks");
@@ -488,6 +490,7 @@ function LibraryPage() {
         )}
 
         {tab === "shared" && user && <SharedLinksPanel />}
+        {tab === "reviews" && user && <PrivateReviewsLibraryPanel userId={user.id} />}
 
         {tab === "favorites" && favoritesAccess.allowed && (
           <>
