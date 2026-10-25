@@ -11,6 +11,7 @@ import { StaffBadge } from "@/components/promptbeats/StaffBadge";
 import { ExplicitBadge } from "@/components/promptbeats/ExplicitBadge";
 import { ReportTrackControl } from "@/components/promptbeats/ReportTrackControl";
 import { SimilarSongsMenuItem } from "@/components/promptbeats/SimilarSongsMenuItem";
+import { SimilarSongsDialog } from "@/components/promptbeats/SimilarSongsDialog";
 import { ExternalTrackEmbed } from "@/components/promptbeats/ExternalTrackEmbed";
 import { useExternalPlayback } from "@/components/promptbeats/ExternalPlaybackProvider";
 import {
@@ -105,6 +106,7 @@ export function TrackCard({
   const { t, language } = useI18n();
   const { openExternalPlayback } = useExternalPlayback();
   const [activeContent, setActiveContent] = useState<TrackContentKind | null>(null);
+  const [similarSongsOpen, setSimilarSongsOpen] = useState(false);
   const [contentAnchor, setContentAnchor] = useState<Pick<
     DOMRect,
     "left" | "top" | "bottom" | "width"
@@ -404,7 +406,7 @@ export function TrackCard({
               }
               menuActions={
                 <>
-                  <SimilarSongsMenuItem trackId={track.id} trackTitle={track.title} />
+                  <SimilarSongsMenuItem onOpen={() => setSimilarSongsOpen(true)} />
                   {compact && track.userId && (
                     <ShareTrackButton
                       trackId={track.id}
@@ -435,6 +437,12 @@ export function TrackCard({
           </div>
         </div>
       </div>
+      <SimilarSongsDialog
+        trackId={track.id}
+        trackTitle={track.title}
+        open={similarSongsOpen}
+        onClose={() => setSimilarSongsOpen(false)}
+      />
       {activeContent && (
         <TrackContentOverlay
           kind={activeContent}
