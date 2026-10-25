@@ -321,6 +321,7 @@ export const deleteFinishedPrivateReviewTrack = createServerFn({ method: "POST" 
       "delete_finished_private_review_track",
       { _track_id: data.trackId },
     );
-    if (error) throw new Error("This review history could not be deleted. Check for active reviews.");
+    if (error)
+      throw new Error("This review history could not be deleted. Check for active reviews.");
     return z.object({ deleted: z.number().int().positive() }).parse(result);
   });
