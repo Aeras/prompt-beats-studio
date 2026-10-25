@@ -392,3 +392,14 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Add regression guard to existing similar songs tests; exact-HEAD Regression / Browser Quality / Database Replay outstanding.
 - **Release:** No SQL migration. Publish and runtime UI verification required separately; no deployment performed.
 - **Remaining work / owner:** Validate all gates, merge approved verified code, publish/retest before CLOSED.
+
+## PB-UX-20261025-05 — Compact share hub
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Compact card Share opens the same full hub as standard/detail card with copy, destination shortcuts, native share, owner Prompt/Lyrics toggles; no silent-only link creation. Owner share tokens remain durable unless revoked, moderated, private or deleted; per-request signed audio URLs may expire independently.
+- **Investigation:** ShareTrackButton menuItem owns its open state and portal while nested inside auto-dismissing Radix dropdown, causing immediate unmount. TrackCard now keeps the hub persistent and uses a menu selection callback to activate its hidden trigger. Public track share RPC uses revocable token, no fixed expiration in share-management contract; no migration required.
+- **Execution owner:** ChatGPT.
+- **PR and exact HEAD:** Branch `fix/pb-compact-share-modal-lifecycle-20261025`; CI/PR pending.
+- **Verification:** Static regression check added; mandatory Regression / Browser Quality / Database Replay pending; production verification pending.
+- **Release:** No SQL or production changes. Publish separately, verify both mobile and desktop compact card.
+- **Remaining work / owner:** Finish CI, merge on green, approved publish and live validation before CLOSED.
