@@ -244,8 +244,16 @@ export function PrivateReviewManager({
           </div>
         )}
 
-        <div className={historyOnly ? "mt-5 grid gap-5" : "mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"}>
-          <section className={historyOnly ? "hidden" : "rounded-2xl border border-white/10 bg-black/20 p-4"}>
+        <div
+          className={
+            historyOnly ? "mt-5 grid gap-5" : "mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"
+          }
+        >
+          <section
+            className={
+              historyOnly ? "hidden" : "rounded-2xl border border-white/10 bg-black/20 p-4"
+            }
+          >
             <fieldset disabled={!canCreateNew} className={!canCreateNew ? "opacity-50" : undefined}>
               <h3 className="text-sm font-bold">{el ? "Νέο review" : "New review"}</h3>
 
