@@ -366,6 +366,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Investigation:** Existing useLikes in `src/lib/likes.ts` only updates/invalidate per-track `["likes", trackId, userId]`; Library reads `["library", "liked", userId]` via `listLikedTracks`. Independent keys caused stale listing.
 - **Execution owner:** ChatGPT.
 - **PR and exact HEAD:** Branch `fix/pb-liked-library-live-sync-20261025`; record final PR HEAD after CI.
-- **Verification:** Contract test added; full CI gates and user-facing release verification outstanding.
+- **Verification:** Contract test added. Browser Quality and Database Replay PASS at initial HEAD; Regression first failed on stale PR event body format and requires a fresh PR check run. Full runtime/UI verification remains outstanding.
 - **Release:** No schema change. Merge is not publish; confirm Lovable publication and UI after approval.
 - **Remaining work / owner:** Finish tests, CI and PR review, then approved publish and runtime verification.
