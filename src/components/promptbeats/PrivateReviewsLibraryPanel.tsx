@@ -76,7 +76,7 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
             const active = track.sessions.some((session) => session.state === "active");
             return (
               <div key={track.id}>
-              <button
+                <button
                 type="button"
                 onClick={() => setSelectedTrackId(selectedTrackId === track.id ? null : track.id)}
                 aria-expanded={selectedTrackId === track.id}
@@ -93,18 +93,17 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {active ? (el ? "Ενεργό" : "Active") : el ? "Ιστορικό" : "History"}
                 </span>
-              </button>
-              {selectedTrackId === track.id && (
+                </button>
+                {selectedTrackId === track.id && (
                 <PrivateReviewManager initialTrackId={track.id} projectName={track.title}
                   language={language} canCreateNew={false} historyOnly inline
                   onClose={() => setSelectedTrackId(null)} />
-              )}
+                )}
               </div>
             );
           })}
         </div>
       )}
-
     </section>
   );
 }
