@@ -284,9 +284,10 @@ function TrackPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+              <div className="flex w-full flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4">
                 <LikeButton trackId={track.id} />
                 <TrackLibraryActions
+                  detailMode
                   track={{
                     id: track.id,
                     userId: track.user_id,
@@ -312,6 +313,7 @@ function TrackPage() {
                   }}
                 />
                 <TrackOwnerActions
+                  bare
                   track={{
                     id: track.id,
                     user_id: track.user_id,
