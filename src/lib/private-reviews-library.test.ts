@@ -18,6 +18,9 @@ describe("Private Reviews library and detail actions", () => {
     expect(source).toContain('session.sourceType !== "track"');
     expect(source).toContain("groups.get(id)");
     expect(source).toContain("historyOnly");
+    expect(source).toContain("inline");
+    expect(source).toContain("aria-expanded={selectedTrackId === track.id}");
+    expect(source).not.toContain("{selectedTrackId && (");
     expect(source).toContain("canCreateNew={false}");
   });
 
