@@ -64,10 +64,16 @@ describe("AI model verification and update workflow", () => {
   });
 
   it("renders localized status, health, access, pricing, and compatibility labels", () => {
-    expect(panel).toContain("statusLabel(model.status)");
-    expect(panel).toContain("healthLabel(model.healthStatus)");
-    expect(panel).toContain("accessLabel(model.accessPolicy)");
-    expect(panel).toContain("pricingLabel(model.pricingStatus)");
+    const installed = readFileSync("src/components/promptbeats/InstalledAiModelsTable.tsx", "utf8");
+    for (const key of [
+      "aiModels.testing",
+      "aiModels.healthy",
+      "aiModels.adminOnly",
+      "aiModels.verified",
+    ])
+      expect(installed).toContain(key);
+    expect(installed).toContain("modelLabel(model.healthStatus)");
+    expect(installed).toContain("modelLabel(model.pricingStatus)");
     expect(panel).toContain("compatibilityLabel(result.status)");
     expect(panel).not.toContain(">{model.status}</Pill>");
     expect(panel).not.toContain(">{model.healthStatus}</Pill>");

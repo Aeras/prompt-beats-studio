@@ -40,7 +40,14 @@ describe("AI default invariant evolution", () => {
   });
 
   it("lets admins choose an eligible default regardless of access policy", () => {
-    expect(adminSource).toContain('model.status === "enabled"');
+    expect(adminSource).toContain('"admin_set_ai_model_default"');
+    const atomic = readFileSync(
+      "supabase/migrations/20261025173752_ai_models_inline_admin_uninstall.sql",
+      "utf8",
+    );
+    expect(atomic).toContain("row.status<>'enabled'");
+    expect(atomic).toContain("row.generator_compatible");
+    expect(atomic).not.toContain("row.access_policy");
     expect(adminSource).not.toContain("A default AI model must be available to all users.");
     expect(panelSource).not.toContain('m.accessPolicy === "all_users"');
     expect(panelSource).not.toContain("handleAccessPolicyChange");

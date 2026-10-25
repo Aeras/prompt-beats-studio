@@ -1520,7 +1520,9 @@ function ManagementPage() {
         />
         {!loading && isAdmin && section === "overview" && <OverviewPanel />}
         {!loading && isAdmin && section === "analytics" && <AnalyticsPanel />}
-        {!loading && isAdmin && section === "models" && <AiModelsPanel />}
+        {!loading && isAdmin && section === "models" && (
+          <AiModelsPanel onManageUserAccess={() => setSection("users")} />
+        )}
         {!loading && section === "users" && (
           <UsersPanel initialUserId={initialUserId} isAdmin={isAdmin} />
         )}

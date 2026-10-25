@@ -79,8 +79,13 @@ describe("AI model selector policy", () => {
     expect(panel).toMatch(/\[\s*"ai_tools",\s*t\("aiModels\.aiToolsDefault"\)/);
     expect(panel).toContain("setDefault.mutate({ operation, model: value })");
     expect(panel).toContain("isAiToolsDefault");
-    expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools"])');
-    expect(admin).toContain("isAiToolsDefault");
+    expect(admin).toContain('z.enum(["generator", "quality_check", "ai_tools", "legacy"])');
+    expect(admin).toContain('"admin_set_ai_model_default"');
+    const sql = await source(
+      "supabase/migrations/20261025173752_ai_models_inline_admin_uninstall.sql",
+    );
+    expect(sql).toContain("ai_tools_default_model");
+    expect(sql).toContain("Select another default before disabling this model");
   });
 
   test("Generator and Quality Check continue resolving through their own operation buckets", async () => {
