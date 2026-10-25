@@ -381,3 +381,14 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Full offline Bun 1,083 PASS / 7,328 assertions; strict TypeScript, affected-source ESLint/Prettier, production build and 33 browser tests PASS. Fresh local migration replay, seven SQL/RLS suites and six independent-connection scripts PASS. Exact final three-gate evidence belongs to the PR. Existing #426 Like-sync behavior retained.
 - **Release / remaining work:** Verify final CI/review before merge. Owner approval required for the single new migration and Lovable publish; neither performed. Verify actual Published snapshot and authorized favorites/playlist flows before CLOSED. Additive migration remains compatible with the previous application.
 - **Closure evidence:** Not CLOSED; no production functionality claim from local tests or editor synchronization.
+
+## PB-UX-20261025-04 — Similar Songs dialog lifecycle
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Clicking Similar Songs from compact/standard track card menu opens a persistent dialog showing loading, authorized matches, informative empty state or error; closes correctly. No similarity-scoring changes.
+- **Investigation:** Current main after #427; dropdown menu previously rendered SimilarSongsDialog inside SimilarSongsMenuItem. Radix dismisses/unmounts menu subtree when item is selected, immediately discarding dialog state. Existing listSimilarSongs, visibility filters and empty-state presentation remain unchanged.
+- **Execution owner:** ChatGPT.
+- **PR and exact HEAD:** Branch `fix/pb-similar-songs-modal-lifecycle-20261025`; final PR/CI evidence pending.
+- **Verification:** Add regression guard to existing similar songs tests; exact-HEAD Regression / Browser Quality / Database Replay outstanding.
+- **Release:** No SQL migration. Publish and runtime UI verification required separately; no deployment performed.
+- **Remaining work / owner:** Validate all gates, merge approved verified code, publish/retest before CLOSED.

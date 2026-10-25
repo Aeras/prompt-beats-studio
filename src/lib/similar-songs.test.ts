@@ -35,3 +35,13 @@ describe("similar songs scoring", () => {
     expect(tokens).not.toContain("and");
   });
 });
+
+// Prevent regressing to a dialog owned by an auto-unmounting dropdown item.
+test("similar songs dialog is owned by the persistent track card", async () => {
+  const card = await Bun.file("src/components/promptbeats/TrackCard.tsx").text();
+  const menuItem = await Bun.file("src/components/promptbeats/SimilarSongsMenuItem.tsx").text();
+  expect(card).toContain("const [similarSongsOpen, setSimilarSongsOpen] = useState(false)");
+  expect(card).toContain("<SimilarSongsDialog");
+  expect(card).toContain("<SimilarSongsMenuItem onOpen={() => setSimilarSongsOpen(true)} />");
+  expect(menuItem).not.toContain("<SimilarSongsDialog");
+});
