@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, FileText, Link2, Loader2, MessageSquareReply, Music2, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  FileText,
+  Link2,
+  Loader2,
+  MessageSquareReply,
+  Music2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -164,8 +174,7 @@ export function PrivateReviewManager({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (sessionId: string) =>
-      deleteFinishedPrivateReviewSession({ data: { sessionId } }),
+    mutationFn: (sessionId: string) => deleteFinishedPrivateReviewSession({ data: { sessionId } }),
     onSuccess: async (_, sessionId) => {
       if (selectedSessionId === sessionId) setSelectedSessionId(null);
       await Promise.all([
