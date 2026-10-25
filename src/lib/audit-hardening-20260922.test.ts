@@ -62,7 +62,7 @@ describe("September 22 production audit hardening", () => {
     const contact = await source("src/lib/contact.functions.ts");
     const migration = await source("supabase/migrations/20260922114000_contact_rate_limit.sql");
     expect(contact).not.toContain("new Map<");
-    expect(contact).toContain('rpc("admit_contact_request"');
+    expect(contact).toContain('"admit_contact_request_v2"');
     expect(migration).toContain("v_email_count >= 3 OR v_network_count >= 10");
     expect(migration).toContain("pg_advisory_xact_lock");
   });

@@ -38,13 +38,13 @@ Copy the entry below **before the feature PR is merged**, replacing each placeho
 
 ## AUDIT-CLOSURE-20261025 — consolidated verification and release boundaries
 
-- **Status:** BLOCKED (AUD-021 hosting evidence only; the application publish dependency was verified complete on 2026-10-25).
+- **Status:** IN_PROGRESS (PB-AUD-021 IP-independent admission remediation below; its production migration/publish remain separately gated).
 - **Scope / acceptance:** Reconcile #403–#423 and all 26 original findings, execute safe failure/race tests, fix verified residual gaps in one PR, and preserve truthful release states.
 - **Investigation:** Main `8554aefd0c3a8bbb4b57fd5540c2380266579f03`; original Reports B/C/D/E/F; actual current source and read-only production metadata; Published History #419, later changes unpublished.
-- **Execution owner:** Codex; hosting operator for the remaining unavailable ingress configuration.
+- **Execution owner:** Codex; owner approval for the new PB-AUD-021 migration/publish. Trusted ingress evidence is no longer a design prerequisite for this admission remediation.
 - **PR and exact HEAD:** Unified final-verification PR/HEAD and final three gate links are recorded together in its PR and the closure report.
 - **Verification:** See the dossier and final exact-HEAD CI evidence. Five real local SQL suites, four independent-connection scripts, offline tests, TypeScript, affected-source lint/format and production build. No production writes or paid calls.
-- **Release / remaining work:** No migration needed. Existing publish of merged application `609678f779268016c2864baf8ca4c89140407522` verified below; no new publish performed. For AUD-021 provide trusted-IP overwrite/direct-origin configuration or an approved staging ingress; for AUD-024 approve/test a compatible CSP/frame policy. Independent OPEN policy/architecture findings are explicitly retained below.
+- **Release / remaining work:** #424 remains published as verified below; no new publish performed. New PB-AUD-021 implementation requires its specifically approved forward migration and matching publish after merge. AUD-024 hosting CSP/frame policy and independent OPEN policy/architecture findings remain separate.
 - **Closure evidence:** Not CLOSED. Completed code work is not reopened; release/hosting blockers are not presented as missing code or hidden by green CI.
 
 ## Final finding-by-finding reconciliation — 2026-10-25
@@ -289,14 +289,15 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 
 ### PB-AUD-021 — Trusted ingress IP evidence
 
-- **Status:** BLOCKED
-- **Scope / acceptance:** Original PB-AUD-021; reconciled against Original audit, current source and the dossier's failure matrix.
-- **Investigation:** Baseline above; Original audit is historical implementation evidence, not independent release proof.
-- **Execution owner:** Codex.
-- **PR and exact HEAD:** Prior implementation Original audit; unified final verification branch above, with exact final HEAD/check links in its PR.
-- **Verification:** Source selects CF/real/forwarded headers; production is behind Cloudflare, but no available API/UI exposes final trusted-hop overwrite or origin-bypass controls. No spoofing exploit claimed.
-- **Release / remaining work / owner:** Hosting operator: provide a read-only canonical-client-IP overwrite/direct-origin-block configuration export, or an approved staging ingress for controlled spoof-resistance verification.
-- **Closure evidence:** 2026-10-25; [dossier](PB-AUD-final-verification-20261025.md). Not CLOSED; the precise outstanding action is retained above.
+- **Status:** IN_PROGRESS — implementation/verification in one PR; not merged or production-released.
+- **Scope / acceptance:** Remove dependence on all unverified IP headers for Contact and Private Review, preserve normalized email/session limits and privacy, enforce atomic concurrency and server-only RPCs; no common fingerprint that locks out all users.
+- **Investigation:** Main `3aa23fa0b2e9bc72206061c5f7f9a2e83215a21d`; owner confirms DNS-only records and no final-ingress guarantees. Full Contact/SMTP, anonymous reviewer join/PIN, owner/auth, legacy admission RPC and existing bearer authorization paths traced. Historical migrations are unchanged; no anonymous direct-RPC bypass is claimed after existing #step8 grants.
+- **Execution owner:** Codex. Branch `codex/pb-aud-021-admission`; [PR #425](https://github.com/Aeras/prompt-beats-studio/pull/425). Implementation commit `178fff0d8cf6f5ac180d5208aef74b778e71a7a6`; subsequent evidence commits and exact final HEAD/CI links recorded together in its description.
+- **Implementation:** Message/identity-bound signed single-use work proof; atomic Contact email 3/30m, verified account 10/30m independently and guest ceiling 120/30m. No shared authenticated cap. Private Review admission/PIN failure/reviewer creation in one session-row-locked RPC, with per-session short/hour windows and legacy failure carry-over. No network header read or raw IP storage.
+- **Verification:** Full offline Bun suite, strict TypeScript, changed-source lint/format, build; new rollback SQL and independent-connection guest/email/replay/PIN races; existing security SQL/replay and three mandatory gates. Final actual counts/results in the single PR and [handoff](PB-AUD-021-ip-independent-admission.md). No production stress or paid call.
+- **Release / remaining work / owner:** Remains NOT CLOSED. After approved merge, separately approve/apply only `20261025030941_pb_aud_021_ip_independent_admission.sql` and publish matching app. Migration-first deliberately blocks old Contact sends until publish; old review tokens/keys remain valid. Verify production metadata/Published snapshot and approved safe functional checks before closure. Do not change Cloudflare/Lovable configuration.
+- **Limits / rollback:** Guest-cap exhaustion and targeted session lockout are explicit bounded availability trade-offs, not claimed eliminated; independent accounts/sessions and existing reviewers remain isolated. No destructive down migration or blind rollback to spoofable admission. See full release/compatibility/rollback procedure in the handoff.
+- **Closure evidence:** Implementation evidence only; production migration/publish not performed and no CLOSED claim.
 
 ### PB-AUD-022 — Reasoning/cache/receipt attribution
 
