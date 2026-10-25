@@ -346,7 +346,9 @@ export function TrackLibraryActions({
               title={isFavorite ? copy.removeFavorite : copy.addFavorite}
               aria-pressed={isFavorite}
             >
-              <Bookmark className={`h-[18px] w-[18px] ${isFavorite ? "fill-current text-accent" : ""}`} />
+              <Bookmark
+                className={`h-[18px] w-[18px] ${isFavorite ? "fill-current text-accent" : ""}`}
+              />
             </button>
           )}
           {canPlaylist && (
