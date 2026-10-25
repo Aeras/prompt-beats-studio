@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/useAuth";
 import { getMyFeatureAccess, type FeatureKey } from "@/lib/feature-access.functions";
+import { isBetaFeatureKey } from "@/lib/beta-feature-registry";
 
 const LIBRARY_FEATURE_TABS: Partial<Record<FeatureKey, string>> = {
   playlists: "playlists",
@@ -15,7 +16,9 @@ export function shouldPreserveRequestedLibraryTab(featureKey: FeatureKey, isPend
   const requestedTab = new URLSearchParams(window.location.search).get("tab");
   const featureTab = LIBRARY_FEATURE_TABS[featureKey];
 
-  return window.location.pathname === "/library" && Boolean(featureTab && requestedTab === featureTab);
+  return (
+    window.location.pathname === "/library" && Boolean(featureTab && requestedTab === featureTab)
+  );
 }
 
 export function useFeatureAccess(featureKey: FeatureKey) {
@@ -24,7 +27,8 @@ export function useFeatureAccess(featureKey: FeatureKey) {
     queryKey: ["feature-access", featureKey, user?.id ?? "anon"],
     queryFn: () => getMyFeatureAccess({ data: { featureKey } }),
     enabled: Boolean(user),
-    staleTime: 30_000,
+    staleTime: isBetaFeatureKey(featureKey) ? 0 : 30_000,
+    refetchInterval: isBetaFeatureKey(featureKey) ? 15_000 : false,
     refetchOnWindowFocus: "always",
   });
 
@@ -39,7 +43,9 @@ export function useFeatureAccess(featureKey: FeatureKey) {
   return {
     isLoading: query.isLoading,
     isError: query.isError,
-    allowed: query.data?.allowed === true || preserveRequestedLibraryTab,
+    allowed: isBetaFeatureKey(featureKey)
+      ? Boolean(user) && query.data?.allowed === true && !query.isError
+      : query.data?.allowed === true || preserveRequestedLibraryTab,
     refetch: query.refetch,
   };
 }
