@@ -32,6 +32,7 @@ type Props = {
   language: string;
   canCreateNew?: boolean;
   historyOnly?: boolean;
+  inline?: boolean;
   onClose: () => void;
 };
 
@@ -43,6 +44,7 @@ export function PrivateReviewManager({
   language,
   canCreateNew = true,
   historyOnly = false,
+  inline = false,
   onClose,
 }: Props) {
   const el = language === "el";
@@ -213,8 +215,8 @@ export function PrivateReviewManager({
   const currentName = sourceType === "track" ? (selectedSong?.title ?? projectName) : projectName;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0c0c10] p-4 shadow-2xl sm:rounded-3xl sm:p-6">
+    <div className={inline ? "w-full" : "fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"}>
+      <div className={inline ? "w-full border-t border-accent/20 bg-black/20 p-3 sm:p-5" : "max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0c0c10] p-4 shadow-2xl sm:rounded-3xl sm:p-6"}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
