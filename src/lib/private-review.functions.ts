@@ -1,11 +1,8 @@
-import { createHmac } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getServerSupabaseAdminConfig } from "@/integrations/supabase/config.server";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import {
   PRIVATE_REVIEW_SOURCE_TYPES,
@@ -39,20 +36,6 @@ const createTrackInput = z.object({
   includePrompt: z.boolean().default(false),
   includeLyrics: z.boolean().default(false),
 });
-
-function privateReviewNetworkFingerprint(request: Request | undefined) {
-  const { secretKey } = getServerSupabaseAdminConfig();
-  const forwarded = request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
-  const candidate =
-    request?.headers.get("cf-connecting-ip")?.trim() ||
-    request?.headers.get("x-real-ip")?.trim() ||
-    forwarded;
-  const day = new Date().toISOString().slice(0, 10);
-  const normalized = candidate && candidate.length <= 128 ? candidate : "network-unavailable";
-  return createHmac("sha256", secretKey)
-    .update(`private-review:${day}:${normalized}`, "utf8")
-    .digest("hex");
-}
 
 export const createPrivateReviewSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -144,53 +127,21 @@ export const joinPrivateReviewSession = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const networkHash = privateReviewNetworkFingerprint(getRequest());
-    const { data: admissionRaw, error: admissionError } = await (supabaseAdmin as any).rpc(
-      "admit_private_review_join",
-      {
-        _token: data.token,
-        _network_hash: networkHash,
-      },
-    );
-    if (admissionError) throw new Error("The review could not be opened.");
-
-    const admission = z
-      .object({ state: z.enum(["allowed", "unavailable", "closed", "rate_limited"]) })
-      .parse(admissionRaw);
-    if (admission.state === "rate_limited") {
-      throw new Error("Too many attempts. Please wait before trying again.");
-    }
-    if (admission.state === "closed") {
-      throw new Error("This review is no longer accepting feedback.");
-    }
-    if (admission.state === "unavailable") {
-      throw new Error("The review could not be opened.");
-    }
-
-    const { data: raw, error } = await (supabaseAdmin as any).rpc("join_private_review_session", {
+    // Admission, PIN failure and reviewer creation share one locked transaction.
+    const { data: raw, error } = await supabaseAdmin.rpc("join_private_review_session", {
       _token: data.token,
       _display_name: data.displayName,
-      _pin: data.pin || null,
+      ...(data.pin ? { _pin: data.pin } : {}),
     });
-    if (error) {
-      if (error.message.includes("invalid pin")) {
-        const { error: failureError } = await (supabaseAdmin as any).rpc(
-          "record_private_review_pin_failure",
-          {
-            _token: data.token,
-            _network_hash: networkHash,
-          },
-        );
-        if (failureError) {
-          console.warn("[private-review] could not record PIN failure", failureError.message);
-        }
-        throw new Error("Invalid PIN.");
-      }
-      if (error.message.includes("closed")) {
-        throw new Error("This review is no longer accepting feedback.");
-      }
-      throw new Error("The review could not be opened.");
-    }
+    if (error) throw new Error("The review could not be opened.");
+    const outcome = z
+      .object({ state: z.enum(["joined", "invalid_pin", "rate_limited", "closed", "unavailable"]) })
+      .parse(raw);
+    if (outcome.state === "invalid_pin") throw new Error("Invalid PIN.");
+    if (outcome.state === "rate_limited")
+      throw new Error("Too many attempts. Please wait before trying again.");
+    if (outcome.state === "closed") throw new Error("This review is no longer accepting feedback.");
+    if (outcome.state !== "joined") throw new Error("The review could not be opened.");
     return z
       .object({
         reviewer_id: z.string().guid(),

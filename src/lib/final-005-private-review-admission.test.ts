@@ -8,22 +8,21 @@ async function source(path: string) {
 }
 
 describe("FINAL-005 private review join admission", () => {
-  test("uses a keyed network fingerprint and durable admission before reviewer creation", async () => {
+  test("uses atomic session-bound admission without a network fingerprint", async () => {
     const functions = await source("src/lib/private-review.functions.ts");
 
-    expect(functions).toContain('createHmac("sha256", secretKey)');
-    expect(functions).toContain('request?.headers.get("cf-connecting-ip")');
-    expect(functions).toContain('rpc(\n      "admit_private_review_join"');
-    expect(functions.indexOf('"admit_private_review_join"')).toBeLessThan(
-      functions.indexOf('"join_private_review_session"'),
-    );
+    expect(functions).not.toContain("Fingerprint");
+    expect(functions).not.toContain("cf-connecting-ip");
+    expect(functions).toContain('rpc("join_private_review_session"');
+    expect(functions).not.toContain('"admit_private_review_join"');
   });
 
   test("records invalid PIN outcomes durably without exposing the admission RPCs to browsers", async () => {
     const functions = await source("src/lib/private-review.functions.ts");
     const migration = await source(migrationPath);
 
-    expect(functions).toContain('"record_private_review_pin_failure"');
+    expect(functions).not.toContain('"record_private_review_pin_failure"');
+    expect(functions).toContain('outcome.state === "invalid_pin"');
     expect(functions).toContain("Too many attempts. Please wait before trying again.");
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.private_review_join_admissions");
     expect(migration).toContain("pin_failure_count integer NOT NULL DEFAULT 0");

@@ -108,10 +108,12 @@ describe("Help menu and Contact Us", () => {
     const fn = await source("src/lib/contact.functions.ts");
     const sender = await source("src/lib/contact-email.server.ts");
     const smtp = await source("src/lib/smtp-email.server.ts");
+    const admission = await source("src/lib/contact-admission.shared.ts");
     expect(fn).toContain("createServerFn");
-    expect(fn).toContain("z.string().trim().email().max(254)");
-    expect(fn).toContain('rpc("admit_contact_request"');
-    expect(fn).toContain("requestNetworkFingerprint");
+    expect(admission).toContain("z.string().trim().email().max(254)");
+    expect(fn).toContain('"admit_contact_request_v2"');
+    expect(fn).not.toContain("requestNetworkFingerprint");
+    expect(fn).toContain("verifyContactProof");
     expect(fn).toContain("website.trim()");
     expect(fn).toContain('await import("@/lib/contact-email.server")');
     expect(sender).toContain("sendSmtpEmail");

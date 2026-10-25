@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
-import { sendContactForm } from "@/lib/contact.functions";
+import { getContactChallenge, sendContactForm } from "@/lib/contact.functions";
+import { solveContactProof } from "@/lib/contact-admission.shared";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -71,6 +72,10 @@ function ContactPage() {
     if (sending) return;
     setSending(true);
     try {
+      const payload = { email, alias, subject, message, website };
+      const proof = website.trim()
+        ? undefined
+        : await solveContactProof((await getContactChallenge({ data: payload })).token);
       await sendContactForm({
         data: {
           email,
@@ -78,6 +83,7 @@ function ContactPage() {
           subject,
           message,
           website,
+          proof,
         },
       });
       toast.success(
