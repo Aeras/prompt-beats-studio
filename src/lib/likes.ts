@@ -74,7 +74,9 @@ export function useLikes(trackId: string, enabled = true) {
       // moderation filters must not be bypassed by inserting a raw card).
       const libraryKey = ["library", "liked", userId];
       await queryClient.cancelQueries({ queryKey: libraryKey });
-      const previousLibrary = queryClient.getQueryData<{ tracks: Array<{ id: string }> }>(libraryKey);
+      const previousLibrary = queryClient.getQueryData<{ tracks: Array<{ id: string }> }>(
+        libraryKey,
+      );
       if (wasLiked && previousLibrary) {
         queryClient.setQueryData(libraryKey, {
           ...previousLibrary,
