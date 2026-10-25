@@ -672,7 +672,7 @@ export function TrackOwnerActions({
           <MoreHorizontal className={bare ? "h-[18px] w-[18px]" : "h-4 w-4"} />
         </button>
       ) : (
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className={bare ? "contents" : "flex shrink-0 items-center gap-1.5"}>
           {isOwner && (
             <button
               aria-label={t("owner.editTrack")}
