@@ -25,7 +25,7 @@ Affected flow inventory:
 | Verified account   | Fresh Supabase `getUser` + existing private profile check, then SQL confirmed/non-anonymous/non-banned account check; 10 / rolling 30 minutes **per account**                          |
 | Anonymous ceiling  | 120 / rolling 30 minutes, independent of email or forged headers                                                                                                                       |
 
-No shared authenticated ceiling: guest flood or one exhausted account cannot consume another account's budget. This is deliberately not a single replacement global fingerprint. Anonymous users remain supported; signing in is not required. Existing email quota is retained; SMTP failures still consume an admitted attempt, as before.
+No shared authenticated ceiling: guest flood or one exhausted account cannot consume another account's budget. This is deliberately not a single replacement global fingerprint. Anonymous users remain supported; signing in is not required. Unconfirmed and Supabase anonymous-auth identities explicitly retain the guest path; only fresh verified real accounts receive independent capacity. Profile lookup failure is generic and fail-closed. Existing email quota is retained; SMTP failures still consume an admitted attempt, as before.
 
 The WebCrypto work runs asynchronously on submit under the existing sending spinner, with a 20-second solver deadline and a fresh challenge per retry. No CAPTCHA vendor, external script, new credential or hosting guarantee is required. `contact-admission.server.ts` signs with the existing server-only Supabase secret, domain-separated from other uses. Only a signature is sent to the browser, never that key. A key rotation invalidates outstanding challenges safely.
 
@@ -63,7 +63,7 @@ No raw IP, email, content, PIN, bearer token, proof token or credential is store
 - Windows local source-string tests run in a separate canonical-LF detached checkout with only this patch overlaid; no unrelated file conversion is committed. This avoids CRLF-only false failures without weakening assertions.
 - `e2e/contact-proof.pw.ts` executes the actual shared solver functions in real Chromium/WebCrypto on an intercepted local fixture page, checks the real digest and event-loop responsiveness, and never sends mail. It runs in all three configured viewport projects in Browser Quality.
 
-Local verification: **1,070 Bun tests PASS / 7,245 assertions**, strict TypeScript, affected-source ESLint/Prettier and production build PASS; full fresh final migration replay, **six SQL suites and five race scripts PASS**. Standalone Chromium solver test PASS (2.0s test duration). CI results on the final PR HEAD are authoritative and recorded in the PR; no full-tree lint-debt cleanup is included.
+Local verification: **1,073 Bun tests PASS / 7,266 assertions**, strict TypeScript, affected-source ESLint/Prettier and production build PASS; full fresh final migration replay, **six SQL suites and five race scripts PASS**. Standalone Chromium solver test PASS (2.0s test duration). CI results on the final PR HEAD are authoritative and recorded in the PR; no full-tree lint-debt cleanup is included.
 
 ## Release — separate approval required
 

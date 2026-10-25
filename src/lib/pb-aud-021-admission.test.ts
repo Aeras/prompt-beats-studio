@@ -21,6 +21,108 @@ const payload = contactInput.parse({
   subject: "Test",
   message: "Synthetic message",
 });
+
+describe("PB-AUD-021 optional real account identity", () => {
+  function actorFixture() {
+    const source = ts.createSourceFile(
+      "identity",
+      readFileSync("src/lib/contact-admission.server.ts", "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const node = source.statements
+      .filter(ts.isFunctionDeclaration)
+      .find((n) => n.name?.text === "contactActor");
+    if (!node) throw new Error("Missing actual contactActor");
+    let user: { id: string; email_confirmed_at: string | null; is_anonymous: boolean } | null = {
+      id: userId,
+      email_confirmed_at: "2026-01-01",
+      is_anonymous: false,
+    };
+    let banned = false;
+    let profileFailure = false;
+    let reads = 0;
+    const exports: { contactActor?: (request: Request | undefined) => Promise<string | null> } = {};
+    runInNewContext(
+      ts.transpileModule(node.getText(source), {
+        compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+      }).outputText,
+      {
+        exports,
+        createPublicServerClient: (token: string) => {
+          expect(token).toBe("verified-fixture");
+          return {
+            auth: {
+              getUser: async (same: string) => {
+                reads++;
+                expect(same).toBe(token);
+                return { data: { user }, error: null };
+              },
+            },
+            from: () => ({
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: { is_banned: banned },
+                    error: profileFailure ? { message: "private-db-marker" } : null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        },
+      },
+    );
+    return {
+      run: () =>
+        exports.contactActor!(
+          new Request("https://example.invalid", {
+            headers: { authorization: "Bearer verified-fixture", "cf-connecting-ip": "forged" },
+          }),
+        ),
+      guest: () =>
+        exports.contactActor!(
+          new Request("https://example.invalid", {
+            headers: { "x-user-id": userId, "x-forwarded-for": "forged" },
+          }),
+        ),
+      set: (value: typeof user) => {
+        user = value;
+      },
+      ban: () => {
+        banned = true;
+      },
+      fail: () => {
+        profileFailure = true;
+      },
+      reads: () => reads,
+    };
+  }
+  test("fresh auth user, not IP or caller claims, determines independent capacity", async () => {
+    const f = actorFixture();
+    expect(await f.guest()).toBeNull();
+    expect(f.reads()).toBe(0);
+    expect(await f.run()).toBe(userId);
+    expect(f.reads()).toBe(1);
+  });
+  test("anonymous/unconfirmed/invalid identities retain the public guest path", async () => {
+    const f = actorFixture();
+    f.set({ id: userId, email_confirmed_at: null, is_anonymous: false });
+    expect(await f.run()).toBeNull();
+    f.set({ id: userId, email_confirmed_at: "2026-01-01", is_anonymous: true });
+    expect(await f.run()).toBeNull();
+    f.set(null);
+    expect(await f.run()).toBeNull();
+  });
+  test("banned users cannot claim protected capacity; profile database failure is generic", async () => {
+    const f = actorFixture();
+    f.ban();
+    expect(await f.run()).toBeNull();
+    const failure = actorFixture();
+    failure.fail();
+    await expect(failure.run()).rejects.toThrow("verification is unavailable");
+  });
+});
 function solve(token: string) {
   for (let nonce = 0; nonce < 5_000_000; nonce++) {
     if (validContactWork(createHash("sha256").update(contactWorkInput(token, nonce)).digest()))

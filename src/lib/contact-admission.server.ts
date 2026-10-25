@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { getServerSupabaseAdminConfig } from "@/integrations/supabase/config.server";
-import { getUserIdFromRequest } from "@/lib/supabase-public.server";
+import { createPublicServerClient } from "@/lib/supabase-public.server";
 import { contactWorkInput, validContactWork, type ContactInput } from "./contact-admission.shared";
 
 const lifetime = 5 * 60_000;
@@ -27,7 +27,21 @@ function payloadHash(data: ContactInput, secret: string) {
 }
 
 export async function contactActor(request: Request | undefined) {
-  return request ? getUserIdFromRequest(request) : null;
+  const token = /^Bearer\s+(\S+)$/i.exec(request?.headers.get("authorization") ?? "")?.[1];
+  if (!token) return null;
+  const client = createPublicServerClient(token);
+  const { data, error } = await client.auth.getUser(token);
+  const user = data.user;
+  // Public Contact remains available to unconfirmed/anonymous-auth users as
+  // guests; only a verified real account receives its independent allowance.
+  if (error || !user || user.is_anonymous || !user.email_confirmed_at) return null;
+  const { data: profile, error: profileError } = await client
+    .from("profile_private")
+    .select("is_banned")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profileError) throw new Error("Contact verification is unavailable. Please retry.");
+  return profile && profile.is_banned !== true ? user.id : null;
 }
 
 export function issueContactProof(
