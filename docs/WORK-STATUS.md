@@ -414,3 +414,13 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Scoped UI contract tests added; require strict TypeScript, full regression, lint/format, build and exact-head three CI gates before merge.
 - **Release:** No migration. No publish or production action from this PR; approved publication and manual mobile/desktop verification required before CLOSED.
 - **Remaining work / owner:** Complete CI and UX review; correct failures in same PR, then merge and release separately.
+
+## PB-UX-20261025-06B — Inline Private Review history follow-up
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Clicking a review song row expands the full review session history directly under the row, shifting other rows down. No constrained overlay or inner scrolling; collapse/switch between songs. Preserve reviewer comments, owner replies, sessions, auth and existing creation entry.
+- **Investigation:** User screenshot after merged #430 confirms historyOnly still renders a fixed, height-constrained PrivateReviewManager modal; parent library list renders selected manager outside mapped rows.
+- **Execution owner:** ChatGPT.
+- **PR / HEAD:** Follow-up branch `fix/pb-private-review-inline-expansion-20261025`, CI pending; this is a post-release UX clarification to already merged PR #430, not unrelated work.
+- **Verification:** Inline UI contract regression; full CI gates required.
+- **Release / remaining:** No SQL changes; approved publication and real mobile review needed before CLOSED.
