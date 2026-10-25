@@ -424,3 +424,15 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **PR / HEAD:** Follow-up branch `fix/pb-private-review-inline-expansion-20261025`, CI pending; this is a post-release UX clarification to already merged PR #430, not unrelated work.
 - **Verification:** Inline UI contract regression; full CI gates required.
 - **Release / remaining:** No SQL changes; approved publication and real mobile review needed before CLOSED.
+
+## PB-UX-20261025-06C — Permanent deletion of finished Private Reviews
+
+- **Status:** IN_PROGRESS
+- **Scope / acceptance:** Small discreet trash icon for each closed/expired review session, and for the song row only when every remaining review session is closed/expired. Owner confirmation before irrevocable deletion. Hard-delete all relevant DB rows transactionally and revoke the private token. Active reviews must never be deletable, even through forged RPC requests or concurrent expiry/close changes. Delete one session or all sessions for a track; never delete the track.
+- **Presentation:** Preserve the merged #431 design exactly (one consistent song row and inline expansion regardless of one or multiple sessions). Recompute list immediately after deletion; remove the song row only after the last session is deleted. Never switch into alternate folder/single-item designs.
+- **Investigation:** Read current AGENTS.md, latest main and open PR list. private_review_sessions owns private_review_reviewers, private_review_comments, private_review_join_admissions and private_review_session_admissions via ON DELETE CASCADE; verify all later migrations, functions, triggers, views, grants and races before implementation. Existing RPC list/get/close are in src/lib/private-review.functions.ts; list UI in PrivateReviewsLibraryPanel and PrivateReviewManager.
+- **Execution owner:** ChatGPT implemented UI, authenticated server handlers, transactional forward migration, SQL/RLS fixture and independent-connection concurrency script in this branch; all gates at final HEAD still required.
+- **PR and exact HEAD:** [PR #432](https://github.com/Aeras/prompt-beats-studio/pull/432), branch `feature/pb-private-review-hard-delete-20261025`; final HEAD determined after CI.
+- **Verification:** SQL suite `supabase/tests/private_review_finished_hard_delete.sql` and two-connection race script `scripts/tests/private-review-hard-delete-races.sh` wired into Database Replay; Regression, Browser Quality and Database Replay all required at final HEAD.
+- **Release:** Additive forward migration only, separately approved production SQL and Lovable publish; do not execute either without explicit approval. User-facing data deletion requires confirmation in application.
+- **Remaining work:** Correct any CI failures within #432 and review exact HEAD; merge only on full green. Production migration needs separate approval, followed by a coordinated Lovable publish and owner verification before CLOSED.

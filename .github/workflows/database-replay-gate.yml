@@ -87,6 +87,8 @@ jobs:
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ip_independent_admission.sql
           bash scripts/tests/ip-independent-admission-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/favorites_playlists.sql
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_review_finished_hard_delete.sql
+          bash scripts/tests/private-review-hard-delete-races.sh "$PROJECT_ID"
           bash scripts/tests/favorites-playlists-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database

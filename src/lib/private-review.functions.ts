@@ -298,3 +298,30 @@ export const addPrivateReviewCreatorReply = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return z.object({ id: z.string().guid(), created_at: z.string() }).parse(raw);
   });
+
+/** Owner-only hard delete. Database RPC re-checks ownership and finished state under row locks. */
+export const deleteFinishedPrivateReviewSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ sessionId: z.string().guid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "delete_finished_private_review_session",
+      { _session_id: data.sessionId },
+    );
+    if (error) throw new Error("This review could not be deleted. It may still be active.");
+    return z.object({ deleted: z.number().int().positive() }).parse(result);
+  });
+
+/** Refuses the whole operation if any review for the track is still active. */
+export const deleteFinishedPrivateReviewTrack = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ trackId: z.string().guid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await (context.supabase as any).rpc(
+      "delete_finished_private_review_track",
+      { _track_id: data.trackId },
+    );
+    if (error)
+      throw new Error("This review history could not be deleted. Check for active reviews.");
+    return z.object({ deleted: z.number().int().positive() }).parse(result);
+  });
