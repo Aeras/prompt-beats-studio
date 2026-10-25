@@ -5,7 +5,7 @@ import { Loader2, MessageSquareText, Search } from "lucide-react";
 import { PrivateReviewManager } from "@/components/promptbeats/PrivateReviewManager";
 import { useI18n } from "@/i18n";
 import { listMyPrivateReviewSessions } from "@/lib/private-review.functions";
-import type { PrivateReviewOwnerListItem } from "@/lib/private-review.shared";
+type ReviewRow = Awaited<ReturnType<typeof listMyPrivateReviewSessions>>[number];
 
 /** Existing owner RPC already lists expired/closed history; this is only a grouped entry point. */
 export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
@@ -18,7 +18,7 @@ export function PrivateReviewsLibraryPanel({ userId }: { userId: string }) {
     queryFn: () => listMyPrivateReviewSessions({ data: {} }),
   });
   const tracks = useMemo(() => {
-    const groups = new Map<string, { title: string; latestAt: string; sessions: PrivateReviewOwnerListItem[] }>();
+    const groups = new Map<string, { title: string; latestAt: string; sessions: ReviewRow[] }>();
     for (const session of sessions.data ?? []) {
       if (session.sourceType !== "track" || !session.sourceTrackId) continue;
       const id = session.sourceTrackId;
