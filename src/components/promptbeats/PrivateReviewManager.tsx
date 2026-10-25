@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, FileText, Link2, Loader2, MessageSquareReply, Music2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -92,6 +92,13 @@ export function PrivateReviewManager({
       }),
     enabled: sourceType === "project_version" ? Boolean(projectId) : Boolean(songTrackId),
   });
+
+  // Opening review history from the Library should show the newest session's
+  // full feedback immediately, without requiring another tap.
+  useEffect(() => {
+    if (!historyOnly || selectedSessionId || !sessions.data?.length) return;
+    setSelectedSessionId(sessions.data[0].id);
+  }, [historyOnly, selectedSessionId, sessions.data]);
 
   const linkedTracks = useQuery({
     queryKey: ["private-review-linked-tracks", projectId, versionId],
