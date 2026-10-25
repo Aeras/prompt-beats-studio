@@ -369,3 +369,15 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Verification:** Contract test added. Browser Quality and Database Replay PASS at initial HEAD; Regression first failed on stale PR event body format and requires a fresh PR check run. Full runtime/UI verification remains outstanding.
 - **Release:** No schema change. Merge is not publish; confirm Lovable publication and UI after approval.
 - **Remaining work / owner:** Finish tests, CI and PR review, then approved publish and runtime verification.
+
+## PB-LIBRARY-20261025 — Favorites and playlist mutation permissions
+
+- **Status:** IN_PROGRESS — implementation verified locally; PR review and production release remain separate.
+- **Scope / acceptance:** Fix track-menu favorite add/remove, create-playlist-with-track and existing-playlist add in one PR; preserve visibility, removal, authentication, ownership, feature access and moderation.
+- **Investigation:** Main `615eeaacda25d9e613220de8872285fc6c697597`, merged #426 verified, 17 open PRs checked. Production read-only column ACL and isolated SQL reproduction show that existing column INSERT grants work; the actual 42501 is missing SELECT on tracks.moderation_status, not missing table-level INSERT. [Full evidence, tests and release plan](Favorites-Playlists-permissions-20261025.md).
+- **Execution owner:** Codex. One branch `codex/favorites-playlists-permissions`; final PR HEAD and mandatory gate links are recorded together in its PR.
+- **PR and exact HEAD:** [PR #427](https://github.com/Aeras/prompt-beats-studio/pull/427). Implementation `c3afa918f37ba11a22be91f45fde031501a15671` passed Regression, Browser Quality and Database Replay; the final documentation-inclusive HEAD and its own checks are recorded in the PR. No merge or production release performed.
+- **Implementation:** One-column SELECT grant with unchanged RLS, invoker-rights atomic playlist RPCs, authenticated client reuse, safe EL/EN action errors and account-scoped cache refresh. No broad SELECT or service-role mutation bypass.
+- **Verification:** Full offline Bun 1,083 PASS / 7,328 assertions; strict TypeScript, affected-source ESLint/Prettier, production build and 33 browser tests PASS. Fresh local migration replay, seven SQL/RLS suites and six independent-connection scripts PASS. Exact final three-gate evidence belongs to the PR. Existing #426 Like-sync behavior retained.
+- **Release / remaining work:** Verify final CI/review before merge. Owner approval required for the single new migration and Lovable publish; neither performed. Verify actual Published snapshot and authorized favorites/playlist flows before CLOSED. Additive migration remains compatible with the previous application.
+- **Closure evidence:** Not CLOSED; no production functionality claim from local tests or editor synchronization.

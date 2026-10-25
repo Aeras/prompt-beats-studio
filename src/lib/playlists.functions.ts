@@ -4,10 +4,20 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireFeatureAccess } from "@/lib/feature-access.functions";
 import { isSafeOwnedCoverPath } from "@/lib/storage-paths";
+import { throwSafeServerError } from "@/lib/server-error";
+import { libraryRpc } from "@/lib/library-rpc.server";
 
 const playlistIdSchema = z.object({ playlistId: z.string().guid() });
 const nameSchema = z.string().trim().min(1).max(80);
 const coverUrlSchema = z.string().url().max(1000).nullable();
+const playlistSummarySchema = z.object({
+  id: z.string().guid(),
+  name: z.string(),
+  cover_url: z.string().nullable(),
+  is_public: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
 
 function extractOwnedPlaylistCoverPath(url: string | null | undefined, userId: string) {
   if (!url) return null;
@@ -216,34 +226,18 @@ export const createPlaylist = createServerFn({ method: "POST" })
     if (data.coverUrl && !extractOwnedPlaylistCoverPath(data.coverUrl, context.userId))
       throw new Error("Invalid playlist cover");
 
-    const { data: playlist, error } = await (context.supabase as any)
-      .from("playlists")
-      .insert({
-        user_id: context.userId,
-        name: data.name,
-        cover_url: data.coverUrl ?? null,
-        is_public: false,
-      })
-      .select("id, name, cover_url, is_public, created_at, updated_at")
-      .single();
-    if (error) throw new Error(error.message);
-
-    if (data.trackId) {
-      const { error: itemError } = await (context.supabase as any)
-        .from("playlist_tracks")
-        .insert({ playlist_id: playlist.id, track_id: data.trackId, position: 0 });
-      if (itemError) {
-        await (context.supabase as any)
-          .from("playlists")
-          .delete()
-          .eq("id", playlist.id)
-          .eq("user_id", context.userId);
-        await cleanupPlaylistCover(context.userId, data.coverUrl);
-        throw new Error(itemError.message);
-      }
-    }
-
-    return { playlist };
+    const { data: playlist, error } = await libraryRpc(
+      context.supabase,
+      "create_playlist_with_track",
+      {
+        _name: data.name,
+        _track_id: data.trackId ?? null,
+        _cover_url: data.coverUrl ?? null,
+      },
+    );
+    if (error)
+      throwSafeServerError("library:create-playlist", error, "The playlist could not be created.");
+    return { playlist: playlistSummarySchema.parse(playlist) };
   });
 
 export const updatePlaylist = createServerFn({ method: "POST" })
@@ -306,34 +300,21 @@ export const addTrackToPlaylist = createServerFn({ method: "POST" })
     await getOwnedPlaylist(context.supabase, context.userId, data.playlistId);
     await assertPlaylistEligibleTrack(context.supabase, context.userId, data.trackId);
 
-    const { data: existing, error: existingError } = await (context.supabase as any)
-      .from("playlist_tracks")
-      .select("track_id")
-      .eq("playlist_id", data.playlistId)
-      .eq("track_id", data.trackId)
-      .maybeSingle();
-    if (existingError) throw new Error(existingError.message);
-    if (existing) return { status: "exists" as const };
-
-    const { data: last, error: lastError } = await (context.supabase as any)
-      .from("playlist_tracks")
-      .select("position")
-      .eq("playlist_id", data.playlistId)
-      .order("position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (lastError) throw new Error(lastError.message);
-
-    const { error } = await (context.supabase as any).from("playlist_tracks").insert({
-      playlist_id: data.playlistId,
-      track_id: data.trackId,
-      position: (last?.position ?? -1) + 1,
-    });
-    if (error) {
-      if (error.code === "23505") return { status: "exists" as const };
-      throw new Error(error.message);
-    }
-    return { status: "added" as const };
+    const { data: status, error } = await libraryRpc(
+      context.supabase,
+      "add_playlist_track_atomic",
+      {
+        _playlist_id: data.playlistId,
+        _track_id: data.trackId,
+      },
+    );
+    if (error)
+      throwSafeServerError(
+        "library:add-track",
+        error,
+        "The track could not be added to the playlist.",
+      );
+    return { status: z.enum(["added", "exists"]).parse(status) };
   });
 
 export const removeTrackFromPlaylist = createServerFn({ method: "POST" })
