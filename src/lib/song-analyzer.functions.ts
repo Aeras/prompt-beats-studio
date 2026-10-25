@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { GoogleGenAI } from "@google/genai";
@@ -1119,7 +1120,9 @@ async function readExtraSongAnalyzerModels(): Promise<SongAnalyzerModelConfig[]>
     .eq("key", "song_analyzer_extra_models")
     .maybeSingle();
   if (error) {
-    console.error("[song-analyzer] could not read extra analyzer models", error.message);
+    console.error("[song-analyzer] could not read extra analyzer models", {
+      errorType: safeErrorType(error),
+    });
     return [];
   }
   const rows = (data as any)?.value?.models;

@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -173,11 +174,15 @@ const verifierSchema = z.object({
     evidence: z.string().trim().min(1).max(1400),
     cues: z.array(z.string().trim().min(1).max(300)).max(8),
   }),
-  microProductionCues: z.array(z.object({
-    value: microProductionCueValueSchema,
-    confidence: confidenceSchema,
-    evidence: z.string().trim().min(1).max(1200),
-  })).max(6),
+  microProductionCues: z
+    .array(
+      z.object({
+        value: microProductionCueValueSchema,
+        confidence: confidenceSchema,
+        evidence: z.string().trim().min(1).max(1200),
+      }),
+    )
+    .max(6),
   feltTempo: z.object({
     bpm: z.number().min(20).max(300).nullable(),
     confidence: confidenceSchema,
@@ -233,7 +238,14 @@ const VERIFIER_RESPONSE_SCHEMA = {
       properties: {
         value: {
           type: "STRING",
-          enum: ["guitar", "processed_guitar", "synth_pluck", "other_plucked_string", "mixed", "uncertain"],
+          enum: [
+            "guitar",
+            "processed_guitar",
+            "synth_pluck",
+            "other_plucked_string",
+            "mixed",
+            "uncertain",
+          ],
         },
         confidence: { type: "STRING", enum: ["high", "medium", "low"] },
         evidence: { type: "STRING" },
@@ -246,7 +258,15 @@ const VERIFIER_RESPONSE_SCHEMA = {
       properties: {
         value: {
           type: "STRING",
-          enum: ["rhodes", "wurlitzer", "acoustic_piano", "synth_keys", "pad_only", "none", "uncertain"],
+          enum: [
+            "rhodes",
+            "wurlitzer",
+            "acoustic_piano",
+            "synth_keys",
+            "pad_only",
+            "none",
+            "uncertain",
+          ],
         },
         confidence: { type: "STRING", enum: ["high", "medium", "low"] },
         evidence: { type: "STRING" },
@@ -259,7 +279,15 @@ const VERIFIER_RESPONSE_SCHEMA = {
       properties: {
         value: {
           type: "STRING",
-          enum: ["melodic_singing", "conversational_singing", "sing_rap", "rap", "spoken_word", "mixed", "uncertain"],
+          enum: [
+            "melodic_singing",
+            "conversational_singing",
+            "sing_rap",
+            "rap",
+            "spoken_word",
+            "mixed",
+            "uncertain",
+          ],
         },
         confidence: { type: "STRING", enum: ["high", "medium", "low"] },
         evidence: { type: "STRING" },
@@ -274,7 +302,12 @@ const VERIFIER_RESPONSE_SCHEMA = {
         properties: {
           value: {
             type: "STRING",
-            enum: ["tape_saturation", "vinyl_crackle", "low_pass_filtered_guitar", "distant_electric_guitar_swell"],
+            enum: [
+              "tape_saturation",
+              "vinyl_crackle",
+              "low_pass_filtered_guitar",
+              "distant_electric_guitar_swell",
+            ],
           },
           confidence: { type: "STRING", enum: ["high", "medium", "low"] },
           evidence: { type: "STRING" },
@@ -292,7 +325,17 @@ const VERIFIER_RESPONSE_SCHEMA = {
       required: ["bpm", "confidence", "evidence"],
     },
   },
-  required: ["drumSource", "bassSource", "guitarPresence", "synthPresence", "rhythmicLayerSource", "keyboardFamily", "vocalDelivery", "microProductionCues", "feltTempo"],
+  required: [
+    "drumSource",
+    "bassSource",
+    "guitarPresence",
+    "synthPresence",
+    "rhythmicLayerSource",
+    "keyboardFamily",
+    "vocalDelivery",
+    "microProductionCues",
+    "feltTempo",
+  ],
 } as const;
 
 const VERIFIER_SYSTEM_PROMPT = `You are PromptBeats Stage A Critical Evidence Verifier.
@@ -380,7 +423,9 @@ function joinUniqueDescriptors(...values: Array<string | null | undefined>) {
 }
 
 function preservesSpecificGuitarTechnique(value: string | null | undefined) {
-  return Boolean(value && /fingerpick|arpeggi|flat.?pick|picked|strum|comp|chord|palm mut|tremolo/i.test(value));
+  return Boolean(
+    value && /fingerpick|arpeggi|flat.?pick|picked|strum|comp|chord|palm mut|tremolo/i.test(value),
+  );
 }
 
 function explicitMmSs(text: string) {
@@ -410,8 +455,12 @@ function crossFieldTexts(evidence: StageAEvidence) {
   return [
     ...evidence.arrangementChanges.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.melodicElements.map((item) => `${item.claim} ${item.evidence}`),
-    ...evidence.instrumentEvidence.map((item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
-    ...evidence.dominantElements.map((item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
+    ...evidence.instrumentEvidence.map(
+      (item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.evidence}`,
+    ),
+    ...evidence.dominantElements.map(
+      (item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`,
+    ),
     ...evidence.energyProgression.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.productionMixEvidence.map((item) => `${item.claim} ${item.evidence}`),
     ...evidence.vocalCharacteristics.map((item) => `${item.claim} ${item.evidence}`),
@@ -419,15 +468,27 @@ function crossFieldTexts(evidence: StageAEvidence) {
 }
 
 function collectCrossFieldClockSeconds(evidence: StageAEvidence) {
-  return new Set(crossFieldTexts(evidence).flatMap((text) => explicitMmSs(text).map((value) => value.seconds)));
+  return new Set(
+    crossFieldTexts(evidence).flatMap((text) => explicitMmSs(text).map((value) => value.seconds)),
+  );
 }
 
 function normalizedSectionKeywords(label: string) {
-  const matches = label.toLowerCase().match(/intro|verse|pre[- ]?chorus|chorus|bridge|breakdown|build(?:-?up)?|interlude|solo|outro|ending|fade|climax/g) ?? [];
+  const matches =
+    label
+      .toLowerCase()
+      .match(
+        /intro|verse|pre[- ]?chorus|chorus|bridge|breakdown|build(?:-?up)?|interlude|solo|outro|ending|fade|climax/g,
+      ) ?? [];
   return [...new Set(matches.map((value) => value.replace(/[- ]/g, "")))];
 }
 
-function recoverNullSectionStart(evidence: StageAEvidence, label: string, durationSeconds: number, minimumSeconds: number | null) {
+function recoverNullSectionStart(
+  evidence: StageAEvidence,
+  label: string,
+  durationSeconds: number,
+  minimumSeconds: number | null,
+) {
   const keywords = normalizedSectionKeywords(label);
   if (!keywords.length) return null;
   const candidates: number[] = [];
@@ -468,8 +529,13 @@ function repairTimelineBoundary(
     return { value: explicit.seconds, corrected: true, removed: false };
   }
   const decoded = compactMmSsSeconds(value);
-  const crossFieldConfirmed = decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
-  if ((compactClockMode || crossFieldConfirmed) && decoded != null && decoded <= durationSeconds + 0.5) {
+  const crossFieldConfirmed =
+    decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
+  if (
+    (compactClockMode || crossFieldConfirmed) &&
+    decoded != null &&
+    decoded <= durationSeconds + 0.5
+  ) {
     return { value: decoded, corrected: true, removed: false };
   }
   if (value > durationSeconds + 0.5) {
@@ -482,23 +548,28 @@ function repairTimelineBoundary(
 }
 
 function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | null) {
-  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return evidence;
+  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0)
+    return evidence;
 
   const crossFieldClockSeconds = collectCrossFieldClockSeconds(evidence);
   const provenCompactCorrections = evidence.songSections.reduce((count, section) => {
     const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
     const values = [section.startSeconds, section.endSeconds];
-    return count + values.reduce((inner: number, value, index) => {
-      const timestamp = explicit?.[index];
-      const explicitMatch =
-        value != null &&
-        timestamp != null &&
-        Math.abs(value - timestamp.concatenated) <= 1 &&
-        Math.abs(value - timestamp.seconds) > 1;
-      const decoded = value == null ? null : compactMmSsSeconds(value);
-      const crossFieldMatch = decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
-      return inner + Number(explicitMatch || crossFieldMatch);
-    }, 0);
+    return (
+      count +
+      values.reduce((inner: number, value, index) => {
+        const timestamp = explicit?.[index];
+        const explicitMatch =
+          value != null &&
+          timestamp != null &&
+          Math.abs(value - timestamp.concatenated) <= 1 &&
+          Math.abs(value - timestamp.seconds) > 1;
+        const decoded = value == null ? null : compactMmSsSeconds(value);
+        const crossFieldMatch =
+          decoded != null && matchesCrossFieldClock(decoded, crossFieldClockSeconds);
+        return inner + Number(explicitMatch || crossFieldMatch);
+      }, 0)
+    );
   }, 0);
   const compactClockMode = provenCompactCorrections >= 2;
 
@@ -512,12 +583,28 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
   const songSections = evidence.songSections.map((section) => {
     let confidence = section.confidence;
     const explicit = explicitMmSs(`${section.label} ${section.evidence}`);
-    const repairedStart = repairTimelineBoundary(section.startSeconds, explicit[0], durationSeconds, compactClockMode, crossFieldClockSeconds);
-    const repairedEnd = repairTimelineBoundary(section.endSeconds, explicit[1], durationSeconds, compactClockMode, crossFieldClockSeconds);
+    const repairedStart = repairTimelineBoundary(
+      section.startSeconds,
+      explicit[0],
+      durationSeconds,
+      compactClockMode,
+      crossFieldClockSeconds,
+    );
+    const repairedEnd = repairTimelineBoundary(
+      section.endSeconds,
+      explicit[1],
+      durationSeconds,
+      compactClockMode,
+      crossFieldClockSeconds,
+    );
     let startSeconds = repairedStart.value;
     let endSeconds = repairedEnd.value;
 
-    if (startSeconds == null && explicit[0]?.seconds != null && explicit[0].seconds <= durationSeconds + 0.5) {
+    if (
+      startSeconds == null &&
+      explicit[0]?.seconds != null &&
+      explicit[0].seconds <= durationSeconds + 0.5
+    ) {
       const candidate = explicit[0].seconds;
       if (previousStart == null || candidate + 0.5 >= previousStart) {
         startSeconds = candidate;
@@ -526,14 +613,23 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
       }
     }
     if (startSeconds == null) {
-      const recovered = recoverNullSectionStart(evidence, section.label, durationSeconds, previousStart);
+      const recovered = recoverNullSectionStart(
+        evidence,
+        section.label,
+        durationSeconds,
+        previousStart,
+      );
       if (recovered != null) {
         startSeconds = recovered;
         crossFieldRecoveries += 1;
         if (confidence === "high") confidence = "medium";
       }
     }
-    if (endSeconds == null && explicit[1]?.seconds != null && explicit[1].seconds <= durationSeconds + 0.5) {
+    if (
+      endSeconds == null &&
+      explicit[1]?.seconds != null &&
+      explicit[1].seconds <= durationSeconds + 0.5
+    ) {
       const candidate = explicit[1].seconds;
       if (startSeconds == null || candidate + 0.5 >= startSeconds) {
         endSeconds = candidate;
@@ -587,7 +683,12 @@ function sanitizeTimeline(evidence: StageAEvidence, durationSeconds: number | nu
 
   const lastIndex = songSections.length - 1;
   const last = songSections[lastIndex];
-  if (last && last.startSeconds != null && last.endSeconds == null && /outro|ending|fade/i.test(last.label)) {
+  if (
+    last &&
+    last.startSeconds != null &&
+    last.endSeconds == null &&
+    /outro|ending|fade/i.test(last.label)
+  ) {
     songSections[lastIndex] = {
       ...last,
       endSeconds: durationSeconds,
@@ -657,35 +758,57 @@ function isHalfDoublePair(a: number, b: number) {
 
 function rhythmicLayerResolutionRequired(evidence: StageAEvidence) {
   const texts = [
-    ...evidence.instrumentEvidence.map((item) => `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`),
-    ...evidence.dominantElements.map((item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`),
+    ...evidence.instrumentEvidence.map(
+      (item) =>
+        `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`,
+    ),
+    ...evidence.dominantElements.map(
+      (item) => `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`,
+    ),
   ].map((text) => text.toLowerCase());
   const hasGuitar = texts.some((text) => /guitar|strum|palm mut|rhythmic comp/.test(text));
-  const hasSynthPluck = texts.some((text) => /synth(?:esizer)?.*pluck|pluck.*synth|arpeggi/.test(text));
-  const explicitlyAmbiguous = texts.some((text) => /plucked (?:guitar|string)|guitar\s*\/|\/\s*(?:string|guitar)|string instrument|guitar-like|pluck(?:ed)? layer/.test(text));
+  const hasSynthPluck = texts.some((text) =>
+    /synth(?:esizer)?.*pluck|pluck.*synth|arpeggi/.test(text),
+  );
+  const explicitlyAmbiguous = texts.some((text) =>
+    /plucked (?:guitar|string)|guitar\s*\/|\/\s*(?:string|guitar)|string instrument|guitar-like|pluck(?:ed)? layer/.test(
+      text,
+    ),
+  );
   return explicitlyAmbiguous || hasSynthPluck || (hasGuitar && hasSynthPluck);
 }
 
-function reconcileVerification(evidence: StageAEvidence, verification: Verification, stage0Evidence: Stage0Evidence) {
+function reconcileVerification(
+  evidence: StageAEvidence,
+  verification: Verification,
+  stage0Evidence: Stage0Evidence,
+) {
   const notes = [...evidence.uncertaintyNotes];
   const conflicts: string[] = [];
   const verifierStrongEnough = (confidence: Confidence) => confidenceRank(confidence) >= 1;
   const layerNeedsResolution = rhythmicLayerResolutionRequired(evidence);
 
   let instrumentEvidence = evidence.instrumentEvidence.map((item) => {
-    const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""}`.toLowerCase();
+    const text =
+      `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""}`.toLowerCase();
     let confidence = item.confidence;
 
     if (verifierStrongEnough(verification.drumSource.confidence)) {
       const programmedDrum = /drum machine|programmed.*drum|electronic.*drum/.test(text);
-      const acousticDrum = !programmedDrum && /acoustic.*drum|(?:^|\s)drum kit(?:\s|$)|live.*drum|natural.*drum/.test(text);
+      const acousticDrum =
+        !programmedDrum &&
+        /acoustic.*drum|(?:^|\s)drum kit(?:\s|$)|live.*drum|natural.*drum/.test(text);
       if (verification.drumSource.value === "acoustic" && programmedDrum) {
         confidence = lowerConfidence(confidence, verification.drumSource.confidence);
         conflicts.push("programmed/electronic drum identity contradicted by verification");
       } else if (verification.drumSource.value === "programmed" && acousticDrum) {
         confidence = lowerConfidence(confidence, verification.drumSource.confidence);
         conflicts.push("acoustic drum-kit identity contradicted by verification");
-      } else if (verification.drumSource.value === "uncertain" && (acousticDrum || programmedDrum) && confidence === "high") {
+      } else if (
+        verification.drumSource.value === "uncertain" &&
+        (acousticDrum || programmedDrum) &&
+        confidence === "high"
+      ) {
         confidence = "medium";
       }
     }
@@ -699,7 +822,11 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       } else if (verification.bassSource.value === "synth" && electricBass) {
         confidence = lowerConfidence(confidence, verification.bassSource.confidence);
         conflicts.push("electric-bass identity contradicted by verification");
-      } else if (verification.bassSource.value === "uncertain" && (synthBass || electricBass) && confidence === "high") {
+      } else if (
+        verification.bassSource.value === "uncertain" &&
+        (synthBass || electricBass) &&
+        confidence === "high"
+      ) {
         confidence = "medium";
       }
     }
@@ -708,7 +835,8 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       const lead = /lead|solo|bend|vibrato/.test(text);
       const rhythm = /rhythm|strum|chord|palm mut|fingerpick|arpeggi/.test(text);
       const value = verification.guitarPresence.value;
-      const contradiction = value === "none" || (value === "rhythm" && lead) || (value === "lead" && rhythm && !lead);
+      const contradiction =
+        value === "none" || (value === "rhythm" && lead) || (value === "lead" && rhythm && !lead);
       if (contradiction) {
         confidence = lowerConfidence(confidence, verification.guitarPresence.confidence);
         conflicts.push("guitar role/presence contradicted by verification");
@@ -735,8 +863,18 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
   let dominantElements = evidence.dominantElements.map((item) => {
     const text = `${item.element} ${item.role} ${item.technique ?? ""}`.toLowerCase();
     let confidence = item.confidence;
-    if (verification.guitarPresence.confidence === "high" && verification.guitarPresence.value === "none" && /guitar/.test(text)) confidence = "low";
-    if (verification.synthPresence.confidence === "high" && verification.synthPresence.value === "none" && /synth/.test(text)) confidence = "low";
+    if (
+      verification.guitarPresence.confidence === "high" &&
+      verification.guitarPresence.value === "none" &&
+      /guitar/.test(text)
+    )
+      confidence = "low";
+    if (
+      verification.synthPresence.confidence === "high" &&
+      verification.synthPresence.value === "none" &&
+      /synth/.test(text)
+    )
+      confidence = "low";
     return confidence === item.confidence ? item : { ...item, confidence };
   });
 
@@ -744,15 +882,20 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
     const source = verification.rhythmicLayerSource;
     const sourceStrong = verifierStrongEnough(source.confidence);
     const candidateIndex = instrumentEvidence.findIndex((item) => {
-      const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
-      return /guitar|string instrument|plucked string|synth(?:esizer)?.*pluck|pluck|arpeggi|strum|comp/.test(text);
+      const text =
+        `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
+      return /guitar|string instrument|plucked string|synth(?:esizer)?.*pluck|pluck|arpeggi|strum|comp/.test(
+        text,
+      );
     });
 
     if (candidateIndex >= 0) {
       const candidate = instrumentEvidence[candidateIndex];
       if (!candidate) return;
-      const candidateText = `${candidate.instrument} ${candidate.technique ?? ""} ${candidate.timbre ?? ""}`.toLowerCase();
-      const firstPassGuitarCues = /guitar|strum|palm mut|chordal comp|fingerpick|arpeggi|picked/.test(candidateText);
+      const candidateText =
+        `${candidate.instrument} ${candidate.technique ?? ""} ${candidate.timbre ?? ""}`.toLowerCase();
+      const firstPassGuitarCues =
+        /guitar|strum|palm mut|chordal comp|fingerpick|arpeggi|picked/.test(candidateText);
       const firstPassSynthCues = /synth|sequenc/.test(candidateText);
       instrumentEvidence = instrumentEvidence.map((item, index) => {
         if (index !== candidateIndex) return item;
@@ -761,29 +904,57 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
             ...item,
             instrument: "Rhythm Guitar",
             role: item.role || "Harmonic and rhythmic accompaniment",
-            technique: preservesSpecificGuitarTechnique(item.technique) ? item.technique : "Chordal strumming / rhythmic comping",
+            technique: preservesSpecificGuitarTechnique(item.technique)
+              ? item.technique
+              : "Chordal strumming / rhythmic comping",
             timbre: joinUniqueDescriptors(
               item.timbre,
-              source.value === "processed_guitar" ? "processed/sampled guitar-like timbre" : "guitar timbre confirmed",
+              source.value === "processed_guitar"
+                ? "processed/sampled guitar-like timbre"
+                : "guitar timbre confirmed",
               "acoustic vs clean electric source unresolved",
             ),
-            confidence: item.confidence === "low" && source.confidence === "high" ? "medium" : item.confidence,
+            confidence:
+              item.confidence === "low" && source.confidence === "high"
+                ? "medium"
+                : item.confidence,
           };
         }
         if (sourceStrong && source.value === "synth_pluck") {
           if (firstPassGuitarCues && !firstPassSynthCues) {
-            return { ...item, instrument: "Rhythmic Plucked Layer", confidence: item.confidence === "high" ? "medium" : item.confidence };
+            return {
+              ...item,
+              instrument: "Rhythmic Plucked Layer",
+              confidence: item.confidence === "high" ? "medium" : item.confidence,
+            };
           }
-          return { ...item, instrument: "Synth Pluck / Arpeggio", confidence: item.confidence === "low" ? "medium" : item.confidence };
+          return {
+            ...item,
+            instrument: "Synth Pluck / Arpeggio",
+            confidence: item.confidence === "low" ? "medium" : item.confidence,
+          };
         }
         if (sourceStrong && source.value === "other_plucked_string") {
-          return { ...item, instrument: "Plucked String Instrument", confidence: item.confidence === "high" ? "medium" : item.confidence };
+          return {
+            ...item,
+            instrument: "Plucked String Instrument",
+            confidence: item.confidence === "high" ? "medium" : item.confidence,
+          };
         }
         if (source.value === "mixed") {
-          return { ...item, instrument: "Rhythmic Plucked Layer", timbre: joinUniqueDescriptors(item.timbre, "mixed guitar/synth-like source"), confidence: item.confidence === "high" ? "medium" : item.confidence };
+          return {
+            ...item,
+            instrument: "Rhythmic Plucked Layer",
+            timbre: joinUniqueDescriptors(item.timbre, "mixed guitar/synth-like source"),
+            confidence: item.confidence === "high" ? "medium" : item.confidence,
+          };
         }
         if (source.value === "uncertain") {
-          return { ...item, instrument: "Rhythmic Plucked Layer", confidence: item.confidence === "high" ? "medium" : item.confidence };
+          return {
+            ...item,
+            instrument: "Rhythmic Plucked Layer",
+            confidence: item.confidence === "high" ? "medium" : item.confidence,
+          };
         }
         return item;
       });
@@ -793,15 +964,21 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       instrumentEvidence.length < 30
     ) {
       if (source.value === "guitar" || source.value === "processed_guitar") {
-        instrumentEvidence = [...instrumentEvidence, {
-          instrument: "Rhythm Guitar",
-          role: "Harmonic and rhythmic accompaniment",
-          technique: "Chordal strumming / rhythmic comping",
-          timbre: source.value === "processed_guitar" ? "Processed guitar timbre; acoustic vs clean electric source unresolved" : "Guitar timbre; acoustic vs clean electric source unresolved",
-          prominence: "major",
-          confidence: "medium",
-          evidence: source.evidence,
-        }];
+        instrumentEvidence = [
+          ...instrumentEvidence,
+          {
+            instrument: "Rhythm Guitar",
+            role: "Harmonic and rhythmic accompaniment",
+            technique: "Chordal strumming / rhythmic comping",
+            timbre:
+              source.value === "processed_guitar"
+                ? "Processed guitar timbre; acoustic vs clean electric source unresolved"
+                : "Guitar timbre; acoustic vs clean electric source unresolved",
+            prominence: "major",
+            confidence: "medium",
+            evidence: source.evidence,
+          },
+        ];
       }
     }
 
@@ -812,78 +989,137 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
 
   const resolverSupportsGuitar =
     !layerNeedsResolution ||
-    ((verification.rhythmicLayerSource.value === "guitar" || verification.rhythmicLayerSource.value === "processed_guitar") &&
+    ((verification.rhythmicLayerSource.value === "guitar" ||
+      verification.rhythmicLayerSource.value === "processed_guitar") &&
       verifierStrongEnough(verification.rhythmicLayerSource.confidence));
   const rhythmGuitarConfirmed =
     resolverSupportsGuitar &&
     verifierStrongEnough(verification.guitarPresence.confidence) &&
-    (verification.guitarPresence.value === "rhythm" || verification.guitarPresence.value === "both");
+    (verification.guitarPresence.value === "rhythm" ||
+      verification.guitarPresence.value === "both");
 
   if (rhythmGuitarConfirmed) {
     const candidateIndex = instrumentEvidence.findIndex((item) => {
-      const text = `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
-      return /guitar/.test(text) && /rhythm|strum|comp|chord|palm mut|accompan|fingerpick|arpeggi/.test(text);
+      const text =
+        `${item.instrument} ${item.role} ${item.technique ?? ""} ${item.timbre ?? ""} ${item.evidence}`.toLowerCase();
+      return (
+        /guitar/.test(text) &&
+        /rhythm|strum|comp|chord|palm mut|accompan|fingerpick|arpeggi/.test(text)
+      );
     });
     if (candidateIndex >= 0) {
       const candidate = instrumentEvidence[candidateIndex];
       if (!candidate) return;
-      const sourceSpecific = /acoustic guitar|clean electric guitar|electric guitar/.test(candidate.instrument.toLowerCase());
-      instrumentEvidence = instrumentEvidence.map((item, index) => index === candidateIndex ? {
-        ...item,
-        instrument: sourceSpecific ? candidate.instrument : "Rhythm Guitar",
-        role: candidate.role || "Harmonic and rhythmic accompaniment",
-        technique: preservesSpecificGuitarTechnique(candidate.technique) ? candidate.technique : "Chordal strumming / rhythmic comping",
-        timbre: sourceSpecific ? candidate.timbre : joinUniqueDescriptors(candidate.timbre, "guitar timbre confirmed", "acoustic vs clean electric source unresolved"),
-        confidence: candidate.confidence === "low" && verification.guitarPresence.confidence === "high" ? "medium" : candidate.confidence,
-      } : item);
+      const sourceSpecific = /acoustic guitar|clean electric guitar|electric guitar/.test(
+        candidate.instrument.toLowerCase(),
+      );
+      instrumentEvidence = instrumentEvidence.map((item, index) =>
+        index === candidateIndex
+          ? {
+              ...item,
+              instrument: sourceSpecific ? candidate.instrument : "Rhythm Guitar",
+              role: candidate.role || "Harmonic and rhythmic accompaniment",
+              technique: preservesSpecificGuitarTechnique(candidate.technique)
+                ? candidate.technique
+                : "Chordal strumming / rhythmic comping",
+              timbre: sourceSpecific
+                ? candidate.timbre
+                : joinUniqueDescriptors(
+                    candidate.timbre,
+                    "guitar timbre confirmed",
+                    "acoustic vs clean electric source unresolved",
+                  ),
+              confidence:
+                candidate.confidence === "low" && verification.guitarPresence.confidence === "high"
+                  ? "medium"
+                  : candidate.confidence,
+            }
+          : item,
+      );
     }
     dominantElements = dominantElements.map((item) => {
-      const text = `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`.toLowerCase();
-      if (!/guitar|string instrument|plucked string|pluck/.test(text) || !/rhythm|strum|comp|chord|palm mut|accompan|fingerpick|arpeggi/.test(text)) return item;
+      const text =
+        `${item.element} ${item.role} ${item.technique ?? ""} ${item.evidence}`.toLowerCase();
+      if (
+        !/guitar|string instrument|plucked string|pluck/.test(text) ||
+        !/rhythm|strum|comp|chord|palm mut|accompan|fingerpick|arpeggi/.test(text)
+      )
+        return item;
       return {
         ...item,
         element: /guitar/.test(item.element.toLowerCase()) ? item.element : "Rhythm Guitar",
-        technique: preservesSpecificGuitarTechnique(item.technique) ? item.technique : "Chordal strumming / rhythmic comping",
+        technique: preservesSpecificGuitarTechnique(item.technique)
+          ? item.technique
+          : "Chordal strumming / rhythmic comping",
       };
     });
-    notes.push("Stage A guitar guard: independent audio verification confirmed a recurring rhythm-guitar role. Preserve the verified guitar role and the most specific already-supported playing technique (including fingerpicking/arpeggiation); leave acoustic-vs-clean-electric source unresolved unless direct evidence distinguishes it.");
+    notes.push(
+      "Stage A guitar guard: independent audio verification confirmed a recurring rhythm-guitar role. Preserve the verified guitar role and the most specific already-supported playing technique (including fingerpicking/arpeggiation); leave acoustic-vs-clean-electric source unresolved unless direct evidence distinguishes it.",
+    );
   }
 
   const keyboard = verification.keyboardFamily;
-  if (verifierStrongEnough(keyboard.confidence) && ["rhodes", "wurlitzer", "acoustic_piano", "synth_keys"].includes(keyboard.value)) {
+  if (
+    verifierStrongEnough(keyboard.confidence) &&
+    ["rhodes", "wurlitzer", "acoustic_piano", "synth_keys"].includes(keyboard.value)
+  ) {
     const labels: Record<string, { instrument: string; timbre: string }> = {
-      rhodes: { instrument: "Rhodes Electric Piano", timbre: "Warm tine-based electric-piano timbre" },
+      rhodes: {
+        instrument: "Rhodes Electric Piano",
+        timbre: "Warm tine-based electric-piano timbre",
+      },
       wurlitzer: { instrument: "Wurlitzer Electric Piano", timbre: "Reedy electric-piano timbre" },
-      acoustic_piano: { instrument: "Acoustic Piano", timbre: "Acoustic hammer-and-string piano timbre" },
+      acoustic_piano: {
+        instrument: "Acoustic Piano",
+        timbre: "Acoustic hammer-and-string piano timbre",
+      },
       synth_keys: { instrument: "Synthesizer Keys", timbre: "Synthetic keyboard timbre" },
     };
     const resolved = labels[keyboard.value]!;
-    const existingIndex = instrumentEvidence.findIndex((item) => /rhodes|wurlitzer|piano|keyboard|keys|synth(?:esizer)?.*pad|pad/.test(`${item.instrument} ${item.role} ${item.timbre ?? ""}`.toLowerCase()));
+    const existingIndex = instrumentEvidence.findIndex((item) =>
+      /rhodes|wurlitzer|piano|keyboard|keys|synth(?:esizer)?.*pad|pad/.test(
+        `${item.instrument} ${item.role} ${item.timbre ?? ""}`.toLowerCase(),
+      ),
+    );
     if (existingIndex >= 0) {
-      instrumentEvidence = instrumentEvidence.map((item, index) => index === existingIndex ? {
-        ...item,
-        instrument: resolved.instrument,
-        timbre: joinUniqueDescriptors(item.timbre, resolved.timbre),
-        confidence: keyboard.confidence === "high" && item.confidence === "low" ? "medium" : item.confidence,
-        evidence: `${item.evidence} Independent keyboard-family verification: ${keyboard.evidence}`.slice(0, 2000),
-      } : item);
+      instrumentEvidence = instrumentEvidence.map((item, index) =>
+        index === existingIndex
+          ? {
+              ...item,
+              instrument: resolved.instrument,
+              timbre: joinUniqueDescriptors(item.timbre, resolved.timbre),
+              confidence:
+                keyboard.confidence === "high" && item.confidence === "low"
+                  ? "medium"
+                  : item.confidence,
+              evidence:
+                `${item.evidence} Independent keyboard-family verification: ${keyboard.evidence}`.slice(
+                  0,
+                  2000,
+                ),
+            }
+          : item,
+      );
     } else if (instrumentEvidence.length < 30) {
-      instrumentEvidence = [...instrumentEvidence, {
-        instrument: resolved.instrument,
-        role: "Harmonic / atmospheric keyboard layer",
-        technique: "Sustained chords / voicings",
-        timbre: resolved.timbre,
-        prominence: "supporting",
-        confidence: keyboard.confidence,
-        evidence: keyboard.evidence,
-      }];
+      instrumentEvidence = [
+        ...instrumentEvidence,
+        {
+          instrument: resolved.instrument,
+          role: "Harmonic / atmospheric keyboard layer",
+          technique: "Sustained chords / voicings",
+          timbre: resolved.timbre,
+          prominence: "supporting",
+          confidence: keyboard.confidence,
+          evidence: keyboard.evidence,
+        },
+      ];
     }
   }
   notes.push(
     `Stage A keyboard-family verifier classified the material keyboard layer as ${keyboard.value} with ${keyboard.confidence} confidence. ${keyboard.evidence}${keyboard.cues.length ? ` Direct cues: ${keyboard.cues.join("; ")}` : ""}`,
   );
 
-  let vocalCharacteristics = [...evidence.vocalCharacteristics];
+  const vocalCharacteristics = [...evidence.vocalCharacteristics];
   const vocalDelivery = verification.vocalDelivery;
   if (verifierStrongEnough(vocalDelivery.confidence) && vocalDelivery.value !== "uncertain") {
     const labels: Record<string, string> = {
@@ -894,7 +1130,11 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       spoken_word: "Verified spoken-word delivery",
       mixed: "Verified mixed sung / rhythmic-speech delivery",
     };
-    const existing = vocalCharacteristics.some((item) => /sing-rap|rap delivery|spoken-word|conversational singing|melodic singing|rhythmic-speech/i.test(`${item.claim} ${item.evidence}`));
+    const existing = vocalCharacteristics.some((item) =>
+      /sing-rap|rap delivery|spoken-word|conversational singing|melodic singing|rhythmic-speech/i.test(
+        `${item.claim} ${item.evidence}`,
+      ),
+    );
     if (!existing && vocalCharacteristics.length < 20) {
       vocalCharacteristics.push({
         claim: labels[vocalDelivery.value] ?? `Verified vocal delivery: ${vocalDelivery.value}`,
@@ -902,10 +1142,12 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
         confidence: vocalDelivery.confidence,
       });
     }
-    notes.push(`Stage A vocal-delivery verifier classified the lead delivery as ${vocalDelivery.value} with ${vocalDelivery.confidence} confidence from pitch/rhythm/speech-balance cues; this is delivery evidence, not a genre label.`);
+    notes.push(
+      `Stage A vocal-delivery verifier classified the lead delivery as ${vocalDelivery.value} with ${vocalDelivery.confidence} confidence from pitch/rhythm/speech-balance cues; this is delivery evidence, not a genre label.`,
+    );
   }
 
-  let productionMixEvidence = [...evidence.productionMixEvidence];
+  const productionMixEvidence = [...evidence.productionMixEvidence];
   const productionCueLabels: Record<string, string> = {
     tape_saturation: "Tape-like saturation / soft harmonic coloration",
     vinyl_crackle: "Subtle vinyl-like crackle / surface noise",
@@ -925,20 +1167,26 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
       `Stage A micro-production verifier decisions: ${verification.microProductionCues.map((cue) => `${cue.value}=${cue.confidence}`).join(", ")}. Only medium/high cues are preserved as production evidence; low-confidence cues remain diagnostic only.`,
     );
   } else {
-    notes.push("Stage A micro-production verifier found no independently supported tape saturation, vinyl crackle, low-pass-filtered guitar, or distant electric-guitar swell cue in this pass.");
+    notes.push(
+      "Stage A micro-production verifier found no independently supported tape saturation, vinyl crackle, low-pass-filtered guitar, or distant electric-guitar swell cue in this pass.",
+    );
   }
 
   let tempo = evidence.tempo;
   const verifiedTempo = verification.feltTempo.bpm;
   if (verifiedTempo != null && evidence.tempo.feltTempo != null) {
-    const difference = Math.abs(verifiedTempo - evidence.tempo.feltTempo) / Math.max(verifiedTempo, evidence.tempo.feltTempo);
+    const difference =
+      Math.abs(verifiedTempo - evidence.tempo.feltTempo) /
+      Math.max(verifiedTempo, evidence.tempo.feltTempo);
     if (isHalfDoublePair(verifiedTempo, evidence.tempo.feltTempo)) {
       tempo = {
         ...tempo,
         confidence: tempo.confidence === "low" ? "low" : "medium",
         notes: `${tempo.notes} Independent audio verification preferred ${verifiedTempo.toFixed(1)} BPM while the first Stage A pass preferred ${evidence.tempo.feltTempo.toFixed(1)} BPM; these are near half/double-time alternatives, so high confidence is prohibited.`,
       };
-      conflicts.push("felt tempo changed by a half/double-time factor between independent audio passes");
+      conflicts.push(
+        "felt tempo changed by a half/double-time factor between independent audio passes",
+      );
     } else if (difference > 0.12 && verification.feltTempo.confidence !== "low") {
       tempo = {
         ...tempo,
@@ -950,18 +1198,31 @@ function reconcileVerification(evidence: StageAEvidence, verification: Verificat
   }
 
   if (stage0Evidence.tempo?.ambiguous) {
-    notes.push("Stage A tempo guard: Stage 0 reports a half/double-time ambiguity. The selected BPM may describe either the felt pulse or a subdivision grid; BPM alone must never determine genre family without corroborating drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence.");
+    notes.push(
+      "Stage A tempo guard: Stage 0 reports a half/double-time ambiguity. The selected BPM may describe either the felt pulse or a subdivision grid; BPM alone must never determine genre family without corroborating drum-pattern, bass, vocal-phrasing, harmonic-rhythm, arrangement, and production evidence.",
+    );
   }
 
   for (const conflict of [...new Set(conflicts)]) {
-    notes.push(`Stage A stability guard: ${conflict}. Conflicting specific claims were confidence-downgraded before final interpretation.`);
+    notes.push(
+      `Stage A stability guard: ${conflict}. Conflicting specific claims were confidence-downgraded before final interpretation.`,
+    );
   }
 
-  return { ...evidence, instrumentEvidence, dominantElements, vocalCharacteristics, productionMixEvidence, tempo, uncertaintyNotes: notes.slice(0, 30) };
+  return {
+    ...evidence,
+    instrumentEvidence,
+    dominantElements,
+    vocalCharacteristics,
+    productionMixEvidence,
+    tempo,
+    uncertaintyNotes: notes.slice(0, 30),
+  };
 }
 
 function evidenceDerivedInstruments(evidence: StageAEvidence) {
-  const forbidden = /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise|compression|sidechain)\b/i;
+  const forbidden =
+    /\b(vocals?|singer|backing vocals?|vocal chops?|risers?|sweeps?|impacts?|transition(?:al)? fx|sound effects?|sfx|reverb|delay|white noise|compression|sidechain)\b/i;
   const values = evidence.instrumentEvidence
     .filter((item) => !forbidden.test(item.instrument) && item.confidence !== "low")
     .map((item) => {
@@ -976,9 +1237,15 @@ function formatSectionTime(seconds: number) {
   return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
 }
 
-function patchInitialResult(result: SongAnalysisResult, evidence: StageAEvidence): SongAnalysisResult {
+function patchInitialResult(
+  result: SongAnalysisResult,
+  evidence: StageAEvidence,
+): SongAnalysisResult {
   const instruments = evidenceDerivedInstruments(evidence);
-  const labels = evidence.songSections.map((section) => section.label.trim()).filter(Boolean).slice(0, 30);
+  const labels = evidence.songSections
+    .map((section) => section.label.trim())
+    .filter(Boolean)
+    .slice(0, 30);
   const structureText = evidence.songSections
     .map((section) => {
       if (section.startSeconds == null || section.endSeconds == null) return section.label;
@@ -1078,12 +1345,22 @@ async function runVerifier(args: {
 
   const payload = (await response.json()) as any;
   const usage = normalizedUsage(payload);
-  if (!response.ok) throw Object.assign(new Error(payload?.error?.message || `Stage A verifier failed (${response.status})`), { usage });
+  if (!response.ok)
+    throw Object.assign(
+      new Error(payload?.error?.message || `Stage A verifier failed (${response.status})`),
+      { usage },
+    );
   const candidate = payload?.candidates?.[0];
   if (candidate?.finishReason && candidate.finishReason !== "STOP") {
-    throw Object.assign(new Error(`Stage A verifier stopped before completion: ${candidate.finishReason}`), { usage });
+    throw Object.assign(
+      new Error(`Stage A verifier stopped before completion: ${candidate.finishReason}`),
+      { usage },
+    );
   }
-  const text = (candidate?.content?.parts ?? []).map((part: any) => (typeof part?.text === "string" ? part.text : "")).join("").trim();
+  const text = (candidate?.content?.parts ?? [])
+    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
   if (!text) throw Object.assign(new Error("Stage A verifier returned no JSON"), { usage });
   return { verification: verifierSchema.parse(JSON.parse(text)), usage, stemPreviewUsed };
 }
@@ -1101,8 +1378,7 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
     const apiKey = process.env["GEMINI_API_KEY"];
     if (apiKey) {
       let usage: ReturnType<typeof normalizedUsage> = null;
-      const verifierModel =
-        data.model.startsWith("gemini-") ? data.model : "gemini-3.8-flash";
+      const verifierModel = data.model.startsWith("gemini-") ? data.model : "gemini-3.8-flash";
       try {
         const checked = await runVerifier({
           apiKey,
@@ -1114,7 +1390,8 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
           sourceStemPreview: data.stage0Evidence.sourceStemPreview,
         });
         usage = checked.usage;
-        evidence = reconcileVerification(evidence, checked.verification, data.stage0Evidence) ?? evidence;
+        evidence =
+          reconcileVerification(evidence, checked.verification, data.stage0Evidence) ?? evidence;
         if (checked.stemPreviewUsed) {
           evidence = {
             ...evidence,
@@ -1150,9 +1427,12 @@ export const guardSongAnalyzerStageA = createServerFn({ method: "POST" })
             "Stage A critical-evidence verification was unavailable; deterministic timeline validation still ran, but source-family and delivery stability were not independently cross-checked.",
           ].slice(0, 30),
         };
-        console.warn("[song-analyzer] Stage A verifier unavailable; continuing with deterministic guard", {
-          message: error instanceof Error ? error.message : String(error),
-        });
+        console.warn(
+          "[song-analyzer] Stage A verifier unavailable; continuing with deterministic guard",
+          {
+            errorType: safeErrorType(error),
+          },
+        );
       }
     }
 

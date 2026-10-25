@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { compatibleUtcDateTimePattern } from "@/lib/validation-datetime";
@@ -313,7 +314,7 @@ async function resolvePricing(provider: AiProviderId, modelId: string): Promise<
       console.warn("[ai-model-refresh] official pricing lookup unavailable", {
         provider,
         modelId,
-        error: error instanceof Error ? error.message : String(error),
+        errorType: safeErrorType(error),
       });
     }
   }

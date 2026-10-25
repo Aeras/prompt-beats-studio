@@ -1,3 +1,4 @@
+import { safeErrorType, safeProviderCode, safeStopReason } from "@/lib/safe-diagnostics";
 /**
  * Provider/model abstraction for the AI pipeline.
  *
@@ -29,7 +30,7 @@ import {
 
 /** Never write an arbitrary provider-supplied string into server diagnostics. */
 function safeProviderDiagnosticCode(value: unknown): string | null {
-  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value) ? value : null;
+  return safeProviderCode(value);
 }
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -183,7 +184,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
       status: res.status,
       errorType,
       durationMs: Date.now() - startedAt,
-      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+      hasRequestId: Boolean(res.headers.get("request-id") ?? res.headers.get("x-request-id")),
     });
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
@@ -192,7 +193,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     console.error("[ai-provider] Anthropic stream missing body", {
       model,
       durationMs: Date.now() - startedAt,
-      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+      hasRequestId: Boolean(res.headers.get("request-id") ?? res.headers.get("x-request-id")),
     });
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }
@@ -259,7 +260,7 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
         model,
         errorType,
         durationMs: Date.now() - startedAt,
-        requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+        hasRequestId: Boolean(res.headers.get("request-id") ?? res.headers.get("x-request-id")),
       });
       throw new Error("The AI provider is temporarily unavailable. Please try again later.");
     }
@@ -315,8 +316,8 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
     console.error("[ai-provider] Anthropic stream interrupted", {
       model,
       durationMs: Date.now() - startedAt,
-      requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
-      errorType: error instanceof Error ? error.name : "unknown",
+      hasRequestId: Boolean(res.headers.get("request-id") ?? res.headers.get("x-request-id")),
+      errorType: safeErrorType(error),
     });
     throw error;
   } finally {
@@ -344,9 +345,9 @@ async function callAnthropic(model: string, call: ModelCall): Promise<ModelResul
 
   console.info("[ai-provider] Anthropic stream completed", {
     model,
-    stopReason,
+    stopReason: safeStopReason(stopReason),
     durationMs: Date.now() - startedAt,
-    requestId: res.headers.get("request-id") ?? res.headers.get("x-request-id"),
+    hasRequestId: Boolean(res.headers.get("request-id") ?? res.headers.get("x-request-id")),
   });
 
   return { text, stopReason, usage, provider: "anthropic", model };
@@ -429,7 +430,7 @@ async function collectGeminiSse(
       model,
       frames,
       receivedCharacters: text.length,
-      errorName: error instanceof Error ? error.name : "unknown",
+      errorName: safeErrorType(error),
     });
     throw error;
   } finally {
@@ -439,7 +440,7 @@ async function collectGeminiSse(
     console.error("[ai-provider] Gemini Argon stream incomplete", {
       model,
       frames,
-      finish,
+      finish: safeStopReason(finish),
       receivedCharacters: text.length,
     });
   }
@@ -1107,7 +1108,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   } catch (error) {
     console.error(
       `[ai-provider] xAI request failed before response (${model})`,
-      error instanceof Error ? error.name : "unknown",
+      safeErrorType(error),
     );
     throw new Error("The AI provider is temporarily unavailable. Please try again later.");
   }

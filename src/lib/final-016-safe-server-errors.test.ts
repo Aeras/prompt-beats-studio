@@ -12,10 +12,11 @@ const protectedBoundaries = [
 ] as const;
 
 describe("FINAL-016 safe server error boundaries", () => {
-  test("central mapper logs internal details and throws only a caller-supplied public message", async () => {
+  test("central mapper logs safe correlation metadata and throws only a caller-supplied public message", async () => {
     const helper = await source("src/lib/server-error.ts");
 
-    expect(helper).toContain("console.error(`[PromptBeats:${scope}] ${reference}`, error)");
+    expect(helper).toContain("errorType: safeErrorType(error)");
+    expect(helper).not.toContain("console.error(`[PromptBeats:${scope}] ${reference}`, error)");
     expect(helper).toContain("throw new Error(publicMessage)");
     expect(helper).not.toContain("throw new Error(error.message)");
   });

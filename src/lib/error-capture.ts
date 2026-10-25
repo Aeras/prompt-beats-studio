@@ -1,5 +1,7 @@
-// Captures the original Error out-of-band so server.ts can recover the stack
-// when h3 has already swallowed the throw into a generic 500 Response.
+import { safeErrorType } from "./safe-diagnostics";
+
+// Retain the short-lived error reference for SSR correlation. Logging must never
+// expand its message, stack or cause payload: upstream errors may echo secrets.
 
 let lastCapturedError: { error: unknown; at: number } | undefined;
 const TTL_MS = 5_000;
@@ -8,41 +10,28 @@ function record(error: unknown) {
   lastCapturedError = { error, at: Date.now() };
 }
 
-// h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"} —
-// no stack, no cause — so a plain console.error(error) reaches the log pipeline with
-// the failure detail stripped. Expand Error-like args into a string that keeps the
-// message, stack, and the full cause chain.
+// h3 may log Error objects itself. Keep only allowlisted category/status evidence
+// rather than reconstructing sensitive provider bodies through their cause chain.
 const CAUSE_DEPTH_LIMIT = 5;
 const DESCRIPTION_LENGTH_LIMIT = 8_000;
 
 export function describeError(error: unknown): string {
-  const parts: string[] = [];
+  const parts: Array<{ errorType: string; status?: number }> = [];
   let current: unknown = error;
   for (let depth = 0; depth < CAUSE_DEPTH_LIMIT && current != null; depth++) {
-    if (!(current instanceof Error)) {
-      parts.push(typeof current === "string" ? current : safeStringify(current));
-      break;
+    const item: { errorType: string; status?: number } = { errorType: safeErrorType(current) };
+    try {
+      const value = current as { status?: unknown; statusCode?: unknown; cause?: unknown };
+      const status = value.status ?? value.statusCode;
+      if (typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599)
+        item.status = status;
+      current = value.cause;
+    } catch {
+      current = null;
     }
-    const label = depth === 0 ? "" : "caused by: ";
-    const status = describeStatus(current);
-    parts.push(`${label}${current.stack ?? `${current.name}: ${current.message}`}${status}`);
-    current = current.cause;
+    parts.push(item);
   }
-  return parts.join("\n").slice(0, DESCRIPTION_LENGTH_LIMIT);
-}
-
-function describeStatus(error: Error): string {
-  const { status, statusCode } = error as { status?: unknown; statusCode?: unknown };
-  const value = status ?? statusCode;
-  return typeof value === "number" ? ` (status ${value})` : "";
-}
-
-function safeStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
+  return JSON.stringify(parts).slice(0, DESCRIPTION_LENGTH_LIMIT);
 }
 
 function isErrorLike(value: unknown): value is Error {
@@ -50,8 +39,7 @@ function isErrorLike(value: unknown): value is Error {
 }
 
 // Wrap console.error so errors logged by any layer — including h3's internal
-// unhandled-error logging, which this file cannot hook directly — are both
-// recorded for consumeLastCapturedError and expanded before serialization.
+// unhandled-error logging — are correlated without serializing private detail.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
   const expanded = args.map((arg) => {

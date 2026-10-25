@@ -1,3 +1,5 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
+import { assertGenerationRequestBudget } from "@/lib/generator-input-limits";
 /**
  * Durable execution layer for song generation.
  *
@@ -122,6 +124,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     void checkCancellation();
   }, 750);
   try {
+    assertGenerationRequestBudget(job.input_payload);
     const input = durableAiJobInput.parse(job.input_payload);
     // Defense in depth: durable jobs can also be created via the raw RPC.
     // Re-verify the existing Super Admin + Advanced new-song restriction
@@ -303,7 +306,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     if (!cancellationController.signal.aborted)
       console.error("[generation-job] failed", {
         jobId: job.id,
-        errorType: err instanceof Error ? err.name : "unknown",
+        errorType: safeErrorType(err),
       });
     await db
       .from("ai_generation_jobs")

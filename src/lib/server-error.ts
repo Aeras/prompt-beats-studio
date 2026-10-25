@@ -1,3 +1,5 @@
+import { safeErrorType } from "./safe-diagnostics";
+
 const DEFAULT_PUBLIC_MESSAGE = "The action could not be completed. Please try again.";
 
 function correlationId() {
@@ -8,10 +10,10 @@ function correlationId() {
   }
 }
 
-/** Keep detailed infrastructure errors in server logs, not client responses. */
+/** Correlate failures without copying infrastructure/provider error payloads. */
 export function reportServerError(scope: string, error: unknown): string {
   const reference = correlationId();
-  console.error(`[PromptBeats:${scope}] ${reference}`, error);
+  console.error(`[PromptBeats:${scope}] ${reference}`, { errorType: safeErrorType(error) });
   return reference;
 }
 

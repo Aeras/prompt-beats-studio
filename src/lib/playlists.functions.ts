@@ -43,7 +43,9 @@ async function loadTracksWithHandles(
     .eq("moderation_status", "active");
   if (error) throw new Error(error.message);
 
-  const rows = tracks ?? [];
+  const rows = (tracks ?? []).filter(
+    (track: any) => track.is_published === true || track.user_id === viewerId,
+  );
   const userIds = [...new Set(rows.map((track: any) => track.user_id))] as string[];
   const handles = new Map<string, string>();
   if (userIds.length) {
@@ -122,14 +124,16 @@ export const listPlaylists = createServerFn({ method: "GET" })
     const trackIds = [...new Set((items ?? []).map((item: any) => item.track_id))];
     const { data: tracks, error: trackError } = trackIds.length
       ? await (context.supabase.from("tracks") as any)
-          .select("id, duration_seconds, cover_url, art_url")
+          .select("id, user_id, is_published, duration_seconds, cover_url, art_url")
           .in("id", trackIds)
           .eq("moderation_status", "active")
       : { data: [], error: null };
     if (trackError) throw new Error(trackError.message);
 
     const trackMap = new Map<string, any>(
-      (tracks ?? []).map((track: any): [string, any] => [track.id, track]),
+      (tracks ?? [])
+        .filter((track: any) => track.is_published === true || track.user_id === context.userId)
+        .map((track: any): [string, any] => [track.id, track]),
     );
     const itemMap = new Map<string, any[]>();
     for (const item of items ?? []) {
@@ -140,7 +144,9 @@ export const listPlaylists = createServerFn({ method: "GET" })
 
     return {
       playlists: playlists.map((playlist: any) => {
-        const playlistItems = itemMap.get(playlist.id) ?? [];
+        const playlistItems = (itemMap.get(playlist.id) ?? []).filter((item: any) =>
+          trackMap.has(item.track_id),
+        );
         const latestItem = playlistItems.reduce(
           (latest: any, item: any) => (!latest || item.added_at > latest.added_at ? item : latest),
           null,
@@ -372,7 +378,9 @@ export const listFavoriteTrackIds = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { trackIds: (data ?? []).map((row: any) => row.track_id) };
+    const ids = (data ?? []).map((row: any) => row.track_id);
+    const tracks = await loadTracksWithHandles(context.supabase, ids, ids, context.userId);
+    return { trackIds: tracks.map((track: any) => track.id) };
   });
 
 export const listFavoriteTracks = createServerFn({ method: "GET" })
@@ -414,11 +422,15 @@ export const toggleFavorite = createServerFn({ method: "POST" })
 
     const { data: track, error: trackError } = await context.supabase
       .from("tracks")
-      .select("id, user_id, is_published")
+      .select("id, user_id, is_published, moderation_status")
       .eq("id", data.trackId)
       .maybeSingle();
     if (trackError) throw new Error(trackError.message);
-    if (!track || (track.is_published !== true && track.user_id !== context.userId))
+    if (
+      !track ||
+      track.moderation_status !== "active" ||
+      (track.is_published !== true && track.user_id !== context.userId)
+    )
       throw new Error("Track is unavailable");
 
     const { error } = await (context.supabase as any)

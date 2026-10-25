@@ -1,3 +1,4 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
 /**
  * Durable execution layer for Quality Check jobs.
  *
@@ -152,7 +153,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
   try {
     payload = durableQualityCheckInput.parse(action.input_payload);
   } catch (err) {
-    console.error("[quality-job] invalid payload", actionId, err);
+    console.error("[quality-job] invalid payload", { actionId, errorType: safeErrorType(err) });
     await db
       .from("ai_quality_check_actions")
       .update({
@@ -227,7 +228,10 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
       try {
         await flushDurableQualityUsage(action.user_id, payload.generationId ?? null, out.records);
       } catch (usageError) {
-        console.error("[quality-job] usage logging failed", actionId, usageError);
+        console.error("[quality-job] usage logging failed", {
+          actionId,
+          errorType: safeErrorType(usageError),
+        });
       }
 
       await db
@@ -278,7 +282,10 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
     } catch (usageError) {
       // Usage analytics must never turn a completed, charged QC into a user
       // failure or cause another provider request.
-      console.error("[quality-job] usage logging failed", actionId, usageError);
+      console.error("[quality-job] usage logging failed", {
+        actionId,
+        errorType: safeErrorType(usageError),
+      });
     }
 
     return { ran: true };
@@ -300,7 +307,7 @@ export async function executeQualityCheckJob(actionId: string): Promise<{ ran: b
         .eq("status", "processing");
       return { ran: true };
     }
-    console.error("[quality-job] failed", actionId, err);
+    console.error("[quality-job] failed", { actionId, errorType: safeErrorType(err) });
 
     if (!providerCommitted) {
       // We know no external provider call was committed, so failing the action

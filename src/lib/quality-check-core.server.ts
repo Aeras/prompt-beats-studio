@@ -1,3 +1,9 @@
+import {
+  safeErrorType,
+  safeDiagnosticKeys,
+  safeIssuePath,
+  safeStopReason,
+} from "@/lib/safe-diagnostics";
 import type { Json } from "@/integrations/supabase/types";
 import { qualityPlatformGuidance } from "@/lib/ai-platform-guidance";
 import {
@@ -781,7 +787,7 @@ function normalizeQualityScore(raw: unknown): unknown {
       const normalized = Math.max(0, Math.min(10, obj["score"]));
       if (normalized !== obj["score"]) {
         console.warn("[ai] quality_check score_normalized", {
-          originalScore: obj["score"],
+          originalScoreType: typeof obj["score"],
           normalizedScore: normalized,
         });
         return { ...obj, score: normalized };
@@ -811,7 +817,7 @@ function responseShape(value: unknown) {
   )
     return undefined;
   const record = value as Record<string, unknown>;
-  const topLevelKeys = Object.keys(record);
+  const topLevelKeys = safeDiagnosticKeys(record);
   return {
     topLevelKeys,
     topLevelTypes: Object.fromEntries(topLevelKeys.map((key) => [key, valueType(record[key])])),
@@ -894,10 +900,7 @@ export async function runDurableQualityCheck(
       success: false,
     });
     await flushDurableQualityUsage(userId, data.generationId ?? null, records);
-    console.error(
-      `[ai] quality_check failed model=${model}`,
-      err instanceof Error ? err.message : err,
-    );
+    console.error(`[ai] quality_check failed model=${model}`, { errorType: safeErrorType(err) });
     const timedOut =
       err instanceof Error &&
       (err.name === "TimeoutError" ||
@@ -962,7 +965,7 @@ export async function runDurableQualityCheck(
       operation: "quality_check",
       model: actualModel,
       provider: actualProvider,
-      stopReason: result.stopReason ?? "unknown",
+      stopReason: safeStopReason(result.stopReason),
     });
     return {
       quality: null,
@@ -1006,7 +1009,7 @@ export async function runDurableQualityCheck(
       provider: actualProvider,
       failureReason: "json_parse_error",
       responseTextLength: result.text.length,
-      error: err instanceof Error ? err.message : String(err),
+      errorType: safeErrorType(err),
     });
     return {
       quality: null,
@@ -1030,18 +1033,14 @@ export async function runDurableQualityCheck(
       failureReason: "schema_validation_error",
       ...(responseShape(parsedJson) ?? {}),
       validationIssues: parsed.error.issues.slice(0, 8).map((issue) => ({
-        path: issue.path.join(".") || "<root>",
+        path: safeIssuePath(issue.path),
         code: issue.code,
-        message: issue.message,
       })),
     });
     // Only field paths and Zod issue codes; never persist raw provider content,
     // lyric excerpts, or free-form validation messages.
     const diagnostics = parsed.error.issues.slice(0, 8).map((issue) => {
-      const path = issue.path
-        .map((segment) => (typeof segment === "number" ? "#" : String(segment)))
-        .map((segment) => segment.replace(/[^A-Za-z0-9_#-]/g, "").slice(0, 40))
-        .join(".");
+      const path = safeIssuePath(issue.path);
       return `${path || "root"}:${issue.code}`;
     });
     return {

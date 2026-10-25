@@ -1,3 +1,5 @@
+import { safeErrorType } from "@/lib/safe-diagnostics";
+
 import {
   AI_MODELS,
   AI_MODEL_IDS,
@@ -120,7 +122,7 @@ export async function getInstalledRegistryModels(): Promise<RegistryModel[]> {
         (model): model is RegistryModel => model !== null,
       );
     }
-    console.error("[ai-registry] registry lookup failed", error);
+    console.error("[ai-registry] registry lookup failed", { errorType: safeErrorType(error) });
     throw new Error("AI model registry is temporarily unavailable.");
   }
 }
@@ -142,7 +144,7 @@ export async function getRegistryModel(modelId: string): Promise<RegistryModel |
       console.warn("[ai-registry] registry table not migrated yet; using compatibility catalog");
       return fallbackModel(modelId);
     }
-    console.error("[ai-registry] model lookup failed", error);
+    console.error("[ai-registry] model lookup failed", { errorType: safeErrorType(error) });
     throw new Error("AI model registry is temporarily unavailable.");
   }
 }
@@ -182,7 +184,9 @@ export async function getOperationDefaultModel(
       if (model && isModelEligibleForOperation(model, operation)) return model;
     }
   } catch (error) {
-    console.warn("[ai-registry] default lookup failed; using hard fallback", error);
+    console.warn("[ai-registry] default lookup failed; using hard fallback", {
+      errorType: safeErrorType(error),
+    });
   }
 
   const fallback = await getRegistryModel(DEFAULT_AI_MODEL);

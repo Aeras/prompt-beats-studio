@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeErrorType } from "@/lib/safe-diagnostics";
 import type { NormalizedUsage } from "./ai-usage.server";
 import { usageEvidence } from "./ai-usage-evidence";
 import type { Stage0DspEvidence } from "./song-analyzer-dsp.shared";
@@ -22,18 +23,29 @@ export type AnalyzerV2Diagnostics = {
   causeCode?: string;
   httpStatus?: number;
 };
-const SAFE_NAME = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
-const SAFE_CODE = /^[A-Z][A-Z0-9_]{0,39}$/;
 export function safeErrorMetadata(error: unknown) {
   const meta: { errorName?: string; causeName?: string; causeCode?: string } = {};
-  const name = (error as { name?: unknown } | null)?.name;
-  if (typeof name === "string" && SAFE_NAME.test(name)) meta.errorName = name;
+  const name = safeErrorType(error);
+  if (name !== "unknown") meta.errorName = name;
   const cause = (error as { cause?: unknown } | null)?.cause;
-  const causeName = (cause as { name?: unknown } | null)?.name;
-  if (typeof causeName === "string" && SAFE_NAME.test(causeName)) meta.causeName = causeName;
+  const causeName = safeErrorType(cause);
+  if (causeName !== "unknown") meta.causeName = causeName;
   const code =
     (cause as { code?: unknown } | null)?.code ?? (error as { code?: unknown } | null)?.code;
-  if (typeof code === "string" && SAFE_CODE.test(code)) meta.causeCode = code;
+  if (
+    typeof code === "string" &&
+    [
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ETIMEDOUT",
+      "ENOTFOUND",
+      "EAI_AGAIN",
+      "UND_ERR_CONNECT_TIMEOUT",
+      "UND_ERR_HEADERS_TIMEOUT",
+      "UND_ERR_SOCKET",
+    ].includes(code)
+  )
+    meta.causeCode = code;
   return meta;
 }
 function formatDiagnostics(d: AnalyzerV2Diagnostics) {

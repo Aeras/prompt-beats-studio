@@ -1,0 +1,336 @@
+{
+  "date": "2026-10-25",
+  "priorMergedPullRequests": [
+    {
+      "number": 403,
+      "head": "02a457a6dff54d769b548604c0be30f1cb738c89",
+      "merge": "0cd4ea538cc3d632abf357e5798395396d90c0fd",
+      "merged_at": "2026-10-24T06:04:27Z"
+    },
+    {
+      "number": 404,
+      "head": "7b1b2e3abe1ac6185bd29161b422c322a43bb65c",
+      "merge": "b20912f3ec151cb32a6dc0460d7a0bde58d1289a",
+      "merged_at": "2026-10-24T10:59:27Z"
+    },
+    {
+      "number": 405,
+      "head": "16a39a7cbd19d501ad1b4b78036d611d584b7c22",
+      "merge": "fb770aa1699ae444b7a0bd504edf804c9fd234ab",
+      "merged_at": "2026-10-24T12:22:45Z"
+    },
+    {
+      "number": 406,
+      "head": "5003ecde40ac0d1086b3912ec9aee178d7a07c23",
+      "merge": "b74ee95f01813134f2ca3e3e50812e6462c84aba",
+      "merged_at": "2026-10-24T16:56:02Z"
+    },
+    {
+      "number": 407,
+      "head": "df69307b46778a26d9568dfe90a2bf86d839dfb4",
+      "merge": "89c6dbdee98bdf716f2f74c71c2cbc6a6f5311ba",
+      "merged_at": "2026-10-24T16:59:46Z"
+    },
+    {
+      "number": 408,
+      "head": "e9cb07d7475b1474648d58412334cf2560557dd6",
+      "merge": "1408b569eaaa4f683c3fde929d824a4e1dbc8714",
+      "merged_at": "2026-10-24T17:02:14Z"
+    },
+    {
+      "number": 409,
+      "head": "1acdf8fc3d10180e3999d90b34f5a09154c24f53",
+      "merge": "5cd3f1bba99563be6ccee7030022d17f74ebc462",
+      "merged_at": "2026-10-24T17:23:16Z"
+    },
+    {
+      "number": 410,
+      "head": "914558fa3a7fafe2c89a5a44e1ca41369db0f169",
+      "merge": "f3b4b886cc72090856a16a984f7aae4d0295d72f",
+      "merged_at": "2026-10-24T17:24:23Z"
+    },
+    {
+      "number": 411,
+      "head": "c4a6a93a878589611ed574b2251b1edc0dea7055",
+      "merge": "a84a6bf2f522b48dcb2c2e5a9e7eb725878cee65",
+      "merged_at": "2026-10-24T17:29:45Z"
+    },
+    {
+      "number": 412,
+      "head": "f718379859268d9eb8429fb705f1aac564c9ec94",
+      "merge": "c5cd14be2b2df84e8f7399e6ee84287db34cea44",
+      "merged_at": "2026-10-24T18:46:14Z"
+    },
+    {
+      "number": 413,
+      "head": "1b758a4aa4379569899c625f81d530ace24cda3e",
+      "merge": "e2abf8d47fd067316263c3a0246351c1531f67a5",
+      "merged_at": "2026-10-24T19:13:47Z"
+    },
+    {
+      "number": 414,
+      "head": "5ecdb8b095db19c4ea677f25d8e743436e7da77e",
+      "merge": "7b3222b99f31526c65fffd13dd8eb501eaed88c6",
+      "merged_at": "2026-10-24T19:17:49Z"
+    },
+    {
+      "number": 415,
+      "head": "5ed7a574fdad2fae60c681af34df2850f40167b7",
+      "merge": "789756786600e3fba79f5fa9b41bf6bdfc4104c8",
+      "merged_at": "2026-10-24T19:20:31Z"
+    },
+    {
+      "number": 416,
+      "head": "458bcfa192831e8556bd341678b1a8b19986cf51",
+      "merge": "f2a611ca8281bdd45b32ca2d7519c26fc6d6ebba",
+      "merged_at": "2026-10-24T19:29:56Z"
+    },
+    {
+      "number": 417,
+      "head": "9967ae456fc13470cae36e8dd1ca5403285d92ce",
+      "merge": "69984ff73526c3d2a2c3b1dfe7b537c3420aac89",
+      "merged_at": "2026-10-24T19:34:48Z"
+    },
+    {
+      "number": 418,
+      "head": "cc91c34ae6a3532ae77812fddff2895fcac78855",
+      "merge": "f9e0dcec535213a1cc0b1e083732827896f17b1f",
+      "merged_at": "2026-10-24T20:20:23Z"
+    },
+    {
+      "number": 419,
+      "head": "246b10b48f343a6515c376335378dc43eacd7268",
+      "merge": "ca215c53a1e8e30cdf24c85c47ca51a0f67232b9",
+      "merged_at": "2026-10-24T20:51:19Z"
+    },
+    {
+      "number": 420,
+      "head": "5895f84eb3907b37718ad3ceb7e533d5ba0347b7",
+      "merge": "95c44a00420ed9cbf3b1fc68c9370c1625b7137c",
+      "merged_at": "2026-10-25T00:47:45Z"
+    },
+    {
+      "number": 421,
+      "head": "dac57b4d77fd883c9b06bbd2b37535e4a20d7d54",
+      "merge": "077b125a6a8505b7b9ccabcec5445fe2c83f2ed5",
+      "merged_at": "2026-10-25T00:51:38Z"
+    },
+    {
+      "number": 422,
+      "head": "62943993623c57cc20d5adfefa9231364dbe5fe9",
+      "merge": "75386c2afb46df4c7b4294da649d1af77f0589fd",
+      "merged_at": "2026-10-25T00:58:17Z"
+    },
+    {
+      "number": 423,
+      "head": "c69dbfe1eb15a9285ae6f3be9fc1c95fddfe06c0",
+      "merge": "8554aefd0c3a8bbb4b57fd5540c2380266579f03",
+      "merged_at": "2026-10-25T01:30:26Z"
+    }
+  ],
+  "baseline": "8554aefd0c3a8bbb4b57fd5540c2380266579f03",
+  "supabaseProject": "qwlksrcsovbncmretjdt",
+  "productionWritesPerformed": false,
+  "publication": {
+    "source": "Lovable History Published badge, fresh browser inspection",
+    "snapshot": "PR #419",
+    "expectedGitHubMerge": "ca215c53a1e8e30cdf24c85c47ca51a0f67232b9",
+    "editorHead": "8554aefd0c3a8bbb4b57fd5540c2380266579f03",
+    "laterUnpublishedChanges": true,
+    "runtimeShaAttested": false
+  },
+  "functionMatches": [
+    {
+      "name": "ai_execution_cancel_requested_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "begin_ai_execution_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "admit_track_upload",
+      "file": "supabase/migrations/20261024220000_pb_aud_008_success_only_upload_quota.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "is_safe_track_storage_path",
+      "file": "supabase/migrations/20260912150000_track_deletion_cleanup_hardening.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "checkpoint_ai_execution_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "claim_ai_execution_recovery_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "read_ai_execution_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "count_finalized_audio_upload",
+      "file": "supabase/migrations/20261024220000_pb_aud_008_success_only_upload_quota.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "flush_ai_usage_outbox",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "mark_ai_execution_remote_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "observe_ai_execution_usage_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "release_ai_execution_recovery_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "settle_ai_usage_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "skip_ai_execution_internal",
+      "file": "supabase/migrations/20261024060858_pb_aud_ai_usage_recovery.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "finalize_generation_revision_atomic",
+      "file": "supabase/migrations/20261024173000_pb_aud_014_atomic_revision_finalize.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "reserve_stripe_checkout_attempt",
+      "file": "supabase/migrations/20261024203000_pb_aud_018_checkout_reservation.sql",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "claim_ai_recovered_job_internal",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "enforce_finalized_audio_receipt",
+      "exactBodyMatch": true
+    },
+    {
+      "name": "reap_unjournaled_ai_jobs_internal",
+      "exactBodyMatch": true
+    }
+  ],
+  "tableBoundaries": [
+    {
+      "name": "ai_provider_executions",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": false,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true,
+      "service_update": true
+    },
+    {
+      "name": "ai_usage_logs",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": true,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true,
+      "service_update": true
+    },
+    {
+      "name": "audio_upload_receipts",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": false,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true,
+      "service_update": true
+    },
+    {
+      "name": "stripe_checkout_reservations",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": false,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true,
+      "service_update": true
+    },
+    {
+      "name": "track_upload_success_quota",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": false,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true,
+      "service_update": true
+    },
+    {
+      "name": "ai_usage_outbox",
+      "rls": true,
+      "anon_select": false,
+      "auth_select": false,
+      "auth_insert": false,
+      "service_select": true,
+      "service_insert": true
+    }
+  ],
+  "usageLogPolicies": [
+    {
+      "table": "ai_usage_logs",
+      "name": "Admins can view AI usage logs",
+      "roles": ["authenticated"],
+      "cmd": "SELECT",
+      "qual": "current_user_is_admin_level()",
+      "check": null
+    }
+  ],
+  "usageIndexes": [
+    "CREATE UNIQUE INDEX ai_usage_logs_pkey ON public.ai_usage_logs USING btree (id)",
+    "CREATE INDEX ai_usage_logs_created_at_idx ON public.ai_usage_logs USING btree (created_at DESC)",
+    "CREATE INDEX ai_usage_logs_user_id_idx ON public.ai_usage_logs USING btree (user_id)",
+    "CREATE INDEX ai_usage_logs_generation_id_idx ON public.ai_usage_logs USING btree (generation_id)",
+    "CREATE INDEX ai_usage_logs_provider_model_idx ON public.ai_usage_logs USING btree (provider, model)",
+    "CREATE INDEX ai_usage_logs_operation_idx ON public.ai_usage_logs USING btree (operation)",
+    "CREATE INDEX ai_usage_logs_cost_status_idx ON public.ai_usage_logs USING btree (cost_status, model)"
+  ],
+  "productionHttp": {
+    "method": "ordinary anonymous GET",
+    "url": "https://promptbeats.app/",
+    "status": 200,
+    "headers": {
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "content-security-policy": null,
+      "content-security-policy-report-only": null,
+      "x-frame-options": null,
+      "permissions-policy": null
+    },
+    "spoofedHeadersSent": false
+  },
+  "limitations": [
+    "Published snapshot is hosting UI evidence, not a runtime SHA endpoint.",
+    "No paid AI, Stripe payment, production R2 PUT/DELETE or production mutation performed.",
+    "Local mocked provider results do not establish actual invoiced amounts or remote provider retention."
+  ]
+}

@@ -21,7 +21,7 @@ describe("Song Analyzer Stage A grounding guard", () => {
   test("uses a neutral ambiguous pluck/strum resolver instead of a guitar-biased detector", async () => {
     const code = await source("src/lib/song-analyzer-stage-a-guard.functions.ts");
     expect(code).toContain("NEUTRAL RHYTHMIC-LAYER RESOLVER");
-    expect(code).toContain(
+    expect(code.replace(/\s+/g, " ")).toContain(
       '"guitar", "processed_guitar", "synth_pluck", "other_plucked_string", "mixed", "uncertain"',
     );
     expect(code).toContain("at least two independent guitar-like cues");

@@ -14,6 +14,7 @@ import {
   type UsageRecord,
 } from "./ai-usage.server";
 import { usageEvidence } from "./ai-usage-evidence";
+import { safeStopReason, safeErrorType, safeProviderCode } from "./safe-diagnostics";
 import { cancelBackgroundOperation } from "./ai-cancellation-upstream.server";
 import type { ModelCall, ModelResult, ModelCaller } from "./ai-provider.server";
 
@@ -126,6 +127,9 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
         providerRequestSignal: () => new AbortController().signal,
         TextDecoder,
         usageEvidence,
+        safeStopReason,
+        safeErrorType,
+        safeProviderDiagnosticCode: safeProviderCode,
         console: { info() {}, error() {} },
       }) as (model: string, call: ModelCall) => Promise<ModelResult>;
       const pending = adapter("fixture", {
@@ -343,6 +347,29 @@ describe("AI accounting and recovery failure matrix (offline)", () => {
     ).rejects.toThrow();
     expect(f.events).toContain("mark_ai_execution_remote_internal");
     expect(f.records[0]?.usageState).toBe("unknown");
+  });
+
+  test("error receipt reaches independent settlement even when its journal write fails", async () => {
+    const f = fixture();
+    f.deps.write = async () => {
+      throw new Error("journal unavailable");
+    };
+    const failure = Object.assign(new Error("provider failure"), {
+      usage: { input_tokens: 100, output_tokens: 7, total_tokens: 107 },
+    });
+    const call = trackedCaller(
+      async () => {
+        throw failure;
+      },
+      "openai",
+      "fixture",
+      context,
+      f.deps,
+    );
+    await expect(call(input)).rejects.toBe(failure);
+    expect(f.records).toHaveLength(1);
+    expect(f.records[0]?.usage?.totalTokens).toBe(107);
+    expect(f.records[0]?.executionId).toBe(call.executionId);
   });
   test("worker restart retrieves cached output without another provider execution", async () => {
     const f = fixture();
