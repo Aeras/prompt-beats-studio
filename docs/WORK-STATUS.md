@@ -506,6 +506,15 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **SLA / release boundary:** OFF denies requests not already admitted when OFF commits; already admitted requests may physically send/finish and settle after OFF. No claim of worker drainage or cancellation. #437 old-binary/drain prerequisite is separate; this switch cannot protect an old deployed binary. Policy read failure/missing migration fails closed. Keep Draft for independent review; not CLOSED until separately authorized compatible release and runtime verification.
 
 
+## 2026-10-26 — Admin AI default selectors show installed registry
+
+- **Status:** IN_PROGRESS — UI-only implementation in branch `fix/ai-default-model-list-visibility-20261026`; requires automated verification, three mandatory CI gates, review and release verification before closure.
+- **Baseline:** main `b2e286017cc9a18602f4288808e0ae53f14640fb`. Previous selectors in `src/components/promptbeats/AiModelsPanel.tsx` filtered to `status=enabled` and operation-compatible models, hiding installed `testing` models entirely.
+- **Change:** All three admin default-model selectors enumerate all installed registry rows, sort eligible choices before ineligible ones, and label/disable testing, inactive or operation-incompatible models. Save is additionally guarded against submitting an ineligible selection; server-side default-setting rules remain unchanged.
+- **Acceptance / release:** Verify generator, AI Tools and Quality Check show all installed models and distinguish inactive/testing/incompatible without enabling selection; eligible defaults still save, invalid defaults are rejected server-side, no changes to user-facing model availability. Run focused tests, TypeScript, lint/format, build, Regression, Browser Quality and Database Replay. No production SQL, model activation, merge or publish performed.
+
+- **CI retry note (2026-10-26):** Initial Regression gate was blocked by missing required PR-description headings; the four required headings were added. GitHub's failed-job rerun reused its original immutable pull_request event payload and failed identically; a fresh push is needed to generate a new event. Browser Quality and Database Replay passed on previous head; all three gates must pass on final head.
+
 ## 2026-10-26 — Failed Generator identity / safe terminal reconciliation
 
 - **Status:** `CODE_COMPLETE_RELEASE_PENDING` — one dedicated PR from main `b2e286017cc9a18602f4288808e0ae53f14640fb`; no production mutation, reconciliation, merge or publish.
