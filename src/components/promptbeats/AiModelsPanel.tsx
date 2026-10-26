@@ -178,12 +178,17 @@ function AiModelEditor({
 
   const verifyCompatibility = useMutation({
     mutationFn: () => verifyInstalledAiModelCompatibility({ data: { id: model.id } }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["admin-ai-models"] });
-      toast.success(
-        el
-          ? "Η επαλήθευση ολοκληρώθηκε. Ενεργοποιήστε όποια λειτουργία πέρασε τον έλεγχο."
-          : "Verification finished. Enable the features that passed.",
+      const passed = result.generatorCompatible || result.qualityCheckCompatible;
+      toast.message(
+        passed
+          ? el
+            ? "Η επαλήθευση ολοκληρώθηκε. Ενεργοποιήστε όποια λειτουργία πέρασε τον έλεγχο."
+            : "Verification finished. Enable the features that passed."
+          : el
+            ? "Η δοκιμή δεν επιβεβαίωσε συμβατότητα. Οι υπάρχουσες ρυθμίσεις διατηρούνται."
+            : "The probe did not verify compatibility. Existing settings are preserved.",
       );
     },
     onError: (error) =>

@@ -941,13 +941,19 @@ async function probeModel(
         `[ai-compatibility] ${provider.id}/${modelId}/${operation} failed (${response.status})`,
         { status: response.status },
       );
-      return { outcome: classifyHttpFailure(response.status), error: safeError };
+      return {
+        outcome:
+          provider.id === "openrouter" ? "inconclusive" : classifyHttpFailure(response.status),
+        error: safeError,
+      };
     }
 
     return validProbeJson(text, operation)
       ? { outcome: "passed" }
       : {
-          outcome: "unsupported",
+          // A tiny routed probe can exhaust its reasoning/output budget. A
+          // failed sample does not prove that the installed model is incompatible.
+          outcome: provider.id === "openrouter" ? "inconclusive" : "unsupported",
           error: text.trim()
             ? `Invalid structured JSON response: ${text.replace(/\s+/g, " ").slice(0, 220)}`
             : "Invalid structured JSON response: empty model output.",
