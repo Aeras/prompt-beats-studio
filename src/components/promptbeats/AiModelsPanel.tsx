@@ -1048,7 +1048,13 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
                   ))}
               </select>
               <button
-                disabled={!value || setDefault.isPending || !options.some((m) => m.providerModelId === value && canSetOperationDefault(m, operation))}
+                disabled={
+                  !value ||
+                  setDefault.isPending ||
+                  !options.some(
+                    (m) => m.providerModelId === value && canSetOperationDefault(m, operation),
+                  )
+                }
                 onClick={() => setDefault.mutate({ operation, model: value })}
                 className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
               >
