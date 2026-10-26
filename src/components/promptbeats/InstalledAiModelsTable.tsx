@@ -219,7 +219,7 @@ function ModelRow({
         </div>
       </div>
       <div role="cell" className={`${cell} capitalize`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{el ? "Provider" : "Provider"}</span>
+        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">Provider</span>
         {model.provider}
       </div>
       {(["generatorEnabled", "qualityCheckEnabled"] as const).map((field) => {
@@ -228,7 +228,9 @@ function ModelRow({
         const protectedDefault = field === "generatorEnabled" ? defaultGenerator : defaultQuality;
         return (
           <div role="cell" className={cell} key={field}>
-            <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{field === "generatorEnabled" ? "Generator" : "Quality Check"}</span>
+            <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
+          {field === "generatorEnabled" ? "Generator" : "Quality Check"}
+        </span>
             <button
               type="button"
               role="switch"
@@ -259,7 +261,9 @@ function ModelRow({
         );
       })}
       <div role="cell" className={cell}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{el ? "Κατάσταση" : "Status"}</span>
+        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
+          {el ? "Κατάσταση" : "Status"}
+        </span>
         <Choice
           label={`${el ? "Κατάσταση" : "Status"}: ${model.displayName}`}
           value={current("status")}
@@ -268,11 +272,15 @@ function ModelRow({
         />
       </div>
       <div role="cell" className={`${cell} text-xs`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{el ? "Υγεία" : "Health"}</span>
+        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
+          {el ? "Υγεία" : "Health"}
+        </span>
         {modelLabel(model.healthStatus)}
       </div>
       <div role="cell" className={cell}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{el ? "Πρόσβαση" : "Access"}</span>
+        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
+          {el ? "Πρόσβαση" : "Access"}
+        </span>
         <Choice
           label={`${el ? "Πρόσβαση" : "Access"}: ${model.displayName}`}
           value={current("accessPolicy")}
@@ -281,7 +289,9 @@ function ModelRow({
         />
       </div>
       <div role="cell" className={`${cell} text-xs`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">{el ? "Τιμολόγηση" : "Pricing"}</span>
+        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
+          {el ? "Τιμολόγηση" : "Pricing"}
+        </span>
         {modelLabel(model.pricingStatus)}
         {model.pricingStatus === "verified" && (
           <div className="mt-1 text-muted-foreground">
