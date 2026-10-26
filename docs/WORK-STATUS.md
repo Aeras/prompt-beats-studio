@@ -532,3 +532,11 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Change:** Explicit `min-w-0`/`w-full` on management content and AI models panel; model table constrained to viewport with internal horizontal scroll retained, sticky headings and uninstall selection preserved.
 - **Read-only Nemotron evidence:** Exact installed model has one failed, stored `response_observed` execution with final durable usage but no `application_resolution`; `job.model` remains NULL. Both `unresolved_execution` and `recovery_pending` guards are currently correct. Do not delete, fabricate usage or mark resolved without authorized deterministic stored-response validation. Existing #440 migration is installed but not a scheduled or executed historical reconciliation.
 - **Acceptance:** Real mobile-width Browser Quality checks for no document overflow at model table and confirmation, scroll internal table horizontally, keyboard and uninstall blocker remain safe; Regression and Database Replay PASS on exact PR head. Follow approved separate release verification; not CLOSED without publish/production confirmation.
+
+
+## 2026-10-26 — Admin AI model responsive mobile cards follow-up
+
+- **Status:** IN_PROGRESS — corrective PR after #441 passed CI but failed real-device acceptance; no production claim or schema modification.
+- **Root gap:** The installed-model grid retained desktop 1090px columns and internal horizontal scroll on smartphone. Fixed viewport bounds did not deliver legible mobile controls, as demonstrated by user Android screenshots after publish.
+- **Change:** At phone widths render each model as a two-column labeled card with all status/generator/QC/access/pricing/edit/health controls; retain existing shared ModelRow mutations, default protection and uninstall blockers; on desktop retain original scroll table, sticky header and exact column behavior. Add mobile/desktop regression assertions.
+- **Definition of done:** Three exact-head CI gates green; phone viewport fits without document horizontal overflow; model cards and uninstall confirmation usable; desktop unchanged, no live deletion, and post-publish physical device verification still required. No historical Nemotron reconciliation is authorized by this UI scope.
