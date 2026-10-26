@@ -980,7 +980,7 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div data-testid="ai-model-defaults" className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
         {(
           [
             [
@@ -1006,16 +1006,16 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
             ],
           ] as const
         ).map(([operation, label, value, setter, options]) => (
-          <div key={operation} className="glass rounded-2xl p-4">
+          <div key={operation} className="glass min-w-0 max-w-full rounded-2xl p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Cpu className="h-4 w-4 text-primary" />
               {label}
             </div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row">
               <select
                 value={value}
                 onChange={(e) => setter(e.target.value)}
-                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
+                className="block w-full min-w-0 max-w-full flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
               >
                 {options
                   .slice()
