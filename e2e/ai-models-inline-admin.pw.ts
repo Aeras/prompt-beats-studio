@@ -420,6 +420,15 @@ test("uninstall explains active work, result recovery and final accounting separ
 
 test("admin defaults keep the entire page within portrait viewport with long model labels", async ({ page }) => {
   await fixture(page);
+  // Long native option text previously forced intrinsic minimum widths beyond the viewport.
+  await page.locator('[data-testid="ai-model-defaults"] select').evaluateAll((selects) => {
+    for (const select of selects) {
+      const option = document.createElement("option");
+      option.value = "__layout_probe__";
+      option.textContent = "Extremely long provider model name with unavailable-operation explanation that must not resize the Admin page";
+      select.appendChild(option);
+    }
+  });
   for (const width of [320, 360, 390, 412, 600, 768]) {
     await page.setViewportSize({ width, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
