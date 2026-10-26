@@ -3257,12 +3257,12 @@ function GeneratePage() {
                     <>
                       {(["import", "export"] as const).map((kind) => (
                         <div
-                           key={kind}
-                           ref={(element) => {
-                             setupMenuRefs.current[kind] = element;
-                           }}
-                           className="relative"
-                         >
+                          key={kind}
+                          ref={(element) => {
+                            setupMenuRefs.current[kind] = element;
+                          }}
+                          className="relative"
+                        >
                           <button
                             type="button"
                             aria-expanded={setupMenuOpen === kind}
