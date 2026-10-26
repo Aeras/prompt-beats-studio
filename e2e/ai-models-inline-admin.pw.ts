@@ -256,15 +256,6 @@ test("bulk confirmation is above rows, keeps selection on cancel and deletes ato
   await trash.click();
   const panel = page.getByRole("alertdialog");
   await expect(panel).toBeVisible();
-  // Mobile confirmation must stay in the page viewport, not the 1090px table canvas.
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
-  ).toBeLessThanOrEqual(1);
-  const confirmationBox = (await panel.boundingBox())!;
-  expect(confirmationBox.x).toBeGreaterThanOrEqual(-1);
-  expect(confirmationBox.x + confirmationBox.width).toBeLessThanOrEqual(
-    page.viewportSize()!.width + 1,
-  );
   const toolbarBox = (await page.getByTestId("models-sticky-toolbar").boundingBox())!;
   expect((await panel.boundingBox())!.y).toBeGreaterThanOrEqual(
     toolbarBox.y + toolbarBox.height - 1,
@@ -298,51 +289,41 @@ test("sticky headers share page scroll, align horizontally and remain accessible
   page,
 }, testInfo) => {
   await fixture(page);
-  const mobile = page.viewportSize()!.width < 768;
   const header = page.getByTestId("models-sticky-header");
+  await header.scrollIntoViewIfNeeded();
+  await header.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY + 300));
+  await expect
+    .poll(async () =>
+      Math.abs(
+        (await header.boundingBox())!.y -
+          (await page.locator("header").boundingBox())!.height -
+          (await page.getByTestId("models-sticky-toolbar").boundingBox())!.height,
+      ),
+    )
+    .toBeLessThan(2);
+  await expect
+    .poll(async () =>
+      Math.abs(
+        (await page.getByTestId("models-sticky-toolbar").boundingBox())!.y -
+          (await page.locator("header").boundingBox())!.height,
+      ),
+    )
+    .toBeLessThan(2);
   const scroll = page.getByTestId("models-horizontal-scroll");
-  if (mobile) {
-    await expect(header).toBeHidden();
-    await expect(page.locator("[data-model-id]").first()).toBeVisible();
-    await expect(page.locator("[data-model-id]").first().getByText("Pricing")).toBeVisible();
-    expect(await scroll.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(1);
-  } else {
-    await header.scrollIntoViewIfNeeded();
-    await header.evaluate((el) =>
-      window.scrollTo(0, el.getBoundingClientRect().top + scrollY + 300),
-    );
-    await expect
-      .poll(async () =>
-        Math.abs(
-          (await header.boundingBox())!.y -
-            (await page.locator("header").boundingBox())!.height -
-            (await page.getByTestId("models-sticky-toolbar").boundingBox())!.height,
-        ),
-      )
-      .toBeLessThan(2);
-    await expect
-      .poll(async () =>
-        Math.abs(
-          (await page.getByTestId("models-sticky-toolbar").boundingBox())!.y -
-            (await page.locator("header").boundingBox())!.height,
-        ),
-      )
-      .toBeLessThan(2);
-    expect(await scroll.evaluate((e) => e.scrollHeight - e.clientHeight)).toBeLessThanOrEqual(1);
-    await scroll.evaluate((e) => {
-      e.scrollLeft = 240;
-    });
-    await expect
-      .poll(() => header.getByRole("row").evaluate((e) => getComputedStyle(e).transform))
-      .not.toBe("none");
-    await scroll.evaluate((e) => {
-      e.scrollLeft = 0;
-    });
-  }
+  expect(await scroll.evaluate((e) => e.scrollHeight - e.clientHeight)).toBeLessThanOrEqual(1);
+  await scroll.evaluate((e) => {
+    e.scrollLeft = 240;
+  });
+  await expect
+    .poll(() => header.getByRole("row").evaluate((e) => getComputedStyle(e).transform))
+    .not.toBe("none");
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
   ).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath(`horizontal-${testInfo.project.name}.png`) });
+  await scroll.evaluate((e) => {
+    e.scrollLeft = 0;
+  });
   const axe = await new AxeBuilder({ page })
     .include('section[aria-label="Installed models"],section[aria-label="Εγκατεστημένα μοντέλα"]')
     .withTags(["wcag2a", "wcag2aa"])

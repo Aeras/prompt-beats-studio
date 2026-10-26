@@ -1500,7 +1500,7 @@ function ManagementPage() {
                   : t("management.blockedRegistrations");
   return (
     <AppShell header={header}>
-      <main className="mx-auto w-full min-w-0 max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8">
+      <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-primary">

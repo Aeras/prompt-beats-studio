@@ -540,3 +540,9 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Root gap:** The installed-model grid retained desktop 1090px columns and internal horizontal scroll on smartphone. Fixed viewport bounds did not deliver legible mobile controls, as demonstrated by user Android screenshots after publish.
 - **Change:** At phone widths render each model as a two-column labeled card with all status/generator/QC/access/pricing/edit/health controls; retain existing shared ModelRow mutations, default protection and uninstall blockers; on desktop retain original scroll table, sticky header and exact column behavior. Add mobile/desktop regression assertions.
 - **Definition of done:** Three exact-head CI gates green; phone viewport fits without document horizontal overflow; model cards and uninstall confirmation usable; desktop unchanged, no live deletion, and post-publish physical device verification still required. No historical Nemotron reconciliation is authorized by this UI scope.
+
+## 2026-10-26 — Revert failed mobile Admin UI experiments (#441, #442)
+
+- **Status:** CODE_COMPLETE_RELEASE_PENDING — restore exact four code/test files to verified pre-#441 commit `f45a53ada0fcf8d3a4bd00c81e8923f398a354bb` without touching #439/#440 server logic, migrations, model records, or database.
+- **Reason:** Actual Android owner verification established that both attempted UI fixes, especially mobile cards in #442, materially degraded the management UI despite green mocked CI. User explicitly requested complete removal.
+- **Release:** Merge only after all three exact-head gates succeed; Lovable publish and device confirmation are distinct requirements. The original mobile overflow issue is not claimed solved. Never rewrite pushed Git history or down-migrate.

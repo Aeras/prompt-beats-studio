@@ -184,11 +184,11 @@ function ModelRow({
   const defaultQuality = [defaults.qualityDefault, defaults.legacyDefault].includes(
     model.providerModelId,
   );
-  const cell = "min-w-0 px-3 py-3 max-md:py-2";
+  const cell = "min-w-0 px-3 py-3";
   return (
     <div
       role="row"
-      className="grid border-t border-white/5 text-sm max-md:!grid-cols-2 max-md:rounded-xl max-md:border max-md:border-white/10 max-md:bg-[#1c1428] max-md:my-3"
+      className="grid border-t border-white/5 text-sm"
       style={{ gridTemplateColumns: template }}
       data-model-id={model.id}
     >
@@ -203,8 +203,8 @@ function ModelRow({
           />
         </div>
       )}
-      <div role="cell" className={`${cell} max-md:col-span-2`}>
-        <div className="font-medium break-words">{model.displayName}</div>
+      <div role="cell" className={cell}>
+        <div className="font-medium">{model.displayName}</div>
         <div className="mt-1 break-all text-xs text-muted-foreground">{model.providerModelId}</div>
         <div role="status" className="mt-1 text-xs text-purple-200">
           {mutation.isPending
@@ -219,7 +219,6 @@ function ModelRow({
         </div>
       </div>
       <div role="cell" className={`${cell} capitalize`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">Provider</span>
         {model.provider}
       </div>
       {(["generatorEnabled", "qualityCheckEnabled"] as const).map((field) => {
@@ -228,9 +227,6 @@ function ModelRow({
         const protectedDefault = field === "generatorEnabled" ? defaultGenerator : defaultQuality;
         return (
           <div role="cell" className={cell} key={field}>
-            <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-              {field === "generatorEnabled" ? "Generator" : "Quality Check"}
-            </span>
             <button
               type="button"
               role="switch"
@@ -261,9 +257,6 @@ function ModelRow({
         );
       })}
       <div role="cell" className={cell}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-          {el ? "Κατάσταση" : "Status"}
-        </span>
         <Choice
           label={`${el ? "Κατάσταση" : "Status"}: ${model.displayName}`}
           value={current("status")}
@@ -272,15 +265,9 @@ function ModelRow({
         />
       </div>
       <div role="cell" className={`${cell} text-xs`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-          {el ? "Υγεία" : "Health"}
-        </span>
         {modelLabel(model.healthStatus)}
       </div>
       <div role="cell" className={cell}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-          {el ? "Πρόσβαση" : "Access"}
-        </span>
         <Choice
           label={`${el ? "Πρόσβαση" : "Access"}: ${model.displayName}`}
           value={current("accessPolicy")}
@@ -289,9 +276,6 @@ function ModelRow({
         />
       </div>
       <div role="cell" className={`${cell} text-xs`}>
-        <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-          {el ? "Τιμολόγηση" : "Pricing"}
-        </span>
         {modelLabel(model.pricingStatus)}
         {model.pricingStatus === "verified" && (
           <div className="mt-1 text-muted-foreground">
@@ -299,7 +283,7 @@ function ModelRow({
           </div>
         )}
       </div>
-      <div role="cell" className={`${cell} flex flex-wrap items-start gap-2 max-md:col-span-2`}>
+      <div role="cell" className={`${cell} flex flex-wrap items-start gap-2`}>
         <button
           className={button}
           onClick={onEdit}
@@ -433,7 +417,7 @@ export function InstalledAiModelsTable({
   const width = selection ? 1142 : 1090;
   return (
     <section
-      className="min-w-0 w-full max-w-full overflow-x-clip rounded-2xl border border-white/10 bg-[#15101e]"
+      className="rounded-2xl border border-white/10 bg-[#15101e]"
       aria-label={t("aiModels.installed")}
     >
       <div
@@ -549,7 +533,7 @@ export function InstalledAiModelsTable({
         <div
           role="rowgroup"
           data-testid="models-sticky-header"
-          className="sticky z-10 overflow-hidden max-md:hidden border-b border-white/10 bg-[#21152f]"
+          className="sticky z-10 overflow-hidden border-b border-white/10 bg-[#21152f]"
           style={{ top: offset + titleHeight }}
         >
           <div
@@ -585,11 +569,11 @@ export function InstalledAiModelsTable({
         </div>
         <div
           role="rowgroup"
-          className="overflow-x-auto max-md:overflow-visible"
+          className="overflow-x-auto"
           data-testid="models-horizontal-scroll"
           onScroll={(event) => setLeft(event.currentTarget.scrollLeft)}
         >
-          <div className="max-md:!min-w-0 max-md:px-3" style={{ minWidth: width }}>
+          <div style={{ minWidth: width }}>
             {data.models.map((model) => (
               <ModelRow
                 key={model.id}
