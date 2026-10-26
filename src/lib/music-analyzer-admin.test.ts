@@ -32,8 +32,16 @@ describe("Installed AI model compatibility verification", () => {
     const panel = await source("../components/promptbeats/AiModelsPanel.tsx");
     expect(admin).toContain("verifyInstalledAiModelCompatibility");
     expect(admin).toContain("testSingleProviderModelCompatibility");
-    expect(admin).toContain("generator_compatible: generatorCompatible");
-    expect(admin).toContain("quality_check_compatible: qualityCheckCompatible");
+    const persistence = await source("./ai-model-verification.server.ts");
+    expect(admin).toContain("recordInstalledModelProbe");
+    expect(persistence).toContain(
+      "result.generatorCompatible ? { generator_compatible: true } : {}",
+    );
+    expect(persistence).toContain(
+      "result.qualityCheckCompatible ? { quality_check_compatible: true } : {}",
+    );
+    expect(persistence).not.toContain("generator_enabled:");
+    expect(persistence).not.toContain("quality_check_enabled:");
     expect(panel).toContain("verifyInstalledAiModelCompatibility");
     expect(panel).toContain("disabled={!generatorCompatible}");
     expect(panel).toContain("disabled={!qualityCompatible}");

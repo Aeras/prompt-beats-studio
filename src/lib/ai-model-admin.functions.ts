@@ -395,35 +395,10 @@ export const verifyInstalledAiModelCompatibility = createServerFn({ method: "POS
       installed: false, // Run an actual test; the discovery bulk path skips installed rows.
     });
 
-    // Only upgrade positively verified capabilities. Inconclusive/transient
-    // provider failures cannot silently disable existing working installations.
-    const generatorCompatible = model.generator_compatible === true || result.generatorCompatible;
-    const qualityCheckCompatible =
-      model.quality_check_compatible === true || result.qualityCheckCompatible;
-    const now = new Date().toISOString();
-    const { error: updateError } = await supabaseAdmin
-      .from("ai_models" as never)
-      .update({
-        generator_compatible: generatorCompatible,
-        quality_check_compatible: qualityCheckCompatible,
-        last_checked_at: now,
-        updated_at: now,
-      } as never)
-      .eq("id", data.id);
-    if (updateError) throw new Error("Could not save model compatibility verification.");
-    await supabaseAdmin.from("admin_audit_log").insert({
-      admin_user_id: context.userId,
-      target_user_id: null,
-      action: "VERIFY_AI_MODEL_COMPATIBILITY",
-      details: {
-        provider: providerId,
-        model: model.provider_model_id,
-        result: result.status,
-        generator_passed: result.generatorCompatible,
-        quality_check_passed: result.qualityCheckCompatible,
-      },
-    });
-    return { ...result, generatorCompatible, qualityCheckCompatible };
+    const { recordInstalledModelProbe } = await import("@/lib/ai-model-verification.server");
+    await recordInstalledModelProbe(supabaseAdmin, context.userId, model, result);
+    // Return current probe evidence, never historical installed capabilities.
+    return result;
   });
 
 const addDiscoveredModelInput = z.object({

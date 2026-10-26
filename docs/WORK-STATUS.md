@@ -493,9 +493,9 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Release / limitations:** [Precise uninstall design and release plan](PB-AI-MODEL-PRECISE-UNINSTALL.md). Requires verified old-worker drainage and model-admin quiet window, then separately approved migration before compatible publish. Identity-free old dispatch fails closed; unidentified historical rows are retained, never guessed/backfilled. Unknown or unassociated usage requires trustworthy reconciliation for that specific model. No production closure is claimed.
 
 ### PB-GLOBAL-AI-USAGE — IN_PROGRESS (2026-10-25)
+
 - User-approved Admin → Μοντέλα AI switch «Χρήση AI στην εφαρμογή»: ON permits all AI operations, OFF denies all new provider dispatches globally (including direct SDK/fetch, auxiliary/retries/analyzers/secondary judge). Requirement and concurrency/release safety in [spec](PB-GLOBAL-AI-USAGE-SWITCH-20261025.md).
 - Initial ChatGPT investigation confirmed a central `modelCaller` and direct provider code routes, so a cosmetic client toggle or single-function gate is insufficient. One PR for complete server policy, atomic authorization and concurrency, UI, tests. No production change or assertion that old workers are drained.
-
 
 ## 2026-10-25 — PR #438 global AI usage switch
 
@@ -504,7 +504,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Implementation:** Forward `20261025212141_global_ai_usage_policy.sql`, private RLS singleton ON default, fresh server-only admission and caller-bound admin CAS/audit. Row locks order OFF against admissions. Single-use permits precede journaling; every new transport/retry re-admits. Job admission/claim gating is atomic with quota; completion/cancellation/usage/cached recovery remain possible. Prominent localized AI Models switch saves confirmed server state, handles loading/stale/failure and explains in-flight behavior.
 - **Verification:** Frozen installation; 1,142 offline Bun tests / 0 failures / 9,108 assertions; strict TypeScript, changed-source ESLint/Prettier and production build PASS. Fresh isolated Docker migration replay; 13 SQL/RLS suites, 12 independent-connection race scripts plus historical drift reproduction PASS. 69 mocked browser cases PASS across desktop/tablet/mobile with screenshots. Final exact HEAD and the three mandatory CI outcomes are recorded in existing PR #438 after live verification; no self-referential commit hash.
 - **SLA / release boundary:** OFF denies requests not already admitted when OFF commits; already admitted requests may physically send/finish and settle after OFF. No claim of worker drainage or cancellation. #437 old-binary/drain prerequisite is separate; this switch cannot protect an old deployed binary. Policy read failure/missing migration fails closed. Keep Draft for independent review; not CLOSED until separately authorized compatible release and runtime verification.
-
 
 ## 2026-10-26 — Admin AI default selectors show installed registry
 
@@ -524,7 +523,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **CI / review:** final exact HEAD and Regression/Browser Quality/Database Replay outcomes recorded together on the single PR after live checks; no self-referential commit. Keep unmerged for human review.
 - **Release dependencies:** separately approved exact migration and compatible publish, prerequisite #437/#438 schema and hosting/old-worker coordination, plus explicit approval before historical production reconciliation. Existing authenticated sweep must actually be invoked/scheduled; no production cron is created here. No invoice verification, fabricated zero usage, forced recovery-counter update, historical backfill, result deletion or paid call. Valid exhausted work remains protected, pending a separately reviewed recovery action.
 
-
 ## 2026-10-26 — Mobile Admin AI models viewport and Nemotron guard
 
 - **Status:** IN_PROGRESS — PR pending exact-head CI and mobile browser verification; no publish or production data mutations.
@@ -532,7 +530,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Change:** Explicit `min-w-0`/`w-full` on management content and AI models panel; model table constrained to viewport with internal horizontal scroll retained, sticky headings and uninstall selection preserved.
 - **Read-only Nemotron evidence:** Exact installed model has one failed, stored `response_observed` execution with final durable usage but no `application_resolution`; `job.model` remains NULL. Both `unresolved_execution` and `recovery_pending` guards are currently correct. Do not delete, fabricate usage or mark resolved without authorized deterministic stored-response validation. Existing #440 migration is installed but not a scheduled or executed historical reconciliation.
 - **Acceptance:** Real mobile-width Browser Quality checks for no document overflow at model table and confirmation, scroll internal table horizontally, keyboard and uninstall blocker remain safe; Regression and Database Replay PASS on exact PR head. Follow approved separate release verification; not CLOSED without publish/production confirmation.
-
 
 ## 2026-10-26 — Admin AI model responsive mobile cards follow-up
 
@@ -547,10 +544,17 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Reason:** Actual Android owner verification established that both attempted UI fixes, especially mobile cards in #442, materially degraded the management UI despite green mocked CI. User explicitly requested complete removal.
 - **Release:** Merge only after all three exact-head gates succeed; Lovable publish and device confirmation are distinct requirements. The original mobile overflow issue is not claimed solved. Never rewrite pushed Git history or down-migrate.
 
-
 ## 2026-10-26 — Admin AI models responsive page repair
 
 - **Status:** IN_PROGRESS — correct the confirmed portrait document overflow in the three default model controls, preserving the installed-model table and its internal horizontal scrolling.
 - **Evidence:** Production Chromium measurements in user Report.md: document 653 CSS px for portrait viewports 360/390/412, default cards ~637 px, native selects ~426 px. Installed table container ~341 px at 390 and scrolling works independently. Additional whole-tab checks remain mandatory.
 - **Scope:** intrinsic-size containment and responsive select/save layout, full page viewport regression checks, no card redesign or model changes.
 - **Release:** Require focused/full tests and all three exact-HEAD CI checks; verify published Android manually after deliberate Lovable publish. No merge/deploy until green and reviewed.
+
+## 2026-10-26 — Installed OpenRouter verification evidence
+
+- **Status:** `CODE_COMPLETE_RELEASE_PENDING` for verifier correction; **BLOCKED** for paid model verification/activation because the deployed verifier cannot guarantee the requested total $0.10 cap. No model was activated or classified incompatible by this task.
+- **Baseline / investigation:** main `2d12ded563d36eed2bb6a44a6ce8ef317c1a3d91`; live registry has 11 OpenRouter models, 10 testing and one enabled, all admin_only. Traced authenticated admin handler, registry probes, runtime adapter, SQL guards/audit constraint, dynamic default selectors and access semantics. [Per-model evidence, budget limitation, release/rollback](PB-OPENROUTER-INSTALLED-VERIFICATION-20261026.md).
+- **Production evidence:** one exact free Nemotron verification (two 120-token-limit requests, no retry) returned empty output for both operations. Estimated $0 from the exact free catalog ID; no provider usage receipt available. Existing deployed UI falsely labelled both verified by merging historical flags. Only its last_checked_at changed; states, selections, defaults, access and other providers remain unchanged. Paid probes were not executed.
+- **Fix:** return raw current evidence; inconclusive OpenRouter failures are not unsupported. Positive-only capability writes with revision CAS preserve concurrent settings. Use permitted UPDATE_AI_MODEL audit action, explicitly recording probe evidence and checking insert failure before capability writes. No new schema, billing policy, provider retry or token increase. Audit and CAS are separate writes; audit does not claim successful settings persistence.
+- **Verification / release:** targeted behavioral unit and desktop/tablet/mobile browser regressions; full offline Bun, TypeScript, changed-source lint/format, frozen installation, build and all three mandatory exact-head CI outcomes are recorded in the single PR. No merge or publish. Production activation remains blocked until a safe capped runtime can execute the remaining probes; no secret disclosure is requested.

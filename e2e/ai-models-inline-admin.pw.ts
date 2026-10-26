@@ -145,6 +145,18 @@ async function fixture(page: Page, role = "super_admin", failureBlockers: string
         aiToolsDefault: "offline-1",
         legacyDefault: null,
       };
+    else if (name.includes("verifyInstalledAiModelCompatibility"))
+      result = {
+        id: "offline-2",
+        name: "Offline model 2",
+        status: "inconclusive",
+        generatorCompatible: false,
+        qualityCheckCompatible: false,
+        generatorError: "Invalid structured JSON response: empty model output.",
+        qualityCheckError: "Invalid structured JSON response: empty model output.",
+        contextWindow: null,
+        installed: false,
+      };
     else if (name.includes("getDetectedAiProviders")) result = { providers: [] };
     else if (name.includes("getMusicAnalyzerAdminModels"))
       result = { models: [], defaultModel: null };
@@ -452,4 +464,23 @@ test("admin defaults keep the entire page within portrait viewport with long mod
   }
   const scroll = page.getByTestId("models-horizontal-scroll");
   expect(await scroll.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+});
+
+test("inconclusive verification never displays historical compatibility as current success", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  const row = page.locator('[data-model-id$="000000000002"]');
+  await row.getByRole("button", { name: /Edit|Επεξεργασία/ }).click();
+  await page.getByRole("button", { name: /^(Verify|Επαλήθευση)$/ }).click();
+  await expect(
+    page.getByText(/Generator: (Not verified|Δεν επαληθεύτηκε)/, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Quality Check: (Not verified|Δεν επαληθεύτηκε)/, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/^(Generator|Quality Check): (Verified|Επαληθεύτηκε)$/)).toHaveCount(
+    0,
+  );
+  expect(f.writes).toHaveLength(0);
 });
