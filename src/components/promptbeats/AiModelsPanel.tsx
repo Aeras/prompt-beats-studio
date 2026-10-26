@@ -980,7 +980,10 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
         </div>
       )}
 
-      <div data-testid="ai-model-defaults" className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
+      <div
+        data-testid="ai-model-defaults"
+        className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3"
+      >
         {(
           [
             [
