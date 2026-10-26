@@ -1,3 +1,5 @@
+import { generateAiContent } from "./guarded-google-ai.server";
+import { aiProviderFetch as fetch } from "./global-ai-usage.server";
 import { createServerFn } from "@tanstack/react-start";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
@@ -100,10 +102,7 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
           contents: [
             {
               role: "user",
-              parts: [
-                { text: ANALYSIS_PROMPT },
-                { inlineData: { data: audioBase64, mimeType } },
-              ],
+              parts: [{ text: ANALYSIS_PROMPT }, { inlineData: { data: audioBase64, mimeType } }],
             },
           ],
           generationConfig: {
@@ -118,9 +117,7 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
     if (!response.ok) {
       const message = payload?.error?.message;
       throw new Error(
-        typeof message === "string" && message
-          ? message
-          : "Gemini 4 Argon analysis failed.",
+        typeof message === "string" && message ? message : "Gemini 4 Argon analysis failed.",
       );
     }
 
@@ -133,15 +130,12 @@ async function analyzeWithGemini(model: string, audioBase64: string, mimeType: s
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
+  const response = await generateAiContent(ai, {
     model,
     contents: [
       {
         role: "user",
-        parts: [
-          { text: ANALYSIS_PROMPT },
-          { inlineData: { data: audioBase64, mimeType } },
-        ],
+        parts: [{ text: ANALYSIS_PROMPT }, { inlineData: { data: audioBase64, mimeType } }],
       },
     ],
     config: {

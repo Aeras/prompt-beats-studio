@@ -1,3 +1,5 @@
+import { AiUsageUnavailableError } from "./global-ai-usage.server";
+import { aiProviderFetch as fetch } from "./global-ai-usage.server";
 import { z } from "zod";
 import { safeErrorType } from "@/lib/safe-diagnostics";
 import type { NormalizedUsage } from "./ai-usage.server";
@@ -255,6 +257,7 @@ export async function runSingleCallAnalyzerV2<T extends Song>(args: {
         body: encodedBody,
       });
     } catch (error) {
+      if (error instanceof AiUsageUnavailableError) throw error;
       const meta = safeErrorMetadata(error);
       const timedOut = meta.errorName === "TimeoutError" || meta.errorName === "AbortError";
       const diagnostics = diag(meta);

@@ -1,3 +1,4 @@
+import { withAiDispatchAdmission, AiUsageUnavailableError } from "./global-ai-usage.server";
 import { auxiliaryModelContext, startAuxiliaryModel } from "./ai-auxiliary-model-context.server";
 import { z } from "zod";
 
@@ -29,6 +30,7 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
     _operation: input.operation,
     _request_key: input.requestKey,
   });
+  if (error?.code === "PT423") throw new AiUsageUnavailableError(true);
   if (error) throw new Error("The AI request could not be admitted. Please try again.");
 
   const claim = (data ?? {}) as Claim;
@@ -58,18 +60,20 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
     },
     async () => {
       try {
-        const markProviderStarted = async (model: string) => {
-          await startAuxiliaryModel(model);
-        };
-        const result = await input.execute(markProviderStarted);
-        await completeAuxiliaryAiRequest({
-          userId: input.userId,
-          operation: input.operation,
-          requestKey: input.requestKey,
-          executionToken,
-          result,
+        return await withAiDispatchAdmission(async () => {
+          const markProviderStarted = async (model: string) => {
+            await startAuxiliaryModel(model);
+          };
+          const result = await input.execute(markProviderStarted);
+          await completeAuxiliaryAiRequest({
+            userId: input.userId,
+            operation: input.operation,
+            requestKey: input.requestKey,
+            executionToken,
+            result,
+          });
+          return result;
         });
-        return result;
       } catch (error) {
         const message =
           error instanceof Error ? error.message.slice(0, 500) : "auxiliary_ai_failed";

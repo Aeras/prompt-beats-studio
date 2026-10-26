@@ -49,6 +49,7 @@ async function fixture(page: Page, role = "super_admin") {
     });
   });
 
+  let globalPolicy = { enabled: true, revision: 0, updated_at: "2026-10-25T00:00:00Z" };
   let models = Array.from({ length: 32 }, (_, i) => ({
     id: `ac100000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
     adminRevision: 0,
@@ -117,7 +118,25 @@ async function fixture(page: Page, role = "super_admin") {
         estimatedCostUsd: 0,
         recentUsers: [],
       };
-    else if (name.includes("getAdminAiModels"))
+    else if (name.includes("getAdminGlobalAiUsage")) result = globalPolicy;
+    else if (name.includes("setAdminGlobalAiUsage")) {
+      if (fail) {
+        fail = false;
+        await route.fulfill({ status: 500, body: "synthetic-sensitive-error" });
+        return;
+      }
+      const input = decode(route.request().postDataJSON().t.p.v[0]) as {
+        enabled: boolean;
+        expectedRevision: number;
+      };
+      expect(input.expectedRevision).toBe(globalPolicy.revision);
+      globalPolicy = {
+        ...globalPolicy,
+        enabled: input.enabled,
+        revision: globalPolicy.revision + 1,
+      };
+      result = globalPolicy;
+    } else if (name.includes("getAdminAiModels"))
       result = {
         models,
         generatorDefault: "offline-1",
@@ -360,4 +379,25 @@ test("only active defaults block the concise uninstall confirmation", async ({ p
   await trash.click();
   await expect(panel.getByRole("button", { name: /^(Delete|Διαγραφή)$/ })).toBeEnabled();
   await expect(panel).not.toContainText(/Reassign user access|Legacy shared fallback/);
+});
+
+test("global AI switch saves server state and recovers failed save", async ({ page }) => {
+  const f = await fixture(page);
+  const toggle = page.getByRole("switch", { name: /AI usage in the app/ });
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  f.failNext();
+  await toggle.click();
+  await expect(page.getByText(/AI setting not saved/)).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  expect((await toggle.boundingBox())!.y).toBeLessThan(
+    (await page.getByRole("table").boundingBox())!.y,
+  );
+  await page.screenshot({
+    path: `test-results/global-ai-${test.info().project.name}.png`,
+    fullPage: true,
+  });
 });

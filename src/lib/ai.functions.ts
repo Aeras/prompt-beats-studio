@@ -1,3 +1,4 @@
+import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 import {
   safeErrorType,
   safeDiagnosticKeys,
@@ -2342,6 +2343,7 @@ export const checkSongQuality = createServerFn({ method: "POST" })
     const { data: rawClaim, error: claimError } = await supabase.rpc("claim_quality_check", {
       _idempotency_key: data.idempotencyKey,
     });
+    if (claimError?.code === "PT423") throw new Error(AI_DISABLED_MESSAGE);
     if (claimError) throw new Error("The quality check could not be started. Please try again.");
     const claim = qualityCheckClaim.safeParse(rawClaim);
     if (!claim.success)

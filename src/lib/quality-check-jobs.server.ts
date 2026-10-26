@@ -1,3 +1,4 @@
+import { AI_DISABLED_MESSAGE, AI_UNAVAILABLE_MESSAGE } from "./global-ai-usage.server";
 import { safeErrorType } from "@/lib/safe-diagnostics";
 /**
  * Durable execution layer for Quality Check jobs.
@@ -24,6 +25,7 @@ async function admin(): Promise<AdminClient> {
 
 function safeFailureMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "";
+  if (raw === AI_DISABLED_MESSAGE || raw === AI_UNAVAILABLE_MESSAGE) return raw;
   if (raw.includes("not allowed to use AI services"))
     return "This account is not allowed to use AI services.";
   if (raw.includes("account is no longer available")) return "The account is no longer available.";

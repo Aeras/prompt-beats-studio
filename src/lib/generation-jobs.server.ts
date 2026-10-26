@@ -1,3 +1,4 @@
+import { AI_DISABLED_MESSAGE, AI_UNAVAILABLE_MESSAGE } from "./global-ai-usage.server";
 import { safeErrorType } from "@/lib/safe-diagnostics";
 import { assertGenerationRequestBudget } from "@/lib/generator-input-limits";
 /**
@@ -35,6 +36,7 @@ async function admin(): Promise<AdminClient> {
 
 function safeErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "The generation failed.";
+  if (raw === AI_DISABLED_MESSAGE || raw === AI_UNAVAILABLE_MESSAGE) return raw;
   if (raw === "The AI response was incomplete. Please try again.") return raw;
   if (raw === "The AI returned an incomplete or invalid response. Please try again.") return raw;
   if (raw === "The AI provider rate limit was reached. Please try later.") return raw;

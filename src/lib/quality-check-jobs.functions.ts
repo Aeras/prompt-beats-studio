@@ -1,3 +1,4 @@
+import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 /**
  * Client-facing API for durable Quality Check jobs.
  *
@@ -89,6 +90,7 @@ export const startQualityCheckJob = createServerFn({ method: "POST" })
       _idempotency_key: idempotencyKey,
       _input: payload,
     });
+    if (error?.code === "PT423") throw new Error(AI_DISABLED_MESSAGE);
     if (error) throw new Error("The quality check could not be started. Please try again.");
     if (
       raw &&

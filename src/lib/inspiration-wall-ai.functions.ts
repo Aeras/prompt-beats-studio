@@ -1,3 +1,4 @@
+import { aiProviderFetch as fetch } from "./global-ai-usage.server";
 import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
