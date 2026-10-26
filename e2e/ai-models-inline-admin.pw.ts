@@ -308,22 +308,40 @@ test("sticky headers share page scroll, align horizontally and remain accessible
     expect(await scroll.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(1);
   } else {
     await header.scrollIntoViewIfNeeded();
-    await header.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY + 300));
-    await expect.poll(async () => Math.abs(
-      (await header.boundingBox())!.y -
-      (await page.locator("header").boundingBox())!.height -
-      (await page.getByTestId("models-sticky-toolbar").boundingBox())!.height,
-    )).toBeLessThan(2);
-    await expect.poll(async () => Math.abs(
-      (await page.getByTestId("models-sticky-toolbar").boundingBox())!.y -
-      (await page.locator("header").boundingBox())!.height,
-    )).toBeLessThan(2);
+    await header.evaluate((el) =>
+      window.scrollTo(0, el.getBoundingClientRect().top + scrollY + 300),
+    );
+    await expect
+      .poll(async () =>
+        Math.abs(
+          (await header.boundingBox())!.y -
+            (await page.locator("header").boundingBox())!.height -
+            (await page.getByTestId("models-sticky-toolbar").boundingBox())!.height,
+        ),
+      )
+      .toBeLessThan(2);
+    await expect
+      .poll(async () =>
+        Math.abs(
+          (await page.getByTestId("models-sticky-toolbar").boundingBox())!.y -
+            (await page.locator("header").boundingBox())!.height,
+        ),
+      )
+      .toBeLessThan(2);
     expect(await scroll.evaluate((e) => e.scrollHeight - e.clientHeight)).toBeLessThanOrEqual(1);
-    await scroll.evaluate((e) => { e.scrollLeft = 240; });
-    await expect.poll(() => header.getByRole("row").evaluate((e) => getComputedStyle(e).transform)).not.toBe("none");
-    await scroll.evaluate((e) => { e.scrollLeft = 0; });
+    await scroll.evaluate((e) => {
+      e.scrollLeft = 240;
+    });
+    await expect
+      .poll(() => header.getByRole("row").evaluate((e) => getComputedStyle(e).transform))
+      .not.toBe("none");
+    await scroll.evaluate((e) => {
+      e.scrollLeft = 0;
+    });
   }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath(`horizontal-${testInfo.project.name}.png`) });
   const axe = await new AxeBuilder({ page })
     .include('section[aria-label="Installed models"],section[aria-label="Εγκατεστημένα μοντέλα"]')
