@@ -185,7 +185,11 @@ export const startGenerationJob = createServerFn({ method: "POST" })
         );
       }
     }
-    await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
+    const selectedModel = await getModelForUser(
+      context.userId,
+      data.generationModel ?? undefined,
+      "generator",
+    );
 
     const {
       idempotencyKey,
@@ -198,6 +202,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
 
     let payload: Record<string, unknown> = {
       ...basePayload,
+      generationModel: selectedModel,
       operation: "generate",
       revision: null,
     };
@@ -266,6 +271,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
 
       payload = {
         ...basePayload,
+        generationModel: selectedModel,
         operation: "revision",
         revision: revisionContext,
       };
@@ -291,7 +297,11 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
     await requireFeatureAccess(context.supabase, "lyrics_workspace");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
-    await getModelForUser(context.userId, data.generationModel ?? undefined, "generator");
+    const selectedModel = await getModelForUser(
+      context.userId,
+      data.generationModel ?? undefined,
+      "generator",
+    );
 
     let authoritative = {
       title: data.title,
@@ -350,7 +360,7 @@ export const startLyricsSectionEditJob = createServerFn({ method: "POST" })
 
     const payload = lyricsSectionEditJobSchema.parse({
       operation: "lyrics_section_edit",
-      generationModel: data.generationModel ?? null,
+      generationModel: selectedModel,
       sectionEdit: {
         fullLyrics: data.fullLyrics,
         sectionKey: selected.key,

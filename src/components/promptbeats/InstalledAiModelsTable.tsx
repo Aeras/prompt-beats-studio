@@ -395,7 +395,13 @@ export function InstalledAiModelsTable({
         legacy_fallback: el
           ? "Ρυθμίστε τις ενεργές προεπιλογές πριν αφαιρέσετε το τελευταίο fallback"
           : "Configure operation defaults before removing the last fallback",
-        active_jobs: el ? "Εκκρεμείς εργασίες" : "Pending jobs",
+        active_jobs: el ? "Ενεργές ή προγραμματισμένες εργασίες" : "Active or queued jobs",
+        recovery_pending: el
+          ? "Αποθηκευμένη απόκριση σε αναμονή ελέγχου/ανάκτησης"
+          : "Stored response awaiting validation/recovery",
+        accounting_pending: el
+          ? "Εκκρεμής τελική συμφιλίωση χρήσης"
+          : "Final usage reconciliation pending",
         unresolved_execution: el
           ? "Εκτέλεση σε αναμονή συμφιλίωσης/ανάκτησης"
           : "Execution awaiting reconciliation/recovery",

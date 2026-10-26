@@ -250,6 +250,10 @@ export async function reconcileAiExecutions(): Promise<void> {
         usage: result?.usage ?? row.observed_usage,
         success: result?.stopReason === "end_turn",
       });
+      if (row.job_id) {
+        const { reconcileFailedGeneration } = await import("./generation-reconciliation.server");
+        await reconcileFailedGeneration(row.job_id, row.user_id);
+      }
     } catch {
       // Bounded durable retry; no provider create, credentials, text or raw errors logged.
       console.warn("[ai-recovery] execution remains unreconciled", row.id);
@@ -258,6 +262,20 @@ export async function reconcileAiExecutions(): Promise<void> {
         _id: row.id,
         _lease_token: row.lease_token,
       });
+    }
+  }
+  // Validate already stored, finally accounted failures even after automatic
+  // recovery is exhausted. This queue never creates a provider request.
+  const failures = (await write("claim_failed_generation_validation_internal", {})) as Array<{
+    job_id: string;
+    user_id: string;
+  }>;
+  for (const failure of failures) {
+    try {
+      const { reconcileFailedGeneration } = await import("./generation-reconciliation.server");
+      await reconcileFailedGeneration(failure.job_id, failure.user_id);
+    } catch {
+      console.warn("[ai-recovery] stored failure validation remains pending", failure.job_id);
     }
   }
 }
