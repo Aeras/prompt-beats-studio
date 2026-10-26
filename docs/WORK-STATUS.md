@@ -554,3 +554,10 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Evidence:** Production Chromium measurements in user Report.md: document 653 CSS px for portrait viewports 360/390/412, default cards ~637 px, native selects ~426 px. Installed table container ~341 px at 390 and scrolling works independently. Additional whole-tab checks remain mandatory.
 - **Scope:** intrinsic-size containment and responsive select/save layout, full page viewport regression checks, no card redesign or model changes.
 - **Release:** Require focused/full tests and all three exact-HEAD CI checks; verify published Android manually after deliberate Lovable publish. No merge/deploy until green and reviewed.
+
+
+## 2026-10-26 — Hide inactive AI models from default dropdowns
+
+- **Status:** CODE_COMPLETE_RELEASE_PENDING — default selectors now automatically show only installed records with status enabled. Inactive/testing entries remain installed in the management table but no longer appear in the three default selectors.
+- **Scope:** No manual model list, no changes to compatibility/save guard, model status, database or installed-model table. Re-activation makes entries appear again on refreshed registry.
+- **Verification/release:** Require three exact-HEAD CI gates and review; merge and publish are separate steps, with actual mobile dropdown checks after publish.
