@@ -1027,6 +1027,29 @@ function GeneratePage() {
   const [pendingSetupImport, setPendingSetupImport] = useState<AdvancedGeneratorSetup | null>(null);
   const [setupIoError, setSetupIoError] = useState<string | null>(null);
   const [setupMenuOpen, setSetupMenuOpen] = useState<"import" | "export" | null>(null);
+  const setupMenuRefs = useRef<Record<"import" | "export", HTMLDivElement | null>>({
+    import: null,
+    export: null,
+  });
+
+  useEffect(() => {
+    if (!setupMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !setupMenuRefs.current[setupMenuOpen]?.contains(target)) {
+        setSetupMenuOpen(null);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSetupMenuOpen(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [setupMenuOpen]);
   const mdFileInputRef = useRef<HTMLInputElement | null>(null);
   const setupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [inspirationWallHandoff, setInspirationWallHandoff] =
@@ -3233,7 +3256,13 @@ function GeneratePage() {
                   {advanced && !revisionMode && (
                     <>
                       {(["import", "export"] as const).map((kind) => (
-                        <div key={kind} className="relative">
+                        <div
+                           key={kind}
+                           ref={(element) => {
+                             setupMenuRefs.current[kind] = element;
+                           }}
+                           className="relative"
+                         >
                           <button
                             type="button"
                             aria-expanded={setupMenuOpen === kind}
