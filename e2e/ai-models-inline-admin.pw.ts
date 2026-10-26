@@ -256,6 +256,11 @@ test("bulk confirmation is above rows, keeps selection on cancel and deletes ato
   await trash.click();
   const panel = page.getByRole("alertdialog");
   await expect(panel).toBeVisible();
+  // Mobile confirmation must stay in the page viewport, not the 1090px table canvas.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  const confirmationBox = (await panel.boundingBox())!;
+  expect(confirmationBox.x).toBeGreaterThanOrEqual(-1);
+  expect(confirmationBox.x + confirmationBox.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
   const toolbarBox = (await page.getByTestId("models-sticky-toolbar").boundingBox())!;
   expect((await panel.boundingBox())!.y).toBeGreaterThanOrEqual(
     toolbarBox.y + toolbarBox.height - 1,
