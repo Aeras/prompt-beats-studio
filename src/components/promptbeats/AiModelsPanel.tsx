@@ -857,9 +857,9 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
       ),
   });
 
-  // Display the full installed registry in each admin default selector.
-  // Default assignment remains restricted to enabled, operation-compatible models.
-  const generatorOptions = data?.models ?? [];
+  // Default selectors reflect the active installed registry automatically.
+  // Keep operation-specific eligibility checks when saving a default.
+  const generatorOptions = data?.models.filter((model) => model.status === "enabled") ?? [];
   const qualityOptions = generatorOptions;
   const aiToolsOptions = generatorOptions;
 
