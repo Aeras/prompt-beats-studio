@@ -857,21 +857,20 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
       ),
   });
 
-  const generatorOptions = useMemo(
-    () =>
-      data?.models.filter(
-        (m) => m.status === "enabled" && m.generatorCompatible && m.generatorEnabled,
-      ) ?? [],
-    [data],
-  );
-  const qualityOptions = useMemo(
-    () =>
-      data?.models.filter(
-        (m) => m.status === "enabled" && m.qualityCheckCompatible && m.qualityCheckEnabled,
-      ) ?? [],
-    [data],
-  );
+  // Display the full installed registry in each admin default selector.
+  // Default assignment remains restricted to enabled, operation-compatible models.
+  const generatorOptions = data?.models ?? [];
+  const qualityOptions = generatorOptions;
   const aiToolsOptions = generatorOptions;
+
+  const canSetOperationDefault = (
+    model: (typeof generatorOptions)[number],
+    operation: "generator" | "quality_check" | "ai_tools",
+  ) =>
+    model.status === "enabled" &&
+    (operation === "quality_check"
+      ? model.qualityCheckCompatible && model.qualityCheckEnabled
+      : model.generatorCompatible && model.generatorEnabled);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("aiModels.loading")}</p>;
   if (error || !data)
@@ -1018,14 +1017,44 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
                 onChange={(e) => setter(e.target.value)}
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm"
               >
-                {options.map((m) => (
-                  <option key={m.id} value={m.providerModelId}>
-                    {m.displayName}
-                  </option>
-                ))}
+                {options
+                  .slice()
+                  .sort((a, b) => {
+                    const usableA = canSetOperationDefault(a, operation) ? 0 : 1;
+                    const usableB = canSetOperationDefault(b, operation) ? 0 : 1;
+                    return usableA - usableB || a.displayName.localeCompare(b.displayName);
+                  })
+                  .map((m) => (
+                    <option
+                      key={m.id}
+                      value={m.providerModelId}
+                      disabled={!canSetOperationDefault(m, operation)}
+                    >
+                      {m.displayName}
+                      {canSetOperationDefault(m, operation)
+                        ? ""
+                        : m.status === "testing"
+                          ? el
+                            ? " — Δοκιμαστικό (όχι προεπιλογή)"
+                            : " — Testing (not a default)"
+                          : m.status !== "enabled"
+                            ? el
+                              ? " — Ανενεργό"
+                              : " — Inactive"
+                            : el
+                              ? " — Μη διαθέσιμο για αυτή τη λειτουργία"
+                              : " — Unavailable for this operation"}
+                    </option>
+                  ))}
               </select>
               <button
-                disabled={!value || setDefault.isPending}
+                disabled={
+                  !value ||
+                  setDefault.isPending ||
+                  !options.some(
+                    (m) => m.providerModelId === value && canSetOperationDefault(m, operation),
+                  )
+                }
                 onClick={() => setDefault.mutate({ operation, model: value })}
                 className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
               >
