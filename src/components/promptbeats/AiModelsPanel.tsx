@@ -910,7 +910,7 @@ export function AiModelsPanel({ onManageUserAccess }: { onManageUserAccess?: () 
       : null;
 
   return (
-    <div className="min-w-0 w-full space-y-5">
+    <div className="space-y-5">
       <GlobalAiUsageSwitch />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
