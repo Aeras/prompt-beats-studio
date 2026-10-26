@@ -325,6 +325,13 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       })
       .eq("id", job.id)
       .eq("status", "processing");
+    try {
+      const { reconcileFailedGeneration } = await import("./generation-reconciliation.server");
+      await reconcileFailedGeneration(job.id, job.user_id);
+    } catch {
+      // Keep the recovery/accounting guard; retry reconciliation without AI dispatch.
+      console.warn("[generation-job] reconciliation pending", { jobId: job.id });
+    }
   } finally {
     clearInterval(cancellationTimer);
   }

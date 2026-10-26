@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-async function fixture(page: Page, role = "super_admin") {
+async function fixture(page: Page, role = "super_admin", failureBlockers: string[] = []) {
   const user = {
     id: "bb000000-0000-4000-8000-000000000006",
     aud: "authenticated",
@@ -53,7 +53,8 @@ async function fixture(page: Page, role = "super_admin") {
   let models = Array.from({ length: 32 }, (_, i) => ({
     id: `ac100000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
     adminRevision: 0,
-    uninstallBlockers: i === 0 ? ["default:ai_generator_default_model"] : [],
+    uninstallBlockers:
+      i === 0 ? ["default:ai_generator_default_model"] : i === 1 ? failureBlockers : [],
     provider: "openai",
     providerModelId: `offline-${i + 1}`,
     displayName: `Offline model ${i + 1}`,
@@ -400,4 +401,19 @@ test("global AI switch saves server state and recovers failed save", async ({ pa
     path: `test-results/global-ai-${test.info().project.name}.png`,
     fullPage: true,
   });
+});
+
+test("uninstall explains active work, result recovery and final accounting separately", async ({
+  page,
+}) => {
+  await fixture(page, "super_admin", ["active_jobs", "recovery_pending", "accounting_pending"]);
+  const trash = page.getByRole("button", { name: /^(Uninstall models|Απεγκατάσταση μοντέλων)$/ });
+  await trash.click();
+  await page.getByRole("checkbox", { name: /^(Select|Επιλογή) Offline model 2$/ }).check();
+  await trash.click();
+  const panel = page.getByRole("alertdialog");
+  await expect(panel).toContainText("Active or queued jobs");
+  await expect(panel).toContainText("Stored response awaiting validation/recovery");
+  await expect(panel).toContainText("Final usage reconciliation pending");
+  await expect(panel.getByRole("button", { name: /^(Delete|Διαγραφή)$/ })).toBeDisabled();
 });

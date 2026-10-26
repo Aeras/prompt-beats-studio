@@ -28,9 +28,10 @@ describe("AI Tools default architecture", () => {
     expect(wall).toContain('getEffectiveModelAccess(userId, "ai_tools")');
     expect(setup).toContain('resolveAiModelForUser(context.userId, "ai_tools", data.model)');
     expect(setup).not.toContain("SONG_SETUP_ASSISTANT_MODEL");
-    expect(generator).toContain(
-      'getModelForUser(context.userId, data.generationModel ?? undefined, "generator")',
+    expect(generator).toMatch(
+      /getModelForUser\(\s*context\.userId,\s*data\.generationModel \?\? undefined,\s*"generator",?\s*\)/,
     );
+    expect(generator).toContain("generationModel: selectedModel");
   });
   test("model access payload exposes AI Tools options", async () => {
     const ai = await source("src/lib/ai.functions.ts");

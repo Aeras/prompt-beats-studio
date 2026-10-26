@@ -11,6 +11,9 @@ INSERT INTO public.ai_models(id,provider,provider_model_id,display_name,status,g
  SELECT ('ac100000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'openai','offline-admin-'||n,'Offline admin '||n,'enabled',true,true,true,true FROM generate_series(1,5) n;
 INSERT INTO public.ai_usage_logs(user_id,provider,model,operation) VALUES('ac000000-0000-4000-8000-000000000002','openai','offline-admin-1','generate');
 INSERT INTO public.ai_generation_jobs(user_id,idempotency_key,status,input_payload,model,result) VALUES('ac000000-0000-4000-8000-000000000002',gen_random_uuid(),'completed','{}','offline-admin-1','{"lyrics":"Historical offline fixture"}');
+-- This completed historical execution has a real, final synthetic receipt;
+-- absence of that evidence is intentionally a blocker after reconciliation hardening.
+INSERT INTO public.ai_usage_logs(id,user_id,provider,model,operation,input_tokens,output_tokens,total_tokens,provider_usage_state) VALUES('ac300000-0000-4000-8000-000000000005','ac000000-0000-4000-8000-000000000002','openai','offline-admin-5','generate',10,5,15,'final');
 CREATE TEMP TABLE historical_usage AS SELECT count(*) AS n FROM public.ai_usage_logs;
 DO $$ DECLARE fn text; r text; BEGIN
  FOREACH fn IN ARRAY ARRAY['admin_ai_model_controls()','admin_patch_ai_model(uuid,jsonb,bigint)','admin_uninstall_ai_models(jsonb,boolean)','admin_set_ai_model_default(text,text)'] LOOP
@@ -66,7 +69,7 @@ SELECT pg_temp.assert('active_jobs'=ANY(public.ai_model_uninstall_reasons((SELEC
 SELECT public.begin_ai_execution_internal('ac300000-0000-4000-8000-000000000005','ac000000-0000-4000-8000-000000000002','generate','openai','offline-admin-5',NULL,'ac200000-0000-4000-8000-000000000005',NULL);
 SELECT pg_temp.assert('unresolved_execution'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-5'))),'Unknown provider outcome protection');
 UPDATE public.ai_generation_jobs SET status='failed' WHERE id='ac200000-0000-4000-8000-000000000005';
-UPDATE public.ai_provider_executions SET state='response_observed',result='{"lyrics":"Recoverable"}' WHERE id='ac300000-0000-4000-8000-000000000005';
+UPDATE public.ai_provider_executions SET state='response_observed',result='{"lyrics":"Recoverable"}',observed_usage='{"inputTokens":10,"outputTokens":5,"totalTokens":15}' WHERE id='ac300000-0000-4000-8000-000000000005';
 SELECT pg_temp.assert('unresolved_execution'=ANY(public.ai_model_uninstall_reasons((SELECT m FROM public.ai_models m WHERE provider_model_id='offline-admin-5'))),'Recovery protection');
 UPDATE public.ai_generation_jobs SET status='completed' WHERE id='ac200000-0000-4000-8000-000000000005';
 UPDATE public.ai_models SET generator_enabled=false,generator_compatible=false WHERE provider_model_id='offline-admin-5';
