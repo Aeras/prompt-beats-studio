@@ -546,3 +546,11 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Status:** CODE_COMPLETE_RELEASE_PENDING — restore exact four code/test files to verified pre-#441 commit `f45a53ada0fcf8d3a4bd00c81e8923f398a354bb` without touching #439/#440 server logic, migrations, model records, or database.
 - **Reason:** Actual Android owner verification established that both attempted UI fixes, especially mobile cards in #442, materially degraded the management UI despite green mocked CI. User explicitly requested complete removal.
 - **Release:** Merge only after all three exact-head gates succeed; Lovable publish and device confirmation are distinct requirements. The original mobile overflow issue is not claimed solved. Never rewrite pushed Git history or down-migrate.
+
+
+## 2026-10-26 — Admin AI models responsive page repair
+
+- **Status:** IN_PROGRESS — correct the confirmed portrait document overflow in the three default model controls, preserving the installed-model table and its internal horizontal scrolling.
+- **Evidence:** Production Chromium measurements in user Report.md: document 653 CSS px for portrait viewports 360/390/412, default cards ~637 px, native selects ~426 px. Installed table container ~341 px at 390 and scrolling works independently. Additional whole-tab checks remain mandatory.
+- **Scope:** intrinsic-size containment and responsive select/save layout, full page viewport regression checks, no card redesign or model changes.
+- **Release:** Require focused/full tests and all three exact-HEAD CI checks; verify published Android manually after deliberate Lovable publish. No merge/deploy until green and reviewed.
