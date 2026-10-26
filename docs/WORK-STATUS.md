@@ -561,3 +561,10 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Status:** CODE_COMPLETE_RELEASE_PENDING — default selectors now automatically show only installed records with status enabled. Inactive/testing entries remain installed in the management table but no longer appear in the three default selectors.
 - **Scope:** No manual model list, no changes to compatibility/save guard, model status, database or installed-model table. Re-activation makes entries appear again on refreshed registry.
 - **Verification/release:** Require three exact-HEAD CI gates and review; merge and publish are separate steps, with actual mobile dropdown checks after publish.
+
+
+## 2026-10-26 — Generator setup Import/Export outside-tap dismissal
+
+- **Status:** IN_PROGRESS — dismiss Advanced Generator Import/Export JSON/MD dropdowns on outside pointer/tap and Escape, preserving menu item actions, keyboard operation and same-button toggle.
+- **Implementation:** Document listeners only while a setup menu is open, scoped to the active trigger/dropdown wrapper. No backend/database/AI changes.
+- **Release:** Require three exact-HEAD CI gates; deliberate merge and Lovable publish are separate, and actual smartphone validation remains necessary.
