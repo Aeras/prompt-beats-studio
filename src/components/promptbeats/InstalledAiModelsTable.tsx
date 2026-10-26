@@ -229,8 +229,8 @@ function ModelRow({
         return (
           <div role="cell" className={cell} key={field}>
             <span className="mb-1 block text-[11px] text-purple-200 md:hidden">
-          {field === "generatorEnabled" ? "Generator" : "Quality Check"}
-        </span>
+              {field === "generatorEnabled" ? "Generator" : "Quality Check"}
+            </span>
             <button
               type="button"
               role="switch"
