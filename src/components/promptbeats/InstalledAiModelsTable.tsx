@@ -417,7 +417,7 @@ export function InstalledAiModelsTable({
   const width = selection ? 1142 : 1090;
   return (
     <section
-      className="min-w-0 w-full max-w-full overflow-hidden rounded-2xl border border-white/10 bg-[#15101e]"
+      className="min-w-0 w-full max-w-full overflow-x-clip rounded-2xl border border-white/10 bg-[#15101e]"
       aria-label={t("aiModels.installed")}
     >
       <div
