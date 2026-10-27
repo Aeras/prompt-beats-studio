@@ -160,6 +160,120 @@ async function browseRussia(page: Page) {
   await page.getByRole("option", { name: /Russia \/ Russophone|Ρωσία \/ ρωσόφωνη/ }).click();
 }
 
+for (const scenario of [
+  {
+    family: "Rock",
+    expected: ["Alternative rock", "Punk rock", "Post-punk"],
+    pick: "Alternative rock",
+    profile: "ru.russian_alt_rock",
+  },
+  {
+    family: "Pop",
+    expected: ["Indie pop", "Synth-pop", "Dance pop"],
+    pick: "Indie pop",
+    profile: "ru.indie_pop",
+  },
+  {
+    family: "Rap / hip-hop",
+    expected: ["Trap", "Drill", "Cloud rap", "Melodic rap", "Pop rap"],
+    pick: "Trap",
+    profile: "ru.trap",
+  },
+  {
+    family: "Folk",
+    expected: ["Chastushka", "Protyazhnaya song", "Wedding ritual songs"],
+    pick: "Chastushka",
+    profile: "ru.chastushka",
+  },
+]) {
+  test("musical taxonomy navigation: " + scenario.family, async ({ page }) => {
+    await fixture(page);
+    await browseRussia(page);
+    await page.getByRole("combobox", { name: "Musical genre / family", exact: true }).click();
+    await page.getByRole("option", { name: scenario.family, exact: true }).click();
+    await page.getByRole("combobox", { name: "Subcategory", exact: true }).click();
+    const list = page.getByRole("listbox");
+    for (const name of scenario.expected)
+      await expect(list.getByRole("option").filter({ hasText: name })).toHaveCount(1);
+    const labels = await list.getByRole("option").allTextContents();
+    expect(labels.join(" ")).not.toMatch(
+      /historical_scene|music_style_or_form|thematic_approach|Musical style or form/,
+    );
+    if (scenario.family === "Rock") {
+      await page.screenshot({ path: test.info().outputPath("rock-musical-subcategories.png") });
+    }
+    await list.getByRole("option").filter({ hasText: scenario.pick }).click();
+    await expect(page.locator("[data-atlas-id]")).toHaveCount(1);
+    await expect(page.locator('[data-atlas-id="' + scenario.profile + '"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: /Review transfer/ })).toBeDisabled();
+  });
+}
+
+test("typed fallback paths preserve scenes, forms and themes without pretending they are subgenres", async ({
+  page,
+}) => {
+  await fixture(page);
+  await browseRussia(page);
+  const genre = page.getByRole("combobox", { name: "Musical genre / family", exact: true });
+  const subtype = page.getByRole("combobox", { name: "Subcategory", exact: true });
+  for (const example of [
+    {
+      family: "Rock",
+      label: "Historical scene",
+      name: "Soviet rock of the 1970s",
+      profile: "ru.rock_70",
+    },
+    {
+      family: "Rock",
+      label: "Form / performance format",
+      name: "Rock ballad",
+      profile: "ru.russian_rock_ballad",
+    },
+    {
+      family: "Rap / hip-hop",
+      label: "Cultural / thematic context",
+      name: "Social / conceptual rap",
+      profile: "ru.conscious_rap",
+    },
+    {
+      family: "Pop",
+      label: "No finer subgenre documented",
+      name: "General pop",
+      profile: "ru.modern_russian_pop",
+    },
+  ]) {
+    await genre.click();
+    await page.getByRole("option", { name: example.family, exact: true }).click();
+    await subtype.click();
+    const option = page.getByRole("option").filter({ hasText: example.name });
+    await expect(option).toContainText(example.label);
+    await option.click();
+    await expect(page.locator("[data-atlas-id]")).toHaveCount(1);
+    await expect(page.locator('[data-atlas-id="' + example.profile + '"]')).toBeVisible();
+  }
+});
+
+test("Greek musical subcategories have stable localized names with English terminology", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => localStorage.setItem("pb:interface-language", "el"));
+  await page.reload();
+  await browseRussia(page);
+  await page.getByRole("combobox", { name: "Μουσικό είδος / οικογένεια", exact: true }).click();
+  await page.getByRole("option", { name: "Ροκ", exact: true }).click();
+  await page.getByRole("combobox", { name: "Υποκατηγορία", exact: true }).click();
+  const option = page.getByRole("option").filter({ hasText: "Εναλλακτικό ροκ" });
+  await expect(option).toContainText("Alternative rock");
+  await expect(option.locator('[lang="en"]')).toContainText("Alternative rock");
+  await option.click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(1);
+  await expect(page.locator('[data-atlas-id="ru.russian_alt_rock"] h2')).toHaveAttribute(
+    "lang",
+    "ru",
+  );
+});
+
 test("cascading paths show only real options and parent changes retain research selections", async ({
   page,
 }) => {
@@ -177,10 +291,8 @@ test("cascading paths show only real options and parent changes retain research 
   await expect(
     page.getByRole("option", { name: /Historical scene|Ιστορική μουσική σκηνή/ }),
   ).toHaveCount(0);
-  await page
-    .getByRole("option", { name: /^(Musical style or form|Μουσικό ύφος ή φόρμα)$/ })
-    .click();
-  await expect(page.locator("[data-atlas-id]")).toHaveCount(2);
+  await page.getByRole("option", { name: /Chastushka/ }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(1);
   const profile = page.getByRole("combobox", { name: /^(Musical profile|Μουσικό προφίλ)$/ });
   await profile.click();
   await page.getByRole("option", { name: /Частушка/ }).click();

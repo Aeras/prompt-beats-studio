@@ -15,6 +15,10 @@ import {
 import type { AtlasCatalog } from "@/lib/song-atlas.shared";
 import { CompactDropdown } from "@/components/ui/compact-dropdown";
 import { Button } from "@/components/ui/button";
+import {
+  atlasMusicalCategoryLabel,
+  atlasMusicalCategoryDescription,
+} from "@/i18n/atlas-musical-categories";
 export function AtlasNavigation({
   catalog,
   filters,
@@ -34,6 +38,16 @@ export function AtlasNavigation({
         {ATLAS_NAV_LEVELS.map((level) => {
           const ids = atlasNavOptions(catalog.navigation, filters, level);
           const options = ids.map((id) => {
+            if (level === "subcategoryId")
+              return {
+                value: id,
+                label: atlasMusicalCategoryLabel(id, language),
+                secondary:
+                  language === "el"
+                    ? atlasMusicalCategoryLabel(id, "en")
+                    : atlasMusicalCategoryDescription(id, language),
+                secondaryLang: "en",
+              };
             if (level !== "profileId") return { value: id, label: atlasTaxonLabel(id, language) };
             const card = catalog.cards.find((c) => c.id === id)!;
             const entry = catalog.navigation.find((e) => e.profileId === id)!;

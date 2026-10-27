@@ -13,7 +13,7 @@ export const atlasNavigationCopy = {
     empty: "No matching options",
     loading: "Loading Atlas…",
     scope:
-      "Geography describes this collection's browsing scope, not the origin or ownership of every tradition. Subcategories distinguish forms, scenes and cultural contexts; they are not all subgenres.",
+      "Geography describes this collection's browsing scope, not the origin or ownership of every tradition. Choose a documented musical subgenre; where none is specified, clearly labeled forms, historical scenes or contexts provide a research path without inventing a subgenre.",
     namesFallback:
       "Approved translated names are unavailable. Original Russian names and a fixed Latin transliteration are shown.",
     greekFallback: "Greek editorial text (approved English version unavailable).",
@@ -41,7 +41,7 @@ export const atlasNavigationCopy = {
     empty: "Δεν βρέθηκαν επιλογές",
     loading: "Φόρτωση Atlas…",
     scope:
-      "Η γεωγραφία δηλώνει το πλαίσιο περιήγησης της συλλογής, όχι την προέλευση ή την ιδιοκτησία κάθε παράδοσης. Οι υποκατηγορίες διακρίνουν φόρμες, σκηνές και πολιτισμικά συμφραζόμενα· δεν είναι όλες μουσικά υποείδη.",
+      "Η γεωγραφία δηλώνει το πλαίσιο περιήγησης της συλλογής, όχι την προέλευση ή την ιδιοκτησία κάθε παράδοσης. Επιλέξτε τεκμηριωμένο μουσικό υποείδος· όπου δεν ορίζεται, οι σαφώς επισημασμένες φόρμες, ιστορικές σκηνές ή πλαίσια παρέχουν ερευνητική διαδρομή χωρίς επινόηση υποείδους.",
     namesFallback:
       "Δεν υπάρχουν εγκεκριμένες μεταφρασμένες ονομασίες. Εμφανίζονται οι αυθεντικές ρωσικές ονομασίες και σταθερή λατινική μεταγραφή.",
     greekFallback: "Ελληνικό συντακτικό κείμενο (χωρίς εγκεκριμένη αγγλική έκδοση).",
