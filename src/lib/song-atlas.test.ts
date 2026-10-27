@@ -174,6 +174,13 @@ describe("selected-only versioned handoff", () => {
     expect(
       mergeAtlasInstructions(mergeAtlasInstructions(old, "Chosen option"), "Chosen option"),
     ).toBe(old + "\n\nChosen option");
+    // Reopening the same handoff after further manual editing must not duplicate it.
+    expect(
+      mergeAtlasInstructions(
+        old + "\n\nChosen option\nAdditional manual direction",
+        "Chosen option",
+      ),
+    ).toBe(old + "\n\nChosen option\nAdditional manual direction");
     expect(() => mergeAtlasInstructions("x".repeat(1999), "Option")).toThrow("limit");
   });
   test("server rejects denied access before reading compilation content", async () => {

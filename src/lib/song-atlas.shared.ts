@@ -117,7 +117,7 @@ export function compileAtlasSelection(selection: AtlasSelection, catalog: AtlasC
 }
 /** Explicit confirmation is required; preserve all existing instructions and other fields. */
 export function mergeAtlasInstructions(existing: string, addition: string) {
-  if (!addition || existing === addition || existing.endsWith("\n\n" + addition)) return existing;
+  if (!addition || existing.includes(addition)) return existing;
   const next = existing ? existing + "\n\n" + addition : addition;
   if (next.length > 2000)
     throw new Error("Existing instructions and Atlas selection exceed the limit");
