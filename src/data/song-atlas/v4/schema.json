@@ -1,0 +1,1078 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "promptbeats-russian-cultural-song-library"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 4
+    },
+    "libraryVersion": {
+      "type": "string",
+      "const": "4.0.0-review.1"
+    },
+    "status": {
+      "type": "string",
+      "const": "independent_editorial_review_required"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "rc1Sha256": {
+          "type": "string",
+          "const": "fa363996a89fe2b475bd75330f4eaa01531c8ed4f7a32669ebe64e2e963d925a"
+        },
+        "rc1Path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 6000
+        },
+        "baseMain": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "reviewDate": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        }
+      },
+      "required": ["rc1Sha256", "rc1Path", "baseMain", "reviewDate"],
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "researchOnly": {
+          "type": "boolean",
+          "const": true
+        },
+        "generatorTransfer": {
+          "type": "boolean",
+          "const": false
+        },
+        "techniqueActivation": {
+          "type": "boolean",
+          "const": false
+        },
+        "runtimeAtlasReplacement": {
+          "type": "boolean",
+          "const": false
+        },
+        "narrativeDefault": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "researchOnly",
+        "generatorTransfer",
+        "techniqueActivation",
+        "runtimeAtlasReplacement",
+        "narrativeDefault"
+      ],
+      "additionalProperties": false
+    },
+    "localizationPolicy": {
+      "type": "object",
+      "properties": {
+        "runtimeTranslation": {
+          "type": "boolean",
+          "const": false
+        },
+        "draftMayBeDisplayedAsApproved": {
+          "type": "boolean",
+          "const": false
+        },
+        "originalRuAndLatinAlwaysRetained": {
+          "type": "boolean",
+          "const": true
+        },
+        "missingTranslation": {
+          "type": "string",
+          "const": "explicit_source_language_with_lang_attribute"
+        }
+      },
+      "required": [
+        "runtimeTranslation",
+        "draftMayBeDisplayedAsApproved",
+        "originalRuAndLatinAlwaysRetained",
+        "missingTranslation"
+      ],
+      "additionalProperties": false
+    },
+    "eraDefinition": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 6000
+    },
+    "eras": {
+      "minItems": 4,
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "startYear": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "endYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "const": "draft_translation_requires_independent_review"
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "startYear", "endYear", "label"],
+        "additionalProperties": false
+      }
+    },
+    "profiles": {
+      "minItems": 58,
+      "maxItems": 58,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "rc1ProfileId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "const": "draft_translation_requires_independent_review"
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          },
+          "nameRu": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "latin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "const": "draft_translation_requires_independent_review"
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          },
+          "taxonomy": {
+            "type": "object",
+            "properties": {
+              "profileId": {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[a-zA-Z0-9_.:-]+$"
+              },
+              "continentId": {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[a-zA-Z0-9_.:-]+$"
+              },
+              "countryId": {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[a-zA-Z0-9_.:-]+$"
+              },
+              "genreId": {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[a-zA-Z0-9_.:-]+$"
+              },
+              "romanizedName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "sourceEntityType": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "classification": {
+                "type": "object",
+                "properties": {
+                  "subgenre": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  },
+                  "form": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  },
+                  "scene": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  },
+                  "context": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  },
+                  "style": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  },
+                  "general": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    }
+                  }
+                },
+                "required": ["subgenre", "form", "scene", "context", "style", "general"],
+                "additionalProperties": false
+              },
+              "evidence": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "const": "name_ru"
+                  },
+                  "quote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6000
+                  }
+                },
+                "required": ["field", "quote"],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "profileId",
+              "continentId",
+              "countryId",
+              "genreId",
+              "romanizedName",
+              "sourceEntityType",
+              "classification",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "knowledge": {
+            "minItems": 12,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimension": {
+                  "type": "string",
+                  "enum": [
+                    "structure",
+                    "melody",
+                    "harmony",
+                    "rhythm",
+                    "groove",
+                    "instrumentation",
+                    "vocals",
+                    "production",
+                    "lyrics",
+                    "dynamics",
+                    "era",
+                    "cultural_context"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["bounded_evidence", "specific_unknown"]
+                },
+                "evidenceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "pattern": "^[a-zA-Z0-9_.:-]+$"
+                  }
+                },
+                "unknown": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "el": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 6000
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 6000
+                        },
+                        "review": {
+                          "type": "string",
+                          "const": "draft_translation_requires_independent_review"
+                        }
+                      },
+                      "required": ["el", "en", "review"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "automaticInference": {
+                  "type": "boolean",
+                  "const": false
+                }
+              },
+              "required": ["dimension", "status", "evidenceIds", "unknown", "automaticInference"],
+              "additionalProperties": false
+            }
+          },
+          "eraRelations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "eraId": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "pattern": "^[a-zA-Z0-9_.:-]+$"
+                },
+                "basis": {
+                  "type": "string",
+                  "enum": ["explicit_inherited_profile_scope", "bounded_source_report"]
+                },
+                "evidenceId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[a-zA-Z0-9_.:-]+$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 6000
+                }
+              },
+              "required": ["eraId", "basis", "evidenceId", "scope"],
+              "additionalProperties": false
+            }
+          },
+          "eraCoverage": {
+            "type": "string",
+            "enum": ["bounded_not_exhaustive", "not_assigned_without_evidence"]
+          },
+          "techniqueIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "historicalClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "identity": {
+                "type": "string",
+                "const": "stable_rc1_identity_preserved"
+              },
+              "musicology": {
+                "type": "string",
+                "const": "desk_review_with_explicit_gaps_no_audio_certification"
+              },
+              "localization": {
+                "type": "string",
+                "const": "draft_bilingual_independent_review_required"
+              },
+              "generator": {
+                "type": "string",
+                "const": "blocked"
+              }
+            },
+            "required": ["identity", "musicology", "localization", "generator"],
+            "additionalProperties": false
+          },
+          "inheritedKnowledge": {
+            "$ref": "#/$defs/__schema0"
+          },
+          "inheritedCreativePalette": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "required": [
+          "id",
+          "rc1ProfileId",
+          "name",
+          "nameRu",
+          "latin",
+          "summary",
+          "taxonomy",
+          "knowledge",
+          "eraRelations",
+          "eraCoverage",
+          "techniqueIds",
+          "historicalClaimIds",
+          "review",
+          "inheritedKnowledge",
+          "inheritedCreativePalette"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "profileId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "origin": {
+            "type": "string",
+            "enum": ["rc1", "v4"]
+          },
+          "kind": {
+            "type": "string",
+            "const": "creative_hypothesis"
+          },
+          "purpose": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "const": "draft_translation_requires_independent_review"
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          },
+          "instruction": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "enum": [
+                  "draft_translation_requires_independent_review",
+                  "inherited_english_greek_translation_pending"
+                ]
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "sourceSupport": {
+            "type": "string",
+            "enum": ["not_claimed", "inspiration_only_not_validation_of_instruction"]
+          },
+          "review": {
+            "type": "string",
+            "enum": [
+              "context_only_not_a_sound_instruction",
+              "retain_as_unvalidated_creative_hypothesis",
+              "authored_for_independent_editorial_review"
+            ]
+          },
+          "constraints": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6000
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "conflictReview": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "supersededBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[a-zA-Z0-9_.:-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pilot": {
+            "type": "string",
+            "enum": ["not_shortlisted", "offline_editorial_shortlist"]
+          },
+          "executable": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": [
+          "id",
+          "profileId",
+          "origin",
+          "kind",
+          "purpose",
+          "instruction",
+          "evidenceIds",
+          "sourceSupport",
+          "review",
+          "constraints",
+          "conflicts",
+          "conflictReview",
+          "supersededBy",
+          "pilot",
+          "executable"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "inheritedMetadata": {
+            "$ref": "#/$defs/__schema0"
+          },
+          "url": {
+            "type": ["string", "null"]
+          },
+          "identityReview": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "claimCertification": {
+            "type": "boolean",
+            "const": false
+          },
+          "documentId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          }
+        },
+        "required": [
+          "id",
+          "inheritedMetadata",
+          "url",
+          "identityReview",
+          "claimCertification",
+          "documentId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "profileId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "sourceIds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "access": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "locator": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "reviewedDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "kind": {
+            "type": "string",
+            "const": "attributed_source_report"
+          },
+          "text": {
+            "type": "object",
+            "properties": {
+              "el": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 6000
+              },
+              "review": {
+                "type": "string",
+                "const": "draft_translation_requires_independent_review"
+              }
+            },
+            "required": ["el", "en", "review"],
+            "additionalProperties": false
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "dimensions": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "structure",
+                "melody",
+                "harmony",
+                "rhythm",
+                "groove",
+                "instrumentation",
+                "vocals",
+                "production",
+                "lyrics",
+                "dynamics",
+                "era",
+                "cultural_context"
+              ]
+            }
+          },
+          "independentMusicologicalSignoff": {
+            "type": "boolean",
+            "const": false
+          },
+          "executable": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": [
+          "id",
+          "profileId",
+          "sourceIds",
+          "access",
+          "locator",
+          "reviewedDate",
+          "kind",
+          "text",
+          "scope",
+          "dimensions",
+          "independentMusicologicalSignoff",
+          "executable"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "inheritedClaimReviews": {
+      "minItems": 85,
+      "maxItems": 85,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "profileId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "original": {
+            "$ref": "#/$defs/__schema0"
+          },
+          "disposition": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "replacementEvidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          }
+        },
+        "required": [
+          "id",
+          "profileId",
+          "original",
+          "disposition",
+          "replacementEvidenceIds",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "excludedCandidates": {
+      "minItems": 14,
+      "maxItems": 14,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "reason": {
+            "type": "string",
+            "const": "rc1_candidate_not_promoted"
+          },
+          "original": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "required": ["id", "reason", "original"],
+        "additionalProperties": false
+      }
+    },
+    "unresolvedEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "profileId": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "kind": {
+            "type": "string",
+            "const": "musical_evidence_gap"
+          },
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "structure",
+              "melody",
+              "harmony",
+              "rhythm",
+              "groove",
+              "instrumentation",
+              "vocals",
+              "production",
+              "lyrics",
+              "dynamics",
+              "era",
+              "cultural_context"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          }
+        },
+        "required": ["id", "profileId", "kind", "dimension", "resolution"],
+        "additionalProperties": false
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          }
+        },
+        "required": ["id", "decision"],
+        "additionalProperties": false
+      }
+    },
+    "documentGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_.:-]+$"
+          },
+          "identityKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "sourceIds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-zA-Z0-9_.:-]+$"
+            }
+          },
+          "identityBasis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          }
+        },
+        "required": ["id", "identityKey", "sourceIds", "identityBasis"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "libraryVersion",
+    "status",
+    "source",
+    "safety",
+    "localizationPolicy",
+    "eraDefinition",
+    "eras",
+    "profiles",
+    "techniques",
+    "sources",
+    "evidence",
+    "inheritedClaimReviews",
+    "excludedCandidates",
+    "unresolvedEvidence",
+    "decisions",
+    "documentGroups"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      ]
+    }
+  },
+  "$id": "https://promptbeats.app/schemas/song-atlas-library-v4.schema.json"
+}

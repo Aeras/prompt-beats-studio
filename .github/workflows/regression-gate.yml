@@ -97,6 +97,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Offline Atlas V4 editorial package integrity
+        run: bun scripts/validate-atlas-v4.ts
+
       - name: Explicit Beta registrations and authoritative entrypoint gates
         run: bun scripts/check-beta-features.ts
 
