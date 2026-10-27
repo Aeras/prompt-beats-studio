@@ -1,3 +1,4 @@
+import type { AtlasNavEntry } from "./atlas-navigation";
 import { z } from "zod";
 export const ATLAS_SOURCE_SHA = "fa363996a89fe2b475bd75330f4eaa01531c8ed4f7a32669ebe64e2e963d925a";
 export const ATLAS_HANDOFF_KEY = "pb:atlas-handoff:v1";
@@ -47,6 +48,7 @@ export type AtlasCard = {
   claims: {
     id: string;
     text: string;
+    localizedText: { el: string | null; en: string | null };
     sourceIds: string[];
     review: string;
     scopeWarning: boolean;
@@ -60,6 +62,7 @@ export type AtlasCatalog = {
   options: AtlasOption[];
   sources: { id: string; title: string; url: string | null }[];
   candidateCount: number;
+  navigation: AtlasNavEntry[];
 };
 export const atlasHandoffSchema = z
   .object({

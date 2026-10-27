@@ -1,3 +1,4 @@
+import navigation from "../data/song-atlas/navigation.json" with { type: "json" };
 import source from "../data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json" with { type: "json" };
 import { ATLAS_SOURCE_SHA, type AtlasCatalog, type AtlasOption } from "./song-atlas.shared";
 // Source remains byte-exact in a server-only module. Never export review drafts as directives.
@@ -51,6 +52,7 @@ export function readAtlasCatalog(): AtlasCatalog {
     claims: p.historical_claims.map((c) => ({
       id: c.id,
       text: c.statement_el ?? c.statement_en ?? "",
+      localizedText: { el: c.statement_el ?? null, en: c.statement_en ?? null },
       sourceIds: c.source_ids,
       review: c.review_state,
       scopeWarning: c.scope_warning,
@@ -123,5 +125,6 @@ export function readAtlasCatalog(): AtlasCatalog {
       url: safeAtlasSourceUrl("url" in s.metadata ? s.metadata.url : null),
     })),
     candidateCount: source.candidates.length,
+    navigation: navigation.entries,
   };
 }

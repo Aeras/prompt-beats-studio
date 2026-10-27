@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 1,
+  "scope": "collection_not_origin",
+  "entries": [
+    {
+      "profileId": "ru.protyazhnaya",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Protyazhnaya pesnya"
+    },
+    {
+      "profileId": "ru.chastushka",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Chastushka"
+    },
+    {
+      "profileId": "ru.khorovod",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "dance_song_form",
+      "romanizedName": "Khorovodnaya pesnya"
+    },
+    {
+      "profileId": "ru.wedding_folk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "ritual_function",
+      "romanizedName": "Svadebnaya obryadovaya pesnya"
+    },
+    {
+      "profileId": "ru.calendar_folk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "ritual_function",
+      "romanizedName": "Kalendarno-obryadovaya pesnya"
+    },
+    {
+      "profileId": "ru.bylina",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "epic_form",
+      "romanizedName": "Bylina / epicheskoe penie"
+    },
+    {
+      "profileId": "ru.lyrical_folk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "umbrella",
+      "romanizedName": "Liricheskaya narodnaya pesnya"
+    },
+    {
+      "profileId": "ru.cossack_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "folk",
+      "subcategoryId": "community_repertoire",
+      "romanizedName": "Kazachya pesennaya traditsiya"
+    },
+    {
+      "profileId": "ru.folk_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "hybrid",
+      "subcategoryId": "crossover_style",
+      "romanizedName": "Folk-rok"
+    },
+    {
+      "profileId": "ru.urban_romance",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "romance",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Gorodskoy romans"
+    },
+    {
+      "profileId": "ru.classical_romance",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "romance",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkiy kamernyy romans"
+    },
+    {
+      "profileId": "ru.cruel_romance",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "romance",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Zhestokiy romans"
+    },
+    {
+      "profileId": "ru.bard_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "bard",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Avtorskaya pesnya / bardovskaya"
+    },
+    {
+      "profileId": "ru.satirical_bard",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "bard",
+      "subcategoryId": "thematic_approach",
+      "romanizedName": "Satiricheskaya avtorskaya pesnya"
+    },
+    {
+      "profileId": "ru.hiking_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "bard",
+      "subcategoryId": "social_context",
+      "romanizedName": "Turistskaya / pokhodnaya pesnya"
+    },
+    {
+      "profileId": "ru.blatnaya",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Blatnaya pesnya"
+    },
+    {
+      "profileId": "ru.lager_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Lagernaya pesnya"
+    },
+    {
+      "profileId": "ru.odessa_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "regional_repertoire",
+      "romanizedName": "Odesskaya gorodskaya pesnya"
+    },
+    {
+      "profileId": "ru.emigre_song",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "diaspora_context",
+      "romanizedName": "Emigrantskaya pesnya"
+    },
+    {
+      "profileId": "ru.lyrical_chanson",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Liricheskiy russkiy shanson"
+    },
+    {
+      "profileId": "ru.post_chanson",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "chanson",
+      "subcategoryId": "critical_style_label",
+      "romanizedName": "Postshanson / gibridnyy shanson"
+    },
+    {
+      "profileId": "ru.soviet_estrada_50_60",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "estrada",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Estradnaya pesnya 1950–1960-kh"
+    },
+    {
+      "profileId": "ru.soviet_estrada_70",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "estrada",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Estrada 1970-kh"
+    },
+    {
+      "profileId": "ru.soviet_estrada_80",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "estrada",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Estrada 1980-kh"
+    },
+    {
+      "profileId": "ru.via",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "estrada",
+      "subcategoryId": "ensemble_format",
+      "romanizedName": "VIA / vokalno-instrumentalnye ansambli"
+    },
+    {
+      "profileId": "ru.estrada_folk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "estrada",
+      "subcategoryId": "crossover_style",
+      "romanizedName": "Estradnaya pesnya s folklornymi elementami"
+    },
+    {
+      "profileId": "ru.russian_pop_90",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Russkaya pop-muzyka 1990-kh"
+    },
+    {
+      "profileId": "ru.russian_dance_pop_00",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Russkiy dens-pop 2000-kh"
+    },
+    {
+      "profileId": "ru.russian_pop_ballad",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkaya pop-ballada"
+    },
+    {
+      "profileId": "ru.modern_russian_pop",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "umbrella",
+      "romanizedName": "Sovremennaya russkoyazychnaya pop-muzyka"
+    },
+    {
+      "profileId": "ru.indie_pop",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy indi-pop"
+    },
+    {
+      "profileId": "ru.synth_pop",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "pop",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy sinti-pop"
+    },
+    {
+      "profileId": "ru.rock_70",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Sovetskiy rok 1970-kh"
+    },
+    {
+      "profileId": "ru.russian_rock_80",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Russkiy rok 1980-kh"
+    },
+    {
+      "profileId": "ru.soviet_postpunk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "scene_and_style",
+      "romanizedName": "Sovetskiy postpank / novaya volna"
+    },
+    {
+      "profileId": "ru.russian_art_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Art-rok / eksperimentalnyy russkiy rok"
+    },
+    {
+      "profileId": "ru.social_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "thematic_approach",
+      "romanizedName": "Sotsialno orientirovannyy russkiy rok"
+    },
+    {
+      "profileId": "ru.russian_rock_ballad",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkaya rok-ballada"
+    },
+    {
+      "profileId": "ru.russian_punk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkiy pank-rok"
+    },
+    {
+      "profileId": "ru.russian_alt_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkiy alternativnyy rok"
+    },
+    {
+      "profileId": "ru.russian_indie_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy indi-rok"
+    },
+    {
+      "profileId": "ru.shoegaze",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "overlapping_styles",
+      "romanizedName": "Russkoyazychnyy shugeyz / drim-pop"
+    },
+    {
+      "profileId": "ru.folk_metal",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rock",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy folk-metal"
+    },
+    {
+      "profileId": "ru.rap_90",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Russkiy rep 1990-kh"
+    },
+    {
+      "profileId": "ru.rap_00",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "historical_scene",
+      "romanizedName": "Russkiy khip-khop 2000-kh"
+    },
+    {
+      "profileId": "ru.conscious_rap",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "thematic_approach",
+      "romanizedName": "Sotsialnyy / kontseptualnyy rep"
+    },
+    {
+      "profileId": "ru.battle_rap",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "performance_format",
+      "romanizedName": "Battl-rep"
+    },
+    {
+      "profileId": "ru.trap",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy trep"
+    },
+    {
+      "profileId": "ru.melodic_rap",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "overlapping_styles",
+      "romanizedName": "Melodichnyy rep / pop-rep"
+    },
+    {
+      "profileId": "ru.drill",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy drill"
+    },
+    {
+      "profileId": "ru.cloud_rap",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "rap",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy klaud-rep"
+    },
+    {
+      "profileId": "ru.phonk",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "electronic",
+      "subcategoryId": "umbrella",
+      "romanizedName": "Fonk / drift phonk scenes"
+    },
+    {
+      "profileId": "ru.hyperpop",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "electronic",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy giperpop"
+    },
+    {
+      "profileId": "ru.russian_electropop",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "electronic",
+      "subcategoryId": "music_style_or_form",
+      "romanizedName": "Russkoyazychnyy elektropop"
+    },
+    {
+      "profileId": "ru.downtempo",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "electronic",
+      "subcategoryId": "overlapping_styles",
+      "romanizedName": "Russkoyazychnyy dauntempo / trip-khop"
+    },
+    {
+      "profileId": "ru.folk_electronic",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "hybrid",
+      "subcategoryId": "crossover_style",
+      "romanizedName": "Elektro-folk / folktronika"
+    },
+    {
+      "profileId": "ru.pop_chanson",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "hybrid",
+      "subcategoryId": "crossover_style",
+      "romanizedName": "Pop-shanson"
+    },
+    {
+      "profileId": "ru.rap_rock",
+      "continentId": "europe-asia",
+      "countryId": "ru-collection",
+      "genreId": "hybrid",
+      "subcategoryId": "crossover_style",
+      "romanizedName": "Rep-rok"
+    }
+  ]
+}

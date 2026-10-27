@@ -153,6 +153,178 @@ async function fixture(page: Page, initiallyAllowed = true, approvedFixture = fa
   };
 }
 
+async function browseRussia(page: Page) {
+  await page.getByRole("combobox", { name: /^(Continent|Ήπειρος)$/ }).click();
+  await page.getByRole("option", { name: /Europe \/ Asia|Ευρώπη \/ Ασία/ }).click();
+  await page.getByRole("combobox", { name: /^(Country|Χώρα)$/ }).click();
+  await page.getByRole("option", { name: /Russia \/ Russophone|Ρωσία \/ ρωσόφωνη/ }).click();
+}
+
+test("cascading paths show only real options and parent changes retain research selections", async ({
+  page,
+}) => {
+  await fixture(page);
+  await expect(page.getByRole("combobox", { name: /^(Country|Χώρα)$/ })).toBeDisabled();
+  await page.locator('[data-atlas-id="ru.chastushka"]').getByRole("checkbox").check();
+  await browseRussia(page);
+  const genre = page.getByRole("combobox", { name: /Musical genre|Μουσικό είδος/ });
+  await genre.click();
+  await expect(page.getByRole("option")).toHaveCount(10);
+  await page.getByRole("option", { name: /^(Folk|Παραδοσιακή μουσική)$/ }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(8);
+  const subtype = page.getByRole("combobox", { name: /^(Subcategory|Υποκατηγορία)$/ });
+  await subtype.click();
+  await expect(
+    page.getByRole("option", { name: /Historical scene|Ιστορική μουσική σκηνή/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("option", { name: /^(Musical style or form|Μουσικό ύφος ή φόρμα)$/ })
+    .click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(2);
+  const profile = page.getByRole("combobox", { name: /^(Musical profile|Μουσικό προφίλ)$/ });
+  await profile.click();
+  await page.getByRole("option", { name: /Частушка/ }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(1);
+  await genre.click();
+  await page.getByRole("option", { name: /^(Rock|Ροκ)$/ }).click();
+  await expect(subtype).toHaveText(/Subcategory|Υποκατηγορία/);
+  await expect(profile).toBeDisabled();
+  await expect(page.getByRole("combobox", { name: /^(Country|Χώρα)$/ })).toContainText(
+    /Russia|Ρωσία/,
+  );
+  await page.getByRole("button", { name: /Reset browsing|Καθαρισμός φίλτρων/ }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(58);
+  await expect(page.locator('[data-atlas-id="ru.chastushka"]').getByRole("checkbox")).toBeChecked();
+});
+
+test("compact dropdown search, outside dismissal, toggle and Escape restore focus", async ({
+  page,
+}) => {
+  await fixture(page);
+  await browseRussia(page);
+  const genre = page.getByRole("combobox", { name: /Musical genre|Μουσικό είδος/ });
+  const country = page.getByRole("combobox", { name: /^(Country|Χώρα)$/ });
+  await genre.click();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await page.getByRole("combobox", { name: /Search options|Αναζήτηση επιλογών/ }).fill("rap");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(genre).toContainText(/Rap|Ραπ/);
+  await expect(genre).toBeFocused();
+  await genre.click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(genre).toBeFocused();
+  await genre.click();
+  await country.click();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(genre).toHaveAttribute("aria-expanded", "false");
+  await country.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await genre.click();
+  if (test.info().project.name === "mobile") {
+    await page.getByRole("heading", { level: 1 }).tap();
+  } else {
+    await page.getByRole("heading", { level: 1 }).click();
+  }
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await page.locator("select").count()).toBe(0);
+});
+
+test("dropdown touch targets, internal scroll, page scroll and open accessibility", async ({
+  page,
+}) => {
+  await fixture(page);
+  await browseRussia(page);
+  const genre = page.getByRole("combobox", { name: /Musical genre|Μουσικό είδος/ });
+  const triggerHeight = (await genre.boundingBox())!.height;
+  expect(triggerHeight).toBeGreaterThanOrEqual(40);
+  expect(triggerHeight).toBeLessThanOrEqual(44);
+  await genre.click();
+  const list = page.getByRole("listbox");
+  expect(await list.evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(true);
+  expect((await list.boundingBox())!.height).toBeLessThanOrEqual(281);
+  await expect
+    .poll(async () => Math.round((await page.getByRole("option").first().boundingBox())!.height))
+    .toBeGreaterThanOrEqual(44);
+  await expect(page.getByRole("dialog")).toHaveAttribute("data-side", /^(top|bottom)$/);
+  await list.evaluate((e) => {
+    e.scrollTop = e.scrollHeight;
+  });
+  await expect(page.getByRole("option").last()).toBeInViewport();
+  await page.screenshot({ path: test.info().outputPath("atlas-dropdown-open.png") });
+  const severe = (
+    await new AxeBuilder({ page })
+      .include('[data-testid="song-atlas-preview"]')
+      .include('[role="dialog"]')
+      .analyze()
+  ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  expect(severe).toEqual([]);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+  await page.screenshot({ path: test.info().outputPath("atlas-navigation.png") });
+});
+
+test("small dropdown supports keyboard-only open, Home/End, selection and viewport collision", async ({
+  page,
+}) => {
+  await fixture(page);
+  const continent = page.getByRole("combobox", { name: /^(Continent|Ήπειρος)$/ });
+  await continent.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await page.getByRole("listbox").focus();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("option")).toBeFocused();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Enter");
+  await expect(continent).toContainText(/Europe|Ευρώπη/);
+  await expect(continent).toBeFocused();
+  await page.getByRole("combobox", { name: /^(Country|Χώρα)$/ }).click();
+  const dialog = page.getByRole("dialog");
+  const box = (await dialog.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
+  await page.keyboard.press("Escape");
+});
+
+test("Greek and English UI retain source scripts, truthful fallback and identical stable taxonomy", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => localStorage.setItem("pb:interface-language", "el"));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Πολιτισμικός Άτλας Τραγουδιού" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Ήπειρος", exact: true })).toBeVisible();
+  const card = page.locator('[data-atlas-id="ru.protyazhnaya"]');
+  await expect(card.locator('h2[lang="ru"]')).toHaveText("Протяжная песня");
+  await expect(card.locator('[lang="ru-Latn"]')).toContainText("Protyazhnaya");
+  await browseRussia(page);
+  await page.getByRole("combobox", { name: "Μουσικό είδος / οικογένεια" }).click();
+  await page.getByRole("option", { name: "Παραδοσιακή μουσική", exact: true }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(8);
+  await page.evaluate(() => localStorage.setItem("pb:interface-language", "en"));
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Cultural Song Atlas", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByText("Greek editorial text (approved English version unavailable).", { exact: true })
+      .first(),
+  ).toBeVisible();
+  await browseRussia(page);
+  await page.getByRole("combobox", { name: "Musical genre / family" }).click();
+  await page.getByRole("option", { name: "Folk", exact: true }).click();
+  await expect(page.locator("[data-atlas-id]")).toHaveCount(8);
+  await expect(page.getByRole("button", { name: /Review transfer/ })).toBeDisabled();
+});
+
 test("Atlas internal preview exposes 58 stable cards, provenance, search and no horizontal overflow", async ({
   page,
 }) => {
@@ -180,15 +352,15 @@ test("Atlas selections stay research-only, conflicts visible, drafts survive ref
   await fixture(page);
   const card = page.locator('[data-atlas-id="ru.chastushka"]');
   await card.getByRole("checkbox").check();
-  await page.getByRole("checkbox", { name: /^lively/ }).check();
-  await page.getByRole("checkbox", { name: /^slow legato/ }).check();
+  await page.getByRole("checkbox", { name: /^(lively|Ζωηρή)/ }).check();
+  await page.getByRole("checkbox", { name: /^(slow legato|Αργό legato)/ }).check();
   await expect(page.getByRole("alert")).toContainText(/Conflicting|Σύγκρουση/);
   await expect(
     page.getByRole("button", { name: /Review transfer|Έλεγχος μεταφοράς/ }),
   ).toBeDisabled();
   await page.reload();
   await expect(page.locator('[data-atlas-id="ru.chastushka"]').getByRole("checkbox")).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: /^lively/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /^(lively|Ζωηρή)/ })).toBeChecked();
 });
 test("denied or revoked deep links never display cached research content", async ({ page }) => {
   const f = await fixture(page, false);
