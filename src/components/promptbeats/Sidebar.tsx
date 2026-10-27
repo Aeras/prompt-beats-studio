@@ -46,6 +46,7 @@ export const NAV = [
   { id: "inspirationWall", labelKey: null, icon: Lightbulb },
   { id: "storyMap", labelKey: null, icon: MapPinned },
   { id: "songUniverse", labelKey: null, icon: Orbit },
+  { id: "songAtlas", labelKey: null, icon: MapPinned },
   { id: "management", labelKey: "nav.management", icon: BarChart3 },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -62,6 +63,7 @@ const CREATE_TOOL_NAV_IDS: NavId[] = [
   "inspirationWall",
   "storyMap",
   "songUniverse",
+  "songAtlas",
 ];
 const PRIMARY_NAV_DOMAINS: Partial<Record<NavId, PrimaryDomain>> = {
   home: "home",
@@ -79,6 +81,7 @@ const NAV_TO: Record<NavId, string> = {
   inspirationWall: "/inspiration-wall",
   storyMap: "/story-map",
   songUniverse: "/song-universe",
+  songAtlas: "/song-atlas",
   library: "/library",
   management: "/management",
 };
@@ -140,6 +143,7 @@ export function SidebarNav({
   const inspirationWallAccess = useFeatureAccess("inspiration_wall");
   const storyMapAccess = useFeatureAccess("story_map");
   const songUniverseAccess = useFeatureAccess("song_universe");
+  const atlasAccess = useFeatureAccess("cultural_song_atlas");
   const { t, language } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -151,6 +155,7 @@ export function SidebarNav({
     (item.id !== "inspirationWall" || inspirationWallAccess.allowed) &&
     (item.id !== "storyMap" || storyMapAccess.allowed) &&
     (item.id !== "songUniverse" || songUniverseAccess.allowed) &&
+    (item.id !== "songAtlas" || atlasAccess.allowed) &&
     (!STAFF_ONLY.includes(item.id) || canViewUsers);
   const renderNavItem = (item: (typeof NAV)[number], primary = false) => {
     const isActive = primary ? primaryDomain === PRIMARY_NAV_DOMAINS[item.id] : active === item.id;
@@ -165,7 +170,11 @@ export function SidebarNav({
               ? "Story Map"
               : item.id === "songUniverse"
                 ? "Song Universes"
-                : item.id;
+                : item.id === "songAtlas"
+                  ? language === "el"
+                    ? "Άτλας Τραγουδιού · Beta"
+                    : "Song Atlas · Beta"
+                  : item.id;
     return (
       <Link
         key={item.id}

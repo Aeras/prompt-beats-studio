@@ -1,0 +1,36 @@
+-- Isolated local replay only. All synthetic accounts and transitions roll back.
+BEGIN;
+CREATE FUNCTION pg_temp.assert(ok boolean,message text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION '%',message; END IF; END $$;
+CREATE FUNCTION pg_temp.denied(sql text) RETURNS void LANGUAGE plpgsql AS $$ DECLARE denied boolean:=false; BEGIN BEGIN EXECUTE sql; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END; IF NOT denied THEN RAISE EXCEPTION 'Expected access denial'; END IF; END $$;
+CREATE TEMP TABLE legacy AS SELECT * FROM public.feature_access_policies;
+SELECT pg_temp.assert((SELECT stage='beta' AND revision=0 FROM public.beta_features WHERE feature_key='cultural_song_atlas'),'New Atlas must start Beta');
+INSERT INTO auth.users(id,email) SELECT ('ca270000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'atlas-'||n||'@example.invalid' FROM generate_series(1,7)n;
+INSERT INTO public.user_roles(user_id,role,moderation_status) SELECT id,'user','active' FROM auth.users WHERE id::text LIKE 'ca270000%' ON CONFLICT(user_id)DO NOTHING;
+UPDATE public.user_roles SET role=CASE right(user_id::text,1) WHEN '3' THEN 'moderator'::public.app_role WHEN '4' THEN 'senior_moderator'::public.app_role WHEN '5' THEN 'admin'::public.app_role WHEN '6' THEN 'super_admin'::public.app_role ELSE 'user'::public.app_role END WHERE user_id::text LIKE 'ca270000%';
+INSERT INTO public.beta_testers(user_id)VALUES('ca270000-0000-4000-8000-000000000002');
+SELECT pg_temp.assert(NOT has_function_privilege('anon','public.atlas_preview_admission()','EXECUTE'),'Anon cannot preview');
+SELECT pg_temp.assert(NOT has_function_privilege('service_role','public.atlas_preview_admission()','EXECUTE'),'No service preview bypass');
+SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.atlas_worker_admission(uuid)','EXECUTE'),'No client worker RPC');
+SELECT pg_temp.assert(has_function_privilege('service_role','public.atlas_worker_admission(uuid)','EXECUTE'),'Worker permission');
+DO $$ DECLARE n integer; BEGIN FOR n IN 2..6 LOOP PERFORM set_config('request.jwt.claim.sub','ca270000-0000-4000-8000-'||lpad(n::text,12,'0'),true);PERFORM public.atlas_preview_admission(); END LOOP; END $$;
+SELECT set_config('request.jwt.claim.sub','ca270000-0000-4000-8000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.denied('SELECT public.atlas_preview_admission()');
+RESET ROLE;
+-- Even if the Beta lifecycle is promoted later, RC1 remains internal research.
+UPDATE public.beta_features SET stage='stable' WHERE feature_key='cultural_song_atlas';
+SELECT pg_temp.denied('SELECT public.atlas_preview_admission()');
+SELECT set_config('request.jwt.claim.sub','ca270000-0000-4000-8000-000000000002',true);
+SELECT public.atlas_preview_admission();
+DELETE FROM public.beta_testers WHERE user_id='ca270000-0000-4000-8000-000000000002';
+SELECT pg_temp.denied('SELECT public.atlas_preview_admission()');
+UPDATE auth.users SET banned_until=now()+interval '1 hour' WHERE id='ca270000-0000-4000-8000-000000000003';
+SELECT set_config('request.jwt.claim.sub','ca270000-0000-4000-8000-000000000003',true);
+SELECT pg_temp.denied('SELECT public.atlas_preview_admission()');
+UPDATE public.user_roles SET moderation_status='suspended' WHERE user_id='ca270000-0000-4000-8000-000000000004';
+SELECT set_config('request.jwt.claim.sub','ca270000-0000-4000-8000-000000000004',true);
+SELECT pg_temp.denied('SELECT public.atlas_preview_admission()');
+SELECT pg_temp.denied($q$SELECT public.atlas_worker_admission('ca270000-0000-4000-8000-000000000006')$q$);
+SELECT pg_temp.denied($q$INSERT INTO public.ai_generation_jobs(user_id,idempotency_key,status,input_payload)VALUES('ca270000-0000-4000-8000-000000000006',gen_random_uuid(),'failed','{"atlasOrigin":{"forged":true}}')$q$);
+SELECT pg_temp.assert(NOT EXISTS((SELECT * FROM legacy EXCEPT SELECT * FROM public.feature_access_policies)UNION ALL(SELECT * FROM public.feature_access_policies EXCEPT SELECT * FROM legacy)),'Legacy policies unchanged');
+ROLLBACK;

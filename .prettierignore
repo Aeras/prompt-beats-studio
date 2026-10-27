@@ -6,3 +6,6 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# Byte-exact editorial source: validated by SHA-256, never autoformat.
+src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json

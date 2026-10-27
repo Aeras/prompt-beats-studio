@@ -1,3 +1,4 @@
+import { atlasHandoffSchema } from "./song-atlas.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -54,6 +55,7 @@ const generation = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(
     DEFAULT_AI_TARGET_PLATFORM,
     songBlueprintSchema,
     generatorInputSnapshotSchema,
+    atlasHandoffSchema,
   },
 ).schema;
 const createUniverse = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(

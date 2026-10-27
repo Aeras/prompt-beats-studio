@@ -1,3 +1,5 @@
+import { AtlasGeneratorBridge } from "@/components/promptbeats/AtlasGeneratorBridge";
+import type { AtlasHandoff } from "@/lib/song-atlas.shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -1018,6 +1020,7 @@ function GeneratePage() {
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [atlasOrigin, setAtlasOrigin] = useState<AtlasHandoff | null>(null);
   const [bpm, setBpm] = useState("Auto");
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
@@ -2516,6 +2519,7 @@ function GeneratePage() {
               : [],
           production: production.trim().slice(0, 2000),
           instructions: combinedInstructions,
+          ...(atlasOrigin ? { atlasOrigin } : {}),
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
           revision: revisionMode
@@ -3179,6 +3183,17 @@ function GeneratePage() {
     >
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
         <div className="mx-auto max-w-3xl">
+          {!freshSession && !revisionMode && (
+            <AtlasGeneratorBridge
+              key={user?.id}
+              instructions={instructions}
+              onApply={(next, origin) => {
+                setInstructions(next);
+                setAtlasOrigin(origin);
+                if (origin) setAdvanced(true);
+              }}
+            />
+          )}
           <div className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
             <div>
               <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>

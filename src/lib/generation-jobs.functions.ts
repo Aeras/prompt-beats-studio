@@ -1,3 +1,4 @@
+import { atlasHandoffSchema } from "./song-atlas.shared";
 import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 /**
  * Client-facing API for durable song generation jobs.
@@ -33,6 +34,7 @@ import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 
 const jobInput = z.object({
   idempotencyKey: z.string().guid(),
+  atlasOrigin: atlasHandoffSchema.optional(),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().trim().min(3).max(2000),
   genre: z.string().trim().min(1).max(8000),
@@ -169,6 +171,11 @@ export const startGenerationJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => jobInput.parse(input))
   .handler(async ({ data, context }) => {
     assertGenerationRequestBudget(data);
+    if (data.atlasOrigin) {
+      await requireFeatureAccess(context.supabase, "cultural_song_atlas");
+      const { validateAtlasGenerationOrigin } = await import("./song-atlas-generation.server");
+      await validateAtlasGenerationOrigin(data.atlasOrigin, context.supabase);
+    }
     await requireFeatureAccess(context.supabase, "ai_generator");
     const supabase = context.supabase;
     const { getModelForUser } = await import("@/lib/ai-provider.server");
