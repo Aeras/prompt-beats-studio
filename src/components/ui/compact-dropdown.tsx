@@ -155,14 +155,14 @@ export function CompactDropdown({
                       onOpenChange(false);
                       trigger.current?.focus();
                     }}
-                    className="min-h-11 cursor-pointer px-3 py-2"
+                    className="group min-h-11 cursor-pointer px-3 py-2"
                   >
                     <span className="min-w-0 flex-1 break-words">
                       <span lang={option.lang}>{option.label}</span>
                       {option.secondary && option.secondary !== option.label && (
                         <span
                           lang={option.secondaryLang}
-                          className="block text-xs text-muted-foreground"
+                          className="block text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground"
                         >
                           {option.secondary}
                         </span>

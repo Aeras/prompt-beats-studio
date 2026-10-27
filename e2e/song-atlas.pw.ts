@@ -200,6 +200,10 @@ for (const scenario of [
       /historical_scene|music_style_or_form|thematic_approach|Musical style or form/,
     );
     if (scenario.family === "Rock") {
+      const severe = (
+        await new AxeBuilder({ page }).include('[role="dialog"]').analyze()
+      ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+      expect(severe).toEqual([]);
       await page.screenshot({ path: test.info().outputPath("rock-musical-subcategories.png") });
     }
     await list.getByRole("option").filter({ hasText: scenario.pick }).click();
