@@ -29,6 +29,7 @@ export const NAV_PATHS: Record<NavId, string> = {
   inspirationWall: "/inspiration-wall",
   storyMap: "/story-map",
   songUniverse: "/song-universe",
+  songAtlas: "/song-atlas",
   library: "/library",
   management: "/management",
 };
@@ -73,6 +74,7 @@ export function useActiveNav(): NavId {
   if (pathname.startsWith("/inspiration-wall")) return "inspirationWall";
   if (pathname.startsWith("/story-map")) return "storyMap";
   if (pathname.startsWith("/song-universe")) return "songUniverse";
+  if (pathname.startsWith("/song-atlas")) return "songAtlas";
   if (
     pathname.startsWith("/create") ||
     pathname.startsWith("/generate") ||

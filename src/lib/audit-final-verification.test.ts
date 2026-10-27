@@ -1,3 +1,4 @@
+import { atlasHandoffSchema } from "./song-atlas.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -552,6 +553,7 @@ describe("audit final — total encoded generation budget", () => {
         songBlueprintSchema,
         generatorInputSnapshotSchema,
         revisionJobContextSchema,
+        atlasHandoffSchema,
       },
     );
     const input = { theme: "Theme", genre: "Pop", mood: "Warm", language: "Greek" };

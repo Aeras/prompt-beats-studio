@@ -31,6 +31,7 @@ import { Route as QdrantTestRouteImport } from './routes/qdrant-test'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SongAnalyzerRouteImport } from './routes/song-analyzer'
+import { Route as SongAtlasRouteImport } from './routes/song-atlas'
 import { Route as SongUniverseRouteImport } from './routes/song-universe'
 import { Route as StoryMapRouteImport } from './routes/story-map'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -158,6 +159,11 @@ const SongAnalyzerRoute = SongAnalyzerRouteImport.update({
   path: '/song-analyzer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SongAtlasRoute = SongAtlasRouteImport.update({
+  id: '/song-atlas',
+  path: '/song-atlas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SongUniverseRoute = SongUniverseRouteImport.update({
   id: '/song-universe',
   path: '/song-universe',
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-atlas': typeof SongAtlasRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-atlas': typeof SongAtlasRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/song-analyzer': typeof SongAnalyzerRoute
+  '/song-atlas': typeof SongAtlasRoute
   '/song-universe': typeof SongUniverseRoute
   '/story-map': typeof StoryMapRoute
   '/terms': typeof TermsRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/song-analyzer'
+    | '/song-atlas'
     | '/song-universe'
     | '/story-map'
     | '/terms'
@@ -425,6 +435,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/song-analyzer'
+    | '/song-atlas'
     | '/song-universe'
     | '/story-map'
     | '/terms'
@@ -465,6 +476,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/song-analyzer'
+    | '/song-atlas'
     | '/song-universe'
     | '/story-map'
     | '/terms'
@@ -506,6 +518,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SongAnalyzerRoute: typeof SongAnalyzerRoute
+  SongAtlasRoute: typeof SongAtlasRoute
   SongUniverseRoute: typeof SongUniverseRoute
   StoryMapRoute: typeof StoryMapRoute
   TermsRoute: typeof TermsRoute
@@ -680,6 +693,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SongAnalyzerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/song-atlas': {
+      id: '/song-atlas'
+      path: '/song-atlas'
+      fullPath: '/song-atlas'
+      preLoaderRoute: typeof SongAtlasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/song-universe': {
       id: '/song-universe'
       path: '/song-universe'
@@ -818,6 +838,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SongAnalyzerRoute: SongAnalyzerRoute,
+  SongAtlasRoute: SongAtlasRoute,
   SongUniverseRoute: SongUniverseRoute,
   StoryMapRoute: StoryMapRoute,
   TermsRoute: TermsRoute,

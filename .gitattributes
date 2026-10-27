@@ -1,0 +1,3 @@
+
+# Preserve the supplied RC1 SHA-256 on Windows and Linux.
+src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json -text

@@ -1,3 +1,4 @@
+import { atlasHandoffSchema } from "./song-atlas.shared";
 import { generationOutput, parseSections } from "./generation-result.shared";
 import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 import {
@@ -45,6 +46,7 @@ import {
 export const HOURLY_LIMIT = 10;
 
 const generateInput = z.object({
+  atlasOrigin: atlasHandoffSchema.optional(),
   theme: z.string().trim().min(3).max(2000),
   genre: z.string().trim().min(1).max(8000),
   mood: z.string().trim().min(1).max(1000),
@@ -1949,6 +1951,16 @@ export async function runSongGeneration(
   executionContext?: import("./ai-execution.server").ExecutionContext,
 ): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
   assertGenerationRequestBudget(data);
+  if (data.atlasOrigin) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc(
+      "atlas_worker_admission" as never,
+      { _user_id: userId } as never,
+    );
+    if (error) throw new Error("Atlas Generator transfer awaits independent validation.");
+    const { validateAtlasGenerationOrigin } = await import("./song-atlas-generation.server");
+    await validateAtlasGenerationOrigin(data.atlasOrigin);
+  }
   const { call, model, provider, reasoningEffort, schemas } = await activeCaller(
     "generator",
     data.generationModel ?? undefined,

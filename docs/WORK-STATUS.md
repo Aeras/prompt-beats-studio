@@ -493,9 +493,9 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Release / limitations:** [Precise uninstall design and release plan](PB-AI-MODEL-PRECISE-UNINSTALL.md). Requires verified old-worker drainage and model-admin quiet window, then separately approved migration before compatible publish. Identity-free old dispatch fails closed; unidentified historical rows are retained, never guessed/backfilled. Unknown or unassociated usage requires trustworthy reconciliation for that specific model. No production closure is claimed.
 
 ### PB-GLOBAL-AI-USAGE — IN_PROGRESS (2026-10-25)
+
 - User-approved Admin → Μοντέλα AI switch «Χρήση AI στην εφαρμογή»: ON permits all AI operations, OFF denies all new provider dispatches globally (including direct SDK/fetch, auxiliary/retries/analyzers/secondary judge). Requirement and concurrency/release safety in [spec](PB-GLOBAL-AI-USAGE-SWITCH-20261025.md).
 - Initial ChatGPT investigation confirmed a central `modelCaller` and direct provider code routes, so a cosmetic client toggle or single-function gate is insufficient. One PR for complete server policy, atomic authorization and concurrency, UI, tests. No production change or assertion that old workers are drained.
-
 
 ## 2026-10-25 — PR #438 global AI usage switch
 
@@ -504,7 +504,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Implementation:** Forward `20261025212141_global_ai_usage_policy.sql`, private RLS singleton ON default, fresh server-only admission and caller-bound admin CAS/audit. Row locks order OFF against admissions. Single-use permits precede journaling; every new transport/retry re-admits. Job admission/claim gating is atomic with quota; completion/cancellation/usage/cached recovery remain possible. Prominent localized AI Models switch saves confirmed server state, handles loading/stale/failure and explains in-flight behavior.
 - **Verification:** Frozen installation; 1,142 offline Bun tests / 0 failures / 9,108 assertions; strict TypeScript, changed-source ESLint/Prettier and production build PASS. Fresh isolated Docker migration replay; 13 SQL/RLS suites, 12 independent-connection race scripts plus historical drift reproduction PASS. 69 mocked browser cases PASS across desktop/tablet/mobile with screenshots. Final exact HEAD and the three mandatory CI outcomes are recorded in existing PR #438 after live verification; no self-referential commit hash.
 - **SLA / release boundary:** OFF denies requests not already admitted when OFF commits; already admitted requests may physically send/finish and settle after OFF. No claim of worker drainage or cancellation. #437 old-binary/drain prerequisite is separate; this switch cannot protect an old deployed binary. Policy read failure/missing migration fails closed. Keep Draft for independent review; not CLOSED until separately authorized compatible release and runtime verification.
-
 
 ## 2026-10-26 — Admin AI default selectors show installed registry
 
@@ -524,7 +523,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **CI / review:** final exact HEAD and Regression/Browser Quality/Database Replay outcomes recorded together on the single PR after live checks; no self-referential commit. Keep unmerged for human review.
 - **Release dependencies:** separately approved exact migration and compatible publish, prerequisite #437/#438 schema and hosting/old-worker coordination, plus explicit approval before historical production reconciliation. Existing authenticated sweep must actually be invoked/scheduled; no production cron is created here. No invoice verification, fabricated zero usage, forced recovery-counter update, historical backfill, result deletion or paid call. Valid exhausted work remains protected, pending a separately reviewed recovery action.
 
-
 ## 2026-10-26 — Mobile Admin AI models viewport and Nemotron guard
 
 - **Status:** IN_PROGRESS — PR pending exact-head CI and mobile browser verification; no publish or production data mutations.
@@ -532,7 +530,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Change:** Explicit `min-w-0`/`w-full` on management content and AI models panel; model table constrained to viewport with internal horizontal scroll retained, sticky headings and uninstall selection preserved.
 - **Read-only Nemotron evidence:** Exact installed model has one failed, stored `response_observed` execution with final durable usage but no `application_resolution`; `job.model` remains NULL. Both `unresolved_execution` and `recovery_pending` guards are currently correct. Do not delete, fabricate usage or mark resolved without authorized deterministic stored-response validation. Existing #440 migration is installed but not a scheduled or executed historical reconciliation.
 - **Acceptance:** Real mobile-width Browser Quality checks for no document overflow at model table and confirmation, scroll internal table horizontally, keyboard and uninstall blocker remain safe; Regression and Database Replay PASS on exact PR head. Follow approved separate release verification; not CLOSED without publish/production confirmation.
-
 
 ## 2026-10-26 — Admin AI model responsive mobile cards follow-up
 
@@ -547,7 +544,6 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Reason:** Actual Android owner verification established that both attempted UI fixes, especially mobile cards in #442, materially degraded the management UI despite green mocked CI. User explicitly requested complete removal.
 - **Release:** Merge only after all three exact-head gates succeed; Lovable publish and device confirmation are distinct requirements. The original mobile overflow issue is not claimed solved. Never rewrite pushed Git history or down-migrate.
 
-
 ## 2026-10-26 — Admin AI models responsive page repair
 
 - **Status:** IN_PROGRESS — correct the confirmed portrait document overflow in the three default model controls, preserving the installed-model table and its internal horizontal scrolling.
@@ -555,16 +551,33 @@ Production read-only evidence: 19 exact SQL function-body matches, required RPC 
 - **Scope:** intrinsic-size containment and responsive select/save layout, full page viewport regression checks, no card redesign or model changes.
 - **Release:** Require focused/full tests and all three exact-HEAD CI checks; verify published Android manually after deliberate Lovable publish. No merge/deploy until green and reviewed.
 
-
 ## 2026-10-26 — Hide inactive AI models from default dropdowns
 
 - **Status:** CODE_COMPLETE_RELEASE_PENDING — default selectors now automatically show only installed records with status enabled. Inactive/testing entries remain installed in the management table but no longer appear in the three default selectors.
 - **Scope:** No manual model list, no changes to compatibility/save guard, model status, database or installed-model table. Re-activation makes entries appear again on refreshed registry.
 - **Verification/release:** Require three exact-HEAD CI gates and review; merge and publish are separate steps, with actual mobile dropdown checks after publish.
 
-
 ## 2026-10-26 — Generator setup Import/Export outside-tap dismissal
 
 - **Status:** IN_PROGRESS — dismiss Advanced Generator Import/Export JSON/MD dropdowns on outside pointer/tap and Escape, preserving menu item actions, keyboard operation and same-button toggle.
 - **Implementation:** Document listeners only while a setup menu is open, scoped to the active trigger/dropdown wrapper. No backend/database/AI changes.
 - **Release:** Require three exact-HEAD CI gates; deliberate merge and Lovable publish are separate, and actual smartphone validation remains necessary.
+
+## 2026-10-27 — Cultural Song Atlas Beta
+
+- **Status:** `CODE_COMPLETE_RELEASE_PENDING` — one Draft PR from main `adef34e31803a5e41736144066fe5c90db2f0184`; no merge, production migration, publish, general enablement or paid AI calls. All RC1 creative options remain unapproved.
+- **Investigation / ownership:** Codex read live repository contract, ledger, Beta spec/release guide and owner-approved handoff; verified main/open PRs, exact RC1 SHA and production prerequisites read-only. Existing Beta schema is present, Atlas is not registered in production, 19 legacy policies remain. Traced routes/navigation, strict Advanced Setup v1, Generator admission/worker/provider path, fresh auth/Beta SQL, i18n and tests.
+- **Implementation:** 58-card internal research preview, 14 candidates excluded, provenance and context-only distinction; account-scoped independent selections/conflicts, no inferred musical/narrative directives. Immutable server-only canonical source retains 65 techniques/97 sources and exact SHA. Strict independent versioned handoff, selected-only compiler, unchanged v1 importer, explicit Generator bridge; unapproved options blocked in UI/server/raw SQL/worker. Additive `20261027011834_register_cultural_song_atlas.sql` registers only this Beta key; fresh internal-preview/worker admission, no legacy policy changes.
+- **Evidence:** 13 focused source/compiler/auth tests; full offline Bun 1,163 PASS / 0 failures / 9,425 assertions; strict TypeScript, changed-source ESLint (0 errors; four pre-existing Generator hook warnings), Prettier, frozen install and production build PASS. New desktop/tablet/mobile browser and isolated SQL/RLS plus independent-connection revocation tests PASS. Full legacy local SQL runner encountered a pre-existing duplicate synthetic fixture in the shared disposable DB; no shared records were deleted to hide it. Fresh CI Database Replay verifies the complete isolated history and suites. Exact final counts, SHA and all three mandatory CI links are recorded together in the Draft PR after verification. Windows-only CRLF source-test differences normalized locally to match CI, without Git content changes to historical files. Existing validator extraction fixtures now bind the actual optional Atlas schema; no validation assertions were weakened.
+- **Release / remaining:** [Design, limits, individual editorial promotion and safe migration/publish/rollback](PB-CULTURAL-SONG-ATLAS-BETA.md). RC1 is not public-browse/Generator approved; this restriction is deliberate. Independent review plus separately approved exact migration, recovery/prerequisite/legacy-policy checks and compatible Lovable publish required before CLOSED. Beta access never substitutes for individual content approval. Already delivered bytes cannot be revoked retrospectively; fresh server/SQL requests remain authoritative.
+
+- **Exact implementation evidence / PR:** [Draft PR #448](https://github.com/Aeras/prompt-beats-studio/pull/448), implementation `f3c83672d534078cd3613f3cb0e26abbd460c79f`: [Regression PASS](https://github.com/Aeras/prompt-beats-studio/actions/runs/40434094982/job/121958517240), [Browser Quality PASS — 90 tests](https://github.com/Aeras/prompt-beats-studio/actions/runs/40434094904/job/121958517231), [Database Replay PASS](https://github.com/Aeras/prompt-beats-studio/actions/runs/40434094922/job/121959126040). The first replay attempt failed before migrations because host port 54322 was occupied; retry on the same SHA passed fresh replay and every SQL/race suite. Local Atlas browser coverage: 15/15 PASS, including failed-handoff preservation of existing Generator instructions. Final documentation-inclusive HEAD and its three gates are recorded in PR #448 after verification; PR stays Draft. No production release or content approval is claimed.
+
+- **Final review correction:** Repeated handoff application also preserves later manual edits without duplicating an already-present selected directive; covered by the same deterministic merge regression. Final PR tip re-runs all three gates after this narrow correction; no live transfer is enabled.
+
+## 2026-10-27 — PR #448 Atlas instruction provenance correction
+
+- **Status:** `CODE_COMPLETE_RELEASE_PENDING` — same Draft PR #448, reviewed baseline `fc56960978ec88cae7137012403a5229c77b21ce`; no new branch/PR, production operation, content activation or paid AI call.
+- **Root cause / full lifecycle:** Atlas previously merged into the editable manual string using substring matching and a whole-string callback; removal detached metadata but left merged text. Audited apply, async edits, replace/remove, draft refresh, setup export/import and generation submission. Old v1/plain text lacks trustworthy ownership and cannot be automatically subtracted.
+- **Correction:** Separate strict versioned Atlas-owned read-only layer and editable manual instructions. Apply/reapply/replace/remove update only the layer; functional updates never replace manual state. Compose only on submission with an explicit combined limit. Persist manual snapshot/layer separately, preserve ambiguous recovered text for explicit review, and use a distinct Atlas-bearing setup envelope while ordinary Advanced Setup v1 remains unchanged. Edited provenance is rejected without touching current fields. In-flight removal invalidates pending validation. Existing Beta/server/SQL/worker RC1 blocks unchanged.
+- **Verification:** 25 focused ownership/source/compiler/auth tests PASS; full offline Bun 1,175 PASS / 0 failures / 9,457 assertions. All 21 relevant mocked browser cases PASS across desktop/tablet/mobile, including apply/remove, manual edits during validation, refresh, replacement and in-flight removal. Frozen installation, Beta checker, strict TypeScript, changed-source ESLint (0 errors; four pre-existing Generator hook warnings), Prettier and production build PASS. All final exact-head Regression/Browser Quality/Database Replay links and outcomes are recorded in [Draft PR #448](https://github.com/Aeras/prompt-beats-studio/pull/448) after live verification. No SQL or worker admission changes in this correction. No assertion is weakened and no live option is approved. See [updated provenance, ambiguity and release notes](PB-CULTURAL-SONG-ATLAS-BETA.md).

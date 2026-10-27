@@ -8,9 +8,25 @@ export type BetaFeatureDefinition = {
 
 /** Explicit new product features only; never backfill the 19 legacy keys.
  * The Super Admin control plane is infrastructure, not a seed product feature.
- * Keep empty until a real feature is implemented. See the development guide.
+ * Atlas is an explicitly approved new Beta product feature. See the development guide.
  */
-export const BETA_FEATURES = [] as const satisfies readonly BetaFeatureDefinition[];
+export const BETA_FEATURES = [
+  {
+    key: "cultural_song_atlas",
+    name: "Cultural Song Atlas",
+    description:
+      "Internal cultural song research preview; independently validated opt-in transfer only.",
+    registrationMigration: "supabase/migrations/20261027011834_register_cultural_song_atlas.sql",
+    entrypoints: [
+      { path: "src/routes/song-atlas.tsx", kind: "client" },
+      { path: "src/components/promptbeats/Sidebar.tsx", kind: "client" },
+      { path: "src/components/promptbeats/AtlasGeneratorBridge.tsx", kind: "client" },
+      { path: "src/lib/generation-jobs.functions.ts", kind: "server" },
+      { path: "src/lib/song-atlas.functions.ts", kind: "server" },
+      { path: "supabase/migrations/20261027011834_register_cultural_song_atlas.sql", kind: "sql" },
+    ],
+  },
+] as const satisfies readonly BetaFeatureDefinition[];
 export type BetaFeatureKey = (typeof BETA_FEATURES)[number]["key"];
 export function isBetaFeatureKey(key: string): key is BetaFeatureKey {
   return (BETA_FEATURES as readonly BetaFeatureDefinition[]).some((feature) => feature.key === key);
