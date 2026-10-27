@@ -1,5 +1,11 @@
 import { AtlasGeneratorBridge } from "@/components/promptbeats/AtlasGeneratorBridge";
-import type { AtlasHandoff } from "@/lib/song-atlas.shared";
+import {
+  composeAtlasInstructions,
+  parseAtlasAwareSetup,
+  serializeAtlasAwareSetup,
+  restoreAtlasInstructionLayer,
+  type AtlasInstructionLayer,
+} from "@/lib/atlas-instructions.shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -32,7 +38,6 @@ import {
   ADVANCED_SETUP_MAX_BYTES,
   advancedSetupFilename,
   parseAdvancedSetup,
-  serializeAdvancedSetup,
   splitKnownValues,
   type AdvancedGeneratorSetup,
 } from "@/lib/advanced-generator-setup";
@@ -1020,7 +1025,10 @@ function GeneratePage() {
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
   const [production, setProduction] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [atlasOrigin, setAtlasOrigin] = useState<AtlasHandoff | null>(null);
+  const [atlasInstructions, setAtlasInstructions] = useState<AtlasInstructionLayer | null>(null);
+  const [atlasRecoveryText, setAtlasRecoveryText] = useState("");
+  const [atlasImportNotice, setAtlasImportNotice] = useState(false);
+  const [pendingAtlasImport, setPendingAtlasImport] = useState<AtlasInstructionLayer | null>(null);
   const [bpm, setBpm] = useState("Auto");
   const [customBpm, setCustomBpm] = useState("");
   const [language, setLanguage] = useState("");
@@ -1467,6 +1475,8 @@ function GeneratePage() {
     setPresetCulturalStyleId("");
     setProduction("");
     setInstructions("");
+    setAtlasInstructions(null);
+    setAtlasRecoveryText("");
     const storedLanguage = (prompt.language ?? "").trim();
     const storedVariant = findSongLanguageVariantFromCanonical(storedLanguage);
     const knownLanguage = LANGUAGE_OPTIONS.find(
@@ -2027,14 +2037,34 @@ function GeneratePage() {
     : freshSession
       ? `generator:fresh:${freshSession}`
       : "generator:new";
+  const atlasOwnerIdRef = useRef(user?.id);
+  useEffect(() => {
+    if (atlasOwnerIdRef.current === user?.id) return;
+    atlasOwnerIdRef.current = user?.id;
+    setAtlasInstructions(null);
+    setAtlasRecoveryText("");
+    setAtlasImportNotice(false);
+  }, [user?.id]);
   const clearGeneratorDraft = useDraftAutosave({
     // Do not erase a saved fresh-session draft while account preferences are still hydrating.
     ownerId: freshSession && !accountPreferencesReady ? null : user?.id,
     scope: generatorDraftScope,
     enabled: Boolean(user && accountPreferences.autoSaveDrafts && search.workspace !== "lyrics"),
-    value: { snapshot: currentSnapshot, revisionRequest },
+    value: { snapshot: currentSnapshot, revisionRequest, atlasInstructions, atlasRecoveryText },
     onRestore: (draft) => {
       const snapshot = draft.snapshot;
+      try {
+        setAtlasInstructions(restoreAtlasInstructionLayer(draft.atlasInstructions));
+        setAtlasRecoveryText(draft.atlasRecoveryText ?? "");
+      } catch {
+        setAtlasInstructions(null);
+        setAtlasRecoveryText(
+          typeof draft.atlasInstructions?.text === "string"
+            ? draft.atlasInstructions.text
+            : (draft.atlasRecoveryText ?? ""),
+        );
+        setAtlasImportNotice(true);
+      }
       setAdvanced(snapshot.generatorMode !== "basic");
       setTargetPlatform(snapshot.targetPlatform);
       setTheme(snapshot.theme);
@@ -2079,7 +2109,9 @@ function GeneratePage() {
         !snapshot.productionStyle &&
         !snapshot.additionalInstructions &&
         !snapshot.smartPresetId &&
-        !draft.revisionRequest.trim()
+        !draft.revisionRequest.trim() &&
+        !draft.atlasInstructions &&
+        !draft.atlasRecoveryText
       );
     },
   });
@@ -2256,27 +2288,31 @@ function GeneratePage() {
   const exportAdvancedSetup = () => {
     setSetupIoError(null);
     try {
-      const json = serializeAdvancedSetup({
-        targetPlatform,
-        theme,
-        selectedMusicStyles: genres,
-        customMusicStyle: customGenre,
-        selectedMoods: moods,
-        customMood,
-        selectedInstruments: instruments,
-        customInstruments,
-        bpmMode: bpm,
-        customBpm,
-        songStructure: structure,
-        songBlueprint: buildSongBlueprint(structure, songBlueprint),
-        productionStyle: production,
-        additionalInstructions: instructions,
-        language,
-        languageVariant,
-        customLanguage,
-        smartPresetId: activeSmartPresetId,
-        culturalStyleId: presetCulturalStyleId,
-      });
+      if (atlasRecoveryText) throw new Error("Resolve ambiguous Atlas text before exporting.");
+      const json = serializeAtlasAwareSetup(
+        {
+          targetPlatform,
+          theme,
+          selectedMusicStyles: genres,
+          customMusicStyle: customGenre,
+          selectedMoods: moods,
+          customMood,
+          selectedInstruments: instruments,
+          customInstruments,
+          bpmMode: bpm,
+          customBpm,
+          songStructure: structure,
+          songBlueprint: buildSongBlueprint(structure, songBlueprint),
+          productionStyle: production,
+          additionalInstructions: instructions,
+          language,
+          languageVariant,
+          customLanguage,
+          smartPresetId: activeSmartPresetId,
+          culturalStyleId: presetCulturalStyleId,
+        },
+        atlasInstructions,
+      );
       const url = URL.createObjectURL(new Blob([json], { type: "application/json;charset=utf-8" }));
       const a = document.createElement("a");
       a.href = url;
@@ -2362,8 +2398,21 @@ function GeneratePage() {
     } catch {
       return setSetupIoError(setupIoText.read);
     }
+    const atlasImport = parseAtlasAwareSetup(text);
+    if (atlasImport.kind === "invalid")
+      return setSetupIoError(
+        appLanguage === "el"
+          ? "Ασαφής ή μη έγκυρη προέλευση Atlas. Κρατήστε τις χειροκίνητες αλλαγές στο πεδίο additionalInstructions· δεν άλλαξε το τρέχον setup."
+          : "Ambiguous or invalid Atlas provenance. Keep manual edits in additionalInstructions; current setup was not changed.",
+      );
+    if (atlasImport.kind === "atlas") {
+      setPendingAtlasImport(atlasImport.layer);
+      setPendingSetupImport(atlasImport.setup);
+      return;
+    }
     const parsed = parseAdvancedSetup(text);
     if (!parsed.ok) return setSetupIoError(setupIoText[parsed.error]);
+    setPendingAtlasImport(null);
     setPendingSetupImport(parsed.setup);
   };
 
@@ -2409,6 +2458,10 @@ function GeneratePage() {
     setPresetCulturalStyleId(setup.culturalStyleId);
     setProduction(setup.productionStyle);
     setInstructions(setup.additionalInstructions);
+    setAtlasInstructions(pendingAtlasImport);
+    setAtlasRecoveryText("");
+    setAtlasImportNotice(!pendingAtlasImport);
+    setPendingAtlasImport(null);
     setLanguage(setup.language);
     setLanguageVariant(setup.languageVariant);
     setCustomLanguage(setup.customLanguage);
@@ -2495,9 +2548,11 @@ function GeneratePage() {
         storyDriven && !revisionMode
           ? "\n\nNARRATIVE LYRICS DIRECTION: Give sung lyrics a clear beginning, development and fitting ending, without inventing extra sections or overriding user Blueprint, perspective or restrictions. No Story Map or beat labels."
           : "";
-      const combinedInstructions = narrativeInstruction
-        ? `${instructions.trim().slice(0, Math.max(0, 2000 - narrativeInstruction.length))}${narrativeInstruction}`
-        : instructions.trim().slice(0, 2000);
+      const combinedInstructions = atlasInstructions
+        ? composeAtlasInstructions(instructions.trim() + narrativeInstruction, atlasInstructions)
+        : narrativeInstruction
+          ? `${instructions.trim().slice(0, Math.max(0, 2000 - narrativeInstruction.length))}${narrativeInstruction}`
+          : instructions.trim().slice(0, 2000);
       const res = await startGenerationJob({
         data: {
           idempotencyKey: key,
@@ -2519,7 +2574,7 @@ function GeneratePage() {
               : [],
           production: production.trim().slice(0, 2000),
           instructions: combinedInstructions,
-          ...(atlasOrigin ? { atlasOrigin } : {}),
+          ...(atlasInstructions ? { atlasOrigin: atlasInstructions.origin } : {}),
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
           revision: revisionMode
@@ -2858,6 +2913,8 @@ function GeneratePage() {
     setPresetCulturalStyleId("");
     setProduction("");
     setInstructions("");
+    setAtlasInstructions(null);
+    setAtlasRecoveryText("");
     setBpm("Auto");
     setCustomBpm("");
     setTargetPlatform(DEFAULT_AI_TARGET_PLATFORM);
@@ -3186,13 +3243,44 @@ function GeneratePage() {
           {!freshSession && !revisionMode && (
             <AtlasGeneratorBridge
               key={user?.id}
-              instructions={instructions}
-              onApply={(next, origin) => {
-                setInstructions(next);
-                setAtlasOrigin(origin);
-                if (origin) setAdvanced(true);
-              }}
+              layer={atlasOwnerIdRef.current === user?.id ? atlasInstructions : null}
+              onLayerChange={setAtlasInstructions}
+              onApplied={() => setAdvanced(true)}
             />
+          )}
+          {atlasImportNotice && (
+            <p role="status" className="my-3 text-sm text-amber-200">
+              {appLanguage === "el"
+                ? "Οι ενιαίες ή ασαφείς οδηγίες θεωρούνται χειροκίνητες. Δεν θα αφαιρεθεί κείμενο βάσει ομοιότητας με Atlas."
+                : "Plain or ambiguous instructions are treated as manual. No text will be removed by matching Atlas wording."}
+            </p>
+          )}
+          {atlasRecoveryText && (
+            <section className="my-3 border border-amber-300 p-3">
+              <p>
+                {appLanguage === "el"
+                  ? "Κείμενο με ασαφή προέλευση διατηρήθηκε για έλεγχο:"
+                  : "Text with ambiguous provenance was retained for review:"}
+              </p>
+              <textarea
+                readOnly
+                aria-label="Unattributed Atlas recovery text"
+                value={atlasRecoveryText}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setInstructions((current) =>
+                    current ? current + "\n\n" + atlasRecoveryText : atlasRecoveryText,
+                  );
+                  setAtlasRecoveryText("");
+                }}
+              >
+                {appLanguage === "el"
+                  ? "Διατήρηση ως χειροκίνητες οδηγίες"
+                  : "Keep as manual instructions"}
+              </button>
+            </section>
           )}
           <div className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
             <div>

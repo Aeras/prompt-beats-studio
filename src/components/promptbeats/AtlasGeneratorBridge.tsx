@@ -3,19 +3,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useI18n } from "@/i18n";
 import { atlasCopy } from "@/i18n/song-atlas";
+import { ATLAS_HANDOFF_KEY, atlasHandoffSchema, type AtlasHandoff } from "@/lib/song-atlas.shared";
 import {
-  ATLAS_HANDOFF_KEY,
-  atlasHandoffSchema,
-  mergeAtlasInstructions,
-  type AtlasHandoff,
-} from "@/lib/song-atlas.shared";
+  createAtlasInstructionLayer,
+  replaceAtlasInstructionLayer,
+  type AtlasInstructionLayer,
+} from "@/lib/atlas-instructions.shared";
+import type { Dispatch, SetStateAction } from "react";
 import { validateSongAtlasHandoff } from "@/lib/song-atlas.functions";
 export function AtlasGeneratorBridge({
-  instructions,
-  onApply,
+  layer,
+  onLayerChange,
+  onApplied,
 }: {
-  instructions: string;
-  onApply: (instructions: string, origin: AtlasHandoff | null) => void;
+  layer: AtlasInstructionLayer | null;
+  onLayerChange: Dispatch<SetStateAction<AtlasInstructionLayer | null>>;
+  onApplied?: () => void;
 }) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -25,13 +28,13 @@ export function AtlasGeneratorBridge({
   const [pending, setPending] = useState<AtlasHandoff | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [techniques, setTechniques] = useState("");
-  const applied = useRef(new Set<string>());
+  const requestVersion = useRef({ version: 0 });
   useEffect(() => {
     setPending(null);
     setError("");
-    setTechniques("");
-    applied.current.clear();
+    setBusy(false);
+    const lifecycle = requestVersion.current;
+    lifecycle.version++;
     if (!userId) return;
     try {
       const raw = sessionStorage.getItem(ATLAS_HANDOFF_KEY + ":" + userId);
@@ -43,41 +46,56 @@ export function AtlasGeneratorBridge({
     } catch {
       setError(t.unavailable);
     }
+    return () => {
+      lifecycle.version++;
+    };
   }, [userId, t.unavailable]);
-  if (!pending && !error) return null;
+  if (!pending && !layer && !error) return null;
   const apply = async () => {
-    if (!pending || applied.current.has(pending.id)) return;
+    if (!pending) return;
+    const version = ++requestVersion.current.version;
     setBusy(true);
     try {
       const verified = await validateSongAtlasHandoff({ data: pending });
-      const merged = mergeAtlasInstructions(instructions, verified.instructions);
-      onApply(merged, verified.handoff);
-      applied.current.add(pending.id);
-      setTechniques(verified.creativeTechniques);
+      if (version !== requestVersion.current.version) return;
+      const next = createAtlasInstructionLayer(verified);
+      onLayerChange((current) => replaceAtlasInstructionLayer(current, next));
+      onApplied?.();
     } catch {
-      setError(t.blocked);
+      if (version === requestVersion.current.version) setError(t.blocked);
     } finally {
-      setBusy(false);
+      if (version === requestVersion.current.version) setBusy(false);
     }
   };
   return (
     <section className="my-4 space-y-2 rounded-xl border border-purple-400/30 p-3">
       <h3>{t.title} · Beta</h3>
       <p>{t.existing}</p>
+      <p className="text-sm">{t.separateInstructions}</p>
+      {layer && (
+        <label className="block">
+          {t.atlasInstructions}
+          <textarea
+            className="block w-full rounded-lg bg-background p-2"
+            readOnly
+            value={layer.text}
+          />
+        </label>
+      )}
       {error && <p role="alert">{error}</p>}
-      {pending && (
+      {(pending || layer) && (
         <>
           <label className="block">
             {t.techniques}
             <textarea
               className="block w-full rounded-lg bg-background p-2"
               readOnly
-              value={techniques}
+              value={layer?.creativeTechniques ?? ""}
             />
           </label>
           <button
             type="button"
-            disabled={busy || !access.allowed || applied.current.has(pending.id)}
+            disabled={!pending || busy || !access.allowed}
             onClick={() => void apply()}
           >
             {t.apply}
@@ -88,10 +106,15 @@ export function AtlasGeneratorBridge({
         type="button"
         className="ml-4"
         onClick={() => {
-          if (user) sessionStorage.removeItem(ATLAS_HANDOFF_KEY + ":" + userId);
+          requestVersion.current.version++;
+          try {
+            if (user) sessionStorage.removeItem(ATLAS_HANDOFF_KEY + ":" + userId);
+          } catch {
+            /* Removal never mutates manual instructions even if storage is unavailable. */
+          }
           setPending(null);
           setError("");
-          onApply(instructions, null);
+          onLayerChange(null);
         }}
       >
         {t.remove}

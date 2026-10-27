@@ -22,6 +22,9 @@ export const atlasCopy = {
     existing:
       "Existing Generator inputs will be preserved. No language, BPM, voice or narrative is inferred.",
     techniques: "Creative Techniques (Atlas)",
+    atlasInstructions: "Atlas-owned instructions (read-only)",
+    separateInstructions:
+      "Atlas instructions are separate from your editable manual instructions. Removing Atlas removes only this layer. Copied, edited or legacy imported text in the manual field is kept; its origin cannot be inferred.",
     apply: "Apply reviewed selection",
     unavailable: "Atlas preview unavailable. Your existing Generator inputs are unchanged.",
     sources: "Provenance / source records",
@@ -51,6 +54,9 @@ export const atlasCopy = {
     existing:
       "Τα υπάρχοντα πεδία Generator διατηρούνται. Δεν συνάγονται γλώσσα, BPM, φωνή ή αφήγηση.",
     techniques: "Δημιουργικές τεχνικές (Atlas)",
+    atlasInstructions: "Οδηγίες προέλευσης Atlas (μόνο ανάγνωση)",
+    separateInstructions:
+      "Οι οδηγίες Atlas είναι ξεχωριστές από τις χειροκίνητες οδηγίες σας. Η αφαίρεση καθαρίζει μόνο το επίπεδο Atlas. Αντιγραμμένο, επεξεργασμένο ή παλιό εισαγόμενο κείμενο στο χειροκίνητο πεδίο διατηρείται· δεν συνάγουμε την προέλευσή του.",
     apply: "Εφαρμογή ελεγμένης επιλογής",
     unavailable:
       "Η προεπισκόπηση Atlas δεν είναι διαθέσιμη. Τα υπάρχοντα πεδία Generator διατηρήθηκαν.",

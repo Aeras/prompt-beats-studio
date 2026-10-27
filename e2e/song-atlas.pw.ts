@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { readAtlasCatalog } from "../src/lib/song-atlas-data.server";
 import { ATLAS_HANDOFF_KEY, ATLAS_SOURCE_SHA } from "../src/lib/song-atlas.shared";
 
-async function fixture(page: Page, initiallyAllowed = true) {
+async function fixture(page: Page, initiallyAllowed = true, approvedFixture = false) {
   const user = {
     id: "bb000000-0000-4000-8000-000000000006",
     aud: "authenticated",
@@ -53,6 +53,11 @@ async function fixture(page: Page, initiallyAllowed = true) {
 
   let allowed = initiallyAllowed;
   let previewCalls = 0;
+  let validationGate: Promise<void> | null = null;
+  let releaseGate = () => {};
+  let validationRequests = 0;
+  let verifiedId = "ca290000-0000-4000-8000-000000000001";
+  let verifiedText = "Fixture Atlas-owned directive";
   await page.route("**/_serverFn/**", async (route) => {
     const name = Buffer.from(
       new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
@@ -77,6 +82,31 @@ async function fixture(page: Page, initiallyAllowed = true) {
       return;
     }
     if (name.includes("validateSongAtlasHandoff")) {
+      validationRequests++;
+      if (validationGate) await validationGate;
+      // Positive UI fixtures only; real RC1 validation remains denied on the server/SQL/worker.
+      if (approvedFixture) {
+        await route.fulfill({
+          json: {
+            result: {
+              handoff: {
+                format: "promptbeats-atlas-handoff",
+                schemaVersion: 1,
+                id: verifiedId,
+                sourceSha: ATLAS_SOURCE_SHA,
+                selection: {
+                  profileIds: ["ru.chastushka"],
+                  optionIds: ["ru.chastushka.mode.lively"],
+                },
+              },
+              instructions: verifiedText,
+              creativeTechniques: "Fixture technique",
+            },
+            context: {},
+          },
+        });
+        return;
+      }
       await route.fulfill({ status: 403, body: "Atlas transfer requires independent validation" });
       return;
     }
@@ -106,6 +136,20 @@ async function fixture(page: Page, initiallyAllowed = true) {
       allowed = false;
     },
     calls: () => previewCalls,
+    changeReply: () => {
+      verifiedId = "ca290000-0000-4000-8000-000000000002";
+      verifiedText = "Other Atlas-owned directive";
+    },
+    pauseValidation: () => {
+      validationGate = new Promise<void>((resolve) => {
+        releaseGate = resolve;
+      });
+    },
+    releaseValidation: () => {
+      releaseGate();
+      validationGate = null;
+    },
+    validationCount: () => validationRequests,
   };
 }
 
@@ -214,4 +258,92 @@ test("ordinary Generator and failed Atlas handoff preserve existing user instruc
   ).toBeVisible();
   await page.locator("button[data-generator-mode=advanced]").click();
   await expect(input).toHaveValue("Keep my Blueprint and explicit instructions.");
+});
+
+async function enterAtlasGenerator(page: Page) {
+  await page.evaluate(
+    ({ key, sha }) => {
+      sessionStorage.setItem(
+        key + ":bb000000-0000-4000-8000-000000000006",
+        JSON.stringify({
+          format: "promptbeats-atlas-handoff",
+          schemaVersion: 1,
+          id: "ca290000-0000-4000-8000-000000000001",
+          sourceSha: sha,
+          selection: { profileIds: ["ru.chastushka"], optionIds: ["ru.chastushka.mode.lively"] },
+        }),
+      );
+    },
+    { key: ATLAS_HANDOFF_KEY, sha: ATLAS_SOURCE_SHA },
+  );
+  await page.goto("/generate");
+  await page.locator("button[data-generator-mode=advanced]").click();
+}
+test("explicit Atlas layer apply, edit manual, reapply, refresh, replace and remove", async ({
+  page,
+}) => {
+  const f = await fixture(page, true, true);
+  await enterAtlasGenerator(page);
+  const manual = page.getByRole("textbox", {
+    name: /^(Additional Instructions|Πρόσθετες οδηγίες)$/,
+  });
+  const owned = page.getByRole("textbox", {
+    name: /Atlas-owned instructions|Οδηγίες προέλευσης Atlas/,
+  });
+  const apply = page.getByRole("button", {
+    name: /Apply reviewed selection|Εφαρμογή ελεγμένης επιλογής/,
+  });
+  await manual.fill("My manual instruction");
+  f.pauseValidation();
+  await apply.click();
+  await expect.poll(() => f.validationCount()).toBe(1);
+  await manual.fill("My manual edits while validation runs");
+  f.releaseValidation();
+  await expect(owned).toHaveValue("Fixture Atlas-owned directive");
+  await expect(owned).toHaveAttribute("readonly", "");
+  await expect(manual).toHaveValue("My manual edits while validation runs");
+  await apply.click();
+  await expect.poll(() => f.validationCount()).toBe(2);
+  await expect(manual).toHaveValue("My manual edits while validation runs");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("pb:draft:v1:"))
+          .some((k) =>
+            localStorage.getItem(k)?.includes('"verifiedText":"Fixture Atlas-owned directive"'),
+          ),
+      ),
+    )
+    .toBe(true);
+  await page.reload();
+  await expect(owned).toHaveValue("Fixture Atlas-owned directive");
+  await expect(manual).toHaveValue("My manual edits while validation runs");
+  f.changeReply();
+  await apply.click();
+  await expect(owned).toHaveValue("Other Atlas-owned directive");
+  await manual.fill("Copied and edited: Other Atlas-owned directive — keep this manual text");
+  await page
+    .getByRole("button", { name: /Remove Atlas selection|Αφαίρεση επιλογής Atlas/ })
+    .click();
+  await expect(owned).toHaveCount(0);
+  await expect(manual).toHaveValue(
+    "Copied and edited: Other Atlas-owned directive — keep this manual text",
+  );
+});
+test("remove during pending validation cannot resurrect an Atlas layer", async ({ page }) => {
+  const f = await fixture(page, true, true);
+  await enterAtlasGenerator(page);
+  f.pauseValidation();
+  await page
+    .getByRole("button", { name: /Apply reviewed selection|Εφαρμογή ελεγμένης επιλογής/ })
+    .click();
+  await expect.poll(() => f.validationCount()).toBe(1);
+  await page
+    .getByRole("button", { name: /Remove Atlas selection|Αφαίρεση επιλογής Atlas/ })
+    .click();
+  f.releaseValidation();
+  await expect(
+    page.getByRole("textbox", { name: /Atlas-owned instructions|Οδηγίες προέλευσης Atlas/ }),
+  ).toHaveCount(0);
 });

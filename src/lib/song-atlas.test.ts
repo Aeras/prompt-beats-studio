@@ -1,3 +1,4 @@
+import { composeAtlasInstructions } from "./atlas-instructions.shared";
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -9,7 +10,6 @@ import {
   atlasSelectionSchema,
   compileAtlasSelection,
   inspectAtlasSelection,
-  mergeAtlasInstructions,
   type AtlasCatalog,
 } from "./song-atlas.shared";
 import { advancedSetupSchema } from "./advanced-generator-setup";
@@ -167,21 +167,9 @@ describe("selected-only versioned handoff", () => {
     expect(advancedSetupSchema.shape).not.toHaveProperty("atlasOrigin");
   });
   test("empty Atlas leaves ordinary Generator instructions byte-identical", () => {
-    const old = "Keep my Blueprint.\nΕλληνικά / Русский";
-    expect(mergeAtlasInstructions(old, compileAtlasSelection(empty, catalog).instructions)).toBe(
-      old,
-    );
-    expect(
-      mergeAtlasInstructions(mergeAtlasInstructions(old, "Chosen option"), "Chosen option"),
-    ).toBe(old + "\n\nChosen option");
-    // Reopening the same handoff after further manual editing must not duplicate it.
-    expect(
-      mergeAtlasInstructions(
-        old + "\n\nChosen option\nAdditional manual direction",
-        "Chosen option",
-      ),
-    ).toBe(old + "\n\nChosen option\nAdditional manual direction");
-    expect(() => mergeAtlasInstructions("x".repeat(1999), "Option")).toThrow("limit");
+    const manual = "Keep my Blueprint.\nΕλληνικά / Русский";
+    expect(compileAtlasSelection(empty, catalog).instructions).toBe("");
+    expect(composeAtlasInstructions(manual, null)).toBe(manual);
   });
   test("server rejects denied access before reading compilation content", async () => {
     await expect(
