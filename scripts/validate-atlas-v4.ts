@@ -12,6 +12,9 @@ const sha = (p: string) => createHash("sha256").update(read(p)).digest("hex");
 const d = validateAtlasV4(JSON.parse(read(path + "library.json").toString("utf8")));
 if (sha(d.source.rc1Path) !== d.source.rc1Sha256) throw new Error("RC1 bytes changed");
 const original = JSON.parse(read(d.source.rc1Path).toString("utf8"));
+const navigation = JSON.parse(read("src/data/song-atlas/navigation.json").toString("utf8"));
+if (JSON.stringify(d.profiles.map((p) => p.taxonomy)) !== JSON.stringify(navigation.entries))
+  throw new Error("V4 taxonomy no longer matches the reviewed Atlas navigation sidecar");
 for (const p of original.profiles) {
   const v = d.profiles.find((v) => v.id === p.id);
   if (

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import library from "../data/song-atlas/v4/library.json";
 import original from "../data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json";
+import navigation from "../data/song-atlas/navigation.json";
 import { V4_DIMENSIONS, projectAtlasV4ForReview, validateAtlasV4 } from "./song-atlas-v4";
 
 const clone = () => structuredClone(library);
@@ -25,6 +26,7 @@ describe("V4 inert editorial package", () => {
         .digest("hex"),
     ).toBe(d.source.rc1Sha256);
     expect(d.excludedCandidates).toHaveLength(14);
+    expect(d.profiles.map((p) => p.taxonomy)).toEqual(navigation.entries);
   });
   test("each profile covers all twelve dimensions with evidence or a named unknown", () => {
     for (const p of validateAtlasV4(library).profiles) {
@@ -97,6 +99,18 @@ describe("V4 inert editorial package", () => {
       "duplicate dimension",
       (d) => {
         d.profiles[0]!.knowledge[0]!.dimension = d.profiles[0]!.knowledge[1]!.dimension;
+      },
+    ],
+    [
+      "missing evidence gap",
+      (d) => {
+        d.unresolvedEvidence.pop();
+      },
+    ],
+    [
+      "repeated evidence gap",
+      (d) => {
+        d.unresolvedEvidence.push({ ...d.unresolvedEvidence[0]!, id: "extra.gap" });
       },
     ],
     [

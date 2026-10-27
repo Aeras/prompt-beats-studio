@@ -326,6 +326,16 @@ export function validateAtlasV4(input: unknown): AtlasV4 {
     )
       throw new Error("Stale V4 gap");
   }
+  for (const p of d.profiles) {
+    for (const k of p.knowledge.filter((k) => k.status === "specific_unknown")) {
+      if (
+        d.unresolvedEvidence.filter(
+          (gap) => gap.profileId === p.id && gap.dimension === k.dimension,
+        ).length !== 1
+      )
+        throw new Error("Missing or repeated V4 evidence gap");
+    }
+  }
   return d;
 }
 
