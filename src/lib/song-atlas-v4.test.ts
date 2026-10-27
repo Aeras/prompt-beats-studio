@@ -63,6 +63,11 @@ describe("V4 inert editorial package", () => {
     expect(d.profiles.find((p) => p.id === "ru.rap_00")!.eraRelations).not.toContainEqual(
       expect.objectContaining({ eraId: "contemporary" }),
     );
+    // A source about 1980s hip-hop prehistory must not place a 1990s profile
+    // into an earlier browsing period. The historical passage remains available.
+    expect(d.profiles.find((p) => p.id === "ru.rap_90")!.eraRelations).not.toContainEqual(
+      expect.objectContaining({ eraId: "1980s" }),
+    );
   });
   const mutations: [string, (d: ReturnType<typeof clone>) => void][] = [
     [

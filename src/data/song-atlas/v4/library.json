@@ -11182,12 +11182,6 @@
           "basis": "explicit_inherited_profile_scope",
           "evidenceId": null,
           "scope": "Period named by the RC1 profile, not an independently established origin or exclusive period."
-        },
-        {
-          "eraId": "1980s",
-          "basis": "bounded_source_report",
-          "evidenceId": "v4.evidence.010",
-          "scope": "Historical overview, not a beat, flow or rhyme specification."
         }
       ],
       "eraCoverage": "bounded_not_exhaustive",

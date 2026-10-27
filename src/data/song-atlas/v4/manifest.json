@@ -11,8 +11,8 @@
     },
     {
       "path": "src/data/song-atlas/v4/library.json",
-      "sha256": "f0ddd6dfd0d9e37ef623f54e32757b5218ab1c544e0907627cbe017bf383e06a",
-      "bytes": 1440272
+      "sha256": "33218da0de5adb32ccb78f2692f14df3f4ef065f2246a1a02a1c176c680525a9",
+      "bytes": 1440053
     },
     {
       "path": "src/data/song-atlas/v4/source-access.json",
