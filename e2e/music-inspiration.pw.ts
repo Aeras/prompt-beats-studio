@@ -318,9 +318,9 @@ test("non-admin sees server default and no extended or override picker", async (
   await fixture(page);
   await panel(page).getByRole("button", { name: "Open music research" }).click();
   const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
-  await expect(
-    modal.getByText("Research model: server-live-default", { exact: true }),
-  ).toHaveCount(0);
+  await expect(modal.getByText("Research model: server-live-default", { exact: true })).toHaveCount(
+    0,
+  );
   await expect(modal.getByRole("combobox", { name: "Research model" })).toHaveCount(0);
   await expect(modal.getByRole("combobox", { name: "Research depth" })).toHaveCount(0);
   await expect(modal.locator("select")).toHaveCount(0);
