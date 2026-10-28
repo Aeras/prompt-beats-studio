@@ -157,6 +157,32 @@ SQL
 then echo 'FAIL: stale profile overwrite' >&2;exit 1;fi
 wait "$first"
 [[ "$(query -c "SELECT revision=2 AND name='Winner' FROM public.music_inspiration_profiles WHERE id='$profile'")" == t ]]
+# Abandon wins: a delayed POST waits for the same lock then cannot dispatch.
+replacement_request='c4511000-0000-4000-8000-000000000090'
+query <<SQL >/dev/null &
+BEGIN;
+SET application_name='music_inspiration_abandon_barrier';
+SELECT public.abandon_music_inspiration_request_internal('$owner','$replacement_request');
+SELECT pg_sleep(1.5);
+COMMIT;
+SQL
+first=$!
+barrier music_inspiration_abandon_barrier
+if query -c "SELECT public.start_music_inspiration_job('$owner','$replacement_request','{\"depth\":\"standard\"}','$model','openai',100)" >/dev/null 2>&1;then echo 'FAIL: abandoned request dispatched' >&2;exit 1;fi
+wait "$first"
+# Start wins: abandonment recovers that exact job, never removes evidence.
+replacement_request='c4511000-0000-4000-8000-000000000091'
+query <<SQL >/dev/null &
+BEGIN;
+SET application_name='music_inspiration_known_barrier';
+SELECT public.start_music_inspiration_job('$owner','$replacement_request','{"depth":"standard"}','$model','openai',100);
+SELECT pg_sleep(1.5);
+COMMIT;
+SQL
+first=$!
+barrier music_inspiration_known_barrier
+[[ "$(query -c "SELECT public.abandon_music_inspiration_request_internal('$owner','$replacement_request')->>'request_id'")" == "$replacement_request" ]]
+wait "$first"
 # Security-state barrier: revoke wins before new admission, even with a service caller.
 query <<SQL >/dev/null &
 BEGIN;

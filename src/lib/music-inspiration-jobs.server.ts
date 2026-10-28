@@ -4,7 +4,6 @@ import { inspirationRequestSchema } from "./music-inspiration.shared";
 import {
   INSPIRATION_LIMITS,
   approvedAtlasEvidence,
-  getMusicInspirationBudget,
   inspirationQueries,
   searchInspirationWeb,
   synthesizeMusicInspiration,
@@ -28,7 +27,6 @@ async function database(): Promise<Database> {
 }
 export type InspirationJobDependencies = {
   db?: Database;
-  budget?: typeof getMusicInspirationBudget;
   atlas?: typeof approvedAtlasEvidence;
   search?: typeof searchInspirationWeb;
   synthesize?: typeof synthesizeMusicInspiration;
@@ -142,13 +140,6 @@ export async function executeMusicInspirationJob(
     signal.throwIfAborted();
     if (!savedReceipt && (deps.clock ?? Date.now)() - Date.parse(job.created_at) > 30 * 60 * 1000)
       throw new Error("research_queue_expired");
-    let budget: Awaited<ReturnType<typeof getMusicInspirationBudget>> | null = null;
-    const ensureBudget = async () =>
-      (budget ??= await (deps.budget ?? getMusicInspirationBudget)(
-        job.model,
-        job.provider,
-        request.depth,
-      ));
     const admit =
       deps.admitDispatch ?? (await import("./global-ai-usage.server")).requireGlobalAiUsage;
     const reserve = async (key: string, kind: string, cost: number, credits: number) => {
@@ -182,8 +173,7 @@ export async function executeMusicInspirationJob(
         uncertain = true;
         throw new Error("provider_outcome_unknown");
       }
-      const pricing = await ensureBudget();
-      if (!(await reserve(key, "search", pricing.searchCreditUsd, 1))) {
+      if (!(await reserve(key, "search", 0, 1))) {
         uncertain = true;
         throw new Error("provider_outcome_unknown");
       }
@@ -210,9 +200,8 @@ export async function executeMusicInspirationJob(
         uncertain = true;
         throw new Error("provider_outcome_unknown");
       }
-      const pricing = await ensureBudget();
       if (!documents.length) throw new Error("no_accessible_evidence");
-      if (!(await reserve(job.execution_id, "ai", Math.max(pricing.aiMaxCostUsd, 0.00000001), 0))) {
+      if (!(await reserve(job.execution_id, "ai", 0, 0))) {
         uncertain = true;
         throw new Error("provider_outcome_unknown");
       }

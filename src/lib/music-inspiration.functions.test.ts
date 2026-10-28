@@ -1,3 +1,4 @@
+import * as usageShared from "./music-inspiration-usage.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -123,6 +124,7 @@ function harness() {
     {
       exports: exported,
       require(name: string) {
+        if (name === "./music-inspiration-usage.shared") return usageShared;
         if (name === "zod") return { z };
         if (name === "./music-inspiration.shared") return shared;
         if (name === "@tanstack/react-start/server")
@@ -163,15 +165,15 @@ function harness() {
               configured: state.configured,
               reason: state.configured ? null : "Missing verified search configuration",
             }),
-            researchBudgetForModel: async (...args: any[]) => {
+            getMusicInspirationPrices: async (...args: any[]) => {
               events.push(["budget", ...args]);
-              if (
-                state.defaultStandardBudgetError &&
-                args[0] === "live-model" &&
-                args[2] === "standard"
-              )
-                throw new Error("Default standard budget unavailable");
-              return state.budget;
+              return {
+                input: 100,
+                output: 100,
+                cached: null,
+                cacheWrite: null,
+                searchCreditUsd: 0.008,
+              };
             },
           };
         if (name === "@/integrations/supabase/client.server")
@@ -221,6 +223,7 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
       ["getMusicInspirationConfig", undefined],
       ["startMusicInspiration", { requestId: id, request }],
       ["getMusicInspirationJob", { id }],
+      ["abandonMusicInspirationRequest", { requestId: id }],
       ["cancelMusicInspiration", { id }],
       ["listMusicInspirationProfiles", undefined],
       ["saveMusicInspirationProfile", { jobId: id, name: "Saved" }],
@@ -274,18 +277,25 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
         "budget_usd",
         "reserved_usd",
         "search_credits",
+        "usageReport",
       ].sort(),
     );
     expect(h.events.find((e) => e[0] === "admin")).toEqual([
       "admin",
-      "start_music_inspiration_job",
+      "start_music_inspiration_job_v2",
       {
         _user_id: "owner",
         _request_id: id,
         _request: request,
         _model: "live-model",
         _provider: "offline",
-        _budget: 0.2,
+        _pricing: {
+          input: 100,
+          output: 100,
+          cached: null,
+          cacheWrite: null,
+          searchCreditUsd: 0.008,
+        },
       },
     ]);
     await expect(
@@ -302,52 +312,15 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
       h.call("startMusicInspiration", { requestId: id, request, modelOverride: "unknown" }),
     ).rejects.toThrow("not available");
   });
-  test("Super Admin can choose an affordable entitled override or extended depth when default standard budget fails", async () => {
+  test("configured research starts regardless of expensive or unverified quote; missing credential still fails", async () => {
     const h = harness();
     h.state.defaultStandardBudgetError = true;
-    expect((await h.call("getMusicInspirationConfig")).configured).toBe(false);
-    h.state.superAdmin = true;
-    h.state.models.push({
-      ...h.state.models[0]!,
-      id: "override-installed",
-      providerModelId: "affordable-model",
-    });
-    h.state.available.push("affordable-model");
-    const config = await h.call("getMusicInspirationConfig");
-    expect(config.configured).toBe(true);
-    expect(config.reason).toContain("pricing");
-    expect(config.models).toContainEqual({ id: "affordable-model", label: "Live" });
-    expect(h.events.some((e) => e[0] === "admin")).toBe(false);
-    await expect(h.call("startMusicInspiration", { requestId: id, request })).rejects.toThrow(
-      "Default standard budget",
-    );
-    expect(h.events.some((e) => e[0] === "admin")).toBe(false);
-    await h.call("startMusicInspiration", {
-      requestId: id,
-      request,
-      modelOverride: "affordable-model",
-    });
-    expect(h.events).toContainEqual(["budget", "affordable-model", "offline", "standard"]);
-    await h.call("startMusicInspiration", {
-      requestId: id,
-      request: { ...request, depth: "extended" },
-    });
-    expect(h.events).toContainEqual(["budget", "live-model", "offline", "extended"]);
+    expect((await h.call("getMusicInspirationConfig")).configured).toBe(true);
+    await h.call("startMusicInspiration", { requestId: id, request });
+    expect(
+      h.events.some((e) => e[0] === "admin" && e[1] === "start_music_inspiration_job_v2"),
+    ).toBe(true);
     h.state.configured = false;
-    expect((await h.call("getMusicInspirationConfig")).configured).toBe(false);
-  });
-  test("missing configuration and invalid budget block start while profile reuse still works", async () => {
-    for (const budget of [NaN, 0, -1, 0.26]) {
-      const h = harness();
-      h.state.budget = budget;
-      await expect(h.call("startMusicInspiration", { requestId: id, request })).rejects.toThrow(
-        "budget",
-      );
-      expect(h.events.some((e) => e[0] === "admin")).toBe(false);
-    }
-    const h = harness();
-    h.state.configured = false;
-    expect((await h.call("getMusicInspirationConfig")).configured).toBe(false);
     await expect(h.call("startMusicInspiration", { requestId: id, request })).rejects.toThrow(
       "Missing verified",
     );
