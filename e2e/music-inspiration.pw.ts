@@ -334,8 +334,9 @@ test("super-admin uses allowed compact selectors and free description", async ({
     ["Research depth", "Extended"],
     ["Research model", "Allowed override"],
   ]) {
-    await modal.getByRole("combobox", { name, exact: true }).click();
-    await page.getByRole("option", { name: option, exact: true }).click();
+    await modal.getByRole("combobox", { name, exact: true }).selectOption({
+      label: option,
+    });
   }
   await modal
     .getByLabel("Describe the music")
