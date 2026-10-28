@@ -334,8 +334,9 @@ test("super-admin uses allowed compact selectors and free description", async ({
     ["Research depth", "Extended"],
     ["Research model", "Allowed override"],
   ]) {
-    await modal.getByRole("combobox", { name, exact: true }).click();
-    await page.getByRole("option", { name: option, exact: true }).click();
+    await modal.getByRole("combobox", { name, exact: true }).selectOption({
+      label: option,
+    });
   }
   await modal
     .getByLabel("Describe the music")
@@ -563,7 +564,7 @@ test("user can discard uncertain research and start a different request explicit
   await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   await expect(modal.getByRole("alert")).toBeVisible();
-  await modal.getByRole("button", { name: /Discard this request and start over/ }).click();
+  await modal.getByRole("button", { name: "Discard pending request" }).click();
   await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   const starts = f.calls.filter((call) => call.name.includes("startMusicInspiration"));
