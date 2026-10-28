@@ -11,6 +11,8 @@ export const musicInspirationCopy = {
       "Budgets and reservations are account policy limits and estimates, not an invoice or measured usage.",
     refreshStatus: "Refresh research status (no new research)",
     retryAttempt: "Retry the same research request",
+    discardPending:
+      "Discard this request and start over (a previous server request may still complete)",
     newResearch: "Start new research",
     pendingAttempt:
       "Start acknowledgment is pending. Retry uses the same request ID and cannot create another job for this attempt. No paid request starts automatically.",
@@ -41,6 +43,12 @@ export const musicInspirationCopy = {
     unavailable: "Research is not configured. Saved profiles can still be reused.",
     retry: "Retry",
     failed: "The operation failed. Retry or refresh profiles if another device changed them.",
+    failedConfig: "Research setup could not be loaded. No new research was started.",
+    failedProfiles: "Saved profiles could not be loaded. No new research was started.",
+    failedStart:
+      "Research request could not be confirmed. Retry only the same request ID; do not start a new one.",
+    failedStatus:
+      "Research status could not be checked. Refresh status without starting new research.",
     complete: "Research completed",
     partial: "Partial research — review limitations before applying.",
     cancelled: "Research cancelled",
@@ -103,6 +111,8 @@ export const musicInspirationCopy = {
       "Τα όρια και οι δεσμεύσεις αφορούν πολιτικές λογαριασμού και εκτιμήσεις, όχι τιμολόγιο ή μετρημένη χρήση.",
     refreshStatus: "Ανανέωση κατάστασης (χωρίς νέα έρευνα)",
     retryAttempt: "Επανάληψη του ίδιου αιτήματος έρευνας",
+    discardPending:
+      "Απόρριψη αιτήματος και νέα αρχή (πιθανή προηγούμενη εκτέλεση μπορεί να ολοκληρωθεί)",
     newResearch: "Έναρξη νέας έρευνας",
     pendingAttempt:
       "Εκκρεμεί επιβεβαίωση έναρξης. Η επανάληψη χρησιμοποιεί το ίδιο αναγνωριστικό και δεν δημιουργεί δεύτερη εργασία για αυτή την προσπάθεια. Δεν ξεκινά αυτόματα χρεώσιμο αίτημα.",
@@ -134,6 +144,12 @@ export const musicInspirationCopy = {
       "Η έρευνα δεν έχει ρυθμιστεί. Τα αποθηκευμένα προφίλ μπορούν να χρησιμοποιηθούν ξανά.",
     retry: "Επανάληψη",
     failed: "Η ενέργεια απέτυχε. Δοκιμάστε ξανά ή ανανεώστε τα προφίλ αν άλλαξαν από άλλη συσκευή.",
+    failedConfig: "Δεν φορτώθηκαν οι ρυθμίσεις έρευνας. Δεν ξεκίνησε νέα έρευνα.",
+    failedProfiles: "Δεν φορτώθηκαν τα αποθηκευμένα προφίλ. Δεν ξεκίνησε νέα έρευνα.",
+    failedStart:
+      "Δεν επιβεβαιώθηκε το αίτημα έρευνας. Επαναλάβετε μόνο το ίδιο αίτημα, όχι νέα έρευνα.",
+    failedStatus:
+      "Δεν ελέγχθηκε η κατάσταση της έρευνας. Ανανεώστε την κατάσταση χωρίς νέα έρευνα.",
     complete: "Η έρευνα ολοκληρώθηκε",
     partial: "Μερική έρευνα — ελέγξτε τους περιορισμούς πριν την εφαρμογή.",
     cancelled: "Η έρευνα ακυρώθηκε",

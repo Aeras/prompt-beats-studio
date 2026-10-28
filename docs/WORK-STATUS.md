@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration failure diagnosis and control recovery — IN_PROGRESS
+
+- **Verified baseline:** main `7ae95e2cfc34275b965293b5157fef818a0c0d98`, merged #451/#452/#453; separate branch `fix/music-inspiration-failure-stage` for this work. Production failure screenshot has generic alert; prior Supabase read showed no Inspiration jobs, which does not prove whether backend request reached hosting.
+- **Scope / remedy:** Safe stage-specific UI diagnostics without leaking server error details; verified Super Admin receives all installed enabled Generator-compatible registry models, while ordinary users keep effective model access and server-side spend guard; explicit local abandonment of unacknowledged request allowing new artist/model, preserving original request-id retry as separate option. Abandoning local state does not cancel any unknown backend work; UI warns about possible completion. No paid requests, scheduler changes, secrets or production DDL.
+- **Verification / release:** Offline Browser test added for different request ID after explicit discard; full CI and review outstanding. Codex independent root-cause audit remains read-only and must not edit this branch. Tavily runtime configuration and real request handling remain unverified; this UI/model change is not proof of production repair.
+
 ## 2026-10-28 — Music Inspiration compact dialog and model clarity — IN_PROGRESS
 
 - **Cause confirmed in current main `9de7c2aa4351232d2a8653278d8693c5cd9eedab`:** dialog renders verbose description, financial limits/reservation note, an unconditional default-model label and a redundant standard-depth label. This is independent of runner recovery Draft PR #452.

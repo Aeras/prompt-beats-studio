@@ -440,7 +440,9 @@ test("poll failure reports a real error and preserves manual edits", async ({ pa
   const f = await fixture(page);
   f.failPoll();
   await startResearch(page);
-  await expect(panel(page).getByRole("alert")).toContainText("operation failed");
+  await expect(panel(page).getByRole("alert")).toContainText(
+    "Research status could not be checked.",
+  );
   await expect(panel(page).getByRole("button", { name: "Apply to empty fields" })).toHaveCount(0);
 });
 test("partial result labels limitations", async ({ page }) => {
@@ -551,6 +553,24 @@ test("lost start acknowledgment retries the same durable idempotency key", async
   expect(saved).not.toHaveProperty("result");
 });
 
+test("user can discard uncertain research and start a different request explicitly", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  f.loseStartAck();
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
+  await modal.getByRole("button", { name: "Research", exact: true }).click();
+  await expect(modal.getByRole("alert")).toBeVisible();
+  await modal.getByRole("button", { name: /Discard this request and start over/ }).click();
+  await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
+  await modal.getByRole("button", { name: "Research", exact: true }).click();
+  const starts = f.calls.filter((call) => call.name.includes("startMusicInspiration"));
+  expect(starts).toHaveLength(2);
+  expect(starts[0]!.data.requestId).not.toBe(starts[1]!.data.requestId);
+});
+
 test("reload recovers a known job with reads and never starts paid research", async ({ page }) => {
   const f = await fixture(page);
   f.finish(false);
@@ -628,7 +648,11 @@ for (const malformed of ["profiles", "config"] as const) {
         duplicateKeys.push(message.text());
     });
     const f = await fixture(page, { malformed, superAdmin: true });
-    await expect(panel(page).getByRole("alert")).toContainText("The operation failed.");
+    await expect(panel(page).getByRole("alert")).toContainText(
+      malformed === "config"
+        ? "Research setup could not be loaded."
+        : "Saved profiles could not be loaded.",
+    );
     const production = page.getByRole("textbox", { name: "Production Style", exact: true });
     const instructions = page.getByRole("textbox", {
       name: "Additional Instructions",

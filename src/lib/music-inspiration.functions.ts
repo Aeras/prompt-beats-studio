@@ -80,7 +80,7 @@ async function modelAccess(context: Context) {
       model.status === "enabled" &&
       model.generatorCompatible &&
       model.generatorEnabled &&
-      access.availableModels.includes(model.providerModelId),
+      (role.data === true || access.availableModels.includes(model.providerModelId)),
   );
   if (
     !defaultModel.id ||

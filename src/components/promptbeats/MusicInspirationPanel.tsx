@@ -124,6 +124,7 @@ export function MusicInspirationPanel({
   const [fields, setFields] = useState<InspirationApplyField[]>([...INSPIRATION_APPLY_FIELDS]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [failedStage, setFailedStage] = useState<"start" | "status" | "action" | null>(null);
   const [receipt, setReceipt] = useState<InspirationApplyReceipt | null>(null);
   const invalidatedOwnership = useRef(new Set<InspirationApplyField>());
   const [ambiguous, setAmbiguous] = useState<InspirationApplyField[]>([]);
@@ -186,6 +187,7 @@ export function MusicInspirationPanel({
     setDepth("standard");
     setBusy(false);
     setError(false);
+    setFailedStage(null);
     setSummary(null);
     setReceipt(null);
     setAmbiguous([]);
@@ -249,7 +251,10 @@ export function MusicInspirationPanel({
   }, [poll.data, sameOwner, enabled, busy, job]);
 
   // Account and operation epochs guard all async side effects, including after unmount.
-  async function run(action: (valid: () => boolean) => Promise<void>) {
+  async function run(
+    action: (valid: () => boolean) => Promise<void>,
+    stage: "start" | "status" | "action" = "action",
+  ) {
     if (lock.current || !enabled || !sameOwner) return;
     lock.current = true;
     const epoch = ++lifecycle.current.serial;
@@ -260,10 +265,14 @@ export function MusicInspirationPanel({
       lifecycle.current.serial === epoch;
     setBusy(true);
     setError(false);
+    setFailedStage(null);
     try {
       await action(valid);
     } catch {
-      if (valid()) setError(true);
+      if (valid()) {
+        setFailedStage(stage);
+        setError(true);
+      }
     } finally {
       if (valid()) {
         lock.current = false;
@@ -284,7 +293,20 @@ export function MusicInspirationPanel({
       if (!valid()) return;
       setJob(stored);
       if (completed(stored) && stored.result) setOrigin({ kind: "job", id: stored.id });
-    });
+    }, "status");
+  }
+  function discardPendingAttempt() {
+    if (!uid || busy || !attempt || attempt.jobId) return;
+    // Discarding the local request does not cancel any server-side work or refund
+    // a possible provider charge. Never automatically retry an uncertain request.
+    try {
+      localStorage.removeItem(attemptKey(uid));
+      setAttempt(null);
+      setError(false);
+      setFailedStage(null);
+    } catch {
+      setStorageError(true);
+    }
   }
   function start() {
     if (
@@ -341,7 +363,7 @@ export function MusicInspirationPanel({
       setAttempt(acknowledged);
       setJob(next);
       if (completed(next) && next.result) setOrigin({ kind: "job", id: next.id });
-    });
+    }, "start");
   }
   function cancel() {
     if (!job || !active(job)) return;
@@ -465,6 +487,15 @@ export function MusicInspirationPanel({
     searchPlaceholder: t.search,
     emptyText: t.empty,
   });
+  const failureText = config.isError
+    ? t.failedConfig
+    : profiles.isError
+      ? t.failedProfiles
+      : poll.isError || failedStage === "status"
+        ? t.failedStatus
+        : failedStage === "start"
+          ? t.failedStart
+          : t.failed;
   const buttons = "flex flex-wrap gap-2";
   const previewValues = result
     ? {
@@ -500,7 +531,7 @@ export function MusicInspirationPanel({
       />
       {(error || config.isError || profiles.isError || poll.isError) && (
         <div role="alert">
-          <p>{t.failed}</p>
+          <p>{failureText}</p>
           <Button
             type="button"
             variant="outline"
@@ -510,6 +541,7 @@ export function MusicInspirationPanel({
               void profiles.refetch();
               if (job) void poll.refetch();
               setError(false);
+              setFailedStage(null);
             }}
           >
             {t.retry}
@@ -557,7 +589,7 @@ export function MusicInspirationPanel({
               ]}
               value={kind}
               onValueChange={(v) => setKind(v as typeof kind)}
-              disabled={busy || active(job) || (!!attempt && !attempt.jobId)}
+              disabled={busy || active(job)}
             />
             {kind === "artist" ? (
               <>
@@ -632,6 +664,16 @@ export function MusicInspirationPanel({
                   : t.unavailable}
               </p>
             )}
+            {attempt && !attempt.jobId && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={discardPendingAttempt}
+              >
+                {t.discardPending}
+              </Button>
+            )}
             <Button
               variant="outline"
               type="submit"
@@ -660,7 +702,7 @@ export function MusicInspirationPanel({
               {t.cancel}
             </Button>
           )}
-          {(error || poll.isError) && <p role="alert">{t.failed}</p>}
+          {(error || poll.isError) && <p role="alert">{failureText}</p>}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
           </Button>
