@@ -1,5 +1,9 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration smartphone dialog fit — IN_PROGRESS
+
+- Post-merge #454 feedback: research dialog overflows mobile viewport and controls are visually oversized. Scoped CSS correction constrains width and dynamic viewport height, makes content internally scrollable, reduces mobile spacing and allows long pending-request action to wrap. No server/Tavily or paid AI changes. Verify Browser Quality at final PR HEAD; production publish is separate.
+
 ## 2026-10-28 — Music Inspiration failure diagnosis and control recovery — IN_PROGRESS
 
 - **Verified baseline:** main `7ae95e2cfc34275b965293b5157fef818a0c0d98`, merged #451/#452/#453; separate branch `fix/music-inspiration-failure-stage` for this work. Production failure screenshot has generic alert; prior Supabase read showed no Inspiration jobs, which does not prove whether backend request reached hosting.
