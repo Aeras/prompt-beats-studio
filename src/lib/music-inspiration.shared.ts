@@ -69,9 +69,24 @@ export const inspirationResearchSchema = z.object({
   researchPromptVersion: z.literal("1"),
 }).strict().superRefine((result, ctx) => {
   const sources = new Set(result.sources.map((s) => s.id));
+  if (sources.size !== result.sources.length) {
+    ctx.addIssue({ code: "custom", path: ["sources"], message: "Source IDs must be unique" });
+  }
+  for (const [i, source] of result.sources.entries()) {
+    // A source URL is a citation, not permission to fetch. The server must also
+    // validate redirect targets, DNS resolution, egress and private addresses.
+    const url = new URL(source.url);
+    if (url.protocol !== "https:" || url.username || url.password || url.port ||
+        !url.hostname.includes(".") || url.hostname === "localhost") {
+      ctx.addIssue({ code: "custom", path: ["sources", i, "url"], message: "A public HTTPS citation is required" });
+    }
+  }
   const evidenceIds = new Set(result.evidence.map((e) => e.id));
+  if (evidenceIds.size !== result.evidence.length) {
+    ctx.addIssue({ code: "custom", path: ["evidence"], message: "Evidence IDs must be unique" });
+  }
   for (const [i, claim] of result.evidence.entries()) {
-    if (claim.classification === "supported" && claim.sourceIds.length === 0) {
+    if ((claim.classification === "supported" || claim.classification === "bounded") && claim.sourceIds.length === 0) {
       ctx.addIssue({ code: "custom", path: ["evidence", i, "sourceIds"], message: "Supported claims require a source" });
     }
     for (const id of claim.sourceIds) if (!sources.has(id)) {
