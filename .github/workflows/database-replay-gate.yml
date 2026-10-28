@@ -83,6 +83,10 @@ jobs:
           set -euo pipefail
           PROJECT_ID="$(sed -n 's/^project_id = "\(.*\)"/\1/p' supabase/config.toml)"
           test -n "$PROJECT_ID"
+          # Historical migrations seed a live runner URL and random token. This
+          # disposable CI database must never dispatch external jobs. Keep the
+          # race harness fail-closed assertion; isolate the fixture explicitly.
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DELETE FROM public.app_settings WHERE key IN ('runner_url','runner_token');"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_usage_recovery.sql
           bash scripts/tests/ai-usage-db-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/upload_integrity.sql
