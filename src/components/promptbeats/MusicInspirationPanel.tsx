@@ -487,6 +487,15 @@ export function MusicInspirationPanel({
     searchPlaceholder: t.search,
     emptyText: t.empty,
   });
+  const failureText = config.isError
+    ? t.failedConfig
+    : profiles.isError
+      ? t.failedProfiles
+      : poll.isError || failedStage === "status"
+        ? t.failedStatus
+        : failedStage === "start"
+          ? t.failedStart
+          : t.failed;
   const buttons = "flex flex-wrap gap-2";
   const previewValues = result
     ? {
@@ -522,7 +531,7 @@ export function MusicInspirationPanel({
       />
       {(error || config.isError || profiles.isError || poll.isError) && (
         <div role="alert">
-          <p>{config.isError ? t.failedConfig : profiles.isError ? t.failedProfiles : poll.isError ? t.failedStatus : failedStage === "start" ? t.failedStart : failedStage === "status" ? t.failedStatus : t.failed}</p>
+          <p>{failureText}</p>
           <Button
             type="button"
             variant="outline"
@@ -694,7 +703,7 @@ export function MusicInspirationPanel({
             </Button>
           )}
           {(error || poll.isError) && (
-            <p role="alert">{poll.isError || failedStage === "status" ? t.failedStatus : failedStage === "start" ? t.failedStart : t.failed}</p>
+            <p role="alert">{failureText}</p>
           )}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
