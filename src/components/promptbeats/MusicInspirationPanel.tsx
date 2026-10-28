@@ -744,7 +744,6 @@ export function MusicInspirationPanel({
           </Button>
         </DialogContent>
       </Dialog>
-      {attempt && !attempt.jobId && <p role="status">{t.pendingAttempt}</p>}
       {storageError && <p role="alert">{t.persistenceError}</p>}
       {(job || attempt?.jobId) && (
         <Button type="button" variant="outline" disabled={busy} onClick={refreshJob}>
