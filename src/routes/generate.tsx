@@ -3242,6 +3242,7 @@ function GeneratePage() {
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
         <div
           data-testid="generator-stacked-layout"
+          style={{ display: "flex", flexDirection: "column" }}
           className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 [&>*]:w-full [&>*]:min-w-0"
         >
           {advanced && !revisionMode && (
