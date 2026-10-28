@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration mobile usability follow-up — IN_PROGRESS
+
+- **Verified evidence:** Uploaded Android screenshots of post-merge #454 show model menu opening a searchable keyboard, horizontally overflowing modal content and excessively long pending-request button; main at `ea5fde05d21c96308d8dbc371eb774dd2c0233e8` includes these behaviors. #454 is already merged; separate post-merge visual regression follow-up is necessary.
+- **Scope:** Replace only Music Inspiration mode, depth and model selectors with native browser selects (no automatic search/keyboard); keep saved-profile searchable selector unchanged. Contain dialog horizontally and wrap full-width controls and alert text on phones. Shorten pending-action label. Keep user-selected values and protected pending-request semantics, server authorization, pricing and idempotency unchanged.
+- **Verification/release:** Browser offline case uses native selectOption; require Regression, Browser Quality and Database Replay green on same HEAD, review and merge before recommending separate Lovable publish. No paid AI/Tavily calls or production changes. Root-cause investigation of the earlier failed research remains separate.
+
 ## 2026-10-28 — Music Inspiration failure diagnosis and control recovery — IN_PROGRESS
 
 - **Verified baseline:** main `7ae95e2cfc34275b965293b5157fef818a0c0d98`, merged #451/#452/#453; separate branch `fix/music-inspiration-failure-stage` for this work. Production failure screenshot has generic alert; prior Supabase read showed no Inspiration jobs, which does not prove whether backend request reached hosting.
