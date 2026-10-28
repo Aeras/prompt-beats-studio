@@ -1,3 +1,4 @@
+import { synthesizeMusicInspiration } from "./music-inspiration-research.server";
 import {
   InspirationFailure,
   decodeInspirationDiagnostic,
@@ -402,4 +403,50 @@ test("when final error persistence also fails logs retain both safe failure stag
   } finally {
     log.mockRestore();
   }
+});
+
+test("stored result arrangement is reconciled during recovery without new search/AI or duplicate usage", async () => {
+  const f = fixture();
+  f.fail();
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("unknown");
+  const source = f.dispatches.find((d) => d.kind === "search").receipt.documents[0].source;
+  const saved = f.journal().result as ModelResult;
+  saved.text = JSON.stringify({
+    version: 1,
+    researchPromptVersion: "1",
+    request: f.job.request,
+    sources: [source],
+    evidence: [],
+    unresolvedQuestions: ["Synthetic test only"],
+    proposal: {
+      musicStyles: [],
+      moods: [],
+      instruments: [],
+      bpm: null,
+      productionStyle: "",
+      additionalInstructions: "",
+      songStructure: ["Куплет — 16 тактов"],
+      blueprint: [{ structureIndex: 0, sectionType: "Куплет", instruction: "Keep", energy: 2 }],
+      supportingEvidenceIds: [],
+      creativeChoices: [],
+    },
+  });
+  const raw = saved.text;
+  f.deps.synthesize = synthesizeMusicInspiration;
+  f.deps.search = async () => {
+    throw Error("Must reuse saved search");
+  };
+  f.deps.caller = () => async () => {
+    throw Error("Must reuse saved AI response");
+  };
+  await Promise.all([
+    executeMusicInspirationJob(f.id, f.deps),
+    executeMusicInspirationJob(f.id, f.deps),
+  ]);
+  expect(f.job.status).toBe("completed");
+  expect(f.job.result.proposal.blueprint[0].sectionType).toBe("Куплет — 16 тактов");
+  expect(f.job.provider_result.text).toBe(raw);
+  expect(f.counts()).toEqual({ searches: 2, calls: 1 });
+  expect(f.records.size).toBe(1);
 });

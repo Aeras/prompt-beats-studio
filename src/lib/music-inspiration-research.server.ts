@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   inspirationRequestSchema,
   inspirationResearchSchema,
+  inspirationProposalSchema,
   MUSIC_INSPIRATION_RESEARCH_SYSTEM_PROMPT,
   type InspirationRequest,
   type InspirationResearch,
@@ -259,6 +260,52 @@ export async function getMusicInspirationPrices(model: string, provider: string)
     searchCreditUsd: configuredPrice(process.env["MUSIC_INSPIRATION_SEARCH_CREDIT_USD"]),
   };
 }
+/** Reconcile duplicated provider labels only when one is the other's exact annotated form.
+ * Keep the complete label, order, energy and instructions; never guess/reorder sections.
+ * This is a wire-boundary projection, not a relaxation of the stored/application schema.
+ */
+export function reconcileInspirationArrangement(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const root = input as Record<string, unknown>;
+  const proposal = root["proposal"];
+  if (!proposal || typeof proposal !== "object" || Array.isArray(proposal)) return input;
+  const raw = proposal as Record<string, unknown>;
+  const structure = inspirationProposalSchema.shape.songStructure.safeParse(raw["songStructure"]);
+  const blueprint = inspirationProposalSchema.shape.blueprint.safeParse(raw["blueprint"]);
+  if (!structure.success || !blueprint.success || structure.data.length !== blueprint.data.length)
+    return input;
+  const labels: string[] = [];
+  for (const [i, section] of blueprint.data.entries()) {
+    const label = structure.data[i]!;
+    if (section.structureIndex !== i) return input;
+    if (label === section.sectionType) {
+      labels.push(label);
+      continue;
+    }
+    const annotated = (full: string, base: string) =>
+      [" — ", " – ", " - ", ": "].some(
+        (separator) =>
+          full.startsWith(base + separator) && full.length > base.length + separator.length,
+      );
+    if (annotated(label, section.sectionType)) labels.push(label);
+    else if (annotated(section.sectionType, label)) labels.push(section.sectionType);
+    else return input;
+  }
+  if (
+    labels.every(
+      (label, i) => label === structure.data[i] && label === blueprint.data[i]!.sectionType,
+    )
+  )
+    return input;
+  return {
+    ...root,
+    proposal: {
+      ...raw,
+      songStructure: labels,
+      blueprint: blueprint.data.map((section, i) => ({ ...section, sectionType: labels[i]! })),
+    },
+  };
+}
 export async function synthesizeMusicInspiration(
   request: InspirationRequest,
   documents: RetrievedInspirationDocument[],
@@ -277,7 +324,7 @@ export async function synthesizeMusicInspiration(
     sourceTextIsUntrustedData: true,
     documents: canonical.map((d) => ({ source: d.source, text: d.text.slice(0, 1500) })),
     requirements:
-      "Use only supplied source IDs. Supported/bounded evidence requires exact citedPassages quotations. Mark ambiguity/disagreement explicitly. No snippets as evidence. Separate optional creative choices from historical facts. Empty knowledge stays unknown.",
+      "Use only supplied source IDs. Supported/bounded evidence requires exact citedPassages quotations. Mark ambiguity/disagreement explicitly. No snippets as evidence. Separate optional creative choices from historical facts. Empty knowledge stays unknown. proposal.songStructure[i] and proposal.blueprint[i].sectionType must be identical strings; structureIndex must equal i (zero-based). Put bar counts, duration and arrangement notes in blueprint instruction, not section names. Source IDs, URLs, hashes and retrieval receipts are server-owned: copy supplied source metadata verbatim; never translate or recreate titles, locators or timestamps.",
   });
   if (new TextEncoder().encode(prompt).length > 70000) throw new Error("research_prompt_too_large");
   let receipt: ModelResult;
@@ -303,10 +350,32 @@ export async function synthesizeMusicInspiration(
   } catch (error) {
     throw new InspirationFailure(inspirationDiagnostic(error, "ai_parse"));
   }
-  const checked = inspirationResearchSchema.safeParse(parsed);
+  const checked = inspirationResearchSchema.safeParse(reconcileInspirationArrangement(parsed));
   if (!checked.success)
     throw new InspirationFailure(inspirationDiagnostic(checked.error, "ai_schema"));
-  const result = checked.data;
+  const result: InspirationResearch = {
+    ...checked.data,
+    // The model selects evidence handles; the retriever owns display metadata and dates.
+    // Only a complete matching identity can hydrate metadata. All other differences
+    // survive unchanged and are rejected by the strict provenance check below.
+    sources: checked.data.sources.map((source) => {
+      const trusted = canonical.find((d) => d.source.id === source.id)?.source;
+      const receipt = source.receipt;
+      const proof = trusted?.receipt;
+      return trusted &&
+        receipt &&
+        proof &&
+        source.url === trusted.url &&
+        source.contentSha256 === trusted.contentSha256 &&
+        source.accessedEvidence === trusted.accessedEvidence &&
+        receipt.documentId === proof.documentId &&
+        receipt.finalUrl === proof.finalUrl &&
+        receipt.contentSha256 === proof.contentSha256 &&
+        receipt.accessibility === proof.accessibility
+        ? { ...trusted, receipt: { ...proof } }
+        : source;
+    }),
+  };
   if (JSON.stringify(result.request) !== JSON.stringify(request))
     throw new InspirationFailure(
       { stage: "ai_schema", code: "request_mismatch" },

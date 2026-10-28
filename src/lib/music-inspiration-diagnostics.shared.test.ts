@@ -196,3 +196,21 @@ test("AI dispatch, incomplete output, JSON and schema failures have different st
     ),
   ).toMatchObject({ stage: "ai_request", code: "incomplete" });
 });
+
+test("nested arrangement diagnostics round-trip while arbitrary nested field names remain private", () => {
+  for (const field of ["blueprint", "songStructure"] as const) {
+    const error = new z.ZodError([
+      { code: "custom", path: ["proposal", field], message: "PRIVATE_MARKER" },
+    ]);
+    const diagnostic = inspirationDiagnostic(error, "ai_schema");
+    expect(diagnostic.field).toBe("proposal." + field);
+    expect(decodeInspirationDiagnostic(encodeInspirationDiagnostic(diagnostic))).toEqual(
+      diagnostic,
+    );
+    expect(JSON.stringify(diagnostic)).not.toContain("PRIVATE_MARKER");
+  }
+  const error = new z.ZodError([
+    { code: "custom", path: ["proposal", "PRIVATE_MARKER"], message: "PRIVATE_MARKER" },
+  ]);
+  expect(inspirationDiagnostic(error, "ai_schema").field).toBe("proposal");
+});
