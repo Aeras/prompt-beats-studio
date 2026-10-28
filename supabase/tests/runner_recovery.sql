@@ -18,6 +18,7 @@ SET LOCAL pb.runner_fixture_fail='on';
 INSERT INTO public.music_inspiration_jobs(id,user_id,request_id,request,model,provider,budget_usd,created_at) VALUES('c4520000-0000-4000-8000-000000000002','c4520000-0000-4000-8000-000000000001',gen_random_uuid(),'{"kind":"artist","artist":"Offline","depth":"standard"}','offline','openai',0.2,now()-interval '2 minutes');
 SELECT pg_temp.assert((SELECT count(*)=0 FROM pg_temp.runner_http),'failed initial kick leaves job durable without network record');
 SELECT pg_temp.assert((SELECT status='queued' FROM public.music_inspiration_jobs WHERE id='c4520000-0000-4000-8000-000000000002'),'kick failure preserves queued job');
+INSERT INTO public.music_inspiration_jobs(id,user_id,request_id,request,model,provider,budget_usd) SELECT ('c4520000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'c4520000-0000-4000-8000-000000000001',gen_random_uuid(),'{"kind":"artist","artist":"Offline","depth":"standard"}','offline','openai',0.2 FROM generate_series(10,12) n;
 SET LOCAL pb.runner_fixture_fail='off';
 SELECT public.dispatch_ai_runner_sweep_internal() IS NOT NULL AS sweep_ran;
 SELECT pg_temp.assert((SELECT count(*)=1 FROM pg_temp.runner_http WHERE body->>'musicInspirationJobId'='c4520000-0000-4000-8000-000000000002'),'periodic sweep recovers lost kick');
@@ -28,6 +29,7 @@ SELECT public.dispatch_ai_runner_sweep_internal() IS NOT NULL AS repeated_sweep;
 SELECT pg_temp.assert((SELECT count(*)=1 FROM pg_temp.runner_http WHERE body->>'musicInspirationJobId'='c4520000-0000-4000-8000-000000000002'),'tick overlap cannot flood delivery');
 UPDATE public.ai_runner_deliveries SET queued_at=now()-interval '46 seconds' WHERE kind='sweep';
 SELECT public.dispatch_ai_runner_sweep_internal() IS NOT NULL AS retry_sweep;
+SELECT pg_temp.assert((SELECT count(*)=1 FROM pg_temp.runner_http WHERE body->>'musicInspirationJobId'='c4520000-0000-4000-8000-000000000011'),'cooling targets cannot starve later queued jobs');
 SELECT pg_temp.assert((SELECT count(*)=1 FROM pg_temp.runner_http WHERE body->>'musicInspirationJobId'='c4520000-0000-4000-8000-000000000002'),'per-target cooldown survives another scheduler');
 -- A confirmed failure rolls back only that delivery receipt; later ticks can retry.
 DELETE FROM public.ai_runner_deliveries WHERE kind IN ('sweep','inspiration');
