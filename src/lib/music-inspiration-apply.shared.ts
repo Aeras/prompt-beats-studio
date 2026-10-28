@@ -48,11 +48,14 @@ export function applyInspirationProposal(
   };
 
   check("selectedMusicStyles", next.selectedMusicStyles.length === 0 && !next.customMusicStyle.trim(),
-    proposal.musicStyles.length > 0, () => { next.selectedMusicStyles = [...proposal.musicStyles]; });
+    proposal.musicStyles.length > 0, () => { next.selectedMusicStyles = [...proposal.musicStyles];
+      if (mode === "replace_selected") next.customMusicStyle = ""; });
   check("selectedMoods", next.selectedMoods.length === 0 && !next.customMood.trim(),
-    proposal.moods.length > 0, () => { next.selectedMoods = [...proposal.moods]; });
+    proposal.moods.length > 0, () => { next.selectedMoods = [...proposal.moods];
+      if (mode === "replace_selected") next.customMood = ""; });
   check("selectedInstruments", next.selectedInstruments.length === 0 && !next.customInstruments.trim(),
-    proposal.instruments.length > 0, () => { next.selectedInstruments = [...proposal.instruments]; });
+    proposal.instruments.length > 0, () => { next.selectedInstruments = [...proposal.instruments];
+      if (mode === "replace_selected") next.customInstruments = ""; });
   check("bpm", !next.customBpm.trim() && next.bpmMode !== "custom",
     proposal.bpm != null, () => {
       next.bpmMode = "custom";
