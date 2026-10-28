@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Generator desktop Inspiration vertical placement — IN_PROGRESS
+
+- **Reported UI defect:** Desktop screenshot displays Music Inspiration occupying a large left column and Advanced Generator cramped in a right column. User requires Inspiration above the Generator, with original centered Generator width intact.
+- **Verified source and change:** In `src/routes/generate.tsx`, both sections were already siblings inside `mx-auto max-w-3xl` in current main, so screenshot layout may reflect a previously published version or an unverified styling/runtime difference. Make layout explicit with `flex w-full max-w-3xl min-w-0 flex-col gap-4` at the common wrapper. Retain Inspiration condition, apply callback, Generator contents, responsive dialogs and unchanged `max-w-3xl` width. No backend, DB or pricing changes.
+- **Acceptance / release:** Verify stacked order and equal horizontal bounds at desktop/tablet/mobile in browser and absence of horizontal overflow. Require final-head Regression, Browser Quality and Database Replay PASS before merge. Lovable publish and verification against the screenshot's exact deployed URL remain separate; do not infer deployment from merge.
+
 ## 2026-10-28 — Music Inspiration owner-controlled tariffs and observed usage — IN_PROGRESS
 
 - **Baseline / acceptance:** main 393a86537ccf3e2e580815340177266e5179d72c; merged #456/#457 UI preserved. Owner explicitly removes Inspiration monetary caps, daily spend/four-starts-per-hour admission and price-age/verification gates. Missing prices must not block research; actual usage and honest partial estimates are required. Atlas #450 remains untouched and paused.
