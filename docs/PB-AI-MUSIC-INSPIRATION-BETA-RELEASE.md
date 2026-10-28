@@ -23,7 +23,7 @@ Set only in the trusted server runtime, never `VITE_*` or browser storage:
 | Depth    | Access                 | Queries/results                 | Worker deadline | Per-job reservation ceiling |
 | -------- | ---------------------- | ------------------------------- | --------------- | --------------------------- |
 | Standard | authorized Beta users  | 2 queries, up to 3 results each | 90 seconds      | USD 0.25                    |
-| Extended | authorized Super Admin | 5 queries, up to 3 results each | 150 seconds     | USD 1.00                    |
+| Extended | authorized Super Admin | 5 queries, up to 3 results each | 120 seconds     | USD 1.00                    |
 
 Admission additionally limits 4 jobs/hour and USD 2 reserved/user/24 hours. Conservative AI reservation includes 80,000 input tokens at the highest applicable input/cache rate and 65,536 output tokens to cover provider adapter/reasoning expansion; synthesis requests 6,000 output tokens. Reservations remain held for uncertain outcomes; the UI calls search credits **reserved**, not measured actual usage. Exact search-credit receipts are private accounting evidence. Existing provider journal retains actual reported tokens/reasoning/cache/cost metadata, while monetary rates remain estimates unless provider-reported.
 
@@ -41,7 +41,7 @@ These application guards do **not** prove an external provider will bill within 
 ## Controlled Beta release and recovery
 
 1. Independent review of this Draft PR and exact green HEAD. Do not merge or publish under this task's authority.
-2. Securely configure and verify the above services, spend caps and credentials. Verify hosting supports the existing internal runner's 170-second request budget, secure job-runner secret/URL and existing periodic recovery sweep. No new cron or production configuration was installed by this PR.
+2. Securely configure and verify the above services, spend caps and credentials. Verify actual hosting lifetime independently of the 170-second pg_net timeout, secure runner configuration, and the scheduler backstop in [the release-blocking runner follow-up](PB-AI-MUSIC-INSPIRATION-RUNNER-RECOVERY.md). No active periodic scheduler is assumed. No new cron or production configuration was installed by this PR.
 3. With separate approval and verified backup/recovery, apply **only** the additive migration using history-aware Supabase tooling. Verify ACL/RLS, functions, registry state and unchanged 19 legacy policies. The new feature starts Beta and does not become available to everyone.
 4. Publish the corresponding compatible application under separate approval; GitHub/Lovable editor sync alone is not publication evidence. Confirm server-only secrets are absent from browser bundles.
 5. Separately approve a tiny bounded live pilot using the intended Generator default, inspect actual provider/search receipts, latency and semantic source quality. No such pilot has been executed. Then selectively enable Beta testers; no V4 techniques or Atlas guards are opened.
@@ -50,3 +50,7 @@ These application guards do **not** prove an external provider will bill within 
 ## Remaining evidence gaps
 
 Live Tavily account configuration, provider spend enforcement, deployed runtime/runner scheduling, real source relevance/interpretation and production end-to-end behavior are intentionally unverified. Passing offline tests is not a claim of editorial truth, live-provider compatibility, production activation or zero residual financial risk.
+
+## Merged #451 follow-up
+
+The existing feature is not reimplemented. `20261028075346_ai_runner_recovery_fanout.sql` adds delivery throttling, bounded independent fanout and exact-ID recovery. Empty authenticated runner messages no longer await sequential AI jobs. Standard research remains 90s; extended is 120s to leave 50s transport/accounting headroom. Queue wait is separate from persisted active research time; unstarted work expires after 30 minutes. Actual hosting runtime, periodic scheduler activation and live operational verification remain explicit release prerequisites. See the linked runbook.

@@ -217,11 +217,14 @@ export async function claimRecoveredJob(kind: "generate" | "quality_check", id: 
   > | null;
 }
 
-export async function reconcileAiExecutions(): Promise<void> {
-  await write("reap_unjournaled_ai_jobs_internal", {});
-  const rows = (await write("claim_ai_execution_recovery_internal", {})) as Array<
-    Execution & { lease_token: string }
-  >;
+export async function reconcileAiExecutions(executionId?: string): Promise<void> {
+  if (!executionId) await write("reap_unjournaled_ai_jobs_internal", {});
+  const rows = (await write(
+    executionId
+      ? "claim_ai_execution_recovery_by_id_internal"
+      : "claim_ai_execution_recovery_internal",
+    executionId ? { _id: executionId } : {},
+  )) as Array<Execution & { lease_token: string }>;
   for (const row of rows) {
     try {
       let result = row.result;
@@ -271,6 +274,7 @@ export async function reconcileAiExecutions(): Promise<void> {
       });
     }
   }
+  if (executionId) return; // Targeted recovery never drains another queue.
   // Validate already stored, finally accounted failures even after automatic
   // recovery is exhausted. This queue never creates a provider request.
   const failures = (await write("claim_failed_generation_validation_internal", {})) as Array<{

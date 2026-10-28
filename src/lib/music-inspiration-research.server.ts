@@ -12,7 +12,7 @@ import type { ModelCall, ModelResult } from "./ai-provider.server";
 
 export const INSPIRATION_LIMITS = {
   standard: { queries: 2, results: 3, textChars: 3000, timeoutMs: 90000, maxUsd: 0.25 },
-  extended: { queries: 5, results: 3, textChars: 4000, timeoutMs: 150000, maxUsd: 1 },
+  extended: { queries: 5, results: 3, textChars: 4000, timeoutMs: 120000, maxUsd: 1 },
 } as const;
 export type RetrievedInspirationDocument = {
   source: InspirationResearch["sources"][number];

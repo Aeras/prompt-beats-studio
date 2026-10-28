@@ -111,7 +111,8 @@ export async function executeMusicInspirationJob(
   try {
     const request = inspirationRequestSchema.parse(job.request);
     const limits = INSPIRATION_LIMITS[request.depth];
-    const elapsed = (deps.clock ?? Date.now)() - Date.parse(job.created_at);
+    const elapsed =
+      (deps.clock ?? Date.now)() - Date.parse(job.research_started_at ?? job.created_at);
     let signal = AbortSignal.any([
       controller.signal,
       AbortSignal.timeout(Math.max(1, limits.timeoutMs - Math.max(0, elapsed))),
@@ -139,6 +140,8 @@ export async function executeMusicInspirationJob(
     // may still finalize an already obtained response after its dispatch window.
     if (savedReceipt) signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]);
     signal.throwIfAborted();
+    if (!savedReceipt && (deps.clock ?? Date.now)() - Date.parse(job.created_at) > 30 * 60 * 1000)
+      throw new Error("research_queue_expired");
     let budget: Awaited<ReturnType<typeof getMusicInspirationBudget>> | null = null;
     const ensureBudget = async () =>
       (budget ??= await (deps.budget ?? getMusicInspirationBudget)(
@@ -291,6 +294,7 @@ export async function executeMusicInspirationJob(
       "no_accessible_evidence",
       "model_unavailable",
       "research_prompt_too_large",
+      "research_queue_expired",
     ];
     await patch({
       status: controller.signal.aborted ? "cancelled" : uncertain ? "unknown" : "failed",
