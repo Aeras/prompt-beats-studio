@@ -11,6 +11,28 @@ INSERT INTO public.beta_testers(user_id) VALUES('c4510000-0000-4000-8000-0000000
 INSERT INTO public.ai_models(provider,provider_model_id,display_name,status,generator_compatible,generator_enabled)
  VALUES('openai','music-inspiration-sql-fixture','Local SQL only','enabled',true,true);
 UPDATE public.global_ai_usage_policy SET enabled=true;
+-- Transaction-only lifecycle fixtures: no promotion or policy change escapes rollback.
+SELECT set_config('request.jwt.claim.sub','c4510000-0000-4000-8000-000000000003',true);
+SELECT pg_temp.assert(NOT public.music_inspiration_access(auth.uid()),'Beta denies eligible non-cohort user');
+UPDATE public.beta_features SET stage='stable' WHERE feature_key='ai_music_inspiration';
+SELECT pg_temp.assert(public.music_inspiration_access(auth.uid()),'Stable permits eligible non-cohort user');
+SELECT pg_temp.assert(NOT public.music_inspiration_access('c4510000-0000-4000-8000-000000000001'),'Access helper cannot probe another caller');
+UPDATE public.beta_features SET stage='archived' WHERE feature_key='ai_music_inspiration';
+SELECT pg_temp.assert(NOT public.music_inspiration_access(auth.uid()),'Archived inspiration denies access');
+UPDATE public.beta_features SET stage='feature_access' WHERE feature_key='ai_music_inspiration';
+INSERT INTO public.feature_access_policies(feature_key,display_name,description,access_mode)
+ VALUES('ai_music_inspiration','AI Music Inspiration','Rollback-only policy fixture','disabled');
+SELECT pg_temp.assert(NOT public.music_inspiration_access(auth.uid()),'Promoted disabled policy enforced');
+UPDATE public.feature_access_policies SET access_mode='selected_users' WHERE feature_key='ai_music_inspiration';
+INSERT INTO public.feature_access_users(feature_key,user_id)VALUES('ai_music_inspiration','c4510000-0000-4000-8000-000000000003');
+SELECT pg_temp.assert(public.music_inspiration_access(auth.uid()),'Promoted explicit selected user allowed without Beta membership');
+SELECT set_config('request.jwt.claim.sub','c4510000-0000-4000-8000-000000000001',true);
+SELECT pg_temp.assert(NOT public.music_inspiration_access(auth.uid()),'Beta membership cannot bypass promoted selected-users policy');
+SELECT pg_temp.assert((SELECT access_mode='selected_users' FROM public.feature_access_policies WHERE feature_key='ai_music_inspiration'),'Caller checks preserve owner-selected policy');
+DELETE FROM public.feature_access_users WHERE feature_key='ai_music_inspiration';
+DELETE FROM public.feature_access_policies WHERE feature_key='ai_music_inspiration';
+UPDATE public.beta_features SET stage='beta' WHERE feature_key='ai_music_inspiration';
+SELECT set_config('request.jwt.claim.sub','',true);
 CREATE TEMP TABLE fixture(job_id uuid,execution_id uuid,lease uuid,profile_id uuid);
 GRANT SELECT,UPDATE ON fixture TO authenticated;
 DO $$ DECLARE first jsonb; again jsonb; lease uuid:=gen_random_uuid(); j public.music_inspiration_jobs; BEGIN
@@ -57,13 +79,14 @@ SELECT pg_temp.reject(format('SELECT public.save_music_inspiration_profile(NULL,
 SELECT pg_temp.reject('SELECT public.read_ai_execution_by_id_internal(NULL,NULL)');
 DO $$ DECLARE p public.music_inspiration_profiles; BEGIN
  p:=public.save_music_inspiration_profile(NULL,NULL,'Saved',(SELECT id FROM public.music_inspiration_jobs WHERE status='completed' LIMIT 1));
+ PERFORM pg_temp.assert(p.revision=1,'First profile save returns revision 1 for the public API');
  UPDATE fixture SET profile_id=p.id;
- p:=public.save_music_inspiration_profile(p.id,0,'Renamed',NULL);
- PERFORM pg_temp.assert(p.revision=1 AND p.result->>'trusted'='true','Profile CAS advances revision and retains trusted research');
- p:=public.save_music_inspiration_profile(p.id,1,NULL,NULL);
- PERFORM pg_temp.assert(p.name='Renamed' AND p.result->>'trusted'='true','NULL update retains name and result');
+ p:=public.save_music_inspiration_profile(p.id,1,'Renamed',NULL);
+ PERFORM pg_temp.assert(p.revision=2 AND p.result->>'trusted'='true','Profile CAS advances revision and retains trusted research');
+ p:=public.save_music_inspiration_profile(p.id,2,NULL,NULL);
+ PERFORM pg_temp.assert(p.revision=3 AND p.name='Renamed' AND p.result->>'trusted'='true','NULL update retains name and result');
 END $$;
-SELECT pg_temp.reject(format('SELECT public.save_music_inspiration_profile(%L,0,%L,%L)',profile_id,'Stale',NULL)) FROM fixture;
+SELECT pg_temp.reject(format('SELECT public.save_music_inspiration_profile(%L,1,%L,%L)',profile_id,'Stale',NULL)) FROM fixture;
 SELECT public.cancel_music_inspiration_job(job_id) FROM fixture;
 RESET ROLE;
 SELECT public.settle_music_inspiration_dispatch(job_id,'c4510000-0000-4000-8000-000000000022','observed','{"usage":"durable"}') FROM fixture;
@@ -76,7 +99,7 @@ SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)=0 FROM public.music_inspiration_jobs),'Foreign jobs invisible');
 SELECT pg_temp.assert((SELECT count(*)=0 FROM public.music_inspiration_profiles),'Foreign profiles invisible');
 SELECT pg_temp.assert((public.cancel_music_inspiration_job((SELECT job_id FROM fixture))).id IS NULL,'Foreign cancel unavailable');
-SELECT pg_temp.reject(format('SELECT public.delete_music_inspiration_profile(%L,1)',profile_id)) FROM fixture;
+SELECT pg_temp.reject(format('SELECT public.delete_music_inspiration_profile(%L,3)',profile_id)) FROM fixture;
 RESET ROLE;
 DELETE FROM public.beta_testers WHERE user_id='c4510000-0000-4000-8000-000000000001';
 SELECT set_config('request.jwt.claim.sub','c4510000-0000-4000-8000-000000000001',true);

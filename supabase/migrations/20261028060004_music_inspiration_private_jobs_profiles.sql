@@ -37,7 +37,7 @@ CREATE TABLE public.music_inspiration_profiles (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  name text NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 120),
  result jsonb NOT NULL CHECK(jsonb_typeof(result)='object' AND octet_length(result::text)<=2097152),
- revision integer NOT NULL DEFAULT 0 CHECK(revision>=0),
+ revision integer NOT NULL DEFAULT 1 CHECK(revision>=1),
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX music_inspiration_profiles_owner ON public.music_inspiration_profiles(owner_id,updated_at DESC);
@@ -48,10 +48,11 @@ REVOKE ALL ON public.music_inspiration_jobs,public.music_inspiration_dispatches,
 GRANT ALL ON public.music_inspiration_jobs,public.music_inspiration_dispatches,public.music_inspiration_profiles TO service_role;
 GRANT SELECT ON public.music_inspiration_jobs,public.music_inspiration_profiles TO authenticated;
 
--- Retain the explicit Beta cohort boundary even if the lifecycle is promoted.
+-- Caller-bound lifecycle access: Beta cohort and promoted policies use the standard helper.
 CREATE FUNCTION public.music_inspiration_access(_user_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT _user_id=auth.uid() AND public.current_user_can_use_feature('ai_music_inspiration') AND public.beta_can_test(_user_id);
+ SELECT _user_id=auth.uid() AND public.current_user_can_use_feature('ai_music_inspiration')
+  AND NOT EXISTS(SELECT 1 FROM public.beta_features WHERE feature_key='ai_music_inspiration' AND stage='archived');
 $$;
 REVOKE ALL ON FUNCTION public.music_inspiration_access(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.music_inspiration_access(uuid) TO authenticated;

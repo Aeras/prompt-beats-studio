@@ -135,12 +135,13 @@ SET LOCAL ROLE authenticated;
 SELECT public.save_music_inspiration_profile('$profile',NULL,'Original','$source_job');
 COMMIT;
 SQL
+[[ "$(query -c "SELECT revision=1 FROM public.music_inspiration_profiles WHERE id='$profile'")" == t ]]
 query <<SQL >/dev/null &
 BEGIN;
 SET application_name='music_inspiration_profile_barrier';
 SELECT set_config('request.jwt.claim.sub','$owner',true);
 SET LOCAL ROLE authenticated;
-SELECT public.save_music_inspiration_profile('$profile',0,'Winner',NULL);
+SELECT public.save_music_inspiration_profile('$profile',1,'Winner',NULL);
 SELECT pg_sleep(1.5);
 COMMIT;
 SQL
@@ -150,12 +151,12 @@ if query <<SQL >/dev/null 2>&1
 BEGIN;
 SELECT set_config('request.jwt.claim.sub','$owner',true);
 SET LOCAL ROLE authenticated;
-SELECT public.save_music_inspiration_profile('$profile',0,'Lost',NULL);
+SELECT public.save_music_inspiration_profile('$profile',1,'Lost',NULL);
 COMMIT;
 SQL
 then echo 'FAIL: stale profile overwrite' >&2;exit 1;fi
 wait "$first"
-[[ "$(query -c "SELECT revision=1 AND name='Winner' FROM public.music_inspiration_profiles WHERE id='$profile'")" == t ]]
+[[ "$(query -c "SELECT revision=2 AND name='Winner' FROM public.music_inspiration_profiles WHERE id='$profile'")" == t ]]
 # Security-state barrier: revoke wins before new admission, even with a service caller.
 query <<SQL >/dev/null &
 BEGIN;
