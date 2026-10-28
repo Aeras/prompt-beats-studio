@@ -1,5 +1,24 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — PR #456 responsive verification and keyboard viewport correction — IN_PROGRESS
+
+- **Baseline / scope:** main `ea5fde05d21c96308d8dbc371eb774dd2c0233e8`; existing Draft [PR #456](https://github.com/Aeras/prompt-beats-studio/pull/456), reviewed HEAD `d706d9bdbda757bdcfce345a4d39d916360901e0`. #455 remains overlapping: its native mode/depth/model selectors and concise pending-action labels are already included and preserved; do not merge it independently without reconciliation. No backend, admission, pricing, database or Atlas change.
+- **Confirmed failures:** Initial exact-head Browser Quality returned 201 PASS / 3 FAIL: the same obsolete non-admin assertion expected no native selects, although the mode selector is deliberately present. The test now positively asserts that mode remains available while both privileged selectors remain absent. A new deterministic keyboard regression also reproduced clipping when Android-style keyboard opening changes only visualViewport height/offset, leaving layout/dvh unchanged.
+- **Correction:** Both Inspiration dialogs subscribe to visualViewport resize/scroll only while open, center within its visible bounds and constrain width/height, with listener cleanup and existing CSS fallback. Confirmation actions wrap and retain touch height. No changes to #455 selector behavior or request/idempotency semantics.
+- **Local evidence:** Frozen Bun installation, strict TypeScript, changed-source ESLint, Prettier and production build PASS. Full offline Bun: **1,266 PASS / 0 FAIL / 12,817 assertions / 178 files** in a separate source snapshot with Linux-equivalent LF line endings. The untouched Windows CRLF checkout produced seven source-string assertion failures; no source assertion or unrelated repository file was changed to hide them. Targeted browser checks reproduced the keyboard failure before the fix and passed after it. Added all-control and replacement/deletion confirmation tests at **320x640, 360x740, 390x844, 768x1024, 1280x800 and 667x375**, plus visual-only keyboard resize/pan, confirmation and keyboard-close recovery. Every service is mocked; no real AI, deletion or production request is used. Headless Playwright emulates keyboard geometry; it cannot display an actual Android OS keyboard.
+- **Final verification evidence:** Full related desktop/tablet/mobile Playwright results and all three exact-final-HEAD Regression / Browser Quality / Database Replay run links are recorded together in PR #456 after completion. Earlier-head checks do not substitute for final-head checks. Original Browser Quality failure: https://github.com/Aeras/prompt-beats-studio/actions/runs/40700420270 .
+- **Release / rollback:** Implementation remains in the same Draft PR for review; merge and Lovable publish are separate and not performed. No migration is needed. Revert the scoped UI commit for rollback; do not remove unrelated failure-recovery or selector changes. No production release or real-device acceptance is claimed.
+
+## 2026-10-28 — Music Inspiration responsive modal follow-up — IN_PROGRESS
+
+- **Scope:** Extend existing PR #456 (not a new PR) for narrow mobile, tablet and desktop containment, including both research dialog and confirmation dialog. Current branch head updated with commit `53ed16765fa974ebb20ae7d35e288f97c49d251d`.
+- **Implementation:** Limit both dialogs by dynamic viewport; inner vertical scrolling; constrain width and horizontal overflow; wrap long localized messages, protect field minimum widths and prevent the parent panel from overflowing. No AI/server/database/cost behavior changed.
+- **Verification pending:** final-head Regression, Browser Quality and Database Replay; interactive viewport checks at 320/360/390px, tablet, desktop, landscape and on-screen keyboard; examine PR #455 overlap before integration. No merge, publish or production verification claimed.
+
+## 2026-10-28 — Music Inspiration smartphone dialog fit — IN_PROGRESS
+
+- Post-merge #454 feedback: research dialog overflows mobile viewport and controls are visually oversized. Scoped CSS correction constrains width and dynamic viewport height, makes content internally scrollable, reduces mobile spacing and allows long pending-request action to wrap. No server/Tavily or paid AI changes. Verify Browser Quality at final PR HEAD; production publish is separate.
+
 ## 2026-10-28 — Music Inspiration failure diagnosis and control recovery — IN_PROGRESS
 
 - **Verified baseline:** main `7ae95e2cfc34275b965293b5157fef818a0c0d98`, merged #451/#452/#453; separate branch `fix/music-inspiration-failure-stage` for this work. Production failure screenshot has generic alert; prior Supabase read showed no Inspiration jobs, which does not prove whether backend request reached hosting.

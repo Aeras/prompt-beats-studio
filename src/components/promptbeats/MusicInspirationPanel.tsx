@@ -121,6 +121,33 @@ export function MusicInspirationPanel({
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [preview, setPreview] = useState(false);
   const [confirm, setConfirm] = useState<"replace" | "delete" | null>(null);
+  // Mobile keyboards may resize/pan visualViewport without changing layout/dvh.
+  // Keep both dialogs in the visible area; the existing CSS is the fallback.
+  const [dialogViewport, setDialogViewport] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  }>();
+  const dialogVisible = open || confirm !== null;
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!dialogVisible || !viewport) return;
+    const update = () =>
+      setDialogViewport({
+        top: viewport.offsetTop + viewport.height / 2,
+        left: viewport.offsetLeft + viewport.width / 2,
+        width: Math.max(0, viewport.width - 16),
+        maxHeight: Math.max(0, viewport.height - 16),
+      });
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, [dialogVisible]);
   const [fields, setFields] = useState<InspirationApplyField[]>([...INSPIRATION_APPLY_FIELDS]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -518,7 +545,7 @@ export function MusicInspirationPanel({
     <section
       aria-label={t.title}
       data-testid="music-inspiration-panel"
-      className="min-w-0 space-y-3 rounded-xl border p-3"
+      className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-xl border p-3 [overflow-wrap:anywhere]"
     >
       <h2 className="font-semibold">{t.title}</h2>
       <CompactDropdown
@@ -569,28 +596,28 @@ export function MusicInspirationPanel({
           </Button>
         </DialogTrigger>
         <DialogContent
-          className="max-h-[90dvh] w-[calc(100vw-24px)] max-w-xl overflow-y-auto [&>button:last-child]:hidden"
+          style={dialogViewport}
+          className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 [overflow-wrap:anywhere] sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
           aria-label={t.title}
         >
-          <DialogTitle>{t.title}</DialogTitle>
+          <DialogTitle className="text-base leading-tight sm:text-lg">{t.title}</DialogTitle>
           <form
-            className="space-y-3"
+            className="min-w-0 max-w-full space-y-2 [&>button]:h-auto [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:break-words [&>button]:py-3 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               start();
             }}
           >
-            <CompactDropdown
-              {...dropdownProps("mode")}
-              placeholder={t.mode}
-              options={[
-                { value: "artist", label: t.artistMode },
-                { value: "description", label: t.descriptionMode },
-              ]}
+            <select
+              aria-label={t.mode}
               value={kind}
-              onValueChange={(v) => setKind(v as typeof kind)}
+              onChange={(event) => setKind(event.target.value as typeof kind)}
               disabled={busy || active(job)}
-            />
+              className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+            >
+              <option value="artist">{t.artistMode}</option>
+              <option value="description">{t.descriptionMode}</option>
+            </select>
             {kind === "artist" ? (
               <>
                 <label className="block" htmlFor={id + "artist"}>
@@ -633,28 +660,32 @@ export function MusicInspirationPanel({
             )}
             {config.data?.superAdmin && (
               <>
-                <CompactDropdown
-                  {...dropdownProps("depth")}
-                  placeholder={t.depth}
-                  options={[
-                    { value: "standard", label: t.standard },
-                    { value: "extended", label: t.extended },
-                  ]}
+                <select
+                  aria-label={t.depth}
                   value={depth}
-                  onValueChange={(v) => setDepth(v as typeof depth)}
+                  onChange={(event) => setDepth(event.target.value as typeof depth)}
                   disabled={busy || active(job)}
-                />
-                <CompactDropdown
-                  {...dropdownProps("model")}
-                  placeholder={t.model}
-                  options={[
-                    { value: "__default", label: t.serverDefault },
-                    ...config.data.models.map((m) => ({ value: m.id, label: m.label })),
-                  ]}
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+                >
+                  <option value="standard">{t.standard}</option>
+                  <option value="extended">{t.extended}</option>
+                </select>
+                <select
+                  aria-label={t.model}
                   value={modelOverride || "__default"}
-                  onValueChange={(v) => setModelOverride(v === "__default" ? "" : v)}
+                  onChange={(event) =>
+                    setModelOverride(event.target.value === "__default" ? "" : event.target.value)
+                  }
                   disabled={busy || active(job)}
-                />
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+                >
+                  <option value="__default">{t.serverDefault}</option>
+                  {config.data.models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
               </>
             )}
             {!config.data?.configured && (
@@ -668,6 +699,7 @@ export function MusicInspirationPanel({
               <Button
                 type="button"
                 variant="outline"
+                className="h-auto min-h-9 w-full whitespace-normal break-words py-2 text-center"
                 disabled={busy}
                 onClick={discardPendingAttempt}
               >
@@ -702,7 +734,11 @@ export function MusicInspirationPanel({
               {t.cancel}
             </Button>
           )}
-          {(error || poll.isError) && <p role="alert">{failureText}</p>}
+          {(error || poll.isError) && (
+            <p role="alert" className="min-w-0 break-words">
+              {failureText}
+            </p>
+          )}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
           </Button>
@@ -936,7 +972,10 @@ export function MusicInspirationPanel({
           if (!value) setConfirm(null);
         }}
       >
-        <DialogContent className="w-[calc(100vw-24px)] max-w-lg [&>button:last-child]:hidden">
+        <DialogContent
+          style={dialogViewport}
+          className="[&>button]:h-auto [&>button]:min-h-11 [&>button]:whitespace-normal [&>button]:break-words max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain p-3 [overflow-wrap:anywhere] sm:p-6 [&>button:last-child]:hidden"
+        >
           <DialogTitle>{confirm === "delete" ? t.deleteTitle : t.replaceTitle}</DialogTitle>
           <DialogDescription>
             {confirm === "delete" ? t.deleteDescription : t.replaceDescription}

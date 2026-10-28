@@ -323,7 +323,8 @@ test("non-admin sees server default and no extended or override picker", async (
   );
   await expect(modal.getByRole("combobox", { name: "Research model" })).toHaveCount(0);
   await expect(modal.getByRole("combobox", { name: "Research depth" })).toHaveCount(0);
-  await expect(modal.locator("select")).toHaveCount(0);
+  await expect(modal.locator("select")).toHaveCount(1);
+  await expect(modal.getByRole("combobox", { name: "Research mode" })).toBeVisible();
 });
 test("super-admin uses allowed compact selectors and free description", async ({ page }) => {
   const f = await fixture(page, { superAdmin: true });
@@ -334,8 +335,9 @@ test("super-admin uses allowed compact selectors and free description", async ({
     ["Research depth", "Extended"],
     ["Research model", "Allowed override"],
   ]) {
-    await modal.getByRole("combobox", { name, exact: true }).click();
-    await page.getByRole("option", { name: option, exact: true }).click();
+    await modal.getByRole("combobox", { name, exact: true }).selectOption({
+      label: option,
+    });
   }
   await modal
     .getByLabel("Describe the music")
@@ -470,6 +472,50 @@ test("Greek resources, keyboard dropdown, mobile layout and accessibility", asyn
   ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(violations).toEqual([]);
 });
+test("research dialog stays within portrait, tablet, desktop and landscape viewports", async ({
+  page,
+}) => {
+  await fixture(page, { superAdmin: true, greek: true });
+  for (const [width, height] of [
+    [320, 640],
+    [360, 740],
+    [390, 844],
+    [768, 1024],
+    [1280, 800],
+    [667, 375],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    const open = panel(page).getByRole("button", {
+      name: "Άνοιγμα μουσικής έρευνας",
+      exact: true,
+    });
+    await open.click();
+    const dialog = page.getByRole("dialog", { name: "Μουσική Έμπνευση", exact: true });
+    await expect(dialog).toBeVisible();
+    const dimensions = await dialog.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    expect(dimensions.left).toBeGreaterThanOrEqual(-1);
+    expect(dimensions.right).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
+    expect(dimensions.top).toBeGreaterThanOrEqual(-1);
+    expect(dimensions.bottom).toBeLessThanOrEqual(dimensions.viewportHeight + 1);
+    expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
+    await expect(
+      dialog.getByRole("combobox", { name: "Μοντέλο έρευνας", exact: true }),
+    ).toBeVisible();
+    await dialog.getByRole("button", { name: "Κλείσιμο", exact: true }).click();
+  }
+});
+
 test("denied account cannot open research or read saved profiles", async ({ page }) => {
   const f = await fixture(page, { allowed: false });
   await expect(
@@ -563,7 +609,7 @@ test("user can discard uncertain research and start a different request explicit
   await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   await expect(modal.getByRole("alert")).toBeVisible();
-  await modal.getByRole("button", { name: /Discard this request and start over/ }).click();
+  await modal.getByRole("button", { name: "Discard pending request" }).click();
   await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   const starts = f.calls.filter((call) => call.name.includes("startMusicInspiration"));
@@ -678,5 +724,161 @@ for (const malformed of ["profiles", "config"] as const) {
     expect(f.calls.some((c) => c.name.includes("startMusicInspiration"))).toBe(false);
     expect(pageErrors).toEqual([]);
     expect(duplicateKeys).toEqual([]);
+  });
+}
+
+test("keyboard visual viewport keeps focused fields and dialog actions reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fixture(page, { superAdmin: true });
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await dialog.getByLabel("Artist or group", { exact: true }).fill("Keyboard viewport fixture");
+  // Android may resize/pan only the visual viewport, leaving layout/dvh unchanged.
+  // Headless Chromium cannot open a real operating-system keyboard.
+  await page.evaluate(() => {
+    const viewport = window.visualViewport!;
+    Object.defineProperties(viewport, {
+      height: { configurable: true, value: 310 },
+      offsetTop: { configurable: true, value: 80 },
+    });
+    viewport.dispatchEvent(new Event("resize"));
+    viewport.dispatchEvent(new Event("scroll"));
+  });
+  await expect
+    .poll(async () =>
+      dialog.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.top >= 79 && rect.bottom <= 391;
+      }),
+    )
+    .toBe(true);
+  for (const control of [
+    dialog.getByLabel("Artist or group", { exact: true }),
+    dialog.getByLabel("Song (optional)", { exact: true }),
+    dialog.getByRole("combobox", { name: "Research model", exact: true }),
+    dialog.getByRole("button", { name: "Research", exact: true }),
+    dialog.getByRole("button", { name: "Close", exact: true }),
+  ]) {
+    await control.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await expect(control).toBeInViewport({ ratio: 1 });
+    const box = await control.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(79);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(391);
+  }
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await page.evaluate(() => {
+    Reflect.deleteProperty(window.visualViewport!, "height");
+    Reflect.deleteProperty(window.visualViewport!, "offsetTop");
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+  });
+  await selectProfile(page);
+  await panel(page).getByRole("button", { name: "Delete profile", exact: true }).click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Delete this saved profile?",
+    exact: true,
+  });
+  await page.evaluate(() => {
+    Object.defineProperties(window.visualViewport!, {
+      height: { configurable: true, value: 240 },
+      offsetTop: { configurable: true, value: 40 },
+    });
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+    window.visualViewport!.dispatchEvent(new Event("scroll"));
+  });
+  await expect
+    .poll(() =>
+      confirmation.evaluate((element) => {
+        const r = element.getBoundingClientRect();
+        return r.top >= 39 && r.bottom <= 281 && element.scrollWidth <= element.clientWidth + 1;
+      }),
+    )
+    .toBe(true);
+  for (const button of await confirmation.getByRole("button").filter({ visible: true }).all()) {
+    await button.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const box = await button.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(39);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(281);
+  }
+  await confirmation.getByRole("button", { name: "Back", exact: true }).click();
+});
+
+for (const [width, height] of [
+  [320, 640],
+  [360, 740],
+  [390, 844],
+  [768, 1024],
+  [1280, 800],
+  [667, 375],
+] as const) {
+  test(`research controls and both confirmations fit ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const f = await fixture(page, { superAdmin: true });
+    const fits = async (dialog: ReturnType<Page["getByRole"]>) => {
+      await expect
+        .poll(async () =>
+          dialog.evaluate((element) => {
+            const r = element.getBoundingClientRect();
+            return (
+              r.left >= -1 &&
+              r.top >= -1 &&
+              r.right <= innerWidth + 1 &&
+              r.bottom <= innerHeight + 1 &&
+              element.scrollWidth <= element.clientWidth + 1 &&
+              document.documentElement.scrollWidth <= innerWidth + 1
+            );
+          }),
+        )
+        .toBe(true);
+      const controls = dialog.locator("input, textarea, select, button").filter({ visible: true });
+      for (const control of await controls.all()) {
+        await control.evaluate((element) => element.scrollIntoView({ block: "center" }));
+        await expect(control).toBeInViewport({ ratio: 1 });
+        await expect(control).toBeEnabled();
+        const visible = await control.evaluate((element) => {
+          const r = element.getBoundingClientRect();
+          const d = element.closest('[role="dialog"]')!.getBoundingClientRect();
+          return (
+            r.left >= d.left - 1 &&
+            r.right <= d.right + 1 &&
+            r.top >= d.top - 1 &&
+            r.bottom <= d.bottom + 1
+          );
+        });
+        expect(visible).toBe(true);
+      }
+    };
+    await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+    await dialog.getByLabel("Artist or group", { exact: true }).fill("Long artist ".repeat(15));
+    await dialog.getByLabel("Song (optional)", { exact: true }).fill("Long song ".repeat(15));
+    await fits(dialog);
+    await dialog
+      .getByRole("combobox", { name: "Research mode", exact: true })
+      .selectOption("description");
+    await dialog
+      .getByLabel("Describe the music", { exact: true })
+      .fill("Detailed music description ".repeat(40));
+    await fits(dialog);
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await selectProfile(page);
+    await panel(page).getByRole("button", { name: "Preview", exact: true }).click();
+    await panel(page).getByRole("button", { name: "Replace selected fields", exact: true }).click();
+    const replacement = page.getByRole("dialog", { name: "Replace existing values?", exact: true });
+    await fits(replacement);
+    await replacement.getByRole("button", { name: "Back", exact: true }).click();
+    await panel(page).getByRole("button", { name: "Delete profile", exact: true }).click();
+    const deletion = page.getByRole("dialog", { name: "Delete this saved profile?", exact: true });
+    await fits(deletion);
+    await page.screenshot({ path: test.info().outputPath(`confirmation-${width}x${height}.png`) });
+    await deletion.getByRole("button", { name: "Back", exact: true }).click();
+    expect(
+      f.calls.some(
+        (call) =>
+          call.name.includes("startMusicInspiration") ||
+          call.name.includes("deleteMusicInspirationProfile"),
+      ),
+    ).toBe(false);
   });
 }
