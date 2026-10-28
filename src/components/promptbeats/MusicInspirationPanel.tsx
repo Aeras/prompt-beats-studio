@@ -574,23 +574,22 @@ export function MusicInspirationPanel({
         >
           <DialogTitle className="text-base leading-tight sm:text-lg">{t.title}</DialogTitle>
           <form
-            className="min-w-0 max-w-full space-y-2 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
+            className="min-w-0 max-w-full space-y-2 [&>button]:h-auto [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:break-words [&>button]:py-3 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               start();
             }}
           >
-            <CompactDropdown
-              {...dropdownProps("mode")}
-              placeholder={t.mode}
-              options={[
-                { value: "artist", label: t.artistMode },
-                { value: "description", label: t.descriptionMode },
-              ]}
+            <select
+              aria-label={t.mode}
               value={kind}
-              onValueChange={(v) => setKind(v as typeof kind)}
+              onChange={(event) => setKind(event.target.value as typeof kind)}
               disabled={busy || active(job)}
-            />
+              className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+            >
+              <option value="artist">{t.artistMode}</option>
+              <option value="description">{t.descriptionMode}</option>
+            </select>
             {kind === "artist" ? (
               <>
                 <label className="block" htmlFor={id + "artist"}>
@@ -633,28 +632,32 @@ export function MusicInspirationPanel({
             )}
             {config.data?.superAdmin && (
               <>
-                <CompactDropdown
-                  {...dropdownProps("depth")}
-                  placeholder={t.depth}
-                  options={[
-                    { value: "standard", label: t.standard },
-                    { value: "extended", label: t.extended },
-                  ]}
+                <select
+                  aria-label={t.depth}
                   value={depth}
-                  onValueChange={(v) => setDepth(v as typeof depth)}
+                  onChange={(event) => setDepth(event.target.value as typeof depth)}
                   disabled={busy || active(job)}
-                />
-                <CompactDropdown
-                  {...dropdownProps("model")}
-                  placeholder={t.model}
-                  options={[
-                    { value: "__default", label: t.serverDefault },
-                    ...config.data.models.map((m) => ({ value: m.id, label: m.label })),
-                  ]}
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+                >
+                  <option value="standard">{t.standard}</option>
+                  <option value="extended">{t.extended}</option>
+                </select>
+                <select
+                  aria-label={t.model}
                   value={modelOverride || "__default"}
-                  onValueChange={(v) => setModelOverride(v === "__default" ? "" : v)}
+                  onChange={(event) =>
+                    setModelOverride(event.target.value === "__default" ? "" : event.target.value)
+                  }
                   disabled={busy || active(job)}
-                />
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
+                >
+                  <option value="__default">{t.serverDefault}</option>
+                  {config.data.models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
               </>
             )}
             {!config.data?.configured && (
@@ -703,7 +706,7 @@ export function MusicInspirationPanel({
               {t.cancel}
             </Button>
           )}
-          {(error || poll.isError) && <p role="alert">{failureText}</p>}
+          {(error || poll.isError) && <p role="alert" className="min-w-0 break-words">{failureText}</p>}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
           </Button>
