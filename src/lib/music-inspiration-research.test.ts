@@ -14,6 +14,7 @@ import {
   inspirationQueries,
   publicInspirationUrl,
   searchInspirationWeb,
+  reconcileInspirationArrangement,
   synthesizeMusicInspiration,
 } from "./music-inspiration-research.server";
 
@@ -313,6 +314,71 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
   expect(synthesized.result.sources[0]).toEqual(source);
   expect(synthesized.receipt).toBe(response);
 
+  const decorated = structuredClone(result);
+  decorated.proposal.songStructure = ["Verse — 16 bars", "Chorus — 8 bars"];
+  expect(inspirationResearchSchema.safeParse(decorated).success).toBe(false);
+  response = { ...response, text: JSON.stringify(decorated) };
+  calls = 0;
+  const normalized = await synthesizeMusicInspiration(request, [{ source, text }], caller, signal);
+  expect(calls).toBe(1);
+  expect(normalized.result.proposal.blueprint.map((s) => s.sectionType)).toEqual(
+    decorated.proposal.songStructure,
+  );
+  expect(normalized.receipt.text).toBe(JSON.stringify(decorated));
+  expect(normalized.result.sources).toEqual(result.sources);
+
+  const metadata = structuredClone(decorated);
+  metadata.sources[0]!.title = "A translated title";
+  metadata.sources[0]!.locator = "A paraphrased locator";
+  metadata.sources[0]!.receipt!.retrievedAt = "2026-10-28T01:00:00.000Z";
+  response = { ...response, text: JSON.stringify(metadata) };
+  const canonicalized = await synthesizeMusicInspiration(
+    request,
+    [{ source, text }],
+    caller,
+    signal,
+  );
+  expect(canonicalized.result.sources).toEqual(result.sources);
+  expect(canonicalized.result.evidence).toEqual(result.evidence);
+  expect(canonicalized.receipt.text).toBe(JSON.stringify(metadata));
+  for (const field of [
+    "url",
+    "hash",
+    "receipt-hash",
+    "receipt-url",
+    "accessibility",
+    "unknown-source",
+  ] as const) {
+    const forged = structuredClone(metadata);
+    if (field === "url") forged.sources[0]!.url = "https://example.org/unvisited";
+    if (field === "hash") forged.sources[0]!.contentSha256 = "a".repeat(64);
+    if (field === "receipt-hash") forged.sources[0]!.receipt!.contentSha256 = "b".repeat(64);
+    if (field === "receipt-url")
+      forged.sources[0]!.receipt!.finalUrl = "https://example.org/unvisited";
+    if (field === "accessibility") forged.sources[0]!.accessedEvidence = "search_snippet";
+    if (field === "unknown-source") forged.sources[0]!.id = "unvisited";
+    response = { ...response, text: JSON.stringify(forged) };
+    calls = 0;
+    await expect(
+      synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        stage:
+          field === "unknown-source" || field === "accessibility" ? "ai_schema" : "ai_evidence",
+      },
+    });
+    expect(calls).toBe(1);
+  }
+
+  const conflicting = structuredClone(result);
+  conflicting.proposal.blueprint[0]!.sectionType = "Chorus";
+  response = { ...response, text: JSON.stringify(conflicting) };
+  calls = 0;
+  await expect(
+    synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
+  ).rejects.toMatchObject({ diagnostic: { stage: "ai_schema", field: "proposal.blueprint" } });
+  expect(calls).toBe(1);
+
   const fabricated = structuredClone(result);
   fabricated.evidence[0]!.citedPassages[0]!.quote =
     "Fabricated quotation not present in the retrieved document.";
@@ -322,4 +388,69 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
     synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
   ).rejects.toThrow("Quote is not an exact retrieved substring");
   expect(calls).toBe(1);
+});
+
+describe("provider arrangement label reconciliation", () => {
+  const proposal = (structure: string[], names = structure) => ({
+    proposal: {
+      songStructure: structure,
+      blueprint: names.map((sectionType, structureIndex) => ({
+        structureIndex,
+        sectionType,
+        instruction: "Preserve this instruction",
+        energy: 3,
+      })),
+    },
+  });
+  test.each([" — ", " – ", " - ", ": "])(
+    "keeps complete multilingual annotated labels with separator %s",
+    (separator: string) => {
+      const input = proposal(
+        ["Куплет 1" + separator + "16 тактов", "Ρεφρέν" + separator + "8 μέτρα"],
+        ["Куплет 1", "Ρεφρέν"],
+      );
+      const before = structuredClone(input);
+      const result = reconcileInspirationArrangement(input) as typeof input;
+      expect(result.proposal.songStructure).toEqual(input.proposal.songStructure);
+      expect(result.proposal.blueprint.map((s) => s.sectionType)).toEqual(
+        input.proposal.songStructure,
+      );
+      expect(result.proposal.blueprint.map((s) => s.instruction)).toEqual([
+        "Preserve this instruction",
+        "Preserve this instruction",
+      ]);
+      expect(result.proposal.blueprint.map((s) => s.energy)).toEqual([3, 3]);
+      expect(input).toEqual(before);
+      expect(reconcileInspirationArrangement(result)).toEqual(result);
+    },
+  );
+  test("reverse annotation retains every part of the longer label", () => {
+    const input = proposal(["Verse", "Chorus"], ["Verse — 16 bars", "Chorus"]);
+    expect((reconcileInspirationArrangement(input) as typeof input).proposal.songStructure).toEqual(
+      ["Verse — 16 bars", "Chorus"],
+    );
+  });
+  test("does not guess conflicting labels, reorder, or repair malformed shape", () => {
+    for (const input of [
+      proposal(["Verse", "Chorus"], ["Chorus", "Verse"]),
+      proposal(["Verse — 16 bars"], ["Verse — 8 bars"]),
+      proposal(["Verse 10"], ["Verse 1"]),
+      proposal(["Verse — "], ["Verse"]),
+      proposal(["Verse", "Chorus"], ["Verse"]),
+      {
+        proposal: {
+          songStructure: ["Verse"],
+          blueprint: [{ structureIndex: 1, sectionType: "Verse", instruction: "x", energy: 2 }],
+        },
+      },
+      {
+        proposal: {
+          songStructure: ["Verse"],
+          blueprint: [{ structureIndex: 0, sectionType: "Verse", instruction: "x", energy: 99 }],
+        },
+      },
+      null,
+    ])
+      expect(reconcileInspirationArrangement(input)).toBe(input);
+  });
 });

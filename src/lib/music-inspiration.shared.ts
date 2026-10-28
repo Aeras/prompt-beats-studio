@@ -261,6 +261,8 @@ Follow the stages in order:
    A style suggestion is not evidence about a recorded song. Avoid copying identifiable melodies or lyrics.
 6. Produce a bounded structured profile for the Advanced Generator:
    styles, moods, instrumentation, tempo suggestion, production, arrangement, section-level blueprint and energy.
+   songStructure and blueprint have identical lengths and order; blueprint[i].structureIndex is i (zero-based),
+   and blueprint[i].sectionType exactly equals songStructure[i]. Put durations/bar counts in instruction.
    Never set theme, song language, artist identity, lyrics, target platform, preset or cultural style.
 7. Review contradictions, overlapping instruments, section consistency, creative overreach, source safety and limits.
 8. Output only validated structured JSON matching the supplied schema; provide limitations and unknowns.

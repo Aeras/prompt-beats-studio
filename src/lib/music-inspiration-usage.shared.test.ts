@@ -168,3 +168,27 @@ test("actual quote loader accepts old/unverified/missing tariffs without affecti
   state.throw = true;
   expect((await exported.getMusicInspirationPrices("fixture", "openai")).input).toBeNull();
 });
+
+test("observed cache writes without an administrator tariff keep estimation partial, not free or double-counted", () => {
+  const report = summarizeInspirationUsage({
+    prices: { input: 2, output: 10, cached: null, cacheWrite: null, searchCreditUsd: 0.008 },
+    usage: {
+      inputTokens: 4071,
+      outputTokens: 4198,
+      totalTokens: 8269,
+      reasoningTokens: 185,
+      cachedInputTokens: 0,
+      cacheWriteTokens: 4068,
+      providerReportedCostUsd: 0.052156,
+    },
+    aiDispatched: true,
+    aiFinal: true,
+    searches: [{ state: "observed", credits: 5 }],
+  });
+  expect(report.aiCostUsd).toBeNull();
+  expect(report.totalCostUsd).toBeNull();
+  expect(report.cacheWriteTokens).toBe(4068);
+  expect(report.searchCostUsd).toBe(0.04);
+  expect(report.providerReportedCostUsd).toBe(0.052156);
+  expect(report.complete).toBe(false);
+});
