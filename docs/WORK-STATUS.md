@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — AI Music Inspiration Beta — IN_PROGRESS
+
+- **Status: IN_PROGRESS, Draft implementation only.** Independent feature branch `feature/ai-music-inspiration-beta` from main `fdf34b2e601dc90d4fbdaf1a3192ff948f09f698`. Atlas V4 PR #450 remains paused and untouched; no runtime consumption of its review-only data.
+- **Implemented so far:** `src/lib/music-inspiration.shared.ts` adds strict source-grounded research/request/proposal schemas and versioned backend research prompt. `src/lib/music-inspiration.shared.test.ts` contains focused source/provenance/blueprint negative tests. These are preparatory code, **not** a live search, working UI, persisted profiles, production behavior or certified research. Tests not yet locally executed; CI is authoritative only once run for the exact head.
+- **Remaining in same feature PR:** complete verified existing Generator/model/Beta/server contracts; secure web search infrastructure and source retrieval, Atlas-first approved-only read path; actual server-side admission/model resolution/quotas/cost limits; profile CRUD with user-owned RLS; preview/apply with non-destructive fields and Blueprint/Energy; beta controls, robust async jobs, server validation, accessibility, i18n, tests and mandatory gates; explicit release decisions. No production migration, paid call, merge or publish authorized.
+- **Product agreement:** artist with optional song OR free description; standard/extended research; default Generator AI model with Super Admin-only choice; no audio analysis; evidence versus creative suggestions; completed research allows immediate apply, preview, save; saved account profiles in top Generator dropdown; theme and language never changed. Stable access policy selected by owner after Beta.
+
+
 Read root `AGENTS.md` first. This ledger is **not** an audit report: it records independently verified current work, deployment status and evidence. Do not infer that a merged PR means release complete.
 
 ## Status vocabulary
