@@ -440,7 +440,7 @@ test("poll failure reports a real error and preserves manual edits", async ({ pa
   const f = await fixture(page);
   f.failPoll();
   await startResearch(page);
-  await expect(panel(page).getByRole("alert")).toContainText("operation failed");
+  await expect(panel(page).getByRole("alert")).toContainText("Research status could not be checked.");
   await expect(panel(page).getByRole("button", { name: "Apply to empty fields" })).toHaveCount(0);
 });
 test("partial result labels limitations", async ({ page }) => {
@@ -646,7 +646,11 @@ for (const malformed of ["profiles", "config"] as const) {
         duplicateKeys.push(message.text());
     });
     const f = await fixture(page, { malformed, superAdmin: true });
-    await expect(panel(page).getByRole("alert")).toContainText("The operation failed.");
+    await expect(panel(page).getByRole("alert")).toContainText(
+      malformed === "config"
+        ? "Research setup could not be loaded."
+        : "Saved profiles could not be loaded.",
+    );
     const production = page.getByRole("textbox", { name: "Production Style", exact: true });
     const instructions = page.getByRole("textbox", {
       name: "Additional Instructions",
