@@ -551,7 +551,9 @@ test("lost start acknowledgment retries the same durable idempotency key", async
   expect(saved).not.toHaveProperty("result");
 });
 
-test("user can discard uncertain research and start a different request explicitly", async ({ page }) => {
+test("user can discard uncertain research and start a different request explicitly", async ({
+  page,
+}) => {
   const f = await fixture(page);
   f.loseStartAck();
   await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
