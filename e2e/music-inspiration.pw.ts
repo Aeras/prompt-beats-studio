@@ -551,6 +551,22 @@ test("lost start acknowledgment retries the same durable idempotency key", async
   expect(saved).not.toHaveProperty("result");
 });
 
+test("user can discard uncertain research and start a different request explicitly", async ({ page }) => {
+  const f = await fixture(page);
+  f.loseStartAck();
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
+  await modal.getByRole("button", { name: "Research", exact: true }).click();
+  await expect(modal.getByRole("alert")).toBeVisible();
+  await modal.getByRole("button", { name: /Discard this request and start over/ }).click();
+  await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
+  await modal.getByRole("button", { name: "Research", exact: true }).click();
+  const starts = f.calls.filter((call) => call.name.includes("startMusicInspiration"));
+  expect(starts).toHaveLength(2);
+  expect(starts[0]!.data.requestId).not.toBe(starts[1]!.data.requestId);
+});
+
 test("reload recovers a known job with reads and never starts paid research", async ({ page }) => {
   const f = await fixture(page);
   f.finish(false);
