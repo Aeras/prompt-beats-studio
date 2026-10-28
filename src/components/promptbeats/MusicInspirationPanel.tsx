@@ -295,6 +295,19 @@ export function MusicInspirationPanel({
       if (completed(stored) && stored.result) setOrigin({ kind: "job", id: stored.id });
     }, "status");
   }
+  function discardPendingAttempt() {
+    if (!uid || busy || !attempt || attempt.jobId) return;
+    // Discarding the local request does not cancel any server-side work or refund
+    // a possible provider charge. Never automatically retry an uncertain request.
+    try {
+      localStorage.removeItem(attemptKey(uid));
+      setAttempt(null);
+      setError(false);
+      setFailedStage(null);
+    } catch {
+      setStorageError(true);
+    }
+  }
   function start() {
     if (
       !request.success ||
@@ -567,7 +580,7 @@ export function MusicInspirationPanel({
               ]}
               value={kind}
               onValueChange={(v) => setKind(v as typeof kind)}
-              disabled={busy || active(job) || (!!attempt && !attempt.jobId)}
+              disabled={busy || active(job)}
             />
             {kind === "artist" ? (
               <>
@@ -641,6 +654,16 @@ export function MusicInspirationPanel({
                   ? t.costUnavailable
                   : t.unavailable}
               </p>
+            )}
+            {attempt && !attempt.jobId && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={discardPendingAttempt}
+              >
+                {t.discardPending}
+              </Button>
             )}
             <Button
               variant="outline"
