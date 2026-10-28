@@ -471,11 +471,23 @@ test("Greek resources, keyboard dropdown, mobile layout and accessibility", asyn
   ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(violations).toEqual([]);
 });
-test("research dialog stays within portrait, tablet, desktop and landscape viewports", async ({ page }) => {
+test("research dialog stays within portrait, tablet, desktop and landscape viewports", async ({
+  page,
+}) => {
   await fixture(page, { superAdmin: true, greek: true });
-  for (const [width, height] of [[320, 640], [360, 740], [390, 844], [768, 1024], [1280, 800], [667, 375]] as const) {
+  for (const [width, height] of [
+    [320, 640],
+    [360, 740],
+    [390, 844],
+    [768, 1024],
+    [1280, 800],
+    [667, 375],
+  ] as const) {
     await page.setViewportSize({ width, height });
-    const open = panel(page).getByRole("button", { name: "Άνοιγμα μουσικής έρευνας", exact: true });
+    const open = panel(page).getByRole("button", {
+      name: "Άνοιγμα μουσικής έρευνας",
+      exact: true,
+    });
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Μουσική Έμπνευση", exact: true });
     await expect(dialog).toBeVisible();
@@ -496,7 +508,9 @@ test("research dialog stays within portrait, tablet, desktop and landscape viewp
     expect(dimensions.top).toBeGreaterThanOrEqual(-1);
     expect(dimensions.bottom).toBeLessThanOrEqual(dimensions.viewportHeight + 1);
     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
-    await expect(dialog.getByRole("combobox", { name: "Μοντέλο έρευνας", exact: true })).toBeVisible();
+    await expect(
+      dialog.getByRole("combobox", { name: "Μοντέλο έρευνας", exact: true }),
+    ).toBeVisible();
     await dialog.getByRole("button", { name: "Κλείσιμο", exact: true }).click();
   }
 });
