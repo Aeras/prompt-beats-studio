@@ -5,6 +5,8 @@ import { usageEvidence } from "./ai-usage-evidence";
 import type { ModelCall, ModelResult, ModelCaller } from "./ai-provider.server";
 
 export type ExecutionContext = {
+  /** Server-owned durable identity for standalone research; never a client job ID. */
+  executionId?: string;
   userId: string;
   operation: AiOperation;
   generationId?: string | null | undefined;
@@ -80,6 +82,11 @@ export async function observeExecution(id: string, userId: string, usage: Normal
     });
 }
 export async function readExecution(context: ExecutionContext): Promise<Execution | null> {
+  if (context.executionId)
+    return (await write("read_ai_execution_by_id_internal", {
+      _user_id: context.userId,
+      _execution_id: context.executionId,
+    })) as Execution | null;
   if (!context.jobId && !context.qualityActionId) return null;
   return (await write("read_ai_execution_internal", {
     _user_id: context.userId,
@@ -116,7 +123,7 @@ export function trackedCaller(
       throw new Error("Provider execution is unresolved; automatic redispatch is forbidden.");
     return (deps.dispatchAdmission ?? withAiDispatchAdmission)(async () => {
       input.abortSignal?.throwIfAborted();
-      const id = crypto.randomUUID();
+      const id = context.executionId ?? crypto.randomUUID();
       call.executionId = id;
       await (deps.begin ?? beginExecution)(id, context, provider, model);
       // A cancel during the journal write must not result in another dispatch.

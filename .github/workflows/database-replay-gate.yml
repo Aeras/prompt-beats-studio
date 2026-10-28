@@ -116,6 +116,8 @@ jobs:
           bash scripts/tests/failed-generation-reconciliation-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/song_atlas_beta.sql
           bash scripts/tests/song-atlas-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/music_inspiration.sql
+          bash scripts/tests/music-inspiration-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database
         if: always()

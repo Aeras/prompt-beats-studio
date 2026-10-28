@@ -12,6 +12,21 @@ export type BetaFeatureDefinition = {
  */
 export const BETA_FEATURES = [
   {
+    key: "ai_music_inspiration",
+    name: "AI Music Inspiration",
+    description: "Private evidence-based music research and reusable Generator profiles.",
+    registrationMigration:
+      "supabase/migrations/20261028060004_music_inspiration_private_jobs_profiles.sql",
+    entrypoints: [
+      { path: "src/components/promptbeats/MusicInspirationPanel.tsx", kind: "client" },
+      { path: "src/lib/music-inspiration.functions.ts", kind: "server" },
+      {
+        path: "supabase/migrations/20261028060004_music_inspiration_private_jobs_profiles.sql",
+        kind: "sql",
+      },
+    ],
+  },
+  {
     key: "cultural_song_atlas",
     name: "Cultural Song Atlas",
     description:
