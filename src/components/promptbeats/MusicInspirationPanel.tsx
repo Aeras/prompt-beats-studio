@@ -121,6 +121,33 @@ export function MusicInspirationPanel({
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [preview, setPreview] = useState(false);
   const [confirm, setConfirm] = useState<"replace" | "delete" | null>(null);
+  // Mobile keyboards may resize/pan visualViewport without changing layout/dvh.
+  // Keep both dialogs in the visible area; the existing CSS is the fallback.
+  const [dialogViewport, setDialogViewport] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  }>();
+  const dialogVisible = open || confirm !== null;
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!dialogVisible || !viewport) return;
+    const update = () =>
+      setDialogViewport({
+        top: viewport.offsetTop + viewport.height / 2,
+        left: viewport.offsetLeft + viewport.width / 2,
+        width: Math.max(0, viewport.width - 16),
+        maxHeight: Math.max(0, viewport.height - 16),
+      });
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, [dialogVisible]);
   const [fields, setFields] = useState<InspirationApplyField[]>([...INSPIRATION_APPLY_FIELDS]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -569,6 +596,7 @@ export function MusicInspirationPanel({
           </Button>
         </DialogTrigger>
         <DialogContent
+          style={dialogViewport}
           className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 [overflow-wrap:anywhere] sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
           aria-label={t.title}
         >
@@ -944,7 +972,10 @@ export function MusicInspirationPanel({
           if (!value) setConfirm(null);
         }}
       >
-        <DialogContent className="max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain p-3 [overflow-wrap:anywhere] sm:p-6 [&>button:last-child]:hidden">
+        <DialogContent
+          style={dialogViewport}
+          className="[&>button]:h-auto [&>button]:min-h-11 [&>button]:whitespace-normal [&>button]:break-words max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain p-3 [overflow-wrap:anywhere] sm:p-6 [&>button:last-child]:hidden"
+        >
           <DialogTitle>{confirm === "delete" ? t.deleteTitle : t.replaceTitle}</DialogTitle>
           <DialogDescription>
             {confirm === "delete" ? t.deleteDescription : t.replaceDescription}
