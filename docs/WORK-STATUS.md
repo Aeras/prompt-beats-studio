@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration remove redundant pending-start explanation — IN_PROGRESS
+
+- **Scope:** The live Android screenshot shows a long `pendingAttempt` paragraph below the Music Inspiration research button, taking up the compact Generator screen. In the merged #456 main implementation it is rendered only for a locally unacknowledged start. Remove that *panel-only* paragraph; preserve the retry/discard controls within the modal, idempotent request ID, local recovery and all existing backend safeguards. No migrations, AI requests or production mutations.
+- **Implementation:** One scoped change in `src/components/promptbeats/MusicInspirationPanel.tsx`, branch `fix/music-inspiration-hide-pending-explanation`. The existing `pendingAttempt` translation is deliberately retained for future contextual help or diagnostics, but not shown on the main panel.
+- **Acceptance / release:** Confirm the verbose paragraph is absent for pending-unacknowledged state while retry/discard remain available and no new paid research automatically starts. Verify Regression, Browser Quality, Database Replay at exact HEAD, review/merge, then separate Lovable publish and production verification. Until then status remains IN_PROGRESS, and no production change is claimed.
+
 ## 2026-10-28 — PR #456 responsive verification and keyboard viewport correction — IN_PROGRESS
 
 - **Baseline / scope:** main `ea5fde05d21c96308d8dbc371eb774dd2c0233e8`; existing Draft [PR #456](https://github.com/Aeras/prompt-beats-studio/pull/456), reviewed HEAD `d706d9bdbda757bdcfce345a4d39d916360901e0`. #455 remains overlapping: its native mode/depth/model selectors and concise pending-action labels are already included and preserved; do not merge it independently without reconciliation. No backend, admission, pricing, database or Atlas change.
