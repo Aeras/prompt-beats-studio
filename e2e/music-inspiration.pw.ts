@@ -938,6 +938,9 @@ test("edited unacknowledged form uses the new model only after server abandonmen
     .getByRole("combobox", { name: "Research model", exact: true })
     .selectOption("allowed-override");
   await modal.getByRole("button", { name: "Start new research", exact: true }).click();
+  await expect
+    .poll(() => f.calls.filter((c) => c.name.includes("startMusicInspiration")))
+    .toHaveLength(2);
   const starts = f.calls.filter((c) => c.name.includes("startMusicInspiration"));
   expect(starts).toHaveLength(2);
   expect(starts[1]!.data.modelOverride).toBe("allowed-override");

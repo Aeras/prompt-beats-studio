@@ -410,6 +410,8 @@ export function MusicInspirationPanel({
           return;
         }
       }
+      // Reconciliation awaited a server response; account/feature/unmount may have changed.
+      if (!valid()) return;
       // Fail closed if durable idempotency cannot be recorded before dispatch.
       localStorage.setItem(attemptKey(account), JSON.stringify(candidate));
       setAttempt(candidate);
