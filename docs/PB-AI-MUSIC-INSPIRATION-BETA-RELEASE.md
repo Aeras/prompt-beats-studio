@@ -33,7 +33,7 @@ These application guards do **not** prove an external provider will bill within 
 
 - Frozen Bun installation with committed lockfile and Zod 4.6.7: PASS; no package/lock changes.
 - Focused Bun: **59 PASS**. Full Bun: **1,248 PASS / 0 FAIL / 12,758 assertions / 177 files**. Strict TypeScript, changed-source lint/format and production build PASS; lint retains four pre-existing hook warnings in generate.tsx. No paid provider calls.
-- Focused Playwright: **63/63 PASS**, 21 cases each on desktop/tablet/mobile; synthetic fixtures only. Includes Мираж, Ласковый май and Кино archetypes, with explicit synthetic provenance, not fabricated artist research.
+- Focused Playwright: **78/78 PASS**, 69 Inspiration cases (23 per viewport) plus 9 unchanged Atlas/Generator regression cases on desktop/tablet/mobile; synthetic fixtures only. Includes Мираж, Ласковый май and Кино archetypes, with explicit synthetic provenance, not fabricated artist research.
 - Fresh disposable Docker PostgreSQL migration, SQL/RLS assertions and independent-connection races: PASS. Coverage includes unauthorized roles, cross-user access, feature/global-AI changes, duplicate admission/reservations, quotas, lease fencing, cancel/completion races, stored-response recovery/error clearing, recovery cap/queue fairness, profile CAS starting at revision 1, Beta/Stable/Archived/promoted access transitions and model uninstall. No production database touched.
 - Migration SHA256: `e88ef139355bb62405a827aedb8ffe72b2e351850a77ff49875a9abf8258ad07`.
 - GitHub Regression, Browser Quality and Database Replay must pass on the final PR HEAD. Final run links/results belong in the PR so the ledger does not create a self-referential commit hash.

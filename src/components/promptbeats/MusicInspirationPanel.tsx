@@ -49,6 +49,23 @@ const attemptSchema = z
     jobId: z.string().uuid().optional(),
   })
   .strict();
+// Validate transport responses inside the query so an ancillary API failure
+// stays in this panel rather than crashing the Generator route during render.
+const profileResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  revision: z.number().int().positive(),
+  result: inspirationResearchSchema,
+});
+const profilesResponseSchema = z.array(profileResponseSchema);
+const configResponseSchema = z.object({
+  configured: z.boolean(),
+  reason: z.string().nullable(),
+  superAdmin: z.boolean(),
+  defaultModel: z.string().min(1).max(240),
+  models: z.array(z.object({ id: z.string().min(1).max(240), label: z.string().min(1) })),
+});
+
 type PendingAttempt = z.infer<typeof attemptSchema>;
 const attemptKey = (account: string) => `pb:music-inspiration-attempt:v1:${account}`;
 
@@ -129,14 +146,14 @@ export function MusicInspirationPanel({
   }, [setup, receipt]);
   const config = useQuery({
     queryKey: ["music-inspiration-config", uid],
-    queryFn: () => getMusicInspirationConfig(),
+    queryFn: async () => configResponseSchema.parse(await getMusicInspirationConfig()),
     enabled,
     retry: false,
     staleTime: 0,
   });
   const profiles = useQuery({
     queryKey: ["music-inspiration-profiles", uid],
-    queryFn: () => listMusicInspirationProfiles(),
+    queryFn: async () => profilesResponseSchema.parse(await listMusicInspirationProfiles()),
     enabled,
     retry: false,
     staleTime: 0,
@@ -273,6 +290,7 @@ export function MusicInspirationPanel({
     if (
       !request.success ||
       !config.data?.configured ||
+      config.isError ||
       storageError ||
       !uid ||
       job?.status === "unknown"
@@ -350,9 +368,9 @@ export function MusicInspirationPanel({
       if (!completed(stored)) throw new Error("Result unavailable");
       return inspirationResearchSchema.parse(stored.result);
     }
-    const stored = (await listMusicInspirationProfiles()).find(
-      (p) => p.id === source.id && p.revision === source.revision,
-    );
+    const stored = profilesResponseSchema
+      .parse(await listMusicInspirationProfiles())
+      .find((p) => p.id === source.id && p.revision === source.revision);
     if (!stored) throw new Error("Profile changed");
     return inspirationResearchSchema.parse(stored.result);
   }
@@ -478,7 +496,7 @@ export function MusicInspirationPanel({
         options={(profiles.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
         value={profileId}
         onValueChange={chooseProfile}
-        disabled={busy || profiles.isPending}
+        disabled={busy || profiles.isPending || profiles.isError}
       />
       {(error || config.isError || profiles.isError || poll.isError) && (
         <div role="alert">
@@ -631,6 +649,7 @@ export function MusicInspirationPanel({
               disabled={
                 !request.success ||
                 !config.data?.configured ||
+                config.isError ||
                 busy ||
                 active(job) ||
                 storageError ||

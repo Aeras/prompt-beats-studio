@@ -60,6 +60,7 @@ async function fixture(
     allowed?: boolean;
     greek?: boolean;
     partial?: boolean;
+    malformed?: "profiles" | "config";
   } = {},
 ) {
   const user = {
@@ -172,7 +173,10 @@ async function fixture(
             : null,
         superAdmin: options.superAdmin === true,
         defaultModel: "server-live-default",
-        models: [{ id: "allowed-override", label: "Allowed override" }],
+        models:
+          options.malformed === "config"
+            ? { items: [] }
+            : [{ id: "allowed-override", label: "Allowed override" }],
       };
     else if (name.includes("startMusicInspiration")) {
       const key = String(data.requestId);
@@ -195,7 +199,8 @@ async function fixture(
     } else if (name.includes("cancelMusicInspiration")) {
       job = { ...job, status: "cancelled", result: null };
       result = job;
-    } else if (name.includes("listMusicInspirationProfiles")) result = profiles;
+    } else if (name.includes("listMusicInspirationProfiles"))
+      result = options.malformed === "profiles" ? { items: [], users: [], total: 0 } : profiles;
     else if (name.includes("saveMusicInspirationProfile")) {
       const p = {
         id: "ca290000-0000-4000-8000-000000000003",
@@ -607,3 +612,47 @@ test("another account's persisted job is never recovered or applied", async ({ p
   await expect(panel(page).getByRole("button", { name: "Apply to empty fields" })).toHaveCount(0);
   expect(f.calls.filter((c) => c.name.includes("getMusicInspirationJob"))).toHaveLength(reads);
 });
+
+for (const malformed of ["profiles", "config"] as const) {
+  test(`malformed ancillary ${malformed} reply cannot crash manual Generator fields`, async ({
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    const duplicateKeys: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("console", (message) => {
+      if (
+        message.type() === "error" &&
+        message.text().includes("Encountered two children with the same key")
+      )
+        duplicateKeys.push(message.text());
+    });
+    const f = await fixture(page, { malformed, superAdmin: true });
+    await expect(panel(page).getByRole("alert")).toContainText("The operation failed.");
+    const production = page.getByRole("textbox", { name: "Production Style", exact: true });
+    const instructions = page.getByRole("textbox", {
+      name: "Additional Instructions",
+      exact: true,
+    });
+    await production.fill("Manual production survives malformed ancillary data");
+    await instructions.fill("Keep manual instructions and Blueprint");
+    await expect(production).toHaveValue("Manual production survives malformed ancillary data");
+    await expect(instructions).toHaveValue("Keep manual instructions and Blueprint");
+    await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+    const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+    await expect(modal).toBeVisible();
+    if (malformed === "config") {
+      await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
+      await expect(modal.getByRole("button", { name: "Research", exact: true })).toBeDisabled();
+      await expect(
+        modal.getByRole("combobox", { name: "Research model", exact: true }),
+      ).toHaveCount(0);
+    }
+    await modal.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(production).toHaveValue("Manual production survives malformed ancillary data");
+    await expect(instructions).toHaveValue("Keep manual instructions and Blueprint");
+    expect(f.calls.some((c) => c.name.includes("startMusicInspiration"))).toBe(false);
+    expect(pageErrors).toEqual([]);
+    expect(duplicateKeys).toEqual([]);
+  });
+}
