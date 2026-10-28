@@ -440,7 +440,9 @@ test("poll failure reports a real error and preserves manual edits", async ({ pa
   const f = await fixture(page);
   f.failPoll();
   await startResearch(page);
-  await expect(panel(page).getByRole("alert")).toContainText("Research status could not be checked.");
+  await expect(panel(page).getByRole("alert")).toContainText(
+    "Research status could not be checked.",
+  );
   await expect(panel(page).getByRole("button", { name: "Apply to empty fields" })).toHaveCount(0);
 });
 test("partial result labels limitations", async ({ page }) => {
