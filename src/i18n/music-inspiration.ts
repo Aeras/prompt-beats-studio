@@ -11,8 +11,7 @@ export const musicInspirationCopy = {
       "Budgets and reservations are account policy limits and estimates, not an invoice or measured usage.",
     refreshStatus: "Refresh research status (no new research)",
     retryAttempt: "Retry the same research request",
-    discardPending:
-      "Discard this request and start over (a previous server request may still complete)",
+    discardPending: "Discard pending request",
     newResearch: "Start new research",
     pendingAttempt:
       "Start acknowledgment is pending. Retry uses the same request ID and cannot create another job for this attempt. No paid request starts automatically.",
@@ -111,8 +110,7 @@ export const musicInspirationCopy = {
       "Τα όρια και οι δεσμεύσεις αφορούν πολιτικές λογαριασμού και εκτιμήσεις, όχι τιμολόγιο ή μετρημένη χρήση.",
     refreshStatus: "Ανανέωση κατάστασης (χωρίς νέα έρευνα)",
     retryAttempt: "Επανάληψη του ίδιου αιτήματος έρευνας",
-    discardPending:
-      "Απόρριψη αιτήματος και νέα αρχή (πιθανή προηγούμενη εκτέλεση μπορεί να ολοκληρωθεί)",
+    discardPending: "Απόρριψη εκκρεμούς αιτήματος",
     newResearch: "Έναρξη νέας έρευνας",
     pendingAttempt:
       "Εκκρεμεί επιβεβαίωση έναρξης. Η επανάληψη χρησιμοποιεί το ίδιο αναγνωριστικό και δεν δημιουργεί δεύτερη εργασία για αυτή την προσπάθεια. Δεν ξεκινά αυτόματα χρεώσιμο αίτημα.",
