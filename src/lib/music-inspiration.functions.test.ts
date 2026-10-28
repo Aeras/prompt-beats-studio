@@ -1,3 +1,4 @@
+import * as diagnostics from "./music-inspiration-diagnostics.shared";
 import * as usageShared from "./music-inspiration-usage.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -42,6 +43,7 @@ function harness() {
     generatorEnabled: true,
   };
   const state = {
+    serviceError: null as null | { code: string; message: string },
     denied: "",
     superAdmin: false,
     configured: true,
@@ -124,6 +126,7 @@ function harness() {
     {
       exports: exported,
       require(name: string) {
+        if (name === "./music-inspiration-diagnostics.shared") return diagnostics;
         if (name === "./music-inspiration-usage.shared") return usageShared;
         if (name === "zod") return { z };
         if (name === "./music-inspiration.shared") return shared;
@@ -181,7 +184,7 @@ function harness() {
             supabaseAdmin: {
               rpc: async (rpc: string, args: any) => {
                 events.push(["admin", rpc, args]);
-                return { data: [state.job], error: null };
+                return { data: state.serviceError ? null : [state.job], error: state.serviceError };
               },
             },
           };
@@ -398,4 +401,21 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
       await expect(h.call(name, data)).rejects.toThrow("revision conflict");
     }
   });
+});
+
+test("admission diagnostics preserve a missing RPC code without exposing raw database text", async () => {
+  const h = harness();
+  h.state.serviceError = { code: "PGRST202", message: "SYNTHETIC_SECRET_SQL" };
+  try {
+    await h.call("startMusicInspiration", { requestId: id, request });
+    throw Error("expected failure");
+  } catch (error) {
+    expect(error).toBeInstanceOf(diagnostics.InspirationFailure);
+    expect((error as diagnostics.InspirationFailure).diagnostic).toEqual({
+      stage: "admission",
+      code: "database",
+      dbCode: "PGRST202",
+    });
+    expect((error as Error).message).not.toContain("SYNTHETIC_SECRET_SQL");
+  }
 });

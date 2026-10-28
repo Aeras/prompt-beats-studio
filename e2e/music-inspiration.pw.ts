@@ -209,7 +209,8 @@ async function fixture(
     } else if (name.includes("getMusicInspirationJob")) {
       if (gate) await gate;
       if (failPoll) return route.fulfill({ status: 503, body: "Offline failure" });
-      if (unknownOutcome) job = { ...job, status: "unknown", result: null };
+      if (unknownOutcome && job.status !== "cancelled")
+        job = { ...job, status: "unknown", result: null };
       else if (finish && job.status !== "cancelled")
         job = {
           ...job,
@@ -283,6 +284,10 @@ async function fixture(
     },
     loseStartAck: () => {
       loseStartAck = true;
+    },
+    diagnostic: (code: string) => {
+      unknownOutcome = true;
+      job.error_code = code;
     },
     unknown: (value: boolean) => {
       unknownOutcome = value;
@@ -1001,3 +1006,66 @@ for (const recovery of ["discard", "edited"] as const) {
     },
   );
 }
+
+for (const greek of [false, true])
+  for (const failure of ["tavily", "ai-json"] as const) {
+    test(
+      "specific " +
+        failure +
+        " diagnostic is readable without another research call " +
+        (greek ? "EL" : "EN"),
+      async ({ page }) => {
+        const f = await fixture(page, { greek });
+        f.diagnostic(
+          failure === "tavily" ? "mi1|search_response|http|401||" : "mi1|ai_parse|invalid_json|||",
+        );
+        await panel(page)
+          .getByRole("button", {
+            name: greek ? "Άνοιγμα μουσικής έρευνας" : "Open music research",
+            exact: true,
+          })
+          .click();
+        const modal = page.getByRole("dialog", {
+          name: greek ? "Μουσική Έμπνευση" : "AI Music Inspiration",
+          exact: true,
+        });
+        await modal
+          .getByLabel(greek ? "Καλλιτέχνης ή συγκρότημα" : "Artist or group", { exact: true })
+          .fill("Offline");
+        await modal
+          .getByRole("button", { name: greek ? "Έρευνα" : "Research", exact: true })
+          .click();
+        await modal
+          .getByRole("button", { name: greek ? "Κλείσιμο" : "Close", exact: true })
+          .click();
+        const d = panel(page).getByTestId("inspiration-diagnostic");
+        await expect(d).toBeVisible();
+        await expect(d).toContainText(
+          failure === "tavily" ? "HTTP 401" : greek ? "Ανάγνωση JSON του AI" : "AI JSON decoding",
+        );
+        await expect(d).toContainText("ca290000-0000-4000-8000-000000000002");
+        expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+        await expect(d).not.toContainText("SECRET");
+        expect(await d.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      },
+    );
+  }
+
+test("owner can explicitly close an unresolved job without erasing evidence or auto-research", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  f.diagnostic("mi1|search_response|http|401||");
+  await startResearch(page);
+  await expect(panel(page).getByTestId("inspiration-diagnostic")).toContainText("HTTP 401");
+  await panel(page).getByRole("button", { name: "Close this unresolved job", exact: true }).click();
+  await expect(panel(page).getByText("Research cancelled", { exact: true })).toBeVisible();
+  await expect(panel(page).getByTestId("inspiration-diagnostic")).toContainText("HTTP 401");
+  expect(f.calls.filter((c) => c.name.includes("cancelMusicInspiration"))).toHaveLength(1);
+  expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await expect(
+    modal.getByRole("button", { name: "Start new research", exact: true }),
+  ).toBeEnabled();
+});

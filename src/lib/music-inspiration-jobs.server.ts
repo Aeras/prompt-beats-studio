@@ -1,3 +1,11 @@
+import {
+  InspirationFailure,
+  inspirationDiagnostic,
+  encodeInspirationDiagnostic,
+  logInspirationFailure,
+  type InspirationStage,
+  type InspirationDiagnostic,
+} from "./music-inspiration-diagnostics.shared";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { inspirationRequestSchema } from "./music-inspiration.shared";
@@ -70,12 +78,32 @@ export async function executeMusicInspirationJob(
   z.string().uuid().parse(id);
   const db = deps.db ?? (await database());
   const token = crypto.randomUUID();
+  let stage: InspirationStage = "claim";
+  let pollFailure: InspirationDiagnostic | null = null;
   const rpc = async (name: string, args: Record<string, unknown>) => {
     const reply = await db.rpc(name, args);
-    if (reply.error) throw new Error("inspiration_persistence_failed");
+    if (reply.error)
+      throw new InspirationFailure(
+        {
+          ...inspirationDiagnostic(
+            reply.error,
+            name === "checkpoint_music_inspiration_job" && stage !== "result_persist"
+              ? "job_persist"
+              : stage,
+          ),
+          code: "database",
+        },
+        "inspiration_persistence_failed",
+      );
     return reply.data;
   };
-  const job = await rpc("claim_music_inspiration_job", { _job_id: id, _lease_token: token });
+  let job: any;
+  try {
+    job = await rpc("claim_music_inspiration_job", { _job_id: id, _lease_token: token });
+  } catch (error) {
+    logInspirationFailure(id, inspirationDiagnostic(error, "claim"));
+    throw error;
+  }
   if (!job) return { ran: false };
   const patch = (value: Record<string, unknown>) =>
     rpc("checkpoint_music_inspiration_job", { _job_id: id, _lease_token: token, _patch: value });
@@ -91,6 +119,8 @@ export async function executeMusicInspirationJob(
         .eq("id", id)
         .eq("user_id", job.user_id)
         .maybeSingle();
+      if (reply.error || !reply.data)
+        pollFailure = { ...inspirationDiagnostic(reply.error, "job_persist"), code: "database" };
       if (
         reply.error ||
         !reply.data ||
@@ -98,7 +128,8 @@ export async function executeMusicInspirationJob(
         reply.data.status === "cancelled"
       )
         controller.abort();
-    } catch {
+    } catch (error) {
+      pollFailure = { ...inspirationDiagnostic(error, "job_persist"), code: "database" };
       controller.abort();
     } finally {
       checking = false;
@@ -107,6 +138,7 @@ export async function executeMusicInspirationJob(
   const interval = setInterval(() => void poll(), 1500);
   let uncertain = false;
   try {
+    stage = "admission";
     const request = inspirationRequestSchema.parse(job.request);
     const limits = INSPIRATION_LIMITS[request.depth];
     const elapsed =
@@ -116,6 +148,7 @@ export async function executeMusicInspirationJob(
       AbortSignal.timeout(Math.max(1, limits.timeoutMs - Math.max(0, elapsed))),
     ]);
     await poll();
+    stage = "sources";
     const documents: RetrievedInspirationDocument[] = await (deps.atlas ?? approvedAtlasEvidence)(
       request,
     );
@@ -123,7 +156,15 @@ export async function executeMusicInspirationJob(
       .from("music_inspiration_dispatches")
       .select("*")
       .eq("job_id", id);
-    if (dispatchesReply.error) throw new Error("inspiration_persistence_failed");
+    if (dispatchesReply.error)
+      throw new InspirationFailure(
+        {
+          ...inspirationDiagnostic(dispatchesReply.error, "recovery"),
+          stage: "recovery",
+          code: "database",
+        },
+        "inspiration_persistence_failed",
+      );
     const dispatches = dispatchesReply.data ?? [];
     const journalReply = await db
       .from("ai_provider_executions")
@@ -144,6 +185,7 @@ export async function executeMusicInspirationJob(
       deps.admitDispatch ?? (await import("./global-ai-usage.server")).requireGlobalAiUsage;
     const reserve = async (key: string, kind: string, cost: number, credits: number) => {
       signal.throwIfAborted();
+      stage = "authorization";
       await (deps.authorizeModel ?? authorizeModel)(job.user_id, job.model);
       await admit();
       return rpc("reserve_music_inspiration_dispatch", {
@@ -179,13 +221,20 @@ export async function executeMusicInspirationJob(
       }
       uncertain = true;
       try {
+        stage = "search_request";
         const found = await (deps.search ?? searchInspirationWeb)(query, signal);
+        stage = "search_persist";
         // Preserve observed consumption and source evidence before checking cancellation.
         await settle(key, "observed", found);
         uncertain = false;
         documents.push(...found.documents);
       } catch (error) {
-        await settle(key, "unknown", { outcome: "unknown" });
+        const diagnostic = inspirationDiagnostic(error, stage);
+        try {
+          await settle(key, "unknown", { outcome: "unknown", diagnostic });
+        } catch (secondary) {
+          logInspirationFailure(id, inspirationDiagnostic(secondary, "search_persist"));
+        }
         throw error;
       }
     }
@@ -193,6 +242,7 @@ export async function executeMusicInspirationJob(
     let receipt: ModelResult;
     if (savedReceipt) {
       receipt = savedReceipt;
+      stage = "usage_persist";
       await (deps.record ?? record)(job, receipt);
       await settle(job.execution_id, "observed", { executionId: job.execution_id });
     } else {
@@ -200,7 +250,11 @@ export async function executeMusicInspirationJob(
         uncertain = true;
         throw new Error("provider_outcome_unknown");
       }
-      if (!documents.length) throw new Error("no_accessible_evidence");
+      if (!documents.length)
+        throw new InspirationFailure(
+          { stage: "sources", code: "no_evidence" },
+          "no_accessible_evidence",
+        );
       if (!(await reserve(job.execution_id, "ai", 0, 0))) {
         uncertain = true;
         throw new Error("provider_outcome_unknown");
@@ -214,6 +268,7 @@ export async function executeMusicInspirationJob(
             executionId: job.execution_id,
           });
       // The tracked caller checkpoints raw result and usage even if parsing below fails.
+      stage = "ai_request";
       const compiled = await (deps.synthesize ?? synthesizeMusicInspiration)(
         request,
         documents,
@@ -221,6 +276,7 @@ export async function executeMusicInspirationJob(
         signal,
       );
       receipt = compiled.receipt;
+      stage = "result_persist";
       await settle(job.execution_id, "observed", { executionId: job.execution_id });
       await patch({ provider_result: receipt });
       uncertain = false;
@@ -229,6 +285,7 @@ export async function executeMusicInspirationJob(
       return { ran: true };
     }
     // Stored response can be validated/finalized without a second provider call.
+    stage = "ai_parse";
     const compiled = await (deps.synthesize ?? synthesizeMusicInspiration)(
       request,
       documents,
@@ -236,6 +293,7 @@ export async function executeMusicInspirationJob(
       signal,
     );
     signal.throwIfAborted();
+    stage = "result_persist";
     await patch({
       provider_result: receipt,
       result: compiled.result,
@@ -244,8 +302,12 @@ export async function executeMusicInspirationJob(
     });
     return { ran: true };
   } catch (error) {
+    const diagnostic = pollFailure ?? inspirationDiagnostic(error, stage);
+    logInspirationFailure(id, diagnostic);
     const name = error instanceof Error ? error.message : "research_failed";
     const rejectedResponse =
+      (error instanceof InspirationFailure &&
+        ["ai_parse", "ai_schema", "ai_evidence"].includes(error.diagnostic.stage)) ||
       error instanceof SyntaxError ||
       error instanceof z.ZodError ||
       [
@@ -255,26 +317,31 @@ export async function executeMusicInspirationJob(
         "Quote is not an exact retrieved substring",
         "Supported claims require exact cited passages for every source",
       ].includes(name);
-    if (uncertain && rejectedResponse) {
-      // A conclusively invalid stored response is an application failure, not
-      // unknown execution. Retain it and its accounting; never erase/re-dispatch.
-      const journal = await db
-        .from("ai_provider_executions")
-        .select("result")
-        .eq("id", job.execution_id)
-        .eq("user_id", job.user_id)
-        .maybeSingle();
-      if (!journal.error && journal.data?.result) {
-        await (deps.record ?? record)(job, journal.data.result);
-        await rpc("settle_music_inspiration_dispatch", {
-          _job_id: id,
-          _dispatch_key: job.execution_id,
-          _state: "observed",
-          _receipt: { executionId: job.execution_id, applicationRejected: true },
-        });
-        await patch({ provider_result: journal.data.result });
-        uncertain = false;
+    try {
+      if (uncertain && rejectedResponse) {
+        // A conclusively invalid stored response is an application failure, not
+        // unknown execution. Retain it and its accounting; never erase/re-dispatch.
+        const journal = await db
+          .from("ai_provider_executions")
+          .select("result")
+          .eq("id", job.execution_id)
+          .eq("user_id", job.user_id)
+          .maybeSingle();
+        if (!journal.error && journal.data?.result) {
+          await (deps.record ?? record)(job, journal.data.result);
+          await rpc("settle_music_inspiration_dispatch", {
+            _job_id: id,
+            _dispatch_key: job.execution_id,
+            _state: "observed",
+            _receipt: { executionId: job.execution_id, applicationRejected: true },
+          });
+          await patch({ provider_result: journal.data.result });
+          uncertain = false;
+        }
       }
+    } catch (secondary) {
+      uncertain = true;
+      logInspirationFailure(id, inspirationDiagnostic(secondary, "usage_persist"));
     }
     const known = [
       "search_configuration_required",
@@ -285,16 +352,25 @@ export async function executeMusicInspirationJob(
       "research_prompt_too_large",
       "research_queue_expired",
     ];
-    await patch({
-      status: controller.signal.aborted ? "cancelled" : uncertain ? "unknown" : "failed",
-      error_code: controller.signal.aborted
-        ? "cancelled"
-        : uncertain
-          ? "provider_outcome_unknown"
-          : known.includes(name)
-            ? name
-            : "research_failed",
-    });
+    try {
+      await patch({
+        status:
+          controller.signal.aborted && !pollFailure
+            ? "cancelled"
+            : uncertain
+              ? "unknown"
+              : "failed",
+        error_code:
+          controller.signal.aborted && !pollFailure
+            ? "cancelled"
+            : known.includes(name) && !(error instanceof InspirationFailure)
+              ? name
+              : encodeInspirationDiagnostic(diagnostic),
+      });
+    } catch (secondary) {
+      logInspirationFailure(id, inspirationDiagnostic(secondary, "job_persist"));
+      throw secondary;
+    }
     return { ran: true };
   } finally {
     clearInterval(interval);
