@@ -599,7 +599,7 @@ export function MusicInspirationPanel({
           .join("\n"),
       }
     : null;
-  if (!enabled || !sameOwner) return <p role="status">{access.isLoading ? t.loading : t.denied}</p>;
+  if (!enabled || !sameOwner) return null;
   return (
     <section
       aria-label={t.title}
