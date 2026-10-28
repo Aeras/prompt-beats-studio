@@ -477,7 +477,7 @@ test("research dialog stays within portrait, tablet, desktop and landscape viewp
     await page.setViewportSize({ width, height });
     const open = panel(page).getByRole("button", { name: "Άνοιγμα μουσικής έρευνας", exact: true });
     await open.click();
-    const dialog = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+    const dialog = page.getByRole("dialog", { name: "Μουσική Έμπνευση", exact: true });
     await expect(dialog).toBeVisible();
     const dimensions = await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();
