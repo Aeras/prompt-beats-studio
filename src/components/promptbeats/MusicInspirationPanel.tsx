@@ -702,9 +702,7 @@ export function MusicInspirationPanel({
               {t.cancel}
             </Button>
           )}
-          {(error || poll.isError) && (
-            <p role="alert">{failureText}</p>
-          )}
+          {(error || poll.isError) && <p role="alert">{failureText}</p>}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
           </Button>
