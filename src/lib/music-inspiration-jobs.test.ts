@@ -241,3 +241,67 @@ test("stable execution identity is retained by the shared accounting caller", as
   expect(ids).toEqual([id]);
   expect(count).toBe(1);
 });
+import { handleJobRunner } from "./job-runner.server";
+test("missed initial kick recovers delayed queued work without consuming its research deadline", async () => {
+  const f = fixture();
+  f.job.created_at = new Date(Date.now() - 120000).toISOString();
+  f.job.research_started_at = new Date().toISOString();
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("completed");
+  expect(f.counts()).toEqual({ searches: 2, calls: 1 });
+});
+test("expired queued work never incurs a provider call", async () => {
+  const f = fixture();
+  f.job.created_at = new Date(Date.now() - 31 * 60000).toISOString();
+  f.job.research_started_at = new Date().toISOString();
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("failed");
+  expect(f.job.error_code).toBe("research_queue_expired");
+  expect(f.counts()).toEqual({ searches: 0, calls: 0 });
+});
+test("HTTP retry/concurrent delivery uses the existing durable worker claim and one paid execution", async () => {
+  const f = fixture();
+  const deps: any = {
+    authenticate: async () => null,
+    inspiration: async () => executeMusicInspirationJob(f.id, f.deps),
+  };
+  const request = () =>
+    new Request("https://fixture.invalid", {
+      method: "POST",
+      body: JSON.stringify({ musicInspirationJobId: f.id }),
+    });
+  await Promise.all([handleJobRunner(request(), deps), handleJobRunner(request(), deps)]);
+  expect(f.counts()).toEqual({ searches: 2, calls: 1 });
+  expect(f.records.size).toBe(1);
+  await handleJobRunner(request(), deps);
+  expect(f.counts().calls).toBe(1);
+});
+test("recovery delivery reuses a stored response instead of another paid generation", async () => {
+  const f = fixture();
+  f.fail();
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("unknown");
+  const response = await handleJobRunner(
+    new Request("https://fixture.invalid", {
+      method: "POST",
+      body: JSON.stringify({ musicInspirationJobId: f.id }),
+    }),
+    {
+      authenticate: async () => null,
+      inspiration: async () => executeMusicInspirationJob(f.id, f.deps),
+    } as any,
+  );
+  expect(response.status).toBe(200);
+  expect(f.job.status).toBe("completed");
+  expect(f.counts()).toEqual({ searches: 2, calls: 1 });
+  expect(f.records.size).toBe(1);
+});
+test("pricing/spend guard still blocks recovered queued work before any paid dispatch", async () => {
+  const f = fixture();
+  f.deps.budget = async () => {
+    throw new Error("research_budget_exceeded");
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("failed");
+  expect(f.counts()).toEqual({ searches: 0, calls: 0 });
+});
