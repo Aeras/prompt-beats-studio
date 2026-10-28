@@ -1,4 +1,5 @@
 import { AtlasGeneratorBridge } from "@/components/promptbeats/AtlasGeneratorBridge";
+import { MusicInspirationPanel } from "@/components/promptbeats/MusicInspirationPanel";
 import {
   composeAtlasInstructions,
   parseAtlasAwareSetup,
@@ -3240,6 +3241,47 @@ function GeneratePage() {
     >
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
         <div className="mx-auto max-w-3xl">
+          {advanced && !revisionMode && (
+            <MusicInspirationPanel
+              key={`music-inspiration:${user?.id ?? "anon"}`}
+              setup={{
+                targetPlatform,
+                theme,
+                selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
+                customMusicStyle: customGenre,
+                selectedMoods: moods.filter((value) => value !== CUSTOM),
+                customMood,
+                selectedInstruments: instruments.filter((value) => value !== CUSTOM),
+                customInstruments,
+                bpmMode: bpm,
+                customBpm,
+                songStructure: structure,
+                songBlueprint,
+                productionStyle: production,
+                additionalInstructions: instructions,
+                language,
+                languageVariant,
+                customLanguage,
+                smartPresetId: activeSmartPresetId,
+                culturalStyleId: presetCulturalStyleId,
+              }}
+              onApply={(next) => {
+                // Music-only setter allowlist. Theme/language/platform/preset state is never assigned.
+                setGenres(next.selectedMusicStyles);
+                setCustomGenre(next.customMusicStyle);
+                setMoods(next.selectedMoods);
+                setCustomMood(next.customMood);
+                setInstruments(next.selectedInstruments);
+                setCustomInstruments(next.customInstruments);
+                setBpm(next.bpmMode);
+                setCustomBpm(next.customBpm);
+                setStructure(next.songStructure);
+                setSongBlueprint(next.songBlueprint);
+                setProduction(next.productionStyle);
+                setInstructions(next.additionalInstructions);
+              }}
+            />
+          )}
           {!freshSession && !revisionMode && (
             <AtlasGeneratorBridge
               key={user?.id}

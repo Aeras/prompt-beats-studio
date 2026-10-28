@@ -31,13 +31,17 @@ export const Route = createFileRoute("/api/public/jobs/run")({
 
         let jobId: string | null = null;
         let qualityActionId: string | null = null;
+        let musicInspirationJobId: string | null = null;
         try {
           const body = (await request.json()) as {
             jobId?: unknown;
             qualityActionId?: unknown;
+            musicInspirationJobId?: unknown;
           };
           if (typeof body?.jobId === "string") jobId = body.jobId;
           if (typeof body?.qualityActionId === "string") qualityActionId = body.qualityActionId;
+          if (typeof body?.musicInspirationJobId === "string")
+            musicInspirationJobId = body.musicInspirationJobId;
         } catch {
           jobId = null;
           qualityActionId = null;
@@ -46,6 +50,15 @@ export const Route = createFileRoute("/api/public/jobs/run")({
         if (qualityActionId) {
           const { ran } = await executeQualityCheckJob(qualityActionId);
           return Response.json({ ok: true, ran });
+        }
+
+        if (musicInspirationJobId) {
+          const { executeMusicInspirationJob } =
+            await import("@/lib/music-inspiration-jobs.server");
+          return Response.json({
+            ok: true,
+            ...(await executeMusicInspirationJob(musicInspirationJobId)),
+          });
         }
 
         if (jobId) {
@@ -66,10 +79,16 @@ export const Route = createFileRoute("/api/public/jobs/run")({
         const qualityIds = await recoverableQualityActionIds();
         for (const id of qualityIds) await executeQualityCheckJob(id);
 
+        const { pendingMusicInspirationJobIds, executeMusicInspirationJob } =
+          await import("@/lib/music-inspiration-jobs.server");
+        const inspirationIds = await pendingMusicInspirationJobIds();
+        for (const id of inspirationIds) await executeMusicInspirationJob(id);
+
         return Response.json({
           ok: true,
           started: generationIds.length,
           qualityStarted: qualityIds.length,
+          inspirationStarted: inspirationIds.length,
         });
       },
     },
