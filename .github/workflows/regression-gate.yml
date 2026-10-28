@@ -100,6 +100,9 @@ jobs:
       - name: Offline Atlas V4 editorial package integrity
         run: bun scripts/validate-atlas-v4.ts
 
+      - name: Immutable Atlas research sidecar and quarantined evidence integrity
+        run: bun scripts/validate-atlas-research.ts
+
       - name: Explicit Beta registrations and authoritative entrypoint gates
         run: bun scripts/check-beta-features.ts
 

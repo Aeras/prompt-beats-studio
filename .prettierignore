@@ -9,3 +9,6 @@ routeTree.gen.ts
 
 # Byte-exact editorial source: validated by SHA-256, never autoformat.
 src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json
+
+# Byte-exact independent research archive; validated against its SHA manifest.
+research/atlas-v4-merged-evidence-20261027.json

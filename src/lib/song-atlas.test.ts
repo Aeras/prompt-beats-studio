@@ -1,5 +1,7 @@
 import { composeAtlasInstructions } from "./atlas-instructions.shared";
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
+import { readAtlasResearchProfile } from "./atlas-research.server";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import source from "../data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json";
@@ -226,6 +228,14 @@ describe("real Atlas server entrypoints with isolated offline dependencies", () 
     runInNewContext(compiled, {
       exports: exported,
       require(name: string) {
+        if (name === "zod") return { z };
+        if (name === "./atlas-research.server")
+          return {
+            readAtlasResearchProfile: (profileId: string) => {
+              events.push("research-content");
+              return readAtlasResearchProfile(profileId);
+            },
+          };
         if (name === "@tanstack/react-start/server")
           return {
             setResponseHeader: (k: string, v: string) => {
@@ -277,6 +287,16 @@ describe("real Atlas server entrypoints with isolated offline dependencies", () 
     expect(events).toEqual(["feature", "atlas_preview_admission", "content"]);
     expect(headers["Cache-Control"]).toBe("private, no-store");
     events.length = 0;
+    const research = await exported["getSongAtlasResearch"]({
+      context,
+      data: { profileId: "ru.bard_song" },
+    });
+    expect(events).toEqual(["feature", "atlas_preview_admission", "research-content"]);
+    expect(research.executable).toBe(false);
+    expect(research.tasks).toHaveLength(10);
+    expect(research).not.toHaveProperty("instructions");
+    expect(headers["Vary"]).toBe("Cookie, Authorization");
+    events.length = 0;
     entitled = false;
     await expect(exported["getSongAtlasPreview"]({ context })).rejects.toThrow("Denied");
     expect(events).toEqual(["feature"]);
@@ -285,6 +305,15 @@ describe("real Atlas server entrypoints with isolated offline dependencies", () 
     dbError = true;
     await expect(exported["getSongAtlasPreview"]({ context })).rejects.toThrow("not available");
     expect(events).toEqual(["feature", "atlas_preview_admission"]);
+    await expect(
+      exported["getSongAtlasResearch"]({ context, data: { profileId: "ru.bard_song" } }),
+    ).rejects.toThrow("not available");
+    expect(() =>
+      exported["getSongAtlasResearch"]({
+        context,
+        data: { profileId: "ru.bard_song", approved: true },
+      }),
+    ).toThrow();
     dbError = false;
     await expect(
       exported["validateSongAtlasHandoff"]({

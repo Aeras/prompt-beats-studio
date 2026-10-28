@@ -1,4 +1,6 @@
 import { AtlasNavigation } from "@/components/promptbeats/AtlasNavigation";
+import { AtlasResearchNotes } from "@/components/promptbeats/AtlasResearchNotes";
+import { atlasResearchCopy } from "@/i18n/atlas-research";
 import {
   atlasNavigationCopy,
   atlasKnowledgeCopy,
@@ -268,6 +270,7 @@ function AtlasPreview() {
                   );
                 })}
               </details>
+              <AtlasResearchNotes profileId={card.id} />
             </article>
           );
         })}
@@ -326,6 +329,11 @@ function AtlasPreview() {
           </p>
         )}
         <p className="text-sm text-muted-foreground">{t.blocked}</p>
+        {!catalog.options.some((option) => option.approved) && (
+          <p role="status" className="text-sm">
+            {atlasResearchCopy[language].noApproved}
+          </p>
+        )}
         <Button
           type="button"
           className="h-auto whitespace-normal rounded-xl px-4 py-3"
