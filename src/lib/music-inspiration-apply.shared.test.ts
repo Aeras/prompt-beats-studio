@@ -59,6 +59,17 @@ describe("inspiration proposal draft application", () => {
     expect(result.setup.smartPresetId).toBe("manual-preset");
     expect(result.setup.targetPlatform).toBe("suno");
   });
+  it("clears conflicting custom styles only on explicit replacement", () => {
+    const existing = { ...current, customMusicStyle: "My own style", customMood: "Own mood",
+      customInstruments: "Own instrument" };
+    const replaced = applyInspirationProposal(existing, proposal, [
+      "selectedMusicStyles", "selectedMoods", "selectedInstruments",
+    ], "replace_selected");
+    expect(replaced.setup.customMusicStyle).toBe("");
+    expect(replaced.setup.customMood).toBe("");
+    expect(replaced.setup.customInstruments).toBe("");
+    expect(existing.customMusicStyle).toBe("My own style");
+  });
   it("selectively applies requested field groups only", () => {
     const result = applyInspirationProposal(current, proposal, ["productionStyle"]);
     expect(result.appliedFields).toEqual(["productionStyle"]);
