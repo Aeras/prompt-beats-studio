@@ -1,3 +1,7 @@
+import {
+  inspirationUsageSchema,
+  summarizeInspirationUsage,
+} from "./music-inspiration-usage.shared";
 import { createServerFn } from "@tanstack/react-start";
 import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -27,9 +31,10 @@ const publicJobSchema = z.object({
   result: inspirationResearchSchema.nullable(),
   error_code: z.string().max(160).nullable(),
   model: z.string().min(1).max(240),
-  budget_usd: z.number().finite().positive().max(1),
-  reserved_usd: z.number().finite().nonnegative().max(1),
+  budget_usd: z.number().finite().nonnegative(),
+  reserved_usd: z.number().finite().nonnegative(),
   search_credits: z.number().int().min(0).max(40),
+  usageReport: inspirationUsageSchema.nullable().optional(),
 });
 const publicProfileSchema = z.object({
   id: z.string().uuid(),
@@ -56,6 +61,28 @@ function row(response: { data: any; error: unknown }) {
 function publicJob(job: unknown): MusicInspirationPublicJob {
   // Object parsing strips server-only fields; the nested research stays strict.
   return publicJobSchema.parse(job);
+}
+
+async function jobWithUsage(context: Context, raw: unknown): Promise<MusicInspirationPublicJob> {
+  const job = publicJob(raw);
+  if (job.status === "queued" || job.status === "running") return job;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const reply = await (supabaseAdmin as any).rpc("read_music_inspiration_usage_internal", {
+      _user_id: context.userId,
+      _job_id: job.id,
+    });
+    if (
+      reply.error ||
+      !reply.data ||
+      typeof reply.data.aiDispatched !== "boolean" ||
+      !Array.isArray(reply.data.searches)
+    )
+      return { ...job, usageReport: null };
+    return { ...job, usageReport: summarizeInspirationUsage(reply.data) };
+  } catch {
+    return { ...job, usageReport: null };
+  }
 }
 
 function publicProfile(profile: unknown): MusicInspirationProfile {
@@ -113,23 +140,12 @@ export const getMusicInspirationConfig = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await admission(context);
     const models = await modelAccess(context);
-    const { inspectMusicInspirationConfiguration, researchBudgetForModel } =
+    const { inspectMusicInspirationConfiguration } =
       await import("./music-inspiration-research.server");
     const configuration = await inspectMusicInspirationConfiguration();
-    let reason = configuration.reason;
-    if (configuration.configured) {
-      try {
-        await researchBudgetForModel(
-          models.defaultModel.providerModelId,
-          models.defaultModel.provider,
-          "standard",
-        );
-      } catch {
-        reason = "Verified model pricing or research budget is unavailable.";
-      }
-    }
+    const reason = configuration.reason;
     return {
-      configured: configuration.configured && (models.superAdmin || !reason),
+      configured: configuration.configured,
       reason,
       superAdmin: models.superAdmin,
       defaultModel: models.defaultModel.providerModelId,
@@ -165,35 +181,44 @@ export const startMusicInspiration = createServerFn({ method: "POST" })
         entry.providerModelId === (data.modelOverride ?? access.defaultModel.providerModelId),
     );
     if (!model) throw new Error("Research model is not available for this account.");
-    const { inspectMusicInspirationConfiguration, researchBudgetForModel } =
+    const { inspectMusicInspirationConfiguration, getMusicInspirationPrices } =
       await import("./music-inspiration-research.server");
     const configuration = await inspectMusicInspirationConfiguration();
     if (!configuration.configured)
       throw new Error(configuration.reason ?? "Music Inspiration research is not configured.");
-    const budget = await researchBudgetForModel(
-      model.providerModelId,
-      model.provider,
-      data.request.depth,
-    );
-    if (
-      !Number.isFinite(budget) ||
-      budget <= 0 ||
-      budget > (data.request.depth === "extended" ? 1 : 0.25)
-    )
-      throw new Error("Research budget is unavailable.");
+    const prices = await getMusicInspirationPrices(model.providerModelId, model.provider);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Service-only admission reserves budget atomically; SQL pg_net schedules
+    // Service-only admission records the request atomically; SQL pg_net schedules
     // the worker. Never synchronously dispatch paid research in this request.
-    const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job", {
+    const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job_v2", {
       _user_id: context.userId,
       _request_id: data.requestId,
       _request: data.request,
       _model: model.providerModelId,
       _provider: model.provider,
-      _budget: budget,
+      _pricing: prices,
     });
     const result = row(response);
-    return publicJob(Array.isArray(result) ? row({ data: result[0], error: null }) : result);
+    return jobWithUsage(
+      context,
+      Array.isArray(result) ? row({ data: result[0], error: null }) : result,
+    );
+  });
+
+export const abandonMusicInspirationRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ requestId: z.string().uuid() }).strict().parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await admission(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const reply = await (supabaseAdmin as any).rpc("abandon_music_inspiration_request_internal", {
+      _user_id: context.userId,
+      _request_id: data.requestId,
+    });
+    if (reply.error) throw new Error("Research request could not be reconciled.");
+    return { job: reply.data ? await jobWithUsage(context, reply.data) : null };
   });
 
 export const getMusicInspirationJob = createServerFn({ method: "GET" })
@@ -201,7 +226,8 @@ export const getMusicInspirationJob = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => idSchema.parse(input))
   .handler(async ({ context, data }) => {
     await admission(context);
-    return publicJob(
+    return jobWithUsage(
+      context,
       row(
         await callerDatabase(context)
           .from("music_inspiration_jobs")
@@ -223,7 +249,8 @@ export const cancelMusicInspiration = createServerFn({ method: "POST" })
         _job_id: data.id,
       }),
     );
-    return publicJob(
+    return jobWithUsage(
+      context,
       row(
         await callerDatabase(context)
           .from("music_inspiration_jobs")

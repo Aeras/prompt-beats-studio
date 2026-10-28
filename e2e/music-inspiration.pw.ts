@@ -128,6 +128,7 @@ async function fixture(
   let conflict = false;
   let failPoll = false;
   let loseStartAck = false;
+  let rejectStart = false;
   let unknownOutcome = false;
   const admittedRequests = new Set<string>();
   let gate: Promise<void> | null = null;
@@ -141,6 +142,19 @@ async function fixture(
     budget_usd: 0.25,
     reserved_usd: 0.05,
     search_credits: 2,
+    usageReport: null as null | {
+      inputTokens: number;
+      outputTokens: number;
+      reasoningTokens: number;
+      cachedInputTokens: number;
+      cacheWriteTokens: number;
+      searchCredits: number;
+      aiCostUsd: number;
+      searchCostUsd: number;
+      totalCostUsd: number;
+      providerReportedCostUsd: null;
+      complete: boolean;
+    },
   };
   await page.route("**/_serverFn/**", async (route) => {
     const url = new URL(route.request().url());
@@ -167,10 +181,7 @@ async function fixture(
     else if (name.includes("getMusicInspirationConfig"))
       result = {
         configured: options.configured !== false,
-        reason:
-          options.configured === false
-            ? "Verified model pricing or research budget is unavailable."
-            : null,
+        reason: options.configured === false ? "Search provider credential is unavailable." : null,
         superAdmin: options.superAdmin === true,
         defaultModel: "server-live-default",
         models:
@@ -180,6 +191,10 @@ async function fixture(
       };
     else if (name.includes("startMusicInspiration")) {
       const key = String(data.requestId);
+      if (rejectStart) {
+        rejectStart = false;
+        return route.fulfill({ status: 503, body: "Offline pre-admission failure" });
+      }
       if (!admittedRequests.has(key)) {
         admittedRequests.add(key);
         job = { ...job, status: "queued", result: null };
@@ -189,12 +204,31 @@ async function fixture(
         return route.abort("failed");
       }
       result = job;
+    } else if (name.includes("abandonMusicInspirationRequest")) {
+      result = { job: admittedRequests.has(String(data.requestId)) ? job : null };
     } else if (name.includes("getMusicInspirationJob")) {
       if (gate) await gate;
       if (failPoll) return route.fulfill({ status: 503, body: "Offline failure" });
       if (unknownOutcome) job = { ...job, status: "unknown", result: null };
       else if (finish && job.status !== "cancelled")
-        job = { ...job, status: "completed", result: research };
+        job = {
+          ...job,
+          status: "completed",
+          result: research,
+          usageReport: {
+            inputTokens: 1000,
+            outputTokens: 2000,
+            reasoningTokens: 500,
+            cachedInputTokens: 200,
+            cacheWriteTokens: 100,
+            searchCredits: 2,
+            aiCostUsd: 0.02169,
+            searchCostUsd: 0.016,
+            totalCostUsd: 0.03769,
+            providerReportedCostUsd: null,
+            complete: true,
+          },
+        };
       result = job;
     } else if (name.includes("cancelMusicInspiration")) {
       job = { ...job, status: "cancelled", result: null };
@@ -241,6 +275,9 @@ async function fixture(
   await page.locator("button[data-generator-mode=advanced]").click();
   return {
     calls,
+    rejectStart: () => {
+      rejectStart = true;
+    },
     loseStartAck: () => {
       loseStartAck = true;
     },
@@ -300,11 +337,11 @@ for (const artist of ["Mirage", "Ласковый май", "Кино"]) {
     ).toBeGreaterThanOrEqual(2);
   });
 }
-test("missing verified pricing blocks research but saved profiles reuse without AI", async ({
+test("missing search configuration blocks research but saved profiles reuse without AI", async ({
   page,
 }) => {
   const f = await fixture(page, { configured: false });
-  await expect(panel(page).getByText(/verified model pricing.*missing/)).toBeVisible();
+  await expect(panel(page).getByText(/Research is not configured/)).toBeVisible();
   await selectProfile(page);
   await panel(page).getByRole("button", { name: "Apply to empty fields" }).click();
   await expect(panel(page).getByText(/^Applied fields:/)).toBeVisible();
@@ -603,7 +640,7 @@ test("user can discard uncertain research and start a different request explicit
   page,
 }) => {
   const f = await fixture(page);
-  f.loseStartAck();
+  f.rejectStart();
   await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
   await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
@@ -882,3 +919,52 @@ for (const [width, height] of [
     ).toBe(false);
   });
 }
+
+test("edited unacknowledged form uses the new model only after server abandonment", async ({
+  page,
+}) => {
+  const f = await fixture(page, { superAdmin: true });
+  f.rejectStart();
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await modal.getByLabel("Artist or group", { exact: true }).fill("Old artist");
+  await modal.getByRole("button", { name: "Research", exact: true }).click();
+  await expect(modal.getByRole("alert")).toBeVisible();
+  await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
+  await modal
+    .getByRole("combobox", { name: "Research model", exact: true })
+    .selectOption("allowed-override");
+  await modal.getByRole("button", { name: "Start new research", exact: true }).click();
+  const starts = f.calls.filter((c) => c.name.includes("startMusicInspiration"));
+  expect(starts).toHaveLength(2);
+  expect(starts[1]!.data.modelOverride).toBe("allowed-override");
+  expect((starts[1]!.data.request as { artist: string }).artist).toBe("New artist");
+  expect(starts[0]!.data.requestId).not.toBe(starts[1]!.data.requestId);
+  expect(f.calls.some((c) => c.name.includes("abandonMusicInspirationRequest"))).toBe(true);
+});
+test("lost acknowledgement with an admitted job recovers it instead of starting a duplicate", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  f.loseStartAck();
+  await startResearch(page);
+  await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+  await modal.getByRole("button", { name: "Discard pending request", exact: true }).click();
+  await expect(
+    modal.getByRole("button", { name: "Discard pending request", exact: true }),
+  ).toHaveCount(0);
+  expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+});
+test("completed research shows observed tokens and separate indicative AI/search total", async ({
+  page,
+}) => {
+  await fixture(page);
+  await startResearch(page);
+  const report = panel(page).getByTestId("inspiration-usage");
+  await expect(report).toContainText("Input tokens: 1000");
+  await expect(report).toContainText("Output tokens: 2000");
+  await expect(report).toContainText("$0.03769");
+  await expect(report).toContainText("Reasoning (included in output): 500");
+  await expect(report).not.toContainText("Budget");
+});

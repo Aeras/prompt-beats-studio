@@ -88,7 +88,6 @@ function fixture() {
   const deps: InspirationJobDependencies = {
     db,
     atlas: async () => [],
-    budget: async () => ({ aiMaxCostUsd: 0.1, searchCreditUsd: 0.01, totalUsd: 0.12 }),
     admitDispatch: async () => {},
     authorizeModel: async () => {},
     search: async () => {
@@ -296,10 +295,10 @@ test("recovery delivery reuses a stored response instead of another paid generat
   expect(f.counts()).toEqual({ searches: 2, calls: 1 });
   expect(f.records.size).toBe(1);
 });
-test("pricing/spend guard still blocks recovered queued work before any paid dispatch", async () => {
+test("global AI switch still blocks queued work before any paid dispatch", async () => {
   const f = fixture();
-  f.deps.budget = async () => {
-    throw new Error("research_budget_exceeded");
+  f.deps.admitDispatch = async () => {
+    throw new Error("AI disabled");
   };
   await executeMusicInspirationJob(f.id, f.deps);
   expect(f.job.status).toBe("failed");

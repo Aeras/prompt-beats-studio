@@ -48,7 +48,8 @@ END $$;
 SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000001','c4510000-0000-4000-8000-000000000010','{"depth":"standard","changed":true}','music-inspiration-sql-fixture','openai',0.25)$q$);
 SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000003',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25)$q$);
 SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000001',gen_random_uuid(),'{"depth":"extended"}','music-inspiration-sql-fixture','openai',1)$q$);
-SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000001',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.26)$q$);
+-- Monetary quote changes do not invalidate retries of the same actual request.
+SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000001','c4510000-0000-4000-8000-000000000010','{"depth":"standard"}','music-inspiration-sql-fixture','openai',100);
 -- Service admission has no user JWT: the explicit trusted owner is required.
 SELECT set_config('request.jwt.claim.sub','',true);
 SET LOCAL ROLE service_role;
@@ -58,10 +59,9 @@ SELECT pg_temp.assert(public.reserve_music_inspiration_dispatch(job_id,lease,'c4
 SELECT pg_temp.assert(NOT public.reserve_music_inspiration_dispatch(job_id,lease,'c4510000-0000-4000-8000-000000000020','search',0.02,1),'Same query never redispatched') FROM fixture;
 SELECT pg_temp.assert(public.reserve_music_inspiration_dispatch(job_id,lease,'c4510000-0000-4000-8000-000000000021','search',0.02,1),'Second distinct query allowed') FROM fixture;
 SELECT pg_temp.assert(NOT public.reserve_music_inspiration_dispatch(job_id,lease,gen_random_uuid(),'search',0.02,1),'Third query exceeds standard credits') FROM fixture;
-SELECT pg_temp.assert(NOT public.reserve_music_inspiration_dispatch(job_id,lease,gen_random_uuid(),'ai',0.22,0),'Budget preflight fails closed') FROM fixture;
-SELECT pg_temp.assert(public.reserve_music_inspiration_dispatch(job_id,lease,'c4510000-0000-4000-8000-000000000022','ai',0.20,0),'AI reserved before call') FROM fixture;
+SELECT pg_temp.assert(public.reserve_music_inspiration_dispatch(job_id,lease,'c4510000-0000-4000-8000-000000000022','ai',10,0),'AI dispatch journal accepts amounts above old budget without gating') FROM fixture;
 SELECT pg_temp.assert(NOT public.reserve_music_inspiration_dispatch(job_id,lease,gen_random_uuid(),'ai',0.01,0),'Exactly one AI call') FROM fixture;
-SELECT pg_temp.assert(reserved_usd=0.24 AND search_credits=2,'Cumulative counters') FROM public.music_inspiration_jobs WHERE id=(SELECT job_id FROM fixture);
+SELECT pg_temp.assert(reserved_usd=10.04 AND search_credits=2,'Cumulative counters') FROM public.music_inspiration_jobs WHERE id=(SELECT job_id FROM fixture);
 SELECT pg_temp.reject(format('SELECT public.checkpoint_music_inspiration_job(%L,%L,%L)',job_id,lease,'{"reserved_usd":0}')) FROM fixture;
 -- Simulate committed execution journal before worker crashes. No generation job FK.
 SELECT public.begin_ai_execution_internal(execution_id,'c4510000-0000-4000-8000-000000000001','music_inspiration','openai','music-inspiration-sql-fixture',NULL,NULL,NULL) FROM fixture;
@@ -91,7 +91,7 @@ SELECT public.cancel_music_inspiration_job(job_id) FROM fixture;
 RESET ROLE;
 SELECT public.settle_music_inspiration_dispatch(job_id,'c4510000-0000-4000-8000-000000000022','observed','{"usage":"durable"}') FROM fixture;
 SELECT public.settle_music_inspiration_dispatch(job_id,'c4510000-0000-4000-8000-000000000022','unknown','{"late":"must not overwrite observed"}') FROM fixture;
-SELECT pg_temp.assert(status='cancelled' AND provider_result->>'report'='journal survives crash' AND reserved_usd=0.24,'Receipt recovers journal without resurrecting cancellation') FROM public.music_inspiration_jobs WHERE id=(SELECT job_id FROM fixture);
+SELECT pg_temp.assert(status='cancelled' AND provider_result->>'report'='journal survives crash' AND reserved_usd=10.04,'Receipt recovers journal without resurrecting cancellation') FROM public.music_inspiration_jobs WHERE id=(SELECT job_id FROM fixture);
 SELECT pg_temp.assert(receipt='{"usage":"durable"}'::jsonb,'Observed receipt immutable') FROM public.music_inspiration_dispatches WHERE kind='ai' AND job_id=(SELECT job_id FROM fixture);
 SELECT pg_temp.reject($q$DELETE FROM public.ai_models WHERE provider_model_id='music-inspiration-sql-fixture'$q$);
 SELECT set_config('request.jwt.claim.sub','c4510000-0000-4000-8000-000000000002',true);
@@ -118,14 +118,14 @@ END $$;
 UPDATE public.global_ai_usage_policy SET enabled=false;
 SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000002',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25)$q$);
 UPDATE public.global_ai_usage_policy SET enabled=true;
--- Owner 2 already admitted $1. The second $1 fits; any more fails closed.
+-- Owner-approved policy: no daily money or four-per-hour research quota.
 SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000002',gen_random_uuid(),'{"depth":"extended"}','music-inspiration-sql-fixture','openai',1);
-SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000002',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25)$q$);
+SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000002',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25);
 INSERT INTO public.beta_testers(user_id)VALUES('c4510000-0000-4000-8000-000000000003');
 DO $$ DECLARE n integer; BEGIN FOR n IN 1..4 LOOP
  PERFORM public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000003',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25);
 END LOOP; END $$;
-SELECT pg_temp.reject($q$SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000003',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25)$q$);
+SELECT public.start_music_inspiration_job('c4510000-0000-4000-8000-000000000003',gen_random_uuid(),'{"depth":"standard"}','music-inspiration-sql-fixture','openai',0.25);
 -- Unknown jobs recover only from an already committed result, never a new call.
 DO $$ DECLARE j public.music_inspiration_jobs; job_id uuid; token uuid:=gen_random_uuid(); execution uuid; BEGIN
  SELECT jobs.id,jobs.execution_id INTO job_id,execution FROM public.music_inspiration_jobs jobs WHERE user_id='c4510000-0000-4000-8000-000000000002' ORDER BY created_at,id LIMIT 1;

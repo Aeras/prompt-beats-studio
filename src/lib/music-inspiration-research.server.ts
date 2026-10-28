@@ -11,24 +11,15 @@ import {
 import type { ModelCall, ModelResult } from "./ai-provider.server";
 
 export const INSPIRATION_LIMITS = {
-  standard: { queries: 2, results: 3, textChars: 3000, timeoutMs: 90000, maxUsd: 0.25 },
-  extended: { queries: 5, results: 3, textChars: 4000, timeoutMs: 120000, maxUsd: 1 },
+  standard: { queries: 2, results: 3, textChars: 3000, timeoutMs: 90000 },
+  extended: { queries: 5, results: 3, textChars: 4000, timeoutMs: 120000 },
 } as const;
 export type RetrievedInspirationDocument = {
   source: InspirationResearch["sources"][number];
   text: string;
 };
-const number = (value: string | undefined) =>
-  value && Number.isFinite(+value) && +value > 0 ? +value : null;
 export function inspectMusicInspirationConfiguration(env = process.env) {
-  const rate = number(env["MUSIC_INSPIRATION_SEARCH_CREDIT_USD"]);
-  const checked = Date.parse(env["MUSIC_INSPIRATION_SEARCH_CREDIT_VERIFIED_AT"] ?? "");
-  const configured =
-    !!env["TAVILY_API_KEY"] &&
-    !!rate &&
-    Number.isFinite(checked) &&
-    checked <= Date.now() &&
-    Date.now() - checked < 30 * 86400000;
+  const configured = !!env["TAVILY_API_KEY"]?.trim();
   return { configured, reason: configured ? null : "search_configuration_required" };
 }
 /** Never authorizes research-only Atlas data or assumes a bibliography link is approval. */
@@ -112,7 +103,7 @@ const searchResponseSchema = z.object({
       }),
     )
     .max(20),
-  usage: z.object({ credits: z.number().int().nonnegative() }),
+  usage: z.object({ credits: z.number().int().nonnegative() }).optional(),
   request_id: z.string().max(200).optional(),
 });
 export async function searchInspirationWeb(
@@ -122,7 +113,7 @@ export async function searchInspirationWeb(
   apiKey = process.env["TAVILY_API_KEY"],
 ): Promise<{
   documents: RetrievedInspirationDocument[];
-  credits: number;
+  credits: number | null;
   requestId: string | null;
 }> {
   if (!apiKey) throw new Error("search_configuration_required");
@@ -144,7 +135,6 @@ export async function searchInspirationWeb(
     }),
   });
   const parsed = searchResponseSchema.parse(await boundedJson(response));
-  if (parsed.usage.credits > 1) throw new Error("unexpected_search_credit_usage");
   const seen = new Set<string>();
   const documents: RetrievedInspirationDocument[] = [];
   for (const result of parsed.results) {
@@ -188,87 +178,44 @@ export async function searchInspirationWeb(
       },
     });
   }
-  return { documents, credits: parsed.usage.credits, requestId: parsed.request_id ?? null };
+  return {
+    documents,
+    credits: parsed.usage?.credits ?? null,
+    requestId: parsed.request_id ?? null,
+  };
 }
-export type InspirationPrice = {
-  input: number;
-  output: number;
-  cached: number;
-  cacheWrite: number;
-};
-export function conservativeInspirationBudget(
-  price: InspirationPrice,
-  searchCreditUsd: number,
-  depth: "standard" | "extended",
-) {
-  if (
-    ![price.input, price.output, price.cached, price.cacheWrite, searchCreditUsd].every(
-      (n) => Number.isFinite(n) && n >= 0,
-    ) ||
-    searchCreditUsd <= 0
-  )
-    throw new Error("pricing_unverified");
-  // Includes current adapters' output expansion plus conservative hidden-reasoning headroom.
-  // No prediction of actual reasoning tokens or invoice is made.
-  const aiMaxCostUsd = Math.max(
-    0.00000001,
-    Math.ceil(
-      ((80000 * Math.max(price.input, price.cached, price.cacheWrite) + 65536 * price.output) /
-        1e6) *
-        1e8,
-    ) / 1e8,
-  );
-  const searchMaxCostUsd = INSPIRATION_LIMITS[depth].queries * searchCreditUsd;
-  const totalUsd = Math.ceil((aiMaxCostUsd + searchMaxCostUsd) * 1e8) / 1e8;
-  if (totalUsd > INSPIRATION_LIMITS[depth].maxUsd) throw new Error("research_budget_exceeded");
-  return { aiMaxCostUsd, searchCreditUsd, totalUsd };
-}
-export async function getMusicInspirationBudget(
-  model: string,
-  provider: string,
-  depth: "standard" | "extended",
-) {
-  if (!inspectMusicInspirationConfiguration().configured)
-    throw new Error("search_configuration_required");
+/** Prices are administrator-owned estimates, never admission or freshness requirements. */
+export async function getMusicInspirationPrices(model: string, provider: string) {
+  const { configuredPrice, emptyInspirationPrices } =
+    await import("./music-inspiration-usage.shared");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("ai_models")
-    .select("*")
-    .eq("provider_model_id", model)
-    .eq("provider", provider)
-    .maybeSingle();
-  if (
-    error ||
-    !data ||
-    data.status !== "enabled" ||
-    data.pricing_status !== "verified" ||
-    data.pricing_currency !== "USD"
-  )
-    throw new Error("pricing_unverified");
-  const checked = Date.parse(data.pricing_checked_at ?? data.pricing_updated_at ?? "");
-  if (!Number.isFinite(checked) || checked > Date.now() || Date.now() - checked > 30 * 86400000)
-    throw new Error("pricing_unverified");
-  if (data.input_price_per_million == null || data.output_price_per_million == null)
-    throw new Error("pricing_unverified");
-  const input = Number(data.input_price_per_million),
-    output = Number(data.output_price_per_million);
-  return conservativeInspirationBudget(
-    {
-      input,
-      output,
-      cached: Number(data.cached_input_price_per_million ?? input),
-      cacheWrite: Number(data.cache_write_price_per_million ?? input * 2),
-    },
-    Number(process.env["MUSIC_INSPIRATION_SEARCH_CREDIT_USD"]),
-    depth,
-  );
-}
-export async function researchBudgetForModel(
-  model: string,
-  provider: string,
-  depth: "standard" | "extended",
-) {
-  return (await getMusicInspirationBudget(model, provider, depth)).totalUsd;
+  const fallback = {
+    ...emptyInspirationPrices(),
+    searchCreditUsd: configuredPrice(process.env["MUSIC_INSPIRATION_SEARCH_CREDIT_USD"]),
+  };
+  let data;
+  try {
+    const reply = await supabaseAdmin
+      .from("ai_models")
+      .select("*")
+      .eq("provider_model_id", model)
+      .eq("provider", provider)
+      .maybeSingle();
+    if (reply.error || !reply.data) return fallback;
+    data = reply.data;
+  } catch {
+    return fallback;
+  }
+  // Tariff lookup is informational; it cannot deny an otherwise authorized research.
+
+  const price = data.pricing_currency === "USD" ? configuredPrice : () => null;
+  return {
+    input: price(data.input_price_per_million),
+    output: price(data.output_price_per_million),
+    cached: price(data.cached_input_price_per_million),
+    cacheWrite: price(data.cache_write_price_per_million),
+    searchCreditUsd: configuredPrice(process.env["MUSIC_INSPIRATION_SEARCH_CREDIT_USD"]),
+  };
 }
 export async function synthesizeMusicInspiration(
   request: InspirationRequest,

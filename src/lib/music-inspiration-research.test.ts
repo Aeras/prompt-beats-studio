@@ -10,7 +10,6 @@ import {
 import type { ModelCall, ModelResult } from "./ai-provider.server";
 import {
   approvedAtlasEvidence,
-  conservativeInspirationBudget,
   inspectMusicInspirationConfiguration,
   inspirationQueries,
   publicInspirationUrl,
@@ -19,7 +18,7 @@ import {
 } from "./music-inspiration-research.server";
 
 describe("real research transport, with offline network fixtures", () => {
-  test("missing/stale configuration is explicit; never invent a search provider", () => {
+  test("only a missing search credential blocks configuration; quote age is not admission", () => {
     expect(inspectMusicInspirationConfiguration({}).configured).toBe(false);
     expect(
       inspectMusicInspirationConfiguration({
@@ -27,7 +26,7 @@ describe("real research transport, with offline network fixtures", () => {
         MUSIC_INSPIRATION_SEARCH_CREDIT_USD: "0.01",
         MUSIC_INSPIRATION_SEARCH_CREDIT_VERIFIED_AT: "2000-01-01",
       }).configured,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       inspectMusicInspirationConfiguration({
         TAVILY_API_KEY: "offline",
@@ -62,28 +61,10 @@ describe("real research transport, with offline network fixtures", () => {
       await approvedAtlasEvidence({ kind: "artist", artist: "Кино", depth: "standard" }),
     ).toEqual([]);
   });
-  test("hard reservation includes reasoning/cache ceilings; expensive or unknown rates fail closed", () => {
-    const estimate = conservativeInspirationBudget(
-      { input: 0.1, output: 0.2, cached: 0.1, cacheWrite: 0.3 },
-      0.01,
-      "standard",
+  test("search works with no price configuration or verification timestamp", () => {
+    expect(inspectMusicInspirationConfiguration({ TAVILY_API_KEY: "offline" }).configured).toBe(
+      true,
     );
-    expect(estimate.totalUsd).toBeGreaterThan(0.02);
-    expect(estimate.totalUsd).toBeLessThanOrEqual(0.25);
-    expect(() =>
-      conservativeInspirationBudget(
-        { input: 50, output: 50, cached: 50, cacheWrite: 50 },
-        0.01,
-        "standard",
-      ),
-    ).toThrow("budget");
-    expect(() =>
-      conservativeInspirationBudget(
-        { input: NaN, output: 1, cached: 1, cacheWrite: 1 },
-        0.01,
-        "standard",
-      ),
-    ).toThrow("pricing");
   });
   test("credentials, local addresses, alternate protocols, audio and secret-bearing URLs are rejected", () => {
     for (const url of [
@@ -139,7 +120,7 @@ describe("real research transport, with offline network fixtures", () => {
     expect(found.documents[0]?.source.accessedEvidence).toBe("retrieved_extract");
     expect(found.documents[0]?.source.receipt?.contentSha256).toMatch(/^[a-f0-9]{64}$/);
   });
-  test("provider failure, unexpected credit use and oversize response never retry", async () => {
+  test("provider failures never retry; real credit use is observed rather than capped", async () => {
     let count = 0;
     await expect(
       searchInspirationWeb(
@@ -153,14 +134,26 @@ describe("real research transport, with offline network fixtures", () => {
       ),
     ).rejects.toThrow("search_provider_failed");
     expect(count).toBe(1);
-    await expect(
-      searchInspirationWeb(
-        "query",
-        new AbortController().signal,
-        async () => Response.json({ results: [], usage: { credits: 2 } }),
-        "offline",
-      ),
-    ).rejects.toThrow("unexpected_search_credit_usage");
+    expect(
+      (
+        await searchInspirationWeb(
+          "query",
+          new AbortController().signal,
+          async () => Response.json({ results: [], usage: { credits: 2 } }),
+          "offline",
+        )
+      ).credits,
+    ).toBe(2);
+    expect(
+      (
+        await searchInspirationWeb(
+          "query",
+          new AbortController().signal,
+          async () => Response.json({ results: [] }),
+          "offline",
+        )
+      ).credits,
+    ).toBeNull();
     await expect(
       searchInspirationWeb(
         "query",

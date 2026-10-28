@@ -31,6 +31,7 @@ import {
 import {
   getMusicInspirationConfig,
   startMusicInspiration,
+  abandonMusicInspirationRequest,
   getMusicInspirationJob,
   cancelMusicInspiration,
   listMusicInspirationProfiles,
@@ -115,6 +116,7 @@ export function MusicInspirationPanel({
   const [modelOverride, setModelOverride] = useState("");
   const [attempt, setAttempt] = useState<PendingAttempt | null>(null);
   const [storageError, setStorageError] = useState(false);
+  const [recoveredPrevious, setRecoveredPrevious] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [profileId, setProfileId] = useState("");
   const [name, setName] = useState("");
@@ -200,6 +202,7 @@ export function MusicInspirationPanel({
     scope.serial++;
     lock.current = false;
     setOwner(uid);
+    setRecoveredPrevious(false);
     setJob(null);
     setProfileId("");
     setOrigin(null);
@@ -326,15 +329,31 @@ export function MusicInspirationPanel({
     if (!uid || busy || !attempt || attempt.jobId) return;
     // Discarding the local request does not cancel any server-side work or refund
     // a possible provider charge. Never automatically retry an uncertain request.
-    try {
+    const pending = attempt;
+    void run(async (valid) => {
+      const { job: existing } = await abandonMusicInspirationRequest({
+        data: { requestId: pending.requestId },
+      });
+      if (existing) {
+        const acknowledged = { ...pending, jobId: existing.id };
+        localStorage.setItem(attemptKey(uid), JSON.stringify(acknowledged));
+        if (valid()) {
+          setAttempt(acknowledged);
+          setJob(existing);
+          setOpen(false);
+          setRecoveredPrevious(true);
+        }
+        return;
+      }
       localStorage.removeItem(attemptKey(uid));
-      setAttempt(null);
-      setError(false);
-      setFailedStage(null);
-    } catch {
-      setStorageError(true);
-    }
+      if (valid()) {
+        setAttempt(null);
+        setError(false);
+        setFailedStage(null);
+      }
+    });
   }
+
   function start() {
     if (
       !request.success ||
@@ -348,26 +367,45 @@ export function MusicInspirationPanel({
     // An unacknowledged start retains its exact request and idempotency key,
     // including across reload. Retrying it is an explicit user action.
     const pending = attempt && !attempt.jobId ? attempt : null;
-    const requestValue = pending?.request ?? request.data;
-    const override =
-      pending?.modelOverride ??
-      (config.data?.superAdmin && modelOverride ? modelOverride : undefined);
+    const override = config.data?.superAdmin && modelOverride ? modelOverride : undefined;
     const fingerprint = JSON.stringify({
-      request: requestValue,
+      request: request.data,
       model: override ?? config.data.defaultModel,
     });
-    const candidate: PendingAttempt = pending ?? {
-      version: 1,
-      requestId: crypto.randomUUID(),
-      fingerprint,
-      request: requestValue,
-      ...(override ? { modelOverride: override } : {}),
-    };
+    const candidate: PendingAttempt =
+      pending?.fingerprint === fingerprint
+        ? pending
+        : {
+            version: 1,
+            requestId: crypto.randomUUID(),
+            fingerprint,
+            request: request.data,
+            ...(override ? { modelOverride: override } : {}),
+          };
     const account = uid;
     void run(async (valid) => {
+      // Reconcile an edited unacknowledged request before creating a new identity.
+      // A late old POST is fenced by a durable tombstone, not a local guess.
+      if (pending && candidate.requestId !== pending.requestId) {
+        const { job: existing } = await abandonMusicInspirationRequest({
+          data: { requestId: pending.requestId },
+        });
+        if (existing) {
+          const acknowledged = { ...pending, jobId: existing.id };
+          localStorage.setItem(attemptKey(account), JSON.stringify(acknowledged));
+          if (valid()) {
+            setAttempt(acknowledged);
+            setJob(existing);
+            setOpen(false);
+            setRecoveredPrevious(true);
+          }
+          return;
+        }
+      }
       // Fail closed if durable idempotency cannot be recorded before dispatch.
       localStorage.setItem(attemptKey(account), JSON.stringify(candidate));
       setAttempt(candidate);
+      setRecoveredPrevious(false);
       setOrigin(null);
       setPreview(false);
       setSummary(null);
@@ -523,6 +561,15 @@ export function MusicInspirationPanel({
         : failedStage === "start"
           ? t.failedStart
           : t.failed;
+  const formatCost = (amount: number | null | undefined) =>
+    amount == null
+      ? t.usageUnknown
+      : new Intl.NumberFormat(language === "el" ? "el-GR" : "en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 8,
+        }).format(amount);
   const buttons = "flex flex-wrap gap-2";
   const previewValues = result
     ? {
@@ -576,13 +623,7 @@ export function MusicInspirationPanel({
         </div>
       )}
       {config.isPending && <p role="status">{t.loading}</p>}
-      {config.data && !config.data.configured && (
-        <p role="status">
-          {config.data?.reason && /pricing|budget|cost/i.test(config.data.reason)
-            ? t.costUnavailable
-            : t.unavailable}
-        </p>
-      )}
+      {config.data && !config.data.configured && <p role="status">{t.unavailable}</p>}
       <Dialog
         open={open}
         onOpenChange={(value) => {
@@ -688,13 +729,7 @@ export function MusicInspirationPanel({
                 </select>
               </>
             )}
-            {!config.data?.configured && (
-              <p role="status">
-                {config.data?.reason && /pricing|budget|cost/i.test(config.data.reason)
-                  ? t.costUnavailable
-                  : t.unavailable}
-              </p>
-            )}
+            {!config.data?.configured && <p role="status">{t.unavailable}</p>}
             {attempt && !attempt.jobId && (
               <Button
                 type="button"
@@ -723,7 +758,17 @@ export function MusicInspirationPanel({
               {busy
                 ? t.loading
                 : attempt && !attempt.jobId
-                  ? t.retryAttempt
+                  ? request.success &&
+                    attempt.fingerprint !==
+                      JSON.stringify({
+                        request: request.data,
+                        model:
+                          config.data?.superAdmin && modelOverride
+                            ? modelOverride
+                            : config.data?.defaultModel,
+                      })
+                    ? t.newResearch
+                    : t.retryAttempt
                   : job
                     ? t.newResearch
                     : t.research}
@@ -745,6 +790,7 @@ export function MusicInspirationPanel({
         </DialogContent>
       </Dialog>
       {storageError && <p role="alert">{t.persistenceError}</p>}
+      {recoveredPrevious && <p role="status">{t.previousRecovered}</p>}
       {(job || attempt?.jobId) && (
         <Button type="button" variant="outline" disabled={busy} onClick={refreshJob}>
           {t.refreshStatus}
@@ -769,10 +815,34 @@ export function MusicInspirationPanel({
           <p>
             {t.model}: {job.model}
           </p>
-          <p>
-            {t.budget}: {job.budget_usd} · {t.reserved}: {job.reserved_usd} · {t.credits}:{" "}
-            {job.search_credits}
-          </p>
+          {!active(job) && (
+            <div data-testid="inspiration-usage" className="space-y-1 rounded border p-2 text-sm">
+              <p className="font-medium">{t.usageTitle}</p>
+              <p>
+                {t.inputTokens}: {job.usageReport?.inputTokens ?? t.usageUnknown} · {t.outputTokens}
+                : {job.usageReport?.outputTokens ?? t.usageUnknown}
+              </p>
+              <p>
+                {t.reasoningTokens}: {job.usageReport?.reasoningTokens ?? t.usageUnknown} ·{" "}
+                {t.cachedTokens}: {job.usageReport?.cachedInputTokens ?? t.usageUnknown} ·{" "}
+                {t.cacheWriteTokens}: {job.usageReport?.cacheWriteTokens ?? t.usageUnknown}
+              </p>
+              <p>
+                {t.aiCost}: {formatCost(job.usageReport?.aiCostUsd)} · {t.searchCost}:{" "}
+                {formatCost(job.usageReport?.searchCostUsd)} (
+                {job.usageReport?.searchCredits ?? t.usageUnknown} {t.searchCredits})
+              </p>
+              <p className="font-medium">
+                {t.totalCost}: {formatCost(job.usageReport?.totalCostUsd)}
+              </p>
+              {job.usageReport?.providerReportedCostUsd != null && (
+                <p>
+                  {t.providerCost}: {formatCost(job.usageReport.providerReportedCostUsd)}
+                </p>
+              )}
+              <p>{t.costEstimateNote}</p>
+            </div>
+          )}
           {active(job) && (
             <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
               {t.cancel}

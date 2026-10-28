@@ -1,14 +1,24 @@
 export const musicInspirationCopy = {
   en: {
-    limits:
-      "Maximum research budget: Standard $0.25; Extended $1. Verified pricing and available budget are required before starting.",
-    costUnavailable:
-      "Research cannot start: verified model pricing or available research budget is missing. Saved profiles remain reusable.",
+    previousRecovered:
+      "Your earlier research was recovered; no new research was started. Current edits remain in the form.",
+    usageTitle: "Research usage and indicative cost",
+    inputTokens: "Input tokens",
+    outputTokens: "Output tokens",
+    reasoningTokens: "Reasoning (included in output)",
+    cachedTokens: "Cached input",
+    cacheWriteTokens: "Cache writes",
+    aiCost: "AI estimate",
+    searchCost: "Search estimate",
+    totalCost: "Total indicative cost",
+    searchCredits: "search credits",
+    providerCost: "Provider-reported cost (not added again)",
+    usageUnknown: "Not available",
+    costEstimateNote:
+      "Estimate using the platform's saved prices and observed usage; not a verified invoice. Missing evidence remains unavailable.",
     undoPreserved: "Later manual edits preserved",
     outcomeUnknown:
       "Provider outcome unknown. No result is applied. Check status before starting another research job.",
-    reservationNote:
-      "Budgets and reservations are account policy limits and estimates, not an invoice or measured usage.",
     refreshStatus: "Refresh research status (no new research)",
     retryAttempt: "Retry the same research request",
     discardPending: "Discard pending request",
@@ -45,7 +55,7 @@ export const musicInspirationCopy = {
     failedConfig: "Research setup could not be loaded. No new research was started.",
     failedProfiles: "Saved profiles could not be loaded. No new research was started.",
     failedStart:
-      "Research request could not be confirmed. Retry only the same request ID; do not start a new one.",
+      "Research was not confirmed. Retry or edit the form; the previous request will be checked safely.",
     failedStatus:
       "Research status could not be checked. Refresh status without starting new research.",
     complete: "Research completed",
@@ -85,9 +95,6 @@ export const musicInspirationCopy = {
     applied: "Applied fields",
     skipped: "Preserved or unavailable fields",
     undo: "Undo inspiration",
-    budget: "Budget (USD)",
-    reserved: "Estimated reservation (USD)",
-    credits: "Reserved search credits",
     supported: "Supported",
     bounded: "Bounded",
     disputed: "Disputed",
@@ -99,15 +106,25 @@ export const musicInspirationCopy = {
     refresh: "Refresh profiles",
   },
   el: {
-    limits:
-      "Μέγιστο κόστος έρευνας: Κανονική $0,25· Εκτεταμένη $1. Απαιτούνται επαληθευμένη τιμολόγηση και διαθέσιμο budget πριν την έναρξη.",
-    costUnavailable:
-      "Η έρευνα δεν μπορεί να ξεκινήσει: λείπει επαληθευμένη τιμολόγηση μοντέλου ή διαθέσιμο budget. Τα αποθηκευμένα προφίλ παραμένουν διαθέσιμα.",
+    previousRecovered:
+      "Ανακτήθηκε η προηγούμενη έρευνα, χωρίς να ξεκινήσει νέα. Οι αλλαγές σας παραμένουν στη φόρμα.",
+    usageTitle: "Χρήση και ενδεικτικό κόστος έρευνας",
+    inputTokens: "Tokens εισόδου",
+    outputTokens: "Tokens εξόδου",
+    reasoningTokens: "Reasoning (περιλαμβάνεται στην έξοδο)",
+    cachedTokens: "Είσοδος από cache",
+    cacheWriteTokens: "Εγγραφές cache",
+    aiCost: "Εκτίμηση AI",
+    searchCost: "Εκτίμηση αναζήτησης",
+    totalCost: "Συνολικό ενδεικτικό κόστος",
+    searchCredits: "credits αναζήτησης",
+    providerCost: "Κόστος που αναφέρει ο πάροχος (δεν προστίθεται ξανά)",
+    usageUnknown: "Μη διαθέσιμο",
+    costEstimateNote:
+      "Εκτίμηση με τις αποθηκευμένες τιμές της πλατφόρμας και την παρατηρημένη χρήση, όχι επαληθευμένο τιμολόγιο. Ελλιπή στοιχεία παραμένουν μη διαθέσιμα.",
     undoPreserved: "Διατηρήθηκαν μεταγενέστερες χειροκίνητες αλλαγές",
     outcomeUnknown:
       "Άγνωστη έκβαση παρόχου. Δεν εφαρμόζεται αποτέλεσμα. Ελέγξτε την κατάσταση πριν ξεκινήσετε νέα έρευνα.",
-    reservationNote:
-      "Τα όρια και οι δεσμεύσεις αφορούν πολιτικές λογαριασμού και εκτιμήσεις, όχι τιμολόγιο ή μετρημένη χρήση.",
     refreshStatus: "Ανανέωση κατάστασης (χωρίς νέα έρευνα)",
     retryAttempt: "Επανάληψη του ίδιου αιτήματος έρευνας",
     discardPending: "Απόρριψη εκκρεμούς αιτήματος",
@@ -145,7 +162,7 @@ export const musicInspirationCopy = {
     failedConfig: "Δεν φορτώθηκαν οι ρυθμίσεις έρευνας. Δεν ξεκίνησε νέα έρευνα.",
     failedProfiles: "Δεν φορτώθηκαν τα αποθηκευμένα προφίλ. Δεν ξεκίνησε νέα έρευνα.",
     failedStart:
-      "Δεν επιβεβαιώθηκε το αίτημα έρευνας. Επαναλάβετε μόνο το ίδιο αίτημα, όχι νέα έρευνα.",
+      "Δεν επιβεβαιώθηκε η έρευνα. Επαναλάβετε ή αλλάξτε τη φόρμα· το προηγούμενο αίτημα θα ελεγχθεί με ασφάλεια.",
     failedStatus:
       "Δεν ελέγχθηκε η κατάσταση της έρευνας. Ανανεώστε την κατάσταση χωρίς νέα έρευνα.",
     complete: "Η έρευνα ολοκληρώθηκε",
@@ -185,9 +202,6 @@ export const musicInspirationCopy = {
     applied: "Πεδία που εφαρμόστηκαν",
     skipped: "Πεδία που διατηρήθηκαν ή δεν προτάθηκαν",
     undo: "Αναίρεση έμπνευσης",
-    budget: "Όριο κόστους (USD)",
-    reserved: "Εκτιμώμενη δέσμευση (USD)",
-    credits: "Δεσμευμένες μονάδες αναζήτησης",
     supported: "Τεκμηριωμένο",
     bounded: "Περιορισμένη τεκμηρίωση",
     disputed: "Αμφισβητούμενο",
