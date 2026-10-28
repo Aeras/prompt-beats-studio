@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration compact dialog and model clarity — IN_PROGRESS
+
+- **Cause confirmed in current main `9de7c2aa4351232d2a8653278d8693c5cd9eedab`:** dialog renders verbose description, financial limits/reservation note, an unconditional default-model label and a redundant standard-depth label. This is independent of runner recovery Draft PR #452.
+- **Correction:** remove explanatory introductory text and redundant default-model/depth display from the dialog, retain server-side budget, auth and pricing enforcement and failure-state messages. Super Admin keeps its explicit model selector; the selected override is already passed to the server and validated there, while ordinary users continue to use the effective Generator default model. No model-policy change, pricing relaxation, database migration or secret changes.
+- **Verification:** the initial Regression guard read the old PR event before mandatory PR-body headings were populated. The PR body now includes all four required sections; re-running the original job reused its original event payload. A new documentation commit triggers fresh CI with the current PR metadata. Browser Quality returned 192 PASS / 6 FAIL (two obsolete text assertions repeated across desktop/tablet/mobile). Updated only these two assertions in e2e/music-inspiration.pw.ts to verify the removed labels stay absent. Focused UI regression, formatting and final CI must now pass on the updated exact HEAD. No publish, merge or paid calls. Atlas #450 and runner PR #452 remain untouched.
+
 ## 2026-10-28 — AI Music Inspiration Beta — IN_PROGRESS
 
 - **Status: IN_PROGRESS — implementation and offline verification complete; Draft PR [#451](https://github.com/Aeras/prompt-beats-studio/pull/451) for independent review; production release not performed.** Branch `feature/ai-music-inspiration-beta`, baseline main `fdf34b2e601dc90d4fbdaf1a3192ff948f09f698`. Atlas V4 #450 remains paused and independent; its data/code are not consumed.

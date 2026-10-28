@@ -541,9 +541,6 @@ export function MusicInspirationPanel({
           aria-label={t.title}
         >
           <DialogTitle>{t.title}</DialogTitle>
-          <DialogDescription>{t.description}</DialogDescription>
-          <p>{t.limits}</p>
-          <p className="text-sm">{t.reservationNote}</p>
           <form
             className="space-y-3"
             onSubmit={(event) => {
@@ -602,9 +599,6 @@ export function MusicInspirationPanel({
                 />
               </>
             )}
-            <p>
-              {t.model}: {config.data?.defaultModel || t.loading}
-            </p>
             {config.data?.superAdmin && (
               <>
                 <CompactDropdown
@@ -630,11 +624,6 @@ export function MusicInspirationPanel({
                   disabled={busy || active(job)}
                 />
               </>
-            )}
-            {!config.data?.superAdmin && (
-              <p>
-                {t.depth}: {t.standard}
-              </p>
             )}
             {!config.data?.configured && (
               <p role="status">
