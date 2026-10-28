@@ -569,12 +569,12 @@ export function MusicInspirationPanel({
           </Button>
         </DialogTrigger>
         <DialogContent
-          className="max-h-[90dvh] w-[calc(100vw-24px)] max-w-xl overflow-y-auto [&>button:last-child]:hidden"
+          className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
           aria-label={t.title}
         >
-          <DialogTitle>{t.title}</DialogTitle>
+          <DialogTitle className="text-base leading-tight sm:text-lg">{t.title}</DialogTitle>
           <form
-            className="space-y-3"
+            className="min-w-0 space-y-2 sm:space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               start();
@@ -668,6 +668,7 @@ export function MusicInspirationPanel({
               <Button
                 type="button"
                 variant="outline"
+                className="h-auto min-h-9 w-full whitespace-normal break-words py-2 text-center"
                 disabled={busy}
                 onClick={discardPendingAttempt}
               >
