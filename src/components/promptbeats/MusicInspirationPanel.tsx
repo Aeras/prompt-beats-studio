@@ -706,7 +706,9 @@ export function MusicInspirationPanel({
             </Button>
           )}
           {(error || poll.isError) && (
-            <p role="alert" className="min-w-0 break-words">{failureText}</p>
+            <p role="alert" className="min-w-0 break-words">
+              {failureText}
+            </p>
           )}
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t.close}
