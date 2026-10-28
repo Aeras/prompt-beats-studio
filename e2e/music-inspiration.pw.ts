@@ -517,9 +517,16 @@ test("Greek resources, keyboard dropdown, mobile layout and accessibility", asyn
   ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(violations).toEqual([]);
 });
-test("Generator and inspiration occupy one centered desktop column without side-by-side squeeze", async ({ page }) => {
+test("Generator and inspiration occupy one centered desktop column without side-by-side squeeze", async ({
+  page,
+}) => {
   await fixture(page);
-  for (const [width, height] of [[1440, 900], [1024, 768], [768, 1024], [390, 844]] as const) {
+  for (const [width, height] of [
+    [1440, 900],
+    [1024, 768],
+    [768, 1024],
+    [390, 844],
+  ] as const) {
     await page.setViewportSize({ width, height });
     const workspace = page.getByTestId("generator-stacked-layout");
     await expect(workspace).toBeVisible();
@@ -528,9 +535,15 @@ test("Generator and inspiration occupy one centered desktop column without side-
       const root = document.querySelector('[data-testid="generator-stacked-layout"]')!;
       const inspiration = document.querySelector('[data-testid="music-inspiration-panel"]')!;
       const generator = root.querySelector(".glass-strong")!;
-      const a = inspiration.getBoundingClientRect(), b = generator.getBoundingClientRect();
+      const a = inspiration.getBoundingClientRect();
+      const b = generator.getBoundingClientRect();
       const wrapper = root.getBoundingClientRect();
-      return { a: {left:a.left,right:a.right,bottom:a.bottom}, b: {left:b.left,right:b.right,top:b.top}, wrapper: {left:wrapper.left,right:wrapper.right}, overflow: document.documentElement.scrollWidth > window.innerWidth + 1 };
+      return {
+        a: { left: a.left, right: a.right, bottom: a.bottom },
+        b: { left: b.left, right: b.right, top: b.top },
+        wrapper: { left: wrapper.left, right: wrapper.right },
+        overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
     });
     expect(rects.a.bottom).toBeLessThanOrEqual(rects.b.top + 1);
     expect(Math.abs(rects.a.left - rects.b.left)).toBeLessThanOrEqual(2);
