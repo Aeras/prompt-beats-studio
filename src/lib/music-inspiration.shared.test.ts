@@ -55,6 +55,26 @@ describe("music inspiration research contract", () => {
       ...base, proposal: { ...base.proposal, theme: "Override", language: "Russian" },
     }).success).toBe(false);
   });
+  it("rejects duplicate source and evidence IDs", () => {
+    expect(inspirationResearchSchema.safeParse({
+      ...base, sources: [base.sources[0], base.sources[0]],
+    }).success).toBe(false);
+    expect(inspirationResearchSchema.safeParse({
+      ...base, evidence: [base.evidence[0], base.evidence[0]],
+    }).success).toBe(false);
+  });
+  it("rejects non-HTTPS citation schemes and URL credentials", () => {
+    for (const url of ["http://example.org/a", "https://user:pass@example.org/a", "https://localhost/a"]) {
+      expect(inspirationResearchSchema.safeParse({
+        ...base, sources: [{ ...base.sources[0], url }],
+      }).success).toBe(false);
+    }
+  });
+  it("requires a source for a bounded claim", () => {
+    expect(inspirationResearchSchema.safeParse({
+      ...base, evidence: [{ ...base.evidence[0], classification: "bounded", sourceIds: [] }],
+    }).success).toBe(false);
+  });
   it("requires substantive descriptions, rejects extra keys", () => {
     expect(inspirationRequestSchema.safeParse({
       kind: "description", description: "pop", depth: "standard",
