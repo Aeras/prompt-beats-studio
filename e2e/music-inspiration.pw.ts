@@ -312,7 +312,7 @@ test("missing verified pricing blocks research but saved profiles reuse without 
   await panel(page).getByRole("button", { name: "Open music research" }).click();
   const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
   await expect(modal.getByRole("button", { name: "Research", exact: true })).toBeDisabled();
-  await expect(modal.getByText(/Maximum research budget/)).toBeVisible();
+  await expect(modal.getByText(/Maximum research budget/)).toHaveCount(0);
 });
 test("non-admin sees server default and no extended or override picker", async ({ page }) => {
   await fixture(page);
@@ -320,7 +320,7 @@ test("non-admin sees server default and no extended or override picker", async (
   const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
   await expect(
     modal.getByText("Research model: server-live-default", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(modal.getByRole("combobox", { name: "Research model" })).toHaveCount(0);
   await expect(modal.getByRole("combobox", { name: "Research depth" })).toHaveCount(0);
   await expect(modal.locator("select")).toHaveCount(0);
