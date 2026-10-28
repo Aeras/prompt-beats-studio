@@ -563,7 +563,7 @@ test("user can discard uncertain research and start a different request explicit
   await modal.getByLabel("Artist or group", { exact: true }).fill("Mirage");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   await expect(modal.getByRole("alert")).toBeVisible();
-  await modal.getByRole("button", { name: /Discard this request and start over/ }).click();
+  await modal.getByRole("button", { name: "Discard pending request" }).click();
   await modal.getByLabel("Artist or group", { exact: true }).fill("New artist");
   await modal.getByRole("button", { name: "Research", exact: true }).click();
   const starts = f.calls.filter((call) => call.name.includes("startMusicInspiration"));
