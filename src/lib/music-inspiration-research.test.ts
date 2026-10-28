@@ -86,7 +86,7 @@ describe("real research transport, with offline network fixtures", () => {
       async (url, init) => {
         calls++;
         expect(url).toBe("https://api.tavily.com/search");
-        expect(init?.redirect).toBe("error");
+        expect(init?.redirect).toBe("manual");
         expect(JSON.parse(init?.body as string)).toMatchObject({
           search_depth: "basic",
           auto_parameters: false,
@@ -120,6 +120,40 @@ describe("real research transport, with offline network fixtures", () => {
     expect(found.documents[0]?.source.accessedEvidence).toBe("retrieved_extract");
     expect(found.documents[0]?.source.receipt?.contentSha256).toMatch(/^[a-f0-9]{64}$/);
   });
+  test.each([301, 302, 303, 307, 308])(
+    "redirect %i is rejected without forwarding credentials or retrying",
+    async (status: number) => {
+      let calls = 0;
+      let cancelled = false;
+      const failure = await searchInspirationWeb(
+        "offline redirect fixture",
+        new AbortController().signal,
+        async (url, init) => {
+          calls++;
+          expect(url).toBe("https://api.tavily.com/search");
+          expect(init?.redirect).toBe("manual");
+          return new Response(
+            new ReadableStream({
+              cancel() {
+                cancelled = true;
+              },
+            }),
+            {
+              status,
+              headers: { Location: "https://untrusted.example/secret-marker" },
+            },
+          );
+        },
+        "offline-secret-marker",
+      ).catch((error: unknown) => error);
+      expect(failure).toMatchObject({
+        diagnostic: { stage: "search_response", code: "http", httpStatus: status },
+      });
+      expect(String(failure)).not.toContain("secret-marker");
+      expect(calls).toBe(1);
+      expect(cancelled).toBe(true);
+    },
+  );
   test("provider failures never retry; real credit use is observed rather than capped", async () => {
     let count = 0;
     await expect(

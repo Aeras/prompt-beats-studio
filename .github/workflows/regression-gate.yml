@@ -214,6 +214,9 @@ jobs:
       # Keep the named suites above for fast subsystem attribution, but always run
       # Bun's repository-wide discovery as the final test gate so newly added test
       # files cannot silently miss CI coverage.
+      - name: Tavily adapter in offline Cloudflare runtime
+        run: bun scripts/tests/tavily-workerd.ts
+
       - name: Complete Bun test suite
         run: bun test
 

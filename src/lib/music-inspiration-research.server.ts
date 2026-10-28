@@ -149,7 +149,9 @@ export async function searchInspirationWeb(
   try {
     response = await fetcher("https://api.tavily.com/search", {
       method: "POST",
-      redirect: "error",
+      // Workers rejects redirect:"error" before dispatch. Manual + boundedJson
+      // rejects every non-2xx response without forwarding the key to Location.
+      redirect: "manual",
       signal,
       headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
       body: JSON.stringify({
