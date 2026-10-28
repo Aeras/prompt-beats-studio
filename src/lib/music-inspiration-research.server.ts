@@ -1,3 +1,4 @@
+import { InspirationFailure, inspirationDiagnostic } from "./music-inspiration-diagnostics.shared";
 /** Real fixed-origin search/retrieval adapter. No live calls occur during tests. */
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -68,7 +69,15 @@ export function publicInspirationUrl(raw: string): string {
   return u.href;
 }
 async function boundedJson(response: Response): Promise<unknown> {
-  if (!response.ok || !response.body) throw new Error("search_provider_failed");
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+    throw new InspirationFailure(
+      { stage: "search_response", code: "http", httpStatus: response.status },
+      "search_provider_failed",
+    );
+  }
+  if (!response.body)
+    throw new InspirationFailure({ stage: "search_response", code: "empty_body" });
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let bytes = 0;
@@ -77,9 +86,17 @@ async function boundedJson(response: Response): Promise<unknown> {
       const item = await reader.read();
       if (item.done) break;
       bytes += item.value.byteLength;
-      if (bytes > 1024 * 1024) throw new Error("search_response_too_large");
+      if (bytes > 1024 * 1024)
+        throw new InspirationFailure(
+          { stage: "search_response", code: "too_large" },
+          "search_response_too_large",
+        );
       chunks.push(item.value);
     }
+  } catch (error) {
+    throw error instanceof InspirationFailure
+      ? error
+      : new InspirationFailure(inspirationDiagnostic(error, "search_response"));
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();
@@ -90,7 +107,14 @@ async function boundedJson(response: Response): Promise<unknown> {
     combined.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return JSON.parse(new TextDecoder().decode(combined));
+  try {
+    return JSON.parse(new TextDecoder().decode(combined));
+  } catch (error) {
+    throw new InspirationFailure({
+      ...inspirationDiagnostic(error, "search_parse"),
+      httpStatus: response.status,
+    });
+  }
 }
 const searchResponseSchema = z.object({
   results: z
@@ -116,25 +140,41 @@ export async function searchInspirationWeb(
   credits: number | null;
   requestId: string | null;
 }> {
-  if (!apiKey) throw new Error("search_configuration_required");
-  const response = await fetcher("https://api.tavily.com/search", {
-    method: "POST",
-    redirect: "error",
-    signal,
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query,
-      search_depth: "basic",
-      max_results: 3,
-      topic: "general",
-      include_raw_content: "text",
-      include_answer: false,
-      include_images: false,
-      auto_parameters: false,
-      include_usage: true,
-    }),
-  });
-  const parsed = searchResponseSchema.parse(await boundedJson(response));
+  if (!apiKey?.trim())
+    throw new InspirationFailure(
+      { stage: "search_request", code: "configuration" },
+      "search_configuration_required",
+    );
+  let response: Response;
+  try {
+    response = await fetcher("https://api.tavily.com/search", {
+      method: "POST",
+      redirect: "error",
+      signal,
+      headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        search_depth: "basic",
+        max_results: 3,
+        topic: "general",
+        include_raw_content: "text",
+        include_answer: false,
+        include_images: false,
+        auto_parameters: false,
+        include_usage: true,
+      }),
+    });
+  } catch (error) {
+    throw new InspirationFailure(inspirationDiagnostic(error, "search_request"));
+  }
+  const body = await boundedJson(response);
+  const checked = searchResponseSchema.safeParse(body);
+  if (!checked.success)
+    throw new InspirationFailure({
+      ...inspirationDiagnostic(checked.error, "search_schema"),
+      httpStatus: response.status,
+    });
+  const parsed = checked.data;
   const seen = new Set<string>();
   const documents: RetrievedInspirationDocument[] = [];
   for (const result of parsed.results) {
@@ -223,7 +263,11 @@ export async function synthesizeMusicInspiration(
   call: (input: ModelCall) => Promise<ModelResult>,
   signal: AbortSignal,
 ): Promise<{ result: InspirationResearch; receipt: ModelResult }> {
-  if (!documents.length) throw new Error("no_accessible_evidence");
+  if (!documents.length)
+    throw new InspirationFailure(
+      { stage: "sources", code: "no_evidence" },
+      "no_accessible_evidence",
+    );
   const canonical = [...new Map(documents.map((d) => [d.source.id, d])).values()].slice(0, 10);
   const prompt = JSON.stringify({
     request,
@@ -234,19 +278,49 @@ export async function synthesizeMusicInspiration(
       "Use only supplied source IDs. Supported/bounded evidence requires exact citedPassages quotations. Mark ambiguity/disagreement explicitly. No snippets as evidence. Separate optional creative choices from historical facts. Empty knowledge stays unknown.",
   });
   if (new TextEncoder().encode(prompt).length > 70000) throw new Error("research_prompt_too_large");
-  const receipt = await call({
-    system: MUSIC_INSPIRATION_RESEARCH_SYSTEM_PROMPT,
-    prompt,
-    maxTokens: 6000,
-    requestTimeoutMs: INSPIRATION_LIMITS[request.depth].timeoutMs,
-    abortSignal: signal,
-  });
-  if (receipt.stopReason !== "end_turn") throw new Error("research_response_incomplete");
-  const result = inspirationResearchSchema.parse(JSON.parse(receipt.text));
+  let receipt: ModelResult;
+  try {
+    receipt = await call({
+      system: MUSIC_INSPIRATION_RESEARCH_SYSTEM_PROMPT,
+      prompt,
+      maxTokens: 6000,
+      requestTimeoutMs: INSPIRATION_LIMITS[request.depth].timeoutMs,
+      abortSignal: signal,
+    });
+  } catch (error) {
+    throw new InspirationFailure(inspirationDiagnostic(error, "ai_request"));
+  }
+  if (receipt.stopReason !== "end_turn")
+    throw new InspirationFailure(
+      { stage: "ai_request", code: "incomplete" },
+      "research_response_incomplete",
+    );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(receipt.text);
+  } catch (error) {
+    throw new InspirationFailure(inspirationDiagnostic(error, "ai_parse"));
+  }
+  const checked = inspirationResearchSchema.safeParse(parsed);
+  if (!checked.success)
+    throw new InspirationFailure(inspirationDiagnostic(checked.error, "ai_schema"));
+  const result = checked.data;
   if (JSON.stringify(result.request) !== JSON.stringify(request))
-    throw new Error("research_request_mismatch");
+    throw new InspirationFailure(
+      { stage: "ai_schema", code: "request_mismatch" },
+      "research_request_mismatch",
+    );
   // Keep server receipts canonical; a model cannot add an unvisited citation or alter metadata.
   const { assertInspirationEvidenceMatchesSources } = await import("./music-inspiration.shared");
-  assertInspirationEvidenceMatchesSources(result, canonical);
+  try {
+    assertInspirationEvidenceMatchesSources(result, canonical);
+  } catch (error) {
+    throw new InspirationFailure(
+      { stage: "ai_evidence", code: "evidence_mismatch" },
+      error instanceof Error && error.message === "Quote is not an exact retrieved substring"
+        ? "Quote is not an exact retrieved substring"
+        : "Source metadata mismatch",
+    );
+  }
   return { result, receipt };
 }

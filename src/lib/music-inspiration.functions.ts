@@ -1,4 +1,10 @@
 import {
+  InspirationFailure,
+  inspirationDiagnostic,
+  logInspirationFailure,
+  type InspirationStage,
+} from "./music-inspiration-diagnostics.shared";
+import {
   inspirationUsageSchema,
   summarizeInspirationUsage,
 } from "./music-inspiration-usage.shared";
@@ -52,9 +58,13 @@ async function admission(context: Context) {
   await requireFeatureAccess(callerDatabase(context), "ai_generator");
 }
 
-function row(response: { data: any; error: unknown }) {
-  if (response.error || !response.data)
-    throw new Error("Music Inspiration record unavailable or revision conflict.");
+function row(response: { data: any; error: unknown }, stage: InspirationStage = "job_persist") {
+  if (response.error)
+    throw new InspirationFailure(
+      { ...inspirationDiagnostic(response.error, stage), code: "database" },
+      "Music Inspiration record unavailable or revision conflict.",
+    );
+  if (!response.data) throw new Error("Music Inspiration record unavailable or revision conflict.");
   return response.data;
 }
 
@@ -169,40 +179,45 @@ export const startMusicInspiration = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    await admission(context);
-    const access = await modelAccess(context);
-    if (
-      !access.superAdmin &&
-      (data.modelOverride !== undefined || data.request.depth === "extended")
-    )
-      throw new Error("Super Admin access required for model override or extended research.");
-    const model = access.allowed.find(
-      (entry) =>
-        entry.providerModelId === (data.modelOverride ?? access.defaultModel.providerModelId),
-    );
-    if (!model) throw new Error("Research model is not available for this account.");
-    const { inspectMusicInspirationConfiguration, getMusicInspirationPrices } =
-      await import("./music-inspiration-research.server");
-    const configuration = await inspectMusicInspirationConfiguration();
-    if (!configuration.configured)
-      throw new Error(configuration.reason ?? "Music Inspiration research is not configured.");
-    const prices = await getMusicInspirationPrices(model.providerModelId, model.provider);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Service-only admission records the request atomically; SQL pg_net schedules
-    // the worker. Never synchronously dispatch paid research in this request.
-    const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job_v2", {
-      _user_id: context.userId,
-      _request_id: data.requestId,
-      _request: data.request,
-      _model: model.providerModelId,
-      _provider: model.provider,
-      _pricing: prices,
-    });
-    const result = row(response);
-    return jobWithUsage(
-      context,
-      Array.isArray(result) ? row({ data: result[0], error: null }) : result,
-    );
+    try {
+      await admission(context);
+      const access = await modelAccess(context);
+      if (
+        !access.superAdmin &&
+        (data.modelOverride !== undefined || data.request.depth === "extended")
+      )
+        throw new Error("Super Admin access required for model override or extended research.");
+      const model = access.allowed.find(
+        (entry) =>
+          entry.providerModelId === (data.modelOverride ?? access.defaultModel.providerModelId),
+      );
+      if (!model) throw new Error("Research model is not available for this account.");
+      const { inspectMusicInspirationConfiguration, getMusicInspirationPrices } =
+        await import("./music-inspiration-research.server");
+      const configuration = await inspectMusicInspirationConfiguration();
+      if (!configuration.configured)
+        throw new Error(configuration.reason ?? "Music Inspiration research is not configured.");
+      const prices = await getMusicInspirationPrices(model.providerModelId, model.provider);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      // Service-only admission records the request atomically; SQL pg_net schedules
+      // the worker. Never synchronously dispatch paid research in this request.
+      const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job_v2", {
+        _user_id: context.userId,
+        _request_id: data.requestId,
+        _request: data.request,
+        _model: model.providerModelId,
+        _provider: model.provider,
+        _pricing: prices,
+      });
+      const result = row(response, "admission");
+      return jobWithUsage(
+        context,
+        Array.isArray(result) ? row({ data: result[0], error: null }) : result,
+      );
+    } catch (error) {
+      logInspirationFailure(data.requestId, inspirationDiagnostic(error, "admission"));
+      throw error;
+    }
   });
 
 export const abandonMusicInspirationRequest = createServerFn({ method: "POST" })

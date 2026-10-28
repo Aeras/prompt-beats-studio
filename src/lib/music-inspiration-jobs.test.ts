@@ -1,4 +1,8 @@
-import { expect, test } from "bun:test";
+import {
+  InspirationFailure,
+  decodeInspirationDiagnostic,
+} from "./music-inspiration-diagnostics.shared";
+import { expect, test, spyOn } from "bun:test";
 import {
   executeMusicInspirationJob,
   type InspirationJobDependencies,
@@ -303,4 +307,99 @@ test("global AI switch still blocks queued work before any paid dispatch", async
   await executeMusicInspirationJob(f.id, f.deps);
   expect(f.job.status).toBe("failed");
   expect(f.counts()).toEqual({ searches: 0, calls: 0 });
+});
+
+test("search diagnostics survive unknown outcome and never dispatch the AI or blind retry", async () => {
+  const f = fixture();
+  let calls = 0;
+  f.deps.search = async () => {
+    calls++;
+    throw new InspirationFailure({ stage: "search_response", code: "http", httpStatus: 401 });
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("unknown");
+  expect(decodeInspirationDiagnostic(f.job.error_code)).toEqual({
+    stage: "search_response",
+    code: "http",
+    httpStatus: 401,
+  });
+  expect(f.dispatches[0].receipt.diagnostic.httpStatus).toBe(401);
+  expect(f.counts().calls).toBe(0);
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(calls).toBe(1);
+});
+test("successful retrieval followed by database failure is not mislabeled as Tavily failure", async () => {
+  const f = fixture();
+  const original = f.deps.db!.rpc;
+  f.deps.db!.rpc = async (name, args) =>
+    name === "settle_music_inspiration_dispatch" && args?.["_state"] === "observed"
+      ? { data: null, error: { code: "42501", message: "PRIVATE SQL" } }
+      : original(name, args);
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(decodeInspirationDiagnostic(f.job.error_code)).toEqual({
+    stage: "search_persist",
+    code: "database",
+    dbCode: "42501",
+  });
+  expect(f.counts().calls).toBe(0);
+  expect(f.job.status).toBe("unknown");
+});
+test("invalid AI output retains its receipt and exactly one accounting entry while showing validation stage", async () => {
+  const f = fixture();
+  f.deps.synthesize = async (_r, _d, call) => {
+    await call({ system: "fixture", prompt: "fixture" });
+    throw new InspirationFailure({ stage: "ai_schema", code: "invalid_schema", field: "proposal" });
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("failed");
+  expect(f.records.size).toBe(1);
+  expect(f.job.provider_result).toBeTruthy();
+  expect(decodeInspirationDiagnostic(f.job.error_code)?.stage).toBe("ai_schema");
+  expect(f.counts().calls).toBe(1);
+});
+
+test("a database polling failure is diagnosed as persistence, not user cancellation", async () => {
+  const f = fixture();
+  const from = f.deps.db!.from;
+  f.deps.db!.from = (table) => {
+    const q = from(table);
+    if (table === "music_inspiration_jobs")
+      q.maybeSingle = async () => ({
+        data: null,
+        error: { code: "08006", message: "SYNTHETIC_SECRET" },
+      });
+    return q;
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("failed");
+  expect(decodeInspirationDiagnostic(f.job.error_code)).toEqual({
+    stage: "job_persist",
+    code: "database",
+    dbCode: "08006",
+  });
+  expect(f.counts()).toEqual({ searches: 0, calls: 0 });
+});
+test("when final error persistence also fails logs retain both safe failure stages", async () => {
+  const f = fixture();
+  const rpc = f.deps.db!.rpc;
+  f.deps.search = async () => {
+    throw new InspirationFailure({ stage: "search_response", code: "http", httpStatus: 401 });
+  };
+  f.deps.db!.rpc = async (name, args) =>
+    name === "checkpoint_music_inspiration_job"
+      ? { data: null, error: { code: "23514", message: "SYNTHETIC_SECRET" } }
+      : rpc(name, args);
+  const log = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    await expect(executeMusicInspirationJob(f.id, f.deps)).rejects.toThrow(
+      "inspiration_persistence_failed",
+    );
+    const out = JSON.stringify(log.mock.calls);
+    expect(out).toContain("search_response");
+    expect(out).toContain("job_persist");
+    expect(out).toContain("401");
+    expect(out).not.toContain("SYNTHETIC_SECRET");
+  } finally {
+    log.mockRestore();
+  }
 });

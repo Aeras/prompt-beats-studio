@@ -1,3 +1,4 @@
+import { decodeInspirationDiagnostic } from "@/lib/music-inspiration-diagnostics.shared";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
@@ -441,7 +442,7 @@ export function MusicInspirationPanel({
     }, "start");
   }
   function cancel() {
-    if (!job || !active(job)) return;
+    if (!job || (!active(job) && job.status !== "unknown")) return;
     const jobId = job.id;
     void run(async (valid) => {
       const next = await cancelMusicInspiration({ data: { id: jobId } });
@@ -571,6 +572,7 @@ export function MusicInspirationPanel({
         : failedStage === "start"
           ? t.failedStart
           : t.failed;
+  const diagnostic = decodeInspirationDiagnostic(job?.error_code);
   const formatCost = (amount: number | null | undefined) =>
     amount == null
       ? t.usageUnknown
@@ -784,10 +786,13 @@ export function MusicInspirationPanel({
                     : t.research}
             </Button>
           </form>
-          {active(job) && (
-            <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
-              {t.cancel}
-            </Button>
+          {(active(job) || job?.status === "unknown") && (
+            <div>
+              <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
+                {job?.status === "unknown" ? t.closeUnknown : t.cancel}
+              </Button>
+              {job?.status === "unknown" && <p className="text-sm">{t.closeUnknownNote}</p>}
+            </div>
           )}
           {(error || poll.isError) && (
             <p role="alert" className="min-w-0 break-words">
@@ -821,6 +826,28 @@ export function MusicInspirationPanel({
                       ? t.queued
                       : t.running}
           </p>
+          {diagnostic && (
+            <div
+              role="alert"
+              data-testid="inspiration-diagnostic"
+              className="rounded border p-2 text-sm break-words"
+            >
+              <p>
+                {t.diagnosticStage}: {t.diagnosticStages[diagnostic.stage]}
+              </p>
+              <p>
+                {t.diagnosticCodes[diagnostic.code]}
+                {diagnostic.httpStatus ? " · HTTP " + diagnostic.httpStatus : ""}
+                {diagnostic.dbCode
+                  ? " · " + t.diagnosticDatabaseCode + ": " + diagnostic.dbCode
+                  : ""}
+                {diagnostic.field ? " · " + t.diagnosticField + ": " + diagnostic.field : ""}
+              </p>
+              <p>
+                {t.diagnosticReference}: {job.id}
+              </p>
+            </div>
+          )}
           {completed(job) && !!job.result?.unresolvedQuestions.length && <p>{t.partial}</p>}
           <p>
             {t.model}: {job.model}
@@ -853,10 +880,13 @@ export function MusicInspirationPanel({
               <p>{t.costEstimateNote}</p>
             </div>
           )}
-          {active(job) && (
-            <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
-              {t.cancel}
-            </Button>
+          {(active(job) || job.status === "unknown") && (
+            <div>
+              <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
+                {job.status === "unknown" ? t.closeUnknown : t.cancel}
+              </Button>
+              {job.status === "unknown" && <p className="text-sm">{t.closeUnknownNote}</p>}
+            </div>
           )}
         </div>
       )}

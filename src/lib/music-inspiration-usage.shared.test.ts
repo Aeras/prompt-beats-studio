@@ -1,3 +1,4 @@
+import * as diagnostics from "./music-inspiration-diagnostics.shared";
 import { expect, test } from "bun:test";
 import {
   summarizeInspirationUsage,
@@ -138,6 +139,7 @@ test("actual quote loader accepts old/unverified/missing tariffs without affecti
       exports: exported,
       process: { env: { MUSIC_INSPIRATION_SEARCH_CREDIT_USD: "0.008" } },
       require(name: string) {
+        if (name === "./music-inspiration-diagnostics.shared") return diagnostics;
         if (name === "node:crypto") return { createHash };
         if (name === "zod") return { z };
         if (name === "./music-inspiration.shared") return shared;
