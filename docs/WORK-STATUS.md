@@ -1,5 +1,14 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-28 — Music Inspiration entitlement invisibility + actual Generator stacking — IN_PROGRESS
+
+- **New evidence:** Desktop screenshots show Music Inspiration as an oversized left column and the Generator squeezed right, even for a denied ordinary account. Current main `src/routes/generate.tsx` already has a centered `flex-col max-w-3xl`; the screenshot does not match those source classes, suggesting a deployed bundle/style mismatch which has not yet been independently measured live. Do not claim source-only changes prove deployed resolution.
+- **Confirmed code bug:** `MusicInspirationPanel.tsx` rendered the explicit denied/loading text as a component when feature entitlement was false. Change this to render nothing, preserving backend access checks and without invoking research/config/profile calls for denied accounts.
+- **Layout hardening/acceptance:** Give Generator workspace a stable test marker and explicit full-width/min-width children. Add browser checks verifying true bounding rectangles: inspiration above Generator, aligned horizontal edges, centered maximum 768px workspace, no horizontal overflow on desktop/tablet/mobile. Denied user must have no Music Inspiration text, control or panel while Generator remains.
+- **Release:** Require exact HEAD Regression, Browser Quality, Database Replay PASS and focused browser test; merge only after verified gates. Lovable publish and live screenshot acceptance remain separate. No migrations, provider calls, or live data mutation.
+- **Reproduced defect:** GitHub Playwright report on head c85ecab7 contains actual screenshots of side-by-side Inspiration and Generator on desktop/tablet/mobile; DOM geometry assertion failed (Inspiration bottom 240px vs Generator top 86px), despite CSS `flex-col`. This disproves the earlier theory of a deployed-version-only mismatch. Enforce explicit inline `display:flex; flex-direction:column` on the shared wrapper and keep quantitative browser assertions unchanged. No merge until this evidence passes.
+
+
 ## 2026-10-28 — Music Inspiration proposal consistency and trusted source metadata — CODE_COMPLETE_RELEASE_PENDING
 
 - **Baseline / confirmed evidence:** main 077a03f0ff556fc86361ae608407c831e726b7d9, #461 merged. Read-only production inspection of the reported failed job and full offline replay prove decorated section labels disagree with bare Blueprint labels. The same stored response also changes retriever-owned titles/locators and one timestamp; source IDs, URLs, hashes, receipt identity and exact quotes match. No provider/model outage is inferred. Atlas #450 remains paused/untouched.

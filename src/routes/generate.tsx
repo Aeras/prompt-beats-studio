@@ -3240,7 +3240,18 @@ function GeneratePage() {
       }
     >
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
-        <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+        <div
+          data-testid="generator-stacked-layout"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            maxWidth: "48rem",
+            minWidth: 0,
+            marginInline: "auto",
+          }}
+          className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 [&>*]:w-full [&>*]:min-w-0"
+        >
           {advanced && !revisionMode && (
             <MusicInspirationPanel
               key={`music-inspiration:${user?.id ?? "anon"}`}

@@ -517,6 +517,41 @@ test("Greek resources, keyboard dropdown, mobile layout and accessibility", asyn
   ).violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(violations).toEqual([]);
 });
+test("Generator and inspiration occupy one centered desktop column without side-by-side squeeze", async ({
+  page,
+}) => {
+  await fixture(page);
+  for (const [width, height] of [
+    [1440, 900],
+    [1024, 768],
+    [768, 1024],
+    [390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    const workspace = page.getByTestId("generator-stacked-layout");
+    await expect(workspace).toBeVisible();
+    await expect(panel(page)).toBeVisible();
+    const rects = await page.evaluate(() => {
+      const root = document.querySelector('[data-testid="generator-stacked-layout"]')!;
+      const inspiration = document.querySelector('[data-testid="music-inspiration-panel"]')!;
+      const generator = root.querySelector(":scope > .glass-strong")!;
+      const a = inspiration.getBoundingClientRect();
+      const b = generator.getBoundingClientRect();
+      const wrapper = root.getBoundingClientRect();
+      return {
+        a: { left: a.left, right: a.right, bottom: a.bottom },
+        b: { left: b.left, right: b.right, top: b.top },
+        wrapper: { left: wrapper.left, right: wrapper.right },
+        overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
+    });
+    expect(rects.a.bottom).toBeLessThanOrEqual(rects.b.top + 1);
+    expect(Math.abs(rects.a.left - rects.b.left)).toBeLessThanOrEqual(2);
+    expect(Math.abs(rects.a.right - rects.b.right)).toBeLessThanOrEqual(2);
+    expect(rects.wrapper.right - rects.wrapper.left).toBeLessThanOrEqual(770);
+    expect(rects.overflow).toBe(false);
+  }
+});
 test("research dialog stays within portrait, tablet, desktop and landscape viewports", async ({
   page,
 }) => {
@@ -563,9 +598,9 @@ test("research dialog stays within portrait, tablet, desktop and landscape viewp
 
 test("denied account cannot open research or read saved profiles", async ({ page }) => {
   const f = await fixture(page, { allowed: false });
-  await expect(
-    page.getByText("Music Inspiration is unavailable for this account.", { exact: true }),
-  ).toBeVisible();
+  await expect(panel(page)).toHaveCount(0);
+  await expect(page.getByText(/Music Inspiration|unavailable for this account/i)).toHaveCount(0);
+  await expect(page.getByTestId("generator-stacked-layout")).toBeVisible();
   expect(
     f.calls.some(
       (c) =>
