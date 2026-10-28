@@ -407,10 +407,20 @@ test("when final error persistence also fails logs retain both safe failure stag
 
 test("stored result arrangement is reconciled during recovery without new search/AI or duplicate usage", async () => {
   const f = fixture();
+  // Repeated retrieval of the same source has distinct receipts, even in fast CI.
+  const search = f.deps.search!;
+  let retrieval = 0;
+  f.deps.search = async (query, signal) => {
+    const found = await search(query, signal);
+    found.documents[0]!.source.accessedAt = new Date(1700000000000 + retrieval++).toISOString();
+    return found;
+  };
   f.fail();
   await executeMusicInspirationJob(f.id, f.deps);
   expect(f.job.status).toBe("unknown");
-  const source = f.dispatches.find((d) => d.kind === "search").receipt.documents[0].source;
+  // Production deduplication retains the last retrieval for an identical source ID.
+  const source = f.dispatches.filter((d) => d.kind === "search").at(-1)!.receipt.documents[0]
+    .source;
   const saved = f.journal().result as ModelResult;
   saved.text = JSON.stringify({
     version: 1,
