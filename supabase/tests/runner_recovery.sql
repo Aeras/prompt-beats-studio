@@ -2,6 +2,9 @@
 BEGIN;
 CREATE FUNCTION pg_temp.assert(ok boolean,message text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF ok IS NOT TRUE THEN RAISE EXCEPTION 'FAIL: %',message; END IF; END $$;
 CREATE TEMP TABLE runner_http(body jsonb,timeout_ms integer);
+-- The real migration is owned by postgres; test capture belongs to supabase_admin.
+-- Grant only this transaction-local mock sink, never a production table.
+GRANT INSERT,SELECT ON pg_temp.runner_http TO postgres;
 CREATE OR REPLACE FUNCTION net.http_post(url text,body jsonb DEFAULT '{}'::jsonb,params jsonb DEFAULT '{}'::jsonb,headers jsonb DEFAULT '{"Content-Type":"application/json"}'::jsonb,timeout_milliseconds integer DEFAULT 1000)
 RETURNS bigint LANGUAGE plpgsql AS $$ BEGIN
  IF current_setting('pb.runner_fixture_fail',true)='on' THEN RAISE EXCEPTION 'Synthetic enqueue failure'; END IF;
