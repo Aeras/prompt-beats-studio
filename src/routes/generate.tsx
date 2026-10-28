@@ -3243,7 +3243,7 @@ function GeneratePage() {
         <div className="mx-auto max-w-3xl">
           {advanced && !revisionMode && (
             <MusicInspirationPanel
-              key={user?.id}
+              key={`music-inspiration:${user?.id ?? "anon"}`}
               setup={{
                 targetPlatform,
                 theme,
