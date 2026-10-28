@@ -518,7 +518,7 @@ export function MusicInspirationPanel({
     <section
       aria-label={t.title}
       data-testid="music-inspiration-panel"
-      className="min-w-0 space-y-3 rounded-xl border p-3"
+      className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-xl border p-3 [overflow-wrap:anywhere]"
     >
       <h2 className="font-semibold">{t.title}</h2>
       <CompactDropdown
@@ -569,12 +569,12 @@ export function MusicInspirationPanel({
           </Button>
         </DialogTrigger>
         <DialogContent
-          className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
+          className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 [overflow-wrap:anywhere] sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
           aria-label={t.title}
         >
           <DialogTitle className="text-base leading-tight sm:text-lg">{t.title}</DialogTitle>
           <form
-            className="min-w-0 space-y-2 sm:space-y-3"
+            className="min-w-0 max-w-full space-y-2 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               start();
@@ -937,7 +937,7 @@ export function MusicInspirationPanel({
           if (!value) setConfirm(null);
         }}
       >
-        <DialogContent className="w-[calc(100vw-24px)] max-w-lg [&>button:last-child]:hidden">
+        <DialogContent className="max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain p-3 [overflow-wrap:anywhere] sm:p-6 [&>button:last-child]:hidden">
           <DialogTitle>{confirm === "delete" ? t.deleteTitle : t.replaceTitle}</DialogTitle>
           <DialogDescription>
             {confirm === "delete" ? t.deleteDescription : t.replaceDescription}
