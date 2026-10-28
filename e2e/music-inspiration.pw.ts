@@ -278,6 +278,9 @@ async function fixture(
     rejectStart: () => {
       rejectStart = true;
     },
+    completeBeforeRecovery: () => {
+      job = { ...job, status: "completed", result: research };
+    },
     loseStartAck: () => {
       loseStartAck = true;
     },
@@ -968,3 +971,30 @@ test("completed research shows observed tokens and separate indicative AI/search
   await expect(report).toContainText("Reasoning (included in output): 500");
   await expect(report).not.toContainText("Budget");
 });
+
+for (const recovery of ["discard", "edited"] as const) {
+  test(
+    "completed lost-ack research remains applicable after " + recovery + " reconciliation",
+    async ({ page }) => {
+      const f = await fixture(page);
+      f.loseStartAck();
+      await startResearch(page);
+      f.completeBeforeRecovery();
+      await panel(page).getByRole("button", { name: "Open music research", exact: true }).click();
+      const modal = page.getByRole("dialog", { name: "AI Music Inspiration", exact: true });
+      if (recovery === "discard")
+        await modal.getByRole("button", { name: "Discard pending request", exact: true }).click();
+      else {
+        await modal.getByLabel("Artist or group", { exact: true }).fill("Edited new artist");
+        await modal.getByRole("button", { name: "Start new research", exact: true }).click();
+      }
+      await expect(modal).toHaveCount(0);
+      await expect(
+        panel(page).getByRole("button", { name: "Apply to empty fields", exact: true }),
+      ).toBeEnabled();
+      await panel(page).getByRole("button", { name: "Apply to empty fields", exact: true }).click();
+      await expect(panel(page).getByText(/^Applied fields:/)).toBeVisible();
+      expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+    },
+  );
+}

@@ -340,6 +340,10 @@ export function MusicInspirationPanel({
         if (valid()) {
           setAttempt(acknowledged);
           setJob(existing);
+          setOrigin(
+            completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
+          );
+          setPreview(false);
           setOpen(false);
           setRecoveredPrevious(true);
         }
@@ -396,6 +400,10 @@ export function MusicInspirationPanel({
           if (valid()) {
             setAttempt(acknowledged);
             setJob(existing);
+            setOrigin(
+              completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
+            );
+            setPreview(false);
             setOpen(false);
             setRecoveredPrevious(true);
           }
