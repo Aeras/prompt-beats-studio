@@ -305,7 +305,11 @@ export async function executeMusicInspirationJob(
         plannerReceipt.provider !== job.planner_provider ||
         plannerReceipt.model !== job.planner_model
       )
-        throw new InspirationFailure({ stage: "planner_schema", code: "request_mismatch" });
+        throw new InspirationFailure({
+          stage: "planner_schema",
+          code: "request_mismatch",
+          field: plannerReceipt.provider !== job.planner_provider ? "provider" : "model",
+        });
       await (deps.record ?? record)(
         { ...job, execution_id: job.planner_execution_id },
         plannerReceipt,
@@ -319,7 +323,11 @@ export async function executeMusicInspirationJob(
       if (job.research_plan) {
         const storedPlan = validateInspirationPlan(job.research_plan, request);
         if (JSON.stringify(storedPlan) !== JSON.stringify(researchPlan))
-          throw new InspirationFailure({ stage: "planner_schema", code: "request_mismatch" });
+          throw new InspirationFailure({
+            stage: "planner_schema",
+            code: "request_mismatch",
+            field: "request",
+          });
       } else {
         stage = "planner_persist";
         uncertain = true;

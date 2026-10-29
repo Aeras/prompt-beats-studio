@@ -383,3 +383,32 @@ test("expired dispatch window can reconcile a stored planner receipt but never s
   expect(f.job.status).toBe("failed");
   expect(decodeInspirationDiagnostic(f.job.error_code)?.code).toBe("timeout");
 });
+
+test("incident-shaped observed planner title drift preserves usage and fails before any search; no paid retry", async () => {
+  const f = fixture(true);
+  f.job.request = {
+    kind: "artist",
+    artist: "Offline artist",
+    song: "White dove",
+    depth: "extended",
+  };
+  f.plan.request = { ...f.job.request, song: "White Dove" };
+  await f.run();
+  expect(f.job.status).toBe("failed");
+  expect(decodeInspirationDiagnostic(f.job.error_code)).toEqual({
+    stage: "planner_schema",
+    code: "request_mismatch",
+    field: "request.song",
+  });
+  expect(f.job.request.song).toBe("White dove");
+  expect(f.job.research_plan).toBeUndefined();
+  expect(f.queries).toHaveLength(0);
+  expect(f.calls).toEqual([INSPIRATION_PLANNER.model]);
+  expect(f.records.size).toBe(1);
+  expect(f.job.planner_result.text).toContain("White Dove");
+  expect(f.dispatches).toHaveLength(1);
+  expect(f.dispatches[0].state).toBe("observed");
+  expect(await f.run()).toEqual({ ran: false });
+  expect(f.calls).toHaveLength(1);
+  expect(f.records.size).toBe(1);
+});
