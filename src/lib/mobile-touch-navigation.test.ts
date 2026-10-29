@@ -31,12 +31,14 @@ describe("mobile and tablet touch navigation", () => {
     expect(shell).toContain('tabletLandscape && (desktopSidebarOpen ? "!pl-[270px]" : "!pl-5")');
   });
 
-  test("touch swipes remain an accelerator for visible generator and library tabs", async () => {
+  test("touch swipe tab switching is library-only and Generator modes require explicit selection", async () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     const generator = await source("src/routes/generate.tsx");
     const library = await source("src/routes/library.tsx");
     expect(shell).toContain("TOUCH_TAB_SWIPE_THRESHOLD = 72");
-    expect(shell).toContain('active === "studio" ? "[data-generator-mode]" : "[data-library-tab]"');
+    expect(shell).toContain('active !== "library") return');
+    expect(shell).toContain('const selector = "[data-library-tab]"');
+    expect(shell).not.toContain('active === "studio" ? "[data-generator-mode]"');
     expect(shell).toContain("if (nextIndex < 0 || nextIndex >= buttons.length) return");
     expect(generator).toContain("data-generator-mode={mode.key}");
     expect(library).toContain("aria-pressed={tab === item}");
