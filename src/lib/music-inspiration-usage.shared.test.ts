@@ -192,3 +192,56 @@ test("observed cache writes without an administrator tariff keep estimation part
   expect(report.providerReportedCostUsd).toBe(0.052156);
   expect(report.complete).toBe(false);
 });
+
+test("planner, Tavily and synthesis are independently priced and summed once", () => {
+  const report = summarizeInspirationUsage({
+    prices,
+    usage,
+    aiDispatched: true,
+    aiFinal: true,
+    planner: {
+      prices: { ...prices, input: 1, output: 3 },
+      usage: { ...usage, providerReportedCostUsd: 9 },
+      aiDispatched: true,
+      aiFinal: true,
+    },
+    searches: [{ state: "observed", credits: 2 }],
+  });
+  expect(report.planner!.costUsd).toBeCloseTo((700 + 200 * 0.2 + 100 * 2.5 + 2000 * 3) / 1e6, 8);
+  expect(report.planner!.reasoningTokens).toBe(500);
+  expect(report.planner!.providerReportedCostUsd).toBe(9);
+  expect(report.totalCostUsd).toBeCloseTo(report.aiCostUsd! + report.planner!.costUsd! + 0.016, 8);
+  expect(report.totalCostUsd).toBeLessThan(1); // Provider-reported amount is displayed, never added again.
+});
+test("unknown planner consumption or missing planner tariff never becomes a zero-cost total", () => {
+  for (const planner of [
+    { prices, usage: null, aiDispatched: true, aiFinal: false },
+    { prices: emptyInspirationPrices(), usage, aiDispatched: true, aiFinal: true },
+  ]) {
+    const report = summarizeInspirationUsage({
+      prices,
+      usage,
+      aiDispatched: true,
+      aiFinal: true,
+      planner,
+    });
+    expect(report.totalCostUsd).toBeNull();
+    expect(report.planner!.costUsd).toBeNull();
+    expect(report.complete).toBe(false);
+    expect(report.aiCostUsd).not.toBeNull();
+  }
+});
+
+test("a job failing before synthesis still reports incurred planner cost", () => {
+  const report = summarizeInspirationUsage({
+    prices,
+    aiDispatched: false,
+    planner: { prices, usage, aiDispatched: true, aiFinal: true },
+    searches: [],
+  });
+  expect(report.aiCostUsd).toBe(0);
+  expect(report.searchCostUsd).toBe(0);
+  expect(report.planner!.costUsd).toBeGreaterThan(0);
+  expect(report.totalCostUsd).toBe(report.planner!.costUsd);
+  expect(report.complete).toBe(true);
+});

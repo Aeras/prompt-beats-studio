@@ -48,6 +48,8 @@ export type ModelCall = {
   maxTokens?: number;
   /** Optional structured-output JSON schema (used where the provider supports it). */
   schema?: Record<string, unknown>;
+  /** Server-only opt-in for supported OpenRouter JSON-object output; other callers are unchanged. */
+  jsonObjectOutput?: boolean;
   /** Provider-specific reasoning budget; ignored by providers that do not expose it. */
   reasoningEffort?: ReasoningEffort;
   /** Explicit bounded request timeout for long-running durable operations only. */
@@ -815,10 +817,10 @@ async function callOpenAiCompatible(
                 : { effort: call.reasoningEffort },
           }
         : {}),
-      // GLM finished normally on OpenRouter but repeatedly returned a response
-      // that failed our four-field song contract. Request JSON mode for this
-      // model only; no retry or extra paid request is performed.
+      // The planner opts into JSON output explicitly. Preserve the existing GLM
+      // schema behavior; no retry or additional request is performed.
       ...(useJsonMode ||
+      (providerName === "openrouter" && call.jsonObjectOutput === true) ||
       (providerName === "openrouter" && model === "z-ai/glm-5.3-flash" && !!call.schema)
         ? { response_format: { type: "json_object" } }
         : {}),

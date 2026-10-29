@@ -93,6 +93,8 @@ async function fixture(
     malformed?: "profiles" | "config";
     long?: boolean;
     injection?: boolean;
+    plannerUsage?: boolean;
+    plannerUnavailable?: boolean;
   } = {},
 ) {
   const user = {
@@ -197,6 +199,16 @@ async function fixture(
       totalCostUsd: number;
       providerReportedCostUsd: null;
       complete: boolean;
+      planner?: {
+        inputTokens: number;
+        outputTokens: number;
+        reasoningTokens: number;
+        cachedInputTokens: number;
+        cacheWriteTokens: number;
+        costUsd: number;
+        providerReportedCostUsd: number;
+        complete: boolean;
+      };
     },
   };
   await page.route("**/_serverFn/**", async (route) => {
@@ -230,8 +242,12 @@ async function fixture(
     else if (name.includes("getMyFeatureAccess")) result = { allowed: options.allowed !== false };
     else if (name.includes("getMusicInspirationConfig"))
       result = {
-        configured: options.configured !== false,
-        reason: options.configured === false ? "Search provider credential is unavailable." : null,
+        configured: options.configured !== false && !options.plannerUnavailable,
+        reason: options.plannerUnavailable
+          ? "planner_model_unavailable"
+          : options.configured === false
+            ? "Search provider credential is unavailable."
+            : null,
         superAdmin: options.superAdmin === true,
         defaultModel: "server-live-default",
         models:
@@ -275,7 +291,21 @@ async function fixture(
             searchCredits: 2,
             aiCostUsd: 0.02169,
             searchCostUsd: 0.016,
-            totalCostUsd: 0.03769,
+            totalCostUsd: options.plannerUsage ? 0.03869 : 0.03769,
+            ...(options.plannerUsage
+              ? {
+                  planner: {
+                    inputTokens: 200,
+                    outputTokens: 100,
+                    reasoningTokens: 25,
+                    cachedInputTokens: 20,
+                    cacheWriteTokens: 0,
+                    costUsd: 0.001,
+                    providerReportedCostUsd: 0.0011,
+                    complete: true,
+                  },
+                }
+              : {}),
             providerReportedCostUsd: null,
             complete: true,
           },
@@ -456,7 +486,7 @@ test("super-admin uses allowed compact selectors and free description", async ({
 test("selective replacement requires confirmation; undo preserves later manual production", async ({
   page,
 }) => {
-  await fixture(page);
+  const f = await fixture(page);
   const production = page.getByRole("textbox", {
     name: "Production Style",
     exact: true,
@@ -464,7 +494,13 @@ test("selective replacement requires confirmation; undo preserves later manual p
   });
   await production.fill("Manual production");
   await selectProfile(page);
+  f.pause();
   await panel(page).getByRole("button", { name: "Apply research" }).click();
+  await expect(panel(page).getByRole("button", { name: "Apply research" })).toBeDisabled();
+  f.release();
+  // The unchanged protected value is not an acknowledgement of the async Fill.
+  // Wait for its verified mutation before reopening the workspace it collapses.
+  await expect(panel(page).getByText(/^Applied fields:/)).toBeVisible();
   await expect(production).toHaveValue("Manual production");
   await openResearch(page);
   await panel(page).getByRole("button", { name: "Preview", exact: true }).click();
@@ -1357,4 +1393,64 @@ test("PB-013 oversized manual draft does not crash preview or silently truncate 
   await panel(page).getByRole("button", { name: "Apply selected", exact: true }).click();
   await expect(production).toHaveValue("Corrected manual text\nOffline warm synth proposal");
   expect(f.calls.some((c) => c.name.includes("startMusicInspiration"))).toBe(false);
+});
+
+test("PB-014 separate planner usage and total remain readable without a planner model picker", async ({
+  page,
+}) => {
+  const f = await fixture(page, { plannerUsage: true, superAdmin: true });
+  await startResearch(page);
+  const report = panel(page).getByTestId("inspiration-usage");
+  await expect(report.getByTestId("inspiration-planner-usage")).toContainText("Input tokens: 200");
+  await expect(report.getByTestId("inspiration-planner-usage")).toContainText("Output tokens: 100");
+  await expect(report.getByTestId("inspiration-planner-usage")).toContainText("$0.0011");
+  await expect(report).toContainText("Final synthesis");
+  await expect(report).toContainText("$0.03869");
+  const accessibility = await new AxeBuilder({ page })
+    .include('[data-testid="music-inspiration-panel"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await report.screenshot({
+    path: test.info().outputPath("pb014-usage-" + test.info().project.name + ".png"),
+  });
+  await expect(panel(page).getByRole("combobox", { name: "Research planner" })).toHaveCount(0);
+  expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+  await expect(page.locator("html")).toHaveJSProperty(
+    "scrollWidth",
+    await page.locator("html").evaluate((el) => el.clientWidth),
+  );
+});
+test("PB-014 unavailable planner blocks new research but keeps saved-profile Apply usable", async ({
+  page,
+}) => {
+  const f = await fixture(page, { plannerUnavailable: true });
+  await selectProfile(page);
+  await expect(panel(page)).toContainText("research planner is unavailable");
+  await expect(
+    workspace(page).getByRole("button", { name: "Research", exact: true }),
+  ).toBeDisabled();
+  await panel(page).getByRole("button", { name: "Apply research", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Production Style", exact: true })).toHaveValue(
+    "Offline warm synth proposal",
+  );
+  expect(f.calls.some((c) => c.name.includes("startMusicInspiration"))).toBe(false);
+});
+
+test("PB-014 Greek planner and synthesis accounting labels are localized", async ({ page }) => {
+  const f = await fixture(page, { greek: true, plannerUsage: true });
+  await openResearch(page);
+  await workspace(page)
+    .getByLabel("Καλλιτέχνης ή συγκρότημα", { exact: true })
+    .fill("Κίνο — offline fixture");
+  await workspace(page).getByRole("button", { name: "Έρευνα", exact: true }).click();
+  const report = panel(page).getByTestId("inspiration-usage");
+  await expect(report.getByTestId("inspiration-planner-usage")).toContainText(
+    "Ερευνητικός σχεδιαστής",
+  );
+  await expect(report.getByTestId("inspiration-planner-usage")).toContainText(
+    "Tokens εισόδου: 200",
+  );
+  await expect(report).toContainText("Τελική σύνθεση");
+  expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
 });

@@ -57,7 +57,7 @@ function fixture() {
       return q;
     },
     async rpc(name: string, args: any) {
-      if (name === "claim_music_inspiration_job") {
+      if (name === "claim_music_inspiration_job_v2") {
         if (locked || ["completed", "cancelled"].includes(job.status))
           return { data: null, error: null };
         locked = true;

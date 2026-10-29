@@ -153,9 +153,18 @@ export const getMusicInspirationConfig = createServerFn({ method: "GET" })
     const { inspectMusicInspirationConfiguration } =
       await import("./music-inspiration-research.server");
     const configuration = await inspectMusicInspirationConfiguration();
-    const reason = configuration.reason;
+    let reason = configuration.reason;
+    let plannerAvailable = true;
+    try {
+      await (
+        await import("./music-inspiration-planner.server")
+      ).requireInspirationPlanner(context.userId);
+    } catch {
+      plannerAvailable = false;
+      reason = "planner_model_unavailable";
+    }
     return {
-      configured: configuration.configured,
+      configured: configuration.configured && plannerAvailable,
       reason,
       superAdmin: models.superAdmin,
       defaultModel: models.defaultModel.providerModelId,
@@ -197,17 +206,25 @@ export const startMusicInspiration = createServerFn({ method: "POST" })
       const configuration = await inspectMusicInspirationConfiguration();
       if (!configuration.configured)
         throw new Error(configuration.reason ?? "Music Inspiration research is not configured.");
+      const { requireInspirationPlanner, INSPIRATION_PLANNER } =
+        await import("./music-inspiration-planner.server");
+      await requireInspirationPlanner(context.userId);
       const prices = await getMusicInspirationPrices(model.providerModelId, model.provider);
+      const plannerPrices = await getMusicInspirationPrices(
+        INSPIRATION_PLANNER.model,
+        INSPIRATION_PLANNER.provider,
+      );
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       // Service-only admission records the request atomically; SQL pg_net schedules
       // the worker. Never synchronously dispatch paid research in this request.
-      const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job_v2", {
+      const response = await (supabaseAdmin as any).rpc("start_music_inspiration_job_v3", {
         _user_id: context.userId,
         _request_id: data.requestId,
         _request: data.request,
         _model: model.providerModelId,
         _provider: model.provider,
         _pricing: prices,
+        _planner_pricing: plannerPrices,
       });
       const result = row(response, "admission");
       return jobWithUsage(

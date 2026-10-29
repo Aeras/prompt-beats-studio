@@ -719,7 +719,13 @@ export function MusicInspirationPanel({
                   : t.failed}
         </p>
       )}
-      {!open && config.data && !config.data.configured && <p role="status">{t.unavailable}</p>}
+      {!open && config.data && !config.data.configured && (
+        <p role="status">
+          {config.data?.reason === "planner_model_unavailable"
+            ? t.plannerUnavailable
+            : t.unavailable}
+        </p>
+      )}
       {!open && (job || attempt?.jobId) && (
         <Button type="button" variant="outline" disabled={busy} onClick={refreshJob}>
           {t.refreshStatus}
@@ -906,7 +912,13 @@ export function MusicInspirationPanel({
                   />
                 </>
               )}
-              {!config.data?.configured && <p role="status">{t.unavailable}</p>}
+              {!config.data?.configured && (
+                <p role="status">
+                  {config.data?.reason === "planner_model_unavailable"
+                    ? t.plannerUnavailable
+                    : t.unavailable}
+                </p>
+              )}
               {attempt && !attempt.jobId && (
                 <Button
                   type="button"
@@ -1003,7 +1015,40 @@ export function MusicInspirationPanel({
                     data-testid="inspiration-usage"
                     className="space-y-1 rounded border p-2 text-sm"
                   >
-                    <p className="font-medium">{t.usageTitle}</p>
+                    <h3 className="font-medium">{t.usageTitle}</h3>
+                    {job.usageReport?.planner && (
+                      <div
+                        className="rounded-lg border border-border/60 p-2 text-sm"
+                        data-testid="inspiration-planner-usage"
+                      >
+                        <h4 className="font-medium">{t.plannerStage}</h4>
+                        <p>
+                          {t.inputTokens}: {job.usageReport.planner.inputTokens ?? t.usageUnknown} ·{" "}
+                          {t.outputTokens}: {job.usageReport.planner.outputTokens ?? t.usageUnknown}
+                        </p>
+                        <p>
+                          {t.reasoningTokens}:{" "}
+                          {job.usageReport.planner.reasoningTokens ?? t.usageUnknown} ·{" "}
+                          {t.cachedTokens}:{" "}
+                          {job.usageReport.planner.cachedInputTokens ?? t.usageUnknown} ·{" "}
+                          {t.cacheWriteTokens}:{" "}
+                          {job.usageReport.planner.cacheWriteTokens ?? t.usageUnknown}
+                        </p>
+                        <p>
+                          {t.aiCost}: {formatCost(job.usageReport.planner.costUsd)}
+                        </p>
+                        {job.usageReport.planner.providerReportedCostUsd != null && (
+                          <p>
+                            {t.providerCost}:{" "}
+                            {formatCost(job.usageReport.planner.providerReportedCostUsd)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {job.usageReport?.planner && (
+                      <h4 className="font-medium">{t.synthesisStage}</h4>
+                    )}
+
                     <p>
                       {t.inputTokens}: {job.usageReport?.inputTokens ?? t.usageUnknown} ·{" "}
                       {t.outputTokens}: {job.usageReport?.outputTokens ?? t.usageUnknown}

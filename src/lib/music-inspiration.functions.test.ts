@@ -47,6 +47,7 @@ function harness() {
     denied: "",
     superAdmin: false,
     configured: true,
+    plannerAvailable: true,
     budget: 0.2,
     defaultStandardBudgetError: false,
     models: [model],
@@ -126,6 +127,13 @@ function harness() {
     {
       exports: exported,
       require(name: string) {
+        if (name === "./music-inspiration-planner.server")
+          return {
+            requireInspirationPlanner: async () => {
+              if (!state.plannerAvailable) throw new Error("Planner unavailable");
+            },
+            INSPIRATION_PLANNER: { model: "openai/gpt-6-luna", provider: "openrouter" },
+          };
         if (name === "./music-inspiration-diagnostics.shared") return diagnostics;
         if (name === "./music-inspiration-usage.shared") return usageShared;
         if (name === "zod") return { z };
@@ -285,13 +293,20 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
     );
     expect(h.events.find((e) => e[0] === "admin")).toEqual([
       "admin",
-      "start_music_inspiration_job_v2",
+      "start_music_inspiration_job_v3",
       {
         _user_id: "owner",
         _request_id: id,
         _request: request,
         _model: "live-model",
         _provider: "offline",
+        _planner_pricing: {
+          input: 100,
+          output: 100,
+          cached: null,
+          cacheWrite: null,
+          searchCreditUsd: 0.008,
+        },
         _pricing: {
           input: 100,
           output: 100,
@@ -321,7 +336,7 @@ describe("Music Inspiration real server entrypoints (offline)", () => {
     expect((await h.call("getMusicInspirationConfig")).configured).toBe(true);
     await h.call("startMusicInspiration", { requestId: id, request });
     expect(
-      h.events.some((e) => e[0] === "admin" && e[1] === "start_music_inspiration_job_v2"),
+      h.events.some((e) => e[0] === "admin" && e[1] === "start_music_inspiration_job_v3"),
     ).toBe(true);
     h.state.configured = false;
     await expect(h.call("startMusicInspiration", { requestId: id, request })).rejects.toThrow(
@@ -418,4 +433,16 @@ test("admission diagnostics preserve a missing RPC code without exposing raw dat
     });
     expect((error as Error).message).not.toContain("SYNTHETIC_SECRET_SQL");
   }
+});
+
+test("missing fixed planner fails before job admission and config remains useful for saved profiles", async () => {
+  const h = harness();
+  h.state.plannerAvailable = false;
+  const config = await h.call("getMusicInspirationConfig", undefined);
+  expect(config.configured).toBe(false);
+  expect(config.reason).toBe("planner_model_unavailable");
+  await expect(h.call("startMusicInspiration", { requestId: id, request })).rejects.toThrow(
+    "Planner unavailable",
+  );
+  expect(h.events.some((e: any[]) => e[0] === "admin")).toBe(false);
 });
