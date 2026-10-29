@@ -189,6 +189,9 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
             prompt,
             maxTokens: isSuperAdmin ? 4096 : 1800,
             schema: SETUP_SCHEMA,
+            // OpenRouter does not enforce the legacy provider schema by default.
+            // Request JSON-object transport while retaining strict field validation.
+            jsonObjectOutput: true,
           });
           await recordAiUsage({
             executionId: caller.executionId,
@@ -214,11 +217,16 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
               "The Song Setup Assistant returned an invalid response. Please try again.",
             );
           }
-          const setup = isSuperAdmin
-            ? superAdminSongSetupDraftSchema.parse(parsed)
+          const checked = isSuperAdmin
+            ? superAdminSongSetupDraftSchema.safeParse(parsed)
             : isAdminLevel
-              ? adminSongSetupDraftSchema.parse(parsed)
-              : songSetupDraftSchema.parse(parsed);
+              ? adminSongSetupDraftSchema.safeParse(parsed)
+              : songSetupDraftSchema.safeParse(parsed);
+          if (!checked.success)
+            throw new Error(
+              "The Song Setup Assistant returned an incomplete or invalid setup. Please regenerate the setup.",
+            );
+          const setup = checked.data;
 
           const bpmValid =
             setup.bpm === "Auto" ||
