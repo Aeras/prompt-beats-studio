@@ -71,6 +71,9 @@ export function publicInspirationUrl(raw: string): string {
   u.hash = "";
   return u.href;
 }
+// Tavily can return sizable raw extracts for up to three results; retain a strict
+// overall cap while allowing realistic responses before the per-source 4k trim.
+export const INSPIRATION_TAVILY_RESPONSE_MAX_BYTES = 4 * 1024 * 1024;
 async function boundedJson(response: Response): Promise<unknown> {
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
@@ -89,7 +92,7 @@ async function boundedJson(response: Response): Promise<unknown> {
       const item = await reader.read();
       if (item.done) break;
       bytes += item.value.byteLength;
-      if (bytes > 1024 * 1024)
+      if (bytes > INSPIRATION_TAVILY_RESPONSE_MAX_BYTES)
         throw new InspirationFailure(
           { stage: "search_response", code: "too_large" },
           "search_response_too_large",
