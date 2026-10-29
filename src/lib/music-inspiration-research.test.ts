@@ -204,7 +204,11 @@ describe("real research transport, with offline network fixtures", () => {
     const response = await searchInspirationWeb(
       "guitar source",
       new AbortController().signal,
-      async () => Response.json({ results: [{ title: "Credits", url: "https://example.org/credits", raw_content: raw }], usage: { credits: 1 } }),
+      async () =>
+        Response.json({
+          results: [{ title: "Credits", url: "https://example.org/credits", raw_content: raw }],
+          usage: { credits: 1 },
+        }),
       "offline",
     );
     expect(response.documents).toHaveLength(1);
