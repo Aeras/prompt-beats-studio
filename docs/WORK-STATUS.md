@@ -1,5 +1,14 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — Generator mode swipe disable (Library unchanged) — IN_PROGRESS
+
+- **Observed UX:** horizontal gestures over the AI Generator can accidentally switch Basic / Advanced / Project Revision during vertical scrolling or editing long fields. Explicit three mode buttons are always visible.
+- **Verified source:** `AppShell.tsx` owns a shared document-level touchstart/touchend handler that formerly acted for both studio and library. `src/routes/generate.tsx` has explicit mode buttons; `src/routes/library.tsx` has library tabs. No Generator-local swipe listeners found.
+- **Scoped change:** attach the shared tab-swipe handler only while active navigation is Library, keeping Library threshold, dominance, protected interactive targets and tab selection unchanged. Generator mode buttons and all other touch gestures remain functional. Updated existing mobile-navigation contract test accordingly.
+- **Acceptance/release:** confirm targeted touch regression, explicit Generator buttons and field persistence, Library swipe still works, full tests/typecheck/lint/build, exact-HEAD three CI gates, then merge and separately publish/test on mobile. No migration, AI call or production mutation.
+- **CI preflight correction:** first Regression Gate stopped at PR metadata validation (mandatory four description headings absent), before tests. The four headings were added to the same PR; this ledger update triggers a fresh PR event so the gate evaluates the corrected metadata. No test assertions or application behavior changed.
+
+
 ## 2026-10-29 — AI Music Output Contracts (Music Inspiration + Song Setup) — CODE_COMPLETE_RELEASE_PENDING
 
 - **Verified scope:** existing Draft [PR #468](https://github.com/Aeras/prompt-beats-studio/pull/468), branch fix/ai-music-output-contract-reliability, initial HEAD 2fc3299f5c65b093fab702d0673ffba497ad4360; main 8ee8fb03ce58b6f33c8148e5e8cce78718335906. Read contract/ledger and traced prompts, actual adapters, role/auth gates, strict schemas, provenance, tracked receipts/usage, durable auxiliary request admission/finalization and UI. Atlas #450 untouched.
