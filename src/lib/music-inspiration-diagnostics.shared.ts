@@ -4,6 +4,10 @@ export const inspirationStageSchema = z.enum([
   "claim",
   "authorization",
   "sources",
+  "planner_request",
+  "planner_parse",
+  "planner_schema",
+  "planner_persist",
   "search_request",
   "search_response",
   "search_parse",
@@ -95,7 +99,10 @@ export function inspirationDiagnostic(
     const f = fieldSchema.safeParse(key);
     return { stage, code: "invalid_schema", field: f.success ? f.data : "root" };
   }
-  if (error instanceof TypeError && (stage === "search_request" || stage === "ai_request"))
+  if (
+    error instanceof TypeError &&
+    (stage === "search_request" || stage === "ai_request" || stage === "planner_request")
+  )
     return { stage, code: "network" };
   return { stage, code: "unexpected" };
 }

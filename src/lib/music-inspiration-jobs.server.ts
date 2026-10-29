@@ -1,4 +1,11 @@
 import {
+  INSPIRATION_PLANNER,
+  requireInspirationPlanner,
+  requestInspirationPlan,
+  parseInspirationPlannerReceipt,
+} from "./music-inspiration-planner.server";
+import { validateInspirationPlan, type InspirationPlan } from "./music-inspiration-planner.shared";
+import {
   InspirationFailure,
   inspirationDiagnostic,
   encodeInspirationDiagnostic,
@@ -39,6 +46,8 @@ export type InspirationJobDependencies = {
   search?: typeof searchInspirationWeb;
   synthesize?: typeof synthesizeMusicInspiration;
   clock?: () => number;
+  authorizePlanner?: typeof requireInspirationPlanner;
+  plan?: typeof requestInspirationPlan;
   caller?: (
     model: string,
     provider: string,
@@ -99,7 +108,7 @@ export async function executeMusicInspirationJob(
   };
   let job: any;
   try {
-    job = await rpc("claim_music_inspiration_job", { _job_id: id, _lease_token: token });
+    job = await rpc("claim_music_inspiration_job_v2", { _job_id: id, _lease_token: token });
   } catch (error) {
     logInspirationFailure(id, inspirationDiagnostic(error, "claim"));
     throw error;
@@ -175,9 +184,32 @@ export async function executeMusicInspirationJob(
     if (journalReply.error) throw new Error("inspiration_persistence_failed");
     const savedReceipt: ModelResult | null =
       journalReply.data?.result ?? job.provider_result ?? null;
+    const plannerJournal =
+      job.research_version === 2
+        ? await db
+            .from("ai_provider_executions")
+            .select("result,state")
+            .eq("id", job.planner_execution_id)
+            .eq("user_id", job.user_id)
+            .maybeSingle()
+        : { data: null, error: null };
+    if (plannerJournal.error)
+      throw new InspirationFailure({
+        ...inspirationDiagnostic(plannerJournal.error, "planner_persist"),
+        code: "database",
+      });
+    const savedPlannerReceipt: ModelResult | null =
+      plannerJournal.data?.result ?? job.planner_result ?? null;
+    uncertain =
+      dispatches.some((d: any) => d.state !== "observed") ||
+      (!!journalReply.data && !savedReceipt) ||
+      (!!plannerJournal.data && !savedPlannerReceipt);
+    const dispatchDeadline =
+      Date.parse(job.research_started_at ?? job.created_at) + limits.timeoutMs;
     // Recovery is bounded validation, not a fresh research budget. An old job
     // may still finalize an already obtained response after its dispatch window.
-    if (savedReceipt) signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]);
+    if (savedReceipt || savedPlannerReceipt)
+      signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]);
     signal.throwIfAborted();
     if (!savedReceipt && (deps.clock ?? Date.now)() - Date.parse(job.created_at) > 30 * 60 * 1000)
       throw new Error("research_queue_expired");
@@ -185,8 +217,28 @@ export async function executeMusicInspirationJob(
       deps.admitDispatch ?? (await import("./global-ai-usage.server")).requireGlobalAiUsage;
     const reserve = async (key: string, kind: string, cost: number, credits: number) => {
       signal.throwIfAborted();
+      if ((deps.clock ?? Date.now)() >= dispatchDeadline)
+        throw new InspirationFailure(
+          {
+            stage:
+              kind === "planner"
+                ? "planner_request"
+                : kind === "search"
+                  ? "search_request"
+                  : "ai_request",
+            code: "timeout",
+          },
+          "research_dispatch_window_expired",
+        );
+      // A result-only recovery window must never extend a new paid dispatch deadline.
+      signal = AbortSignal.any([
+        controller.signal,
+        AbortSignal.timeout(Math.max(1, dispatchDeadline - (deps.clock ?? Date.now)())),
+      ]);
       stage = "authorization";
       await (deps.authorizeModel ?? authorizeModel)(job.user_id, job.model);
+      if (job.research_version === 2)
+        await (deps.authorizePlanner ?? requireInspirationPlanner)(job.user_id);
       await admit();
       return rpc("reserve_music_inspiration_dispatch", {
         _job_id: id,
@@ -204,7 +256,84 @@ export async function executeMusicInspirationJob(
         _state: state,
         _receipt: receipt,
       });
-    for (const [index, query] of inspirationQueries(request).entries()) {
+    let researchPlan: InspirationPlan | undefined;
+    let queries = job.research_version === 2 ? [] : inspirationQueries(request); // Version-1 recovery only.
+    if (job.research_version === 2) {
+      if (
+        job.planner_provider !== INSPIRATION_PLANNER.provider ||
+        job.planner_model !== INSPIRATION_PLANNER.model ||
+        !job.planner_execution_id ||
+        job.planner_execution_id === job.execution_id
+      )
+        throw new InspirationFailure({ stage: "planner_request", code: "configuration" });
+      stage = "planner_request";
+      const plannerDispatch = dispatches.find((d: any) => d.kind === "planner");
+      let plannerReceipt = savedPlannerReceipt;
+      if (!plannerReceipt) {
+        if (plannerDispatch || plannerJournal.data) {
+          uncertain = true;
+          throw new InspirationFailure({ stage: "planner_request", code: "unknown_outcome" });
+        }
+        await (deps.authorizePlanner ?? requireInspirationPlanner)(job.user_id);
+        if (!(await reserve(job.planner_execution_id, "planner", 0, 0))) {
+          uncertain = true;
+          throw new InspirationFailure({ stage: "planner_request", code: "unknown_outcome" });
+        }
+        uncertain = true;
+        const caller = deps.caller
+          ? deps.caller(
+              job.planner_model,
+              job.planner_provider,
+              job.user_id,
+              job.planner_execution_id,
+            )
+          : (await import("./ai-provider.server")).modelCaller(
+              job.planner_model,
+              job.planner_provider,
+              {
+                userId: job.user_id,
+                operation: "music_inspiration",
+                executionId: job.planner_execution_id,
+              },
+            );
+        stage = "planner_request";
+        plannerReceipt = await (deps.plan ?? requestInspirationPlan)(request, caller, signal);
+      }
+      // Record raw usage/evidence before application validation or cancellation can discard it.
+      uncertain = true;
+      if (
+        plannerReceipt.provider !== job.planner_provider ||
+        plannerReceipt.model !== job.planner_model
+      )
+        throw new InspirationFailure({ stage: "planner_schema", code: "request_mismatch" });
+      await (deps.record ?? record)(
+        { ...job, execution_id: job.planner_execution_id },
+        plannerReceipt,
+      );
+      await settle(job.planner_execution_id, "observed", {
+        executionId: job.planner_execution_id,
+        provider_result: plannerReceipt,
+      });
+      uncertain = false;
+      researchPlan = parseInspirationPlannerReceipt(plannerReceipt, request);
+      if (job.research_plan) {
+        const storedPlan = validateInspirationPlan(job.research_plan, request);
+        if (JSON.stringify(storedPlan) !== JSON.stringify(researchPlan))
+          throw new InspirationFailure({ stage: "planner_schema", code: "request_mismatch" });
+      } else {
+        stage = "planner_persist";
+        uncertain = true;
+        signal.throwIfAborted();
+        await rpc("checkpoint_music_inspiration_plan", {
+          _job_id: id,
+          _lease_token: token,
+          _plan: researchPlan,
+        });
+        uncertain = false;
+      }
+      queries = researchPlan.queries.map((q) => q.text);
+    }
+    for (const [index, query] of queries.entries()) {
       const key = stableId(id, "search:" + index);
       const existing = dispatches.find((d: any) => d.dispatch_key === key);
       if (existing?.state === "observed" && existing.receipt?.documents) {
@@ -274,6 +403,7 @@ export async function executeMusicInspirationJob(
         documents,
         caller,
         signal,
+        researchPlan,
       );
       receipt = compiled.receipt;
       stage = "result_persist";
@@ -291,6 +421,7 @@ export async function executeMusicInspirationJob(
       documents,
       async () => receipt,
       signal,
+      researchPlan,
     );
     signal.throwIfAborted();
     stage = "result_persist";

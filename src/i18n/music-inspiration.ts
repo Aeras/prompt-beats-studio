@@ -1,5 +1,9 @@
 export const musicInspirationCopy = {
   en: {
+    plannerUnavailable:
+      "The configured research planner is unavailable for this account. Saved profiles remain usable.",
+    plannerStage: "Research planner",
+    synthesisStage: "Final synthesis",
     invalidDraft:
       "The Generator draft exceeds a supported field limit. Edit it before applying; your text is preserved.",
     collapse: "Collapse research",
@@ -40,6 +44,10 @@ export const musicInspirationCopy = {
     diagnosticField: "Field",
     diagnosticReference: "Research reference",
     diagnosticStages: {
+      planner_request: "Research planner request",
+      planner_parse: "Planner JSON decoding",
+      planner_schema: "Planner validation",
+      planner_persist: "Planner checkpoint",
       admission: "Request admission",
       claim: "Worker claim",
       authorization: "Access verification",
@@ -182,6 +190,10 @@ export const musicInspirationCopy = {
     refresh: "Refresh profiles",
   },
   el: {
+    plannerUnavailable:
+      "Ο ερευνητικός σχεδιαστής δεν είναι διαθέσιμος για αυτόν τον λογαριασμό. Τα αποθηκευμένα προφίλ παραμένουν διαθέσιμα.",
+    plannerStage: "Ερευνητικός σχεδιαστής",
+    synthesisStage: "Τελική σύνθεση",
     invalidDraft:
       "Το προσχέδιο Generator υπερβαίνει υποστηριζόμενο όριο πεδίου. Διορθώστε το πριν την εφαρμογή· το κείμενό σας διατηρείται.",
     collapse: "Σύμπτυξη έρευνας",
@@ -224,6 +236,10 @@ export const musicInspirationCopy = {
     diagnosticField: "Πεδίο",
     diagnosticReference: "Κωδικός έρευνας",
     diagnosticStages: {
+      planner_request: "Κλήση ερευνητικού σχεδιαστή",
+      planner_parse: "Ανάγνωση JSON πλάνου",
+      planner_schema: "Έλεγχος ερευνητικού πλάνου",
+      planner_persist: "Αποθήκευση ερευνητικού πλάνου",
       admission: "Αποδοχή αιτήματος",
       claim: "Ανάληψη από worker",
       authorization: "Έλεγχος δικαιωμάτων",
