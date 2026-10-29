@@ -16,6 +16,7 @@ import {
   auxiliaryRequestKeySchema,
   executeDurableAuxiliaryAiRequest,
 } from "@/lib/ai-auxiliary-idempotency.server";
+import { parseSongSetupOutput } from "@/lib/song-setup-output.shared";
 import { getSongSetupRoleFlags } from "@/lib/song-setup-role.server";
 
 const SONG_SETUP_DESCRIPTION_LIMIT = 2500;
@@ -170,6 +171,9 @@ PROMPTBEATS ADVANCED OPTIONS:
 
 Platform-aware guidance: tailor the setup for ${data.targetPlatform === "udio" ? "Udio, favoring concise, information-dense musical direction" : "Suno, allowing clear production and arrangement direction"}, but do not mention the platform in Theme.
 
+OUTPUT CONTRACT (all nine exact camelCase field names, all values strings, no wrapper or display-label keys):
+${JSON.stringify(SETUP_SCHEMA)}
+
 Build the strongest coherent Advanced Mode setup from the user's intent. Keep Theme strictly about what the song is about, and put all sonic/style information in the appropriate non-Theme fields.`;
 
         const { modelCaller, resolveAiModelForUser } = await import("@/lib/ai-provider.server");
@@ -203,38 +207,13 @@ Build the strongest coherent Advanced Mode setup from the user's intent. Keep Th
             success: result.stopReason === "end_turn",
           });
 
-          if (result.stopReason !== "end_turn") {
-            throw new Error(
-              "The Song Setup Assistant did not finish its response. Please try again.",
-            );
-          }
-
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(result.text);
-          } catch {
-            throw new Error(
-              "The Song Setup Assistant returned an invalid response. Please try again.",
-            );
-          }
-          const checked = isSuperAdmin
-            ? superAdminSongSetupDraftSchema.safeParse(parsed)
-            : isAdminLevel
-              ? adminSongSetupDraftSchema.safeParse(parsed)
-              : songSetupDraftSchema.safeParse(parsed);
-          if (!checked.success)
-            throw new Error(
-              "The Song Setup Assistant returned an incomplete or invalid setup. Please regenerate the setup.",
-            );
-          const setup = checked.data;
-
-          const bpmValid =
-            setup.bpm === "Auto" ||
-            (/^\d{2,3}$/.test(setup.bpm) && Number(setup.bpm) >= 40 && Number(setup.bpm) <= 260);
-          if (!bpmValid)
-            throw new Error(
-              "The Song Setup Assistant returned an invalid BPM. Please regenerate the setup.",
-            );
+          const setup = parseSongSetupOutput<SongSetupDraft>(result, (parsed) =>
+            isSuperAdmin
+              ? superAdminSongSetupDraftSchema.parse(parsed)
+              : isAdminLevel
+                ? adminSongSetupDraftSchema.parse(parsed)
+                : songSetupDraftSchema.parse(parsed),
+          );
 
           return { setup, model: result.model };
         } catch (error) {

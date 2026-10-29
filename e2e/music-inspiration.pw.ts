@@ -95,6 +95,7 @@ async function fixture(
     injection?: boolean;
     plannerUsage?: boolean;
     plannerUnavailable?: boolean;
+    setup?: "success" | "failure";
   } = {},
 ) {
   const user = {
@@ -231,11 +232,33 @@ async function fixture(
     )
       return route.fulfill({ status: 403, body: "Offline revoked access" });
     let result: unknown = {};
-    if (name.includes("getCurrentUserAiModelAccess"))
+    if (name.includes("generateSongSetup")) {
+      if (options.setup === "failure")
+        return route.fulfill({ status: 500, body: "SECRET provider Zod payload" });
+      result = {
+        setup: {
+          theme: "Original reunion story",
+          musicStyle: "Pop",
+          mood: "Warm",
+          instruments: "Guitar",
+          bpm: "104",
+          songStructure: "Verse → Chorus",
+          productionStyle: "Spacious original arrangement",
+          additionalInstructions: "Compose original music",
+          language: "English",
+        },
+        model: "setup-fixture",
+      };
+    } else if (name.includes("getCurrentUserAiModelAccess"))
       result = {
         generator: { modelOptions: [], defaultModel: "" },
         qualityCheck: { modelOptions: [], defaultModel: "" },
-        aiTools: { modelOptions: [], defaultModel: "" },
+        aiTools: {
+          modelOptions: options.setup
+            ? [{ id: "setup-fixture", label: "Offline setup", provider: "openrouter" }]
+            : [],
+          defaultModel: options.setup ? "setup-fixture" : "",
+        },
       };
     else if (name.includes("getLatestGenerationJob") || name.includes("getLatestQualityCheckJob"))
       result = { job: null };
@@ -1108,7 +1131,7 @@ for (const recovery of ["discard", "edited"] as const) {
 }
 
 for (const greek of [false, true])
-  for (const failure of ["tavily", "ai-json"] as const) {
+  for (const failure of ["tavily", "ai-json", "unsupported-evidence"] as const) {
     test(
       "specific " +
         failure +
@@ -1117,7 +1140,11 @@ for (const greek of [false, true])
       async ({ page }) => {
         const f = await fixture(page, { greek });
         f.diagnostic(
-          failure === "tavily" ? "mi1|search_response|http|401||" : "mi1|ai_parse|invalid_json|||",
+          failure === "tavily"
+            ? "mi1|search_response|http|401||"
+            : failure === "unsupported-evidence"
+              ? "mi1|ai_schema|unsupported_evidence|||proposal.supportingEvidenceIds"
+              : "mi1|ai_parse|invalid_json|||",
         );
         await panel(page)
           .getByRole("button", {
@@ -1136,7 +1163,15 @@ for (const greek of [false, true])
         const d = panel(page).getByTestId("inspiration-diagnostic");
         await expect(d).toBeVisible();
         await expect(d).toContainText(
-          failure === "tavily" ? "HTTP 401" : greek ? "Ανάγνωση JSON του AI" : "AI JSON decoding",
+          failure === "tavily"
+            ? "HTTP 401"
+            : failure === "unsupported-evidence"
+              ? greek
+                ? "ανεπαρκή"
+                : "insufficient"
+              : greek
+                ? "Ανάγνωση JSON του AI"
+                : "AI JSON decoding",
         );
         await expect(d).toContainText("ca290000-0000-4000-8000-000000000002");
         expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
@@ -1453,4 +1488,56 @@ test("PB-014 Greek planner and synthesis accounting labels are localized", async
   );
   await expect(report).toContainText("Τελική σύνθεση");
   expect(f.calls.filter((c) => c.name.includes("startMusicInspiration"))).toHaveLength(1);
+});
+
+for (const greek of [false, true])
+  test(
+    "PB-468 Setup failure stays localized and hides raw provider diagnostics " +
+      (greek ? "EL" : "EN"),
+    async ({ page }) => {
+      const f = await fixture(page, { setup: "failure", greek });
+      await page
+        .getByRole("button", {
+          name: greek ? "Βοηθός ρύθμισης τραγουδιού" : "Song Setup Assistant",
+          exact: true,
+        })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog
+        .getByLabel(greek ? "Περίγραψε το τραγούδι σου" : "Describe your song")
+        .fill("Synthetic original song brief");
+      await dialog
+        .getByRole("button", {
+          name: greek ? "Δημιουργία ρύθμισης" : "Generate Setup",
+          exact: true,
+        })
+        .click();
+      await expect(dialog.getByRole("alert")).toContainText(
+        greek ? "Δεν ήταν δυνατή" : "Could not generate",
+      );
+      await expect(dialog).not.toContainText("SECRET");
+      expect(f.calls.filter((c) => c.name.includes("generateSongSetup"))).toHaveLength(1);
+      await expect(
+        dialog.getByRole("button", {
+          name: greek ? "Εφαρμογή στο Προηγμένο" : "Apply to Advanced",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+    },
+  );
+test("PB-468 valid Setup previews all nine fields without automatically applying or generating", async ({
+  page,
+}) => {
+  const f = await fixture(page, { setup: "success" });
+  await page.getByRole("button", { name: "Song Setup Assistant", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Describe your song").fill("Synthetic original song brief");
+  await dialog.getByRole("button", { name: "Generate Setup", exact: true }).click();
+  await expect(dialog.getByText("Advanced setup preview", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("textbox")).toHaveCount(10);
+  await expect(
+    dialog.getByRole("button", { name: "Apply to Advanced", exact: true }),
+  ).toBeVisible();
+  expect(f.calls.filter((c) => c.name.includes("generateSongSetup"))).toHaveLength(1);
+  expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
 });

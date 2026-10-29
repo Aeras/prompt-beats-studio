@@ -35,6 +35,7 @@ const codeSchema = z.enum([
   "incomplete",
   "request_mismatch",
   "evidence_mismatch",
+  "unsupported_evidence",
   "database",
   "no_evidence",
   "unknown_outcome",
@@ -57,6 +58,7 @@ const fieldSchema = z.enum([
   "evidence",
   "proposal",
   "proposal.blueprint",
+  "proposal.supportingEvidenceIds",
   "proposal.songStructure",
   "version",
   "researchPromptVersion",
@@ -101,6 +103,8 @@ export function inspirationDiagnostic(
   if (error instanceof SyntaxError) return { stage, code: "invalid_json" };
   if (error instanceof z.ZodError) {
     const path = error.issues[0]?.path ?? [];
+    if (path[0] === "proposal" && path[1] === "supportingEvidenceIds")
+      return { stage, code: "unsupported_evidence", field: "proposal.supportingEvidenceIds" };
     const nested = fieldSchema.safeParse(path.slice(0, 2).join("."));
     const key = nested.success ? nested.data : path[0];
     const f = fieldSchema.safeParse(key);
