@@ -88,7 +88,20 @@ export function validateInspirationPlan(
   request: InspirationRequest,
 ): InspirationPlan {
   const plan = inspirationPlanSchema.parse(raw);
-  if (JSON.stringify(plan.request) !== JSON.stringify(inspirationRequestSchema.parse(request)))
+  // Compare validated request values, not serialized object insertion order.
+  // Do not normalize, translate or omit any supplied request values: a changed
+  // artist, song, description or depth must still fail closed.
+  const expected = inspirationRequestSchema.parse(request);
+  const actual = plan.request;
+  if (
+    actual.kind !== expected.kind ||
+    actual.depth !== expected.depth ||
+    (actual.kind === "artist" && expected.kind === "artist"
+      ? actual.artist !== expected.artist || actual.song !== expected.song
+      : actual.kind === "description" && expected.kind === "description"
+        ? actual.description !== expected.description
+        : true)
+  )
     throw new Error("planner_request_mismatch");
   return plan;
 }
