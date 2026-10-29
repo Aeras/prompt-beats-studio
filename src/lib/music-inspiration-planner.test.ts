@@ -232,15 +232,156 @@ test("planner rejects oversized raw JSON and control-bearing query text before s
 });
 
 test("planner accepts semantically identical request with reordered object keys", () => {
-  const request: InspirationRequest = { kind: "artist", artist: "Scorpions", song: "Still Loving You", depth: "extended" };
+  const request: InspirationRequest = {
+    kind: "artist",
+    artist: "Scorpions",
+    song: "Still Loving You",
+    depth: "extended",
+  };
   const plan = offlinePlan(request);
-  const raw = { ...plan, request: { depth: "extended", song: "Still Loving You", artist: "Scorpions", kind: "artist" } };
+  const raw = {
+    ...plan,
+    request: { depth: "extended", song: "Still Loving You", artist: "Scorpions", kind: "artist" },
+  };
   expect(validateInspirationPlan(raw, request).request).toEqual(request);
-  expect(() => validateInspirationPlan({ ...raw, request: { ...raw.request, song: "Different Song" } }, request)).toThrow("planner_request_mismatch");
+  expect(() =>
+    validateInspirationPlan(
+      { ...raw, request: { ...raw.request, song: "Different Song" } },
+      request,
+    ),
+  ).toThrow("planner_request_mismatch");
 });
 test("planner rejects changes to free-description request values", () => {
-  const request: InspirationRequest = { kind: "description", description: "A fingerstyle rock ballad with Scorpions influence", depth: "standard" };
+  const request: InspirationRequest = {
+    kind: "description",
+    description: "A fingerstyle rock ballad with Scorpions influence",
+    depth: "standard",
+  };
   const plan = offlinePlan(request);
-  expect(validateInspirationPlan({ ...plan, request: { depth: "standard", description: request.description, kind: "description" } }, request).request).toEqual(request);
-  expect(() => validateInspirationPlan({ ...plan, request: { kind: "description", depth: "standard", description: "A different fingerstyle rock ballad" } }, request)).toThrow("planner_request_mismatch");
+  expect(
+    validateInspirationPlan(
+      {
+        ...plan,
+        request: { depth: "standard", description: request.description, kind: "description" },
+      },
+      request,
+    ).request,
+  ).toEqual(request);
+  expect(() =>
+    validateInspirationPlan(
+      {
+        ...plan,
+        request: {
+          kind: "description",
+          depth: "standard",
+          description: "A different fingerstyle rock ballad",
+        },
+      },
+      request,
+    ),
+  ).toThrow("planner_request_mismatch");
+});
+
+// Minimal incident-shaped fixture: only the verified non-sensitive title delta
+// is retained; queries, entities and identity are synthetic (not a raw job dump).
+test("incident title capitalization drift is rejected without replacing user input", async () => {
+  const request: InspirationRequest = {
+    kind: "artist",
+    artist: "Offline artist",
+    song: "White dove",
+    depth: "extended",
+  };
+  const plan = offlinePlan(request);
+  plan.request = { ...request, song: "White Dove" };
+  const receipt: ModelResult = {
+    provider: INSPIRATION_PLANNER.provider,
+    model: INSPIRATION_PLANNER.model,
+    text: JSON.stringify(plan),
+    stopReason: "end_turn",
+    usage: null,
+  };
+  try {
+    parseInspirationPlannerReceipt(receipt, request);
+    throw Error("must reject");
+  } catch (error) {
+    expect(error).toBeInstanceOf(InspirationFailure);
+    expect((error as InspirationFailure).diagnostic).toEqual({
+      stage: "planner_schema",
+      code: "request_mismatch",
+      field: "request.song",
+    });
+    expect(JSON.stringify((error as InspirationFailure).diagnostic)).not.toContain("White");
+  }
+  expect(request.song).toBe("White dove");
+  await requestInspirationPlan(
+    request,
+    async (input) => {
+      expect(input.system).toContain("Copy the request object values verbatim");
+      expect(input.system).toContain("Do not title-case");
+      expect(JSON.parse(input.prompt).request).toEqual(request);
+      return receipt;
+    },
+    new AbortController().signal,
+  );
+});
+
+test("planner distinguishes every request value and provider/model identity without exposing values", () => {
+  const request: InspirationRequest = {
+    kind: "artist",
+    artist: "Offline artist",
+    song: "Offline song",
+    depth: "extended",
+  };
+  const receipt: ModelResult = {
+    provider: INSPIRATION_PLANNER.provider,
+    model: INSPIRATION_PLANNER.model,
+    text: JSON.stringify(offlinePlan(request)),
+    stopReason: "end_turn",
+    usage: null,
+  };
+  for (const [patch, field] of [
+    [{ artist: "OTHER" }, "request.artist"],
+    [{ song: "OTHER" }, "request.song"],
+    [{ song: undefined }, "request.song"],
+  ] as const) {
+    const plan = offlinePlan(request);
+    plan.request = { ...request, ...patch };
+    try {
+      parseInspirationPlannerReceipt({ ...receipt, text: JSON.stringify(plan) }, request);
+      throw Error("must reject");
+    } catch (error) {
+      expect((error as InspirationFailure).diagnostic.field).toBe(field);
+    }
+  }
+  for (const [patch, field] of [
+    [{ provider: "openai" }, "provider"],
+    [{ model: "other" }, "model"],
+  ] as const) {
+    try {
+      parseInspirationPlannerReceipt({ ...receipt, ...patch }, request);
+      throw Error("must reject");
+    } catch (error) {
+      expect((error as InspirationFailure).diagnostic).toEqual({
+        stage: "planner_schema",
+        code: "request_mismatch",
+        field,
+      });
+    }
+  }
+  const changedDepth = offlinePlan({ ...request, depth: "standard" });
+  expect(() => validateInspirationPlan(changedDepth, request)).toThrow("planner_request_mismatch");
+  const description: InspirationRequest = {
+    kind: "description",
+    description: "Offline original music description",
+    depth: "extended",
+  };
+  expect(() => validateInspirationPlan(offlinePlan(description), request)).toThrow(
+    "planner_request_mismatch",
+  );
+  expect(() =>
+    validateInspirationPlan(
+      offlinePlan({ ...description, description: "Offline CHANGED music description" }),
+      description,
+    ),
+  ).toThrow("planner_request_mismatch");
 });

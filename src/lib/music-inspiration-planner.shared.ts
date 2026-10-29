@@ -83,6 +83,15 @@ export const inspirationPlanSchema = z
       });
   });
 export type InspirationPlan = z.infer<typeof inspirationPlanSchema>;
+export class PlannerRequestMismatch extends Error {
+  constructor(
+    readonly field:
+      "request.kind" | "request.depth" | "request.artist" | "request.song" | "request.description",
+  ) {
+    super("planner_request_mismatch");
+    this.name = "PlannerRequestMismatch";
+  }
+}
 export function validateInspirationPlan(
   raw: unknown,
   request: InspirationRequest,
@@ -93,15 +102,14 @@ export function validateInspirationPlan(
   // artist, song, description or depth must still fail closed.
   const expected = inspirationRequestSchema.parse(request);
   const actual = plan.request;
-  if (
-    actual.kind !== expected.kind ||
-    actual.depth !== expected.depth ||
-    (actual.kind === "artist" && expected.kind === "artist"
-      ? actual.artist !== expected.artist || actual.song !== expected.song
-      : actual.kind === "description" && expected.kind === "description"
-        ? actual.description !== expected.description
-        : true)
-  )
-    throw new Error("planner_request_mismatch");
+  if (actual.kind !== expected.kind) throw new PlannerRequestMismatch("request.kind");
+  if (actual.depth !== expected.depth) throw new PlannerRequestMismatch("request.depth");
+  if (actual.kind === "artist" && expected.kind === "artist") {
+    if (actual.artist !== expected.artist) throw new PlannerRequestMismatch("request.artist");
+    if (actual.song !== expected.song) throw new PlannerRequestMismatch("request.song");
+  } else if (actual.kind === "description" && expected.kind === "description") {
+    if (actual.description !== expected.description)
+      throw new PlannerRequestMismatch("request.description");
+  }
   return plan;
 }
