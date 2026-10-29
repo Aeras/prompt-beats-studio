@@ -3343,38 +3343,38 @@ function GeneratePage() {
         >
           {/* Keep mode navigation above mode-specific panels to prevent layout jumps. */}
           <div className="glass-strong rounded-3xl p-3 sm:p-4" data-testid="generator-mode-navigation">
-              <div
-                className="flex flex-wrap items-center gap-2"
-                role="group"
-                aria-label={t("generator.mode")}
-              >
-                {[
-                  { key: "basic" as const, label: t("generator.basic") },
-                  { key: "advanced" as const, label: t("generator.advanced") },
-                  { key: "revision" as const, label: t("generator.revision") },
-                ].map((mode) => {
-                  const active =
-                    mode.key === "revision"
-                      ? revisionMode
-                      : !revisionMode && advanced === (mode.key === "advanced");
-                  return (
-                    <button
-                      key={mode.key}
-                      type="button"
-                      data-generator-mode={mode.key}
-                      aria-pressed={active}
-                      onClick={() => changeGeneratorMode(mode.key)}
-                      className={
-                        active
-                          ? "whitespace-nowrap rounded-full border border-transparent bg-gradient-neon px-3 py-1.5 text-xs font-semibold text-primary-foreground glow-neon sm:px-4"
-                          : "whitespace-nowrap rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent sm:px-4"
-                      }
-                    >
-                      {mode.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label={t("generator.mode")}
+            >
+              {[
+                { key: "basic" as const, label: t("generator.basic") },
+                { key: "advanced" as const, label: t("generator.advanced") },
+                { key: "revision" as const, label: t("generator.revision") },
+              ].map((mode) => {
+                const active =
+                  mode.key === "revision"
+                    ? revisionMode
+                    : !revisionMode && advanced === (mode.key === "advanced");
+                return (
+                  <button
+                    key={mode.key}
+                    type="button"
+                    data-generator-mode={mode.key}
+                    aria-pressed={active}
+                    onClick={() => changeGeneratorMode(mode.key)}
+                    className={
+                      active
+                        ? "whitespace-nowrap rounded-full border border-transparent bg-gradient-neon px-3 py-1.5 text-xs font-semibold text-primary-foreground glow-neon sm:px-4"
+                        : "whitespace-nowrap rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent sm:px-4"
+                    }
+                  >
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           {advanced && !revisionMode && (
             <MusicInspirationPanel
