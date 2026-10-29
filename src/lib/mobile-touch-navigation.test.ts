@@ -52,7 +52,7 @@ describe("mobile and tablet touch navigation", () => {
     expect(navigation).toBeGreaterThan(-1);
     expect(inspiration).toBeGreaterThan(navigation);
     expect(advancedBridge).toBeGreaterThan(navigation);
-    expect(generator.match(/data-generator-mode=\\{mode\\.key\\}/g)).toHaveLength(1);
+    expect(generator.split("data-generator-mode={mode.key}")).toHaveLength(2);
     expect(generator).toContain("onClick={() => changeGeneratorMode(mode.key)}");
   });
 
