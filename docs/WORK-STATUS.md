@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — PB-014 Adaptive Multilingual Music Research — IN_PROGRESS
+
+- Agreed architecture: fixed OpenRouter GPT-6 Luna planning model (server-side, no selection), bounded Standard 2 / Extended 5 multilingual Tavily queries spanning eight research topics, creator-selected final synthesis model. No automatic paid retry. The planner distinguishes artist/song identity from reference influences and adapts source languages.
+- Verified #464 PB-013 is MERGED at GitHub; production publish not verified. Existing hard-coded 2 EN / 5 EN+RU search flow and single-synthesis-dispatch accounting need refactoring. Live installed provider/model ID still unverified.
+- Branch feature/pb-014-adaptive-multilingual-research contains the reviewed implementation contract in [PB-014-ADAPTIVE-MULTILINGUAL-RESEARCH.md](PB-014-ADAPTIVE-MULTILINGUAL-RESEARCH.md) only; no executable planner, paid calls, migration or release. End-to-end implementation, tests and exact-head gates remain pending in the SAME PR.
+
+
 ## 2026-10-29 — PB-013 Music Inspiration inline workspace and Smart Apply — CODE_COMPLETE_RELEASE_PENDING
 
 - **Scope / verified baseline:** existing Draft [PR #464](https://github.com/Aeras/prompt-beats-studio/pull/464), branch `feature/pb-013-inline-music-inspiration-smart-apply`, main `c09e9779ce7b72e9d567d381197b70b81b686b9c`. Read Product/UX/Engineering/Red Team/Executive handoffs and traced Generator, shared contracts, authenticated jobs/profiles, SQL/RLS, owner/CAS, provenance/accounting/recovery and tests. Final owner contract governs: primary Fill-empty; preview defaults Keep with explicit Add/Replace. Preserve #463 solved entitlement/layout protections and Atlas #450 pause.
