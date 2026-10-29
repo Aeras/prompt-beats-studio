@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — PB-013 Music Inspiration inline workspace and smart apply — IN_PROGRESS
+
+- **Authorized scope:** one inline/collapsible Music Inspiration workspace preserving current PromptBeats visual language, existing authenticated research/jobs/profiles, provenance, paid-dispatch safeguards, and the seven protected music apply groups. Fill-empty remains primary safe action; field-level Preview supports Keep / Add (deduplicated enrichment where meaningful) / Replace. BPM and atomic Arrangement allow Keep/Replace only. Missing proposal never clears; unselected and non-musical Generator state never changes. After successful apply keep selective Undo visible. No new provider calls for apply/preview/collapse.
+- **Engineering contract:** one authoritative planner for current/proposed/no-op/destructive counts, exact nextSetup and receipt; avoid stale confirmation race; explicit source binding for profile Save/Update (Red Team H1), separate active execution/display source/profile revision/action ownership; final verified comparison and synchronous mutation; no automatic paid dispatch. Add tests for race, cross-account, revoked entitlement, ABA edits, free-text conflict and length bounds, duplicate enrichment, responsive desktop/mobile and accessible PromptBeats controls.
+- **Implementation state:** initial branch feature/pb-013-inline-music-inspiration-smart-apply has an isolated deterministic list-merging helper and focused unit coverage only; it is NOT wired into the Generator or complete. Full implementation, local tests and exact-head CI gates remain pending in the SAME PR. No migration, paid calls, deploy or merge authorized by this partial step. Recheck current main and open PRs before further changes; PR #373 is an unrelated open Generator HTTP-error PR.
+
+
 ## 2026-10-28 — Music Inspiration entitlement invisibility + actual Generator stacking — IN_PROGRESS
 
 - **New evidence:** Desktop screenshots show Music Inspiration as an oversized left column and the Generator squeezed right, even for a denied ordinary account. Current main `src/routes/generate.tsx` already has a centered `flex-col max-w-3xl`; the screenshot does not match those source classes, suggesting a deployed bundle/style mismatch which has not yet been independently measured live. Do not claim source-only changes prove deployed resolution.
