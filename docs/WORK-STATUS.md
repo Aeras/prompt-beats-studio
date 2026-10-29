@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — Generator mode navigation stable position — IN_PROGRESS
+
+- **Production user feedback:** after PR #470 was published, disabled swipe switching works, but Basic / Advanced / Project Revision selector jumps vertically because the advanced-only Music Inspiration panel (and associated bridge) renders before the selector.
+- **Current implementation:** relocate the one existing button group above conditional Music Inspiration/Atlas panels within the Generator's existing stacked column. Preserve the same three buttons, changeGeneratorMode callback, accessibility roles, input data, per-mode panels, library gestures, and no automatic scroll/focus intervention. Avoid viewport-fixed overlays that would obscure editing areas on mobile.
+- **Verification:** existing mobile navigation test now guards selector preceding conditional panels and unique button group; require targeted/full regression, browser desktop/tablet/mobile and all three mandatory exact-HEAD gates, merge, separate Lovable publish, then user-confirmed behavior. No database migration, provider calls or production changes.
+
+
 ## 2026-10-29 — Generator mode swipe disable (Library unchanged) — IN_PROGRESS
 
 - **Observed UX:** horizontal gestures over the AI Generator can accidentally switch Basic / Advanced / Project Revision during vertical scrolling or editing long fields. Explicit three mode buttons are always visible.
