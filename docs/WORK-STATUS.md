@@ -6,6 +6,7 @@
 - **Code finding:** searchInspirationWeb requests Tavily raw text for up to three results, but the streaming JSON transport rejected bodies larger than 1 MiB before applying the existing 4,000-character per-source cap. This can reject otherwise usable evidence. Exact live payload size is unverified.
 - **Fix in progress:** bound transport at 4 MiB, retaining streaming cancellation and per-source excerpt bounds. Offline tests cover a valid >1 MiB response and rejection >4 MiB. Larger bodies may still be rejected; no automatic retry or provider query change.
 - **Release:** focused/full tests, TypeScript, lint/format, build, exact-head Regression / Browser Quality / Database Replay gates and review remain pending in the same PR. No migration, merge, publish or paid call.
+- **CI remediation:** first Regression gate failed only on required PR-description sections; descriptions were added and verified in live PR metadata. A rerun of the original event still used its stale event payload, so a fresh same-PR commit is required to trigger current metadata validation. Browser and DB gates remain separately authoritative.
 
 
 ## 2026-10-29 — PB-014 live Planner request_mismatch follow-up — CODE_COMPLETE_RELEASE_PENDING
