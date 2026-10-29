@@ -11,6 +11,24 @@ function visibleInspirationValues(values: string[], known: readonly string[], cu
   const extra = values.filter((value) => !known.includes(value));
   return { selected, custom: [custom, ...extra].filter((value) => value.length > 0).join(", ") };
 }
+/** Deterministic enrichment for discrete catalog values.
+ * Keeps all creator values in order, appends only new case/space-equivalent items.
+ * Never guesses synonyms or silently rewrites conflicting free-form instructions.
+ * A bounded planner must validate the final Generator setup before committing.
+ */
+export function mergeInspirationList(current: readonly string[], incoming: readonly string[]): string[] {
+  const result = [...current];
+  const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\\s+/g, " ").toLocaleLowerCase("en");
+  const seen = new Set(result.map(normalize));
+  for (const value of incoming) {
+    const key = normalize(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
+}
+
 const inspirationStyles = ADVANCED_MUSIC_STYLES.filter((option) => option.id !== "custom").map(
   (option) => option.value,
 );
