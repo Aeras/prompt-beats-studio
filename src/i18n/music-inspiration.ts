@@ -78,6 +78,8 @@ export const musicInspirationCopy = {
       invalid_schema: "Response does not match the required format",
       incomplete: "AI response was incomplete",
       request_mismatch: "AI response does not match the research request",
+      unsupported_evidence:
+        "The proposal cites insufficient, disputed or unknown evidence as support. No result was applied.",
       evidence_mismatch: "AI citations do not match retrieved evidence",
       database: "Database operation failed",
       no_evidence: "No accessible evidence",
@@ -270,6 +272,8 @@ export const musicInspirationCopy = {
       invalid_schema: "Η απόκριση δεν έχει την απαιτούμενη μορφή",
       incomplete: "Το AI επέστρεψε ημιτελή απόκριση",
       request_mismatch: "Το αποτέλεσμα AI δεν αντιστοιχεί στο αίτημα έρευνας",
+      unsupported_evidence:
+        "Η πρόταση επικαλείται ανεπαρκή, αμφισβητούμενα ή άγνωστα τεκμήρια ως υποστήριξη. Δεν εφαρμόστηκε αποτέλεσμα.",
       evidence_mismatch: "Οι παραπομπές AI δεν συμφωνούν με τα ανακτημένα τεκμήρια",
       database: "Απέτυχε ενέργεια βάσης δεδομένων",
       no_evidence: "Δεν βρέθηκαν προσβάσιμα τεκμήρια",

@@ -460,3 +460,28 @@ test("stored result arrangement is reconciled during recovery without new search
   expect(f.counts()).toEqual({ searches: 2, calls: 1 });
   expect(f.records.size).toBe(1);
 });
+
+test("unsupported proposal evidence preserves raw usage and terminal failure without paid replay", async () => {
+  const f = fixture();
+  f.deps.synthesize = async (_request, _documents, call) => {
+    await call({ prompt: "offline", system: "offline" });
+    throw new InspirationFailure({
+      stage: "ai_schema",
+      code: "unsupported_evidence",
+      field: "proposal.supportingEvidenceIds",
+    });
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.job.status).toBe("failed");
+  expect(decodeInspirationDiagnostic(f.job.error_code)?.code).toBe("unsupported_evidence");
+  expect(f.job.provider_result).toEqual(f.journal().result);
+  expect(f.records.size).toBe(1);
+  expect(f.dispatches.find((d: any) => d.kind === "ai").state).toBe("observed");
+  const before = f.counts();
+  f.deps.caller = () => async () => {
+    throw Error("Must not pay again");
+  };
+  await executeMusicInspirationJob(f.id, f.deps);
+  expect(f.counts()).toEqual(before);
+  expect(f.records.size).toBe(1);
+});

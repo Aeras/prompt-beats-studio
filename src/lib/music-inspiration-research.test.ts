@@ -323,6 +323,10 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
     expect(prompt.documents).toEqual([{ source, text }]);
     expect(input.abortSignal).toBe(signal);
     expect(input.maxTokens).toBe(6000);
+    expect(input.jsonObjectOutput).toBe(true);
+    expect(prompt.requirements).toContain(
+      "never cite insufficient, disputed, unknown or absent evidence",
+    );
     return response;
   };
   const synthesized = await synthesizeMusicInspiration(request, [{ source, text }], caller, signal);
@@ -331,6 +335,61 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
   expect(synthesized.result.sources[0]).toEqual(source);
   expect(synthesized.receipt).toBe(response);
 
+  // Reproduce the verified incident relation with synthetic evidence and text.
+  const unsupported = structuredClone(result);
+  unsupported.evidence.push({
+    id: "e5",
+    claim: "No verified tempo measurement",
+    dimension: "rhythm",
+    classification: "insufficient",
+    sourceIds: [],
+    citedPassages: [],
+    limitation: "Unknown",
+  });
+  unsupported.proposal.supportingEvidenceIds.push("e5");
+  const rawUnsupported = JSON.stringify(unsupported);
+  response = { ...response, text: rawUnsupported };
+  calls = 0;
+  await expect(
+    synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
+  ).rejects.toMatchObject({
+    diagnostic: {
+      stage: "ai_schema",
+      code: "unsupported_evidence",
+      field: "proposal.supportingEvidenceIds",
+    },
+  });
+  expect(calls).toBe(1);
+  expect(response.text).toBe(rawUnsupported);
+  // A newly authored, valid model response may retain the uncertainty without
+  // claiming it as support. Never auto-remove support IDs from real responses.
+  const validLimited = structuredClone(unsupported);
+  validLimited.proposal.supportingEvidenceIds = ["synthetic-instrumentation"];
+  response = { ...response, text: JSON.stringify(validLimited) };
+  expect(
+    (
+      await synthesizeMusicInspiration(request, [{ source, text }], caller, signal)
+    ).result.evidence.at(-1)?.classification,
+  ).toBe("insufficient");
+  for (const raw of [
+    { ...result, proposal: undefined },
+    { ...result, proposal: [] },
+    { ...result, proposal: { ...result.proposal, bpm: "76" } },
+  ]) {
+    response = { ...response, text: JSON.stringify(raw) };
+    calls = 0;
+    await expect(
+      synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
+    ).rejects.toMatchObject({ diagnostic: { stage: "ai_schema" } });
+    expect(calls).toBe(1);
+  }
+  response = { ...response, text: JSON.stringify(result), stopReason: "max_tokens" };
+  calls = 0;
+  await expect(
+    synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
+  ).rejects.toMatchObject({ diagnostic: { stage: "ai_request", code: "incomplete" } });
+  expect(calls).toBe(1);
+  response = { ...response, stopReason: "end_turn" };
   const decorated = structuredClone(result);
   decorated.proposal.songStructure = ["Verse — 16 bars", "Chorus — 8 bars"];
   expect(inspirationResearchSchema.safeParse(decorated).success).toBe(false);
