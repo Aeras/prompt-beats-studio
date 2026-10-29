@@ -1,3 +1,9 @@
+import {
+  inspirationOwnedKeys,
+  type InspirationApplyField,
+} from "@/lib/music-inspiration-apply.shared";
+import { useMusicInspirationState } from "@/hooks/useMusicInspirationState";
+import { createMusicTracker, sameGeneratorFrame } from "@/lib/music-inspiration-generator-state";
 import { AtlasGeneratorBridge } from "@/components/promptbeats/AtlasGeneratorBridge";
 import { MusicInspirationPanel } from "@/components/promptbeats/MusicInspirationPanel";
 import {
@@ -992,14 +998,58 @@ function GeneratePage() {
     DEFAULT_AI_TARGET_PLATFORM,
   );
   const [theme, setTheme] = useState("");
-  const [genres, setGenres] = useState<string[]>([]);
-  const [customGenre, setCustomGenre] = useState("");
-  const [moods, setMoods] = useState<string[]>([]);
-  const [customMood, setCustomMood] = useState("");
-  const [instruments, setInstruments] = useState<string[]>([]);
-  const [customInstruments, setCustomInstruments] = useState("");
-  const [structure, setStructure] = useState<string[]>([]);
-  const [songBlueprint, setSongBlueprint] = useState<SongBlueprintSection[]>([]);
+  const musicTracker = useRef(createMusicTracker());
+  const inspirationSetupRef = useRef<
+    import("@/lib/advanced-generator-setup").AdvancedGeneratorSetup | null
+  >(null);
+  const [genres, setGenres] = useMusicInspirationState<string[]>(
+    "genres",
+    [],
+    "selectedMusicStyles",
+    musicTracker,
+  );
+  const [customGenre, setCustomGenre] = useMusicInspirationState(
+    "customGenre",
+    "",
+    "selectedMusicStyles",
+    musicTracker,
+  );
+  const [moods, setMoods] = useMusicInspirationState<string[]>(
+    "moods",
+    [],
+    "selectedMoods",
+    musicTracker,
+  );
+  const [customMood, setCustomMood] = useMusicInspirationState(
+    "customMood",
+    "",
+    "selectedMoods",
+    musicTracker,
+  );
+  const [instruments, setInstruments] = useMusicInspirationState<string[]>(
+    "instruments",
+    [],
+    "selectedInstruments",
+    musicTracker,
+  );
+  const [customInstruments, setCustomInstruments] = useMusicInspirationState(
+    "customInstruments",
+    "",
+    "selectedInstruments",
+    musicTracker,
+  );
+  const [structure, setStructure] = useMusicInspirationState<string[]>(
+    "structure",
+    [],
+    "arrangement",
+    musicTracker,
+  );
+  const [songBlueprint, setSongBlueprint] = useMusicInspirationState<SongBlueprintSection[]>(
+    "songBlueprint",
+    [],
+    "arrangement",
+    musicTracker,
+  );
   const arrangement = useMemo(
     () => normalizeSongArrangement(structure, buildSongBlueprint(structure, songBlueprint)),
     [structure, songBlueprint],
@@ -1016,7 +1066,7 @@ function GeneratePage() {
     if (JSON.stringify(songBlueprint) !== JSON.stringify(normalizedBlueprint)) {
       setSongBlueprint(normalizedBlueprint);
     }
-  }, [arrangement, songBlueprint, structure.length]);
+  }, [arrangement, songBlueprint, structure.length, setSongBlueprint]);
   const [showStyleTags, setShowStyleTags] = useState(false);
   const [showMoodTags, setShowMoodTags] = useState(false);
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
@@ -1024,14 +1074,24 @@ function GeneratePage() {
   const [showArrangementAdvanced, setShowArrangementAdvanced] = useState(false);
   const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
-  const [production, setProduction] = useState("");
-  const [instructions, setInstructions] = useState("");
+  const [production, setProduction] = useMusicInspirationState(
+    "production",
+    "",
+    "productionStyle",
+    musicTracker,
+  );
+  const [instructions, setInstructions] = useMusicInspirationState(
+    "instructions",
+    "",
+    "additionalInstructions",
+    musicTracker,
+  );
   const [atlasInstructions, setAtlasInstructions] = useState<AtlasInstructionLayer | null>(null);
   const [atlasRecoveryText, setAtlasRecoveryText] = useState("");
   const [atlasImportNotice, setAtlasImportNotice] = useState(false);
   const [pendingAtlasImport, setPendingAtlasImport] = useState<AtlasInstructionLayer | null>(null);
-  const [bpm, setBpm] = useState("Auto");
-  const [customBpm, setCustomBpm] = useState("");
+  const [bpm, setBpm] = useMusicInspirationState("bpm", "Auto", "bpm", musicTracker);
+  const [customBpm, setCustomBpm] = useMusicInspirationState("customBpm", "", "bpm", musicTracker);
   const [language, setLanguage] = useState("");
   const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
@@ -1417,7 +1477,21 @@ function GeneratePage() {
     } catch {
       setStatus(t("generator.songAnalyzerLoadFailed"));
     }
-  }, [t]);
+  }, [
+    t,
+    setGenres,
+    setCustomGenre,
+    setMoods,
+    setCustomMood,
+    setInstruments,
+    setCustomInstruments,
+    setStructure,
+    setSongBlueprint,
+    setProduction,
+    setInstructions,
+    setBpm,
+    setCustomBpm,
+  ]);
 
   useEffect(() => {
     const data = revisionBase.data;
@@ -1500,7 +1574,22 @@ function GeneratePage() {
       setLanguageVariant("");
       setCustomLanguage("");
     }
-  }, [revisionMode, revisionBase.data]);
+  }, [
+    revisionMode,
+    revisionBase.data,
+    setBpm,
+    setCustomBpm,
+    setCustomGenre,
+    setCustomInstruments,
+    setCustomMood,
+    setGenres,
+    setInstructions,
+    setInstruments,
+    setMoods,
+    setProduction,
+    setSongBlueprint,
+    setStructure,
+  ]);
 
   useEffect(() => {
     if (search.mode !== "revision") return;
@@ -3255,41 +3344,87 @@ function GeneratePage() {
           {advanced && !revisionMode && (
             <MusicInspirationPanel
               key={`music-inspiration:${user?.id ?? "anon"}`}
-              setup={{
-                targetPlatform,
-                theme,
-                selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
-                customMusicStyle: customGenre,
-                selectedMoods: moods.filter((value) => value !== CUSTOM),
-                customMood,
-                selectedInstruments: instruments.filter((value) => value !== CUSTOM),
-                customInstruments,
-                bpmMode: bpm,
-                customBpm,
-                songStructure: structure,
-                songBlueprint,
-                productionStyle: production,
-                additionalInstructions: instructions,
-                language,
-                languageVariant,
-                customLanguage,
-                smartPresetId: activeSmartPresetId,
-                culturalStyleId: presetCulturalStyleId,
+              setup={
+                (inspirationSetupRef.current = {
+                  targetPlatform,
+                  theme,
+                  selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
+                  customMusicStyle: customGenre,
+                  selectedMoods: moods.filter((value) => value !== CUSTOM),
+                  customMood,
+                  selectedInstruments: instruments.filter((value) => value !== CUSTOM),
+                  customInstruments,
+                  bpmMode: bpm,
+                  customBpm,
+                  songStructure: structure,
+                  songBlueprint,
+                  productionStyle: production,
+                  additionalInstructions: instructions,
+                  language,
+                  languageVariant,
+                  customLanguage,
+                  smartPresetId: activeSmartPresetId,
+                  culturalStyleId: presetCulturalStyleId,
+                })
+              }
+              readGenerator={() => {
+                const base = inspirationSetupRef.current!;
+                const v = musicTracker.current.values;
+                return {
+                  versions: { ...musicTracker.current.versions },
+                  setup: {
+                    ...base,
+                    selectedMusicStyles: (v["genres"] as string[]).filter(
+                      (value) => value !== CUSTOM,
+                    ),
+                    customMusicStyle: v["customGenre"] as string,
+                    selectedMoods: (v["moods"] as string[]).filter((value) => value !== CUSTOM),
+                    customMood: v["customMood"] as string,
+                    selectedInstruments: (v["instruments"] as string[]).filter(
+                      (value) => value !== CUSTOM,
+                    ),
+                    customInstruments: v["customInstruments"] as string,
+                    songStructure: v["structure"] as string[],
+                    songBlueprint: v["songBlueprint"] as SongBlueprintSection[],
+                    bpmMode: v["bpm"] as string,
+                    customBpm: v["customBpm"] as string,
+                    productionStyle: v["production"] as string,
+                    additionalInstructions: v["instructions"] as string,
+                  },
+                };
               }}
-              onApply={(next) => {
-                // Music-only setter allowlist. Theme/language/platform/preset state is never assigned.
-                setGenres(next.selectedMusicStyles);
-                setCustomGenre(next.customMusicStyle);
-                setMoods(next.selectedMoods);
-                setCustomMood(next.customMood);
-                setInstruments(next.selectedInstruments);
-                setCustomInstruments(next.customInstruments);
-                setBpm(next.bpmMode);
-                setCustomBpm(next.customBpm);
-                setStructure(next.songStructure);
-                setSongBlueprint(next.songBlueprint);
-                setProduction(next.productionStyle);
-                setInstructions(next.additionalInstructions);
+              onApply={(next, expected, read) => {
+                if (!sameGeneratorFrame(expected, read())) return false;
+                inspirationSetupRef.current = next;
+                // Commit only groups whose exact projected values changed. This also preserves
+                // UI-only Custom sentinels in untouched groups and their edit epochs.
+                const changed = (field: InspirationApplyField) =>
+                  inspirationOwnedKeys[field].some(
+                    (key) => JSON.stringify(expected.setup[key]) !== JSON.stringify(next[key]),
+                  );
+                if (changed("selectedMusicStyles")) {
+                  setGenres(next.selectedMusicStyles);
+                  setCustomGenre(next.customMusicStyle);
+                }
+                if (changed("selectedMoods")) {
+                  setMoods(next.selectedMoods);
+                  setCustomMood(next.customMood);
+                }
+                if (changed("selectedInstruments")) {
+                  setInstruments(next.selectedInstruments);
+                  setCustomInstruments(next.customInstruments);
+                }
+                if (changed("bpm")) {
+                  setBpm(next.bpmMode);
+                  setCustomBpm(next.customBpm);
+                }
+                if (changed("arrangement")) {
+                  setStructure(next.songStructure);
+                  setSongBlueprint(next.songBlueprint);
+                }
+                if (changed("productionStyle")) setProduction(next.productionStyle);
+                if (changed("additionalInstructions")) setInstructions(next.additionalInstructions);
+                return true;
               }}
             />
           )}

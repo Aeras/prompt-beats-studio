@@ -29,6 +29,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled?: boolean;
+  contentClassName?: string;
 };
 /** Controlled open state lets the caller coordinate one popover across a filter group. */
 export function CompactDropdown({
@@ -41,6 +42,7 @@ export function CompactDropdown({
   open,
   onOpenChange,
   disabled = false,
+  contentClassName = "",
 }: Props) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -80,7 +82,10 @@ export function CompactDropdown({
           align="start"
           side="bottom"
           collisionPadding={12}
-          className="max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl p-0"
+          className={
+            "max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl p-0 " +
+            contentClassName
+          }
           onCloseAutoFocus={(event) => {
             // Do not steal focus from another dropdown or an outside-click destination.
             event.preventDefault();
