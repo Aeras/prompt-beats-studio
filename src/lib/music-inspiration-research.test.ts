@@ -14,6 +14,7 @@ import {
   inspirationQueries,
   publicInspirationUrl,
   searchInspirationWeb,
+  INSPIRATION_TAVILY_RESPONSE_MAX_BYTES,
   reconcileInspirationArrangement,
   synthesizeMusicInspiration,
 } from "./music-inspiration-research.server";
@@ -193,10 +194,26 @@ describe("real research transport, with offline network fixtures", () => {
       searchInspirationWeb(
         "query",
         new AbortController().signal,
-        async () => new Response("x".repeat(1024 * 1024 + 1)),
+        async () => new Response("x".repeat(INSPIRATION_TAVILY_RESPONSE_MAX_BYTES + 1)),
         "offline",
       ),
     ).rejects.toThrow("too_large");
+  });
+  test("accepts bounded large Tavily transport while retaining only source excerpt", async () => {
+    const raw = "Guitar credits " + "x".repeat(1024 * 1024 + 100);
+    const response = await searchInspirationWeb(
+      "guitar source",
+      new AbortController().signal,
+      async () =>
+        Response.json({
+          results: [{ title: "Credits", url: "https://example.org/credits", raw_content: raw }],
+          usage: { credits: 1 },
+        }),
+      "offline",
+    );
+    expect(response.documents).toHaveLength(1);
+    expect(response.documents[0]?.text.length).toBeLessThanOrEqual(4000);
+    expect(response.credits).toBe(1);
   });
   test("synthesis cannot manufacture evidence and makes no call for empty retrieval", async () => {
     let calls = 0;

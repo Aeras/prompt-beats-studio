@@ -1,5 +1,14 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — PB-014 Tavily response size failure follow-up — IN_PROGRESS
+
+- **Production observation:** job c5d2375e-0d95-4918-b98e-e3cbf9d92481 failed at Tavily HTTP response stage: too_large. Planner completed with observed usage (871 input / 1917 output tokens); synthesis not dispatched. No paid retry or data mutation.
+- **Code finding:** searchInspirationWeb requests Tavily raw text for up to three results, but the streaming JSON transport rejected bodies larger than 1 MiB before applying the existing 4,000-character per-source cap. This can reject otherwise usable evidence. Exact live payload size is unverified.
+- **Fix in progress:** bound transport at 4 MiB, retaining streaming cancellation and per-source excerpt bounds. Offline tests cover a valid >1 MiB response and rejection >4 MiB. Larger bodies may still be rejected; no automatic retry or provider query change.
+- **Release:** focused/full tests, TypeScript, lint/format, build, exact-head Regression / Browser Quality / Database Replay gates and review remain pending in the same PR. No migration, merge, publish or paid call.
+- **CI remediation:** first Regression gate failed only on required PR-description sections; descriptions were added and verified in live PR metadata. A rerun of the original event still used its stale event payload, so a fresh same-PR commit is required to trigger current metadata validation. Browser and DB gates remain separately authoritative.
+
+
 ## 2026-10-29 — PB-014 live Planner request_mismatch follow-up — CODE_COMPLETE_RELEASE_PENDING
 
 - **Verified baseline / scope:** existing Draft [PR #466](https://github.com/Aeras/prompt-beats-studio/pull/466), branch fix/pb-014-planner-request-semantic-match, initial HEAD 1fd4e31221cd379403fcc1dd40d42ccc1a1dd645; main 466f48fa85c7efdffcf6b94a7160d4a63af4e469 (merged #465). Root contract and complete affected request/planner/receipt/checkpoint/accounting/diagnostic paths reviewed. No unrelated feature/Atlas work.
