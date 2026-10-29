@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — AI Music Output Contracts (Music Inspiration + Song Setup) — IN_PROGRESS
+
+- **Observed production:** Music Inspiration research job `1db86ede-19b4-44ec-b09f-f49260e0ea88` reached final synthesis and failed AI output schema at `proposal`; screenshot shows planner and synthesis token usage. Song Setup Assistant with OpenRouter GPT-6.1 Sol returned an object lacking all nine required setup fields, surfaced as raw Zod diagnostics in the UI. Neither outcome demonstrates successful Generator application.
+- **Analysis:** Inspiration uses strict `inspirationResearchSchema` after retrieval and synthesis, and deliberately fails closed for absent/invalid proposal; provider output currently has no enforced JSON schema/repair. Setup sends a provider-specific `SETUP_SCHEMA` but without OpenRouter `jsonObjectOutput`, then raises raw `ZodError` from `parse`. Exact live model receipt contents have not been independently read; do not infer that a field can be safely fabricated.
+- **ChatGPT safe patch:** opt in JSON-object transport for Setup and return safe generic message on schema mismatch rather than exposing raw Zod details, retaining all required fields and authorization, model, usage, idempotency contracts.
+- **Remaining same-PR work:** offline reproduction and trusted evidence assessment for both paths; confirm exact model output patterns and schema compatibility; build bounded, reliable first-pass structured outputs without silently fabricating absent fields or automatically retrying potentially billed calls. Add tests for all nine Setup fields, missing proposal, malformed outputs, max token/incomplete response, both providers, user-visible errors and durable paid-dispatch semantics. Run full tests/typecheck/lint/build and all three exact-head CI gates. No live paid calls, production mutation, migration, merge or publish authorized by this investigation.
+
+
 ## 2026-10-29 — PB-014 Tavily response size failure follow-up — IN_PROGRESS
 
 - **Production observation:** job c5d2375e-0d95-4918-b98e-e3cbf9d92481 failed at Tavily HTTP response stage: too_large. Planner completed with observed usage (871 input / 1917 output tokens); synthesis not dispatched. No paid retry or data mutation.
