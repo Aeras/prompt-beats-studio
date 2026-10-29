@@ -1,3 +1,9 @@
+import {
+  MusicInspirationPreview,
+  ResearchDisclosure,
+  displayInspirationGroup,
+} from "./MusicInspirationPreview";
+import type { MusicGeneratorFrame } from "@/lib/music-inspiration-generator-state";
 import { decodeInspirationDiagnostic } from "@/lib/music-inspiration-diagnostics.shared";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
@@ -8,19 +14,17 @@ import { useI18n } from "@/i18n";
 import { musicInspirationCopy } from "@/i18n/music-inspiration";
 import { Button } from "@/components/ui/button";
 import { CompactDropdown } from "@/components/ui/compact-dropdown";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { AdvancedGeneratorSetup } from "@/lib/advanced-generator-setup";
+import { advancedSetupSchema, type AdvancedGeneratorSetup } from "@/lib/advanced-generator-setup";
 import {
   INSPIRATION_APPLY_FIELDS,
-  applyInspirationProposal,
+  planInspirationApplication,
+  inspirationOwnedKeys,
+  inspirationPlanSignature,
+  type InspirationApplyActions,
+  type InspirationApplyPlan,
   undoInspirationProposal,
   type InspirationApplyReceipt,
   type InspirationApplyField,
@@ -74,15 +78,7 @@ const attemptKey = (account: string) => `pb:music-inspiration-attempt:v1:${accou
 type Job = Awaited<ReturnType<typeof getMusicInspirationJob>>;
 type Profile = Awaited<ReturnType<typeof listMusicInspirationProfiles>>[number];
 type Origin = { kind: "job"; id: string } | { kind: "profile"; id: string; revision: number };
-const ownedKeys: Record<InspirationApplyField, readonly (keyof AdvancedGeneratorSetup)[]> = {
-  selectedMusicStyles: ["selectedMusicStyles", "customMusicStyle"],
-  selectedMoods: ["selectedMoods", "customMood"],
-  selectedInstruments: ["selectedInstruments", "customInstruments"],
-  bpm: ["bpmMode", "customBpm"],
-  productionStyle: ["productionStyle"],
-  additionalInstructions: ["additionalInstructions"],
-  arrangement: ["songStructure", "songBlueprint"],
-};
+const ownedKeys = inspirationOwnedKeys;
 const active = (job: Job | null | undefined) =>
   job?.status === "queued" || job?.status === "running";
 const completed = (job: Job | null | undefined) => job?.status === "completed";
@@ -91,9 +87,15 @@ const completed = (job: Job | null | undefined) => job?.status === "completed";
 export function MusicInspirationPanel({
   setup,
   onApply,
+  readGenerator,
 }: {
   setup: AdvancedGeneratorSetup;
-  onApply: (next: AdvancedGeneratorSetup) => void;
+  readGenerator: () => MusicGeneratorFrame;
+  onApply: (
+    next: AdvancedGeneratorSetup,
+    expected: MusicGeneratorFrame,
+    read: () => MusicGeneratorFrame,
+  ) => boolean;
 }) {
   const { user } = useAuth();
   const access = useFeatureAccess("ai_music_inspiration");
@@ -101,8 +103,8 @@ export function MusicInspirationPanel({
   const t = musicInspirationCopy[language];
   const uid = user?.id;
   const enabled = Boolean(uid) && access.allowed;
-  const latest = useRef({ uid, enabled, setup, onApply });
-  latest.current = { uid, enabled, setup, onApply };
+  const latest = useRef({ uid, enabled, setup, onApply, readGenerator });
+  latest.current = { uid, enabled, setup, onApply, readGenerator };
   const lifecycle = useRef({ serial: 0 });
   const lock = useRef(false);
   const id = useId();
@@ -120,8 +122,17 @@ export function MusicInspirationPanel({
   const [recoveredPrevious, setRecoveredPrevious] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [profileId, setProfileId] = useState("");
+  const [profileRevision, setProfileRevision] = useState(0);
   const [name, setName] = useState("");
-  const [origin, setOrigin] = useState<Origin | null>(null);
+  const [origin, setOriginState] = useState<Origin | null>(null);
+  const originRef = useRef<Origin | null>(null);
+  function setOrigin(next: Origin | null) {
+    originRef.current = next;
+    setOriginState(next);
+    setActions({});
+    setConfirm(null);
+    setConfirmation(null);
+  }
   const [preview, setPreview] = useState(false);
   const [confirm, setConfirm] = useState<"replace" | "delete" | null>(null);
   // Mobile keyboards may resize/pan visualViewport without changing layout/dvh.
@@ -132,7 +143,7 @@ export function MusicInspirationPanel({
     width: number;
     maxHeight: number;
   }>();
-  const dialogVisible = open || confirm !== null;
+  const dialogVisible = confirm !== null;
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!dialogVisible || !viewport) return;
@@ -151,7 +162,18 @@ export function MusicInspirationPanel({
       viewport.removeEventListener("scroll", update);
     };
   }, [dialogVisible]);
-  const [fields, setFields] = useState<InspirationApplyField[]>([...INSPIRATION_APPLY_FIELDS]);
+  const [actions, setActions] = useState<InspirationApplyActions>({});
+  type Confirmation = {
+    source: Origin;
+    actions: InspirationApplyActions;
+    fingerprint: string;
+    plan: InspirationApplyPlan;
+  };
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [stale, setStale] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const receiptVersions = useRef<MusicGeneratorFrame["versions"] | null>(null);
+  const headerButton = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [failedStage, setFailedStage] = useState<"start" | "status" | "action" | null>(null);
@@ -189,7 +211,9 @@ export function MusicInspirationPanel({
     retry: false,
     staleTime: 0,
   });
-  const selectedProfile = profiles.data?.find((p) => p.id === profileId);
+  const selectedProfile = profiles.data?.find(
+    (p) => p.id === profileId && p.revision === profileRevision,
+  );
   const sameOwner = owner === uid;
   const poll = useQuery({
     queryKey: ["music-inspiration-job", uid, sameOwner ? job?.id : null],
@@ -206,6 +230,7 @@ export function MusicInspirationPanel({
     setRecoveredPrevious(false);
     setJob(null);
     setProfileId("");
+    setProfileRevision(0);
     setOrigin(null);
     setOpen(false);
     setPreview(false);
@@ -249,7 +274,8 @@ export function MusicInspirationPanel({
               .then((stored) => {
                 if (!valid()) return;
                 setJob(stored);
-                if (completed(stored) && stored.result) setOrigin({ kind: "job", id: stored.id });
+                if (completed(stored) && stored.result && originRef.current?.kind !== "profile")
+                  setOrigin({ kind: "job", id: stored.id });
               })
               .catch(() => {
                 if (valid()) setError(true);
@@ -276,7 +302,7 @@ export function MusicInspirationPanel({
     if (!next || !sameOwner || !enabled || busy || next.id !== job?.id || !active(job)) return;
     setJob(next);
     if (completed(next) && next.result) {
-      setOrigin({ kind: "job", id: next.id });
+      if (originRef.current?.kind !== "profile") setOrigin({ kind: "job", id: next.id });
       setPreview(false);
     }
   }, [poll.data, sameOwner, enabled, busy, job]);
@@ -323,7 +349,8 @@ export function MusicInspirationPanel({
       const stored = await getMusicInspirationJob({ data: { id: jobId } });
       if (!valid()) return;
       setJob(stored);
-      if (completed(stored) && stored.result) setOrigin({ kind: "job", id: stored.id });
+      if (completed(stored) && stored.result && originRef.current?.kind !== "profile")
+        setOrigin({ kind: "job", id: stored.id });
     }, "status");
   }
   function discardPendingAttempt() {
@@ -341,11 +368,12 @@ export function MusicInspirationPanel({
         if (valid()) {
           setAttempt(acknowledged);
           setJob(existing);
-          setOrigin(
-            completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
-          );
+          if (originRef.current?.kind !== "profile")
+            setOrigin(
+              completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
+            );
           setPreview(false);
-          setOpen(false);
+          setOpen(true);
           setRecoveredPrevious(true);
         }
         return;
@@ -401,11 +429,12 @@ export function MusicInspirationPanel({
           if (valid()) {
             setAttempt(acknowledged);
             setJob(existing);
-            setOrigin(
-              completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
-            );
+            if (originRef.current?.kind !== "profile")
+              setOrigin(
+                completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
+              );
             setPreview(false);
-            setOpen(false);
+            setOpen(true);
             setRecoveredPrevious(true);
           }
           return;
@@ -417,7 +446,7 @@ export function MusicInspirationPanel({
       localStorage.setItem(attemptKey(account), JSON.stringify(candidate));
       setAttempt(candidate);
       setRecoveredPrevious(false);
-      setOrigin(null);
+      if (originRef.current?.kind !== "profile") setOrigin(null);
       setPreview(false);
       setSummary(null);
       setJob(null);
@@ -438,7 +467,8 @@ export function MusicInspirationPanel({
       if (!valid()) return;
       setAttempt(acknowledged);
       setJob(next);
-      if (completed(next) && next.result) setOrigin({ kind: "job", id: next.id });
+      if (completed(next) && next.result && originRef.current?.kind !== "profile")
+        setOrigin({ kind: "job", id: next.id });
     }, "start");
   }
   function cancel() {
@@ -448,13 +478,13 @@ export function MusicInspirationPanel({
       const next = await cancelMusicInspiration({ data: { id: jobId } });
       if (!valid()) return;
       setJob(next);
-      setOrigin(null);
+      if (originRef.current?.kind === "job" && originRef.current.id === jobId) setOrigin(null);
       setPreview(false);
     });
   }
   const research =
     origin?.kind === "profile"
-      ? selectedProfile?.result
+      ? profiles.data?.find((p) => p.id === origin.id && p.revision === origin.revision)?.result
       : origin?.id === job?.id && completed(job)
         ? job?.result
         : null;
@@ -472,53 +502,108 @@ export function MusicInspirationPanel({
     if (!stored) throw new Error("Profile changed");
     return inspirationResearchSchema.parse(stored.result);
   }
-  function apply(replace = false) {
-    if (!origin || !fields.length) return;
-    const source = origin;
-    const selected = [...fields];
-    setConfirm(null);
+  // A live draft may temporarily exceed import-format bounds (including admin inputs).
+  // Do not let strict planner validation throw during React rendering or truncate the draft.
+  const validSetup = advancedSetupSchema.safeParse(setup).success;
+  const plan =
+    result && validSetup ? planInspirationApplication(setup, result.proposal, actions) : null;
+  const fillActions: InspirationApplyActions = Object.fromEntries(
+    INSPIRATION_APPLY_FIELDS.map((f) => [f, "fill"]),
+  );
+  const fillPlan =
+    result && validSetup ? planInspirationApplication(setup, result.proposal, fillActions) : null;
+  const sourceKey = (source: Origin | null) => JSON.stringify(source);
+  function apply(
+    chosen: InspirationApplyActions = fillActions,
+    approved: Confirmation | null = null,
+  ) {
+    if (!origin || !result) return;
+    const source = origin,
+      expected = JSON.stringify(result);
     void run(async (valid) => {
       const stored = await verifiedResearch(source);
-      if (!valid()) return;
-      const applied = applyInspirationProposal(
-        latest.current.setup,
-        stored.proposal,
-        selected,
-        replace ? "replace_selected" : "fill_empty",
-      );
-      latest.current.setup = applied.setup;
-      latest.current.onApply(applied.setup);
-      setSummary(applied);
-      if (applied.appliedFields.length) {
-        invalidatedOwnership.current.clear();
-        setReceipt(applied.receipt ?? null);
+      if (!valid() || sourceKey(originRef.current) !== sourceKey(source)) return;
+      if (JSON.stringify(stored) !== expected) {
+        setStale(true);
+        throw Error("Source changed");
       }
+      // No await/deferred callback is allowed below this last verification.
+      const frame = latest.current.readGenerator();
+      const fresh = planInspirationApplication(frame.setup, stored.proposal, chosen);
+      if (fresh.blocked) {
+        setError(true);
+        return;
+      }
+      const signature = inspirationPlanSignature(source, fresh, frame.versions);
+      if (fresh.destructiveFields.length && (!approved || approved.fingerprint !== signature)) {
+        setConfirmation({ source, actions: { ...chosen }, fingerprint: signature, plan: fresh });
+        setConfirm("replace");
+        setStale(!!approved);
+        return;
+      }
+      if (approved && approved.fingerprint !== signature) {
+        setConfirm(null);
+        setConfirmation(null);
+        setStale(true);
+        return;
+      }
+      if (!fresh.appliedFields.length) {
+        setSummary(fresh);
+        setOpen(true);
+        setConfirm(null);
+        return;
+      }
+      if (!latest.current.onApply(fresh.setup, frame, latest.current.readGenerator)) {
+        setStale(true);
+        return;
+      }
+      receiptVersions.current = { ...latest.current.readGenerator().versions };
+      latest.current.setup = fresh.setup;
+      invalidatedOwnership.current.clear();
+      setReceipt(fresh.receipt ?? null);
+      setSummary(fresh);
       setAmbiguous([]);
+      setConfirm(null);
+      setConfirmation(null);
+      setStale(false);
+      setOpen(false);
+      headerButton.current?.focus();
     });
   }
   function undo() {
-    if (!receipt || busy || !latest.current.enabled) return;
-    const invalidated = receipt.appliedFields.filter((field) =>
-      invalidatedOwnership.current.has(field),
+    if (!receipt || busy || !latest.current.enabled || latest.current.uid !== owner) return;
+    const frame = latest.current.readGenerator();
+    const invalidated = receipt.appliedFields.filter(
+      (field) =>
+        invalidatedOwnership.current.has(field) ||
+        receiptVersions.current?.[field] !== frame.versions[field],
     );
-    const undone = undoInspirationProposal(latest.current.setup, {
+    const undone = undoInspirationProposal(frame.setup, {
       ...receipt,
-      appliedFields: receipt.appliedFields.filter(
-        (field) => !invalidatedOwnership.current.has(field),
-      ),
+      appliedFields: receipt.appliedFields.filter((f) => !invalidated.includes(f)),
     });
-    latest.current.setup = undone.setup;
-    latest.current.onApply(undone.setup);
+    if (!latest.current.onApply(undone.setup, frame, latest.current.readGenerator)) {
+      setStale(true);
+      return;
+    }
     setAmbiguous([...new Set([...invalidated, ...undone.ambiguousFields])]);
     setReceipt(null);
     setSummary(null);
   }
   function mutateProfile(action: "save" | "rename" | "update" | "delete") {
-    const profile = selectedProfile;
-    const jobId = job?.status === "completed" && job.result ? job.id : null;
-    if ((action !== "save" && !profile) || (action === "save" && !jobId)) return;
+    const profile = action === "delete" ? deleteTarget : selectedProfile;
+    const source = originRef.current;
+    const jobId = source?.kind === "job" && result ? source.id : null;
+    if ((action !== "save" && !profile) || ((action === "save" || action === "update") && !jobId))
+      return;
     setConfirm(null);
     void run(async (valid) => {
+      if ((action === "save" || action === "update") && source) {
+        const verified = await verifiedResearch(source);
+        if (JSON.stringify(verified) !== JSON.stringify(result))
+          throw Error("Displayed source changed");
+        if (!valid() || sourceKey(originRef.current) !== sourceKey(source)) return;
+      }
       let changed: Profile | null = null;
       if (action === "save" && jobId)
         changed = await saveMusicInspirationProfile({ data: { jobId, name: name.trim() } });
@@ -541,8 +626,10 @@ export function MusicInspirationPanel({
       }
       if (changed) {
         setProfileId(changed.id);
+        setProfileRevision(changed.revision);
         setName(changed.name);
-        setOrigin({ kind: "profile", id: changed.id, revision: changed.revision });
+        if (action !== "rename" || originRef.current?.kind === "profile")
+          setOrigin({ kind: "profile", id: changed.id, revision: changed.revision });
       }
       await profiles.refetch();
     });
@@ -551,11 +638,12 @@ export function MusicInspirationPanel({
     const p = profiles.data?.find((entry) => entry.id === value);
     if (!p || busy) return;
     setProfileId(p.id);
+    setProfileRevision(p.revision);
     setName(p.name);
     setOrigin({ kind: "profile", id: p.id, revision: p.revision });
     setPreview(false);
     setSummary(null);
-    setFields([...INSPIRATION_APPLY_FIELDS]);
+    setOpen(true);
   }
   const dropdownProps = (key: string) => ({
     open: dropdown === key,
@@ -583,31 +671,32 @@ export function MusicInspirationPanel({
           maximumFractionDigits: 8,
         }).format(amount);
   const buttons = "flex flex-wrap gap-2";
-  const previewValues = result
-    ? {
-        selectedMusicStyles: result.proposal.musicStyles.join(", "),
-        selectedMoods: result.proposal.moods.join(", "),
-        selectedInstruments: result.proposal.instruments.join(", "),
-        bpm: result.proposal.bpm?.toString() ?? "",
-        productionStyle: result.proposal.productionStyle,
-        additionalInstructions: result.proposal.additionalInstructions,
-        arrangement: result.proposal.blueprint
-          .map(
-            (s) =>
-              `${s.sectionType} · ${s.energy == null ? t.unknown : `${s.energy}/5`} · ${s.instruction}`,
-          )
-          .join("\n"),
-      }
-    : null;
   if (!enabled || !sameOwner) return null;
   return (
     <section
       aria-label={t.title}
       data-testid="music-inspiration-panel"
-      className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-xl border p-3 [overflow-wrap:anywhere]"
+      className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-2xl border border-primary/20 bg-card/60 p-3 shadow-sm backdrop-blur-sm [overflow-wrap:anywhere] sm:p-4"
     >
-      <h2 className="font-semibold">{t.title}</h2>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">{t.title}</h2>
+        <Button
+          ref={headerButton}
+          type="button"
+          variant="ghost"
+          className="min-h-11 whitespace-normal"
+          aria-expanded={open}
+          aria-controls={id + "workspace"}
+          onClick={() => {
+            setOpen(!open);
+            setDropdown("");
+          }}
+        >
+          {open ? t.collapse : t.open}
+        </Button>
+      </div>
       <CompactDropdown
+        contentClassName="music-inspiration-scroll"
         {...dropdownProps("profiles")}
         placeholder={t.profiles}
         options={(profiles.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
@@ -615,395 +704,49 @@ export function MusicInspirationPanel({
         onValueChange={chooseProfile}
         disabled={busy || profiles.isPending || profiles.isError}
       />
-      {(error || config.isError || profiles.isError || poll.isError) && (
-        <div role="alert">
-          <p>{failureText}</p>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              void config.refetch();
-              void profiles.refetch();
-              if (job) void poll.refetch();
-              setError(false);
-              setFailedStage(null);
-            }}
-          >
-            {t.retry}
-          </Button>
-        </div>
+      {!open && job && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {active(job)
+            ? job.status === "queued"
+              ? t.queued
+              : t.running
+            : completed(job)
+              ? t.complete
+              : job.status === "unknown"
+                ? t.outcomeUnknown
+                : job.status === "cancelled"
+                  ? t.cancelled
+                  : t.failed}
+        </p>
       )}
-      {config.isPending && <p role="status">{t.loading}</p>}
-      {config.data && !config.data.configured && <p role="status">{t.unavailable}</p>}
-      <Dialog
-        open={open}
-        onOpenChange={(value) => {
-          setOpen(value);
-          setDropdown("");
-        }}
-      >
-        <DialogTrigger asChild>
-          <Button type="button" variant="outline">
-            {t.open}
-          </Button>
-        </DialogTrigger>
-        <DialogContent
-          style={dialogViewport}
-          className="flex max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-xl flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg p-3 [overflow-wrap:anywhere] sm:max-h-[90dvh] sm:gap-3 sm:p-5 [&>button:last-child]:hidden"
-          aria-label={t.title}
-        >
-          <DialogTitle className="text-base leading-tight sm:text-lg">{t.title}</DialogTitle>
-          <form
-            className="min-w-0 max-w-full space-y-2 [&>button]:h-auto [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:break-words [&>button]:py-3 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              start();
-            }}
-          >
-            <select
-              aria-label={t.mode}
-              value={kind}
-              onChange={(event) => setKind(event.target.value as typeof kind)}
-              disabled={busy || active(job)}
-              className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
-            >
-              <option value="artist">{t.artistMode}</option>
-              <option value="description">{t.descriptionMode}</option>
-            </select>
-            {kind === "artist" ? (
-              <>
-                <label className="block" htmlFor={id + "artist"}>
-                  {t.artist}
-                </label>
-                <Input
-                  id={id + "artist"}
-                  value={artist}
-                  onChange={(e) => setArtist(e.target.value)}
-                  maxLength={180}
-                  required
-                  disabled={busy || active(job)}
-                />
-                <label className="block" htmlFor={id + "song"}>
-                  {t.song}
-                </label>
-                <Input
-                  id={id + "song"}
-                  value={song}
-                  onChange={(e) => setSong(e.target.value)}
-                  maxLength={180}
-                  disabled={busy || active(job)}
-                />
-              </>
-            ) : (
-              <>
-                <label className="block" htmlFor={id + "description"}>
-                  {t.freeform}
-                </label>
-                <Textarea
-                  id={id + "description"}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  minLength={10}
-                  maxLength={1500}
-                  required
-                  disabled={busy || active(job)}
-                />
-              </>
-            )}
-            {config.data?.superAdmin && (
-              <>
-                <select
-                  aria-label={t.depth}
-                  value={depth}
-                  onChange={(event) => setDepth(event.target.value as typeof depth)}
-                  disabled={busy || active(job)}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
-                >
-                  <option value="standard">{t.standard}</option>
-                  <option value="extended">{t.extended}</option>
-                </select>
-                <select
-                  aria-label={t.model}
-                  value={modelOverride || "__default"}
-                  onChange={(event) =>
-                    setModelOverride(event.target.value === "__default" ? "" : event.target.value)
-                  }
-                  disabled={busy || active(job)}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-foreground"
-                >
-                  <option value="__default">{t.serverDefault}</option>
-                  {config.data.models.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-            {!config.data?.configured && <p role="status">{t.unavailable}</p>}
-            {attempt && !attempt.jobId && (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto min-h-9 w-full whitespace-normal break-words py-2 text-center"
-                disabled={busy}
-                onClick={discardPendingAttempt}
-              >
-                {t.discardPending}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              type="submit"
-              disabled={
-                !request.success ||
-                !config.data?.configured ||
-                config.isError ||
-                busy ||
-                active(job) ||
-                storageError ||
-                job?.status === "unknown" ||
-                (!!attempt?.jobId && !job)
-              }
-            >
-              {busy
-                ? t.loading
-                : attempt && !attempt.jobId
-                  ? request.success &&
-                    attempt.fingerprint !==
-                      JSON.stringify({
-                        request: request.data,
-                        model:
-                          config.data?.superAdmin && modelOverride
-                            ? modelOverride
-                            : config.data?.defaultModel,
-                      })
-                    ? t.newResearch
-                    : t.retryAttempt
-                  : job
-                    ? t.newResearch
-                    : t.research}
-            </Button>
-          </form>
-          {(active(job) || job?.status === "unknown") && (
-            <div>
-              <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
-                {job?.status === "unknown" ? t.closeUnknown : t.cancel}
-              </Button>
-              {job?.status === "unknown" && <p className="text-sm">{t.closeUnknownNote}</p>}
-            </div>
-          )}
-          {(error || poll.isError) && (
-            <p role="alert" className="min-w-0 break-words">
-              {failureText}
-            </p>
-          )}
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            {t.close}
-          </Button>
-        </DialogContent>
-      </Dialog>
-      {storageError && <p role="alert">{t.persistenceError}</p>}
-      {recoveredPrevious && <p role="status">{t.previousRecovered}</p>}
-      {(job || attempt?.jobId) && (
+      {!open && config.data && !config.data.configured && <p role="status">{t.unavailable}</p>}
+      {!open && (job || attempt?.jobId) && (
         <Button type="button" variant="outline" disabled={busy} onClick={refreshJob}>
           {t.refreshStatus}
         </Button>
       )}
-      {job && (
-        <div role="status" aria-label={t.status} className="space-y-1 break-words">
-          <p>
-            {completed(job)
-              ? t.complete
-              : job.status === "cancelled"
-                ? t.cancelled
-                : job.status === "unknown"
-                  ? t.outcomeUnknown
-                  : job.status === "failed"
-                    ? t.failed
-                    : job.status === "queued"
-                      ? t.queued
-                      : t.running}
-          </p>
-          {diagnostic && (
-            <div
-              role="alert"
-              data-testid="inspiration-diagnostic"
-              className="rounded border p-2 text-sm break-words"
-            >
-              <p>
-                {t.diagnosticStage}: {t.diagnosticStages[diagnostic.stage]}
-              </p>
-              <p>
-                {t.diagnosticCodes[diagnostic.code]}
-                {diagnostic.httpStatus ? " · HTTP " + diagnostic.httpStatus : ""}
-                {diagnostic.dbCode
-                  ? " · " + t.diagnosticDatabaseCode + ": " + diagnostic.dbCode
-                  : ""}
-                {diagnostic.field ? " · " + t.diagnosticField + ": " + diagnostic.field : ""}
-              </p>
-              <p>
-                {t.diagnosticReference}: {job.id}
-              </p>
-            </div>
-          )}
-          {completed(job) && !!job.result?.unresolvedQuestions.length && <p>{t.partial}</p>}
-          <p>
-            {t.model}: {job.model}
-          </p>
-          {!active(job) && (
-            <div data-testid="inspiration-usage" className="space-y-1 rounded border p-2 text-sm">
-              <p className="font-medium">{t.usageTitle}</p>
-              <p>
-                {t.inputTokens}: {job.usageReport?.inputTokens ?? t.usageUnknown} · {t.outputTokens}
-                : {job.usageReport?.outputTokens ?? t.usageUnknown}
-              </p>
-              <p>
-                {t.reasoningTokens}: {job.usageReport?.reasoningTokens ?? t.usageUnknown} ·{" "}
-                {t.cachedTokens}: {job.usageReport?.cachedInputTokens ?? t.usageUnknown} ·{" "}
-                {t.cacheWriteTokens}: {job.usageReport?.cacheWriteTokens ?? t.usageUnknown}
-              </p>
-              <p>
-                {t.aiCost}: {formatCost(job.usageReport?.aiCostUsd)} · {t.searchCost}:{" "}
-                {formatCost(job.usageReport?.searchCostUsd)} (
-                {job.usageReport?.searchCredits ?? t.usageUnknown} {t.searchCredits})
-              </p>
-              <p className="font-medium">
-                {t.totalCost}: {formatCost(job.usageReport?.totalCostUsd)}
-              </p>
-              {job.usageReport?.providerReportedCostUsd != null && (
-                <p>
-                  {t.providerCost}: {formatCost(job.usageReport.providerReportedCostUsd)}
-                </p>
-              )}
-              <p>{t.costEstimateNote}</p>
-            </div>
-          )}
-          {(active(job) || job.status === "unknown") && (
-            <div>
-              <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
-                {job.status === "unknown" ? t.closeUnknown : t.cancel}
-              </Button>
-              {job.status === "unknown" && <p className="text-sm">{t.closeUnknownNote}</p>}
-            </div>
-          )}
+      {!open && job && (active(job) || job.status === "unknown") && (
+        <div>
+          <Button type="button" variant="outline" disabled={busy} onClick={cancel}>
+            {job.status === "unknown" ? t.closeUnknown : t.cancel}
+          </Button>
+          {job.status === "unknown" && <p className="text-xs">{t.closeUnknownNote}</p>}
         </div>
       )}
-      {result && (
-        <div className="space-y-3">
-          <div className={buttons}>
-            <Button
-              variant="outline"
-              type="button"
-              disabled={busy || !fields.length}
-              onClick={() => apply()}
-            >
-              {t.apply}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              aria-expanded={preview}
-              onClick={() => setPreview(!preview)}
-            >
-              {t.preview}
-            </Button>
-          </div>
-          {preview && (
-            <div className="space-y-4 break-words" data-testid="music-inspiration-preview">
-              <h3 className="font-semibold">{t.evidence}</h3>
-              {result.evidence.map((claim) => (
-                <article key={claim.id} className="rounded border p-2">
-                  <p>
-                    {t[claim.classification]} · {claim.claim}
-                  </p>
-                  <p>{claim.limitation}</p>
-                  <ul>
-                    {claim.sourceIds.map((sid) => {
-                      const source = result.sources.find((s) => s.id === sid);
-                      return (
-                        source && (
-                          <li key={sid}>
-                            <a
-                              className="underline"
-                              href={source.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {source.title}
-                            </a>
-                          </li>
-                        )
-                      );
-                    })}
-                  </ul>
-                </article>
-              ))}
-              <h3 className="font-semibold">{t.sources}</h3>
-              <ul>
-                {result.sources.map((s) => (
-                  <li key={s.id}>
-                    <a className="underline" href={s.url} target="_blank" rel="noopener noreferrer">
-                      {s.title}
-                    </a>{" "}
-                    · {s.publisher} · {s.locator} ·{" "}
-                    <time dateTime={s.accessedAt}>
-                      {new Date(s.accessedAt).toLocaleDateString(language)}
-                    </time>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="font-semibold">{t.unknown}</h3>
-              <ul>
-                {result.unresolvedQuestions.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
-              </ul>
-              <h3 className="font-semibold">{t.creative}</h3>
-              <ul>
-                {result.proposal.creativeChoices.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
-              </ul>
-              <fieldset className="space-y-2">
-                <legend>{t.fields}</legend>
-                {INSPIRATION_APPLY_FIELDS.map((field) => (
-                  <label key={field} className="block rounded border p-2">
-                    <span className="flex min-h-11 items-center gap-2">
-                      <input
-                        type="checkbox"
-                        aria-label={t[field]}
-                        checked={fields.includes(field)}
-                        disabled={busy}
-                        onChange={(e) =>
-                          setFields((current) =>
-                            e.target.checked
-                              ? [...current, field]
-                              : current.filter((f) => f !== field),
-                          )
-                        }
-                      />
-                      {t[field]}
-                    </span>
-                    <span className="block whitespace-pre-wrap text-sm">
-                      {previewValues?.[field]}
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              {!fields.length && <p role="status">{t.noSelection}</p>}
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || !fields.length}
-                onClick={() => setConfirm("replace")}
-              >
-                {t.replace}
-              </Button>
-            </div>
-          )}
-        </div>
+      {completed(job) && origin?.id !== job?.id && (
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 max-w-full whitespace-normal"
+          disabled={busy}
+          onClick={() => {
+            setOrigin({ kind: "job", id: job!.id });
+            setOpen(true);
+            setPreview(false);
+          }}
+        >
+          {t.viewJob}
+        </Button>
       )}
       {receipt && (
         <Button type="button" variant="outline" disabled={busy} onClick={undo}>
@@ -1016,87 +759,523 @@ export function MusicInspirationPanel({
         </p>
       )}
       {summary && (
-        <div role="status">
+        <p role="status">
+          {summary.appliedFields.length
+            ? t.applied + ": " + summary.appliedFields.map((f) => t[f]).join(", ")
+            : t.noChanges}
+        </p>
+      )}
+      {stale && <p role="alert">{t.stalePlan}</p>}
+      {!open && (error || config.isError || profiles.isError || poll.isError) && (
+        <p role="alert">{failureText}</p>
+      )}
+      {!open && diagnostic && job && (
+        <div
+          data-testid="inspiration-diagnostic"
+          role="alert"
+          className="rounded-xl border border-border/60 p-2 text-sm"
+        >
           <p>
-            {t.applied}: {summary.appliedFields.map((f) => t[f]).join(", ")}
+            {t.diagnosticStage}: {t.diagnosticStages[diagnostic.stage]}
           </p>
           <p>
-            {t.skipped}: {summary.skippedFields.map((f) => t[f]).join(", ")}
+            {t.diagnosticCodes[diagnostic.code]}
+            {diagnostic.httpStatus ? " · HTTP " + diagnostic.httpStatus : ""}
+            {diagnostic.field ? " · " + t.diagnosticField + ": " + diagnostic.field : ""}
+          </p>
+          <p>
+            {t.diagnosticReference}: {job.id}
           </p>
         </div>
       )}
-      {(result || selectedProfile || completed(job)) && (
-        <div className="space-y-2">
-          <label htmlFor={id + "name"}>{t.name}</label>
-          <Input
-            id={id + "name"}
-            value={name}
-            maxLength={120}
-            onChange={(e) => setName(e.target.value)}
-            disabled={busy}
-          />
-          <div className={buttons}>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || !name.trim() || job?.status !== "completed" || !job?.result}
-              onClick={() => mutateProfile("save")}
-            >
-              {t.save}
-            </Button>
-            {selectedProfile && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy || !name.trim()}
-                  onClick={() => mutateProfile("rename")}
-                >
-                  {t.rename}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy || job?.status !== "completed" || !job?.result}
-                  onClick={() => mutateProfile("update")}
-                >
-                  {t.update}
-                </Button>
+      <div
+        id={id + "workspace"}
+        data-testid="music-inspiration-workspace"
+        hidden={!open}
+        className="min-w-0 space-y-4"
+      >
+        {open && (
+          <>
+            {(error || config.isError || profiles.isError || poll.isError) && (
+              <div role="alert">
+                <p>{failureText}</p>
                 <Button
                   type="button"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => setConfirm("delete")}
+                  onClick={() => {
+                    void config.refetch();
+                    void profiles.refetch();
+                    if (job) void poll.refetch();
+                    setError(false);
+                    setFailedStage(null);
+                  }}
                 >
-                  {t.delete}
+                  {t.retry}
                 </Button>
-              </>
+              </div>
             )}
-          </div>
-        </div>
-      )}
+            {config.isPending && <p role="status">{t.loading}</p>}
+            <form
+              className="min-w-0 max-w-full space-y-2 [&>button]:h-auto [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:break-words [&>button]:py-3 [&_input]:min-w-0 [&_textarea]:min-w-0 sm:space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                start();
+              }}
+            >
+              <CompactDropdown
+                contentClassName="music-inspiration-scroll"
+                {...dropdownProps("mode")}
+                placeholder={t.mode}
+                value={kind}
+                onValueChange={(value) => setKind(value as typeof kind)}
+                options={[
+                  { value: "artist", label: t.artistMode },
+                  { value: "description", label: t.descriptionMode },
+                ]}
+                disabled={busy || active(job)}
+              />
+              {kind === "artist" ? (
+                <>
+                  <label className="block" htmlFor={id + "artist"}>
+                    {t.artist}
+                  </label>
+                  <Input
+                    id={id + "artist"}
+                    value={artist}
+                    onChange={(e) => setArtist(e.target.value)}
+                    maxLength={180}
+                    required
+                    disabled={busy || active(job)}
+                  />
+                  <label className="block" htmlFor={id + "song"}>
+                    {t.song}
+                  </label>
+                  <Input
+                    id={id + "song"}
+                    value={song}
+                    onChange={(e) => setSong(e.target.value)}
+                    maxLength={180}
+                    disabled={busy || active(job)}
+                  />
+                </>
+              ) : (
+                <>
+                  <label className="block" htmlFor={id + "description"}>
+                    {t.freeform}
+                  </label>
+                  <Textarea
+                    id={id + "description"}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    minLength={10}
+                    maxLength={1500}
+                    required
+                    disabled={busy || active(job)}
+                  />
+                </>
+              )}
+              {config.data?.superAdmin && (
+                <>
+                  <CompactDropdown
+                    contentClassName="music-inspiration-scroll"
+                    {...dropdownProps("depth")}
+                    placeholder={t.depth}
+                    value={depth}
+                    onValueChange={(value) => setDepth(value as typeof depth)}
+                    options={[
+                      { value: "standard", label: t.standard },
+                      { value: "extended", label: t.extended },
+                    ]}
+                    disabled={busy || active(job)}
+                  />
+                  <CompactDropdown
+                    contentClassName="music-inspiration-scroll"
+                    {...dropdownProps("model")}
+                    placeholder={t.model}
+                    value={modelOverride || "__default"}
+                    onValueChange={(value) => setModelOverride(value === "__default" ? "" : value)}
+                    options={[
+                      { value: "__default", label: t.serverDefault },
+                      ...(config.data?.models ?? []).map((model) => ({
+                        value: model.id,
+                        label: model.label,
+                      })),
+                    ]}
+                    disabled={busy || active(job)}
+                  />
+                </>
+              )}
+              {!config.data?.configured && <p role="status">{t.unavailable}</p>}
+              {attempt && !attempt.jobId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto min-h-9 w-full whitespace-normal break-words py-2 text-center"
+                  disabled={busy}
+                  onClick={discardPendingAttempt}
+                >
+                  {t.discardPending}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                type="submit"
+                disabled={
+                  !request.success ||
+                  !config.data?.configured ||
+                  config.isError ||
+                  busy ||
+                  active(job) ||
+                  storageError ||
+                  job?.status === "unknown" ||
+                  (!!attempt?.jobId && !job)
+                }
+              >
+                {busy
+                  ? t.loading
+                  : attempt && !attempt.jobId
+                    ? request.success &&
+                      attempt.fingerprint !==
+                        JSON.stringify({
+                          request: request.data,
+                          model:
+                            config.data?.superAdmin && modelOverride
+                              ? modelOverride
+                              : config.data?.defaultModel,
+                        })
+                      ? t.newResearch
+                      : t.retryAttempt
+                    : job
+                      ? t.newResearch
+                      : t.research}
+              </Button>
+            </form>
+            {storageError && <p role="alert">{t.persistenceError}</p>}
+            {recoveredPrevious && <p role="status">{t.previousRecovered}</p>}
+            {(job || attempt?.jobId) && (
+              <Button type="button" variant="outline" disabled={busy} onClick={refreshJob}>
+                {t.refreshStatus}
+              </Button>
+            )}
+            {job && (
+              <div role="status" aria-label={t.status} className="space-y-1 break-words">
+                <p>
+                  {completed(job)
+                    ? t.complete
+                    : job.status === "cancelled"
+                      ? t.cancelled
+                      : job.status === "unknown"
+                        ? t.outcomeUnknown
+                        : job.status === "failed"
+                          ? t.failed
+                          : job.status === "queued"
+                            ? t.queued
+                            : t.running}
+                </p>
+                {diagnostic && (
+                  <div
+                    role="alert"
+                    data-testid="inspiration-diagnostic"
+                    className="rounded border p-2 text-sm break-words"
+                  >
+                    <p>
+                      {t.diagnosticStage}: {t.diagnosticStages[diagnostic.stage]}
+                    </p>
+                    <p>
+                      {t.diagnosticCodes[diagnostic.code]}
+                      {diagnostic.httpStatus ? " · HTTP " + diagnostic.httpStatus : ""}
+                      {diagnostic.dbCode
+                        ? " · " + t.diagnosticDatabaseCode + ": " + diagnostic.dbCode
+                        : ""}
+                      {diagnostic.field ? " · " + t.diagnosticField + ": " + diagnostic.field : ""}
+                    </p>
+                    <p>
+                      {t.diagnosticReference}: {job.id}
+                    </p>
+                  </div>
+                )}
+                <p>
+                  {t.model}: {job.model}
+                </p>
+                {!active(job) && (
+                  <div
+                    data-testid="inspiration-usage"
+                    className="space-y-1 rounded border p-2 text-sm"
+                  >
+                    <p className="font-medium">{t.usageTitle}</p>
+                    <p>
+                      {t.inputTokens}: {job.usageReport?.inputTokens ?? t.usageUnknown} ·{" "}
+                      {t.outputTokens}: {job.usageReport?.outputTokens ?? t.usageUnknown}
+                    </p>
+                    <p>
+                      {t.reasoningTokens}: {job.usageReport?.reasoningTokens ?? t.usageUnknown} ·{" "}
+                      {t.cachedTokens}: {job.usageReport?.cachedInputTokens ?? t.usageUnknown} ·{" "}
+                      {t.cacheWriteTokens}: {job.usageReport?.cacheWriteTokens ?? t.usageUnknown}
+                    </p>
+                    <p>
+                      {t.aiCost}: {formatCost(job.usageReport?.aiCostUsd)} · {t.searchCost}:{" "}
+                      {formatCost(job.usageReport?.searchCostUsd)} (
+                      {job.usageReport?.searchCredits ?? t.usageUnknown} {t.searchCredits})
+                    </p>
+                    <p className="font-medium">
+                      {t.totalCost}: {formatCost(job.usageReport?.totalCostUsd)}
+                    </p>
+                    {job.usageReport?.providerReportedCostUsd != null && (
+                      <p>
+                        {t.providerCost}: {formatCost(job.usageReport.providerReportedCostUsd)}
+                      </p>
+                    )}
+                    <p>{t.costEstimateNote}</p>
+                  </div>
+                )}
+                {(active(job) || job.status === "unknown") && (
+                  <div>
+                    <Button variant="outline" type="button" disabled={busy} onClick={cancel}>
+                      {job.status === "unknown" ? t.closeUnknown : t.cancel}
+                    </Button>
+                    {job.status === "unknown" && <p className="text-sm">{t.closeUnknownNote}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {result && (
+              <div className="min-w-0 space-y-3">
+                <h3 className="font-semibold">{t.creativeProposal}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {origin?.kind === "profile" ? t.shownProfile : t.shownJob}
+                </p>
+                <p className="text-sm text-muted-foreground">{t.evidenceNote}</p>
+                {!!result.unresolvedQuestions.length && <p role="status">{t.partial}</p>}
+                <p className="whitespace-pre-wrap text-sm">
+                  {result.proposal.creativeChoices.join("\n")}
+                </p>
+                <div className={buttons}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-primary/70 bg-primary/10 font-semibold text-foreground hover:bg-primary/20"
+                    disabled={busy || !fillPlan?.appliedFields.length || fillPlan.blocked}
+                    onClick={() => apply()}
+                  >
+                    {t.apply}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-expanded={preview}
+                    onClick={() => setPreview(!preview)}
+                  >
+                    {t.preview}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t.fillNote}</p>
+                {!validSetup && <p role="alert">{t.invalidDraft}</p>}
+                {preview && plan && (
+                  <>
+                    <MusicInspirationPreview
+                      plan={plan}
+                      busy={busy}
+                      onAction={(field, action) => {
+                        setActions((previous) => ({ ...previous, [field]: action }));
+                        setConfirmation(null);
+                        setConfirm(null);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-primary/70 bg-primary/10 font-semibold text-foreground hover:bg-primary/20"
+                      disabled={busy || plan.blocked || !plan.appliedFields.length}
+                      onClick={() => apply(actions)}
+                    >
+                      {t.applySelected}
+                    </Button>
+                  </>
+                )}
+                <ResearchDisclosure title={t.evidence + " · " + t.sources}>
+                  <h3 className="font-semibold">{t.evidence}</h3>
+                  {result.evidence.map((claim) => (
+                    <article key={claim.id} className="rounded border p-2">
+                      <p>
+                        {t[claim.classification]} · {claim.claim}
+                      </p>
+                      <p>{claim.limitation}</p>
+                      <ul>
+                        {claim.sourceIds.map((sid) => {
+                          const source = result.sources.find((s) => s.id === sid);
+                          return (
+                            source && (
+                              <li key={sid}>
+                                <a
+                                  className="underline"
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {source.title}
+                                </a>
+                              </li>
+                            )
+                          );
+                        })}
+                      </ul>
+                    </article>
+                  ))}
+                  <h3 className="font-semibold">{t.sources}</h3>
+                  <ul>
+                    {result.sources.map((s) => (
+                      <li key={s.id}>
+                        <a
+                          className="underline"
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {s.title}
+                        </a>{" "}
+                        · {s.publisher} · {s.locator} ·{" "}
+                        <time dateTime={s.accessedAt}>
+                          {new Date(s.accessedAt).toLocaleDateString(language)}
+                        </time>
+                      </li>
+                    ))}
+                  </ul>
+                  <h3 className="font-semibold">{t.unknown}</h3>
+                  <ul>
+                    {result.unresolvedQuestions.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                  <h3 className="font-semibold">{t.creative}</h3>
+                  <ul>
+                    {result.proposal.creativeChoices.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </ResearchDisclosure>
+              </div>
+            )}
+            {(result || selectedProfile) && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{t.profileSourceNote}</p>
+                <label htmlFor={id + "name"}>{t.name}</label>
+                <Input
+                  id={id + "name"}
+                  value={name}
+                  maxLength={120}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={busy}
+                />
+                <div className={buttons}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || !name.trim() || origin?.kind !== "job" || !result}
+                    onClick={() => mutateProfile("save")}
+                  >
+                    {t.save}
+                  </Button>
+                  {selectedProfile && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy || !name.trim()}
+                        onClick={() => mutateProfile("rename")}
+                      >
+                        {t.rename}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy || origin?.kind !== "job" || !result}
+                        onClick={() => mutateProfile("update")}
+                      >
+                        {t.update}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setDeleteTarget(selectedProfile);
+                          setConfirm("delete");
+                        }}
+                      >
+                        {t.delete}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
       <Dialog
         open={confirm !== null}
         onOpenChange={(value) => {
-          if (!value) setConfirm(null);
+          if (!value) {
+            setConfirm(null);
+            setConfirmation(null);
+          }
         }}
       >
         <DialogContent
+          data-inspiration-confirmation
           style={dialogViewport}
-          className="[&>button]:h-auto [&>button]:min-h-11 [&>button]:whitespace-normal [&>button]:break-words max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain p-3 [overflow-wrap:anywhere] sm:p-6 [&>button:last-child]:hidden"
+          className="max-h-[calc(100dvh-16px)] w-[calc(100vw-16px)] min-w-0 max-w-lg overflow-y-auto overscroll-contain rounded-xl border-primary/20 bg-card p-4 [overflow-wrap:anywhere] [&>button:last-child]:hidden"
         >
           <DialogTitle>{confirm === "delete" ? t.deleteTitle : t.replaceTitle}</DialogTitle>
           <DialogDescription>
             {confirm === "delete" ? t.deleteDescription : t.replaceDescription}
           </DialogDescription>
-          <Button type="button" variant="outline" onClick={() => setConfirm(null)}>
+          {confirm === "replace" && confirmation && (
+            <>
+              <p>
+                {t.destructiveCount}: {confirmation.plan.destructiveFields.length}
+              </p>
+              {confirmation.plan.groups
+                .filter((g) => g.destructive)
+                .map((g) => (
+                  <p key={g.field} className="whitespace-pre-wrap text-sm">
+                    {t[g.field]}
+                    {"\n" +
+                      t.currentValue +
+                      ": " +
+                      displayInspirationGroup(g.current, t.emptyValue) +
+                      "\n" +
+                      t.resultValue +
+                      ": " +
+                      displayInspirationGroup(g.next, t.emptyValue)}
+                  </p>
+                ))}
+              {stale && <p role="alert">{t.stalePlan}</p>}
+            </>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 whitespace-normal"
+            onClick={() => {
+              setConfirm(null);
+              setConfirmation(null);
+            }}
+          >
             {t.back}
           </Button>
           <Button
-            variant="outline"
             type="button"
+            variant="outline"
+            className="min-h-11 whitespace-normal"
             disabled={busy}
-            onClick={() => (confirm === "delete" ? mutateProfile("delete") : apply(true))}
+            onClick={() =>
+              confirm === "delete"
+                ? mutateProfile("delete")
+                : confirmation && apply(confirmation.actions, confirmation)
+            }
           >
             {confirm === "delete" ? t.confirmDelete : t.confirm}
           </Button>

@@ -1,5 +1,37 @@
 export const musicInspirationCopy = {
   en: {
+    invalidDraft:
+      "The Generator draft exceeds a supported field limit. Edit it before applying; your text is preserved.",
+    collapse: "Collapse research",
+    creativeProposal: "Creative proposal",
+    applySelected: "Apply selected",
+    keep: "Keep",
+    add: "Add",
+    replaceGroup: "Replace",
+    currentValue: "Current",
+    proposedValue: "Research proposal",
+    resultValue: "Result after applying",
+    emptyValue: "Empty",
+    willChange: "Will change",
+    noChanges: "No fields will change",
+    issueLength: "The combined group exceeds a limit. Keep or replace it; nothing is truncated.",
+    issueConflict: "Opposing instructions detected. Review the group and choose Keep or Replace.",
+    issueUnsupported: "This group cannot be enriched by concatenation.",
+    addReview:
+      "Review combined instructions for contradictions. No semantic rewriting is performed.",
+    changesCount: "Groups that will change",
+    destructiveCount: "Populated groups to replace",
+    stalePlan: "The Generator or source changed. Review the updated comparison and confirm again.",
+    viewJob: "View latest research result",
+    shownProfile: "Displayed saved profile",
+    shownJob: "Displayed research result",
+    evidenceNote:
+      "A creative proposal is not a verified fact. Retrieved provenance does not certify publisher reliability.",
+    fillNote: "Apply research fills only empty groups. Existing values remain unchanged.",
+    profileSourceNote:
+      "Save and update use only the displayed completed research. Select the latest result explicitly to use it.",
+    expandGroup: "Compare group",
+    workspace: "Research workspace",
     closeUnknown: "Close this unresolved job",
     closeUnknownNote:
       "Stops this application job, not provider billing. Usage and history remain; no new research starts automatically.",
@@ -107,7 +139,7 @@ export const musicInspirationCopy = {
     cancelled: "Research cancelled",
     queued: "Queued",
     running: "Research in progress",
-    apply: "Apply to empty fields",
+    apply: "Apply research",
     preview: "Preview",
     sources: "Sources",
     evidence: "Evidence",
@@ -150,6 +182,40 @@ export const musicInspirationCopy = {
     refresh: "Refresh profiles",
   },
   el: {
+    invalidDraft:
+      "Το προσχέδιο Generator υπερβαίνει υποστηριζόμενο όριο πεδίου. Διορθώστε το πριν την εφαρμογή· το κείμενό σας διατηρείται.",
+    collapse: "Σύμπτυξη έρευνας",
+    creativeProposal: "Δημιουργική πρόταση",
+    applySelected: "Εφαρμογή επιλεγμένων",
+    keep: "Διατήρηση",
+    add: "Εμπλουτισμός",
+    replaceGroup: "Αντικατάσταση",
+    currentValue: "Τώρα",
+    proposedValue: "Πρόταση έρευνας",
+    resultValue: "Αποτέλεσμα εφαρμογής",
+    emptyValue: "Κενό",
+    willChange: "Θα αλλάξει",
+    noChanges: "Δεν θα αλλάξει κανένα πεδίο",
+    issueLength:
+      "Η συνδυασμένη ομάδα υπερβαίνει ένα όριο. Επιλέξτε διατήρηση ή αντικατάσταση· δεν περικόπτεται τίποτα.",
+    issueConflict:
+      "Εντοπίστηκαν αντίθετες οδηγίες. Ελέγξτε την ομάδα και επιλέξτε Διατήρηση ή Αντικατάσταση.",
+    issueUnsupported: "Αυτή η ομάδα δεν εμπλουτίζεται με συνένωση.",
+    addReview:
+      "Ελέγξτε τις συνδυασμένες οδηγίες για αντιφάσεις. Δεν γίνεται σημασιολογική αναδιατύπωση.",
+    changesCount: "Ομάδες που θα αλλάξουν",
+    destructiveCount: "Συμπληρωμένες ομάδες προς αντικατάσταση",
+    stalePlan: "Άλλαξε ο Generator ή η πηγή. Ελέγξτε τη νέα σύγκριση και επιβεβαιώστε ξανά.",
+    viewJob: "Προβολή τελευταίου αποτελέσματος έρευνας",
+    shownProfile: "Εμφανιζόμενο αποθηκευμένο προφίλ",
+    shownJob: "Εμφανιζόμενο αποτέλεσμα έρευνας",
+    evidenceNote:
+      "Η δημιουργική πρόταση δεν αποτελεί επαληθευμένο γεγονός. Η προέλευση ανάκτησης δεν πιστοποιεί την αξιοπιστία του εκδότη.",
+    fillNote: "Η Εφαρμογή έρευνας συμπληρώνει μόνο κενές ομάδες. Οι υπάρχουσες τιμές διατηρούνται.",
+    profileSourceNote:
+      "Η αποθήκευση και ενημέρωση χρησιμοποιούν μόνο την εμφανιζόμενη ολοκληρωμένη έρευνα. Επιλέξτε ρητά το τελευταίο αποτέλεσμα για να το χρησιμοποιήσετε.",
+    expandGroup: "Σύγκριση ομάδας",
+    workspace: "Χώρος μουσικής έρευνας",
     closeUnknown: "Κλείσιμο αυτής της εκκρεμούς εργασίας",
     closeUnknownNote:
       "Σταματά η εργασία στην εφαρμογή, όχι πιθανή χρέωση του παρόχου. Χρήση και ιστορικό διατηρούνται· δεν ξεκινά αυτόματα νέα έρευνα.",
@@ -258,7 +324,7 @@ export const musicInspirationCopy = {
     cancelled: "Η έρευνα ακυρώθηκε",
     queued: "Σε αναμονή",
     running: "Η έρευνα εκτελείται",
-    apply: "Εφαρμογή σε κενά πεδία",
+    apply: "Εφαρμογή έρευνας",
     preview: "Προεπισκόπηση",
     sources: "Πηγές",
     evidence: "Τεκμηρίωση",
