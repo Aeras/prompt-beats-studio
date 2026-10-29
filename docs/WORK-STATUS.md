@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-29 — PB-014 live Planner request_mismatch follow-up — IN_PROGRESS
+
+- **Observed:** creator screenshot of job bab24ce6-ae13-46ac-894a-b5577fbd7bdc reports planner-stage request mismatch; planner usage observed (801 input, 1574 output); Tavily not confirmed dispatched. No new paid calls or user-job mutation made.
+- **Diagnosis limit:** production job payload read was not authorized by the available tool safety boundary. Existing request validator compared JSON serialized objects, which can reject logically identical property-value requests due solely to key order. This is a confirmed code-level vulnerability, **not a proven root cause** for the observed failed job; model-content drift and provider receipt mismatch remain possible.
+- **Change:** isolated branch fix/pb-014-planner-request-semantic-match changes only validated request-field equality, preserving strict original values and adds reordered/mismatched artist/description tests. No migration, data rewrite, paid retry, deployment or merge. Full local/regression/browser/database gate verification and independent review still required in the same PR. Never auto-retry unknown billed dispatches.
+
+
 ## 2026-10-29 — PB-014 Adaptive Multilingual Music Research — CODE_COMPLETE_RELEASE_PENDING
 
 - **Verified baseline / ownership:** existing Draft [PR #465](https://github.com/Aeras/prompt-beats-studio/pull/465), branch `feature/pb-014-adaptive-multilingual-research`, initial HEAD `b53ba7b2018ac2ebe2f72abb424f0ae8309ab99b`, current main / merged #464 `81ad262b3c545925880a03553c51cf03dec8f0dc`. Read root contract, specification and full research/admission/jobs/accounting/registry/RLS/Generator paths. Atlas #450 remains separate and paused.
