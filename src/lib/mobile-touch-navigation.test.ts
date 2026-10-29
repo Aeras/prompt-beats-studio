@@ -44,6 +44,18 @@ describe("mobile and tablet touch navigation", () => {
     expect(library).toContain("aria-pressed={tab === item}");
   });
 
+  test("Generator mode controls precede conditional Music Inspiration and remain a single group", async () => {
+    const generator = await source("src/routes/generate.tsx");
+    const navigation = generator.indexOf('data-testid="generator-mode-navigation"');
+    const inspiration = generator.indexOf("<MusicInspirationPanel", navigation);
+    const advancedBridge = generator.indexOf("<AtlasGeneratorBridge", navigation);
+    expect(navigation).toBeGreaterThan(-1);
+    expect(inspiration).toBeGreaterThan(navigation);
+    expect(advancedBridge).toBeGreaterThan(navigation);
+    expect(generator.match(/data-generator-mode=\\{mode\\.key\\}/g)).toHaveLength(1);
+    expect(generator).toContain("onClick={() => changeGeneratorMode(mode.key)}");
+  });
+
   test("mobile navigation exposes a non-color active cue and keyboard focus", async () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     expect(shell).toContain('aria-current={isActive ? "page" : undefined}');
