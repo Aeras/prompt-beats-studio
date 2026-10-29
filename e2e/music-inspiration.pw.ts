@@ -486,7 +486,7 @@ test("super-admin uses allowed compact selectors and free description", async ({
 test("selective replacement requires confirmation; undo preserves later manual production", async ({
   page,
 }) => {
-  await fixture(page);
+  const f = await fixture(page);
   const production = page.getByRole("textbox", {
     name: "Production Style",
     exact: true,
@@ -494,7 +494,13 @@ test("selective replacement requires confirmation; undo preserves later manual p
   });
   await production.fill("Manual production");
   await selectProfile(page);
+  f.pause();
   await panel(page).getByRole("button", { name: "Apply research" }).click();
+  await expect(panel(page).getByRole("button", { name: "Apply research" })).toBeDisabled();
+  f.release();
+  // The unchanged protected value is not an acknowledgement of the async Fill.
+  // Wait for its verified mutation before reopening the workspace it collapses.
+  await expect(panel(page).getByText(/^Applied fields:/)).toBeVisible();
   await expect(production).toHaveValue("Manual production");
   await openResearch(page);
   await panel(page).getByRole("button", { name: "Preview", exact: true }).click();
