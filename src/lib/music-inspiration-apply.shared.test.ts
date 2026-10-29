@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { AdvancedGeneratorSetup } from "./advanced-generator-setup";
 import {
   applyInspirationProposal,
+  mergeInspirationList,
   undoInspirationProposal,
 } from "./music-inspiration-apply.shared";
 import type { InspirationResearch } from "./music-inspiration.shared";
@@ -233,4 +234,22 @@ it("replaces selected custom fields with complete proposal text and restores exa
   const undone = undoInspirationProposal(edited, result.receipt!);
   expect(undone.setup.customInstruments).toBe("Later manual loop");
   expect(undone.ambiguousFields).toEqual(["selectedInstruments"]);
+});
+
+
+describe("PB-013 safe list enrichment primitive", () => {
+  it("retains original order and only appends genuinely new case/spacing variants", () => {
+    const original = ["Electric Guitar", "Bass"];
+    const result = mergeInspirationList(original, [" electric  guitar ", "Piano", "BASS", "Fingerstyle Guitar", "piano"]);
+    expect(result).toEqual(["Electric Guitar", "Bass", "Piano", "Fingerstyle Guitar"]);
+    expect(original).toEqual(["Electric Guitar", "Bass"]);
+  });
+  it("does not mistakenly deduplicate broader versus narrower techniques", () => {
+    expect(mergeInspirationList(["Acoustic Guitar"], ["Fingerstyle Acoustic Guitar"])).toEqual([
+      "Acoustic Guitar", "Fingerstyle Acoustic Guitar",
+    ]);
+  });
+  it("ignores whitespace-only candidates without mutating current values", () => {
+    expect(mergeInspirationList(["Rock"], [" ", "", "Rock"])).toEqual(["Rock"]);
+  });
 });
