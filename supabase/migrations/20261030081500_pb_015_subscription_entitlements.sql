@@ -189,6 +189,23 @@ BEGIN
       ) ORDER BY g.created_at DESC, g.id DESC)
       FROM public.subscription_manual_grants g
       WHERE g.user_id = _user_id
+    ), '[]'::jsonb),
+    'audit', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', a.id,
+        'action', a.action,
+        'createdAt', a.created_at,
+        'grantId', a.details->>'grant_id',
+        'plan', a.details->>'plan'
+      ) ORDER BY a.created_at DESC, a.id DESC)
+      FROM (
+        SELECT id, action, created_at, details
+        FROM public.admin_audit_log
+        WHERE target_user_id = _user_id
+          AND action IN ('CREATE_SUBSCRIPTION_MANUAL_GRANT','REVOKE_SUBSCRIPTION_MANUAL_GRANT')
+        ORDER BY created_at DESC, id DESC
+        LIMIT 50
+      ) a
     ), '[]'::jsonb)
   ) INTO v_result;
 
