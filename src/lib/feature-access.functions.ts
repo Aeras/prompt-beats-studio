@@ -27,7 +27,13 @@ export const FEATURE_KEYS = [
   "notifications",
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number] | BetaFeatureKey;
-export type FeatureAccessMode =\n  | "disabled"\n  | "admins_only"\n  | "selected_users"\n  | "everyone"\n  | "plus_or_pro"\n  | "pro_only";
+export type FeatureAccessMode =
+  | "disabled"
+  | "admins_only"
+  | "selected_users"
+  | "everyone"
+  | "plus_or_pro"
+  | "pro_only";
 
 const featureKeySchema = betaFeatureKeySchema.refine(
   (key) => (FEATURE_KEYS as readonly string[]).includes(key) || isBetaFeatureKey(key),
@@ -35,7 +41,14 @@ const featureKeySchema = betaFeatureKeySchema.refine(
 );
 // Promoted database entries are administered through the existing policy UI.
 const policyKeySchema = betaFeatureKeySchema;
-const modeSchema = z.enum([\n  "disabled",\n  "admins_only",\n  "selected_users",\n  "everyone",\n  "plus_or_pro",\n  "pro_only",\n]);
+const modeSchema = z.enum([
+  "disabled",
+  "admins_only",
+  "selected_users",
+  "everyone",
+  "plus_or_pro",
+  "pro_only",
+]);
 
 export type FeatureAccessPolicy = {
   feature_key: string;
