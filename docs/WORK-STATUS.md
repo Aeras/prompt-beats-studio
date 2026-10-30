@@ -1,5 +1,16 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-10-30 — PB-015 Subscription Entitlements & Plan-Aware Feature Access — IN_PROGRESS
+
+- **Verified baseline:** implementation started from exact main `7227c00d6cee8bfb8d93585397d7d95c5a055960`, tree `f1e792276b762f5465788d37714ccd19b57b20dd`; Regression, Browser Quality and Database Replay baseline gates were green. Root AGENTS.md, this ledger, live open PRs and Stripe / Feature Access / Super Admin / audit / Beta / model access / Global AI / provider-dispatch paths were re-read before edits. No existing PB-015 PR was found.
+- **Implementation in progress:** one forward migration `20261030081500_pb_015_subscription_entitlements.sql` adds private Plus/Pro manual grants, DB-time derived effective plan, caller-bound self plan, Super Admin detail/grant/revoke RPCs, exactly six Feature Access modes and service-only feature-aware AI admission. Existing Stripe projection/webhook semantics remain unchanged and no policy is switched to a paid mode by migration.
+- **Management UX:** existing User Details gains Plan / Entitlements directly below Beta Test for Super Admin, with effective plan, bounded Stripe source, manual history, audited grant/revoke, 7-day and 1/2/3/6/12 calendar-month presets, Never confirmation, custom exact local datetime and explicit self-grant warning. Existing Feature Access UI gains only Plus & Pro and Pro only.
+- **AI safety:** tracked executions and durable auxiliary requests bind process-local one-use admission to exact user + normalized immutable feature-key set. Retry/secondary transport calls re-admit; existing continuation GET/cancel/reconcile behavior remains outside new paid admission. Operation-to-feature mapping follows existing Feature Access gates and does not alter model access or Prompt Version policy.
+- **Verification in progress:** disposable SQL entitlement/access matrix, independent-connection revoke/admission and stale-authority races, calendar/DST helper tests and permit identity tests added. Database Replay gate is wired to run the new SQL/race suite. Full tests, strict TypeScript, lint/format/build, browser QA and exact-final-head three principal gates remain required in this same PR.
+- **Release boundary:** repository implementation only. No production migration, Lovable publish, Stripe Plus/pricing/checkout activation, paid provider call or commercial activation is authorized by this work. Merge, if later all-green, still means `CODE_COMPLETE_RELEASE_PENDING` until separately authorized production release.
+
+# PromptBeats — Work Status (authoritative workflow ledger)
+
 ## 2026-10-29 — Generator mode navigation stable position — IN_PROGRESS
 
 - **Production user feedback:** after PR #470 was published, disabled swipe switching works, but Basic / Advanced / Project Revision selector jumps vertically because the advanced-only Music Inspiration panel (and associated bridge) renders before the selector.
