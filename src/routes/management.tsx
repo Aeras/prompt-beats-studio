@@ -18,7 +18,8 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
-import { BetaFeaturesPanel, BetaTesterControl } from "@/components/promptbeats/BetaFeaturesPanel";\nimport { SubscriptionEntitlementsPanel } from "@/components/promptbeats/SubscriptionEntitlementsPanel";
+import { BetaFeaturesPanel, BetaTesterControl } from "@/components/promptbeats/BetaFeaturesPanel";
+import { SubscriptionEntitlementsPanel } from "@/components/promptbeats/SubscriptionEntitlementsPanel";
 import { betaCopy } from "@/i18n/beta";
 import {
   DonationGlobalAdminControl,
