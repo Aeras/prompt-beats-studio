@@ -267,6 +267,37 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
           ))}
         </div>
       </div>
+
+      <div className="border-t border-white/10 pt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("management.entitlementAudit")}
+        </h4>
+        <div className="mt-3 space-y-2">
+          {data.audit.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t("management.entitlementAuditEmpty")}</p>
+          )}
+          {data.audit.map((event) => (
+            <div key={event.id} className="rounded-lg border border-white/10 bg-black/10 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-medium">
+                  {event.action === "CREATE_SUBSCRIPTION_MANUAL_GRANT"
+                    ? t("management.entitlementAuditGrant")
+                    : t("management.entitlementAuditRevoke")}
+                  {event.plan ? ` · ${event.plan.toUpperCase()}` : ""}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(event.createdAt).toLocaleString(locale)}
+                </span>
+              </div>
+              {event.grantId && (
+                <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                  {t("management.entitlementGrantId")}: {event.grantId}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
