@@ -1,11 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
-## 2026-10-29 — Generator mode navigation stable position — IN_PROGRESS
+## 2026-10-29 — Generator mode navigation stable position — CLOSED
 
 - **Production user feedback:** after PR #470 was published, disabled swipe switching works, but Basic / Advanced / Project Revision selector jumps vertically because the advanced-only Music Inspiration panel (and associated bridge) renders before the selector.
 - **Current implementation:** relocate the one existing button group above conditional Music Inspiration/Atlas panels within the Generator's existing stacked column. Preserve the same three buttons, changeGeneratorMode callback, accessibility roles, input data, per-mode panels, library gestures, and no automatic scroll/focus intervention. Avoid viewport-fixed overlays that would obscure editing areas on mobile.
 - **Verification:** existing mobile navigation test now guards selector preceding conditional panels and unique button group; require targeted/full regression, browser desktop/tablet/mobile and all three mandatory exact-HEAD gates, merge, separate Lovable publish, then user-confirmed behavior. No database migration, provider calls or production changes.
 - **Same-PR CI follow-up:** first runs exposed Prettier JSX indentation/attribute layout and a real browser test locator coupling: the existing centered-stack test used the first `.glass-strong` as the settings panel; with the new navigation row that locator pointed to the selector. Formatted JSX and gave the settings panel an explicit stable test ID; the browser test retains the same position, width, stack and overflow assertions without weakening them. Revalidate on final HEAD.
+- **Final evidence / release acceptance (2026-10-30):** [PR #471](https://github.com/Aeras/prompt-beats-studio/pull/471) final head `a75ae7387335196a6ab68fc591d53754a96ca639`, Regression / Database Replay / Browser Quality all SUCCESS; squash merged as `7227c00d6cee8bfb8d93585397d7d95c5a055960`. Following the explicit request to publish/test in Lovable, creator confirmed the navigation is now OK in production. Closure is based on that creator confirmation; no independent production instrumentation asserted. No new code change in this documentation-only follow-up.
 
 
 ## 2026-10-29 — Generator mode swipe disable (Library unchanged) — IN_PROGRESS
