@@ -55,14 +55,16 @@ INSERT INTO auth.users(id,email) VALUES
   ('bd150000-0000-4000-8000-000000000002','pb015-selected@example.invalid'),
   ('bd150000-0000-4000-8000-000000000003','pb015-admin@example.invalid'),
   ('bd150000-0000-4000-8000-000000000004','pb015-super@example.invalid'),
-  ('bd150000-0000-4000-8000-000000000005','pb015-stripe@example.invalid');
+  ('bd150000-0000-4000-8000-000000000005','pb015-stripe@example.invalid'),
+  ('bd150000-0000-4000-8000-000000000006','pb015-moderator@example.invalid');
 
 INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000001','user','active'),
   ('bd150000-0000-4000-8000-000000000002','user','active'),
   ('bd150000-0000-4000-8000-000000000003','admin','active'),
   ('bd150000-0000-4000-8000-000000000004','super_admin','active'),
-  ('bd150000-0000-4000-8000-000000000005','user','active')
+  ('bd150000-0000-4000-8000-000000000005','user','active'),
+  ('bd150000-0000-4000-8000-000000000006','moderator','active')
 ON CONFLICT(user_id) DO UPDATE
 SET role=EXCLUDED.role, moderation_status=EXCLUDED.moderation_status;
 
@@ -135,6 +137,13 @@ SELECT pg_temp.denied($q$SELECT public.subscription_manual_grant_create(
 )$q$);
 RESET ROLE;
 
+SELECT set_config('request.jwt.claim.sub','bd150000-0000-4000-8000-000000000006',true);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.denied($q$SELECT public.subscription_manual_grant_create(
+  'bd150000-0000-4000-8000-000000000006','pro',statement_timestamp()+interval '7 days','moderator self grant'
+)$q$);
+RESET ROLE;
+
 -- Super Admin uses the same audited path even for self-grant.
 SELECT set_config('request.jwt.claim.sub','bd150000-0000-4000-8000-000000000004',true);
 SET LOCAL ROLE authenticated;
@@ -197,6 +206,8 @@ INSERT INTO public.feature_access_policies(feature_key,display_name,description,
 VALUES('pb015_feature_fixture','PB-015 fixture','Disposable entitlement feature','everyone');
 INSERT INTO public.feature_access_users(feature_key,user_id,created_by)
 VALUES('pb015_feature_fixture','bd150000-0000-4000-8000-000000000002','bd150000-0000-4000-8000-000000000004');
+INSERT INTO public.beta_testers(user_id,granted_by)
+VALUES('bd150000-0000-4000-8000-000000000002','bd150000-0000-4000-8000-000000000004');
 
 UPDATE public.feature_access_policies SET access_mode='disabled' WHERE feature_key='pb015_feature_fixture';
 SELECT pg_temp.assert(
@@ -240,6 +251,10 @@ UPDATE public.feature_access_policies SET access_mode='pro_only' WHERE feature_k
 SELECT pg_temp.assert(
   NOT public.can_use_feature('bd150000-0000-4000-8000-000000000004','pb015_feature_fixture'),
   'Free Super Admin must not bypass pro_only'
+);
+SELECT pg_temp.assert(
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000002','pb015_feature_fixture'),
+  'Free Beta tester must not bypass pro_only'
 );
 SELECT pg_temp.assert(
   public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
