@@ -3342,7 +3342,10 @@ function GeneratePage() {
           className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 [&>*]:w-full [&>*]:min-w-0"
         >
           {/* Keep mode navigation above mode-specific panels to prevent layout jumps. */}
-          <div className="glass-strong rounded-3xl p-3 sm:p-4" data-testid="generator-mode-navigation">
+          <div
+            className="glass-strong rounded-3xl p-3 sm:p-4"
+            data-testid="generator-mode-navigation"
+          >
             <div
               className="flex flex-wrap items-center gap-2"
               role="group"
@@ -3505,7 +3508,7 @@ function GeneratePage() {
               </button>
             </section>
           )}
-          <div className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
+          <div data-testid="generator-settings-panel" className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
             <div>
               <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>
               <p className="mb-2 text-xs text-muted-foreground">
