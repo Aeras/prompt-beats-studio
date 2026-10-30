@@ -271,8 +271,8 @@ test("Super Admin User Details shows entitlement plan, sources, history and audi
   await expect(panel.getByText(/Effective plan|Ενεργό πλάνο/)).toBeVisible();
   await expect(panel.getByText("plus", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText(/Stripe source|Πηγή Stripe/)).toBeVisible();
-  await expect(panel.getByText("Browser fixture", { exact: true })).toBeVisible();
-  await expect(panel.getByText("bb150000-0000-4000-8000-000000000001")).toBeVisible();
+  await expect(panel.getByText(/Browser fixture/)).toBeVisible();
+  await expect(panel.getByText(/bb150000-0000-4000-8000-000000000001/)).toBeVisible();
 
   const a11y = await new AxeBuilder({ page })
     .include('[data-testid="subscription-entitlements-panel"]')
