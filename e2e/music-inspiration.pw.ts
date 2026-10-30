@@ -647,7 +647,7 @@ test("Generator and inspiration occupy one centered desktop column without side-
     const rects = await page.evaluate(() => {
       const root = document.querySelector('[data-testid="generator-stacked-layout"]')!;
       const inspiration = document.querySelector('[data-testid="music-inspiration-panel"]')!;
-      const generator = root.querySelector(":scope > .glass-strong")!;
+      const generator = root.querySelector('[data-testid="generator-settings-panel"]')!;
       const a = inspiration.getBoundingClientRect();
       const b = generator.getBoundingClientRect();
       const wrapper = root.getBoundingClientRect();
