@@ -238,7 +238,7 @@ test("stable execution identity is retained by the shared accounting caller", as
       record: async (record) => {
         expect(record.executionId).toBe(id);
       },
-      dispatchAdmission: async (execute) => execute(),
+      dispatchAdmission: async (_userId, _featureKeys, execute) => execute(),
     },
   );
   await call({ prompt: "fixture", system: "fixture" });

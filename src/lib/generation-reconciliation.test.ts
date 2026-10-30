@@ -147,6 +147,8 @@ test("actual recovery sweep validates exhausted stored failures without provider
           },
         };
       if (name.includes("global-ai-usage.server")) return {};
+      if (name.includes("ai-feature-access.server"))
+        return { featureKeysForAiOperation: () => ["ai_generator"] };
       if (name.includes("ai-usage")) return {};
       throw new Error(`Unexpected import: ${name}`);
     },

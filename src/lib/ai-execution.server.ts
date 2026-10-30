@@ -1,4 +1,5 @@
-import { withAiDispatchAdmission } from "./global-ai-usage.server";
+import { withFeatureAiDispatchAdmission } from "./global-ai-usage.server";
+import { featureKeysForAiOperation } from "./ai-feature-access.server";
 import type { AiOperation, NormalizedUsage } from "./ai-usage.server";
 import { recordAiUsage } from "./ai-usage.server";
 import { usageEvidence } from "./ai-usage-evidence";
@@ -102,7 +103,7 @@ export type ExecutionDependencies = {
   checkpoint?: typeof checkpointExecution;
   write?: typeof write;
   record?: typeof recordAiUsage;
-  dispatchAdmission?: typeof withAiDispatchAdmission;
+  dispatchAdmission?: typeof withFeatureAiDispatchAdmission;
 };
 export function trackedCaller(
   raw: ModelCaller,
@@ -121,91 +122,96 @@ export function trackedCaller(
     }
     if (context.recoveryOnly || cached)
       throw new Error("Provider execution is unresolved; automatic redispatch is forbidden.");
-    return (deps.dispatchAdmission ?? withAiDispatchAdmission)(async () => {
-      input.abortSignal?.throwIfAborted();
-      const id = context.executionId ?? crypto.randomUUID();
-      call.executionId = id;
-      await (deps.begin ?? beginExecution)(id, context, provider, model);
-      // A cancel during the journal write must not result in another dispatch.
-      if (input.abortSignal?.aborted) {
-        await journalWrite("skip_ai_execution_internal", { _id: id, _user_id: context.userId });
-        input.abortSignal.throwIfAborted();
-      }
-      let observedUsage: NormalizedUsage | null = null;
-      try {
-        const result = await raw({
-          ...input,
-          usageProvider: provider,
-          onRemoteOperationCreated: async (remoteProvider, remoteId) => {
-            await journalWrite("mark_ai_execution_remote_internal", {
-              _id: id,
-              _user_id: context.userId,
-              _provider: remoteProvider,
-              _remote_id: remoteId,
-            });
-            await input.onRemoteOperationCreated?.(remoteProvider, remoteId);
-          },
-          onUsageObserved: async (usage) => {
-            observedUsage = usage;
-            await journalWrite("observe_ai_execution_usage_internal", {
-              _id: id,
-              _user_id: context.userId,
-              _usage: usage,
-            });
-            await input.onUsageObserved?.(usage);
-          },
-        });
-        const receipt = {
-          ...result,
-          usage: result.usage
-            ? { ...(observedUsage as NormalizedUsage | null), ...result.usage, executionId: id }
-            : observedUsage,
-        };
-        observedUsage = receipt.usage;
-        // Store recoverable provider output before any application/schema/cancel check.
-        await (deps.checkpoint ?? checkpointExecution)(id, context, receipt);
-        await persist({
-          executionId: id,
-          userId: context.userId,
-          generationId: context.generationId ?? null,
-          operation: context.operation,
-          provider: result.provider,
-          model: result.model,
-          usage: receipt.usage,
-          usageState: result.usage ? "final" : receipt.usage ? "partial" : "unknown",
-          success: result.stopReason === "end_turn",
-        });
-        return receipt;
-      } catch (error) {
-        // Unknown is durable from beginExecution; never infer zero consumption.
-        const errorUsage = usageEvidence(error, provider);
-        if (errorUsage) {
-          observedUsage = errorUsage;
-          try {
-            await journalWrite("observe_ai_execution_usage_internal", {
-              _id: id,
-              _user_id: context.userId,
-              _usage: errorUsage,
-            });
-          } catch {
-            // The independent settlement/outbox path must still receive an
-            // observed provider receipt when the journal write is unavailable.
-          }
+    const featureKeys = featureKeysForAiOperation(context.operation);
+    return (deps.dispatchAdmission ?? withFeatureAiDispatchAdmission)(
+      context.userId,
+      featureKeys,
+      async () => {
+        input.abortSignal?.throwIfAborted();
+        const id = context.executionId ?? crypto.randomUUID();
+        call.executionId = id;
+        await (deps.begin ?? beginExecution)(id, context, provider, model);
+        // A cancel during the journal write must not result in another dispatch.
+        if (input.abortSignal?.aborted) {
+          await journalWrite("skip_ai_execution_internal", { _id: id, _user_id: context.userId });
+          input.abortSignal.throwIfAborted();
         }
-        await persist({
-          executionId: id,
-          userId: context.userId,
-          generationId: context.generationId ?? null,
-          operation: context.operation,
-          provider,
-          model,
-          usage: observedUsage,
-          usageState: observedUsage ? "partial" : "unknown",
-          success: false,
-        });
-        throw error;
-      }
-    });
+        let observedUsage: NormalizedUsage | null = null;
+        try {
+          const result = await raw({
+            ...input,
+            usageProvider: provider,
+            onRemoteOperationCreated: async (remoteProvider, remoteId) => {
+              await journalWrite("mark_ai_execution_remote_internal", {
+                _id: id,
+                _user_id: context.userId,
+                _provider: remoteProvider,
+                _remote_id: remoteId,
+              });
+              await input.onRemoteOperationCreated?.(remoteProvider, remoteId);
+            },
+            onUsageObserved: async (usage) => {
+              observedUsage = usage;
+              await journalWrite("observe_ai_execution_usage_internal", {
+                _id: id,
+                _user_id: context.userId,
+                _usage: usage,
+              });
+              await input.onUsageObserved?.(usage);
+            },
+          });
+          const receipt = {
+            ...result,
+            usage: result.usage
+              ? { ...(observedUsage as NormalizedUsage | null), ...result.usage, executionId: id }
+              : observedUsage,
+          };
+          observedUsage = receipt.usage;
+          // Store recoverable provider output before any application/schema/cancel check.
+          await (deps.checkpoint ?? checkpointExecution)(id, context, receipt);
+          await persist({
+            executionId: id,
+            userId: context.userId,
+            generationId: context.generationId ?? null,
+            operation: context.operation,
+            provider: result.provider,
+            model: result.model,
+            usage: receipt.usage,
+            usageState: result.usage ? "final" : receipt.usage ? "partial" : "unknown",
+            success: result.stopReason === "end_turn",
+          });
+          return receipt;
+        } catch (error) {
+          // Unknown is durable from beginExecution; never infer zero consumption.
+          const errorUsage = usageEvidence(error, provider);
+          if (errorUsage) {
+            observedUsage = errorUsage;
+            try {
+              await journalWrite("observe_ai_execution_usage_internal", {
+                _id: id,
+                _user_id: context.userId,
+                _usage: errorUsage,
+              });
+            } catch {
+              // The independent settlement/outbox path must still receive an
+              // observed provider receipt when the journal write is unavailable.
+            }
+          }
+          await persist({
+            executionId: id,
+            userId: context.userId,
+            generationId: context.generationId ?? null,
+            operation: context.operation,
+            provider,
+            model,
+            usage: observedUsage,
+            usageState: observedUsage ? "partial" : "unknown",
+            success: false,
+          });
+          throw error;
+        }
+      },
+    );
   };
   return call;
 }

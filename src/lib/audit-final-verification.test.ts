@@ -501,7 +501,7 @@ describe("audit final — actual background adapter failures and restart", () =>
         },
       );
       const deps: ExecutionDependencies = {
-        dispatchAdmission: async (execute) => execute(),
+        dispatchAdmission: async (_userId, _featureKeys, execute) => execute(),
         read: async () => null,
         begin: async () => {},
         checkpoint: async () => {},

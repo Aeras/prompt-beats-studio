@@ -38,4 +38,10 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  {
+    files: ["src/integrations/supabase/types.ts"],
+    rules: {
+      "prettier/prettier": "off",
+    },
+  },
 );

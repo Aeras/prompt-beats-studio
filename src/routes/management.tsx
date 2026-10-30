@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
 import { BetaFeaturesPanel, BetaTesterControl } from "@/components/promptbeats/BetaFeaturesPanel";
+import { SubscriptionEntitlementsPanel } from "@/components/promptbeats/SubscriptionEntitlementsPanel";
 import { betaCopy } from "@/i18n/beta";
 import {
   DonationGlobalAdminControl,
@@ -617,6 +618,7 @@ function UserDetails({
         </button>
       </div>
       {moderation.isSuperAdmin && <BetaTesterControl userId={userId} />}
+      {moderation.isSuperAdmin && <SubscriptionEntitlementsPanel userId={userId} />}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Info label={t("management.displayName")} value={data.display_name || "—"} />
         <Info label={t("management.handle")} value={data.handle ? `@${data.handle}` : "—"} />
@@ -1206,6 +1208,8 @@ const FEATURE_MODE_BADGE: Record<FeatureAccessMode, string> = {
   admins_only: "ADMIN",
   selected_users: "BETA",
   everyone: "PUBLIC",
+  plus_or_pro: "PLUS+",
+  pro_only: "PRO",
 };
 
 function SelectedFeatureUsersEditor({ policy }: { policy: FeatureAccessPolicy }) {
@@ -1373,6 +1377,8 @@ function FeatureAccessPanel() {
       admins_only: t("management.featureModeAdmins"),
       selected_users: t("management.featureModeSelected"),
       everyone: t("management.featureModeEveryone"),
+      plus_or_pro: t("management.featureModePlusOrPro"),
+      pro_only: t("management.featureModeProOnly"),
     })[mode];
 
   return (
@@ -1416,7 +1422,14 @@ function FeatureAccessPanel() {
                 className="mt-1 block w-full min-w-44 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
               >
                 {(
-                  ["disabled", "admins_only", "selected_users", "everyone"] as FeatureAccessMode[]
+                  [
+                    "disabled",
+                    "admins_only",
+                    "selected_users",
+                    "everyone",
+                    "plus_or_pro",
+                    "pro_only",
+                  ] as FeatureAccessMode[]
                 ).map((mode) => (
                   <option key={mode} value={mode}>
                     {modeLabel(mode)}

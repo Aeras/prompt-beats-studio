@@ -154,7 +154,12 @@ function handlerFixture(raw: unknown, stopReason = "end_turn") {
   const auxiliary = compile("src/lib/ai-auxiliary-idempotency.server.ts", (key) => {
     if (key === "zod") return { z };
     if (key.includes("global-ai-usage"))
-      return { withAiDispatchAdmission: async (fn: any) => fn(), AiUsageUnavailableError: Error };
+      return {
+        withFeatureAiDispatchAdmission: async (_userId: string, _keys: string[], fn: any) => fn(),
+        AiUsageUnavailableError: Error,
+      };
+    if (key.includes("ai-feature-access"))
+      return { featureKeysForAuxiliaryAiOperation: () => ["ai_generator", "song_setup_assistant"] };
     if (key.includes("ai-auxiliary-model-context"))
       return {
         auxiliaryModelContext: { run: async (_context: any, fn: any) => fn() },
