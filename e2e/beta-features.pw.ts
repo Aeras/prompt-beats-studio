@@ -269,7 +269,7 @@ test("Super Admin User Details shows entitlement plan, sources, history and audi
   const panel = page.getByTestId("subscription-entitlements-panel");
   await expect(panel).toBeVisible();
   await expect(panel.getByText(/Effective plan|Ενεργό πλάνο/)).toBeVisible();
-  await expect(panel.getByText("PLUS", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("plus", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText(/Stripe source|Πηγή Stripe/)).toBeVisible();
   await expect(panel.getByText("Browser fixture", { exact: true })).toBeVisible();
   await expect(panel.getByText("bb150000-0000-4000-8000-000000000001")).toBeVisible();
