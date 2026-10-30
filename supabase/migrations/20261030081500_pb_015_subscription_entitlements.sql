@@ -457,6 +457,9 @@ BEGIN
   END IF;
 
   IF v_mode IN ('plus_or_pro','pro_only') THEN
+    -- PB-015 paid modes must never bypass live ban/suspension/deletion state.
+    -- Legacy four-mode semantics above remain unchanged.
+    IF NOT public.beta_account_eligible(_user_id) THEN RETURN false; END IF;
     v_plan_rank := public.effective_subscription_plan_rank(_user_id);
     IF v_mode = 'plus_or_pro' THEN RETURN v_plan_rank >= 1; END IF;
     RETURN v_plan_rank >= 2;
@@ -594,7 +597,7 @@ BEGIN
   IF v_expected < 1 OR v_expected > 8 THEN RAISE EXCEPTION 'Invalid AI feature set'; END IF;
 
   PERFORM public._lock_user_security_state(_user_id);
-  IF NOT public._has_valid_account_state_internal(_user_id) THEN
+  IF NOT public.beta_account_eligible(_user_id) THEN
     RAISE EXCEPTION 'Feature not available';
   END IF;
 
