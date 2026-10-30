@@ -22,10 +22,7 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const locale = language === "el" ? "el-GR" : "en-US";
-  const timeZone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    [],
-  );
+  const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
   const [plan, setPlan] = useState<ManualSubscriptionPlan>("plus");
   const [duration, setDuration] = useState<ManualGrantDurationPreset>("7_days");
   const [customLocal, setCustomLocal] = useState("");
