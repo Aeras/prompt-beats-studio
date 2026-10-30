@@ -161,14 +161,16 @@ export const enFinal = {
   "management.entitlementReasonRequired": "A reason is required.",
   "management.entitlementCustomRequired": "Choose the exact expiry date and time.",
   "management.entitlementRevokeReasonRequired": "A revoke reason is required.",
-  "management.entitlementNeverConfirm": "Create a manual entitlement with no expiry? This remains active until explicitly revoked.",
+  "management.entitlementNeverConfirm":
+    "Create a manual entitlement with no expiry? This remains active until explicitly revoked.",
   "management.entitlementRevokeConfirm": "Revoke this exact manual entitlement?",
   "management.entitlementCancelled": "Entitlement action cancelled.",
   "management.entitlementGrantSaved": "Manual entitlement granted.",
   "management.entitlementGrantError": "Could not grant entitlement.",
   "management.entitlementRevoked": "Manual entitlement revoked.",
   "management.entitlementRevokeError": "Could not revoke entitlement.",
-  "management.entitlementSelfGrantWarning": "This is your own account. The grant uses the same audited manual-entitlement flow.",
+  "management.entitlementSelfGrantWarning":
+    "This is your own account. The grant uses the same audited manual-entitlement flow.",
   "management.featureKey": "Feature key",
   "management.featureUpdated": "Updated",
   "management.featureSearchUsers": "Add selected user",
