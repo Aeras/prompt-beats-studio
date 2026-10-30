@@ -40,6 +40,53 @@ CREATE INDEX subscription_manual_grants_user_active_idx
   ON public.subscription_manual_grants(user_id, plan, starts_at, expires_at)
   WHERE revoked_at IS NULL;
 
+CREATE FUNCTION public.protect_subscription_manual_grant_semantics()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $
+BEGIN
+  IF ROW(
+    NEW.user_id,
+    NEW.plan,
+    NEW.starts_at,
+    NEW.expires_at,
+    NEW.granted_by,
+    NEW.reason,
+    NEW.created_at
+  ) IS DISTINCT FROM ROW(
+    OLD.user_id,
+    OLD.plan,
+    OLD.starts_at,
+    OLD.expires_at,
+    OLD.granted_by,
+    OLD.reason,
+    OLD.created_at
+  ) THEN
+    RAISE EXCEPTION 'manual grant semantics are immutable; revoke and create a new grant';
+  END IF;
+
+  IF OLD.revoked_at IS NOT NULL AND ROW(
+    NEW.revoked_at,
+    NEW.revoked_by,
+    NEW.revoke_reason
+  ) IS DISTINCT FROM ROW(
+    OLD.revoked_at,
+    OLD.revoked_by,
+    OLD.revoke_reason
+  ) THEN
+    RAISE EXCEPTION 'revoked manual grants are immutable';
+  END IF;
+
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER protect_subscription_manual_grant_semantics
+BEFORE UPDATE ON public.subscription_manual_grants
+FOR EACH ROW
+EXECUTE FUNCTION public.protect_subscription_manual_grant_semantics();
+
 ALTER TABLE public.subscription_manual_grants ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.subscription_manual_grants FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE public.subscription_manual_grants TO service_role;
