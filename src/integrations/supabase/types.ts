@@ -3078,6 +3078,48 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_manual_grants: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_by: string | null
+          id: string
+          plan: string
+          reason: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          starts_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          plan: string
+          reason: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          plan?: string
+          reason?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -4092,6 +4134,7 @@ export type Database = {
         Args: { _feature_key: string }
         Returns: boolean
       }
+      current_user_effective_plan: { Args: never; Returns: Json }
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -4194,6 +4237,35 @@ export type Database = {
       feature_access_set_policy: {
         Args: { _access_mode: string; _feature_key: string }
         Returns: undefined
+      }
+      admit_feature_ai_dispatch_internal: {
+        Args: { _feature_keys: string[]; _user_id: string }
+        Returns: boolean
+      }
+      effective_subscription_plan: {
+        Args: { _user_id: string }
+        Returns: string
+      }
+      effective_subscription_plan_rank: {
+        Args: { _user_id: string }
+        Returns: number
+      }
+      subscription_entitlement_detail: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
+      subscription_manual_grant_create: {
+        Args: {
+          _expires_at: string | null
+          _plan: string
+          _reason: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      subscription_manual_grant_revoke: {
+        Args: { _grant_id: string; _revoke_reason: string }
+        Returns: Json
       }
       finalize_generation_revision_atomic: {
         Args: {
