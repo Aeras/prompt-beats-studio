@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 
-async function fixture(page: Page, role = "super_admin") {
+async function fixture(page: Page, role = "super_admin", registryUI = false) {
   const user = {
     id: "bb000000-0000-4000-8000-000000000006",
     aud: "authenticated",
@@ -55,6 +56,30 @@ async function fixture(page: Page, role = "super_admin") {
   let tester = false;
   let failTransition = false;
   const calls: string[] = [];
+  const catalog = [
+    {
+      id: "af550000-0000-4000-8000-000000000001",
+      label: "Original default",
+      family: "legacy",
+      builtin_version: "v1",
+      digest: "a".repeat(64),
+      status: "experimental",
+      created_at: "2026-10-30T00:00:00Z",
+      ever_used: true,
+      is_default: true,
+    },
+    {
+      id: "af550000-0000-4000-8000-000000000002",
+      label: "Candidate V5 BETA 2",
+      family: "master_v1",
+      builtin_version: null,
+      digest: "b".repeat(64),
+      status: "experimental",
+      created_at: "2026-10-30T00:00:00Z",
+      ever_used: false,
+      is_default: false,
+    },
+  ];
   await page.route("**/_serverFn/**", async (route) => {
     const name = Buffer.from(
       new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
@@ -72,6 +97,53 @@ async function fixture(page: Page, role = "super_admin") {
       updated_by: user.id,
     });
     let result: unknown = {};
+    if (name.includes("listGeneratorPrompts")) {
+      await route.fulfill({ json: { result: catalog, context: {} } });
+      return;
+    }
+    if (name.includes("readGeneratorPrompt")) {
+      await route.fulfill({
+        json: {
+          result: { label: "Candidate", content: "Offline safe <script> marker" },
+          context: {},
+        },
+      });
+      return;
+    }
+    if (name.includes("mutateGeneratorPrompt")) {
+      const body = route.request().postDataJSON();
+      const fields = body.t.p.v[0].p;
+      const value = (key: string) => fields.v[fields.k.indexOf(key)]?.s;
+      const item = catalog.find((p) => p.id === value("id"))!;
+      if (value("action") === "default") for (const p of catalog) p.is_default = p.id === item.id;
+      else if (value("action") === "archive") item.status = "archived";
+      else if (value("action") === "restore") item.status = "experimental";
+      await route.fulfill({ json: { result: null, context: {} } });
+      return;
+    }
+    if (name.includes("importGeneratorPrompt")) {
+      await route.fulfill({
+        json: { result: "af550000-0000-4000-8000-000000000003", context: {} },
+      });
+      return;
+    }
+    if (registryUI && name.includes("listFeatureAccessPolicies")) {
+      await route.fulfill({
+        json: {
+          result: [
+            {
+              feature_key: "ai_generator",
+              display_name: "AI Generator",
+              description: "Fixture",
+              access_mode: "everyone",
+              selected_count: 0,
+            },
+          ],
+          context: {},
+        },
+      });
+      return;
+    }
     if (name.includes("getMyModeration"))
       result = {
         role,
@@ -239,7 +311,9 @@ test("Super Admin manages Beta, archive/restore and explicit promotion without d
   expect(f.calls.filter((call) => call.includes("transitionBetaFeature"))).toHaveLength(4);
   await page.getByRole("button", { name: "Feature Access", exact: true }).click();
   await expect(page.getByText("New studio fixture", { exact: true })).toBeVisible();
-  await expect(page.getByRole("combobox").first()).toHaveValue("everyone");
+  await page.getByRole("combobox").first().click();
+  await expect(page.getByRole("option", { selected: true })).toHaveText(/Everyone|Όλοι/);
+  await page.keyboard.press("Escape");
 });
 
 test("Beta Test is independent of role management and refreshes after changes", async ({
@@ -308,4 +382,101 @@ for (const role of ["admin", "moderator", "user"])
       page.getByRole("button", { name: /^(Beta Features|Λειτουργίες Beta)$/ }),
     ).not.toBeVisible();
     expect(f.calls.some((call) => call.includes("listBetaFeatures"))).toBe(false);
+    await expect(
+      page.getByRole("button", { name: /^(AI Prompt Management|Διαχείριση AI Prompts)$/ }),
+    ).toHaveCount(0);
+    expect(f.calls.some((call) => call.includes("listGeneratorPrompts"))).toBe(false);
   });
+
+for (const language of ["en", "el"])
+  test(`prompt registry ${language} imports, previews safely and confirms default without paid calls`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (language) => localStorage.setItem("pb:interface-language", language),
+      language,
+    );
+    const f = await fixture(page, "super_admin", true);
+    await page.goto("/management");
+    await page
+      .getByRole("button", { name: /^(AI Prompt Management|Διαχείριση AI Prompts)$/ })
+      .click();
+    const panel = page.getByTestId("prompt-registry");
+    await expect(panel.getByText("Candidate V5 BETA 2", { exact: true })).toBeVisible();
+    await panel.getByLabel(/Name \/ version|Όνομα \/ έκδοση/).fill("Imported test");
+    await panel.getByLabel(/UTF-8 template|Πρότυπο UTF-8/).setInputFiles({
+      name: "candidate.md",
+      mimeType: "text/markdown",
+      buffer: readFileSync("docs/prompts/PromptBeats_V5_BETA_2_Master_Prompt_CANDIDATE.md"),
+    });
+    await panel
+      .getByRole("button", { name: /^(Import experimental prompt|Εισαγωγή πειραματικού prompt)$/ })
+      .click();
+    await expect
+      .poll(() => f.calls.filter((c) => c.includes("importGeneratorPrompt")).length)
+      .toBe(1);
+    const candidate = panel.locator("article").filter({ hasText: "Candidate V5 BETA 2" });
+    await candidate.getByRole("button", { name: /^(View|Προβολή)$/ }).click();
+    await expect(panel.getByLabel(/Template source|Περιεχόμενο προτύπου/)).toHaveValue(
+      "Offline safe <script> marker",
+    );
+    expect(await page.locator("script").filter({ hasText: "Offline safe" }).count()).toBe(0);
+    await candidate
+      .getByRole("button", { name: /^(Set production default|Ορισμός παραγωγικής προεπιλογής)$/ })
+      .click();
+    await expect(panel.getByRole("alertdialog")).toBeVisible();
+    expect(f.calls.some((c) => c.includes("mutateGeneratorPrompt"))).toBe(false);
+    await panel.getByRole("button", { name: /^(Confirm|Επιβεβαίωση)$/ }).click();
+    await expect(candidate.getByText(/Production default|Παραγωγική προεπιλογή/)).toBeVisible();
+    await expect(
+      candidate.getByRole("button", {
+        name: /^(Delete unused prompt|Διαγραφή αχρησιμοποίητου prompt)$/,
+      }),
+    ).toBeDisabled();
+    const axe = await new AxeBuilder({ page })
+      .include('[data-testid="prompt-registry"]')
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual(
+      [],
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    );
+    expect(f.calls.some((c) => /startGenerationJob|runSongGeneration/.test(c))).toBe(false);
+  });
+
+test("three scoped admin dropdowns use dark accessible non-native menus with unchanged choices", async ({
+  page,
+}) => {
+  await fixture(page, "super_admin", true);
+  await page.goto("/management?userId=bb000000-0000-4000-8000-000000000001");
+  await page.getByRole("button", { name: /^(Users|Χρήστες)$/ }).click();
+  const panel = page.getByTestId("subscription-entitlements-panel");
+  const plan = panel.getByRole("combobox", { name: /^(Manual plan|Χειροκίνητο πλάνο)$/ });
+  await plan.click();
+  await expect(page.getByRole("option")).toHaveText(["Plus", "Pro"]);
+  await page.keyboard.press("Escape");
+  await expect(plan).toBeFocused();
+  const duration = panel.getByRole("combobox", { name: /Duration|Διάρκεια/ });
+  await duration.click();
+  await expect(page.getByRole("option")).toHaveCount(8);
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: /^(Close|Κλείσιμο)$/ })
+    .last()
+    .click();
+  await page.getByRole("button", { name: /^(Feature Access|Πρόσβαση λειτουργιών)$/ }).click();
+  const access = page.getByRole("combobox", { name: /Access mode|Τρόπος πρόσβασης/ });
+  await access.click();
+  await expect(page.getByRole("option")).toHaveCount(6);
+  const background = await page
+    .getByRole("listbox")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(background).not.toBe("rgb(255, 255, 255)");
+  await page.keyboard.press("Escape");
+  await expect(access).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+});

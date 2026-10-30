@@ -97,6 +97,7 @@ async function fixture(
     plannerUsage?: boolean;
     plannerUnavailable?: boolean;
     setup?: "success" | "failure";
+    archivedPrompt?: boolean;
   } = {},
 ) {
   const user = {
@@ -233,6 +234,23 @@ async function fixture(
     )
       return route.fulfill({ status: 403, body: "Offline revoked access" });
     let result: unknown = {};
+    if (name.includes("listGeneratorPrompts")) {
+      await route.fulfill({
+        json: {
+          result: options.archivedPrompt
+            ? [
+                {
+                  id: "af570000-0000-4000-8000-000000000001",
+                  builtin_version: "v5_beta_1",
+                  status: "archived",
+                },
+              ]
+            : [],
+          context: {},
+        },
+      });
+      return;
+    }
     if (name.includes("generateSongSetup")) {
       if (options.setup === "failure")
         return route.fulfill({ status: 500, body: "SECRET provider Zod payload" });
@@ -1543,14 +1561,15 @@ test("PB-468 valid Setup previews all nine fields without automatically applying
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
 });
 
-test("V5 research candidate selector follows V4, keeps V1 default, and never dispatches on selection", async ({
+test("V5 research candidate selector follows V4, uses server default, and never dispatches on selection", async ({
   page,
 }) => {
   const f = await fixture(page, { superAdmin: true });
   const selector = page.locator("#generator-prompt-version");
   await expect(selector).toBeVisible();
-  await expect(selector).toHaveValue("v1");
+  await expect(selector).toHaveValue("default");
   await expect(selector.locator("option")).toHaveText([
+    "Production default (server-selected)",
     "Prompt Version 1 — Original",
     "Prompt Version 2 — Blueprint Optimized",
     "Prompt Version 3 — Adaptive Singability (Experimental)",
@@ -1573,4 +1592,15 @@ test("ordinary accounts never see restricted V5 selector", async ({ page }) => {
   const f = await fixture(page, { generatorRole: "user" });
   await expect(page.locator("#generator-prompt-version")).toHaveCount(0);
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
+});
+
+test("archived registry legacy choices disappear without changing the global default or dispatching", async ({
+  page,
+}) => {
+  const f = await fixture(page, { superAdmin: true, archivedPrompt: true });
+  const selector = page.locator("#generator-prompt-version");
+  await expect(selector).toHaveValue("default");
+  await expect(selector.locator('option[value="v5_beta_1"]')).toHaveCount(0);
+  await expect(selector.locator('option[value="v4_beta"]')).toHaveCount(1);
+  expect(f.calls.some((c) => c.name.includes("startGenerationJob"))).toBe(false);
 });

@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -148,28 +155,39 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-muted-foreground">
           {t("management.entitlementPlan")}
-          <select
-            value={plan}
-            onChange={(event) => setPlan(event.target.value as ManualSubscriptionPlan)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
-          >
-            <option value="plus">Plus</option>
-            <option value="pro">Pro</option>
-          </select>
+          <Select value={plan} onValueChange={(value) => setPlan(value as ManualSubscriptionPlan)}>
+            <SelectTrigger
+              aria-label={t("management.entitlementPlan")}
+              className="mt-1 min-h-10 border-primary/20 bg-popover"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
+              <SelectItem value="plus">Plus</SelectItem>
+              <SelectItem value="pro">Pro</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
         <label className="text-xs text-muted-foreground">
           {t("management.entitlementDuration")}
-          <select
+          <Select
             value={duration}
-            onChange={(event) => setDuration(event.target.value as ManualGrantDurationPreset)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
+            onValueChange={(value) => setDuration(value as ManualGrantDurationPreset)}
           >
-            {MANUAL_GRANT_DURATION_PRESETS.map((preset) => (
-              <option key={preset} value={preset}>
-                {durationLabel(preset)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label={t("management.entitlementDuration")}
+              className="mt-1 min-h-10 border-primary/20 bg-popover"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
+              {MANUAL_GRANT_DURATION_PRESETS.map((preset) => (
+                <SelectItem key={preset} value={preset}>
+                  {durationLabel(preset)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 

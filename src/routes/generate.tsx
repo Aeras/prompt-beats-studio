@@ -1,3 +1,5 @@
+import { listGeneratorPrompts } from "@/lib/prompt-registry.functions";
+import { promptRegistryCopy } from "@/i18n/prompt-registry";
 import {
   inspirationOwnedKeys,
   type InspirationApplyField,
@@ -987,9 +989,32 @@ function GeneratePage() {
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
-  const [promptVersion, setPromptVersion] = useState<"v1" | "v2" | "v3" | "v4_beta" | "v5_beta_1">(
-    "v1",
+  const [promptVersion, setPromptVersion] = useState<
+    "v1" | "v2" | "v3" | "v4_beta" | "v5_beta_1" | "default" | "registry"
+  >("default");
+  const [registryPromptId, setRegistryPromptId] = useState("");
+  const promptCatalog = useQuery({
+    queryKey: ["generator-prompt-catalog", user?.id],
+    queryFn: () => listGeneratorPrompts(),
+    enabled: moderation.isSuperAdmin,
+  });
+  const archivedPromptVersions = new Set(
+    (Array.isArray(promptCatalog.data) ? promptCatalog.data : [])
+      .filter((p) => p.status === "archived")
+      .map((p) => p.builtin_version),
   );
+  useEffect(() => {
+    const catalog = Array.isArray(promptCatalog.data) ? promptCatalog.data : [];
+    if (
+      catalog.length &&
+      ((promptVersion === "registry" &&
+        !catalog.some((p) => p.id === registryPromptId && p.status !== "archived")) ||
+        catalog.some((p) => p.builtin_version === promptVersion && p.status === "archived"))
+    ) {
+      setPromptVersion("default");
+      setRegistryPromptId("");
+    }
+  }, [promptCatalog.data, promptVersion, registryPromptId]);
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
@@ -2007,6 +2032,8 @@ function GeneratePage() {
       targetPlatform: effectiveTargetPlatform,
       generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
       promptVersion: songContext?.promptVersion ?? "v1",
+      promptLabel: songContext?.promptBinding?.label,
+      promptDigest: songContext?.promptBinding?.digest,
       exportedAt,
     });
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -2654,8 +2681,14 @@ function GeneratePage() {
           language: effectiveLanguage,
           targetPlatform,
           generationModel,
-          promptVersion:
-            advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1",
+          promptVersion: revisionMode
+            ? "v1"
+            : advanced && moderation.isSuperAdmin
+              ? promptVersion
+              : "default",
+          ...(advanced && !revisionMode && moderation.isSuperAdmin && promptVersion === "registry"
+            ? { registryPromptId }
+            : {}),
           advanced: advanced || revisionMode,
           baseMusicStyle: baseGenre,
           instruments: instrumentsText,
@@ -3711,28 +3744,52 @@ function GeneratePage() {
                 <select
                   id="generator-prompt-version"
                   className={fieldClass}
-                  value={promptVersion}
-                  disabled={busy || Boolean(jobId)}
-                  onChange={(event) =>
-                    setPromptVersion(
-                      event.target.value === "v5_beta_1"
-                        ? "v5_beta_1"
-                        : event.target.value === "v4_beta"
-                          ? "v4_beta"
-                          : event.target.value === "v3"
-                            ? "v3"
-                            : event.target.value === "v2"
-                              ? "v2"
-                              : "v1",
-                    )
+                  value={
+                    promptVersion === "registry" ? `registry:${registryPromptId}` : promptVersion
                   }
+                  disabled={busy || Boolean(jobId)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value.startsWith("registry:")) {
+                      setRegistryPromptId(value.slice(9));
+                      setPromptVersion("registry");
+                    } else {
+                      setRegistryPromptId("");
+                      setPromptVersion(value as typeof promptVersion);
+                    }
+                  }}
                 >
-                  <option value="v1">Prompt Version 1 — Original</option>
-                  <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
-                  <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
-                  <option value="v4_beta">Prompt Version 4 BETA — Unified Master (R3.1)</option>
-                  <option value="v5_beta_1">Prompt Version 5 BETA 1 — Creative Master</option>
+                  <option value="default">{promptRegistryCopy[appLanguage].automatic}</option>
+                  {(Array.isArray(promptCatalog.data) ? promptCatalog.data : [])
+                    .filter((p) => p.family === "master_v1" && p.status !== "archived")
+                    .map((p) => (
+                      <option key={p.id} value={`registry:${p.id}`}>
+                        {p.label}
+                      </option>
+                    ))}
+                  {!archivedPromptVersions.has("v1") && (
+                    <option value="v1">Prompt Version 1 — Original</option>
+                  )}
+                  {!archivedPromptVersions.has("v2") && (
+                    <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
+                  )}
+                  {!archivedPromptVersions.has("v3") && (
+                    <option value="v3">
+                      Prompt Version 3 — Adaptive Singability (Experimental)
+                    </option>
+                  )}
+                  {!archivedPromptVersions.has("v4_beta") && (
+                    <option value="v4_beta">Prompt Version 4 BETA — Unified Master (R3.1)</option>
+                  )}
+                  {!archivedPromptVersions.has("v5_beta_1") && (
+                    <option value="v5_beta_1">Prompt Version 5 BETA 1 — Creative Master</option>
+                  )}
                 </select>
+                {promptCatalog.isError && (
+                  <p role="alert" className="mt-2 text-xs text-destructive">
+                    {promptRegistryCopy[appLanguage].failed}
+                  </p>
+                )}
                 <p className="mt-2 text-xs text-muted-foreground">
                   {appLanguage === "el"
                     ? "Οι V1–V4 παραμένουν αμετάβλητες. Η V5 BETA 1 είναι ερευνητικός υποψήφιος Creative Master, όχι αποδεδειγμένα ανώτερο prompt. Μόνο για Super Admin."
