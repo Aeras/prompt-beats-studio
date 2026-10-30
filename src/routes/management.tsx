@@ -1422,7 +1422,14 @@ function FeatureAccessPanel() {
                 className="mt-1 block w-full min-w-44 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
               >
                 {(
-                  ["disabled", "admins_only", "selected_users", "everyone"] as FeatureAccessMode[]
+                  [
+                    "disabled",
+                    "admins_only",
+                    "selected_users",
+                    "everyone",
+                    "plus_or_pro",
+                    "pro_only",
+                  ] as FeatureAccessMode[]
                 ).map((mode) => (
                   <option key={mode} value={mode}>
                     {modeLabel(mode)}
