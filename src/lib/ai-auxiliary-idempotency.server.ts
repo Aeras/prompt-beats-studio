@@ -65,19 +65,19 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
           input.userId,
           featureKeysForAuxiliaryAiOperation(input.operation),
           async () => {
-          const markProviderStarted = async (model: string) => {
-            await startAuxiliaryModel(model);
-          };
-          const result = await input.execute(markProviderStarted);
-          await completeAuxiliaryAiRequest({
-            userId: input.userId,
-            operation: input.operation,
-            requestKey: input.requestKey,
-            executionToken,
-            result,
-          });
-          return result;
-        },
+            const markProviderStarted = async (model: string) => {
+              await startAuxiliaryModel(model);
+            };
+            const result = await input.execute(markProviderStarted);
+            await completeAuxiliaryAiRequest({
+              userId: input.userId,
+              operation: input.operation,
+              requestKey: input.requestKey,
+              executionToken,
+              result,
+            });
+            return result;
+          },
         );
       } catch (error) {
         const message =
