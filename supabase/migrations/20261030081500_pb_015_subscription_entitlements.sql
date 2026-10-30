@@ -219,7 +219,7 @@ DECLARE
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   PERFORM public._lock_user_security_state(v_actor);
-  IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
+  IF NOT public.beta_account_eligible(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
   IF NOT public._has_valid_account_state_internal(_user_id) THEN
@@ -301,11 +301,11 @@ BEGIN
   PERFORM public._lock_user_security_pair(v_actor, _user_id);
   PERFORM pg_advisory_xact_lock(hashtextextended('promptbeats:subscription-entitlement:' || _user_id::text, 0));
 
-  IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
+  IF NOT public.beta_account_eligible(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = _user_id) THEN
-    RAISE EXCEPTION 'user not found';
+  IF NOT public.beta_account_eligible(_user_id) THEN
+    RAISE EXCEPTION 'user not available';
   END IF;
   IF _plan NOT IN ('plus','pro') THEN RAISE EXCEPTION 'invalid plan'; END IF;
   IF char_length(v_reason) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'invalid reason'; END IF;
@@ -370,7 +370,7 @@ BEGIN
   -- Authority is proved only after the security lock(s), so stale UI/JWT state
   -- cannot authorize the mutation. Unauthorized callers still learn nothing
   -- about whether the supplied grant ID exists.
-  IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
+  IF NOT public.beta_account_eligible(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
   IF v_target IS NULL THEN RAISE EXCEPTION 'grant not found'; END IF;
