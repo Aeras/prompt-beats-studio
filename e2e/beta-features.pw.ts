@@ -154,6 +154,33 @@ async function fixture(page: Page, role = "super_admin") {
         blocked_at: null,
       };
     else if (name.includes("getAdminAiModels")) result = { models: [] };
+    else if (name.includes("getSubscriptionEntitlementDetail"))
+      result = {
+        effectivePlan: "plus",
+        stripe: { plan: "free", status: "inactive", currentPeriodEnd: null },
+        manualGrants: [
+          {
+            id: "bb150000-0000-4000-8000-000000000001",
+            plan: "plus",
+            startsAt: "2026-10-30T08:00:00Z",
+            expiresAt: "2026-11-30T08:00:00Z",
+            reason: "Browser fixture",
+            createdAt: "2026-10-30T08:00:00Z",
+            revokedAt: null,
+            revokeReason: null,
+            active: true,
+          },
+        ],
+        audit: [
+          {
+            id: "bb150000-0000-4000-8000-000000000002",
+            action: "CREATE_SUBSCRIPTION_MANUAL_GRANT",
+            createdAt: "2026-10-30T08:00:00Z",
+            grantId: "bb150000-0000-4000-8000-000000000001",
+            plan: "plus",
+          },
+        ],
+      };
     else if (name.includes("getMyFeatureAccess")) result = { allowed: true };
     else if (name.includes("getHomeResume")) result = { items: [], failedSources: [] };
     else if (name.includes("list") || name.includes("search"))
@@ -230,6 +257,30 @@ test("Beta Test is independent of role management and refreshes after changes", 
   await expect(checkbox).not.toBeChecked();
   expect(f.calls.filter((call) => call.includes("setBetaTester"))).toHaveLength(2);
   expect(f.calls.some((call) => call.includes("setAdminUserRole"))).toBe(false);
+});
+
+test("Super Admin User Details shows entitlement plan, sources, history and audit", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/management?userId=bb000000-0000-4000-8000-000000000001");
+  await page.getByRole("button", { name: /^(Users|Χρήστες)$/ }).click();
+
+  const panel = page.getByTestId("subscription-entitlements-panel");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText(/Effective plan|Ενεργό πλάνο/)).toBeVisible();
+  await expect(panel.getByText("PLUS", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText(/Stripe source|Πηγή Stripe/)).toBeVisible();
+  await expect(panel.getByText("Browser fixture", { exact: true })).toBeVisible();
+  await expect(panel.getByText("bb150000-0000-4000-8000-000000000001")).toBeVisible();
+
+  const a11y = await new AxeBuilder({ page })
+    .include('[data-testid="subscription-entitlements-panel"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(
+    a11y.violations.filter((item) => item.impact === "critical" || item.impact === "serious"),
+  ).toEqual([]);
 });
 
 test("failed lifecycle changes show safe feedback and reload authoritative state", async ({
