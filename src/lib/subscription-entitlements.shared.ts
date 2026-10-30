@@ -114,6 +114,24 @@ function daysInMonth(year: number, month: number) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+export function localDateTimeInTimeZoneToDate(value: string, timeZone: string): Date {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+  if (!match) throw new Error("Invalid local date/time.");
+  const [, year, month, day, hour, minute, second = "0"] = match;
+  return zonedLocalPartsToDate(
+    {
+      year: Number(year),
+      month: Number(month),
+      day: Number(day),
+      hour: Number(hour),
+      minute: Number(minute),
+      second: Number(second),
+    },
+    timeZone,
+  );
+}
+
 /**
  * Adds calendar months in an IANA timezone, preserving the local wall-clock and
  * clamping end-of-month days. The returned instant is UTC/ISO-ready.
