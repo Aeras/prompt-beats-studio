@@ -1,4 +1,4 @@
-import { withAiDispatchAdmission } from "./global-ai-usage.server";
+import { withFeatureAiDispatchAdmission } from "./global-ai-usage.server";\nimport { featureKeysForAiOperation } from "./ai-feature-access.server";
 import type { AiOperation, NormalizedUsage } from "./ai-usage.server";
 import { recordAiUsage } from "./ai-usage.server";
 import { usageEvidence } from "./ai-usage-evidence";
@@ -102,7 +102,7 @@ export type ExecutionDependencies = {
   checkpoint?: typeof checkpointExecution;
   write?: typeof write;
   record?: typeof recordAiUsage;
-  dispatchAdmission?: typeof withAiDispatchAdmission;
+  dispatchAdmission?: typeof withFeatureAiDispatchAdmission;
 };
 export function trackedCaller(
   raw: ModelCaller,
@@ -121,7 +121,11 @@ export function trackedCaller(
     }
     if (context.recoveryOnly || cached)
       throw new Error("Provider execution is unresolved; automatic redispatch is forbidden.");
-    return (deps.dispatchAdmission ?? withAiDispatchAdmission)(async () => {
+    const featureKeys = featureKeysForAiOperation(context.operation);
+    return (deps.dispatchAdmission ?? withFeatureAiDispatchAdmission)(
+      context.userId,
+      featureKeys,
+      async () => {
       input.abortSignal?.throwIfAborted();
       const id = context.executionId ?? crypto.randomUUID();
       call.executionId = id;
@@ -205,7 +209,8 @@ export function trackedCaller(
         });
         throw error;
       }
-    });
+    },
+    );
   };
   return call;
 }
