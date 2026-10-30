@@ -348,6 +348,30 @@ SELECT pg_temp.assert(
   'pro_only must allow Pro'
 );
 
+-- New paid modes must not bypass live account validity. Keep the legacy four-mode
+-- matrix above unchanged; these checks are scoped only to PB-015 paid access.
+UPDATE auth.users
+SET banned_until = statement_timestamp() + interval '1 hour'
+WHERE id='bd150000-0000-4000-8000-000000000005';
+SELECT pg_temp.assert(
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
+  'pro_only must deny a currently auth-banned Pro account'
+);
+UPDATE auth.users
+SET banned_until = NULL
+WHERE id='bd150000-0000-4000-8000-000000000005';
+
+UPDATE public.user_roles
+SET moderation_status='suspended'
+WHERE user_id='bd150000-0000-4000-8000-000000000005';
+SELECT pg_temp.assert(
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
+  'pro_only must deny a suspended Pro account'
+);
+UPDATE public.user_roles
+SET moderation_status='active'
+WHERE user_id='bd150000-0000-4000-8000-000000000005';
+
 -- Feature-aware provider admission is service-only and composes Feature Access + Global AI.
 UPDATE public.feature_access_policies SET access_mode='everyone' WHERE feature_key='pb015_feature_fixture';
 SELECT pg_temp.assert(
