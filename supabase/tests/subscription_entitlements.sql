@@ -45,6 +45,11 @@ SELECT pg_temp.assert(
   NOT has_function_privilege('authenticated','public.admit_feature_ai_dispatch_internal(uuid,text[])','EXECUTE'),
   'Feature-aware provider admission must be service-only'
 );
+SELECT pg_temp.denied($q$
+  UPDATE public.subscription_manual_grants
+  SET plan='pro'
+  WHERE reason='no such disposable grant'
+$q$,'42501');
 SELECT pg_temp.assert(
   has_function_privilege('service_role','public.admit_feature_ai_dispatch_internal(uuid,text[])','EXECUTE'),
   'Feature-aware provider admission must be available to service role'
@@ -78,12 +83,19 @@ INSERT INTO public.subscription_manual_grants(user_id,plan,starts_at,expires_at,
   ('bd150000-0000-4000-8000-000000000001','plus',statement_timestamp()-interval '1 hour',statement_timestamp()+interval '7 days','active plus fixture'),
   ('bd150000-0000-4000-8000-000000000002','pro',statement_timestamp()+interval '1 hour',statement_timestamp()+interval '2 hours','future pro fixture'),
   ('bd150000-0000-4000-8000-000000000002','pro',statement_timestamp()-interval '2 hours',statement_timestamp()-interval '1 hour','expired pro fixture'),
-  ('bd150000-0000-4000-8000-000000000002','plus',statement_timestamp()-interval '2 hours',NULL,'revoked plus fixture'),
   ('bd150000-0000-4000-8000-000000000005','plus',statement_timestamp()-interval '1 hour',NULL,'never plus fixture');
 
-UPDATE public.subscription_manual_grants
-SET revoked_at=statement_timestamp(), revoke_reason='fixture revoke'
-WHERE reason='revoked plus fixture';
+INSERT INTO public.subscription_manual_grants(
+  user_id,plan,starts_at,expires_at,reason,revoked_at,revoke_reason
+) VALUES (
+  'bd150000-0000-4000-8000-000000000002',
+  'plus',
+  statement_timestamp()-interval '2 hours',
+  NULL,
+  'revoked plus fixture',
+  statement_timestamp(),
+  'fixture revoke'
+);
 
 SELECT pg_temp.assert(
   public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='plus',
