@@ -87,6 +87,7 @@ async function fixture(
   options: {
     configured?: boolean;
     superAdmin?: boolean;
+    generatorRole?: "user" | "super_admin";
     allowed?: boolean;
     greek?: boolean;
     partial?: boolean;
@@ -367,7 +368,7 @@ async function fixture(
       }
     } else if (name.includes("getMyModeration"))
       result = {
-        role: "super_admin",
+        role: options.generatorRole ?? "super_admin",
         status: "active",
         can_view_users: true,
         can_manage_roles: true,
@@ -1539,5 +1540,37 @@ test("PB-468 valid Setup previews all nine fields without automatically applying
     dialog.getByRole("button", { name: "Apply to Advanced", exact: true }),
   ).toBeVisible();
   expect(f.calls.filter((c) => c.name.includes("generateSongSetup"))).toHaveLength(1);
+  expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
+});
+
+test("V5 research candidate selector follows V4, keeps V1 default, and never dispatches on selection", async ({
+  page,
+}) => {
+  const f = await fixture(page, { superAdmin: true });
+  const selector = page.locator("#generator-prompt-version");
+  await expect(selector).toBeVisible();
+  await expect(selector).toHaveValue("v1");
+  await expect(selector.locator("option")).toHaveText([
+    "Prompt Version 1 — Original",
+    "Prompt Version 2 — Blueprint Optimized",
+    "Prompt Version 3 — Adaptive Singability (Experimental)",
+    "Prompt Version 4 BETA — Unified Master (R3.1)",
+    "Prompt Version 5 BETA 1 — Creative Master",
+  ]);
+  await selector.selectOption("v5_beta_1");
+  await expect(selector).toHaveValue("v5_beta_1");
+  await expect(page.getByText(/not a proven superior prompt/)).toBeVisible();
+  await page.locator("button[data-generator-mode=basic]").click();
+  await expect(selector).toHaveCount(0);
+  await page.locator("button[data-generator-mode=advanced]").click();
+  await expect(selector).toHaveValue("v5_beta_1");
+  expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+});
+test("ordinary accounts never see restricted V5 selector", async ({ page }) => {
+  const f = await fixture(page, { generatorRole: "user" });
+  await expect(page.locator("#generator-prompt-version")).toHaveCount(0);
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
 });
