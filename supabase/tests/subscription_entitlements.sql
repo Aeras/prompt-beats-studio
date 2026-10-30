@@ -361,16 +361,24 @@ UPDATE auth.users
 SET banned_until = NULL
 WHERE id='bd150000-0000-4000-8000-000000000005';
 
+INSERT INTO public.subscription_manual_grants(user_id,plan,starts_at,expires_at,reason)
+VALUES (
+  'bd150000-0000-4000-8000-000000000006',
+  'pro',
+  statement_timestamp()-interval '1 minute',
+  statement_timestamp()+interval '1 day',
+  'suspended moderator plan fixture'
+);
 UPDATE public.user_roles
 SET moderation_status='suspended'
-WHERE user_id='bd150000-0000-4000-8000-000000000005';
+WHERE user_id='bd150000-0000-4000-8000-000000000006';
 SELECT pg_temp.assert(
-  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
-  'pro_only must deny a suspended Pro account'
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000006','pb015_feature_fixture'),
+  'pro_only must deny a suspended Pro moderator account'
 );
 UPDATE public.user_roles
 SET moderation_status='active'
-WHERE user_id='bd150000-0000-4000-8000-000000000005';
+WHERE user_id='bd150000-0000-4000-8000-000000000006';
 
 -- Feature-aware provider admission is service-only and composes Feature Access + Global AI.
 UPDATE public.feature_access_policies SET access_mode='everyone' WHERE feature_key='pb015_feature_fixture';
