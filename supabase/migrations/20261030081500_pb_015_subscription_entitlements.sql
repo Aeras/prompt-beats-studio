@@ -51,7 +51,6 @@ BEGIN
     NEW.plan,
     NEW.starts_at,
     NEW.expires_at,
-    NEW.granted_by,
     NEW.reason,
     NEW.created_at
   ) IS DISTINCT FROM ROW(
@@ -59,23 +58,36 @@ BEGIN
     OLD.plan,
     OLD.starts_at,
     OLD.expires_at,
-    OLD.granted_by,
     OLD.reason,
     OLD.created_at
   ) THEN
     RAISE EXCEPTION 'manual grant semantics are immutable; revoke and create a new grant';
   END IF;
 
-  IF OLD.revoked_at IS NOT NULL AND ROW(
-    NEW.revoked_at,
-    NEW.revoked_by,
-    NEW.revoke_reason
-  ) IS DISTINCT FROM ROW(
-    OLD.revoked_at,
-    OLD.revoked_by,
-    OLD.revoke_reason
-  ) THEN
-    RAISE EXCEPTION 'revoked manual grants are immutable';
+  -- Actor references intentionally use ON DELETE SET NULL. Preserve that
+  -- retention behavior without permitting actor reassignment in-place.
+  IF NEW.granted_by IS DISTINCT FROM OLD.granted_by
+    AND NOT (OLD.granted_by IS NOT NULL AND NEW.granted_by IS NULL)
+  THEN
+    RAISE EXCEPTION 'manual grant actor is immutable';
+  END IF;
+
+  IF OLD.revoked_at IS NOT NULL THEN
+    IF ROW(
+      NEW.revoked_at,
+      NEW.revoke_reason
+    ) IS DISTINCT FROM ROW(
+      OLD.revoked_at,
+      OLD.revoke_reason
+    ) THEN
+      RAISE EXCEPTION 'revoked manual grants are immutable';
+    END IF;
+
+    IF NEW.revoked_by IS DISTINCT FROM OLD.revoked_by
+      AND NOT (OLD.revoked_by IS NOT NULL AND NEW.revoked_by IS NULL)
+    THEN
+      RAISE EXCEPTION 'manual revoke actor is immutable';
+    END IF;
   END IF;
 
   RETURN NEW;
