@@ -337,10 +337,22 @@ SET search_path = public, auth
 AS $$
 DECLARE
   v_mode text;
+  v_stage text;
   v_plan_rank integer;
 BEGIN
   IF _user_id IS NULL OR NOT public.has_valid_account_state(_user_id) THEN
     RETURN false;
+  END IF;
+
+  -- Preserve Beta lifecycle semantics exactly. Only promoted/ordinary Feature
+  -- Access policies continue into the six-mode policy evaluator below.
+  SELECT stage INTO v_stage
+  FROM public.beta_features
+  WHERE feature_key = _feature_key;
+  IF FOUND THEN
+    IF NOT public.beta_account_eligible(_user_id) THEN RETURN false; END IF;
+    IF v_stage IN ('stable','archived') THEN RETURN true; END IF;
+    IF v_stage = 'beta' THEN RETURN public.beta_can_test(_user_id); END IF;
   END IF;
 
   SELECT access_mode INTO v_mode
