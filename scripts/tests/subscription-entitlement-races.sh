@@ -21,12 +21,13 @@ INSERT INTO public.profile_private(user_id,is_banned) VALUES
 ON CONFLICT(user_id) DO UPDATE SET is_banned=false;
 INSERT INTO public.feature_access_policies(feature_key,display_name,description,access_mode)
  VALUES('pb015_race_feature','PB-015 race','Disposable local race fixture','pro_only');
+BEGIN;
 SELECT set_config('request.jwt.claim.sub','$actor',true);
 SET LOCAL ROLE authenticated;
 SELECT public.subscription_manual_grant_create(
  '$target','pro',statement_timestamp()+interval '1 day','race fixture grant'
 );
-RESET ROLE;
+COMMIT;
 SQL
 
 grant_id="$(query -c "SELECT id FROM public.subscription_manual_grants WHERE user_id='$target' AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1;")"
@@ -51,12 +52,13 @@ wait "$winner"
 
 # Re-create a Pro grant.
 query <<SQL >/dev/null
+BEGIN;
 SELECT set_config('request.jwt.claim.sub','$actor',true);
 SET LOCAL ROLE authenticated;
 SELECT public.subscription_manual_grant_create(
  '$target','pro',statement_timestamp()+interval '1 day','race fixture second grant'
 );
-RESET ROLE;
+COMMIT;
 SQL
 grant_id2="$(query -c "SELECT id FROM public.subscription_manual_grants WHERE user_id='$target' AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1;")"
 
@@ -157,10 +159,11 @@ query -c "UPDATE public.user_roles SET role='super_admin' WHERE user_id='$actor'
 # Duplicate revoke is idempotent and cannot create duplicate revoke audit.
 before="$(query -c "SELECT count(*) FROM public.admin_audit_log WHERE action='REVOKE_SUBSCRIPTION_MANUAL_GRANT' AND details->>'grant_id'='$grant_id2';")"
 query <<SQL >/dev/null
+BEGIN;
 SELECT set_config('request.jwt.claim.sub','$actor',true);
 SET LOCAL ROLE authenticated;
 SELECT public.subscription_manual_grant_revoke('$grant_id2','duplicate revoke retry');
-RESET ROLE;
+COMMIT;
 SQL
 after="$(query -c "SELECT count(*) FROM public.admin_audit_log WHERE action='REVOKE_SUBSCRIPTION_MANUAL_GRANT' AND details->>'grant_id'='$grant_id2';")"
 [[ "$before" = "$after" ]] || { echo 'FAIL: duplicate revoke created another audit' >&2; exit 1; }
