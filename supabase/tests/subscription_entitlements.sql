@@ -67,7 +67,8 @@ INSERT INTO auth.users(id,email) VALUES
   ('bd150000-0000-4000-8000-000000000005','pb015-stripe@example.invalid'),
   ('bd150000-0000-4000-8000-000000000006','pb015-moderator@example.invalid'),
   ('bd150000-0000-4000-8000-000000000007','pb015-plus@example.invalid'),
-  ('bd150000-0000-4000-8000-000000000008','pb015-exact-expiry@example.invalid');
+  ('bd150000-0000-4000-8000-000000000008','pb015-exact-expiry@example.invalid'),
+  ('bd150000-0000-4000-8000-000000000009','pb015-free-super@example.invalid');
 
 INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000001','user','active'),
@@ -77,7 +78,8 @@ INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000005','user','active'),
   ('bd150000-0000-4000-8000-000000000006','moderator','active'),
   ('bd150000-0000-4000-8000-000000000007','user','active'),
-  ('bd150000-0000-4000-8000-000000000008','user','active')
+  ('bd150000-0000-4000-8000-000000000008','user','active'),
+  ('bd150000-0000-4000-8000-000000000009','super_admin','active')
 ON CONFLICT(user_id) DO UPDATE
 SET role=EXCLUDED.role, moderation_status=EXCLUDED.moderation_status;
 
@@ -330,7 +332,7 @@ SELECT pg_temp.assert(
 );
 UPDATE public.feature_access_policies SET access_mode='pro_only' WHERE feature_key='pb015_feature_fixture';
 SELECT pg_temp.assert(
-  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000004','pb015_feature_fixture'),
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000009','pb015_feature_fixture'),
   'Free Super Admin must not bypass pro_only'
 );
 SELECT pg_temp.assert(
