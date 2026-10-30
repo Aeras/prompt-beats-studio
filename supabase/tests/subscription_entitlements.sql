@@ -108,9 +108,18 @@ SELECT pg_temp.assert(
   'Stripe Pro must outrank manual Plus'
 );
 
+INSERT INTO public.subscriptions(user_id,plan,status,current_period_end) VALUES
+  ('bd150000-0000-4000-8000-000000000001','plus','active',statement_timestamp()+interval '30 days')
+ON CONFLICT(user_id) DO UPDATE
+SET plan=EXCLUDED.plan,status=EXCLUDED.status,current_period_end=EXCLUDED.current_period_end;
+
 INSERT INTO public.subscription_manual_grants(user_id,plan,starts_at,expires_at,reason) VALUES
   ('bd150000-0000-4000-8000-000000000001','pro',statement_timestamp()-interval '1 minute',statement_timestamp()+interval '1 day','overlap pro one'),
   ('bd150000-0000-4000-8000-000000000001','pro',statement_timestamp()-interval '1 minute',statement_timestamp()+interval '2 days','overlap pro two');
+SELECT pg_temp.assert(
+  public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='pro',
+  'Stripe Plus fixture plus manual Pro must resolve Pro'
+);
 SELECT pg_temp.assert(
   public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='pro',
   'Overlapping grants must choose highest plan'
