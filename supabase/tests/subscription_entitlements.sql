@@ -98,7 +98,19 @@ SELECT pg_temp.assert(
   'Never grant must remain active'
 );
 
--- Stripe remains an independent source and wins by rank.
+-- Stripe Plus is not commercially activated in PB-015. An unexpected/future
+-- Plus projection must not grant paid access until the approved Stripe mapping
+-- is extended in a separate scope.
+INSERT INTO public.subscriptions(user_id,plan,status,current_period_end) VALUES
+  ('bd150000-0000-4000-8000-000000000002','plus','active',statement_timestamp()+interval '30 days')
+ON CONFLICT(user_id) DO UPDATE
+SET plan=EXCLUDED.plan,status=EXCLUDED.status,current_period_end=EXCLUDED.current_period_end;
+SELECT pg_temp.assert(
+  public.effective_subscription_plan('bd150000-0000-4000-8000-000000000002')='free',
+  'Stripe Plus must remain inactive until separately approved'
+);
+
+-- Stripe remains an independent source and approved Pro wins by rank.
 INSERT INTO public.subscriptions(user_id,plan,status,current_period_end) VALUES
   ('bd150000-0000-4000-8000-000000000005','pro','active',statement_timestamp()+interval '30 days')
 ON CONFLICT(user_id) DO UPDATE
