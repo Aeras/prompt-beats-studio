@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
@@ -31,6 +31,29 @@ export function PromptRegistryPanel() {
     action: "default" | "archive" | "restore" | "delete";
     expectedDefault: string;
   } | null>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const invokerRef = useRef<HTMLButtonElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const wasConfirming = useRef(false);
+  const actionLabels = {
+    default: c.activate,
+    archive: c.archive,
+    restore: c.restore,
+    delete: c.remove,
+  };
+  useEffect(() => {
+    if (pending) {
+      wasConfirming.current = true;
+      cancelRef.current?.focus({ preventScroll: true });
+      confirmationRef.current?.scrollIntoView({ block: "center" });
+    } else if (wasConfirming.current) {
+      wasConfirming.current = false;
+      const invoker = invokerRef.current;
+      if (invoker?.isConnected && !invoker.disabled) invoker.focus();
+      else headingRef.current?.focus();
+    }
+  }, [pending]);
   const catalog = useQuery({
     queryKey: ["generator-prompt-catalog", user?.id],
     queryFn: () => listGeneratorPrompts(),
@@ -50,8 +73,8 @@ export function PromptRegistryPanel() {
       });
     },
     onSuccess: async () => {
-      setPending(null);
       await refresh();
+      setPending(null);
       toast.success(c.saved);
     },
     onError: () => toast.error(c.failed),
@@ -94,7 +117,9 @@ export function PromptRegistryPanel() {
   const current = catalog.data?.find((p) => p.is_default);
   return (
     <section data-testid="prompt-registry" className="glass min-w-0 space-y-4 rounded-2xl p-4">
-      <h2 className="font-display text-lg font-bold">{c.title}</h2>
+      <h2 ref={headingRef} tabIndex={-1} className="font-display text-lg font-bold">
+        {c.title}
+      </h2>
       <p className="text-sm text-muted-foreground">{c.intro}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
@@ -144,17 +169,31 @@ export function PromptRegistryPanel() {
       {catalog.isError && <p role="alert">{c.failed}</p>}
       {pending && (
         <div
+          ref={confirmationRef}
           role="alertdialog"
-          aria-label={c.confirm}
+          aria-label={actionLabels[pending.action]}
+          aria-describedby="prompt-registry-confirm-description"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !change.isPending) {
+              event.preventDefault();
+              setPending(null);
+            }
+          }}
           className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4"
         >
-          <p>{c.confirm}</p>
+          <h3 className="font-semibold">{actionLabels[pending.action]}</h3>
+          <p id="prompt-registry-confirm-description">{c.confirm}</p>
           <p className="break-words font-semibold">{pending.item.label}</p>
           <div className="flex flex-wrap gap-2">
             <button className={button} disabled={change.isPending} onClick={() => change.mutate()}>
               {c.confirmAction}
             </button>
-            <button className={button} disabled={change.isPending} onClick={() => setPending(null)}>
+            <button
+              ref={cancelRef}
+              className={button}
+              disabled={change.isPending}
+              onClick={() => setPending(null)}
+            >
               {c.cancel}
             </button>
           </div>
@@ -222,9 +261,12 @@ export function PromptRegistryPanel() {
                     (action === "default" && item.status === "archived") ||
                     (action === "delete" && (item.ever_used || item.family === "legacy"))
                   }
-                  onClick={() =>
-                    current && setPending({ item, action, expectedDefault: current.id })
-                  }
+                  onClick={(event) => {
+                    if (current) {
+                      invokerRef.current = event.currentTarget;
+                      setPending({ item, action, expectedDefault: current.id });
+                    }
+                  }}
                 >
                   {action === "default"
                     ? c.activate

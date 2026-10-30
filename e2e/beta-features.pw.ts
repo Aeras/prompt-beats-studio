@@ -447,9 +447,27 @@ for (const language of ["en", "el"])
       .getByRole("button", { name: /^(Set production default|Ορισμός παραγωγικής προεπιλογής)$/ })
       .click();
     await expect(panel.getByRole("alertdialog")).toBeVisible();
+    await expect(panel.getByRole("button", { name: /^(Cancel|Ακύρωση)$/ })).toBeFocused();
+    const bounds = await panel.getByRole("alertdialog").boundingBox();
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await page.keyboard.press("Escape");
+    await expect(panel.getByRole("alertdialog")).toHaveCount(0);
+    await expect(
+      candidate.getByRole("button", {
+        name: /^(Set production default|Ορισμός παραγωγικής προεπιλογής)$/,
+      }),
+    ).toBeFocused();
+    await candidate
+      .getByRole("button", { name: /^(Set production default|Ορισμός παραγωγικής προεπιλογής)$/ })
+      .click();
+    await expect(panel.getByRole("button", { name: /^(Cancel|Ακύρωση)$/ })).toBeFocused();
     expect(f.calls.some((c) => c.includes("mutateGeneratorPrompt"))).toBe(false);
     await panel.getByRole("button", { name: /^(Confirm|Επιβεβαίωση)$/ }).click();
     await expect(candidate.getByText(/Production default|Παραγωγική προεπιλογή/)).toBeVisible();
+    await expect(
+      panel.getByRole("heading", { name: /^(AI Prompt Management|Διαχείριση AI Prompts)$/ }),
+    ).toBeFocused();
     await expect(
       candidate.getByRole("button", {
         name: /^(Delete unused prompt|Διαγραφή αχρησιμοποίητου prompt)$/,
