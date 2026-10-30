@@ -74,15 +74,12 @@ export const createSubscriptionManualGrant = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
-    const { data: result, error } = await context.supabase.rpc(
-      "subscription_manual_grant_create",
-      {
-        _user_id: data.userId,
-        _plan: data.plan,
-        _expires_at: data.expiresAt,
-        _reason: data.reason,
-      },
-    );
+    const { data: result, error } = await context.supabase.rpc("subscription_manual_grant_create", {
+      _user_id: data.userId,
+      _plan: data.plan,
+      _expires_at: data.expiresAt,
+      _reason: data.reason,
+    });
     if (error) throw new Error(error.message);
     return result as unknown as {
       grantId: string;
@@ -99,13 +96,10 @@ export const revokeSubscriptionManualGrant = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase);
-    const { data: result, error } = await context.supabase.rpc(
-      "subscription_manual_grant_revoke",
-      {
-        _grant_id: data.grantId,
-        _revoke_reason: data.reason,
-      },
-    );
+    const { data: result, error } = await context.supabase.rpc("subscription_manual_grant_revoke", {
+      _grant_id: data.grantId,
+      _revoke_reason: data.reason,
+    });
     if (error) throw new Error(error.message);
     return result as unknown as {
       changed: boolean;
