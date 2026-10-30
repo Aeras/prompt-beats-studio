@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 
 import { featureKeysForAiOperation } from "@/lib/ai-feature-access.server";
 import type { AiOperation } from "@/lib/ai-usage.server";
@@ -18,9 +19,8 @@ describe("PB-015 independence boundaries", () => {
       "src/lib/project-revision-prompt.ts",
     ];
     for (const path of promptFiles) {
-      const file = Bun.file(path);
-      if (!(await file.exists())) continue;
-      const code = await file.text();
+      if (!existsSync(path)) continue;
+      const code = await Bun.file(path).text();
       expect(code).not.toContain("effective_subscription_plan");
       expect(code).not.toContain("subscription_manual_grants");
       expect(code).not.toContain("subscription-entitlements");
