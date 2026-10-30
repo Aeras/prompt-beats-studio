@@ -115,8 +115,7 @@ function daysInMonth(year: number, month: number) {
 }
 
 export function localDateTimeInTimeZoneToDate(value: string, timeZone: string): Date {
-  const match =
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
   if (!match) throw new Error("Invalid local date/time.");
   const [, year, month, day, hour, minute, second = "0"] = match;
   return zonedLocalPartsToDate(
