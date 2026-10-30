@@ -97,6 +97,59 @@ fi
 
 query -c "UPDATE auth.users SET banned_until=NULL WHERE id='$actor';" >/dev/null
 
+# Role-removal-first: grant waits on the actor security row and must observe the
+# committed loss of Super Admin authority.
+query <<SQL >/dev/null &
+BEGIN;
+UPDATE public.user_roles SET role='user' WHERE user_id='$actor';
+SELECT pg_sleep(1) /*pb015-role-removal-first*/;
+COMMIT;
+SQL
+role_removal=$!
+sleep 0.2
+if query <<SQL >/dev/null 2>&1
+BEGIN;
+SELECT set_config('request.jwt.claim.sub','$actor',true);
+SET LOCAL ROLE authenticated;
+SELECT public.subscription_manual_grant_create(
+ '$target','plus',statement_timestamp()+interval '1 day','role removal first'
+);
+COMMIT;
+SQL
+then
+  echo 'FAIL: grant succeeded after role-removal-first ordering' >&2
+  exit 1
+fi
+wait "$role_removal"
+query -c "UPDATE public.user_roles SET role='super_admin' WHERE user_id='$actor';" >/dev/null
+
+# Grant-first: the protected mutation holds the actor security lock. A concurrent
+# role removal must wait, so the already-admitted grant deterministically commits
+# before authority is removed.
+before_grants="$(query -c "SELECT count(*) FROM public.subscription_manual_grants WHERE user_id='$target' AND reason='grant first race';")"
+query <<SQL >/dev/null &
+BEGIN;
+SELECT set_config('request.jwt.claim.sub','$actor',true);
+SET LOCAL ROLE authenticated;
+SELECT public.subscription_manual_grant_create(
+ '$target','plus',statement_timestamp()+interval '1 day','grant first race'
+);
+SELECT pg_sleep(1) /*pb015-grant-first*/;
+COMMIT;
+SQL
+grant_first=$!
+sleep 0.2
+query -c "UPDATE public.user_roles SET role='user' WHERE user_id='$actor';" >/dev/null &
+role_after=$!
+wait "$grant_first"
+wait "$role_after"
+after_grants="$(query -c "SELECT count(*) FROM public.subscription_manual_grants WHERE user_id='$target' AND reason='grant first race';")"
+[[ "$after_grants" -eq $((before_grants + 1)) ]] || {
+  echo 'FAIL: grant-first ordering did not commit exactly one grant' >&2
+  exit 1
+}
+query -c "UPDATE public.user_roles SET role='super_admin' WHERE user_id='$actor';" >/dev/null
+
 # Duplicate revoke is idempotent and cannot create duplicate revoke audit.
 before="$(query -c "SELECT count(*) FROM public.admin_audit_log WHERE action='REVOKE_SUBSCRIPTION_MANUAL_GRANT' AND details->>'grant_id'='$grant_id2';")"
 query <<SQL >/dev/null
