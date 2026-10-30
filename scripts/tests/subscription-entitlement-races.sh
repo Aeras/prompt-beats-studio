@@ -15,6 +15,10 @@ INSERT INTO auth.users(id,email) VALUES
 INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
  ('$actor','super_admin','active'),
  ('$target','user','active');
+INSERT INTO public.profile_private(user_id,is_banned) VALUES
+ ('$actor',false),
+ ('$target',false)
+ON CONFLICT(user_id) DO UPDATE SET is_banned=false;
 INSERT INTO public.feature_access_policies(feature_key,display_name,description,access_mode)
  VALUES('pb015_race_feature','PB-015 race','Disposable local race fixture','pro_only');
 SELECT set_config('request.jwt.claim.sub','$actor',true);
