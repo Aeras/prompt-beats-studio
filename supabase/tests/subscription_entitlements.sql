@@ -60,7 +60,9 @@ INSERT INTO auth.users(id,email) VALUES
   ('bd150000-0000-4000-8000-000000000003','pb015-admin@example.invalid'),
   ('bd150000-0000-4000-8000-000000000004','pb015-super@example.invalid'),
   ('bd150000-0000-4000-8000-000000000005','pb015-stripe@example.invalid'),
-  ('bd150000-0000-4000-8000-000000000006','pb015-moderator@example.invalid');
+  ('bd150000-0000-4000-8000-000000000006','pb015-moderator@example.invalid'),
+  ('bd150000-0000-4000-8000-000000000007','pb015-plus@example.invalid'),
+  ('bd150000-0000-4000-8000-000000000008','pb015-exact-expiry@example.invalid');
 
 INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000001','user','active'),
@@ -68,7 +70,9 @@ INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000003','admin','active'),
   ('bd150000-0000-4000-8000-000000000004','super_admin','active'),
   ('bd150000-0000-4000-8000-000000000005','user','active'),
-  ('bd150000-0000-4000-8000-000000000006','moderator','active')
+  ('bd150000-0000-4000-8000-000000000006','moderator','active'),
+  ('bd150000-0000-4000-8000-000000000007','user','active'),
+  ('bd150000-0000-4000-8000-000000000008','user','active')
 ON CONFLICT(user_id) DO UPDATE
 SET role=EXCLUDED.role, moderation_status=EXCLUDED.moderation_status;
 
@@ -82,7 +86,8 @@ INSERT INTO public.subscription_manual_grants(user_id,plan,starts_at,expires_at,
   ('bd150000-0000-4000-8000-000000000001','plus',statement_timestamp()-interval '1 hour',statement_timestamp()+interval '7 days','active plus fixture'),
   ('bd150000-0000-4000-8000-000000000002','pro',statement_timestamp()+interval '1 hour',statement_timestamp()+interval '2 hours','future pro fixture'),
   ('bd150000-0000-4000-8000-000000000002','pro',statement_timestamp()-interval '2 hours',statement_timestamp()-interval '1 hour','expired pro fixture'),
-  ('bd150000-0000-4000-8000-000000000005','plus',statement_timestamp()-interval '1 hour',NULL,'never plus fixture');
+  ('bd150000-0000-4000-8000-000000000005','plus',statement_timestamp()-interval '1 hour',NULL,'never plus fixture'),
+  ('bd150000-0000-4000-8000-000000000007','plus',statement_timestamp()-interval '1 hour',statement_timestamp()+interval '7 days','matrix plus fixture');
 
 INSERT INTO public.subscription_manual_grants(
   user_id,plan,starts_at,expires_at,reason,revoked_at,revoke_reason
@@ -106,6 +111,24 @@ SELECT pg_temp.denied($q$
   SET revoked_at=NULL, revoke_reason=NULL
   WHERE reason='revoked plus fixture'
 $q$);
+
+-- Exact expiry boundary: statement_timestamp() is fixed for the whole DO
+-- statement, so the evaluator observes DB_NOW == expires_at and must deny it.
+DO $pb015_exact_expiry$
+BEGIN
+  INSERT INTO public.subscription_manual_grants(user_id,plan,starts_at,expires_at,reason)
+  VALUES (
+    'bd150000-0000-4000-8000-000000000008',
+    'pro',
+    statement_timestamp()-interval '1 hour',
+    statement_timestamp(),
+    'exact expiry fixture'
+  );
+  IF public.effective_subscription_plan('bd150000-0000-4000-8000-000000000008') <> 'free' THEN
+    RAISE EXCEPTION 'Exact expiry must be inactive';
+  END IF;
+END
+$pb015_exact_expiry$;
 
 SELECT pg_temp.assert(
   public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='plus',
@@ -287,6 +310,10 @@ SELECT pg_temp.assert(
   'plus_or_pro must deny Free'
 );
 SELECT pg_temp.assert(
+  public.can_use_feature('bd150000-0000-4000-8000-000000000007','pb015_feature_fixture'),
+  'plus_or_pro must allow Plus'
+);
+SELECT pg_temp.assert(
   public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
   'plus_or_pro must allow Pro'
 );
@@ -298,6 +325,10 @@ SELECT pg_temp.assert(
 SELECT pg_temp.assert(
   NOT public.can_use_feature('bd150000-0000-4000-8000-000000000002','pb015_feature_fixture'),
   'Free Beta tester must not bypass pro_only'
+);
+SELECT pg_temp.assert(
+  NOT public.can_use_feature('bd150000-0000-4000-8000-000000000007','pb015_feature_fixture'),
+  'pro_only must deny Plus'
 );
 SELECT pg_temp.assert(
   public.can_use_feature('bd150000-0000-4000-8000-000000000005','pb015_feature_fixture'),
