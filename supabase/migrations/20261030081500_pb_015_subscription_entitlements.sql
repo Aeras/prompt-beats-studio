@@ -147,6 +147,7 @@ SET search_path = ''
 AS $$
 DECLARE
   v_actor uuid := auth.uid();
+  v_now timestamptz := statement_timestamp();
   v_result jsonb;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
@@ -181,8 +182,8 @@ BEGIN
         'revokedAt', g.revoked_at,
         'revokeReason', g.revoke_reason,
         'active', (
-          g.starts_at <= statement_timestamp()
-          AND (g.expires_at IS NULL OR statement_timestamp() < g.expires_at)
+          g.starts_at <= v_now
+          AND (g.expires_at IS NULL OR v_now < g.expires_at)
           AND g.revoked_at IS NULL
         )
       ) ORDER BY g.created_at DESC, g.id DESC)
@@ -267,6 +268,12 @@ DECLARE
   v_grant public.subscription_manual_grants;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+
+  -- Prove caller authority before even revealing whether a supplied grant ID exists.
+  PERFORM public._lock_user_security_state(v_actor);
+  IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
   IF char_length(v_reason) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'invalid revoke reason'; END IF;
 
   SELECT user_id INTO v_target
@@ -277,6 +284,8 @@ BEGIN
   PERFORM public._lock_user_security_pair(v_actor, v_target);
   PERFORM pg_advisory_xact_lock(hashtextextended('promptbeats:subscription-entitlement:' || v_target::text, 0));
 
+  -- Re-prove after deterministic actor/target locking so a concurrent role or
+  -- account-state change cannot race the protected mutation.
   IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
