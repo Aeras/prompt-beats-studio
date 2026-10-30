@@ -3508,7 +3508,10 @@ function GeneratePage() {
               </button>
             </section>
           )}
-          <div data-testid="generator-settings-panel" className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
+          <div
+            data-testid="generator-settings-panel"
+            className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6"
+          >
             <div>
               <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>
               <p className="mb-2 text-xs text-muted-foreground">
