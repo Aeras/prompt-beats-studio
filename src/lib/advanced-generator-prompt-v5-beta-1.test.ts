@@ -12,6 +12,7 @@ import * as sections from "./lyrics-sections";
 import * as limits from "./generator-input-limits";
 import * as platforms from "./ai-target-platforms";
 import { generationOutput, parseSections } from "./generation-result.shared";
+import * as registry from "./prompt-registry.shared";
 import {
   buildAdvancedGeneratorPromptV4Beta,
   normalizeV4Platform,
@@ -72,7 +73,14 @@ function evaluate(code: string, globals: Record<string, unknown> = {}) {
   );
   return exports;
 }
-const contractGlobals = { ...blueprint, ...revisions, ...atlas, ...lyrics, ...platforms };
+const contractGlobals = {
+  ...blueprint,
+  ...revisions,
+  ...atlas,
+  ...lyrics,
+  ...platforms,
+  ...registry,
+};
 function generationSchema() {
   return evaluate(
     codeParts("src/lib/ai.functions.ts", ["generateInput"]) + "\nexports.schema=generateInput;",
@@ -257,6 +265,7 @@ function admissionFixture() {
           }),
         };
       if (name.includes("song-atlas.shared")) return atlas;
+      if (name.includes("prompt-registry.shared")) return registry;
       if (name.includes("global-ai-usage")) return { AI_DISABLED_MESSAGE: "AI disabled" };
       if (name.includes("auth-middleware")) return { requireSupabaseAuth: {} };
       if (name.includes("feature-access.functions"))
@@ -283,7 +292,11 @@ function admissionFixture() {
           data: {
             id: "a5000000-0000-4000-8000-000000000004",
             status: "pending",
-            input_payload: args._input,
+            input_payload: {
+              ...args._input,
+              promptVersion:
+                args._input.promptVersion === "default" ? "v1" : args._input.promptVersion,
+            },
             result: null,
           },
           error: null,
@@ -349,6 +362,17 @@ function workerFixture(input: any, allowed = true, roleError = false) {
   const db = {
     rpc: async (name: string) => {
       if (name === "_has_role_internal") return { data: allowed, error: roleError ? {} : null };
+      if (name === "generator_prompt_for_job_internal")
+        return {
+          data:
+            allowed && !roleError
+              ? {
+                  ...input.promptBinding,
+                  builtin_version: input.promptVersion === "registry" ? null : input.promptVersion,
+                }
+              : null,
+          error: roleError ? {} : null,
+        };
       throw Error("Unexpected worker RPC " + name);
     },
     from: () => {
@@ -438,4 +462,32 @@ test("actual raw-job worker re-verifies V5 and duplicate completion never redisp
   expect(f.patches.some((p) => p.status === "completed")).toBe(true);
   expect(await f.run()).toEqual({ ran: false });
   expect(f.dispatches).toBe(1);
+});
+
+test("registry-pinned production defaults run without experimental privilege while unavailable bindings fail before provider marking", async () => {
+  const binding = {
+    id: "af560000-0000-4000-8000-000000000001",
+    digest: "a".repeat(64),
+    label: "Production prompt",
+    experimental: false,
+  };
+  const input = {
+    ...fullInput(),
+    inputSnapshot: { generatorMode: "basic" },
+    promptBinding: binding,
+  };
+  const production = workerFixture(input);
+  await production.run();
+  expect(production.dispatches).toBe(1);
+  await production.run();
+  expect(production.dispatches).toBe(1);
+  for (const invalid of [
+    workerFixture({ ...input, promptVersion: "registry", promptBinding: undefined }),
+    workerFixture(input, true, true),
+    workerFixture(input, false),
+  ]) {
+    await invalid.run();
+    expect(invalid.dispatches).toBe(0);
+    expect(invalid.patches.some((p) => p.provider_started_at)).toBe(false);
+  }
 });

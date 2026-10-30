@@ -1,3 +1,4 @@
+import { promptBindingSchema } from "./prompt-registry.shared";
 import { atlasHandoffSchema } from "./song-atlas.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
@@ -551,6 +552,7 @@ describe("audit final — total encoded generation budget", () => {
         AI_TARGET_PLATFORMS,
         DEFAULT_AI_TARGET_PLATFORM,
         songBlueprintSchema,
+        promptBindingSchema,
         generatorInputSnapshotSchema,
         revisionJobContextSchema,
         atlasHandoffSchema,

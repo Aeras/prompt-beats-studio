@@ -98,7 +98,7 @@ describe("Zod 4 security and persisted validation compatibility", () => {
       idempotencyKey: legacyId,
       theme: "A song",
       genre: "Pop",
-      promptVersion: "v1",
+      promptVersion: "default",
       operation: "generate",
       production: "",
     });

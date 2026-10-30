@@ -17,6 +17,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/promptbeats/AppShell";
+import { PromptRegistryPanel } from "@/components/promptbeats/PromptRegistryPanel";
+import { promptRegistryCopy } from "@/i18n/prompt-registry";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { AiModelsPanel } from "@/components/promptbeats/AiModelsPanel";
 import { BetaFeaturesPanel, BetaTesterControl } from "@/components/promptbeats/BetaFeaturesPanel";
 import { SubscriptionEntitlementsPanel } from "@/components/promptbeats/SubscriptionEntitlementsPanel";
@@ -68,7 +77,15 @@ export const Route = createFileRoute("/management")({
   component: ManagementPage,
 });
 type Section =
-  "overview" | "analytics" | "models" | "users" | "reports" | "registrations" | "features" | "beta";
+  | "overview"
+  | "analytics"
+  | "models"
+  | "users"
+  | "reports"
+  | "registrations"
+  | "features"
+  | "beta"
+  | "prompts";
 type ReasonCode = (typeof BLOCK_REASONS)[number]["code"];
 type T = (key: AppTranslationKey, values?: Record<string, string | number>) => string;
 const RANGES = [
@@ -196,6 +213,11 @@ function AdminNav({
         ...(isSuperAdmin
           ? [
               ["features", t("management.featureAccess"), KeyRound] as [
+                Section,
+                string,
+                typeof LayoutDashboard,
+              ],
+              ["prompts", promptRegistryCopy[language].title, Sparkles] as [
                 Section,
                 string,
                 typeof LayoutDashboard,
@@ -1410,32 +1432,43 @@ function FeatureAccessPanel() {
             </div>
             <label className="shrink-0 text-xs text-muted-foreground">
               {t("management.featureAccessMode")}
-              <select
+              <Select
                 value={policy.access_mode}
                 disabled={update.isPending}
-                onChange={(e) =>
+                onValueChange={(value) =>
                   update.mutate({
                     featureKey: policy.feature_key,
-                    accessMode: e.target.value as FeatureAccessMode,
+                    accessMode: value as FeatureAccessMode,
                   })
                 }
-                className="mt-1 block w-full min-w-44 rounded-xl border border-white/10 bg-[#17131f] px-3 py-2 text-sm text-foreground"
               >
-                {(
-                  [
-                    "disabled",
-                    "admins_only",
-                    "selected_users",
-                    "everyone",
-                    "plus_or_pro",
-                    "pro_only",
-                  ] as FeatureAccessMode[]
-                ).map((mode) => (
-                  <option key={mode} value={mode}>
-                    {modeLabel(mode)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  aria-label={t("management.featureAccessMode")}
+                  className="mt-1 min-h-10 w-full min-w-44 border-primary/20 bg-popover"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
+                  {(
+                    [
+                      "disabled",
+                      "admins_only",
+                      "selected_users",
+                      "everyone",
+                      "plus_or_pro",
+                      "pro_only",
+                    ] as FeatureAccessMode[]
+                  ).map((mode) => (
+                    <SelectItem
+                      key={mode}
+                      value={mode}
+                      className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+                    >
+                      {modeLabel(mode)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           </div>
           {policy.access_mode === "selected_users" && (
@@ -1496,21 +1529,23 @@ function ManagementPage() {
     );
 
   const sectionTitle =
-    section === "beta"
-      ? betaCopy[language].title
-      : section === "overview"
-        ? t("management.overview")
-        : section === "analytics"
-          ? t("management.analyticsTitle")
-          : section === "models"
-            ? t("management.models")
-            : section === "users"
-              ? t("management.usersModeration")
-              : section === "reports"
-                ? t("management.reports")
-                : section === "features"
-                  ? t("management.featureAccess")
-                  : t("management.blockedRegistrations");
+    section === "prompts"
+      ? promptRegistryCopy[language].title
+      : section === "beta"
+        ? betaCopy[language].title
+        : section === "overview"
+          ? t("management.overview")
+          : section === "analytics"
+            ? t("management.analyticsTitle")
+            : section === "models"
+              ? t("management.models")
+              : section === "users"
+                ? t("management.usersModeration")
+                : section === "reports"
+                  ? t("management.reports")
+                  : section === "features"
+                    ? t("management.featureAccess")
+                    : t("management.blockedRegistrations");
   return (
     <AppShell header={header}>
       <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6 pb-40 md:px-8">
@@ -1545,6 +1580,9 @@ function ManagementPage() {
         {!loading && isAdmin && section === "registrations" && <RegistrationBlocksPanel />}
         {!loading && isSuperAdmin && section === "features" && <FeatureAccessPanel />}
         {!loading && isSuperAdmin && section === "beta" && <BetaFeaturesPanel />}
+        {!loading && isSuperAdmin && section === "prompts" && (
+          <PromptRegistryPanel key={user?.id} />
+        )}
       </main>
     </AppShell>
   );
