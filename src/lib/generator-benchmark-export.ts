@@ -8,7 +8,7 @@ export type GeneratorBenchmarkExportInput = {
   provider: string | null;
   targetPlatform: string;
   generatorMode: "basic" | "advanced" | "revision";
-  promptVersion?: "v1" | "v2" | "v3" | "v4_beta";
+  promptVersion?: "v1" | "v2" | "v3" | "v4_beta" | "v5_beta_1";
   exportedAt: string;
 };
 

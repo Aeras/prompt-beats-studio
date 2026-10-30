@@ -10,6 +10,7 @@ import {
 import { assertGenerationRequestBudget } from "@/lib/generator-input-limits";
 import { buildAdvancedGeneratorPromptV2 } from "@/lib/advanced-generator-prompt-v2";
 import { withV3MusicalPlanning } from "@/lib/advanced-generator-v3-review";
+import { buildAdvancedGeneratorPromptV5Beta1 } from "@/lib/advanced-generator-prompt-v5-beta-1";
 import { buildAdvancedGeneratorPromptV4Beta } from "@/lib/advanced-generator-prompt-v4-beta";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -55,7 +56,7 @@ const generateInput = z.object({
     .enum([...AI_TARGET_PLATFORMS] as [AITargetPlatform, ...AITargetPlatform[]])
     .default(DEFAULT_AI_TARGET_PLATFORM),
   generationModel: z.string().trim().min(1).max(240).nullish(),
-  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
+  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta", "v5_beta_1"]).default("v1"),
   // Advanced-mode extras. Optional and defaulted so older jobs stay valid.
   structure: z.string().trim().max(600).default(""),
   songBlueprint: songBlueprintSchema,
@@ -1976,9 +1977,11 @@ export async function runSongGeneration(
       ? buildRevisionPrompt(data)
       : data.promptVersion === "v4_beta"
         ? buildAdvancedGeneratorPromptV4Beta(data)
-        : data.promptVersion === "v2" || data.promptVersion === "v3"
-          ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
-          : buildPrompt(data);
+        : data.promptVersion === "v5_beta_1"
+          ? buildAdvancedGeneratorPromptV5Beta1(data)
+          : data.promptVersion === "v2" || data.promptVersion === "v3"
+            ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
+            : buildPrompt(data);
     generated = await call({
       system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
       ...(abortSignal ? { abortSignal } : {}),

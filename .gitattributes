@@ -1,3 +1,6 @@
 
 # Preserve the supplied RC1 SHA-256 on Windows and Linux.
 src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json -text
+
+# Canonical Creative Master V2 research candidate: preserve supplied bytes.
+docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.md -text

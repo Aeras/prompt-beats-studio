@@ -9,3 +9,6 @@ routeTree.gen.ts
 
 # Byte-exact editorial source: validated by SHA-256, never autoformat.
 src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json
+
+# Immutable, SHA-256-verified user-supplied prompt source.
+docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.md
