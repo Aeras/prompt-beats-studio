@@ -44,7 +44,9 @@ describe("PB-015 subscription entitlements", () => {
     expect(sql).toContain("CREATE TABLE public.subscription_manual_grants");
     expect(sql).toContain("ON DELETE CASCADE");
     expect(sql).toContain("effective_subscription_plan(_user_id uuid)");
+    expect(sql).toContain("(g.expires_at IS NULL OR v_now < g.expires_at)");
     expect(sql).toContain("'plus_or_pro','pro_only'");
+    expect(sql).toContain("LIMIT 50");
     expect(sql).not.toContain("UPDATE public.feature_access_policies\n  SET access_mode='");
     expect(sql).not.toContain("UPDATE public.subscriptions\n");
     expect(sql).toContain("admit_feature_ai_dispatch_internal");
