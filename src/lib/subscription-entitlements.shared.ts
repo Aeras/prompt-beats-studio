@@ -14,6 +14,14 @@ export type SubscriptionManualGrant = {
   active: boolean;
 };
 
+export type SubscriptionEntitlementAuditEvent = {
+  id: string;
+  action: "CREATE_SUBSCRIPTION_MANUAL_GRANT" | "REVOKE_SUBSCRIPTION_MANUAL_GRANT";
+  createdAt: string;
+  grantId: string | null;
+  plan: ManualSubscriptionPlan | null;
+};
+
 export type SubscriptionEntitlementDetail = {
   effectivePlan: SubscriptionPlan;
   stripe: {
@@ -22,6 +30,7 @@ export type SubscriptionEntitlementDetail = {
     currentPeriodEnd: string | null;
   };
   manualGrants: SubscriptionManualGrant[];
+  audit: SubscriptionEntitlementAuditEvent[];
 };
 
 export const MANUAL_GRANT_DURATION_PRESETS = [
