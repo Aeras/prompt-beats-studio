@@ -28,12 +28,7 @@ export const FEATURE_KEYS = [
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number] | BetaFeatureKey;
 export type FeatureAccessMode =
-  | "disabled"
-  | "admins_only"
-  | "selected_users"
-  | "everyone"
-  | "plus_or_pro"
-  | "pro_only";
+  "disabled" | "admins_only" | "selected_users" | "everyone" | "plus_or_pro" | "pro_only";
 
 const featureKeySchema = betaFeatureKeySchema.refine(
   (key) => (FEATURE_KEYS as readonly string[]).includes(key) || isBetaFeatureKey(key),
