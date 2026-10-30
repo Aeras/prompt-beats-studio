@@ -2,9 +2,29 @@
 import { spawn, spawnSync } from "node:child_process";
 import { strict as assert } from "node:assert";
 const project = process.argv[2];
-if (!project || !/^[a-zA-Z0-9_-]+$/.test(project) || project === "qwlksrcsovbncmretjdt")
+if (!project || !/^[a-zA-Z0-9_-]+$/.test(project))
   throw new Error("An explicitly isolated local project is required");
 const container = `supabase_db_${project}`;
+// The repo's CI local project deliberately has the same name as the production
+// project. A name alone is neither proof of isolation nor proof of production.
+// Never accept a network Docker daemon or a non-CLI container instead.
+const localEndpoint = (value: string) => /^(unix:\/\/\/|npipe:\/\/\/\/\.\/pipe\/)/.test(value);
+if (process.env.DOCKER_HOST && !localEndpoint(process.env.DOCKER_HOST))
+  throw new Error("Remote Docker endpoints are forbidden");
+const endpoint = spawnSync(
+  "docker",
+  ["context", "inspect", "--format", "{{json .Endpoints.docker.Host}}"],
+  { encoding: "utf8" },
+);
+if (endpoint.status !== 0 || !localEndpoint(JSON.parse(endpoint.stdout.trim())))
+  throw new Error("A local Docker endpoint is required");
+const label = spawnSync(
+  "docker",
+  ["inspect", container, "--format", '{{index .Config.Labels "com.supabase.cli.project"}}'],
+  { encoding: "utf8" },
+);
+if (label.status !== 0 || label.stdout.trim() !== project)
+  throw new Error("Expected isolated Supabase CLI container");
 const args = [
   "exec",
   "-i",
