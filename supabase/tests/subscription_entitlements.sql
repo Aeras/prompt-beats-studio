@@ -161,11 +161,18 @@ SELECT pg_temp.assert(
 );
 
 -- Revoking one Pro cannot remove another active Pro.
+-- Resolve the fixture ID while still privileged; authenticated callers have no
+-- direct table SELECT by design, so the mutation itself must be the only
+-- commercial-history access exercised under the authenticated role.
+SELECT id AS overlap_grant_id
+FROM public.subscription_manual_grants
+WHERE user_id='bd150000-0000-4000-8000-000000000001'
+  AND reason='overlap pro one'
+\gset
 SELECT set_config('request.jwt.claim.sub','bd150000-0000-4000-8000-000000000004',true);
 SET LOCAL ROLE authenticated;
 SELECT public.subscription_manual_grant_revoke(
-  (SELECT id FROM public.subscription_manual_grants
-   WHERE user_id='bd150000-0000-4000-8000-000000000001' AND reason='overlap pro one'),
+  :'overlap_grant_id'::uuid,
   'revoke first overlap'
 );
 SELECT pg_temp.assert(
