@@ -89,7 +89,6 @@ BEGIN
     COALESCE((
       SELECT CASE s.plan
         WHEN 'pro' THEN 2
-        WHEN 'plus' THEN 1
         ELSE 0
       END
       FROM public.subscriptions s
