@@ -150,6 +150,13 @@ SELECT pg_temp.assert(
   (public.subscription_entitlement_detail('bd150000-0000-4000-8000-000000000004')->>'effectivePlan')='pro',
   'Super Admin entitlement detail must show effective plan'
 );
+SELECT pg_temp.assert(
+  jsonb_path_exists(
+    public.subscription_entitlement_detail('bd150000-0000-4000-8000-000000000004'),
+    '$.audit[*] ? (@.action == "CREATE_SUBSCRIPTION_MANUAL_GRANT")'
+  ),
+  'Super Admin entitlement detail must include relevant bounded audit'
+);
 RESET ROLE;
 
 SELECT pg_temp.assert(
