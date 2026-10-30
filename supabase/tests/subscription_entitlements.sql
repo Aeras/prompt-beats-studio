@@ -46,6 +46,11 @@ SELECT pg_temp.assert(
   'Arbitrary-user effective plan helper must remain private'
 );
 SELECT pg_temp.assert(
+  NOT has_function_privilege('authenticated','public._has_valid_account_state_internal(uuid)','EXECUTE')
+  AND NOT has_function_privilege('service_role','public._has_valid_account_state_internal(uuid)','EXECUTE'),
+  'Arbitrary-user account-state helper must remain private to SECURITY DEFINER callers'
+);
+SELECT pg_temp.assert(
   NOT has_function_privilege('authenticated','public.admit_feature_ai_dispatch_internal(uuid,text[])','EXECUTE'),
   'Feature-aware provider admission must be service-only'
 );
@@ -75,6 +80,12 @@ INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES
   ('bd150000-0000-4000-8000-000000000008','user','active')
 ON CONFLICT(user_id) DO UPDATE
 SET role=EXCLUDED.role, moderation_status=EXCLUDED.moderation_status;
+
+INSERT INTO public.profile_private(user_id,is_banned)
+SELECT id,false
+FROM auth.users
+WHERE id::text LIKE 'bd150000-%'
+ON CONFLICT(user_id) DO UPDATE SET is_banned=false;
 
 SELECT pg_temp.assert(
   public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='free',
