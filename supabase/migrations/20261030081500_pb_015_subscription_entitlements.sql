@@ -165,7 +165,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $pb015_account$
   SELECT _user_id IS NOT NULL
     AND EXISTS (
       SELECT 1
@@ -174,7 +174,7 @@ AS $
       WHERE u.id = _user_id
         AND pp.is_banned = false
     );
-$;
+$pb015_account$;
 
 REVOKE ALL ON FUNCTION public._has_valid_account_state_internal(uuid)
   FROM PUBLIC, anon, authenticated, service_role;
