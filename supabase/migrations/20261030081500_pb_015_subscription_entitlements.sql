@@ -222,8 +222,8 @@ BEGIN
   IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = _user_id) THEN
-    RAISE EXCEPTION 'user not found';
+  IF NOT public._has_valid_account_state_internal(_user_id) THEN
+    RAISE EXCEPTION 'user not available';
   END IF;
 
   SELECT jsonb_build_object(
