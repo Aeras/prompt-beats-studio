@@ -1,4 +1,4 @@
-import { withAiDispatchAdmission, AiUsageUnavailableError } from "./global-ai-usage.server";
+import { withFeatureAiDispatchAdmission, AiUsageUnavailableError } from "./global-ai-usage.server";\nimport { featureKeysForAuxiliaryAiOperation } from "./ai-feature-access.server";
 import { auxiliaryModelContext, startAuxiliaryModel } from "./ai-auxiliary-model-context.server";
 import { z } from "zod";
 
@@ -60,7 +60,10 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
     },
     async () => {
       try {
-        return await withAiDispatchAdmission(async () => {
+        return await withFeatureAiDispatchAdmission(
+          input.userId,
+          featureKeysForAuxiliaryAiOperation(input.operation),
+          async () => {
           const markProviderStarted = async (model: string) => {
             await startAuxiliaryModel(model);
           };
@@ -73,7 +76,8 @@ export async function executeDurableAuxiliaryAiRequest<T>(input: {
             result,
           });
           return result;
-        });
+        },
+        );
       } catch (error) {
         const message =
           error instanceof Error ? error.message.slice(0, 500) : "auxiliary_ai_failed";
