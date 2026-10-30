@@ -82,8 +82,8 @@ describe("PB-015 subscription entitlements", () => {
     ]) {
       expect(management).toContain(`"${mode}"`);
     }
-    expect(management).toContain('management.featureModePlusOrPro');
-    expect(management).toContain('management.featureModeProOnly');
+    expect(management).toContain("management.featureModePlusOrPro");
+    expect(management).toContain("management.featureModeProOnly");
   });
 
   test("server contracts delegate effective plan to canonical DB RPC", async () => {
