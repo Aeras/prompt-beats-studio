@@ -198,7 +198,7 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
         type="button"
         disabled={grant.isPending}
         onClick={() => grant.mutate()}
-        className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
       >
         {grant.isPending ? t("management.updating") : t("management.entitlementGrant")}
       </button>
