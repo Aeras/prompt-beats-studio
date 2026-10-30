@@ -9,8 +9,6 @@
 - **Verification in progress:** disposable SQL entitlement/access matrix, independent-connection revoke/admission and stale-authority races, calendar/DST helper tests and permit identity tests added. Database Replay gate is wired to run the new SQL/race suite. Full tests, strict TypeScript, lint/format/build, browser QA and exact-final-head three principal gates remain required in this same PR.
 - **Release boundary:** repository implementation only. No production migration, Lovable publish, Stripe Plus/pricing/checkout activation, paid provider call or commercial activation is authorized by this work. Merge, if later all-green, still means `CODE_COMPLETE_RELEASE_PENDING` until separately authorized production release.
 
-# PromptBeats — Work Status (authoritative workflow ledger)
-
 ## 2026-10-29 — Generator mode navigation stable position — IN_PROGRESS
 
 - **Production user feedback:** after PR #470 was published, disabled swipe switching works, but Basic / Advanced / Project Revision selector jumps vertically because the advanced-only Music Inspiration panel (and associated bridge) renders before the selector.
