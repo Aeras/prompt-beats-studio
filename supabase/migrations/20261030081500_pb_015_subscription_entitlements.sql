@@ -88,8 +88,9 @@ FOR EACH ROW
 EXECUTE FUNCTION public.protect_subscription_manual_grant_semantics();
 
 ALTER TABLE public.subscription_manual_grants ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE public.subscription_manual_grants FROM PUBLIC, anon, authenticated;
-GRANT ALL ON TABLE public.subscription_manual_grants TO service_role;
+REVOKE ALL ON TABLE public.subscription_manual_grants FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.protect_subscription_manual_grant_semantics()
+  FROM PUBLIC, anon, authenticated, service_role;
 
 -- Keep the existing policy rows exactly as-is; only widen the allowed enum-like CHECK.
 ALTER TABLE public.feature_access_policies
