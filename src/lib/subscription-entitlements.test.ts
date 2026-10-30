@@ -70,6 +70,22 @@ describe("PB-015 subscription entitlements", () => {
     expect(block).toContain("v_plan_rank := public.effective_subscription_plan_rank(_user_id)");
   });
 
+  test("Feature Access management exposes both plan-aware modes without removing legacy modes", async () => {
+    const management = await Bun.file("src/routes/management.tsx").text();
+    for (const mode of [
+      "disabled",
+      "admins_only",
+      "selected_users",
+      "everyone",
+      "plus_or_pro",
+      "pro_only",
+    ]) {
+      expect(management).toContain(`"${mode}"`);
+    }
+    expect(management).toContain('management.featureModePlusOrPro');
+    expect(management).toContain('management.featureModeProOnly');
+  });
+
   test("server contracts delegate effective plan to canonical DB RPC", async () => {
     const code = await Bun.file("src/lib/subscription-entitlements.functions.ts").text();
     expect(code).toContain('supabase.rpc("current_user_effective_plan")');
