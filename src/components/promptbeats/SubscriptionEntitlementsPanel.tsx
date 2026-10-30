@@ -163,8 +163,18 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
-              <SelectItem value="plus">Plus</SelectItem>
-              <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem
+                value="plus"
+                className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+              >
+                Plus
+              </SelectItem>
+              <SelectItem
+                value="pro"
+                className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+              >
+                Pro
+              </SelectItem>
             </SelectContent>
           </Select>
         </label>
@@ -182,7 +192,11 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
             </SelectTrigger>
             <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
               {MANUAL_GRANT_DURATION_PRESETS.map((preset) => (
-                <SelectItem key={preset} value={preset}>
+                <SelectItem
+                  key={preset}
+                  value={preset}
+                  className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+                >
                   {durationLabel(preset)}
                 </SelectItem>
               ))}

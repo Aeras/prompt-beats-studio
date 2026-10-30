@@ -2,6 +2,23 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 
+async function expectPrimaryOption(page: Page) {
+  const selected = page.getByRole("option", { selected: true });
+  await expect(selected).toBeVisible();
+  const colors = await selected.evaluate((el) => {
+    const probe = document.createElement("div");
+    probe.className = "bg-primary/15";
+    document.body.appendChild(probe);
+    const colors = {
+      actual: getComputedStyle(el).backgroundColor,
+      expected: getComputedStyle(probe).backgroundColor,
+    };
+    probe.remove();
+    return colors;
+  });
+  expect(colors.actual).toBe(colors.expected);
+}
+
 async function fixture(page: Page, role = "super_admin", registryUI = false) {
   const user = {
     id: "bb000000-0000-4000-8000-000000000006",
@@ -466,6 +483,7 @@ for (const language of ["en", "el"])
     const plan = panel.getByRole("combobox", { name: /^(Manual plan|Χειροκίνητο πλάνο)$/ });
     await plan.click();
     await expect(page.getByRole("option")).toHaveText(["Plus", "Pro"]);
+    await expectPrimaryOption(page);
     await page.keyboard.press("Escape");
     await expect(plan).toBeFocused();
     await plan.click();
@@ -499,6 +517,7 @@ for (const language of ["en", "el"])
             "Custom date/time",
           ],
     );
+    await expectPrimaryOption(page);
     await page.keyboard.press("Escape");
     await expect(duration).toBeFocused();
     await duration.click();
@@ -529,6 +548,7 @@ for (const language of ["en", "el"])
           ]
         : ["Disabled", "Admins only", "Selected users", "Everyone", "Plus & Pro", "Pro only"],
     );
+    await expectPrimaryOption(page);
     const background = await page
       .getByRole("listbox")
       .evaluate((el) => getComputedStyle(el).backgroundColor);

@@ -1459,7 +1459,11 @@ function FeatureAccessPanel() {
                       "pro_only",
                     ] as FeatureAccessMode[]
                   ).map((mode) => (
-                    <SelectItem key={mode} value={mode}>
+                    <SelectItem
+                      key={mode}
+                      value={mode}
+                      className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+                    >
                       {modeLabel(mode)}
                     </SelectItem>
                   ))}
