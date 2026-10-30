@@ -40,7 +40,7 @@ function fixture() {
   let cached: ModelResult | null = null;
   let identity = "";
   const deps: ExecutionDependencies = {
-    dispatchAdmission: async (execute) => execute(),
+    dispatchAdmission: async (_userId, _featureKeys, execute) => execute(),
     read: async () =>
       cached
         ? {
