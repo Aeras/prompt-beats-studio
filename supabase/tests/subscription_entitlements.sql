@@ -45,11 +45,6 @@ SELECT pg_temp.assert(
   NOT has_function_privilege('authenticated','public.admit_feature_ai_dispatch_internal(uuid,text[])','EXECUTE'),
   'Feature-aware provider admission must be service-only'
 );
-SELECT pg_temp.denied($q$
-  UPDATE public.subscription_manual_grants
-  SET plan='pro'
-  WHERE reason='no such disposable grant'
-$q$,'42501');
 SELECT pg_temp.assert(
   has_function_privilege('service_role','public.admit_feature_ai_dispatch_internal(uuid,text[])','EXECUTE'),
   'Feature-aware provider admission must be available to service role'
@@ -96,6 +91,17 @@ INSERT INTO public.subscription_manual_grants(
   statement_timestamp(),
   'fixture revoke'
 );
+
+SELECT pg_temp.denied($q$
+  UPDATE public.subscription_manual_grants
+  SET plan='pro'
+  WHERE reason='active plus fixture'
+$q$);
+SELECT pg_temp.denied($q$
+  UPDATE public.subscription_manual_grants
+  SET revoked_at=NULL, revoke_reason=NULL
+  WHERE reason='revoked plus fixture'
+$q$);
 
 SELECT pg_temp.assert(
   public.effective_subscription_plan('bd150000-0000-4000-8000-000000000001')='plus',
