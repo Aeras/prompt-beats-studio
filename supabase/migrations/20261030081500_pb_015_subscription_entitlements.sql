@@ -159,6 +159,26 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION public._has_valid_account_state_internal(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $
+  SELECT _user_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM auth.users u
+      JOIN public.profile_private pp ON pp.user_id = u.id
+      WHERE u.id = _user_id
+        AND pp.is_banned = false
+    );
+$;
+
+REVOKE ALL ON FUNCTION public._has_valid_account_state_internal(uuid)
+  FROM PUBLIC, anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.effective_subscription_plan_rank(_user_id uuid)
 RETURNS integer
 LANGUAGE sql
@@ -407,7 +427,7 @@ DECLARE
   v_stage text;
   v_plan_rank integer;
 BEGIN
-  IF _user_id IS NULL OR NOT public.has_valid_account_state(_user_id) THEN
+  IF _user_id IS NULL OR NOT public._has_valid_account_state_internal(_user_id) THEN
     RETURN false;
   END IF;
 
@@ -574,7 +594,7 @@ BEGIN
   IF v_expected < 1 OR v_expected > 8 THEN RAISE EXCEPTION 'Invalid AI feature set'; END IF;
 
   PERFORM public._lock_user_security_state(_user_id);
-  IF NOT public.has_valid_account_state(_user_id) THEN
+  IF NOT public._has_valid_account_state_internal(_user_id) THEN
     RAISE EXCEPTION 'Feature not available';
   END IF;
 
