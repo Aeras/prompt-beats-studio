@@ -44,7 +44,7 @@ CREATE FUNCTION public.protect_subscription_manual_grant_semantics()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $$
 BEGIN
   IF ROW(
     NEW.user_id,
@@ -80,7 +80,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$;
+$$;
 
 CREATE TRIGGER protect_subscription_manual_grant_semantics
 BEFORE UPDATE ON public.subscription_manual_grants
