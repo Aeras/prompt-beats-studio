@@ -8,10 +8,7 @@ describe("PB-015 independence boundaries", () => {
     for (const operation of ["generate", "repair", "audio_revision_intent"] as AiOperation[]) {
       expect(featureKeysForAiOperation(operation)).toEqual(["ai_generator"]);
     }
-    expect(featureKeysForAiOperation("quality_check")).toEqual([
-      "ai_generator",
-      "quality_check",
-    ]);
+    expect(featureKeysForAiOperation("quality_check")).toEqual(["ai_generator", "quality_check"]);
   });
 
   test("plan entitlement does not enter prompt-version selection or model access", async () => {
