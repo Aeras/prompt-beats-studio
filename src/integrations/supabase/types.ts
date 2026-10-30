@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Supabase CLI generated output; keep generator parity. */
 export type Json =
   | string
   | number
