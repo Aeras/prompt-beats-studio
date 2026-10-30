@@ -122,7 +122,10 @@ export function SubscriptionEntitlementsPanel({ userId }: { userId: string }) {
     })[preset];
 
   return (
-    <section className="mt-5 space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+    <section
+      data-testid="subscription-entitlements-panel"
+      className="mt-5 space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4"
+    >
       <div>
         <h3 className="font-display text-sm font-bold">{t("management.entitlementTitle")}</h3>
         <p className="mt-1 text-xs text-muted-foreground">
