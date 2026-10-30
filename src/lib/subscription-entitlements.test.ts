@@ -55,9 +55,16 @@ describe("PB-015 subscription entitlements", () => {
       "supabase/migrations/20261030081500_pb_015_subscription_entitlements.sql",
     ).text();
     const start = sql.indexOf("CREATE OR REPLACE FUNCTION public.can_use_feature");
-    const block = sql.slice(start, sql.indexOf("CREATE OR REPLACE FUNCTION public.feature_access_set_policy", start));
-    expect(block.indexOf("v_mode = 'admins_only'")).toBeLessThan(block.indexOf("v_mode IN ('plus_or_pro','pro_only')"));
-    expect(block.indexOf("v_mode = 'selected_users'")).toBeLessThan(block.indexOf("v_mode IN ('plus_or_pro','pro_only')"));
+    const block = sql.slice(
+      start,
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.feature_access_set_policy", start),
+    );
+    expect(block.indexOf("v_mode = 'admins_only'")).toBeLessThan(
+      block.indexOf("v_mode IN ('plus_or_pro','pro_only')"),
+    );
+    expect(block.indexOf("v_mode = 'selected_users'")).toBeLessThan(
+      block.indexOf("v_mode IN ('plus_or_pro','pro_only')"),
+    );
     expect(block).toContain("v_plan_rank := public.effective_subscription_plan_rank(_user_id)");
   });
 
