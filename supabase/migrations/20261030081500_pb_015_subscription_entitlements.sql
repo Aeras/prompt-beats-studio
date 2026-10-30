@@ -284,27 +284,30 @@ DECLARE
   v_grant public.subscription_manual_grants;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-
-  -- Prove caller authority before even revealing whether a supplied grant ID exists.
-  PERFORM public._lock_user_security_state(v_actor);
-  IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
-    RAISE EXCEPTION 'not allowed';
-  END IF;
   IF char_length(v_reason) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'invalid revoke reason'; END IF;
 
+  -- Resolve the target internally, then take the same deterministic actor/target
+  -- security lock order used by every privileged mutation. Do not pre-lock the
+  -- actor separately: doing so can invert the pair order when target < actor.
   SELECT user_id INTO v_target
   FROM public.subscription_manual_grants
   WHERE id = _grant_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'grant not found'; END IF;
 
-  PERFORM public._lock_user_security_pair(v_actor, v_target);
-  PERFORM pg_advisory_xact_lock(hashtextextended('promptbeats:subscription-entitlement:' || v_target::text, 0));
+  IF v_target IS NULL THEN
+    PERFORM public._lock_user_security_state(v_actor);
+  ELSE
+    PERFORM public._lock_user_security_pair(v_actor, v_target);
+  END IF;
 
-  -- Re-prove after deterministic actor/target locking so a concurrent role or
-  -- account-state change cannot race the protected mutation.
+  -- Authority is proved only after the security lock(s), so stale UI/JWT state
+  -- cannot authorize the mutation. Unauthorized callers still learn nothing
+  -- about whether the supplied grant ID exists.
   IF NOT public.has_valid_account_state(v_actor) OR NOT public.current_user_is_super_admin() THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
+  IF v_target IS NULL THEN RAISE EXCEPTION 'grant not found'; END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('promptbeats:subscription-entitlement:' || v_target::text, 0));
 
   SELECT * INTO v_grant
   FROM public.subscription_manual_grants
