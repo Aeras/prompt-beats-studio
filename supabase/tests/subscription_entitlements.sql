@@ -38,6 +38,10 @@ SELECT pg_temp.assert(
   'Anonymous users must not access manual grants directly'
 );
 SELECT pg_temp.assert(
+  NOT has_table_privilege('service_role','public.subscription_manual_grants','SELECT,INSERT,UPDATE,DELETE'),
+  'Service role must use bounded entitlement RPCs instead of direct manual-grant table access'
+);
+SELECT pg_temp.assert(
   NOT has_function_privilege('authenticated','public.effective_subscription_plan(uuid)','EXECUTE'),
   'Arbitrary-user effective plan helper must remain private'
 );
