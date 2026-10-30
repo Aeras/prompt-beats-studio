@@ -166,14 +166,16 @@ export const elFinal: Record<FinalTranslationKey, string> = {
   "management.entitlementReasonRequired": "Απαιτείται αιτιολογία.",
   "management.entitlementCustomRequired": "Επίλεξε ακριβή ημερομηνία και ώρα λήξης.",
   "management.entitlementRevokeReasonRequired": "Απαιτείται αιτιολογία ανάκλησης.",
-  "management.entitlementNeverConfirm": "Να δημιουργηθεί χειροκίνητο δικαίωμα χωρίς λήξη; Θα παραμείνει ενεργό μέχρι να ανακληθεί ρητά.",
+  "management.entitlementNeverConfirm":
+    "Να δημιουργηθεί χειροκίνητο δικαίωμα χωρίς λήξη; Θα παραμείνει ενεργό μέχρι να ανακληθεί ρητά.",
   "management.entitlementRevokeConfirm": "Να ανακληθεί αυτό το συγκεκριμένο χειροκίνητο δικαίωμα;",
   "management.entitlementCancelled": "Η ενέργεια ακυρώθηκε.",
   "management.entitlementGrantSaved": "Το χειροκίνητο δικαίωμα χορηγήθηκε.",
   "management.entitlementGrantError": "Δεν ήταν δυνατή η χορήγηση δικαιώματος.",
   "management.entitlementRevoked": "Το χειροκίνητο δικαίωμα ανακλήθηκε.",
   "management.entitlementRevokeError": "Δεν ήταν δυνατή η ανάκληση δικαιώματος.",
-  "management.entitlementSelfGrantWarning": "Αυτός είναι ο δικός σου λογαριασμός. Η χορήγηση ακολουθεί την ίδια καταγεγραμμένη διαδικασία χειροκίνητου δικαιώματος.",
+  "management.entitlementSelfGrantWarning":
+    "Αυτός είναι ο δικός σου λογαριασμός. Η χορήγηση ακολουθεί την ίδια καταγεγραμμένη διαδικασία χειροκίνητου δικαιώματος.",
   "management.featureKey": "Κλειδί λειτουργίας",
   "management.featureUpdated": "Ενημερώθηκε",
   "management.featureSearchUsers": "Προσθήκη επιλεγμένου χρήστη",
