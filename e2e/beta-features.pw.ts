@@ -421,6 +421,11 @@ for (const language of ["en", "el"])
       "Offline safe <script> marker",
     );
     expect(await page.locator("script").filter({ hasText: "Offline safe" }).count()).toBe(0);
+    const downloadReady = page.waitForEvent("download");
+    await candidate.getByRole("button", { name: /^(Download|Λήψη)$/ }).click();
+    const downloaded = await downloadReady;
+    expect(downloaded.suggestedFilename()).toBe("prompt-template.md");
+    expect(readFileSync((await downloaded.path())!, "utf8")).toBe("Offline safe <script> marker");
     await candidate
       .getByRole("button", { name: /^(Set production default|Ορισμός παραγωγικής προεπιλογής)$/ })
       .click();
@@ -446,37 +451,91 @@ for (const language of ["en", "el"])
     expect(f.calls.some((c) => /startGenerationJob|runSongGeneration/.test(c))).toBe(false);
   });
 
-test("three scoped admin dropdowns use dark accessible non-native menus with unchanged choices", async ({
-  page,
-}) => {
-  await fixture(page, "super_admin", true);
-  await page.goto("/management?userId=bb000000-0000-4000-8000-000000000001");
-  await page.getByRole("button", { name: /^(Users|Χρήστες)$/ }).click();
-  const panel = page.getByTestId("subscription-entitlements-panel");
-  const plan = panel.getByRole("combobox", { name: /^(Manual plan|Χειροκίνητο πλάνο)$/ });
-  await plan.click();
-  await expect(page.getByRole("option")).toHaveText(["Plus", "Pro"]);
-  await page.keyboard.press("Escape");
-  await expect(plan).toBeFocused();
-  const duration = panel.getByRole("combobox", { name: /Duration|Διάρκεια/ });
-  await duration.click();
-  await expect(page.getByRole("option")).toHaveCount(8);
-  await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: /^(Close|Κλείσιμο)$/ })
-    .last()
-    .click();
-  await page.getByRole("button", { name: /^(Feature Access|Πρόσβαση λειτουργιών)$/ }).click();
-  const access = page.getByRole("combobox", { name: /Access mode|Τρόπος πρόσβασης/ });
-  await access.click();
-  await expect(page.getByRole("option")).toHaveCount(6);
-  const background = await page
-    .getByRole("listbox")
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(background).not.toBe("rgb(255, 255, 255)");
-  await page.keyboard.press("Escape");
-  await expect(access).toBeFocused();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
-    true,
-  );
-});
+for (const language of ["en", "el"])
+  test(`three scoped admin dropdowns ${language} use dark accessible non-native menus with unchanged choices`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (language) => localStorage.setItem("pb:interface-language", language),
+      language,
+    );
+    const f = await fixture(page, "super_admin", true);
+    await page.goto("/management?userId=bb000000-0000-4000-8000-000000000001");
+    await page.getByRole("button", { name: /^(Users|Χρήστες)$/ }).click();
+    const panel = page.getByTestId("subscription-entitlements-panel");
+    const plan = panel.getByRole("combobox", { name: /^(Manual plan|Χειροκίνητο πλάνο)$/ });
+    await plan.click();
+    await expect(page.getByRole("option")).toHaveText(["Plus", "Pro"]);
+    await page.keyboard.press("Escape");
+    await expect(plan).toBeFocused();
+    await plan.click();
+    await page.getByRole("option", { name: "Pro", exact: true }).click();
+    await expect(plan).toHaveText("Pro");
+    await plan.click();
+    await expect(page.getByRole("option", { selected: true })).toHaveText("Pro");
+    await page.keyboard.press("Escape");
+    const duration = panel.getByRole("combobox", { name: /Duration|Διάρκεια/ });
+    await duration.click();
+    await expect(page.getByRole("option")).toHaveText(
+      language === "el"
+        ? [
+            "7 ημέρες",
+            "1 μήνας",
+            "2 μήνες",
+            "3 μήνες",
+            "6 μήνες",
+            "12 μήνες",
+            "Χωρίς λήξη",
+            "Προσαρμοσμένη ημερομηνία/ώρα",
+          ]
+        : [
+            "7 days",
+            "1 month",
+            "2 months",
+            "3 months",
+            "6 months",
+            "12 months",
+            "Never",
+            "Custom date/time",
+          ],
+    );
+    await page.keyboard.press("Escape");
+    await expect(duration).toBeFocused();
+    await duration.click();
+    await page
+      .getByRole("option", { name: /^(Custom date\/time|Προσαρμοσμένη ημερομηνία\/ώρα)$/ })
+      .click();
+    await expect(panel.locator('input[type="datetime-local"]')).toBeVisible();
+    await expect(duration).toHaveText(
+      language === "el" ? "Προσαρμοσμένη ημερομηνία/ώρα" : "Custom date/time",
+    );
+    expect(f.calls.some((c) => c.includes("createSubscriptionManualGrant"))).toBe(false);
+    await page
+      .getByRole("button", { name: /^(Close|Κλείσιμο)$/ })
+      .last()
+      .click();
+    await page.getByRole("button", { name: /^(Feature Access|Πρόσβαση λειτουργιών)$/ }).click();
+    const access = page.getByRole("combobox", { name: /Access mode|Τρόπος πρόσβασης/ });
+    await access.click();
+    await expect(page.getByRole("option")).toHaveText(
+      language === "el"
+        ? [
+            "Απενεργοποιημένο",
+            "Μόνο Admins",
+            "Επιλεγμένοι χρήστες",
+            "Όλοι",
+            "Plus & Pro",
+            "Μόνο Pro",
+          ]
+        : ["Disabled", "Admins only", "Selected users", "Everyone", "Plus & Pro", "Pro only"],
+    );
+    const background = await page
+      .getByRole("listbox")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(background).not.toBe("rgb(255, 255, 255)");
+    await page.keyboard.press("Escape");
+    await expect(access).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    );
+  });

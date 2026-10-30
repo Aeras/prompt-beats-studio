@@ -35,7 +35,7 @@ or restore an old database as an application rollback.
 Local frozen install, strict TypeScript, changed-source ESLint/Prettier, production
 build, full Bun **1,399 PASS / 0 FAIL** and fresh isolated Supabase migration replay
 passed. Registry SQL/RLS and actual independent-connection admission/default/delete
-races passed. **21 focused browser cases** passed across desktop/tablet/mobile,
+races passed. **24 focused browser cases** passed across desktop/tablet/mobile,
 covering EL/EN imports/preview/default confirmation, three dark selectors, retained
 legacy choices, archival and ordinary-user exclusion. The existing admin suite's
 remaining unchanged scenarios also passed locally. The final exact-HEAD Regression,
