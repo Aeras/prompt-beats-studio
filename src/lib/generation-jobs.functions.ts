@@ -1,4 +1,5 @@
 import { atlasHandoffSchema } from "./song-atlas.shared";
+import { promptBindingSchema } from "./prompt-registry.shared";
 import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 /**
  * Client-facing API for durable song generation jobs.
@@ -41,7 +42,10 @@ const jobInput = z.object({
   mood: z.string().trim().min(1).max(1000),
   language: z.string().trim().min(1).max(80),
   generationModel: z.string().trim().min(1).max(240).nullish(),
-  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
+  promptVersion: z
+    .enum(["v1", "v2", "v3", "v4_beta", "v5_beta_1", "default", "registry"])
+    .default("default"),
+  registryPromptId: z.string().guid().optional(),
   advanced: z.boolean().default(false),
   baseMusicStyle: z.string().trim().max(4000).default(""),
   instruments: z.string().trim().max(2000).default(""),
@@ -88,7 +92,8 @@ const resultShape = z.union([songResultShape, sectionEditResultShape]);
  * completely closed browser — never localStorage, never the result text.
  */
 const songInputShape = z.object({
-  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta"]).default("v1"),
+  promptVersion: z.enum(["v1", "v2", "v3", "v4_beta", "v5_beta_1", "registry"]).default("v1"),
+  promptBinding: promptBindingSchema.optional(),
   targetPlatform: z.enum(AI_TARGET_PLATFORMS).default(DEFAULT_AI_TARGET_PLATFORM),
   theme: z.string().default(""),
   genre: z.string().default(""),
@@ -182,11 +187,11 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
     // prettier-ignore
-    if (data.promptVersion === "v2" || data.promptVersion === "v3" || data.promptVersion === "v4_beta") {
+    if (data.promptVersion === "v2" || data.promptVersion === "v3" || data.promptVersion === "v4_beta" || data.promptVersion === "v5_beta_1" || data.promptVersion === "registry" || data.registryPromptId) {
       const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
         "current_user_is_super_admin",
       );
-      if (roleError || isSuperAdmin !== true || !data.advanced || data.operation !== "generate") {
+      if (roleError || isSuperAdmin !== true || !data.advanced || data.operation !== "generate" || ((data.promptVersion === "v5_beta_1" || data.promptVersion === "registry" || data.registryPromptId) && data.inputSnapshot?.generatorMode !== "advanced")) {
         throw new Error(
           "Experimental prompt versions are restricted to Super Admin Advanced generation.",
         );

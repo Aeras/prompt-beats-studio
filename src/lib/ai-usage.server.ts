@@ -7,6 +7,7 @@
  * backfilling NULL costs later when verified pricing is added.
  */
 export type AiOperation =
+  | "music_inspiration"
   | "generate"
   | "quality_check"
   | "repair"

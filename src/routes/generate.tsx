@@ -1,4 +1,13 @@
+import { listGeneratorPrompts } from "@/lib/prompt-registry.functions";
+import { promptRegistryCopy } from "@/i18n/prompt-registry";
+import {
+  inspirationOwnedKeys,
+  type InspirationApplyField,
+} from "@/lib/music-inspiration-apply.shared";
+import { useMusicInspirationState } from "@/hooks/useMusicInspirationState";
+import { createMusicTracker, sameGeneratorFrame } from "@/lib/music-inspiration-generator-state";
 import { AtlasGeneratorBridge } from "@/components/promptbeats/AtlasGeneratorBridge";
+import { MusicInspirationPanel } from "@/components/promptbeats/MusicInspirationPanel";
 import {
   composeAtlasInstructions,
   parseAtlasAwareSetup,
@@ -980,7 +989,32 @@ function GeneratePage() {
   const [advanced, setAdvanced] = useState(search.mode === "revision" || search.presets === "open");
   const defaultGeneratorModeAppliedRef = useRef(false);
   const [revisionMode, setRevisionMode] = useState(search.mode === "revision");
-  const [promptVersion, setPromptVersion] = useState<"v1" | "v2" | "v3" | "v4_beta">("v1");
+  const [promptVersion, setPromptVersion] = useState<
+    "v1" | "v2" | "v3" | "v4_beta" | "v5_beta_1" | "default" | "registry"
+  >("default");
+  const [registryPromptId, setRegistryPromptId] = useState("");
+  const promptCatalog = useQuery({
+    queryKey: ["generator-prompt-catalog", user?.id],
+    queryFn: () => listGeneratorPrompts(),
+    enabled: moderation.isSuperAdmin,
+  });
+  const archivedPromptVersions = new Set(
+    (Array.isArray(promptCatalog.data) ? promptCatalog.data : [])
+      .filter((p) => p.status === "archived")
+      .map((p) => p.builtin_version),
+  );
+  useEffect(() => {
+    const catalog = Array.isArray(promptCatalog.data) ? promptCatalog.data : [];
+    if (
+      catalog.length &&
+      ((promptVersion === "registry" &&
+        !catalog.some((p) => p.id === registryPromptId && p.status !== "archived")) ||
+        catalog.some((p) => p.builtin_version === promptVersion && p.status === "archived"))
+    ) {
+      setPromptVersion("default");
+      setRegistryPromptId("");
+    }
+  }, [promptCatalog.data, promptVersion, registryPromptId]);
   const [revisionProjectId, setRevisionProjectId] = useState(search.project ?? "");
   const [revisionBasePromptId, setRevisionBasePromptId] = useState(search.base ?? "");
   const [revisionRequest, setRevisionRequest] = useState("");
@@ -991,14 +1025,58 @@ function GeneratePage() {
     DEFAULT_AI_TARGET_PLATFORM,
   );
   const [theme, setTheme] = useState("");
-  const [genres, setGenres] = useState<string[]>([]);
-  const [customGenre, setCustomGenre] = useState("");
-  const [moods, setMoods] = useState<string[]>([]);
-  const [customMood, setCustomMood] = useState("");
-  const [instruments, setInstruments] = useState<string[]>([]);
-  const [customInstruments, setCustomInstruments] = useState("");
-  const [structure, setStructure] = useState<string[]>([]);
-  const [songBlueprint, setSongBlueprint] = useState<SongBlueprintSection[]>([]);
+  const musicTracker = useRef(createMusicTracker());
+  const inspirationSetupRef = useRef<
+    import("@/lib/advanced-generator-setup").AdvancedGeneratorSetup | null
+  >(null);
+  const [genres, setGenres] = useMusicInspirationState<string[]>(
+    "genres",
+    [],
+    "selectedMusicStyles",
+    musicTracker,
+  );
+  const [customGenre, setCustomGenre] = useMusicInspirationState(
+    "customGenre",
+    "",
+    "selectedMusicStyles",
+    musicTracker,
+  );
+  const [moods, setMoods] = useMusicInspirationState<string[]>(
+    "moods",
+    [],
+    "selectedMoods",
+    musicTracker,
+  );
+  const [customMood, setCustomMood] = useMusicInspirationState(
+    "customMood",
+    "",
+    "selectedMoods",
+    musicTracker,
+  );
+  const [instruments, setInstruments] = useMusicInspirationState<string[]>(
+    "instruments",
+    [],
+    "selectedInstruments",
+    musicTracker,
+  );
+  const [customInstruments, setCustomInstruments] = useMusicInspirationState(
+    "customInstruments",
+    "",
+    "selectedInstruments",
+    musicTracker,
+  );
+  const [structure, setStructure] = useMusicInspirationState<string[]>(
+    "structure",
+    [],
+    "arrangement",
+    musicTracker,
+  );
+  const [songBlueprint, setSongBlueprint] = useMusicInspirationState<SongBlueprintSection[]>(
+    "songBlueprint",
+    [],
+    "arrangement",
+    musicTracker,
+  );
   const arrangement = useMemo(
     () => normalizeSongArrangement(structure, buildSongBlueprint(structure, songBlueprint)),
     [structure, songBlueprint],
@@ -1015,7 +1093,7 @@ function GeneratePage() {
     if (JSON.stringify(songBlueprint) !== JSON.stringify(normalizedBlueprint)) {
       setSongBlueprint(normalizedBlueprint);
     }
-  }, [arrangement, songBlueprint, structure.length]);
+  }, [arrangement, songBlueprint, structure.length, setSongBlueprint]);
   const [showStyleTags, setShowStyleTags] = useState(false);
   const [showMoodTags, setShowMoodTags] = useState(false);
   const [showInstrumentTags, setShowInstrumentTags] = useState(false);
@@ -1023,14 +1101,24 @@ function GeneratePage() {
   const [showArrangementAdvanced, setShowArrangementAdvanced] = useState(false);
   const [activeSmartPresetId, setActiveSmartPresetId] = useState("");
   const [presetCulturalStyleId, setPresetCulturalStyleId] = useState("");
-  const [production, setProduction] = useState("");
-  const [instructions, setInstructions] = useState("");
+  const [production, setProduction] = useMusicInspirationState(
+    "production",
+    "",
+    "productionStyle",
+    musicTracker,
+  );
+  const [instructions, setInstructions] = useMusicInspirationState(
+    "instructions",
+    "",
+    "additionalInstructions",
+    musicTracker,
+  );
   const [atlasInstructions, setAtlasInstructions] = useState<AtlasInstructionLayer | null>(null);
   const [atlasRecoveryText, setAtlasRecoveryText] = useState("");
   const [atlasImportNotice, setAtlasImportNotice] = useState(false);
   const [pendingAtlasImport, setPendingAtlasImport] = useState<AtlasInstructionLayer | null>(null);
-  const [bpm, setBpm] = useState("Auto");
-  const [customBpm, setCustomBpm] = useState("");
+  const [bpm, setBpm] = useMusicInspirationState("bpm", "Auto", "bpm", musicTracker);
+  const [customBpm, setCustomBpm] = useMusicInspirationState("customBpm", "", "bpm", musicTracker);
   const [language, setLanguage] = useState("");
   const [languageVariant, setLanguageVariant] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
@@ -1416,7 +1504,21 @@ function GeneratePage() {
     } catch {
       setStatus(t("generator.songAnalyzerLoadFailed"));
     }
-  }, [t]);
+  }, [
+    t,
+    setGenres,
+    setCustomGenre,
+    setMoods,
+    setCustomMood,
+    setInstruments,
+    setCustomInstruments,
+    setStructure,
+    setSongBlueprint,
+    setProduction,
+    setInstructions,
+    setBpm,
+    setCustomBpm,
+  ]);
 
   useEffect(() => {
     const data = revisionBase.data;
@@ -1499,7 +1601,22 @@ function GeneratePage() {
       setLanguageVariant("");
       setCustomLanguage("");
     }
-  }, [revisionMode, revisionBase.data]);
+  }, [
+    revisionMode,
+    revisionBase.data,
+    setBpm,
+    setCustomBpm,
+    setCustomGenre,
+    setCustomInstruments,
+    setCustomMood,
+    setGenres,
+    setInstructions,
+    setInstruments,
+    setMoods,
+    setProduction,
+    setSongBlueprint,
+    setStructure,
+  ]);
 
   useEffect(() => {
     if (search.mode !== "revision") return;
@@ -1915,6 +2032,8 @@ function GeneratePage() {
       targetPlatform: effectiveTargetPlatform,
       generatorMode: revisionMode ? "revision" : advanced ? "advanced" : "basic",
       promptVersion: songContext?.promptVersion ?? "v1",
+      promptLabel: songContext?.promptBinding?.label,
+      promptDigest: songContext?.promptBinding?.digest,
       exportedAt,
     });
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -2562,8 +2681,14 @@ function GeneratePage() {
           language: effectiveLanguage,
           targetPlatform,
           generationModel,
-          promptVersion:
-            advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1",
+          promptVersion: revisionMode
+            ? "v1"
+            : advanced && moderation.isSuperAdmin
+              ? promptVersion
+              : "default",
+          ...(advanced && !revisionMode && moderation.isSuperAdmin && promptVersion === "registry"
+            ? { registryPromptId }
+            : {}),
           advanced: advanced || revisionMode,
           baseMusicStyle: baseGenre,
           instruments: instrumentsText,
@@ -3239,7 +3364,143 @@ function GeneratePage() {
       }
     >
       <div className="px-4 py-6 pb-[220px] md:px-8 md:pb-[150px]">
-        <div className="mx-auto max-w-3xl">
+        <div
+          data-testid="generator-stacked-layout"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            maxWidth: "48rem",
+            minWidth: 0,
+            marginInline: "auto",
+          }}
+          className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 [&>*]:w-full [&>*]:min-w-0"
+        >
+          {/* Keep mode navigation above mode-specific panels to prevent layout jumps. */}
+          <div
+            className="glass-strong rounded-3xl p-3 sm:p-4"
+            data-testid="generator-mode-navigation"
+          >
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label={t("generator.mode")}
+            >
+              {[
+                { key: "basic" as const, label: t("generator.basic") },
+                { key: "advanced" as const, label: t("generator.advanced") },
+                { key: "revision" as const, label: t("generator.revision") },
+              ].map((mode) => {
+                const active =
+                  mode.key === "revision"
+                    ? revisionMode
+                    : !revisionMode && advanced === (mode.key === "advanced");
+                return (
+                  <button
+                    key={mode.key}
+                    type="button"
+                    data-generator-mode={mode.key}
+                    aria-pressed={active}
+                    onClick={() => changeGeneratorMode(mode.key)}
+                    className={
+                      active
+                        ? "whitespace-nowrap rounded-full border border-transparent bg-gradient-neon px-3 py-1.5 text-xs font-semibold text-primary-foreground glow-neon sm:px-4"
+                        : "whitespace-nowrap rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent sm:px-4"
+                    }
+                  >
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {advanced && !revisionMode && (
+            <MusicInspirationPanel
+              key={`music-inspiration:${user?.id ?? "anon"}`}
+              setup={
+                (inspirationSetupRef.current = {
+                  targetPlatform,
+                  theme,
+                  selectedMusicStyles: genres.filter((value) => value !== CUSTOM),
+                  customMusicStyle: customGenre,
+                  selectedMoods: moods.filter((value) => value !== CUSTOM),
+                  customMood,
+                  selectedInstruments: instruments.filter((value) => value !== CUSTOM),
+                  customInstruments,
+                  bpmMode: bpm,
+                  customBpm,
+                  songStructure: structure,
+                  songBlueprint,
+                  productionStyle: production,
+                  additionalInstructions: instructions,
+                  language,
+                  languageVariant,
+                  customLanguage,
+                  smartPresetId: activeSmartPresetId,
+                  culturalStyleId: presetCulturalStyleId,
+                })
+              }
+              readGenerator={() => {
+                const base = inspirationSetupRef.current!;
+                const v = musicTracker.current.values;
+                return {
+                  versions: { ...musicTracker.current.versions },
+                  setup: {
+                    ...base,
+                    selectedMusicStyles: (v["genres"] as string[]).filter(
+                      (value) => value !== CUSTOM,
+                    ),
+                    customMusicStyle: v["customGenre"] as string,
+                    selectedMoods: (v["moods"] as string[]).filter((value) => value !== CUSTOM),
+                    customMood: v["customMood"] as string,
+                    selectedInstruments: (v["instruments"] as string[]).filter(
+                      (value) => value !== CUSTOM,
+                    ),
+                    customInstruments: v["customInstruments"] as string,
+                    songStructure: v["structure"] as string[],
+                    songBlueprint: v["songBlueprint"] as SongBlueprintSection[],
+                    bpmMode: v["bpm"] as string,
+                    customBpm: v["customBpm"] as string,
+                    productionStyle: v["production"] as string,
+                    additionalInstructions: v["instructions"] as string,
+                  },
+                };
+              }}
+              onApply={(next, expected, read) => {
+                if (!sameGeneratorFrame(expected, read())) return false;
+                inspirationSetupRef.current = next;
+                // Commit only groups whose exact projected values changed. This also preserves
+                // UI-only Custom sentinels in untouched groups and their edit epochs.
+                const changed = (field: InspirationApplyField) =>
+                  inspirationOwnedKeys[field].some(
+                    (key) => JSON.stringify(expected.setup[key]) !== JSON.stringify(next[key]),
+                  );
+                if (changed("selectedMusicStyles")) {
+                  setGenres(next.selectedMusicStyles);
+                  setCustomGenre(next.customMusicStyle);
+                }
+                if (changed("selectedMoods")) {
+                  setMoods(next.selectedMoods);
+                  setCustomMood(next.customMood);
+                }
+                if (changed("selectedInstruments")) {
+                  setInstruments(next.selectedInstruments);
+                  setCustomInstruments(next.customInstruments);
+                }
+                if (changed("bpm")) {
+                  setBpm(next.bpmMode);
+                  setCustomBpm(next.customBpm);
+                }
+                if (changed("arrangement")) {
+                  setStructure(next.songStructure);
+                  setSongBlueprint(next.songBlueprint);
+                }
+                if (changed("productionStyle")) setProduction(next.productionStyle);
+                if (changed("additionalInstructions")) setInstructions(next.additionalInstructions);
+                return true;
+              }}
+            />
+          )}
           {!freshSession && !revisionMode && (
             <AtlasGeneratorBridge
               key={user?.id}
@@ -3282,7 +3543,10 @@ function GeneratePage() {
               </button>
             </section>
           )}
-          <div className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6">
+          <div
+            data-testid="generator-settings-panel"
+            className="glass-strong space-y-4 rounded-3xl p-5 sm:p-6"
+          >
             <div>
               <FieldLabel>{t("generator.targetPlatform")}</FieldLabel>
               <p className="mb-2 text-xs text-muted-foreground">
@@ -3312,38 +3576,6 @@ function GeneratePage() {
             </div>
 
             <div className="space-y-2">
-              <div
-                className="flex flex-wrap items-center gap-2"
-                role="group"
-                aria-label={t("generator.mode")}
-              >
-                {[
-                  { key: "basic" as const, label: t("generator.basic") },
-                  { key: "advanced" as const, label: t("generator.advanced") },
-                  { key: "revision" as const, label: t("generator.revision") },
-                ].map((mode) => {
-                  const active =
-                    mode.key === "revision"
-                      ? revisionMode
-                      : !revisionMode && advanced === (mode.key === "advanced");
-                  return (
-                    <button
-                      key={mode.key}
-                      type="button"
-                      data-generator-mode={mode.key}
-                      aria-pressed={active}
-                      onClick={() => changeGeneratorMode(mode.key)}
-                      className={
-                        active
-                          ? "whitespace-nowrap rounded-full border border-transparent bg-gradient-neon px-3 py-1.5 text-xs font-semibold text-primary-foreground glow-neon sm:px-4"
-                          : "whitespace-nowrap rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent sm:px-4"
-                      }
-                    >
-                      {mode.label}
-                    </button>
-                  );
-                })}
-              </div>
               {(advanced && !revisionMode) || (canClear && !revisionMode) ? (
                 <div className="flex flex-wrap items-center gap-2">
                   {advanced && !revisionMode && songSetupFeature.allowed && (
@@ -3512,29 +3744,56 @@ function GeneratePage() {
                 <select
                   id="generator-prompt-version"
                   className={fieldClass}
-                  value={promptVersion}
-                  disabled={busy || Boolean(jobId)}
-                  onChange={(event) =>
-                    setPromptVersion(
-                      event.target.value === "v4_beta"
-                        ? "v4_beta"
-                        : event.target.value === "v3"
-                          ? "v3"
-                          : event.target.value === "v2"
-                            ? "v2"
-                            : "v1",
-                    )
+                  value={
+                    promptVersion === "registry" ? `registry:${registryPromptId}` : promptVersion
                   }
+                  disabled={busy || Boolean(jobId)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value.startsWith("registry:")) {
+                      setRegistryPromptId(value.slice(9));
+                      setPromptVersion("registry");
+                    } else {
+                      setRegistryPromptId("");
+                      setPromptVersion(value as typeof promptVersion);
+                    }
+                  }}
                 >
-                  <option value="v1">Prompt Version 1 — Original</option>
-                  <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
-                  <option value="v3">Prompt Version 3 — Adaptive Singability (Experimental)</option>
-                  <option value="v4_beta">Prompt Version 4 BETA — Unified Master (R3.1)</option>
+                  <option value="default">{promptRegistryCopy[appLanguage].automatic}</option>
+                  {(Array.isArray(promptCatalog.data) ? promptCatalog.data : [])
+                    .filter((p) => p.family === "master_v1" && p.status !== "archived")
+                    .map((p) => (
+                      <option key={p.id} value={`registry:${p.id}`}>
+                        {p.label}
+                      </option>
+                    ))}
+                  {!archivedPromptVersions.has("v1") && (
+                    <option value="v1">Prompt Version 1 — Original</option>
+                  )}
+                  {!archivedPromptVersions.has("v2") && (
+                    <option value="v2">Prompt Version 2 — Blueprint Optimized</option>
+                  )}
+                  {!archivedPromptVersions.has("v3") && (
+                    <option value="v3">
+                      Prompt Version 3 — Adaptive Singability (Experimental)
+                    </option>
+                  )}
+                  {!archivedPromptVersions.has("v4_beta") && (
+                    <option value="v4_beta">Prompt Version 4 BETA — Unified Master (R3.1)</option>
+                  )}
+                  {!archivedPromptVersions.has("v5_beta_1") && (
+                    <option value="v5_beta_1">Prompt Version 5 BETA 1 — Creative Master</option>
+                  )}
                 </select>
+                {promptCatalog.isError && (
+                  <p role="alert" className="mt-2 text-xs text-destructive">
+                    {promptRegistryCopy[appLanguage].failed}
+                  </p>
+                )}
                 <p className="mt-2 text-xs text-muted-foreground">
                   {appLanguage === "el"
-                    ? "Οι V1/V2/V3 παραμένουν αμετάβλητες. Η V3 δοκιμάζει προσαρμοστική τραγουδισιμότητα και η V4 BETA το ενιαίο master prompt R3.1, μόνο για Super Admin."
-                    : "V1/V2/V3 remain unchanged. V3 tests adaptive singability and V4 BETA the unified R3.1 master prompt, Super Admin only."}
+                    ? "Οι V1–V4 παραμένουν αμετάβλητες. Η V5 BETA 1 είναι ερευνητικός υποψήφιος Creative Master, όχι αποδεδειγμένα ανώτερο prompt. Μόνο για Super Admin."
+                    : "V1–V4 remain unchanged. V5 BETA 1 is a Creative Master research candidate, not a proven superior prompt. Super Admin only."}
                 </p>
               </div>
             )}

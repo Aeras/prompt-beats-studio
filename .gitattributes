@@ -3,3 +3,10 @@
 src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json -text
 research/atlas-v4-merged-evidence-20261027.json -text
 research/atlas-v4-636-evidence-tasks.json text eol=lf
+
+
+# Canonical Creative Master V2 research candidate: preserve supplied bytes.
+docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.md -text
+
+docs/prompts/PromptBeats_V5_BETA_2_Master_Prompt_CANDIDATE.md -text
+supabase/migrations/20261030195702_secure_generator_prompt_registry.sql -text

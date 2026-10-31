@@ -31,15 +31,29 @@ describe("mobile and tablet touch navigation", () => {
     expect(shell).toContain('tabletLandscape && (desktopSidebarOpen ? "!pl-[270px]" : "!pl-5")');
   });
 
-  test("touch swipes remain an accelerator for visible generator and library tabs", async () => {
+  test("touch swipe tab switching is library-only and Generator modes require explicit selection", async () => {
     const shell = await source("src/components/promptbeats/AppShell.tsx");
     const generator = await source("src/routes/generate.tsx");
     const library = await source("src/routes/library.tsx");
     expect(shell).toContain("TOUCH_TAB_SWIPE_THRESHOLD = 72");
-    expect(shell).toContain('active === "studio" ? "[data-generator-mode]" : "[data-library-tab]"');
+    expect(shell).toContain('active !== "library") return');
+    expect(shell).toContain('const selector = "[data-library-tab]"');
+    expect(shell).not.toContain('active === "studio" ? "[data-generator-mode]"');
     expect(shell).toContain("if (nextIndex < 0 || nextIndex >= buttons.length) return");
     expect(generator).toContain("data-generator-mode={mode.key}");
     expect(library).toContain("aria-pressed={tab === item}");
+  });
+
+  test("Generator mode controls precede conditional Music Inspiration and remain a single group", async () => {
+    const generator = await source("src/routes/generate.tsx");
+    const navigation = generator.indexOf('data-testid="generator-mode-navigation"');
+    const inspiration = generator.indexOf("<MusicInspirationPanel", navigation);
+    const advancedBridge = generator.indexOf("<AtlasGeneratorBridge", navigation);
+    expect(navigation).toBeGreaterThan(-1);
+    expect(inspiration).toBeGreaterThan(navigation);
+    expect(advancedBridge).toBeGreaterThan(navigation);
+    expect(generator.split("data-generator-mode={mode.key}")).toHaveLength(2);
+    expect(generator).toContain("onClick={() => changeGeneratorMode(mode.key)}");
   });
 
   test("mobile navigation exposes a non-color active cue and keyboard focus", async () => {

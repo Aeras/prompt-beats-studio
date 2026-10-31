@@ -1,3 +1,4 @@
+import { songSetupOutputMessage } from "@/lib/song-setup-output.shared";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 
@@ -159,11 +160,7 @@ export function SongSetupAssistantModal({
       setDraft(result.setup);
       requestKeyRef.current = null;
     } catch (err) {
-      setError(
-        err instanceof Error && (language === "en" || isSuperAdmin)
-          ? err.message
-          : text.fallbackError,
-      );
+      setError(songSetupOutputMessage(err, language) ?? text.fallbackError);
     } finally {
       setBusy(false);
     }

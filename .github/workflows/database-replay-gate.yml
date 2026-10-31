@@ -83,6 +83,10 @@ jobs:
           set -euo pipefail
           PROJECT_ID="$(sed -n 's/^project_id = "\(.*\)"/\1/p' supabase/config.toml)"
           test -n "$PROJECT_ID"
+          # Historical migrations seed a live runner URL and random token. This
+          # disposable CI database must never dispatch external jobs. Keep the
+          # race harness fail-closed assertion; isolate the fixture explicitly.
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DELETE FROM public.app_settings WHERE key IN ('runner_url','runner_token');"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_usage_recovery.sql
           bash scripts/tests/ai-usage-db-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/upload_integrity.sql
@@ -112,10 +116,23 @@ jobs:
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/global_ai_usage.sql
           bash scripts/tests/global-ai-usage-races.sh "$PROJECT_ID"
 
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/subscription_entitlements.sql
+          bash scripts/tests/subscription-entitlement-races.sh "$PROJECT_ID"
+
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/prompt_registry.sql
+          bun scripts/tests/prompt-registry-races.ts "$PROJECT_ID"
+
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/failed_generation_reconciliation.sql
           bash scripts/tests/failed-generation-reconciliation-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/song_atlas_beta.sql
           bash scripts/tests/song-atlas-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/music_inspiration.sql
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/music_inspiration_observed_usage.sql
+          bash scripts/tests/music-inspiration-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/music_inspiration_planner.sql
+          bash scripts/tests/music-inspiration-planner-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/runner_recovery.sql
+          bash scripts/tests/runner-recovery-races.sh "$PROJECT_ID"
 
       - name: Stop local Supabase database
         if: always()

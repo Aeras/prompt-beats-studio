@@ -32,10 +32,10 @@ describe("Experimental Advanced Generator V3", () => {
     const ai = await readFile("src/lib/ai.functions.ts", "utf8");
     expect(jobs).toContain('data.promptVersion === "v2" || data.promptVersion === "v3"');
     expect(jobs).toContain("isSuperAdmin !== true || !data.advanced || data.operation !==");
-    expect(route).toContain(
-      'advanced && !revisionMode && moderation.isSuperAdmin ? promptVersion : "v1"',
+    expect(route).toMatch(
+      /revisionMode\s*\?\s*"v1"\s*:\s*advanced && moderation.isSuperAdmin\s*\?\s*promptVersion\s*:\s*"default"/,
     );
-    expect(route).toContain('<option value="v3">Prompt Version 3');
+    expect(route).toMatch(/<option value="v3">\s*Prompt Version 3/);
     expect(ai).toContain('data.promptVersion === "v3"');
     expect(ai).toContain("withV3MusicalPlanning(");
     expect(ai).not.toContain("buildV3ReviewPrompt(");

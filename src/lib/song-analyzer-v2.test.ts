@@ -403,7 +403,12 @@ function endpointFixture(allowed = true) {
     execute: typeof import("./ai-auxiliary-idempotency.server").executeDurableAuxiliaryAiRequest;
   }>(`${durableSource}\nexports.execute=executeDurableAuxiliaryAiRequest;`, {
     auxiliaryRequestKeySchema: z.string().guid(),
-    withAiDispatchAdmission: async (execute: () => Promise<unknown>) => execute(),
+    withFeatureAiDispatchAdmission: async (
+      _userId: string,
+      _featureKeys: readonly string[],
+      execute: () => Promise<unknown>,
+    ) => execute(),
+    featureKeysForAuxiliaryAiOperation: () => ["ai_generator", "song_analyzer"],
     auxiliaryModelContext: { run: (_scope: unknown, execute: () => unknown) => execute() },
     startAuxiliaryModel: async (model: string) => {
       expect(model).toBeTruthy();

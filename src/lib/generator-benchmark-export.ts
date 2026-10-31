@@ -8,7 +8,9 @@ export type GeneratorBenchmarkExportInput = {
   provider: string | null;
   targetPlatform: string;
   generatorMode: "basic" | "advanced" | "revision";
-  promptVersion?: "v1" | "v2" | "v3" | "v4_beta";
+  promptVersion?: "v1" | "v2" | "v3" | "v4_beta" | "v5_beta_1" | "registry";
+  promptLabel?: string | undefined;
+  promptDigest?: string | undefined;
   exportedAt: string;
 };
 
@@ -38,6 +40,12 @@ export function buildGeneratorBenchmarkMarkdown(input: GeneratorBenchmarkExportI
     `- **Target Platform:** ${safeLine(input.targetPlatform)}`,
     `- **Generator Mode:** ${input.generatorMode}`,
     `- **Prompt Version:** ${input.promptVersion ?? "v1"}`,
+    ...(input.promptLabel
+      ? [
+          `- **Prompt Label:** ${safeLine(input.promptLabel)}`,
+          `- **Prompt reference SHA-256:** ${safeLine(input.promptDigest ?? "")}`,
+        ]
+      : []),
     `- **Exported At:** ${input.exportedAt}`,
     "",
     "## Title",

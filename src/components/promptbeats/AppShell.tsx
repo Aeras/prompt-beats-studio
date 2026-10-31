@@ -230,7 +230,8 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
   }, [drawer]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || (active !== "studio" && active !== "library")) return;
+    // Swipe tab switching remains available in Library only; Generator modes use explicit buttons.
+    if (typeof window === "undefined" || active !== "library") return;
     const media = window.matchMedia(TOUCH_TAB_QUERY);
     let startX = 0;
     let startY = 0;
@@ -265,7 +266,7 @@ export function AppShell({ header, children }: { header?: ReactNode; children: R
       )
         return;
 
-      const selector = active === "studio" ? "[data-generator-mode]" : "[data-library-tab]";
+      const selector = "[data-library-tab]";
       const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(selector)).filter(
         (button) => button.offsetParent !== null && !button.disabled,
       );

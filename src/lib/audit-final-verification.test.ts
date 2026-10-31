@@ -1,3 +1,4 @@
+import { promptBindingSchema } from "./prompt-registry.shared";
 import { atlasHandoffSchema } from "./song-atlas.shared";
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
@@ -501,7 +502,7 @@ describe("audit final — actual background adapter failures and restart", () =>
         },
       );
       const deps: ExecutionDependencies = {
-        dispatchAdmission: async (execute) => execute(),
+        dispatchAdmission: async (_userId, _featureKeys, execute) => execute(),
         read: async () => null,
         begin: async () => {},
         checkpoint: async () => {},
@@ -551,6 +552,7 @@ describe("audit final — total encoded generation budget", () => {
         AI_TARGET_PLATFORMS,
         DEFAULT_AI_TARGET_PLATFORM,
         songBlueprintSchema,
+        promptBindingSchema,
         generatorInputSnapshotSchema,
         revisionJobContextSchema,
         atlasHandoffSchema,

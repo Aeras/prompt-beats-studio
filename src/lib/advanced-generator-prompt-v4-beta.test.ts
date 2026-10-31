@@ -88,7 +88,7 @@ describe("V4 BETA prompt", () => {
     expect(jobs).toContain('data.promptVersion === "v3" || data.promptVersion === "v4_beta"');
     const ai = readFileSync("src/lib/ai.functions.ts", "utf8");
     expect(ai).toContain(
-      'data.promptVersion === "v4_beta"\n        ? buildAdvancedGeneratorPromptV4Beta(data)',
+      'data.promptVersion === "v4_beta"\n          ? buildAdvancedGeneratorPromptV4Beta(data)',
     );
     expect(ai).toContain("? buildRevisionPrompt(data)");
   });

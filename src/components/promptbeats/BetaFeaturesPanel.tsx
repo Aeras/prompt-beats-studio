@@ -11,6 +11,13 @@ import {
   setBetaTester,
 } from "@/lib/beta-features.functions";
 import { BETA_CONFLICT, type BetaFeature, type BetaAction } from "@/lib/beta-features.shared";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function BetaFeaturesPanel() {
   const { user } = useAuth();
@@ -133,19 +140,35 @@ export function BetaFeaturesPanel() {
             <code className="break-all text-xs">{feature.feature_key}</code>
             <div className="flex flex-wrap items-center gap-3">
               {feature.stage !== "archived" && (
-                <label className="text-sm">
+                <div className="flex items-center gap-2 text-sm">
                   {copy.lifecycle}
-                  <select
-                    aria-label={`${copy.lifecycle}: ${feature.display_name}`}
+                  <Select
                     value={feature.stage}
                     disabled={update.isPending}
-                    onChange={(e) => change(feature, e.target.value === "beta" ? "beta" : "stable")}
-                    className="ml-2 rounded-lg border border-white/10 bg-[#17131f] p-2"
+                    onValueChange={(value) => change(feature, value === "beta" ? "beta" : "stable")}
                   >
-                    <option value="beta">Beta</option>
-                    <option value="stable">Stable</option>
-                  </select>
-                </label>
+                    <SelectTrigger
+                      aria-label={`${copy.lifecycle}: ${feature.display_name}`}
+                      className="h-10 w-32 rounded-xl border-primary/20 bg-background"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] border-primary/20 bg-popover">
+                      <SelectItem
+                        value="beta"
+                        className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+                      >
+                        {copy.beta}
+                      </SelectItem>
+                      <SelectItem
+                        value="stable"
+                        className="focus:bg-primary/15 focus:text-foreground data-[state=checked]:bg-primary/15"
+                      >
+                        {copy.stable}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
               {feature.stage === "stable" && (
                 <>

@@ -381,7 +381,8 @@ iframe[src*="lovable" i] {
     content: "Clear";
   }
 
-  div.flex.flex-wrap.items-center.gap-2:has(> input[type="file"][accept*="json"]) > p[role="alert"] {
+  div.flex.flex-wrap.items-center.gap-2:has(> input[type="file"][accept*="json"])
+    > p[role="alert"] {
     grid-column: 1 / -1;
   }
 }
@@ -390,4 +391,24 @@ iframe[src*="lovable" i] {
   :root {
     --pb-mobile-nav-offset: 0px;
   }
+}
+
+/* PB-013: token-based local scroll treatment; no sidebar/global scrollbar redesign. */
+[data-testid="music-inspiration-panel"] textarea,
+[data-inspiration-confirmation],
+.music-inspiration-scroll [cmdk-list] {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary) 45%, transparent) transparent;
+}
+[data-testid="music-inspiration-panel"] textarea::-webkit-scrollbar,
+[data-inspiration-confirmation]::-webkit-scrollbar,
+.music-inspiration-scroll [cmdk-list]::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+[data-testid="music-inspiration-panel"] textarea::-webkit-scrollbar-thumb,
+[data-inspiration-confirmation]::-webkit-scrollbar-thumb,
+.music-inspiration-scroll [cmdk-list]::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--primary) 45%, transparent);
+  border-radius: 999px;
 }

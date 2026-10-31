@@ -128,14 +128,22 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
   try {
     assertGenerationRequestBudget(job.input_payload);
     const input = durableAiJobInput.parse(job.input_payload);
+    if (
+      input.operation !== "lyrics_section_edit" &&
+      input.promptVersion === "registry" &&
+      !input.promptBinding
+    )
+      throw new Error("A durable prompt binding is required");
     // Defense in depth: durable jobs can also be created via the raw RPC.
     // Re-verify the existing Super Admin + Advanced new-song restriction
     // for all experimental prompt versions before any provider call.
     if (
       input.operation !== "lyrics_section_edit" &&
+      !input.promptBinding &&
       (input.promptVersion === "v2" ||
         input.promptVersion === "v3" ||
-        input.promptVersion === "v4_beta")
+        input.promptVersion === "v4_beta" ||
+        input.promptVersion === "v5_beta_1")
     ) {
       const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {
         _user_id: job.user_id,
@@ -151,6 +159,20 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
           "Experimental prompt versions are restricted to Super Admin Advanced generation.",
         );
       }
+    }
+    if (input.operation !== "lyrics_section_edit" && input.promptBinding) {
+      const { data: bound, error } = await db.rpc("generator_prompt_for_job_internal", {
+        _job_id: job.id,
+        _user_id: job.user_id,
+      });
+      if (
+        error ||
+        !bound ||
+        bound.id !== input.promptBinding.id ||
+        bound.digest !== input.promptBinding.digest ||
+        (bound.builtin_version ?? "registry") !== input.promptVersion
+      )
+        throw new Error("The bound prompt is unavailable");
     }
     const { data: marked, error: markerError } = recovering
       ? { data: { id: job.id }, error: null }
