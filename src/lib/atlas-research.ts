@@ -146,6 +146,7 @@ export type AtlasResearch = Omit<StrictAtlasResearch, "tasks"> & {
 export type AtlasResearchProfile = {
   profileId: string;
   sourceSha: typeof ATLAS_RESEARCH_SHA;
+  correctionDigest?: string;
   executable: false;
   tasks: AtlasResearchTask[];
 };

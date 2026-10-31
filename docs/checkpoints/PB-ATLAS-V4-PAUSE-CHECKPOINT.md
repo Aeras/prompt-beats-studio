@@ -1,5 +1,7 @@
 # Musical Atlas V4 — Safe Checkpoint & Pause
 
+> Historical checkpoint preserved. The owner resumed PR #450 on 31/10/2026. Current state and evidence: [resumption record](../PB-ATLAS-V4-RESUME-20261031.md) and WORK-STATUS. The original pause statements below describe 28/10 and no longer instruct stopping active authorized work.
+
 Ημερομηνία: 28/10/2026. **IN_PROGRESS — PAUSED**. Το PAUSED είναι επεξηγηματική ένδειξη, όχι νέο επίσημο status. Η ανάπτυξη σταματά με εντολή του ιδιοκτήτη. Το PR δεν ολοκληρώνεται, δεν είναι merge-ready και δεν χαρακτηρίζεται CLOSED.
 
 ## 1. Ακριβής βάση, branch και ιστορικό

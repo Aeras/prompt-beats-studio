@@ -215,6 +215,43 @@ test("V4 research access failure reveals no cached evidence", async ({ page }) =
   expect(f.validationCount()).toBe(0);
 });
 
+test("quarantined evidence never exposes its statement or enables transfer", async ({ page }) => {
+  const f = await fixture(page);
+  const research = readAtlasResearchProfile("ru.protyazhnaya");
+  research.tasks[0] = {
+    ...research.tasks[0]!,
+    quarantined: true,
+    researchDecision: null,
+    suggestedStatementEl: null,
+    suggestedStatementEn: null,
+    citations: [],
+    validationIssues: ["Synthetic invalid source metadata"],
+  };
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (name.includes("getSongAtlasResearch"))
+      await route.fulfill({ json: { result: research, context: {} } });
+    else await route.fallback();
+  });
+  const notes = page.locator('[data-atlas-id="ru.protyazhnaya"]').getByTestId("atlas-research");
+  await notes.getByRole("button", { name: /View V4 research|Προβολή έρευνας V4/ }).click();
+  const quarantined = notes.locator("article").first();
+  await expect(quarantined).toContainText(
+    /Source metadata needs correction|Απαιτείται διόρθωση μεταδεδομένων/,
+  );
+  await expect(quarantined).toContainText(
+    /No musical rule proposed|Δεν προτείνεται μουσικός κανόνας/,
+  );
+  await expect(quarantined.getByRole("link")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Review transfer|Έλεγχος μεταφοράς/ }),
+  ).toBeDisabled();
+  expect(f.validationCount()).toBe(0);
+});
+
 for (const scenario of [
   {
     family: "Rock",

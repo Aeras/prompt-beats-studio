@@ -12,6 +12,8 @@ src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json
 
 # Byte-exact independent research archive; validated against its SHA manifest.
 research/atlas-v4-merged-evidence-20261027.json
+src/data/song-atlas/v4/library.json
+src/data/song-atlas/v4/source-access.json
 
 # Immutable, SHA-256-verified user-supplied prompt source.
 docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.md

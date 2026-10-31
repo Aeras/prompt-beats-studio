@@ -18,6 +18,8 @@ export const atlasResearchCopy = {
     quarantined:
       "Απαιτείται διόρθωση μεταδεδομένων πηγής — ο ισχυρισμός δεν προβάλλεται ως τεκμηριωμένος.",
     sourceLanguage: "Πληροφορίες πηγής στην αρχική γλώσσα",
+    metadataRevision:
+      "Εφαρμόστηκε ελεγχόμενη διόρθωση μεταδεδομένων πηγών. Δεν αποτελεί ανεξάρτητη επαλήθευση μουσικών ισχυρισμών.",
     noApproved:
       "Δεν υπάρχουν ακόμη ανεξάρτητα εγκεκριμένες τεχνικές ή αντιστοιχίσεις πεδίων. Η μεταφορά παραμένει απενεργοποιημένη.",
   },
@@ -40,6 +42,8 @@ export const atlasResearchCopy = {
     quarantined:
       "Source metadata needs correction — the claim is not displayed as supported evidence.",
     sourceLanguage: "Source details in their original language",
+    metadataRevision:
+      "A reviewed source-metadata correction was applied. This does not independently verify musical claims.",
     noApproved:
       "No independently approved techniques or field mappings are available yet. Transfer remains disabled.",
   },

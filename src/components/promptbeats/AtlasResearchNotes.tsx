@@ -57,6 +57,9 @@ export function AtlasResearchNotes({ profileId }: { profileId: string }) {
           <h3 className="font-semibold">{t.title}</h3>
           <p className="text-sm">{t.review}</p>
           {query.isPending && <p role="status">{t.loading}</p>}
+          {!query.isError && query.data?.correctionDigest && (
+            <p className="text-xs text-muted-foreground">{t.metadataRevision}</p>
+          )}
           {query.isError && (
             <div role="alert">
               <p>{t.unavailable}</p>
@@ -86,9 +89,9 @@ export function AtlasResearchNotes({ profileId }: { profileId: string }) {
                 </p>
                 <details>
                   <summary className="cursor-pointer py-2">{t.scope}</summary>
-                  <p lang="el">{entry.validityScope}</p>
+                  <p lang="und">{entry.validityScope}</p>
                   <h5 className="mt-2 font-semibold">{t.exceptions}</h5>
-                  <ul className="list-disc pl-5" lang="el">
+                  <ul className="list-disc pl-5" lang="und">
                     {entry.exceptionsAndCounterexamples.map((text, i) => (
                       <li key={i}>{text}</li>
                     ))}

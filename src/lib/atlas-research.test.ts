@@ -105,7 +105,8 @@ describe("Atlas research integrity and task quarantine", () => {
     const author = via.tasks.flatMap((t) => t.citations).find((c) => Array.isArray(c.authors))!;
     (author.authors as string[]).push("mutation");
     expect(JSON.stringify(readAtlasResearchProfile("ru.via"))).not.toContain("mutation");
-    expect(readAtlasResearchProfile("ru.social_rock").tasks.some((t) => t.quarantined)).toBe(true);
+    expect(readAtlasResearchProfile("ru.social_rock").tasks.some((t) => t.quarantined)).toBe(false);
+    expect(readAtlasResearchProfile("ru.social_rock").correctionDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(() => readAtlasResearchProfile("unknown")).toThrow("Unknown");
     const d = validate();
     expect(Object.keys(projectAtlasResearchProfile(d, "ru.protyazhnaya")).sort()).toEqual(
