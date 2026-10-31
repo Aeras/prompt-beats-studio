@@ -1,0 +1,40 @@
+{
+  "format": "promptbeats-atlas-v4-manifest",
+  "version": 1,
+  "libraryVersion": "4.0.0-review.1",
+  "baseMain": "fdf34b2e601dc90d4fbdaf1a3192ff948f09f698",
+  "files": [
+    {
+      "path": "src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json",
+      "sha256": "fa363996a89fe2b475bd75330f4eaa01531c8ed4f7a32669ebe64e2e963d925a",
+      "bytes": 757272
+    },
+    {
+      "path": "src/data/song-atlas/v4/library.json",
+      "sha256": "33218da0de5adb32ccb78f2692f14df3f4ef065f2246a1a02a1c176c680525a9",
+      "bytes": 1440053
+    },
+    {
+      "path": "src/data/song-atlas/v4/source-access.json",
+      "sha256": "5a508a1c7cd380c00b33fc6493705af366d9eb9c295275748a5135503245a6aa",
+      "bytes": 41155
+    }
+  ],
+  "counts": {
+    "profiles": 58,
+    "legacyTechniques": 65,
+    "newTechniques": 58,
+    "inheritedSources": 97,
+    "totalSources": 101,
+    "sourcePassages": 29,
+    "inheritedClaims": 85,
+    "excludedCandidates": 14,
+    "specificKnowledgeGaps": 636
+  },
+  "readiness": {
+    "technicalContract": "validated",
+    "independentEditorialReview": "required",
+    "generatorTransfer": "blocked",
+    "productionChanges": "none"
+  }
+}

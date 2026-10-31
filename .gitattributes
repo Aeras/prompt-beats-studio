@@ -1,6 +1,13 @@
 
 # Preserve the supplied RC1 SHA-256 on Windows and Linux.
 src/data/song-atlas/RU_LIBRARY_V3_RELEASE_CANDIDATE.json -text
+research/atlas-v4-merged-evidence-20261027.json -text
+research/atlas-v4-636-evidence-tasks.json text eol=lf
+src/data/song-atlas/v4/library.json -text
+src/data/song-atlas/v4/source-access.json -text
+research/atlas-v4-citation-corrections-20261031.json text eol=lf
+research/atlas-v4-offline-pilots.json text eol=lf
+
 
 # Canonical Creative Master V2 research candidate: preserve supplied bytes.
 docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.md -text
