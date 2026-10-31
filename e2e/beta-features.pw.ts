@@ -313,7 +313,8 @@ test("Super Admin manages Beta, archive/restore and explicit promotion without d
   await search.fill("missing");
   await expect(page.getByText("New studio fixture", { exact: true })).not.toBeVisible();
   await search.fill("");
-  await page.getByRole("combobox").selectOption("stable");
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Stable", exact: true }).click();
   await page.getByRole("tab", { name: "Stable", exact: true }).click();
   await expect(page.getByText("New studio fixture", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^(Archive|Στο αρχείο)$/ }).click();
@@ -332,6 +333,65 @@ test("Super Admin manages Beta, archive/restore and explicit promotion without d
   await expect(page.getByRole("option", { selected: true })).toHaveText(/Everyone|Όλοι/);
   await page.keyboard.press("Escape");
 });
+
+for (const language of ["el", "en"]) {
+  test(`Beta lifecycle uses anchored themed dropdown with safe dismissal (${language})`, async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(
+      (locale) => localStorage.setItem("pb:interface-language", locale),
+      language,
+    );
+    const f = await fixture(page);
+    await page.goto("/management");
+    await page.getByRole("button", { name: /^(Beta Features|Λειτουργίες Beta)$/ }).click();
+    const trigger = page.getByRole("combobox");
+    await expect(trigger).toHaveAccessibleName(
+      /Lifecycle: New studio fixture|Κατάσταση: New studio fixture/,
+    );
+    await trigger.scrollIntoViewIfNeeded();
+    if (testInfo.project.name === "mobile") await trigger.tap();
+    else await trigger.click();
+    const list = page.getByRole("listbox");
+    await expect(list).toBeVisible();
+    await expectPrimaryOption(page);
+    await list.evaluate(async (element) => {
+      await Promise.all(
+        element
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.finished.catch(() => {})),
+      );
+    });
+    const box = (await list.boundingBox())!;
+    const field = (await page.getByRole("combobox", { includeHidden: true }).boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    expect(box.y).toBeGreaterThanOrEqual(field.y + field.height - 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await page.keyboard.press("Escape");
+    await expect(list).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    const outside = (await page
+      .locator("h3")
+      .filter({ hasText: "New studio fixture" })
+      .boundingBox())!;
+    await page.mouse.click(outside.x + outside.width / 2, outside.y + outside.height / 2);
+    await expect(list).not.toBeVisible();
+    expect(f.calls.filter((call) => call.includes("transitionBetaFeature"))).toHaveLength(0);
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("option", { name: "Beta", exact: true })).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("option", { name: "Stable", exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => f.calls.filter((call) => call.includes("transitionBetaFeature")).length)
+      .toBe(1);
+    await page.getByRole("tab", { name: "Stable", exact: true }).click();
+    await expect(page.getByText("New studio fixture", { exact: true })).toBeVisible();
+  });
+}
 
 test("Beta Test is independent of role management and refreshes after changes", async ({
   page,
@@ -382,13 +442,16 @@ test("failed lifecycle changes show safe feedback and reload authoritative state
   await page.getByRole("button", { name: /^(Beta Features|Λειτουργίες Beta)$/ }).click();
   await expect(page.getByText("New studio fixture", { exact: true })).toBeVisible();
   f.failNext();
-  await page.getByRole("combobox").selectOption("stable");
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Stable", exact: true }).click();
   await expect(
     page.getByText(/Beta settings could not be updated|Δεν ενημερώθηκαν οι ρυθμίσεις Beta/),
   ).toBeVisible();
   await expect(page.getByText("synthetic-private-token")).not.toBeVisible();
   await expect.poll(f.loads).toBeGreaterThan(1);
-  await expect(page.getByRole("combobox")).toHaveValue("beta");
+  await page.getByRole("combobox").click();
+  await expect(page.getByRole("option", { selected: true })).toHaveText("Beta");
+  await page.keyboard.press("Escape");
 });
 
 for (const role of ["admin", "moderator", "user"])
