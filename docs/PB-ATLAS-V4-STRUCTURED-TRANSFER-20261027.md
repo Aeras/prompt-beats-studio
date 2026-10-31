@@ -1,5 +1,7 @@
 # Atlas V4 — research ingest και ασφαλής structured transfer
 
+> Metadata revision 31/10: τα 18 αρχικά schema quarantines επιλύονται μόνο σε χωριστή pinned projection· το archive παραμένει αυτούσιο και οι ισχυρισμοί δεν πιστοποιούνται. Ο structured-transfer μηχανισμός παραμένει offline staging, χωρίς approved live registry, signing/durable CAS ή ABA-safe integration. [Τρέχουσα κατάσταση](PB-ATLAS-V4-RESUME-20261031.md).
+
 ## Επαληθευμένη βάση και κριτήρια αποδοχής
 
 Συνέχεια στο ίδιο Draft PR #450, βάση main `fdf34b2e601dc90d4fbdaf1a3192ff948f09f698`, αρχικό PR HEAD `acb05df3848ac5d4f54ed9e72b16c5bc059422f1`. Το συνημμένο handoff ελέγχθηκε έναντι των πραγματικών client/server/worker/SQL διαδρομών. Το νέο JSON έχει SHA-256 `0d2aa2f20e5645c69a26e054de77bc8a821baf1406c910644754bf19222cdd56` και 636 εγγραφές: 396 bounded, 20 no-universal-rule, 220 insufficient. Οι 416 θετικές αποφάσεις δεν είναι έγκριση τεχνικής ή πιστοποίηση πηγής.

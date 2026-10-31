@@ -12,7 +12,7 @@ This document is additive editorial work by ChatGPT. It does not claim the 636 u
 
 **Candidate scoped factual note (el)**: «Η τσεστούσκα καταγράφεται συχνά ως σύντομο ομοιοκατάληκτο τραγούδι μίας στροφής, με διαλογική ή σατιρική χρήση· η συγκεκριμένη τετράστιχη μορφή και η συνοδεία ποικίλλουν ανά καταγραφή και πλαίσιο.»
 **Candidate scoped factual note (en)**: “Chastushki are commonly documented as short one-stanza rhymed songs, often conversational or satirical; specific four-line patterns and accompaniments depend on performance context and variant.”
-**Optional creative experiment, NOT source-certified**: “If the user requests a brief playful verse, try a compact stanza with an answering response; preserve natural Russian word stress and allow instrumental or unaccompanied treatment.” 
+**Optional creative experiment, NOT source-certified**: “If the user requests a brief playful verse, try a compact stanza with an answering response; preserve natural Russian word stress and allow instrumental or unaccompanied treatment.”
 Review: factual wording pending independent musicological/editorial approval; creative instruction hypothetical, executable=false. **Do not** infer compulsory accordion/balalaika, 4/4, BPM, gender, mandatory humor or ritual context.
 Remaining evidence: representative recorded examples and scores for melodic contour, harmony, groove and instrumentation prevalence.
 
