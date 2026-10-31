@@ -355,6 +355,13 @@ for (const language of ["el", "en"]) {
     const list = page.getByRole("listbox");
     await expect(list).toBeVisible();
     await expectPrimaryOption(page);
+    await list.evaluate(async (element) => {
+      await Promise.all(
+        element
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.finished.catch(() => {})),
+      );
+    });
     const box = (await list.boundingBox())!;
     const field = (await page.getByRole("combobox", { includeHidden: true }).boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
