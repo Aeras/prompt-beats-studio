@@ -514,29 +514,30 @@ function PrivateFootballResearchPage() {
                         className="ml-3 h-5 w-5 shrink-0 accent-cyan-400"
                       />
                     )}
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    onClick={() => toggleExpanded(entry.id)}
-                    className="flex w-full items-center justify-between gap-3 p-4 text-left"
-                  >
-                    <span className="min-w-0">
-                      <span className="block font-bold text-white">
-                        {entry.home_team} – {entry.away_team}
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => toggleExpanded(entry.id)}
+                      className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                    >
+                      <span className="min-w-0">
+                        <span className="block font-bold text-white">
+                          {entry.home_team} – {entry.away_team}
+                        </span>
+                        <span className="mt-1 block text-xs text-slate-400">
+                          {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
+                          {entry.model_id}
+                        </span>
                       </span>
-                      <span className="mt-1 block text-xs text-slate-400">
-                        {new Date(entry.created_at).toLocaleDateString("el-GR")} · {entry.model_id}
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
+                        >
+                          {STATUS[entry.status] ?? entry.status}
+                        </span>
+                        <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
                       </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
-                      >
-                        {STATUS[entry.status] ?? entry.status}
-                      </span>
-                      <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
-                    </span>
-                  </button>
+                    </button>
                   </div>
                   {open && (
                     <div className="space-y-4 border-t border-white/10 p-4">
@@ -665,7 +666,11 @@ function PrivateFootballResearchPage() {
             <div className="relative min-w-0 flex-1">
               <button
                 type="button"
-                disabled={clearing || working || !(history.data ?? []).some((item) => item.status !== "processing")}
+                disabled={
+                  clearing ||
+                  working ||
+                  !(history.data ?? []).some((item) => item.status !== "processing")
+                }
                 onClick={() => setClearMenu((value) => !value)}
                 className="w-full whitespace-nowrap rounded-xl border border-white/20 px-2 py-2 text-sm font-semibold text-slate-200 disabled:opacity-40"
               >
@@ -677,7 +682,11 @@ function PrivateFootballResearchPage() {
                     type="button"
                     className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
                     onClick={() => {
-                      setClearConfirm((history.data ?? []).filter((item) => item.status !== "processing").map((item) => item.id));
+                      setClearConfirm(
+                        (history.data ?? [])
+                          .filter((item) => item.status !== "processing")
+                          .map((item) => item.id),
+                      );
                       setClearMenu(false);
                     }}
                   >
@@ -731,14 +740,34 @@ function PrivateFootballResearchPage() {
           )}
           {clearConfirm.length > 0 && (
             <div className="mt-3 rounded-xl border border-rose-400/30 bg-[#0c1728] p-3">
-              <p className="text-sm">Εκκαθάριση {clearConfirm.length} αναλύσεων από την προβολή; Τα στοιχεία ελέγχου διατηρούνται.</p>
+              <p className="text-sm">
+                Εκκαθάριση {clearConfirm.length} αναλύσεων από την προβολή; Τα στοιχεία ελέγχου
+                διατηρούνται.
+              </p>
               <div className="mt-2 flex gap-2">
-                <button type="button" disabled={clearing} onClick={() => void clearResults()} className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Επιβεβαίωση</button>
-                <button type="button" onClick={() => setClearConfirm([])} className="rounded-lg border border-white/20 px-3 py-2 text-sm">Ακύρωση</button>
+                <button
+                  type="button"
+                  disabled={clearing}
+                  onClick={() => void clearResults()}
+                  className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  Επιβεβαίωση
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClearConfirm([])}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+                >
+                  Ακύρωση
+                </button>
               </div>
             </div>
           )}
-          {clearError && <p role="alert" className="mt-2 text-sm text-rose-300">{clearError}</p>}
+          {clearError && (
+            <p role="alert" className="mt-2 text-sm text-rose-300">
+              {clearError}
+            </p>
+          )}
         </section>
       </main>
     </AppShell>

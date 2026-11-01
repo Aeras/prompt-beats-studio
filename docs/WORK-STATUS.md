@@ -4,7 +4,8 @@
 
 - **Scope:** Source-informed subjective AI percentage estimates and bars; compact heading and summary; detailed paragraphs collapsed; same-row inline history clear/export controls, with per-result selection. Old qualitative analyses remain readable without invented historical figures.
 - **Security:** Soft-hide terminal results without deleting immutable audit/admission records; server validates owner and status and uses service role, migration restricted to service_role and RLS.
-- **Release:** Atomic Git commit prepared without updating branch. Existing branch HEAD must remain unchanged until explicit user approval. CI/build/typecheck and production migration/publish are pending; no paid AI calls.
+- **CI:** On 22d0e122, Database Replay and Browser Quality passed; Regression failed on Prettier formatting. Formatting corrections and CI efficiency changes are staged offline for one approved follow-up branch update. Browser gate uses three workers in one runner, browser cache and PR-scoped cancellation. Actual speed/stability not yet measured.
+- **Release:** PR remains open; final-head checks and production migration/publish pending. No paid AI calls.
 
 
 ## 2026-11-01 — Football AI quick percentages — IN_PROGRESS

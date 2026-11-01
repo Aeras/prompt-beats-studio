@@ -318,7 +318,10 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
 export const hidePrivateFootballResearchHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ ids: z.array(z.string().uuid()).min(1).max(40) }).strict().parse(input),
+    z
+      .object({ ids: z.array(z.string().uuid()).min(1).max(40) })
+      .strict()
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireFootballSuperAdmin(context.supabase);
@@ -338,9 +341,12 @@ export const hidePrivateFootballResearchHistory = createServerFn({ method: "POST
     }
     const { error: saveError } = await supabaseAdmin
       .from("private_football_research_hidden" as never)
-      .upsert(data.ids.map((id) => ({ user_id: context.userId, run_id: id })), {
-        onConflict: "user_id,run_id",
-      });
+      .upsert(
+        data.ids.map((id) => ({ user_id: context.userId, run_id: id })),
+        {
+          onConflict: "user_id,run_id",
+        },
+      );
     if (saveError) throw new Error("Could not clear selected history.");
     return { hidden: data.ids.length };
   });
