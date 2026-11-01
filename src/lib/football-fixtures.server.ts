@@ -81,7 +81,7 @@ export async function fetchFootballWeek(
     url.searchParams.set("timezone", "UTC");
     const response = await fetcher(url, {
       method: "GET",
-      headers: { "x-apisports-key": apiKey, accept: "application/json" },
+      headers: { "x-apisports-key": apiKey },
       redirect: "manual",
       signal: AbortSignal.timeout(10000),
     });
