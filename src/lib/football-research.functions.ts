@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
-import { fetchFootballWeek } from "@/lib/football-fixtures.server";
+import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getInstalledRegistryModels } from "@/lib/ai-model-registry.server";
@@ -58,6 +58,6 @@ export const getPrivateFootballWeek = createServerFn({ method: "GET" })
     }
     return {
       status: "ok" as const,
-      fixtures: await fetchFootballWeek(data.leagueId, data.weekDate),
+      fixtures: await getCachedFootballWeek(data.leagueId, data.weekDate),
     };
   });
