@@ -341,12 +341,9 @@ export const hidePrivateFootballResearchHistory = createServerFn({ method: "POST
     }
     const { error: saveError } = await supabaseAdmin
       .from("private_football_research_hidden" as never)
-      .upsert(
-        data.ids.map((id) => ({ user_id: context.userId, run_id: id })) as never[],
-        {
-          onConflict: "user_id,run_id",
-        },
-      );
+      .upsert(data.ids.map((id) => ({ user_id: context.userId, run_id: id })) as never[], {
+        onConflict: "user_id,run_id",
+      });
     if (saveError) throw new Error("Could not clear selected history.");
     return { hidden: data.ids.length };
   });
