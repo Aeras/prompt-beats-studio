@@ -11,6 +11,27 @@ export const FOOTBALL_LEAGUES = [
   { id: "FR-L1", country: "FR", label: "Γαλλία — Ligue 1", timezone: "Europe/Paris" },
 ] as const;
 
+/**
+ * AI fixture discovery catalogue. Keep separate from the legacy provider
+ * catalogue until the persistent, source-verified AI fixture backend is ready.
+ * IDs are application-owned identifiers, not external provider IDs.
+ */
+export const FOOTBALL_AI_DISCOVERY_LEAGUES = [
+  { id: "IT-SA", country: "IT", label: "Ιταλία — Serie A", symbol: "🇮🇹" },
+  { id: "EN-PL", country: "GB", label: "Αγγλία — Premier League", symbol: "🇬🇧" },
+  { id: "ES-LL", country: "ES", label: "Ισπανία — La Liga", symbol: "🇪🇸" },
+  { id: "FR-L1", country: "FR", label: "Γαλλία — Ligue 1", symbol: "🇫🇷" },
+  { id: "DE-BL", country: "DE", label: "Γερμανία — Bundesliga", symbol: "🇩🇪" },
+  { id: "GR-SL", country: "GR", label: "Ελλάδα — Super League", symbol: "🇬🇷" },
+  { id: "NL-ED", country: "NL", label: "Ολλανδία — Eredivisie", symbol: "🇳🇱" },
+  { id: "PT-PL", country: "PT", label: "Πορτογαλία — Primeira Liga", symbol: "🇵🇹" },
+  { id: "BE-PL", country: "BE", label: "Βέλγιο — Pro League", symbol: "🇧🇪" },
+  { id: "CH-SL", country: "CH", label: "Ελβετία — Super League", symbol: "🇨🇭" },
+  { id: "UEFA-CL", country: "EU", label: "UEFA Champions League", symbol: "🏆" },
+  { id: "UEFA-EL", country: "EU", label: "UEFA Europa League", symbol: "🏆" },
+] as const;
+export type FootballAiDiscoveryLeagueId = (typeof FOOTBALL_AI_DISCOVERY_LEAGUES)[number]["id"];
+
 export const FOOTBALL_PROVIDERS = [
   { id: "football-data", label: "football-data.org" },
   { id: "api-football", label: "API-Football" },
