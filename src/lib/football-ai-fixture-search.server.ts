@@ -1,6 +1,12 @@
 import { z } from "zod";
-import { FOOTBALL_AI_DISCOVERY_LEAGUES, type FootballAiDiscoveryLeagueId } from "./football-research.shared";
-import { AI_FIXTURE_JSON_SCHEMA, aiFixtureWeekBounds } from "./football-ai-fixture-validation.shared";
+import {
+  FOOTBALL_AI_DISCOVERY_LEAGUES,
+  type FootballAiDiscoveryLeagueId,
+} from "./football-research.shared";
+import {
+  AI_FIXTURE_JSON_SCHEMA,
+  aiFixtureWeekBounds,
+} from "./football-ai-fixture-validation.shared";
 
 /**
  * OpenRouter web search — documented request shape (openrouter.ai/docs,
@@ -19,7 +25,10 @@ const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_RESPONSE_BYTES = 400_000;
 
 /** Upper bound shown in the consent dialog; uses registry prices per million. */
-export function estimateAiFixtureMaxCostUsd(price: { inputPerMillion: number; outputPerMillion: number }) {
+export function estimateAiFixtureMaxCostUsd(price: {
+  inputPerMillion: number;
+  outputPerMillion: number;
+}) {
   const raw =
     (AI_FIXTURE_MAX_INPUT_TOKENS * price.inputPerMillion +
       AI_FIXTURE_MAX_OUTPUT_TOKENS * price.outputPerMillion) /
@@ -30,7 +39,10 @@ export function estimateAiFixtureMaxCostUsd(price: { inputPerMillion: number; ou
 
 export type FixtureDiscoveryInput = { leagueId: FootballAiDiscoveryLeagueId; weekDate: string };
 
-export function buildAiFixtureSearchPayload(input: FixtureDiscoveryInput, model = AI_FIXTURE_MODEL) {
+export function buildAiFixtureSearchPayload(
+  input: FixtureDiscoveryInput,
+  model = AI_FIXTURE_MODEL,
+) {
   const league = FOOTBALL_AI_DISCOVERY_LEAGUES.find((item) => item.id === input.leagueId);
   if (!league) throw new Error("Unknown AI football competition");
   const { from, to } = aiFixtureWeekBounds(input.weekDate);
@@ -65,7 +77,10 @@ export function buildAiFixtureSearchPayload(input: FixtureDiscoveryInput, model 
 const annotation = z
   .object({
     type: z.string(),
-    url_citation: z.object({ url: z.string(), title: z.string().optional() }).passthrough().optional(),
+    url_citation: z
+      .object({ url: z.string(), title: z.string().optional() })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 const responseSchema = z
@@ -102,7 +117,12 @@ export type AiFixtureSearchResult = {
   content: unknown;
   /** Untrusted candidate URLs only (from url_citation annotations). */
   citations: { url: string; title: string }[];
-  usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null; providerReportedCostUsd: number | null };
+  usage: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    providerReportedCostUsd: number | null;
+  };
   generationId: string | null;
 };
 
@@ -117,7 +137,8 @@ export function parseAiFixtureResponse(rawText: string): AiFixtureSearchResult {
   if (rawText.length > MAX_RESPONSE_BYTES) throw new Error("AI fixture response too large");
   const parsed = responseSchema.parse(JSON.parse(rawText));
   const choice = parsed.choices[0]!;
-  if (choice.finish_reason && choice.finish_reason !== "stop") throw new Error("AI fixture response incomplete");
+  if (choice.finish_reason && choice.finish_reason !== "stop")
+    throw new Error("AI fixture response incomplete");
   const content = choice.message.content;
   if (!content) throw new Error("AI fixture search returned an empty response");
   const citations: AiFixtureSearchResult["citations"] = [];
@@ -149,7 +170,8 @@ export async function requestAiFixtureCandidates(
   options: { apiKey: string; model: string; fetcher: typeof fetch; signal: AbortSignal },
 ): Promise<AiFixtureSearchResult> {
   if (!options.apiKey.trim()) throw new Error("OpenRouter is not configured");
-  if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true") throw new Error("AI requests are disabled");
+  if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true")
+    throw new Error("AI requests are disabled");
   const response = await options.fetcher(API_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },

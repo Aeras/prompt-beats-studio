@@ -6,16 +6,43 @@ import { canonicalTeam } from "./football-ai-fixture-validation.shared";
  * flashscore/livescore return no fixture data in HTML and are excluded).
  */
 export const CORROBORATION_HOSTS = [
-  "uefa.com", "premierleague.com", "legaseriea.it", "laliga.com", "bundesliga.com",
-  "ligue1.com", "slgr.gr", "eredivisie.nl", "ligaportugal.pt", "proleague.be", "sfl.ch",
-  "bbc.co.uk", "bbc.com", "espn.com", "skysports.com", "theguardian.com",
-  "worldfootball.net", "transfermarkt.com", "kicker.de", "lequipe.fr", "marca.com",
-  "gazzetta.it", "fotmob.com", "sofascore.com",
+  "uefa.com",
+  "premierleague.com",
+  "legaseriea.it",
+  "laliga.com",
+  "bundesliga.com",
+  "ligue1.com",
+  "slgr.gr",
+  "eredivisie.nl",
+  "ligaportugal.pt",
+  "proleague.be",
+  "sfl.ch",
+  "bbc.co.uk",
+  "bbc.com",
+  "espn.com",
+  "skysports.com",
+  "theguardian.com",
+  "worldfootball.net",
+  "transfermarkt.com",
+  "kicker.de",
+  "lequipe.fr",
+  "marca.com",
+  "gazzetta.it",
+  "fotmob.com",
+  "sofascore.com",
 ] as const;
 const MAX_BODY_BYTES = 600_000;
 const MAX_REDIRECTS = 2;
 export const MAX_FETCHES_PER_REFRESH = 24;
-const TWO_LEVEL_SUFFIXES = new Set(["co.uk", "org.uk", "com.pt", "com.gr", "com.es", "com.br", "co.nl"]);
+const TWO_LEVEL_SUFFIXES = new Set([
+  "co.uk",
+  "org.uk",
+  "com.pt",
+  "com.gr",
+  "com.es",
+  "com.br",
+  "co.nl",
+]);
 
 export function registrableDomain(hostname: string): string {
   const labels = hostname.toLowerCase().replace(/\.$/, "").split(".");
@@ -29,7 +56,8 @@ export function trustedPublicUrl(raw: string): URL | null {
     const url = new URL(raw);
     if (url.protocol !== "https:" || url.username || url.password || url.port) return null;
     const hostname = url.hostname.toLowerCase();
-    if (!CORROBORATION_HOSTS.some((host) => hostname === host || hostname.endsWith("." + host))) return null;
+    if (!CORROBORATION_HOSTS.some((host) => hostname === host || hostname.endsWith("." + host)))
+      return null;
     url.hash = "";
     return url;
   } catch {
@@ -49,7 +77,8 @@ function plain(value: string): string {
 }
 
 /** Timestamps with an explicit zone only; zone-less local times are ignored (fail closed). */
-const ZONED = /\b(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\b/g;
+const ZONED =
+  /\b(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\b/g;
 export function utcMinute(iso: string): string | null {
   const t = Date.parse(iso.replace(" ", "T").replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
   return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 16) : null;
@@ -71,7 +100,9 @@ export function judgeSource(
   const target = utcMinute(fixture.kickoffUtc);
   if (!home || !away || home === away || !target) return "silent";
   const minutes = new Set<string>();
-  for (const block of rawHtml.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+  for (const block of rawHtml.matchAll(
+    /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
     let data: unknown;
     try {
       data = JSON.parse(block[1] ?? "");
@@ -136,7 +167,11 @@ async function readBounded(response: Response): Promise<string> {
 export type FetchBudget = { remaining: number };
 
 /** Manual redirects, each hop re-validated against the allowlist. */
-export async function fetchSource(url: URL, fetcher: typeof fetch, budget: FetchBudget): Promise<string | null> {
+export async function fetchSource(
+  url: URL,
+  fetcher: typeof fetch,
+  budget: FetchBudget,
+): Promise<string | null> {
   let current: URL | null = url;
   for (let hop = 0; hop <= MAX_REDIRECTS && current; hop++) {
     if (budget.remaining <= 0) return null;

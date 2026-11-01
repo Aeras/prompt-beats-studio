@@ -53,7 +53,13 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
       throw new Error("Select an installed OpenRouter model.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let fixture: { source: string; leagueId: string; homeTeam: string; awayTeam: string; kickoffUtc: string };
+    let fixture: {
+      source: string;
+      leagueId: string;
+      homeTeam: string;
+      awayTeam: string;
+      kickoffUtc: string;
+    };
     let claimed: unknown;
     let claimError: unknown;
     if (data.fixtureProvider === "ai-search") {

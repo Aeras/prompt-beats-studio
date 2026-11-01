@@ -1,9 +1,15 @@
 import { z } from "zod";
-import { FOOTBALL_AI_LEAGUE_IDS, type FootballAiDiscoveryLeagueId } from "./football-research.shared";
+import {
+  FOOTBALL_AI_LEAGUE_IDS,
+  type FootballAiDiscoveryLeagueId,
+} from "./football-research.shared";
 
 /** Monday–Sunday UTC bounds; mirrors footballWeekBounds without a server import. */
 export function aiFixtureWeekBounds(date: string): { from: string; to: string } {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date
+  ) {
     throw new Error("Invalid week date");
   }
   const start = new Date(date + "T00:00:00Z");
@@ -28,7 +34,9 @@ const proposedFixture = z
     sources: z.array(source).max(8).default([]),
   })
   .strict();
-export const aiFixtureBatchSchema = z.object({ fixtures: z.array(proposedFixture).max(80) }).strict();
+export const aiFixtureBatchSchema = z
+  .object({ fixtures: z.array(proposedFixture).max(80) })
+  .strict();
 
 /** JSON schema sent to OpenRouter as `response_format` (structured output). */
 export const AI_FIXTURE_JSON_SCHEMA = {

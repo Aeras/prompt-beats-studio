@@ -2,15 +2,23 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { FOOTBALL_AI_LEAGUE_IDS, FOOTBALL_AI_REFRESH_QUOTA } from "@/lib/football-research.shared";
-import { aiFixtureWeekBounds, validateAiFixtureBatch } from "@/lib/football-ai-fixture-validation.shared";
+import {
+  aiFixtureWeekBounds,
+  validateAiFixtureBatch,
+} from "@/lib/football-ai-fixture-validation.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
 
 const leagueWeek = z
-  .object({ leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS), weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+  .object({
+    leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
+    weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  })
   .strict();
 const refreshInput = leagueWeek
   .extend({
-    consent: z.object({ acknowledged: z.literal(true), estimatedMaxUsd: z.number().positive().max(1) }).strict(),
+    consent: z
+      .object({ acknowledged: z.literal(true), estimatedMaxUsd: z.number().positive().max(1) })
+      .strict(),
   })
   .strict();
 
@@ -26,7 +34,9 @@ export type AiFixtureRow = {
   updatedAt: string;
 };
 
-async function requireSuperAdmin(supabase: { rpc: (name: never) => PromiseLike<{ data: unknown; error: unknown }> }) {
+async function requireSuperAdmin(supabase: {
+  rpc: (name: never) => PromiseLike<{ data: unknown; error: unknown }>;
+}) {
   const { data, error } = await supabase.rpc("current_user_is_super_admin" as never);
   if (error || data !== true) throw new Error("Not allowed");
 }
@@ -59,14 +69,19 @@ export const getPrivateAiFixtureCandidates = createServerFn({ method: "GET" })
     const [{ data: rows, error }, { data: quota }, maxCostUsd] = await Promise.all([
       supabaseAdmin
         .from("private_football_ai_fixtures" as never)
-        .select("fixture_id,league_id,home_team,away_team,kickoff_utc,verification_status,verified_sources_count,source_evidence,updated_at")
+        .select(
+          "fixture_id,league_id,home_team,away_team,kickoff_utc,verification_status,verified_sources_count,source_evidence,updated_at",
+        )
         .eq("user_id", context.userId)
         .eq("league_id", data.leagueId)
         .gte("kickoff_utc", from + "T00:00:00Z")
         .lte("kickoff_utc", to + "T23:59:59Z")
         .order("kickoff_utc", { ascending: true })
         .limit(80),
-      supabaseAdmin.rpc("private_football_ai_refresh_quota" as never, { _user_id: context.userId } as never),
+      supabaseAdmin.rpc(
+        "private_football_ai_refresh_quota" as never,
+        { _user_id: context.userId } as never,
+      ),
       pricingFor(AI_FIXTURE_MODEL),
     ]);
     if (error) throw new Error("AI candidate history unavailable");
@@ -106,14 +121,16 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
     await requireSuperAdmin(context.supabase as never);
     if (process.env["PROMPTBEATS_AI_FIXTURE_BETA_ENABLED"] !== "true")
       throw new Error("AI fixture discovery remains disabled by operator");
-    if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true") throw new Error("AI dispatch disabled");
+    if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true")
+      throw new Error("AI dispatch disabled");
     if (process.env["PROMPTBEATS_AI_FIXTURE_BETA_SPEND_APPROVED"] !== "true")
       throw new Error("AI fixture paid refresh has not been approved by operator");
     const key = process.env["OPENROUTER_API_KEY"]?.trim();
     if (!key) throw new Error("OpenRouter unavailable");
     const search = await import("@/lib/football-ai-fixture-search.server");
     const maxCost = await pricingFor(search.AI_FIXTURE_MODEL);
-    if (maxCost === null) throw new Error("AI fixture model is not installed with verified pricing");
+    if (maxCost === null)
+      throw new Error("AI fixture model is not installed with verified pricing");
     if (Math.abs(maxCost - data.consent.estimatedMaxUsd) > 1e-9)
       throw new Error("Cost estimate changed; review and confirm again");
 
@@ -131,7 +148,12 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
     if (admissionError || typeof admissionId !== "string")
       throw new Error("AI fixture refresh limit reached or unavailable");
 
-    const finish = (ok: boolean, candidates: number | null, verified: number | null, code: string | null) =>
+    const finish = (
+      ok: boolean,
+      candidates: number | null,
+      verified: number | null,
+      code: string | null,
+    ) =>
       supabaseAdmin.rpc(
         "finish_private_football_ai_fixture_refresh" as never,
         {
@@ -148,13 +170,22 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
     let dispatched = false;
     let usageRecorded = false;
     try {
-      const result = await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
-        dispatched = true;
-        return search.requestAiFixtureCandidates(
-          { leagueId: data.leagueId, weekDate: data.weekDate },
-          { apiKey: key, model: search.AI_FIXTURE_MODEL, fetcher: aiProviderFetch, signal: AbortSignal.timeout(90_000) },
-        );
-      });
+      const result = await withFeatureAiDispatchAdmission(
+        context.userId,
+        ["ai_generator"],
+        async () => {
+          dispatched = true;
+          return search.requestAiFixtureCandidates(
+            { leagueId: data.leagueId, weekDate: data.weekDate },
+            {
+              apiKey: key,
+              model: search.AI_FIXTURE_MODEL,
+              fetcher: aiProviderFetch,
+              signal: AbortSignal.timeout(90_000),
+            },
+          );
+        },
+      );
       await recordAiUsage({
         executionId: admissionId,
         userId: context.userId,
@@ -165,18 +196,28 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         success: true,
       });
       usageRecorded = true;
-      const candidates = validateAiFixtureBatch(result.content, data.leagueId, data.weekDate, new Date());
-      const { corroborateAiFixture, MAX_FETCHES_PER_REFRESH } = await import(
-        "@/lib/football-ai-fixture-corroboration.server"
+      const candidates = validateAiFixtureBatch(
+        result.content,
+        data.leagueId,
+        data.weekDate,
+        new Date(),
       );
+      const { corroborateAiFixture, MAX_FETCHES_PER_REFRESH } =
+        await import("@/lib/football-ai-fixture-corroboration.server");
       const budget = { remaining: MAX_FETCHES_PER_REFRESH };
       const corroborated = [];
       for (const fixture of candidates) {
         const ok = await corroborateAiFixture(fixture, result.citations, fetch, budget);
         if (ok) corroborated.push(ok);
       }
-      const { saveAiFixtureCandidates } = await import("@/lib/football-ai-fixture-persistence.server");
-      const saved = await saveAiFixtureCandidates(supabaseAdmin as never, context.userId, candidates, corroborated);
+      const { saveAiFixtureCandidates } =
+        await import("@/lib/football-ai-fixture-persistence.server");
+      const saved = await saveAiFixtureCandidates(
+        supabaseAdmin as never,
+        context.userId,
+        candidates,
+        corroborated,
+      );
       await finish(true, saved.stored, saved.verified, null);
       return { candidatesStored: saved.stored, verified: saved.verified };
     } catch (error) {
@@ -192,7 +233,12 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
           success: false,
         }).catch(() => {});
       }
-      await finish(false, null, null, dispatched ? "provider_or_corroboration_failed" : "admission_failed");
+      await finish(
+        false,
+        null,
+        null,
+        dispatched ? "provider_or_corroboration_failed" : "admission_failed",
+      );
       console.error("football_ai_fixture_refresh_failed", {
         dispatched,
         name: error instanceof Error ? error.name : "unknown",

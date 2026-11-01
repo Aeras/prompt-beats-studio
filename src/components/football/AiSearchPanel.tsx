@@ -78,13 +78,17 @@ export function AiSearchPanel(props: {
   const [picked, setPicked] = useState<string[]>([]);
   const query = useQuery({
     queryKey: ["private-ai-fixture-candidates", props.leagueId, props.weekDate],
-    queryFn: () => getPrivateAiFixtureCandidates({ data: { leagueId: props.leagueId, weekDate: props.weekDate } }),
+    queryFn: () =>
+      getPrivateAiFixtureCandidates({
+        data: { leagueId: props.leagueId, weekDate: props.weekDate },
+      }),
     enabled: props.enabled,
     retry: false,
   });
   const d = query.data;
   const quotaLeft = d ? Math.min(d.quota.hourRemaining, d.quota.dayRemaining) : 0;
-  const refreshDisabled = refreshing || props.working || !d || d.maxCostUsd === null || quotaLeft <= 0;
+  const refreshDisabled =
+    refreshing || props.working || !d || d.maxCostUsd === null || quotaLeft <= 0;
 
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
@@ -112,7 +116,10 @@ export function AiSearchPanel(props: {
   );
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6" aria-label={c.title}>
+    <section
+      className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
+      aria-label={c.title}
+    >
       <h2 className="text-lg font-bold">{c.title}</h2>
       <p className="mt-1 text-xs leading-5 text-amber-300">{c.note}</p>
       <div className="my-4 flex flex-wrap items-center gap-3">
@@ -124,11 +131,22 @@ export function AiSearchPanel(props: {
         >
           {refreshing ? c.refreshing : c.refresh}
         </button>
-        {d && <span className="text-xs text-slate-300">{c.quota(d.quota.hourRemaining, d.quota.dayRemaining)}</span>}
-        {d && d.maxCostUsd === null && <span className="text-xs text-amber-300">{c.noPricing}</span>}
+        {d && (
+          <span className="text-xs text-slate-300">
+            {c.quota(d.quota.hourRemaining, d.quota.dayRemaining)}
+          </span>
+        )}
+        {d && d.maxCostUsd === null && (
+          <span className="text-xs text-amber-300">{c.noPricing}</span>
+        )}
         <button
           type="button"
-          disabled={props.working || !props.canAnalyze || verifiedPicked.length === 0 || verifiedPicked.length > 5}
+          disabled={
+            props.working ||
+            !props.canAnalyze ||
+            verifiedPicked.length === 0 ||
+            verifiedPicked.length > 5
+          }
           onClick={() => props.onAnalyze(verifiedPicked)}
           className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-2.5 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
         >
@@ -147,13 +165,18 @@ export function AiSearchPanel(props: {
           const id = String(f.fixtureId);
           const verified = f.status === "verified";
           return (
-            <li key={id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3">
+            <li
+              key={id}
+              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3"
+            >
               <input
                 type="checkbox"
                 aria-label={`${f.homeTeam} – ${f.awayTeam}`}
                 disabled={!verified || props.working}
                 checked={picked.includes(id)}
-                onChange={() => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))}
+                onChange={() =>
+                  setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+                }
                 className="h-5 w-5 accent-cyan-400"
               />
               <div className="min-w-0 flex-1">
@@ -185,7 +208,12 @@ export function AiSearchPanel(props: {
             <AlertDialogTitle>{c.dialogTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {d && d.maxCostUsd !== null
-                ? c.dialogBody(d.model, d.maxCostUsd.toFixed(3), d.quota.hourRemaining, d.quota.dayRemaining)
+                ? c.dialogBody(
+                    d.model,
+                    d.maxCostUsd.toFixed(3),
+                    d.quota.hourRemaining,
+                    d.quota.dayRemaining,
+                  )
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>

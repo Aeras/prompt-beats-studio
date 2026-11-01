@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { validateAiFixtureBatch } from "./football-ai-fixture-validation.shared";
-import { FOOTBALL_AI_DISCOVERY_LEAGUES, FOOTBALL_AI_REFRESH_QUOTA } from "./football-research.shared";
+import {
+  FOOTBALL_AI_DISCOVERY_LEAGUES,
+  FOOTBALL_AI_REFRESH_QUOTA,
+} from "./football-research.shared";
 
 const now = new Date("2026-11-03T00:00:00Z");
 const fx = (over: Record<string, unknown> = {}) => ({
@@ -44,7 +47,12 @@ describe("AI fixture validation", () => {
   });
   it("rejects non-https source URLs from the model", () => {
     expect(() =>
-      validateAiFixtureBatch({ fixtures: [fx({ sources: [{ url: "http://x.com/a", title: "t" }] })] }, "EN-PL", "2026-11-04", now),
+      validateAiFixtureBatch(
+        { fixtures: [fx({ sources: [{ url: "http://x.com/a", title: "t" }] })] },
+        "EN-PL",
+        "2026-11-04",
+        now,
+      ),
     ).toThrow();
   });
 });

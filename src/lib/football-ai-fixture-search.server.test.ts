@@ -17,8 +17,14 @@ const ok = (body: unknown) =>
         message: {
           content: JSON.stringify(body),
           annotations: [
-            { type: "url_citation", url_citation: { url: "https://www.bbc.co.uk/sport/x", title: "BBC" } },
-            { type: "url_citation", url_citation: { url: "http://insecure.example/x", title: "no" } },
+            {
+              type: "url_citation",
+              url_citation: { url: "https://www.bbc.co.uk/sport/x", title: "BBC" },
+            },
+            {
+              type: "url_citation",
+              url_citation: { url: "http://insecure.example/x", title: "no" },
+            },
           ],
         },
       },
@@ -39,7 +45,9 @@ describe("AI fixture search payload", () => {
 
   it("caps the consented maximum cost from registry prices", () => {
     // 14k × 0.75 + 4k × 3.75 per million + $0.007 search fee = $0.0325 → $0.033
-    expect(estimateAiFixtureMaxCostUsd({ inputPerMillion: 0.75, outputPerMillion: 3.75 })).toBe(0.033);
+    expect(estimateAiFixtureMaxCostUsd({ inputPerMillion: 0.75, outputPerMillion: 3.75 })).toBe(
+      0.033,
+    );
   });
 });
 
@@ -54,7 +62,9 @@ describe("AI fixture response parsing", () => {
       choices: [{ finish_reason: "stop", message: { content: '```json\n{"fixtures":[]}\n```' } }],
     });
     expect(parseAiFixtureResponse(fenced).content).toEqual({ fixtures: [] });
-    const cut = JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "{" } }] });
+    const cut = JSON.stringify({
+      choices: [{ finish_reason: "length", message: { content: "{" } }],
+    });
     expect(() => parseAiFixtureResponse(cut)).toThrow(/incomplete/);
   });
   it("dispatches exactly once with manual redirects and never retries", async () => {
@@ -62,7 +72,12 @@ describe("AI fixture response parsing", () => {
     await expect(
       requestAiFixtureCandidates(
         { leagueId: "EN-PL", weekDate: "2026-11-04" },
-        { apiKey: "k", model: AI_FIXTURE_MODEL, fetcher: fetcher as never, signal: AbortSignal.timeout(1000) },
+        {
+          apiKey: "k",
+          model: AI_FIXTURE_MODEL,
+          fetcher: fetcher as never,
+          signal: AbortSignal.timeout(1000),
+        },
       ),
     ).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(1);

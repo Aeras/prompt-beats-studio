@@ -8,7 +8,9 @@ import { expect, test } from "@playwright/test";
 test.skip(!process.env["E2E_SUPER_ADMIN_STORAGE"], "needs a super-admin storage state");
 test.use({ storageState: process.env["E2E_SUPER_ADMIN_STORAGE"] ?? undefined });
 
-test("AI search shows paid-consent dialog with max cost and quota; candidates are not analyzable", async ({ page }) => {
+test("AI search shows paid-consent dialog with max cost and quota; candidates are not analyzable", async ({
+  page,
+}) => {
   let refreshCalls = 0;
   await page.route("**/_serverFn/**", async (route) => {
     if (route.request().method() === "POST" && route.request().postData()?.includes("consent")) {

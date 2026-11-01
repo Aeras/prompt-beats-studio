@@ -183,9 +183,8 @@ function PrivateFootballResearchPage() {
 
   const selectedModel = setup.data.models.find((item) => item.id === model);
   const isAi = provider === "ai-search";
-  const configured = isAi || Boolean(
-    setup.data.fixtureProviders.find((item) => item.id === provider)?.configured,
-  );
+  const configured =
+    isAi || Boolean(setup.data.fixtureProviders.find((item) => item.id === provider)?.configured);
   const upcoming = (fixtures.data?.status === "ok" ? fixtures.data.fixtures : []).filter(
     (f) => f.state === "scheduled" && Date.parse(f.kickoffUtc) > Date.now(),
   );
@@ -331,18 +330,19 @@ function PrivateFootballResearchPage() {
                       {x.symbol} {x.label}
                     </option>
                   ))}
-                {!isAi && FOOTBALL_LEAGUES.map((x) => (
-                  <option
-                    key={x.id}
-                    value={x.id}
-                    disabled={
-                      provider === "football-data" &&
-                      !FOOTBALL_DATA_LEAGUES.some((id) => id === x.id)
-                    }
-                  >
-                    {x.label}
-                  </option>
-                ))}
+                {!isAi &&
+                  FOOTBALL_LEAGUES.map((x) => (
+                    <option
+                      key={x.id}
+                      value={x.id}
+                      disabled={
+                        provider === "football-data" &&
+                        !FOOTBALL_DATA_LEAGUES.some((id) => id === x.id)
+                      }
+                    >
+                      {x.label}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="space-y-2 text-sm font-medium">
@@ -390,129 +390,132 @@ function PrivateFootballResearchPage() {
           />
         )}
         {!isAi && (
-        <section
-          className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
-          aria-label="Αγώνες εβδομάδας"
-        >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-bold">Αγώνες εβδομάδας</h2>
-              <p className="text-xs text-slate-400">Επιλογή αγώνων για νέα ανάλυση</p>
+          <section
+            className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
+            aria-label="Αγώνες εβδομάδας"
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold">Αγώνες εβδομάδας</h2>
+                <p className="text-xs text-slate-400">Επιλογή αγώνων για νέα ανάλυση</p>
+              </div>
+              <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">
+                {upcoming.length} διαθέσιμοι πριν από τη σέντρα
+              </span>
             </div>
-            <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">
-              {upcoming.length} διαθέσιμοι πριν από τη σέντρα
-            </span>
-          </div>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={
-                working ||
-                !selectedModel ||
-                allIds.length === 0 ||
-                allIds.length > 5 ||
-                !setup.data.aiAnalysisEnabled
-              }
-              onClick={() => void start(allIds)}
-              className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-            >
-              Ανάλυση όλων ({allIds.length})
-            </button>
-            <button
-              type="button"
-              disabled={
-                working ||
-                !selectedModel ||
-                picked.length === 0 ||
-                picked.length > 5 ||
-                !setup.data.aiAnalysisEnabled
-              }
-              onClick={() => void start(picked)}
-              className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-2.5 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
-            >
-              Ανάλυση επιλεγμένων ({picked.length})
-            </button>
-          </div>
-          <p className="mb-3 text-xs leading-5 text-slate-400">
-            Έως 5 αναλύσεις ανά ώρα. Κάθε αγώνας χρεώνεται ξεχωριστά μετά από επιβεβαίωση. Η μαζική
-            εκτέλεση γίνεται διαδοχικά όσο παραμένει ανοιχτή η σελίδα. Αποθηκεύεται κάθε
-            ολοκληρωμένο αποτέλεσμα.
-          </p>
-          {working && (
-            <p role="status" className="mb-3 rounded-xl bg-cyan-400/10 p-3 text-sm text-cyan-200">
-              Ανάλυση {progress.done} / {progress.total} · Μην κλείσεις τη σελίδα μέχρι να
-              ολοκληρωθούν τα αιτήματα.
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={
+                  working ||
+                  !selectedModel ||
+                  allIds.length === 0 ||
+                  allIds.length > 5 ||
+                  !setup.data.aiAnalysisEnabled
+                }
+                onClick={() => void start(allIds)}
+                className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+              >
+                Ανάλυση όλων ({allIds.length})
+              </button>
+              <button
+                type="button"
+                disabled={
+                  working ||
+                  !selectedModel ||
+                  picked.length === 0 ||
+                  picked.length > 5 ||
+                  !setup.data.aiAnalysisEnabled
+                }
+                onClick={() => void start(picked)}
+                className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-2.5 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
+              >
+                Ανάλυση επιλεγμένων ({picked.length})
+              </button>
+            </div>
+            <p className="mb-3 text-xs leading-5 text-slate-400">
+              Έως 5 αναλύσεις ανά ώρα. Κάθε αγώνας χρεώνεται ξεχωριστά μετά από επιβεβαίωση. Η
+              μαζική εκτέλεση γίνεται διαδοχικά όσο παραμένει ανοιχτή η σελίδα. Αποθηκεύεται κάθε
+              ολοκληρωμένο αποτέλεσμα.
             </p>
-          )}
-          {batchError && (
-            <p role="alert" className="mb-3 text-sm text-amber-300">
-              {batchError}
-            </p>
-          )}
-          {fixtures.isPending && configured && (
-            <p className="text-sm text-slate-400">Ανάκτηση αγώνων…</p>
-          )}
-          {fixtures.isError && (
-            <p role="alert" className="text-sm text-rose-300">
-              Αποτυχία ανάκτησης αγώνων.
-            </p>
-          )}
-          {!configured && (
-            <p className="text-sm text-amber-300">Δεν υπάρχει API key για τον επιλεγμένο πάροχο.</p>
-          )}
-          {allIds.length > 5 && (
-            <p className="mb-3 text-xs text-amber-300">
-              Η εβδομάδα έχει περισσότερους από 5 αγώνες. Χρησιμοποίησε την επιλογή έως 5 αγώνων,
-              σύμφωνα με το υπάρχον όριο ασφαλείας.
-            </p>
-          )}
-          {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && (
-            <p className="text-sm text-slate-400">Δεν βρέθηκαν αγώνες.</p>
-          )}
-          <ul className="space-y-2">
-            {fixtures.data?.status === "ok" &&
-              fixtures.data.fixtures.map((f) => {
-                const canAnalyze = f.state === "scheduled" && Date.parse(f.kickoffUtc) > Date.now();
-                const key = fixtureKey(f.sourceFixtureId);
-                return (
-                  <li
-                    key={key}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3"
-                  >
-                    <input
-                      aria-label={`Επιλογή αγώνα ${f.homeTeam} – ${f.awayTeam}`}
-                      type="checkbox"
-                      disabled={!canAnalyze || working}
-                      checked={selected.includes(key)}
-                      onChange={() => toggle(key)}
-                      className="h-5 w-5 accent-cyan-400"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-white">
-                        {f.homeTeam} – {f.awayTeam}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {new Date(f.kickoffUtc).toLocaleString("el-GR", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                          timeZone: "Europe/Athens",
-                        })}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
+            {working && (
+              <p role="status" className="mb-3 rounded-xl bg-cyan-400/10 p-3 text-sm text-cyan-200">
+                Ανάλυση {progress.done} / {progress.total} · Μην κλείσεις τη σελίδα μέχρι να
+                ολοκληρωθούν τα αιτήματα.
+              </p>
+            )}
+            {batchError && (
+              <p role="alert" className="mb-3 text-sm text-amber-300">
+                {batchError}
+              </p>
+            )}
+            {fixtures.isPending && configured && (
+              <p className="text-sm text-slate-400">Ανάκτηση αγώνων…</p>
+            )}
+            {fixtures.isError && (
+              <p role="alert" className="text-sm text-rose-300">
+                Αποτυχία ανάκτησης αγώνων.
+              </p>
+            )}
+            {!configured && (
+              <p className="text-sm text-amber-300">
+                Δεν υπάρχει API key για τον επιλεγμένο πάροχο.
+              </p>
+            )}
+            {allIds.length > 5 && (
+              <p className="mb-3 text-xs text-amber-300">
+                Η εβδομάδα έχει περισσότερους από 5 αγώνες. Χρησιμοποίησε την επιλογή έως 5 αγώνων,
+                σύμφωνα με το υπάρχον όριο ασφαλείας.
+              </p>
+            )}
+            {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && (
+              <p className="text-sm text-slate-400">Δεν βρέθηκαν αγώνες.</p>
+            )}
+            <ul className="space-y-2">
+              {fixtures.data?.status === "ok" &&
+                fixtures.data.fixtures.map((f) => {
+                  const canAnalyze =
+                    f.state === "scheduled" && Date.parse(f.kickoffUtc) > Date.now();
+                  const key = fixtureKey(f.sourceFixtureId);
+                  return (
+                    <li
+                      key={key}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3"
                     >
-                      {canAnalyze
-                        ? "Πριν τη σέντρα"
-                        : f.state === "live"
-                          ? "Σε εξέλιξη"
-                          : "Μη διαθέσιμος"}
-                    </span>
-                  </li>
-                );
-              })}
-          </ul>
-        </section>
+                      <input
+                        aria-label={`Επιλογή αγώνα ${f.homeTeam} – ${f.awayTeam}`}
+                        type="checkbox"
+                        disabled={!canAnalyze || working}
+                        checked={selected.includes(key)}
+                        onChange={() => toggle(key)}
+                        className="h-5 w-5 accent-cyan-400"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-white">
+                          {f.homeTeam} – {f.awayTeam}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {new Date(f.kickoffUtc).toLocaleString("el-GR", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                            timeZone: "Europe/Athens",
+                          })}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
+                      >
+                        {canAnalyze
+                          ? "Πριν τη σέντρα"
+                          : f.state === "live"
+                            ? "Σε εξέλιξη"
+                            : "Μη διαθέσιμος"}
+                      </span>
+                    </li>
+                  );
+                })}
+            </ul>
+          </section>
         )}
 
         <section
