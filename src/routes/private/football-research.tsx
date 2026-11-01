@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
-import { getPrivateFootballResearchSetup } from "@/lib/football-research.functions";
+import { getPrivateFootballResearchSetup, getPrivateFootballWeek } from "@/lib/football-research.functions";
 
 export const Route = createFileRoute("/private/football-research")({
   head: () => ({
@@ -26,6 +26,14 @@ function PrivateFootballResearchPage() {
   });
   const [league, setLeague] = useState<string>(FOOTBALL_LEAGUES[0].id);
   const [model, setModel] = useState("");
+  const [weekDate, setWeekDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Athens" }));
+  const fixtures = useQuery({
+    queryKey: ["football-week", user?.id, league, weekDate],
+    queryFn: () => getPrivateFootballWeek({ data: { leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"], weekDate } }),
+    enabled: Boolean(user) && setup.isSuccess && setup.data.liveFixturesConfigured,
+    retry: false,
+    staleTime: 300000,
+  });
   const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
 
   if (loading) return <AppShell header={header}><main className="p-6">Φόρτωση…</main></AppShell>;
@@ -66,7 +74,18 @@ function PrivateFootballResearchPage() {
         </section>
         <section className="glass rounded-2xl p-5" aria-label="Αγώνες εβδομάδας">
           <h2 className="mb-2 text-lg font-bold">Αγώνες εβδομάδας</h2>
-          <p className="text-sm text-muted-foreground">Αναμένεται η επαληθευμένη σύνδεση δεδομένων αγώνων. Δεν υπάρχει διαθέσιμο πρόγραμμα προς εμφάνιση.</p>
+          <label htmlFor="football-date" className="mb-2 block text-sm">Εβδομάδα (επιλογή ημερομηνίας)</label>
+          <input id="football-date" type="date" value={weekDate} onChange={(e) => setWeekDate(e.target.value)} className="mb-4 rounded-lg border border-input bg-background p-2" />
+          {!setup.data.liveFixturesConfigured && <p className="text-sm text-muted-foreground">Δεν έχει ρυθμιστεί πηγή πραγματικών αγώνων (API_FOOTBALL_KEY).</p>}
+          {fixtures.isPending && setup.data.liveFixturesConfigured && <p className="text-sm text-muted-foreground">Ανάκτηση αγώνων…</p>}
+          {fixtures.isError && <p role="alert" className="text-sm text-destructive">Αποτυχία ανάκτησης αγώνων.</p>}
+          {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && <p className="text-sm text-muted-foreground">Δεν βρέθηκαν αγώνες αυτή την εβδομάδα.</p>}
+          {fixtures.data?.status === "ok" && <ul className="divide-y divide-border">
+            {fixtures.data.fixtures.map((fixture) => <li key={fixture.sourceFixtureId} className="flex flex-wrap justify-between gap-2 py-3">
+              <span>{fixture.homeTeam} — {fixture.awayTeam}</span>
+              <span className="text-sm text-muted-foreground">{new Intl.DateTimeFormat("el-GR", { timeZone: "Europe/Athens", dateStyle: "medium", timeStyle: "short" }).format(new Date(fixture.kickoffUtc))} · {fixture.state}</span>
+            </li>)}
+          </ul>}
           <button type="button" disabled className="mt-4 rounded-lg border border-input px-4 py-2 opacity-60">Ανάλυση με AI — μη διαθέσιμη ακόμη</button>
         </section>
       </main>
