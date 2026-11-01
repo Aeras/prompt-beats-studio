@@ -61,8 +61,9 @@ function PrivateFootballResearchPage() {
   });
   const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
 
-  if (loading || setup.isPending) return <AppShell header={header}><main className="p-6">Φόρτωση…</main></AppShell>;
+  if (loading) return <AppShell header={header}><main className="p-6">Φόρτωση…</main></AppShell>;
   if (!user) return <AppShell header={header}><main className="p-6">Απαιτείται <Link to="/auth" className="underline">σύνδεση</Link>.</main></AppShell>;
+  if (setup.isPending) return <AppShell header={header}><main className="p-6">Έλεγχος πρόσβασης…</main></AppShell>;
   if (setup.isError || !setup.data) return <AppShell header={header}><main className="p-6" role="alert">Η πρόσβαση δεν επιτρέπεται ή η υπηρεσία δεν είναι διαθέσιμη.</main></AppShell>;
 
   const selectedModel = setup.data.models.find((item) => item.id === model);
