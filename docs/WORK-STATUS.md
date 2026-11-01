@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — PB-015 Beta-only AI dispatch admission regression — IN_PROGRESS
+
+- **Verified incident:** Supabase production job `0fa96595-7ef3-4882-83b2-3a1bb5f9d674` and two earlier description jobs reached `admit_feature_ai_dispatch_internal`, which rejected the pre-provider Planner admission (`Feature not available`; HTTP 400). `ai_music_inspiration` is present as `beta_features.stage=beta`, absent from `feature_access_policies`. Valid artist studies on 2026-10-30 preceded PB-015 migration from merged #473. This is a feature-authority regression, not a confirmed provider failure.
+- **Single remediation PR:** branch `fix/pb-music-inspiration-beta-dispatch-admission`: forward-only migration to lock and accept either registered Beta or legacy Feature Access keys, then apply user-level access checks and deny archived Beta; SQL regression for Beta-only entitlement and unknown keys; planner pre-dispatch admission errors classified as authorization failure rather than unknown provider outcome. Preserve existing user/account/AI global controls. No changes to Beta lifecycle data, existing job records, provider billing, or production deployment.
+- **Verification remaining:** disposable database replay including Beta/Stable/Archived cases, TS/lint/unit/regression/CI gates and code review; separately approved production migration and compatible publish, then authenticated smoke test. No live paid AI calls. Do **not** mark CLOSED until production verification.
+
 ## 2026-10-31 — Beta lifecycle dropdown consistency — CODE_COMPLETE_RELEASE_PENDING
 
 - **Verified scope:** main `cd62d61995fdfd72301e85d0d1ea05eae72cee25`, merged #475; no overlapping open Beta implementation. The remaining native lifecycle select in `BetaFeaturesPanel` invokes Android's centered white picker. Replace only this control with the existing Radix Select used by Feature Access and entitlement menus, including anchored/collision-aware popover, dark tokens, purple selected state, localized names and accessible label. Keep Beta/Stable transitions, pending disablement, authoritative reload, archive/restore/promotion, revision CAS and all server authorization unchanged.
