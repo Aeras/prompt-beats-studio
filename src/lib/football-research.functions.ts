@@ -44,7 +44,7 @@ const weekInput = z.object({
     (typeof FOOTBALL_LEAGUES)[number]["id"],
     ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
   ]),
-  weekDate: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 export const getPrivateFootballWeek = createServerFn({ method: "GET" })
