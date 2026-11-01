@@ -8,7 +8,15 @@ import { FOOTBALL_LEAGUES } from "./football-research.shared";
 export const footballAiAssessmentSchema = z
   .object({
     summary: z.string().trim().min(20).max(3500),
-    deepDive: z.object({ form: z.string().trim().min(20).max(1600), tactics: z.string().trim().min(20).max(1600), teamNews: z.string().trim().min(20).max(1600), uncertainty: z.string().trim().min(20).max(1600) }).strict().optional(),
+    deepDive: z
+      .object({
+        form: z.string().trim().min(20).max(1600),
+        tactics: z.string().trim().min(20).max(1600),
+        teamNews: z.string().trim().min(20).max(1600),
+        uncertainty: z.string().trim().min(20).max(1600),
+      })
+      .strict()
+      .optional(),
     suggestions: z
       .array(
         z

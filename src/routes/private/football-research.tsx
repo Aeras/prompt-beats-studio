@@ -554,7 +554,9 @@ function PrivateFootballResearchPage() {
                                   <p>{entry.analysis.deepDive.form}</p>
                                   <h4 className="font-semibold text-white">Τακτική εικόνα</h4>
                                   <p>{entry.analysis.deepDive.tactics}</p>
-                                  <h4 className="font-semibold text-white">Ειδήσεις και απουσίες</h4>
+                                  <h4 className="font-semibold text-white">
+                                    Ειδήσεις και απουσίες
+                                  </h4>
                                   <p>{entry.analysis.deepDive.teamNews}</p>
                                   <h4 className="font-semibold text-amber-200">Αβεβαιότητες</h4>
                                   <p>{entry.analysis.deepDive.uncertainty}</p>
