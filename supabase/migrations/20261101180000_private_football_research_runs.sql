@@ -22,7 +22,14 @@ CREATE TABLE public.private_football_research_runs (
   sources jsonb,
   usage jsonb,
   error_code text,
-  UNIQUE (user_id, request_key)
+  UNIQUE (user_id, request_key),
+  CONSTRAINT football_completed_before_kickoff CHECK (
+    status <> 'completed' OR (
+      analysis IS NOT NULL AND completed_at IS NOT NULL AND
+      provider_started_at IS NOT NULL AND evidence_cutoff_at IS NOT NULL AND
+      completed_at < kickoff_utc AND evidence_cutoff_at < kickoff_utc
+    )
+  )
 );
 
 CREATE INDEX private_football_research_runs_user_time
