@@ -3,7 +3,7 @@
 ## 2026-11-01 — Private AI Football Research Studio — IN_PROGRESS
 
 - **Scope:** isolated Super-Admin-only, unlisted/noindex football research UI for six leagues; verified fixture feeds, selectable installed OpenRouter model, optional Tavily multilingual research, bounded AI dispatch, markets/evidence, persisted immutable pre-match analysis and prediction evaluation. KINO explicitly postponed to an independent later phase.
-- **Branch:** `feature/private-ai-football-research-studio` from main `65293ea751a7e6252b44d6e3855bc295f425bd54`. Common contracts and scoring/no-lookahead tests committed; see [implementation contract](PRIVATE-FOOTBALL-RESEARCH-STUDIO.md). No operational integration, live fixture source, UI, persistence or end-to-end tests claimed complete.
+- **Branch:** `feature/private-ai-football-research-studio` from main `65293ea751a7e6252b44d6e3855bc295f425bd54`. Initial guarded read-only OpenRouter model selection endpoint and unlisted noindex route scaffold committed, along with common contracts and scoring/no-lookahead tests; no verified live fixtures or paid AI dispatch yet. See [implementation contract](PRIVATE-FOOTBALL-RESEARCH-STUDIO.md). No operational integration, live fixture source, UI, persistence or end-to-end tests claimed complete.
 - **Remaining:** full guarded server/frontend/DB implementation, exact Super-Admin RLS, verified data-provider coverage, safe Tavily/OpenRouter existing transport integration with usage admission, final unit/CI/Browser/DB evidence. No provider calls or production deployment authorized.
  
 
