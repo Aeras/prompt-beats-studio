@@ -146,6 +146,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
     const { recordAiUsage } = await import("@/lib/ai-usage.server");
     const { aiProviderFetch } = await import("@/lib/global-ai-usage.server");
     let dispatched = false;
+    let usageRecorded = false;
     try {
       const result = await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
         dispatched = true;
@@ -163,6 +164,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         usage: result.usage,
         success: true,
       });
+      usageRecorded = true;
       const candidates = validateAiFixtureBatch(result.content, data.leagueId, data.weekDate, new Date());
       const { corroborateAiFixture, MAX_FETCHES_PER_REFRESH } = await import(
         "@/lib/football-ai-fixture-corroboration.server"
@@ -178,7 +180,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       await finish(true, saved.stored, saved.verified, null);
       return { candidatesStored: saved.stored, verified: saved.verified };
     } catch (error) {
-      if (dispatched) {
+      if (dispatched && !usageRecorded) {
         await recordAiUsage({
           executionId: admissionId,
           userId: context.userId,
