@@ -1,7 +1,4 @@
-import {
-  MusicInspirationPreview,
-  displayInspirationGroup,
-} from "./MusicInspirationPreview";
+import { MusicInspirationPreview, displayInspirationGroup } from "./MusicInspirationPreview";
 import type { MusicGeneratorFrame } from "@/lib/music-inspiration-generator-state";
 import { decodeInspirationDiagnostic } from "@/lib/music-inspiration-diagnostics.shared";
 import { useEffect, useId, useRef, useState } from "react";
