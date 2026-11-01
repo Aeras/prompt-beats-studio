@@ -13,11 +13,14 @@ permissions:
   contents: read
 
 jobs:
-  browser-quality:
+  browser-shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-24.04
-    # The 306-case, single-worker suite reached 293 passes before the 20m
-    # shared-runner job cap. Keep every test, 30s per-test deadline and retry
-    # policy unchanged; allow bounded headroom for the expanded coverage.
+    # Single-worker browser coverage exceeded the 25-minute job cap twice.
+    # Four Playwright shards cover the same complete suite on isolated runners.
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -35,13 +38,24 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Run browser viewport and accessibility gate
-        run: bunx playwright test
+        run: bunx playwright test --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
+
+  # Preserve the stable required status-check name while all shards must pass.
+  browser-quality:
+    if: always()
+    needs: [browser-shard]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every browser shard to pass
+        env:
+          SHARD_RESULT: ${{ needs.browser-shard.result }}
+        run: test "$SHARD_RESULT" = success
