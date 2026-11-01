@@ -62,3 +62,7 @@ The GitHub workflow guard can verify presence of this contract, evidence structu
 - After approval, perform one consolidated final push; await Regression, Browser Quality and Database Replay for the exact final HEAD before merge.
 - If a gate fails, inspect all failures and fix them together before asking for approval for another CI-triggering update. No experimental re-runs or piecemeal remote fixes.
 - Local git commits do not normally trigger remote workflows; GitHub API commits referenced by a branch, push events, PR events and other triggers may do so. No force push or rewrite of Lovable-synced history.
+
+## 8. Architecture rules
+
+- AI-discovered football fixtures are written only by server code via service-role RPCs after independent HTTP corroboration; model output and citations are never persisted as verified. Why: AI output is untrusted and paid analysis must target real fixtures.
