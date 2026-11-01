@@ -76,7 +76,11 @@ jobs:
           SQL
 
       - name: Replay all migrations on a fresh local database
-        run: supabase db start
+        run: |
+          # Isolate the ephemeral CI database from runners already using 54322.
+          # Tests address the database through the project-specific Docker container.
+          printf '\n[db]\nport = 55439\n' >> supabase/config.toml
+          supabase db start
 
       - name: AI usage receipt, permissions and recovery invariants (local only)
         run: |

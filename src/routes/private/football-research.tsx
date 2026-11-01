@@ -557,11 +557,11 @@ function PrivateFootballResearchPage() {
                                   <div key={estimate.market} className="space-y-1">
                                     <div className="flex justify-between gap-3 text-sm">
                                       <span className="font-medium text-slate-100">
-                                          {MARKET_LABELS[estimate.market] ?? estimate.market}
-                                        </span>
+                                        {MARKET_LABELS[estimate.market] ?? estimate.market}
+                                      </span>
                                       <strong className="tabular-nums text-cyan-200">
-                                          {estimate.percent}%
-                                        </strong>
+                                        {estimate.percent}%
+                                      </strong>
                                     </div>
                                     <div
                                       className="h-2.5 overflow-hidden rounded-full bg-slate-700/80"
