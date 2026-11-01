@@ -2107,6 +2107,105 @@ export type Database = {
         }
         Relationships: []
       }
+      private_football_ai_fixtures: {
+        Row: {
+          away_team: string
+          discovered_at: string
+          fixture_id: number
+          home_team: string
+          id: string
+          kickoff_utc: string
+          kickoff_verified: boolean
+          league_id: string
+          normalized_key: string
+          source_evidence: Json
+          updated_at: string
+          user_id: string
+          verification_status: string
+          verified_at: string | null
+          verified_sources_count: number
+        }
+        Insert: {
+          away_team: string
+          discovered_at?: string
+          fixture_id?: never
+          home_team: string
+          id?: string
+          kickoff_utc: string
+          kickoff_verified?: boolean
+          league_id: string
+          normalized_key: string
+          source_evidence?: Json
+          updated_at?: string
+          user_id: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_sources_count?: number
+        }
+        Update: {
+          away_team?: string
+          discovered_at?: string
+          fixture_id?: never
+          home_team?: string
+          id?: string
+          kickoff_utc?: string
+          kickoff_verified?: boolean
+          league_id?: string
+          normalized_key?: string
+          source_evidence?: Json
+          updated_at?: string
+          user_id?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_sources_count?: number
+        }
+        Relationships: []
+      }
+      private_football_ai_refresh_admissions: {
+        Row: {
+          admitted_at: string
+          candidates_count: number | null
+          error_code: string | null
+          finished_at: string | null
+          id: string
+          league_id: string
+          max_cost_usd: number
+          model_id: string
+          status: string
+          user_id: string
+          verified_count: number | null
+          week_date: string
+        }
+        Insert: {
+          admitted_at?: string
+          candidates_count?: number | null
+          error_code?: string | null
+          finished_at?: string | null
+          id?: string
+          league_id: string
+          max_cost_usd: number
+          model_id: string
+          status?: string
+          user_id: string
+          verified_count?: number | null
+          week_date: string
+        }
+        Update: {
+          admitted_at?: string
+          candidates_count?: number | null
+          error_code?: string | null
+          finished_at?: string | null
+          id?: string
+          league_id?: string
+          max_cost_usd?: number
+          model_id?: string
+          status?: string
+          user_id?: string
+          verified_count?: number | null
+          week_date?: string
+        }
+        Relationships: []
+      }
       private_football_research_hidden: {
         Row: {
           hidden_at: string
@@ -4724,6 +4823,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_private_football_ai_fixture_refresh: {
+        Args: {
+          _league_id: string
+          _max_cost_usd: number
+          _model_id: string
+          _user_id: string
+          _week_date: string
+        }
+        Returns: string
+      }
+      claim_private_football_ai_research_run: {
+        Args: {
+          _fixture_id: number
+          _model_id: string
+          _request_key: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       claim_private_football_research_run: {
         Args: {
           _away_team: string
@@ -5058,6 +5176,17 @@ export type Database = {
         Args: { _action_id: string }
         Returns: string
       }
+      finish_private_football_ai_fixture_refresh: {
+        Args: {
+          _admission_id: string
+          _candidates: number
+          _error_code: string
+          _ok: boolean
+          _user_id: string
+          _verified: number
+        }
+        Returns: undefined
+      }
       flush_ai_usage_outbox: { Args: { _limit?: number }; Returns: number }
       follow_creator: { Args: { _target_user_id: string }; Returns: Json }
       generator_prompt_catalog: { Args: never; Returns: Json }
@@ -5235,6 +5364,10 @@ export type Database = {
         Returns: {
           id: string
         }[]
+      }
+      private_football_ai_refresh_quota: {
+        Args: { _user_id: string }
+        Returns: Json
       }
       private_review_link_info: { Args: { _token: string }; Returns: Json }
       process_stripe_subscription_event: {
@@ -5681,6 +5814,19 @@ export type Database = {
           _share_id: string
         }
         Returns: undefined
+      }
+      upsert_private_football_ai_fixture: {
+        Args: {
+          _away_team: string
+          _home_team: string
+          _kickoff_utc: string
+          _league_id: string
+          _normalized_key: string
+          _source_evidence: Json
+          _user_id: string
+          _verified: boolean
+        }
+        Returns: Json
       }
     }
     Enums: {
