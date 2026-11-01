@@ -387,23 +387,28 @@ test("planner distinguishes every request value and provider/model identity with
   ).toThrow("planner_request_mismatch");
 });
 
-
 test("planner records feature admission refusal as known pre-provider authorization failure", async () => {
   const request: InspirationRequest = {
-    kind: "description", description: "warm acoustic melodic pop rock", depth: "standard",
+    kind: "description",
+    description: "warm acoustic melodic pop rock",
+    depth: "standard",
   };
   let invoked = 0;
   try {
     await requestInspirationPlan(
       request,
-      async () => { invoked++; throw new AiUsageUnavailableError(false); },
+      async () => {
+        invoked++;
+        throw new AiUsageUnavailableError(false);
+      },
       new AbortController().signal,
     );
     throw new Error("Expected authorization denial");
   } catch (error) {
     expect(error).toBeInstanceOf(InspirationFailure);
     expect((error as InspirationFailure).diagnostic).toEqual({
-      stage: "authorization", code: "configuration",
+      stage: "authorization",
+      code: "configuration",
     });
     expect((error as Error).message).toBe("feature_unavailable_before_dispatch");
   }
