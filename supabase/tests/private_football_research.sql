@@ -44,6 +44,14 @@ BEGIN
   PERFORM pg_temp.assert(duplicate->>'id'=v_run_id::text AND duplicate->>'status'='processing',
     'Duplicate key must not dispatch again');
 
+  rejected := false;
+  BEGIN
+    PERFORM public.claim_private_football_research_run(
+      v,k,223,'GR-SL','Home','Away',now()+interval '2 days','openai/test'
+    );
+  EXCEPTION WHEN OTHERS THEN rejected := true; END;
+  PERFORM pg_temp.assert(rejected,'Same request key with altered fixture must fail');
+
   BEGIN
     PERFORM public.claim_private_football_research_run(
       'fea70000-0000-4000-8000-000000000002',
@@ -68,6 +76,18 @@ BEGIN
     UPDATE public.private_football_research_runs SET analysis='{}'::jsonb WHERE public.private_football_research_runs.id=v_run_id;
   EXCEPTION WHEN OTHERS THEN rejected := true; END;
   PERFORM pg_temp.assert(rejected,'Completed prediction must be immutable');
+
+  rejected := false;
+  BEGIN
+    INSERT INTO public.private_football_research_runs(
+      user_id,request_key,fixture_id,league_id,home_team,away_team,kickoff_utc,
+      model_id,status,analysis,provider_started_at,evidence_cutoff_at,completed_at
+    ) VALUES (
+      v,gen_random_uuid(),999,'GR-SL','Home','Away',now()-interval '1 hour',
+      'openai/test','completed','{}'::jsonb,now()-interval '2 hours',now()-interval '2 hours',now()
+    );
+  EXCEPTION WHEN OTHERS THEN rejected := true; END;
+  PERFORM pg_temp.assert(rejected,'Post-kickoff completed snapshot must not be admitted through claims');
 
   rejected := false;
   BEGIN
