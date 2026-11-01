@@ -1,5 +1,5 @@
 import { fetchFootballWeek } from "./football-fixtures.server";
-import type { FootballFixture, FootballLeagueId } from "./football-research.shared";
+import type { FootballFixture, FootballLeagueId, FootballProviderId } from "./football-research.shared";
 import { footballWeekBounds } from "./football-fixtures.server";
 
 /**
@@ -16,9 +16,10 @@ export async function getCachedFootballWeek(
   date: string,
   loader: typeof fetchFootballWeek = fetchFootballWeek,
   now: () => number = Date.now,
+  provider: FootballProviderId = "api-football",
 ): Promise<FootballFixture[]> {
   const { from } = footballWeekBounds(date);
-  const key = `${leagueId}:${from}`;
+  const key = `${provider}:${leagueId}:${from}`;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > now()) return cached.fixtures.map((f) => ({ ...f }));
   const pending = inFlight.get(key);
