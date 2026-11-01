@@ -15,13 +15,18 @@ const matchSchema = z.object({
   status: z.string(),
   homeTeam: z.object({ name: z.string().min(1).max(200) }),
   awayTeam: z.object({ name: z.string().min(1).max(200) }),
-  score: z.object({
-    fullTime: z.object({
-      home: z.number().int().nonnegative().nullable(),
-      away: z.number().int().nonnegative().nullable(),
-    }).nullable().optional(),
-    duration: z.string().optional(),
-  }).optional(),
+  score: z
+    .object({
+      fullTime: z
+        .object({
+          home: z.number().int().nonnegative().nullable(),
+          away: z.number().int().nonnegative().nullable(),
+        })
+        .nullable()
+        .optional(),
+      duration: z.string().optional(),
+    })
+    .optional(),
 });
 const responseSchema = z.object({ matches: z.array(matchSchema).max(400) });
 
@@ -54,7 +59,8 @@ export async function fetchFootballDataWeek(
   });
   if (!response.ok) {
     await response.body?.cancel();
-    if (response.status === 401 || response.status === 403) throw new Error("Football-data.org authentication or competition access denied.");
+    if (response.status === 401 || response.status === 403)
+      throw new Error("Football-data.org authentication or competition access denied.");
     if (response.status === 429) throw new Error("Football-data.org free-plan rate limit reached.");
     throw new Error("Football-data.org unavailable.");
   }
@@ -67,24 +73,28 @@ export async function fetchFootballDataWeek(
   if (body.length > 500_000) throw new Error("Football-data.org response too large.");
   const parsed = responseSchema.parse(JSON.parse(body));
   const fetchedAtUtc = new Date().toISOString();
-  return parsed.matches.flatMap((match): FootballFixture[] => {
-    const kickoff = Date.parse(match.utcDate);
-    if (!Number.isFinite(kickoff)) return [];
-    const status = normalizeState(match.status);
-    const fullTime = match.score?.fullTime;
-    const isRegularTime = match.score?.duration === "REGULAR";
-    return [{
-      source: "football-data",
-      sourceFixtureId: String(match.id),
-      leagueId,
-      homeTeam: match.homeTeam.name,
-      awayTeam: match.awayTeam.name,
-      kickoffUtc: new Date(kickoff).toISOString(),
-      state: status,
-      fetchedAtUtc,
-      providerStatus: status === "finished" && isRegularTime ? "FT" : match.status,
-      homeGoals: fullTime?.home ?? null,
-      awayGoals: fullTime?.away ?? null,
-    }];
-  }).sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+  return parsed.matches
+    .flatMap((match): FootballFixture[] => {
+      const kickoff = Date.parse(match.utcDate);
+      if (!Number.isFinite(kickoff)) return [];
+      const status = normalizeState(match.status);
+      const fullTime = match.score?.fullTime;
+      const isRegularTime = match.score?.duration === "REGULAR";
+      return [
+        {
+          source: "football-data",
+          sourceFixtureId: String(match.id),
+          leagueId,
+          homeTeam: match.homeTeam.name,
+          awayTeam: match.awayTeam.name,
+          kickoffUtc: new Date(kickoff).toISOString(),
+          state: status,
+          fetchedAtUtc,
+          providerStatus: status === "finished" && isRegularTime ? "FT" : match.status,
+          homeGoals: fullTime?.home ?? null,
+          awayGoals: fullTime?.away ?? null,
+        },
+      ];
+    })
+    .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
 }

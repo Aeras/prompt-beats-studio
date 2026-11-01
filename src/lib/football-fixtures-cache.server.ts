@@ -1,5 +1,9 @@
 import { fetchFootballWeek } from "./football-fixtures.server";
-import type { FootballFixture, FootballLeagueId, FootballProviderId } from "./football-research.shared";
+import type {
+  FootballFixture,
+  FootballLeagueId,
+  FootballProviderId,
+} from "./football-research.shared";
 import { footballWeekBounds } from "./football-fixtures.server";
 
 /**

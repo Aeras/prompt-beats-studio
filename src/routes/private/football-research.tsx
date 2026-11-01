@@ -7,7 +7,12 @@ import {
 } from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
-import { FOOTBALL_LEAGUES, FOOTBALL_PROVIDERS, FOOTBALL_DATA_LEAGUES, type FootballProviderId } from "@/lib/football-research.shared";
+import {
+  FOOTBALL_LEAGUES,
+  FOOTBALL_PROVIDERS,
+  FOOTBALL_DATA_LEAGUES,
+  type FootballProviderId,
+} from "@/lib/football-research.shared";
 import {
   getPrivateFootballResearchSetup,
   getPrivateFootballWeek,
@@ -41,9 +46,15 @@ function PrivateFootballResearchPage() {
     queryKey: ["football-week", user?.id, provider, league, weekDate],
     queryFn: () =>
       getPrivateFootballWeek({
-        data: { fixtureProvider: provider, leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"], weekDate },
+        data: {
+          fixtureProvider: provider,
+          leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"],
+          weekDate,
+        },
       }),
-    enabled: Boolean(user) && setup.isSuccess &&
+    enabled:
+      Boolean(user) &&
+      setup.isSuccess &&
       Boolean(setup.data.fixtureProviders.find((item) => item.id === provider)?.configured) &&
       (provider !== "football-data" || league !== "GR-SL"),
     retry: false,
@@ -123,13 +134,25 @@ function PrivateFootballResearchPage() {
         </div>
         <section className="glass space-y-4 rounded-2xl p-5" aria-label="Επιλογές έρευνας">
           <div>
-            <label htmlFor="football-provider" className="mb-2 block text-sm font-medium">Πάροχος αγώνων</label>
-            <select id="football-provider" value={provider} onChange={(event) => {
-              const next = event.target.value as FootballProviderId;
-              setProvider(next);
-              if (next === "football-data" && league === "GR-SL") setLeague("EN-PL");
-            }} className="w-full rounded-lg border border-input bg-background p-3">
-              {FOOTBALL_PROVIDERS.map((item) => <option key={item.id} value={item.id}>{item.label}{item.id === "football-data" ? " (προεπιλογή)" : ""}</option>)}
+            <label htmlFor="football-provider" className="mb-2 block text-sm font-medium">
+              Πάροχος αγώνων
+            </label>
+            <select
+              id="football-provider"
+              value={provider}
+              onChange={(event) => {
+                const next = event.target.value as FootballProviderId;
+                setProvider(next);
+                if (next === "football-data" && league === "GR-SL") setLeague("EN-PL");
+              }}
+              className="w-full rounded-lg border border-input bg-background p-3"
+            >
+              {FOOTBALL_PROVIDERS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                  {item.id === "football-data" ? " (προεπιλογή)" : ""}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -143,7 +166,14 @@ function PrivateFootballResearchPage() {
               className="w-full rounded-lg border border-input bg-background p-3"
             >
               {FOOTBALL_LEAGUES.map((item) => (
-                <option key={item.id} value={item.id} disabled={provider === "football-data" && !FOOTBALL_DATA_LEAGUES.some((id) => id === item.id)}>
+                <option
+                  key={item.id}
+                  value={item.id}
+                  disabled={
+                    provider === "football-data" &&
+                    !FOOTBALL_DATA_LEAGUES.some((id) => id === item.id)
+                  }
+                >
                   {item.label}
                 </option>
               ))}
@@ -196,10 +226,16 @@ function PrivateFootballResearchPage() {
               Δεν έχει ρυθμιστεί το API key του επιλεγμένου παρόχου.
             </p>
           )}
-          {fixtures.isPending && setup.data.fixtureProviders.find((item) => item.id === provider)?.configured && (
-            <p className="text-sm text-muted-foreground">Ανάκτηση αγώνων…</p>
+          {fixtures.isPending &&
+            setup.data.fixtureProviders.find((item) => item.id === provider)?.configured && (
+              <p className="text-sm text-muted-foreground">Ανάκτηση αγώνων…</p>
+            )}
+          {fixtures.data?.status === "unsupported" && (
+            <p className="text-sm text-muted-foreground">
+              Το ελληνικό πρωτάθλημα δεν καλύπτεται στο δωρεάν football-data.org. Επέλεξε
+              API-Football για δοκιμή.
+            </p>
           )}
-          {fixtures.data?.status === "unsupported" && <p className="text-sm text-muted-foreground">Το ελληνικό πρωτάθλημα δεν καλύπτεται στο δωρεάν football-data.org. Επέλεξε API-Football για δοκιμή.</p>}
           {fixtures.isError && (
             <p role="alert" className="text-sm text-destructive">
               Αποτυχία ανάκτησης αγώνων.
@@ -230,7 +266,8 @@ function PrivateFootballResearchPage() {
                     type="button"
                     disabled={
                       !setup.data.aiAnalysisEnabled ||
-                      !setup.data.fixtureProviders.find((item) => item.id === provider)?.configured ||
+                      !setup.data.fixtureProviders.find((item) => item.id === provider)
+                        ?.configured ||
                       !selectedModel ||
                       analysis.isPending ||
                       fixture.state !== "scheduled" ||

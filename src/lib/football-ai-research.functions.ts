@@ -48,10 +48,17 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     if (data.fixtureProvider === "football-data" && data.leagueId === "GR-SL") {
       throw new Error("Greek Super League is unavailable on football-data.org Free.");
     }
-    const loader = data.fixtureProvider === "football-data"
-      ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
-      : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
-    const fixtures = await getCachedFootballWeek(data.leagueId, data.weekDate, loader, Date.now, data.fixtureProvider);
+    const loader =
+      data.fixtureProvider === "football-data"
+        ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+        : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
+    const fixtures = await getCachedFootballWeek(
+      data.leagueId,
+      data.weekDate,
+      loader,
+      Date.now,
+      data.fixtureProvider,
+    );
     const fixture = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
     if (!fixture || fixture.state !== "scheduled" || Date.parse(fixture.kickoffUtc) <= Date.now()) {
       throw new Error("Only verified upcoming fixtures can be analyzed.");
@@ -242,11 +249,20 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       const key = row.source + ":" + row.league_id + ":" + day;
       if (scored.has(key) || scored.size >= 3) continue;
       try {
-        const loader = row.source === "football-data"
-          ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
-          : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
-        scored.set(key, await getCachedFootballWeek(row.league_id, day, loader, Date.now,
-          row.source === "football-data" ? "football-data" : "api-football"));
+        const loader =
+          row.source === "football-data"
+            ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+            : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
+        scored.set(
+          key,
+          await getCachedFootballWeek(
+            row.league_id,
+            day,
+            loader,
+            Date.now,
+            row.source === "football-data" ? "football-data" : "api-football",
+          ),
+        );
       } catch {
         // Historical scoring is best effort. A provider outage must not expose
         // any third-party error or erase persisted research evidence.
