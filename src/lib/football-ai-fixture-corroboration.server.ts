@@ -141,14 +141,14 @@ export async function fetchSource(url: URL, fetcher: typeof fetch, budget: Fetch
   for (let hop = 0; hop <= MAX_REDIRECTS && current; hop++) {
     if (budget.remaining <= 0) return null;
     budget.remaining--;
-    const response = await fetcher(current, {
+    const response: Response = await fetcher(current, {
       method: "GET",
       redirect: "manual",
       signal: AbortSignal.timeout(4500),
       headers: { Accept: "text/html" },
     });
     if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
+      const location: string | null = response.headers.get("location");
       await response.body?.cancel().catch(() => {});
       current = location ? trustedPublicUrl(new URL(location, current).href) : null;
       continue;
