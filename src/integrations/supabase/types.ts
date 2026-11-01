@@ -128,6 +128,41 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_auxiliary_model_uses: {
+        Row: {
+          created_at: string
+          id: string
+          model: string
+          receipt_id: string | null
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          model: string
+          receipt_id?: string | null
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string
+          receipt_id?: string | null
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_auxiliary_model_uses_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ai_auxiliary_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_auxiliary_requests: {
         Row: {
           completed_at: string | null
@@ -189,6 +224,7 @@ export type Database = {
           idempotency_key: string
           input_payload: Json
           model: string | null
+          prompt_catalog_id: string | null
           provider: string | null
           provider_started_at: string | null
           recovery_until: string | null
@@ -213,6 +249,7 @@ export type Database = {
           idempotency_key: string
           input_payload: Json
           model?: string | null
+          prompt_catalog_id?: string | null
           provider?: string | null
           provider_started_at?: string | null
           recovery_until?: string | null
@@ -237,6 +274,7 @@ export type Database = {
           idempotency_key?: string
           input_payload?: Json
           model?: string | null
+          prompt_catalog_id?: string | null
           provider?: string | null
           provider_started_at?: string | null
           recovery_until?: string | null
@@ -246,7 +284,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_jobs_prompt_catalog_id_fkey"
+            columns: ["prompt_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "generator_prompt_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_generations: {
         Row: {
@@ -416,6 +462,9 @@ export type Database = {
       ai_provider_executions: {
         Row: {
           application_recovery_attempts: number
+          application_resolution: string | null
+          application_resolved_at: string | null
+          application_validation_checked_at: string | null
           created_at: string
           generation_id: string | null
           id: string
@@ -438,6 +487,9 @@ export type Database = {
         }
         Insert: {
           application_recovery_attempts?: number
+          application_resolution?: string | null
+          application_resolved_at?: string | null
+          application_validation_checked_at?: string | null
           created_at?: string
           generation_id?: string | null
           id: string
@@ -460,6 +512,9 @@ export type Database = {
         }
         Update: {
           application_recovery_attempts?: number
+          application_resolution?: string | null
+          application_resolved_at?: string | null
+          application_validation_checked_at?: string | null
           created_at?: string
           generation_id?: string | null
           id?: string
@@ -573,6 +628,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_runner_deliveries: {
+        Row: {
+          kind: string
+          queued_at: string
+          target: string
+        }
+        Insert: {
+          kind: string
+          queued_at: string
+          target: string
+        }
+        Update: {
+          kind?: string
+          queued_at?: string
+          target?: string
+        }
+        Relationships: []
       }
       ai_usage_logs: {
         Row: {
@@ -1011,6 +1084,125 @@ export type Database = {
             referencedColumns: ["feature_key"]
           },
         ]
+      }
+      generator_prompt_audit: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          digest: string
+          id: number
+          previous_default: string | null
+          prompt_id: string
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          digest: string
+          id?: never
+          previous_default?: string | null
+          prompt_id: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          digest?: string
+          id?: never
+          previous_default?: string | null
+          prompt_id?: string
+        }
+        Relationships: []
+      }
+      generator_prompt_default: {
+        Row: {
+          prompt_id: string
+          singleton: boolean
+        }
+        Insert: {
+          prompt_id: string
+          singleton?: boolean
+        }
+        Update: {
+          prompt_id?: string
+          singleton?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generator_prompt_default_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "generator_prompt_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generator_prompt_versions: {
+        Row: {
+          builtin_version: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          digest: string
+          ever_used: boolean
+          family: string
+          id: string
+          label: string
+          scope: string
+          status: string
+        }
+        Insert: {
+          builtin_version?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          digest: string
+          ever_used?: boolean
+          family: string
+          id?: string
+          label: string
+          scope?: string
+          status?: string
+        }
+        Update: {
+          builtin_version?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          digest?: string
+          ever_used?: boolean
+          family?: string
+          id?: string
+          label?: string
+          scope?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      global_ai_usage_policy: {
+        Row: {
+          enabled: boolean
+          revision: number
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       inspiration_wall_cards: {
         Row: {
@@ -1543,6 +1735,197 @@ export type Database = {
           },
         ]
       }
+      music_inspiration_abandoned_requests: {
+        Row: {
+          created_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      music_inspiration_dispatches: {
+        Row: {
+          created_at: string
+          credits: number
+          dispatch_key: string
+          job_id: string
+          kind: string
+          max_cost_usd: number
+          receipt: Json | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          dispatch_key: string
+          job_id: string
+          kind: string
+          max_cost_usd: number
+          receipt?: Json | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          dispatch_key?: string
+          job_id?: string
+          kind?: string
+          max_cost_usd?: number
+          receipt?: Json | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_inspiration_dispatches_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "music_inspiration_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_inspiration_jobs: {
+        Row: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_usd: number
+          cancel_requested_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          execution_id?: string
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          model: string
+          planner_execution_id?: string | null
+          planner_model?: string | null
+          planner_pricing_snapshot?: Json | null
+          planner_provider?: string | null
+          planner_result?: Json | null
+          pricing_snapshot?: Json | null
+          provider: string
+          provider_result?: Json | null
+          recovery_attempts?: number
+          request: Json
+          request_id: string
+          research_plan?: Json | null
+          research_started_at?: string | null
+          research_version?: number
+          reserved_usd?: number
+          result?: Json | null
+          search_credits?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_usd?: number
+          cancel_requested_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          execution_id?: string
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          model?: string
+          planner_execution_id?: string | null
+          planner_model?: string | null
+          planner_pricing_snapshot?: Json | null
+          planner_provider?: string | null
+          planner_result?: Json | null
+          pricing_snapshot?: Json | null
+          provider?: string
+          provider_result?: Json | null
+          recovery_attempts?: number
+          request?: Json
+          request_id?: string
+          research_plan?: Json | null
+          research_started_at?: string | null
+          research_version?: number
+          reserved_usd?: number
+          result?: Json | null
+          search_credits?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      music_inspiration_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          result: Json
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          result: Json
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          result?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           new_follower_enabled: boolean
@@ -1720,6 +2103,98 @@ export type Database = {
           is_public?: boolean
           name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      private_football_research_hidden: {
+        Row: {
+          hidden_at: string
+          run_id: string
+          user_id: string
+        }
+        Insert: {
+          hidden_at?: string
+          run_id: string
+          user_id: string
+        }
+        Update: {
+          hidden_at?: string
+          run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_football_research_hidden_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "private_football_research_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_football_research_runs: {
+        Row: {
+          analysis: Json | null
+          away_team: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          evidence_cutoff_at: string | null
+          fixture_id: number
+          home_team: string
+          id: string
+          kickoff_utc: string
+          league_id: string
+          model_id: string
+          provider_started_at: string | null
+          request_key: string
+          source: string
+          sources: Json | null
+          status: string
+          usage: Json | null
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          away_team: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          evidence_cutoff_at?: string | null
+          fixture_id: number
+          home_team: string
+          id?: string
+          kickoff_utc: string
+          league_id: string
+          model_id: string
+          provider_started_at?: string | null
+          request_key: string
+          source?: string
+          sources?: Json | null
+          status?: string
+          usage?: Json | null
+          user_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          away_team?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          evidence_cutoff_at?: string | null
+          fixture_id?: number
+          home_team?: string
+          id?: string
+          kickoff_utc?: string
+          league_id?: string
+          model_id?: string
+          provider_started_at?: string | null
+          request_key?: string
+          source?: string
+          sources?: Json | null
+          status?: string
+          usage?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -3722,6 +4197,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      _has_valid_account_state_internal: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       _is_admin_level_internal: { Args: { _user_id: string }; Returns: boolean }
       _is_banned_internal: { Args: { _user_id: string }; Returns: boolean }
       _lock_user_security_pair: {
@@ -3739,6 +4218,10 @@ export type Database = {
       _moderation_case_can_read: {
         Args: { _actor: string; _case_id: string }
         Returns: boolean
+      }
+      abandon_music_inspiration_request_internal: {
+        Args: { _request_id: string; _user_id: string }
+        Returns: Json
       }
       add_moderation_case_note: {
         Args: { _body: string; _case_id: string }
@@ -3770,6 +4253,7 @@ export type Database = {
         Args: { _email: string; _reason_code: string; _reason_text?: string }
         Returns: string
       }
+      admin_get_global_ai_usage: { Args: never; Returns: Json }
       admin_list_registration_blocks: {
         Args: { _limit?: number; _offset?: number; _search?: string }
         Returns: Json
@@ -3803,6 +4287,10 @@ export type Database = {
       admin_set_creator_donations_global: {
         Args: { _enabled: boolean }
         Returns: undefined
+      }
+      admin_set_global_ai_usage: {
+        Args: { _enabled: boolean; _expected_revision: number }
+        Returns: Json
       }
       admin_set_model_access: {
         Args: {
@@ -3853,6 +4341,19 @@ export type Database = {
         Args: { _email_hash: string; _nonce_hash: string; _user_id: string }
         Returns: boolean
       }
+      admit_feature_ai_dispatch_internal: {
+        Args: { _feature_keys: string[]; _user_id: string }
+        Returns: boolean
+      }
+      admit_global_ai_dispatch_internal: { Args: never; Returns: boolean }
+      admit_music_inspiration_internal: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
+      admit_music_inspiration_planner_internal: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       admit_private_review_join: {
         Args: { _network_hash: string; _token: string }
         Returns: Json
@@ -3860,6 +4361,16 @@ export type Database = {
       admit_track_upload: { Args: never; Returns: boolean }
       ai_execution_cancel_requested_internal: {
         Args: { _id: string; _user_id: string }
+        Returns: boolean
+      }
+      ai_execution_usage_is_final: {
+        Args: {
+          _e: Database["public"]["Tables"]["ai_provider_executions"]["Row"]
+        }
+        Returns: boolean
+      }
+      ai_legacy_fallback_safe: {
+        Args: { _removed: string[] }
         Returns: boolean
       }
       ai_model_uninstall_reasons: {
@@ -3873,6 +4384,24 @@ export type Database = {
       }
       assert_ai_model_admin: { Args: never; Returns: undefined }
       assert_beta_super_admin: { Args: never; Returns: undefined }
+      assert_prompt_registry_admin: { Args: never; Returns: undefined }
+      atlas_preview_admission: { Args: never; Returns: undefined }
+      atlas_worker_admission: { Args: { _user_id: string }; Returns: undefined }
+      auxiliary_model_use_receipt_internal: {
+        Args: { _receipt_id: string; _use_id: string }
+        Returns: undefined
+      }
+      auxiliary_model_use_start_internal: {
+        Args: {
+          _execution_token: string
+          _model: string
+          _operation: string
+          _request_key: string
+          _use_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       backfill_pending_ai_usage_costs: {
         Args: { p_model: string }
         Returns: number
@@ -3933,6 +4462,47 @@ export type Database = {
         Args: { _feature_key: string; _user_id: string }
         Returns: boolean
       }
+      cancel_music_inspiration_job: {
+        Args: { _job_id: string }
+        Returns: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       capture_track_storage_cleanup: {
         Args: {
           _audio_key: string
@@ -3947,10 +4517,92 @@ export type Database = {
         Args: { _id: string; _result: Json; _user_id: string }
         Returns: undefined
       }
+      checkpoint_music_inspiration_job: {
+        Args: { _job_id: string; _lease_token: string; _patch: Json }
+        Returns: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      checkpoint_music_inspiration_plan: {
+        Args: { _job_id: string; _lease_token: string; _plan: Json }
+        Returns: undefined
+      }
+      claim_ai_execution_recovery_by_id_internal: {
+        Args: { _id: string }
+        Returns: {
+          application_recovery_attempts: number
+          application_resolution: string | null
+          application_resolved_at: string | null
+          application_validation_checked_at: string | null
+          created_at: string
+          generation_id: string | null
+          id: string
+          job_id: string | null
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          next_recovery_at: string
+          observed_usage: Json | null
+          operation: string
+          provider: string
+          quality_action_id: string | null
+          recovery_attempts: number
+          remote_id: string | null
+          remote_provider: string | null
+          result: Json | null
+          state: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ai_provider_executions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_ai_execution_recovery_internal: {
         Args: never
         Returns: {
           application_recovery_attempts: number
+          application_resolution: string | null
+          application_resolved_at: string | null
+          application_validation_checked_at: string | null
           created_at: string
           generation_id: string | null
           id: string
@@ -3984,6 +4636,119 @@ export type Database = {
       }
       claim_auxiliary_ai_request: {
         Args: { _operation: string; _request_key: string }
+        Returns: Json
+      }
+      claim_failed_generation_validation_internal: {
+        Args: never
+        Returns: Json
+      }
+      claim_music_inspiration_job: {
+        Args: { _job_id: string; _lease_token: string }
+        Returns: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_music_inspiration_job_v2: {
+        Args: { _job_id: string; _lease_token: string }
+        Returns: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_private_football_research_run: {
+        Args: {
+          _away_team: string
+          _fixture_id: number
+          _home_team: string
+          _kickoff_utc: string
+          _league_id: string
+          _model_id: string
+          _request_key: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      claim_private_football_research_run_v2: {
+        Args: {
+          _away_team: string
+          _fixture_id: number
+          _home_team: string
+          _kickoff_utc: string
+          _league_id: string
+          _model_id: string
+          _request_key: string
+          _source: string
+          _user_id: string
+        }
         Returns: Json
       }
       claim_quality_check: { Args: { _idempotency_key: string }; Returns: Json }
@@ -4150,6 +4915,10 @@ export type Database = {
         Args: { _track_id: string }
         Returns: Json
       }
+      delete_music_inspiration_profile: {
+        Args: { _expected_revision: number; _id: string }
+        Returns: boolean
+      }
       delete_track_with_cleanup: { Args: { _track_id: string }; Returns: Json }
       detach_prompt_project_version: {
         Args: { _prompt_id: string; _user_id: string }
@@ -4160,6 +4929,7 @@ export type Database = {
         Returns: Json
       }
       dismiss_generation_job: { Args: { _job_id: string }; Returns: string }
+      dispatch_ai_runner_sweep_internal: { Args: never; Returns: Json }
       duplicate_prompt_project_to_folder: {
         Args: {
           _destination_folder_id: string
@@ -4197,6 +4967,18 @@ export type Database = {
           _track_id: string
         }
         Returns: Json
+      }
+      effective_subscription_plan: {
+        Args: { _user_id: string }
+        Returns: string
+      }
+      effective_subscription_plan_rank: {
+        Args: { _user_id: string }
+        Returns: number
+      }
+      enqueue_ai_runner_request_internal: {
+        Args: { _id?: string; _kind: string }
+        Returns: boolean
       }
       fail_auxiliary_ai_request: {
         Args: {
@@ -4238,35 +5020,6 @@ export type Database = {
         Args: { _access_mode: string; _feature_key: string }
         Returns: undefined
       }
-      admit_feature_ai_dispatch_internal: {
-        Args: { _feature_keys: string[]; _user_id: string }
-        Returns: boolean
-      }
-      effective_subscription_plan: {
-        Args: { _user_id: string }
-        Returns: string
-      }
-      effective_subscription_plan_rank: {
-        Args: { _user_id: string }
-        Returns: number
-      }
-      subscription_entitlement_detail: {
-        Args: { _user_id: string }
-        Returns: Json
-      }
-      subscription_manual_grant_create: {
-        Args: {
-          _expires_at: string | null
-          _plan: string
-          _reason: string
-          _user_id: string
-        }
-        Returns: Json
-      }
-      subscription_manual_grant_revoke: {
-        Args: { _grant_id: string; _revoke_reason: string }
-        Returns: Json
-      }
       finalize_generation_revision_atomic: {
         Args: {
           _attempts: number
@@ -4307,6 +5060,20 @@ export type Database = {
       }
       flush_ai_usage_outbox: { Args: { _limit?: number }; Returns: number }
       follow_creator: { Args: { _target_user_id: string }; Returns: Json }
+      generator_prompt_catalog: { Args: never; Returns: Json }
+      generator_prompt_for_job_internal: {
+        Args: { _job_id: string; _user_id: string }
+        Returns: Json
+      }
+      generator_prompt_import: {
+        Args: { _content: string; _label: string }
+        Returns: string
+      }
+      generator_prompt_mutate: {
+        Args: { _action: string; _expected_default: string; _id: string }
+        Returns: undefined
+      }
+      generator_prompt_read: { Args: { _id: string }; Returns: Json }
       get_content_report: { Args: { _report_id: string }; Returns: Json }
       get_latest_quality_check_job: {
         Args: { _generation_id: string }
@@ -4450,6 +5217,7 @@ export type Database = {
         }
         Returns: Json
       }
+      music_inspiration_access: { Args: { _user_id: string }; Returns: boolean }
       next_prompt_project_version: {
         Args: { p_project_id: string }
         Returns: number
@@ -4461,6 +5229,12 @@ export type Database = {
       observe_ai_execution_usage_internal: {
         Args: { _id: string; _usage: Json; _user_id: string }
         Returns: undefined
+      }
+      pending_music_inspiration_job_ids: {
+        Args: never
+        Returns: {
+          id: string
+        }[]
       }
       private_review_link_info: { Args: { _token: string }; Returns: Json }
       process_stripe_subscription_event: {
@@ -4505,13 +5279,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      read_ai_execution_by_id_internal: {
+        Args: { _execution_id: string; _user_id: string }
+        Returns: Json
+      }
       read_ai_execution_internal: {
         Args: { _job_id: string; _quality_action_id: string; _user_id: string }
+        Returns: Json
+      }
+      read_music_inspiration_usage_internal: {
+        Args: { _job_id: string; _user_id: string }
         Returns: Json
       }
       reap_unjournaled_ai_jobs_internal: { Args: never; Returns: number }
       reassign_moderation_case: {
         Args: { _case_id: string; _new_assignee?: string }
+        Returns: undefined
+      }
+      reconcile_ai_legacy_fallback: {
+        Args: { _removed: string[] }
         Returns: undefined
       }
       reconcile_provider_committed_generation: {
@@ -4618,8 +5404,29 @@ export type Database = {
         Args: { _action_id: string }
         Returns: string
       }
+      reserve_music_inspiration_dispatch: {
+        Args: {
+          _dispatch_key: string
+          _job_id: string
+          _kind: string
+          _lease_token: string
+          _max_cost: number
+          _max_credits: number
+        }
+        Returns: boolean
+      }
       reserve_stripe_checkout_attempt: {
         Args: { _attempt_id: string; _user_id: string }
+        Returns: boolean
+      }
+      resolve_failed_generation_internal: {
+        Args: {
+          _execution_id: string
+          _expected_result: Json
+          _job_id: string
+          _reason: string
+          _user_id: string
+        }
         Returns: boolean
       }
       review_content_report: {
@@ -4634,6 +5441,29 @@ export type Database = {
       revoke_track_share_link: {
         Args: { _share_id: string }
         Returns: undefined
+      }
+      save_music_inspiration_profile: {
+        Args: {
+          _expected_revision: number
+          _id: string
+          _job_id: string
+          _name: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          result: Json
+          revision: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       search_library_folders: {
         Args: { _query: string }
@@ -4691,6 +5521,52 @@ export type Database = {
         Returns: undefined
       }
       settle_ai_usage_internal: { Args: { _payload: Json }; Returns: undefined }
+      settle_music_inspiration_dispatch: {
+        Args: {
+          _dispatch_key: string
+          _job_id: string
+          _receipt: Json
+          _state: string
+        }
+        Returns: {
+          budget_usd: number
+          cancel_requested_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          execution_id: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          model: string
+          planner_execution_id: string | null
+          planner_model: string | null
+          planner_pricing_snapshot: Json | null
+          planner_provider: string | null
+          planner_result: Json | null
+          pricing_snapshot: Json | null
+          provider: string
+          provider_result: Json | null
+          recovery_attempts: number
+          request: Json
+          request_id: string
+          research_plan: Json | null
+          research_started_at: string | null
+          research_version: number
+          reserved_usd: number
+          result: Json | null
+          search_credits: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "music_inspiration_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       skip_ai_execution_internal: {
         Args: { _id: string; _user_id: string }
         Returns: undefined
@@ -4718,6 +5594,40 @@ export type Database = {
         Args: { _idempotency_key: string; _input: Json }
         Returns: Json
       }
+      start_music_inspiration_job: {
+        Args: {
+          _budget: number
+          _model: string
+          _provider: string
+          _request: Json
+          _request_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      start_music_inspiration_job_v2: {
+        Args: {
+          _model: string
+          _pricing: Json
+          _provider: string
+          _request: Json
+          _request_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      start_music_inspiration_job_v3: {
+        Args: {
+          _model: string
+          _planner_pricing: Json
+          _pricing: Json
+          _provider: string
+          _request: Json
+          _request_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       start_quality_check_job: {
         Args: { _idempotency_key: string; _input: Json }
         Returns: Json
@@ -4734,6 +5644,23 @@ export type Database = {
           _track_id: string
         }
         Returns: string
+      }
+      subscription_entitlement_detail: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
+      subscription_manual_grant_create: {
+        Args: {
+          _expires_at: string
+          _plan: string
+          _reason: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      subscription_manual_grant_revoke: {
+        Args: { _grant_id: string; _revoke_reason: string }
+        Returns: Json
       }
       sweep_generation_jobs: { Args: never; Returns: number }
       take_moderation_case: { Args: { _report_id: string }; Returns: string }
