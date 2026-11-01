@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { runPrivateFootballResearch } from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
@@ -41,6 +42,21 @@ function PrivateFootballResearchPage() {
     enabled: Boolean(user) && setup.isSuccess && setup.data.liveFixturesConfigured,
     retry: false,
     staleTime: 300000,
+  });
+  const analysis = useMutation({
+    mutationFn: (fixtureId: string) =>
+      runPrivateFootballResearch({
+        data: {
+          leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"],
+          weekDate,
+          fixtureId,
+          modelId: model,
+          requestKey: crypto.randomUUID(),
+          withTavily: true,
+          approvePaidRequest: true,
+        },
+      }),
+    retry: false,
   });
   const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
 
@@ -132,7 +148,7 @@ function PrivateFootballResearchPage() {
           <p className="text-sm text-muted-foreground">
             Tavily:{" "}
             {setup.data.tavilyConfigured
-              ? "Ρυθμισμένο — η αναζήτηση δεν έχει ενεργοποιηθεί ακόμη."
+              ? "Διαθέσιμη για έρευνα πηγών πριν από την ανάλυση."
               : "Δεν έχει ρυθμιστεί."}
           </p>
         </section>
@@ -182,17 +198,66 @@ function PrivateFootballResearchPage() {
                     }).format(new Date(fixture.kickoffUtc))}{" "}
                     · {fixture.state}
                   </span>
+                  <button
+                    type="button"
+                    disabled={
+                      !setup.data.aiAnalysisEnabled ||
+                      !selectedModel ||
+                      analysis.isPending ||
+                      fixture.state !== "scheduled" ||
+                      Date.parse(fixture.kickoffUtc) <= Date.now()
+                    }
+                    className="rounded-lg border border-input px-3 py-2 text-sm disabled:opacity-40"
+                    onClick={() => {
+                      if (window.confirm("Η έρευνα Tavily και η ανάλυση OpenRouter ενδέχεται να χρεωθούν. Να εκτελεστεί μία ανάλυση αυτού του αγώνα;")) {
+                        analysis.mutate(fixture.sourceFixtureId);
+                      }
+                    }}
+                  >
+                    {analysis.isPending ? "Ανάλυση…" : "AI ανάλυση"}
+                  </button>
                 </li>
               ))}
             </ul>
           )}
-          <button
-            type="button"
-            disabled
-            className="mt-4 rounded-lg border border-input px-4 py-2 opacity-60"
-          >
-            Ανάλυση με AI — μη διαθέσιμη ακόμη
-          </button>
+          {!setup.data.aiAnalysisEnabled && (
+            <p className="mt-3 text-sm text-muted-foreground">Δεν είναι διαθέσιμη η ασφαλής AI ανάλυση στον τρέχοντα server.</p>
+          )}
+          {analysis.isError && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              Η ανάλυση απέτυχε ή δεν ήταν επιτρεπτή. Το αίτημα δεν επαναλαμβάνεται αυτόματα.
+            </p>
+          )}
+          {analysis.isSuccess && (
+            <div className="mt-5 space-y-4 rounded-xl border border-border p-4">
+              <h3 className="font-bold">Αποτέλεσμα AI · {analysis.data.modelId}</h3>
+              <p className="text-sm">{analysis.data.analysis.summary}</p>
+              {analysis.data.analysis.suggestions.length === 0 && <p className="text-sm">Δεν προκύπτει τεκμηριωμένη πρόταση.</p>}
+              <ul className="space-y-3">
+                {analysis.data.analysis.suggestions.map((item) => (
+                  <li key={item.market} className="rounded-lg bg-background p-3">
+                    <strong>{item.market.replaceAll("_", " ")}</strong>
+                    <p className="mt-1 text-sm">{item.rationale}</p>
+                    <span className="text-xs text-muted-foreground">Τεκμηρίωση: {item.evidence}</span>
+                  </li>
+                ))}
+              </ul>
+              <h4 className="font-semibold">Πηγές έρευνας</h4>
+              <ul className="space-y-2 text-sm">
+                {analysis.data.sources.map((source) => (
+                  <li key={source.url}>
+                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline">
+                      {source.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                Οι εκτιμήσεις δεν αποτελούν εγγύηση ή απόδειξη στοιχηματικού πλεονεκτήματος.
+                Καταχωρίστηκαν στο ιδιωτικό ιστορικό πριν από την έναρξη του αγώνα.
+              </p>
+            </div>
+          )}
         </section>
       </main>
     </AppShell>
