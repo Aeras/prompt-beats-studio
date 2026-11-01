@@ -181,8 +181,9 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     if (error) throw new Error("Football research history is unavailable.");
     const rows = (data ?? []) as unknown as Array<{
       id: string; fixture_id: number; league_id: FootballLeagueId;
+      home_team: string; away_team: string; model_id: string;
       kickoff_utc: string; created_at: string; evidence_cutoff_at: string | null;
-      status: string; analysis: unknown;
+      status: string; analysis: unknown; sources: unknown; usage: unknown;
     }>;
     // At most three unique league/weeks per screen load. Reuse the fixture
     // cache: do not burn 40 calls from the free daily API quota.
