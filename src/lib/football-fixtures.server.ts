@@ -62,7 +62,8 @@ function stateFor(status: string): FootballFixture["state"] {
   if (["FT", "AET", "PEN"].includes(status)) return "finished";
   if (["PST", "SUSP"].includes(status)) return "postponed";
   if (["CANC", "ABD", "AWD", "WO"].includes(status)) return "cancelled";
-  if (["NS", "TBD"].includes(status)) return "scheduled";
+  if (status === "NS") return "scheduled";
+  if (status === "TBD") return "postponed";
   return "live";
 }
 
@@ -91,6 +92,7 @@ export async function fetchFootballWeek(
       redirect: "manual",
       signal: AbortSignal.timeout(10000),
     });
+    if (response.status === 204) continue;
     if (!response.ok) {
       await response.body?.cancel();
       throw new Error("Football fixture provider unavailable");
