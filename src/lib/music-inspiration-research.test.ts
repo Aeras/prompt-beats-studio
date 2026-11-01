@@ -17,6 +17,7 @@ import {
   INSPIRATION_TAVILY_RESPONSE_MAX_BYTES,
   reconcileInspirationArrangement,
   synthesizeMusicInspiration,
+  inspirationGeneratorOutputSchema,
 } from "./music-inspiration-research.server";
 
 describe("real research transport, with offline network fixtures", () => {
@@ -316,7 +317,7 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
     const prompt = JSON.parse(input.prompt);
     expect(prompt.request).toEqual(request);
     expect(prompt.schema).toEqual(
-      JSON.parse(JSON.stringify(z.toJSONSchema(inspirationResearchSchema))),
+      JSON.parse(JSON.stringify(z.toJSONSchema(inspirationGeneratorOutputSchema))),
     );
     expect(prompt.schema.type).toBe("object");
     expect(prompt.sourceTextIsUntrustedData).toBe(true);
@@ -325,7 +326,7 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
     expect(input.maxTokens).toBe(6000);
     expect(input.jsonObjectOutput).toBe(true);
     expect(prompt.requirements).toContain(
-      "never cite insufficient, disputed, unknown or absent evidence",
+      "Return only the eight fields of the supplied Generator schema",
     );
     return response;
   };
@@ -464,6 +465,70 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
     synthesizeMusicInspiration(request, [{ source, text }], caller, signal),
   ).rejects.toThrow("Quote is not an exact retrieved substring");
   expect(calls).toBe(1);
+});
+
+test("Generator-only synthesis returns trusted server metadata but no model-authored citations", async () => {
+  const request = inspirationRequestSchema.parse({
+    kind: "description",
+    description: "An original warm acoustic fingerstyle ballad",
+    depth: "standard",
+  });
+  const text = "Offline reference: soft arpeggiated guitar tone and restrained dynamics.";
+  const source: InspirationResearch["sources"][number] = {
+    id: "fixture-source",
+    title: "Offline fixture",
+    url: "https://example.org/offline",
+    publisher: "example.org",
+    accessedAt: "2026-10-28T00:00:00.000Z",
+    locator: "Offline excerpt",
+    sourceType: "other",
+    accessedEvidence: "retrieved_extract",
+    contentSha256: createHash("sha256").update(text).digest("hex"),
+    receipt: {
+      documentId: "fixture-source",
+      finalUrl: "https://example.org/offline",
+      retrievedAt: "2026-10-28T00:00:00.000Z",
+      contentSha256: createHash("sha256").update(text).digest("hex"),
+      accessibility: "accessible",
+    },
+  };
+  const proposal = {
+    musicStyles: ["Melodic Rock Ballad"],
+    moods: ["Intimate"],
+    instruments: ["Fingerstyle Acoustic Guitar"],
+    bpm: null,
+    productionStyle: "Organic, warm and spacious",
+    additionalInstructions: "Write an original melody, no recognizable borrowing.",
+    songStructure: ["Intro", "Verse"],
+    blueprint: [
+      { structureIndex: 0, sectionType: "Intro", instruction: "Fingerpicked guitar", energy: 1 },
+      { structureIndex: 1, sectionType: "Verse", instruction: "Intimate voice", energy: 2 },
+    ],
+  };
+  const response: ModelResult = {
+    provider: "offline-fixture",
+    model: "offline-model",
+    stopReason: "end_turn",
+    text: JSON.stringify(proposal),
+    usage: { inputTokens: 30, outputTokens: 100, totalTokens: 130 },
+  };
+  let calls = 0;
+  const result = await synthesizeMusicInspiration(
+    request, [{ source, text }],
+    async (call) => {
+      calls++;
+      expect(JSON.parse(call.prompt).schema).toEqual(z.toJSONSchema(inspirationGeneratorOutputSchema));
+      expect(JSON.parse(call.prompt).requirements).toContain("Generator schema");
+      return response;
+    },
+    new AbortController().signal,
+  );
+  expect(calls).toBe(1);
+  expect(result.result.sources).toEqual([source]);
+  expect(result.result.evidence).toEqual([]);
+  expect(result.result.proposal.supportingEvidenceIds).toEqual([]);
+  expect(result.result.proposal.musicStyles).toEqual(proposal.musicStyles);
+  expect(result.receipt).toBe(response);
 });
 
 describe("provider arrangement label reconciliation", () => {
