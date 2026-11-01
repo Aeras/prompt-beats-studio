@@ -18,6 +18,7 @@ import {
   reconcileInspirationArrangement,
   synthesizeMusicInspiration,
   inspirationGeneratorOutputSchema,
+  MUSIC_INSPIRATION_GENERATOR_SYSTEM_PROMPT,
 } from "./music-inspiration-research.server";
 
 describe("real research transport, with offline network fixtures", () => {
@@ -309,7 +310,7 @@ test("mocked synthesis serializes the schema and preserves canonical evidence; f
   };
   const caller = async (input: ModelCall): Promise<ModelResult> => {
     calls++;
-    expect(input.system).toBe(MUSIC_INSPIRATION_RESEARCH_SYSTEM_PROMPT);
+    expect(input.system).toBe(MUSIC_INSPIRATION_GENERATOR_SYSTEM_PROMPT);
     expect(JSON.parse(JSON.stringify({ system: input.system, prompt: input.prompt }))).toEqual({
       system: input.system,
       prompt: input.prompt,
