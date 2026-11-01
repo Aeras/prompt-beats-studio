@@ -24,7 +24,8 @@ export type AiOperation =
   | "universe_continuity_analysis"
   | "universe_project_fit"
   | "universe_next_song_plan"
-  | "audio_revision_intent";
+  | "audio_revision_intent"
+  | "football_research";
 
 /** Provider-agnostic normalized usage, as reported by the provider. */
 export type NormalizedUsage = {
