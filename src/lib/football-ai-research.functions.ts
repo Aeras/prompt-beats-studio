@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
+import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
+import type { FootballLeagueId } from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
@@ -177,5 +179,41 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       .order("created_at", { ascending: false })
       .limit(40);
     if (error) throw new Error("Football research history is unavailable.");
-    return data ?? [];
+    const rows = (data ?? []) as unknown as Array<{
+      id: string; fixture_id: number; league_id: FootballLeagueId;
+      kickoff_utc: string; created_at: string; evidence_cutoff_at: string | null;
+      status: string; analysis: unknown;
+    }>;
+    // At most three unique league/weeks per screen load. Reuse the fixture
+    // cache: do not burn 40 calls from the free daily API quota.
+    const scored = new Map<string, Awaited<ReturnType<typeof getCachedFootballWeek>>>();
+    for (const row of rows) {
+      if (row.status !== "completed" || Date.parse(row.kickoff_utc) > Date.now()) continue;
+      const day = row.kickoff_utc.slice(0, 10);
+      const key = row.league_id + ":" + day;
+      if (scored.has(key) || scored.size >= 3) continue;
+      try {
+        scored.set(key, await getCachedFootballWeek(row.league_id, day));
+      } catch {
+        // Historical scoring is best effort. A provider outage must not expose
+        // any third-party error or erase persisted research evidence.
+      }
+    }
+    return rows.map((row) => {
+      const day = row.kickoff_utc.slice(0, 10);
+      const matches = scored.get(row.league_id + ":" + day);
+      const match = matches?.find((f) => f.sourceFixtureId === String(row.fixture_id));
+      const checked = footballAiAssessmentSchema.safeParse(row.analysis);
+      const eligible = Number.isFinite(Date.parse(row.created_at)) &&
+        Date.parse(row.created_at) < Date.parse(row.kickoff_utc) &&
+        !!row.evidence_cutoff_at &&
+        Date.parse(row.evidence_cutoff_at) < Date.parse(row.kickoff_utc);
+      const outcomes = eligible && match && checked.success
+        ? checked.data.suggestions.map((item) => ({
+            market: item.market,
+            outcome: footballMarketOutcome(item.market, match),
+          }))
+        : [];
+      return { ...row, outcomes };
+    });
   });
