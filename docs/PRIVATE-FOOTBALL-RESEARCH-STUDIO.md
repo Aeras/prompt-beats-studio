@@ -29,3 +29,8 @@ Status: IN_PROGRESS. Scope is **football only**; KINO is a separate later phase.
 - Run format/lint, TS, unit/full regression, build, disposable DB migrations/RLS races for stale Super-Admin, and Browser Quality at mobile/tablet/desktop. Three GitHub CI gates green on the exact final HEAD; fix failures within this PR.
 - Review concurrency/rate limits, exact auth boundaries, secret exposure, provider timeout/abort behavior, Tavily failure mode, source injection, fixture timezone/week rollover and result replay.
 - Add evidence and status in `docs/WORK-STATUS.md` within this PR. Do not merge/deploy, apply production SQL, or make paid API calls without approval. `CODE_COMPLETE_RELEASE_PENDING` only after all code and CI checks; `CLOSED` only after the agreed production verification.
+
+## AI Αναζήτηση BETA (third fixture source)
+- Paid refresh = one OpenRouter `google/gemini-3.8-flash` call with the `web` plugin (Exa, 8 results), structured JSON output, no retry/fallback, consent with server-rechecked max cost, quota 3/hour + 10/day in SQL.
+- Model output and citations are untrusted. A fixture becomes `verified` only when the server fetches ≥2 distinct registrable domains from the allowlist that state the exact UTC kickoff minute and none contradicts. Verified rows are immutable and cannot be downgraded.
+- Only verified AI fixtures can be analyzed (`claim_private_football_ai_research_run`); fixture identity comes from the DB row, not the client.

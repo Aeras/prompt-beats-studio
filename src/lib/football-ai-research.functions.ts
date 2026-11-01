@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
-import type { FootballLeagueId } from "@/lib/football-research.shared";
+import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
@@ -23,6 +23,12 @@ const LANGUAGE: Record<string, string> = {
   "IT-SA": "italiano",
   "DE-BL": "Deutsch",
   "FR-L1": "français",
+  "NL-ED": "Nederlands",
+  "PT-PL": "português",
+  "BE-PL": "Nederlands français",
+  "CH-SL": "Deutsch français",
+  "UEFA-CL": "English",
+  "UEFA-EL": "English",
 };
 
 /** One user-approved run. Every DB/provider operation is server-only. */
@@ -46,40 +52,77 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     if (resolved.provider !== "openrouter")
       throw new Error("Select an installed OpenRouter model.");
 
-    if (data.fixtureProvider === "football-data" && data.leagueId === "GR-SL") {
-      throw new Error("Greek Super League is unavailable on football-data.org Free.");
-    }
-    const loader =
-      data.fixtureProvider === "football-data"
-        ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
-        : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
-    const fixtures = await getCachedFootballWeek(
-      data.leagueId,
-      data.weekDate,
-      loader,
-      Date.now,
-      data.fixtureProvider,
-    );
-    const fixture = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
-    if (!fixture || fixture.state !== "scheduled" || Date.parse(fixture.kickoffUtc) <= Date.now()) {
-      throw new Error("Only verified upcoming fixtures can be analyzed.");
-    }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: claimed, error: claimError } = await supabaseAdmin.rpc(
-      "claim_private_football_research_run_v2" as never,
-      {
-        _user_id: context.userId,
-        _request_key: data.requestKey,
-        _fixture_id: Number(fixture.sourceFixtureId),
-        _league_id: fixture.leagueId,
-        _home_team: fixture.homeTeam,
-        _away_team: fixture.awayTeam,
-        _kickoff_utc: fixture.kickoffUtc,
-        _model_id: resolved.model,
-        _source: data.fixtureProvider,
-      } as never,
-    );
+    let fixture: {
+      source: string;
+      leagueId: string;
+      homeTeam: string;
+      awayTeam: string;
+      kickoffUtc: string;
+    };
+    let claimed: unknown;
+    let claimError: unknown;
+    if (data.fixtureProvider === "ai-search") {
+      // Only server-corroborated (verified) AI fixtures; identity comes from the DB row.
+      ({ data: claimed, error: claimError } = await supabaseAdmin.rpc(
+        "claim_private_football_ai_research_run" as never,
+        {
+          _user_id: context.userId,
+          _request_key: data.requestKey,
+          _fixture_id: Number(data.fixtureId),
+          _model_id: resolved.model,
+        } as never,
+      ));
+      const c = (claimed ?? {}) as Record<string, string>;
+      fixture = {
+        source: "ai-search",
+        leagueId: c["league_id"] ?? data.leagueId,
+        homeTeam: c["home_team"] ?? "",
+        awayTeam: c["away_team"] ?? "",
+        kickoffUtc: c["kickoff_utc"] ? new Date(c["kickoff_utc"]).toISOString() : "",
+      };
+      if (!claimError && (!fixture.homeTeam || !fixture.kickoffUtc) && c["status"] === "claimed") {
+        throw new Error("Only verified upcoming fixtures can be analyzed.");
+      }
+    } else {
+      if (!(FOOTBALL_LEAGUES as readonly { id: string }[]).some((l) => l.id === data.leagueId)) {
+        throw new Error("Unsupported competition for this provider.");
+      }
+      const legacyLeague = data.leagueId as FootballLeagueId;
+      if (data.fixtureProvider === "football-data" && legacyLeague === "GR-SL") {
+        throw new Error("Greek Super League is unavailable on football-data.org Free.");
+      }
+      const loader =
+        data.fixtureProvider === "football-data"
+          ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+          : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
+      const fixtures = await getCachedFootballWeek(
+        legacyLeague,
+        data.weekDate,
+        loader,
+        Date.now,
+        data.fixtureProvider,
+      );
+      const legacy = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
+      if (!legacy || legacy.state !== "scheduled" || Date.parse(legacy.kickoffUtc) <= Date.now()) {
+        throw new Error("Only verified upcoming fixtures can be analyzed.");
+      }
+      fixture = legacy;
+      ({ data: claimed, error: claimError } = await supabaseAdmin.rpc(
+        "claim_private_football_research_run_v2" as never,
+        {
+          _user_id: context.userId,
+          _request_key: data.requestKey,
+          _fixture_id: Number(legacy.sourceFixtureId),
+          _league_id: legacy.leagueId,
+          _home_team: legacy.homeTeam,
+          _away_team: legacy.awayTeam,
+          _kickoff_utc: legacy.kickoffUtc,
+          _model_id: resolved.model,
+          _source: data.fixtureProvider,
+        } as never,
+      ));
+    }
     if (claimError) throw new Error("Research admission failed or hourly limit reached.");
 
     const claim = claimed as { status?: string; id?: string } | null;
