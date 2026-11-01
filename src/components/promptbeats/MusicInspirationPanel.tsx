@@ -1,6 +1,5 @@
 import {
   MusicInspirationPreview,
-  ResearchDisclosure,
   displayInspirationGroup,
 } from "./MusicInspirationPreview";
 import type { MusicGeneratorFrame } from "@/lib/music-inspiration-generator-state";
@@ -1139,67 +1138,7 @@ export function MusicInspirationPanel({
                     </Button>
                   </>
                 )}
-                <ResearchDisclosure title={t.evidence + " · " + t.sources}>
-                  <h3 className="font-semibold">{t.evidence}</h3>
-                  {result.evidence.map((claim) => (
-                    <article key={claim.id} className="rounded border p-2">
-                      <p>
-                        {t[claim.classification]} · {claim.claim}
-                      </p>
-                      <p>{claim.limitation}</p>
-                      <ul>
-                        {claim.sourceIds.map((sid) => {
-                          const source = result.sources.find((s) => s.id === sid);
-                          return (
-                            source && (
-                              <li key={sid}>
-                                <a
-                                  className="underline"
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {source.title}
-                                </a>
-                              </li>
-                            )
-                          );
-                        })}
-                      </ul>
-                    </article>
-                  ))}
-                  <h3 className="font-semibold">{t.sources}</h3>
-                  <ul>
-                    {result.sources.map((s) => (
-                      <li key={s.id}>
-                        <a
-                          className="underline"
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {s.title}
-                        </a>{" "}
-                        · {s.publisher} · {s.locator} ·{" "}
-                        <time dateTime={s.accessedAt}>
-                          {new Date(s.accessedAt).toLocaleDateString(language)}
-                        </time>
-                      </li>
-                    ))}
-                  </ul>
-                  <h3 className="font-semibold">{t.unknown}</h3>
-                  <ul>
-                    {result.unresolvedQuestions.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                  <h3 className="font-semibold">{t.creative}</h3>
-                  <ul>
-                    {result.proposal.creativeChoices.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </ResearchDisclosure>
+
               </div>
             )}
             {(result || selectedProfile) && (
