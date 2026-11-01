@@ -1,5 +1,20 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — PR #482 Football compact results and history controls — IN_PROGRESS
+
+- **Scope:** Source-informed subjective AI percentage estimates and bars; compact heading and summary; detailed paragraphs collapsed; same-row inline history clear/export controls, with per-result selection. Old qualitative analyses remain readable without invented historical figures.
+- **Security:** Soft-hide terminal results without deleting immutable audit/admission records; server validates owner and status and uses service role, migration restricted to service_role and RLS.
+- **CI:** On 22d0e122, Database Replay and Browser Quality passed; Regression failed on Prettier formatting. Formatting corrections and CI efficiency changes are staged offline for one approved follow-up branch update. Browser gate uses three workers in one runner, browser cache and PR-scoped cancellation. Actual speed/stability not yet measured.
+- **Release:** PR remains open; final-head checks and production migration/publish pending. No paid AI calls.
+
+
+## 2026-11-01 — Football AI quick percentages — IN_PROGRESS
+
+- **User-visible requirement:** Lead each opened stored match with percentage bars for estimated 1/X/2 and other supported markets, then concise summary, with extended text collapsed. Probabilities are explicitly labelled subjective AI estimates, not calibrated statistical probabilities or guarantees.
+- **Compatibility:** Legacy persisted results without estimates render a truthful fallback rather than fabricated historic percentages. No migration, no paid API smoke test, no live batch change. New response asks for sources-consistent, rounded figures; preserves pre-kickoff immutable research and market outcome logic.
+- **Release:** Single atomic code commit and one CI cycle intended; final-head checks and production publish pending. This task is NOT CLOSED.
+
+
 ## 2026-11-01 — Football Studio results UX and multilingual research — IN_PROGRESS
 
 - **Scope:** Premium mobile-first football dashboard, per-match expandable persisted results, hidden raw source URLs, explicit evidence quality, and English/Russian/league-native Tavily research.

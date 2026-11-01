@@ -45,6 +45,24 @@ describe("private football AI contracts", () => {
     expect(
       footballAiAssessmentSchema.safeParse({
         ...example,
+        estimates: [
+          {
+            market: "home_win",
+            percent: 35,
+            reason: "Conservative judgement from verified source excerpts",
+          },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(
+      footballAiAssessmentSchema.safeParse({
+        ...example,
+        estimates: [{ market: "home_win", percent: 135, reason: "Impossible over-100 likelihood" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      footballAiAssessmentSchema.safeParse({
+        ...example,
         deepDive: {
           form: "Η πρόσφατη φόρμα εξετάζεται μόνο με επαληθευμένα αποτελέσματα αγώνων.",
           tactics: "Η τακτική προσέγγιση παραμένει αβέβαιη χωρίς επαρκείς πηγές.",

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
@@ -223,7 +224,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
-      .limit(40);
+      .limit(200);
     if (error) throw new Error("Football research history is unavailable.");
     const rows = (data ?? []) as unknown as Array<{
       id: string;
@@ -241,10 +242,19 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       sources: unknown;
       usage: unknown;
     }>;
+    const { data: hiddenRows, error: hiddenError } = await supabaseAdmin
+      .from("private_football_research_hidden" as never)
+      .select("run_id")
+      .eq("user_id", context.userId);
+    if (hiddenError) throw new Error("Football history visibility unavailable.");
+    const hidden = new Set(
+      ((hiddenRows ?? []) as Array<{ run_id: string }>).map((item) => item.run_id),
+    );
+    const visibleRows = rows.filter((row) => !hidden.has(row.id)).slice(0, 40);
     // At most three unique league/weeks per screen load. Reuse the fixture
     // cache: do not burn 40 calls from the free daily API quota.
     const scored = new Map<string, Awaited<ReturnType<typeof getCachedFootballWeek>>>();
-    for (const row of rows) {
+    for (const row of visibleRows) {
       if (row.status !== "completed" || Date.parse(row.kickoff_utc) > Date.now()) continue;
       const day = row.kickoff_utc.slice(0, 10);
       const key = row.source + ":" + row.league_id + ":" + day;
@@ -269,7 +279,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         // any third-party error or erase persisted research evidence.
       }
     }
-    return rows.map((row) => {
+    return visibleRows.map((row) => {
       const day = row.kickoff_utc.slice(0, 10);
       const matches = scored.get(row.source + ":" + row.league_id + ":" + day);
       const match = matches?.find((f) => f.sourceFixtureId === String(row.fixture_id));
@@ -302,4 +312,38 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         outcomes,
       };
     });
+  });
+
+/** Hide selected terminal runs without deleting immutable audit/admission records. */
+export const hidePrivateFootballResearchHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ ids: z.array(z.string().uuid()).min(1).max(40) })
+      .strict()
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requireFootballSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: runs, error } = await supabaseAdmin
+      .from("private_football_research_runs" as never)
+      .select("id,status")
+      .eq("user_id", context.userId)
+      .in("id", data.ids);
+    const found = (runs ?? []) as Array<{ id: string; status: string }>;
+    if (
+      error ||
+      found.length !== new Set(data.ids).size ||
+      found.some((run) => run.status === "processing")
+    ) {
+      throw new Error("Only owned terminal analyses can be cleared.");
+    }
+    const { error: saveError } = await supabaseAdmin
+      .from("private_football_research_hidden" as never)
+      .upsert(data.ids.map((id) => ({ user_id: context.userId, run_id: id })) as never[], {
+        onConflict: "user_id,run_id",
+      });
+    if (saveError) throw new Error("Could not clear selected history.");
+    return { hidden: data.ids.length };
   });

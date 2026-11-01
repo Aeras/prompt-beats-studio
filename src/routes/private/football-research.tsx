@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   getPrivateFootballResearchHistory,
+  hidePrivateFootballResearchHistory,
   runPrivateFootballResearch,
 } from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
@@ -80,6 +81,12 @@ function PrivateFootballResearchPage() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [batchError, setBatchError] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
+  const [clearMenu, setClearMenu] = useState(false);
+  const [clearMode, setClearMode] = useState<"none" | "selected">("none");
+  const [clearSelected, setClearSelected] = useState<string[]>([]);
+  const [clearConfirm, setClearConfirm] = useState<string[]>([]);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState("");
   const fixtures = useQuery({
     queryKey: ["football-week", user?.id, provider, league, weekDate],
     queryFn: () =>
@@ -106,6 +113,37 @@ function PrivateFootballResearchPage() {
     staleTime: 300000,
   });
   const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
+  const saveResults = () => {
+    const records = history.data ?? [];
+    if (!records.length) return;
+    const blob = new Blob(
+      [JSON.stringify({ exportedAt: new Date().toISOString(), analyses: records }, null, 2)],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `football-research-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+  const clearResults = async () => {
+    if (clearing || working || !clearConfirm.length) return;
+    setClearing(true);
+    setClearError("");
+    try {
+      await hidePrivateFootballResearchHistory({ data: { ids: clearConfirm } });
+      setClearMode("none");
+      setClearSelected([]);
+      setClearConfirm([]);
+      setClearMenu(false);
+      await history.refetch();
+    } catch {
+      setClearError("Η εκκαθάριση απέτυχε. Τα αποτελέσματα διατηρήθηκαν.");
+    } finally {
+      setClearing(false);
+    }
+  };
 
   if (loading)
     return (
@@ -208,23 +246,12 @@ function PrivateFootballResearchPage() {
     <AppShell header={header}>
       <main className="mx-auto max-w-6xl space-y-5 px-3 pb-28 pt-4 text-slate-100 sm:px-6">
         <div className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-[#102a48] via-[#142139] to-[#241b3e] p-5 shadow-xl shadow-cyan-950/20 sm:p-8">
-          <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Private analytics · Super Admin
-          </div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-4xl">
             Football <span className="text-cyan-300">Research Studio</span>
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
             Πολλαπλές αναλύσεις, τεκμηριωμένα συμπεράσματα και οργανωμένο ιστορικό ανά αγώνα.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1.5 text-cyan-200">
-              Αγγλικά · Ρωσικά · Γλώσσα πρωταθλήματος
-            </span>
-            <span className="rounded-full bg-fuchsia-400/10 px-3 py-1.5 text-fuchsia-200">
-              Αποθήκευση αποτελεσμάτων
-            </span>
-          </div>
         </div>
 
         <section
@@ -471,43 +498,105 @@ function PrivateFootballResearchPage() {
                   key={entry.id}
                   className="overflow-hidden rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-[#12233b] to-[#171c32]"
                 >
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    onClick={() => toggleExpanded(entry.id)}
-                    className="flex w-full items-center justify-between gap-3 p-4 text-left"
-                  >
-                    <span className="min-w-0">
-                      <span className="block font-bold text-white">
-                        {entry.home_team} – {entry.away_team}
+                  <div className="flex items-center">
+                    {clearMode === "selected" && entry.status !== "processing" && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Επιλογή ανάλυσης ${entry.home_team} – ${entry.away_team}`}
+                        checked={clearSelected.includes(entry.id)}
+                        onChange={() =>
+                          setClearSelected((prev) =>
+                            prev.includes(entry.id)
+                              ? prev.filter((id) => id !== entry.id)
+                              : [...prev, entry.id],
+                          )
+                        }
+                        className="ml-3 h-5 w-5 shrink-0 accent-cyan-400"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => toggleExpanded(entry.id)}
+                      className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                    >
+                      <span className="min-w-0">
+                        <span className="block font-bold text-white">
+                          {entry.home_team} – {entry.away_team}
+                        </span>
+                        <span className="mt-1 block text-xs text-slate-400">
+                          {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
+                          {entry.model_id}
+                        </span>
                       </span>
-                      <span className="mt-1 block text-xs text-slate-400">
-                        {new Date(entry.created_at).toLocaleDateString("el-GR")} · {entry.model_id}
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
+                        >
+                          {STATUS[entry.status] ?? entry.status}
+                        </span>
+                        <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
                       </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
-                      >
-                        {STATUS[entry.status] ?? entry.status}
-                      </span>
-                      <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                   {open && (
                     <div className="space-y-4 border-t border-white/10 p-4">
                       {entry.analysis ? (
                         <>
+                          <section className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-4">
+                            <h3 className="text-base font-bold text-cyan-200">
+                              Εκτιμώμενες πιθανότητες AI
+                            </h3>
+                            <p className="mb-4 mt-1 text-xs text-slate-400">
+                              Υποκειμενικές εκτιμήσεις από διασταύρωση πηγών — όχι στατιστικά
+                              βαθμονομημένες πιθανότητες.
+                            </p>
+                            {entry.analysis.estimates?.length ? (
+                              <div className="space-y-3">
+                                {entry.analysis.estimates.map((estimate) => (
+                                  <div key={estimate.market} className="space-y-1">
+                                    <div className="flex justify-between gap-3 text-sm">
+                                      <span className="font-medium text-slate-100">
+                                        {MARKET_LABELS[estimate.market] ?? estimate.market}
+                                      </span>
+                                      <strong className="tabular-nums text-cyan-200">
+                                        {estimate.percent}%
+                                      </strong>
+                                    </div>
+                                    <div
+                                      className="h-2.5 overflow-hidden rounded-full bg-slate-700/80"
+                                      role="progressbar"
+                                      aria-label={MARKET_LABELS[estimate.market] ?? estimate.market}
+                                      aria-valuenow={estimate.percent}
+                                      aria-valuemin={0}
+                                      aria-valuemax={100}
+                                    >
+                                      <div
+                                        className={`h-full rounded-full ${estimate.percent >= 65 ? "bg-emerald-400" : estimate.percent >= 40 ? "bg-cyan-400" : "bg-amber-400"}`}
+                                        style={{ width: `${estimate.percent}%` }}
+                                      />
+                                    </div>
+                                    <p className="text-xs text-slate-400">{estimate.reason}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-amber-200">
+                                Παλαιότερη ανάλυση χωρίς αριθμητικές εκτιμήσεις. Δεν κατασκευάζουμε
+                                ποσοστά εκ των υστέρων.
+                              </p>
+                            )}
+                          </section>
                           <div className="rounded-xl bg-cyan-400/5 p-4">
                             <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
-                            <p className="whitespace-pre-line text-sm leading-7 text-slate-200">
+                            <p className="line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-200">
                               {entry.analysis.summary}
                             </p>
                           </div>
-                          <div>
-                            <h3 className="mb-3 font-semibold text-white">
-                              Πιθανότερες επιλογές · ποιοτική αξιολόγηση
-                            </h3>
+                          <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                            <summary className="mb-3 cursor-pointer font-semibold text-white">
+                              Προτεινόμενα σημεία και αιτιολόγηση
+                            </summary>
                             <div className="space-y-2">
                               {entry.analysis.suggestions.length === 0 && (
                                 <p className="text-sm text-slate-400">
@@ -542,7 +631,7 @@ function PrivateFootballResearchPage() {
                                 </div>
                               ))}
                             </div>
-                          </div>
+                          </details>
                           <details className="rounded-xl border border-white/10 bg-[#0d192b] p-4">
                             <summary className="cursor-pointer font-semibold text-cyan-200">
                               Λεπτομέρειες ανάλυσης
@@ -581,8 +670,8 @@ function PrivateFootballResearchPage() {
                             </div>
                           </details>
                           <p className="text-xs leading-5 text-slate-400">
-                            Δεν εμφανίζονται αριθμητικές πιθανότητες χωρίς ξεχωριστά βαθμονομημένο
-                            στατιστικό μοντέλο. Τα αποτελέσματα δεν αποτελούν εγγύηση.
+                            Τα ποσοστά είναι εκτιμήσεις της AI, όχι εγγυήσεις ή μετρημένες
+                            πιθανότητες. Δεν αποτελούν απόδειξη στοιχηματικού πλεονεκτήματος.
                           </p>
                         </>
                       ) : (
@@ -598,6 +687,112 @@ function PrivateFootballResearchPage() {
               );
             })}
           </div>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="relative min-w-0 flex-1">
+              <button
+                type="button"
+                disabled={
+                  clearing ||
+                  working ||
+                  !(history.data ?? []).some((item) => item.status !== "processing")
+                }
+                onClick={() => setClearMenu((value) => !value)}
+                className="w-full whitespace-nowrap rounded-xl border border-white/20 px-2 py-2 text-sm font-semibold text-slate-200 disabled:opacity-40"
+              >
+                Εκκαθάριση ▾
+              </button>
+              {clearMenu && (
+                <div className="absolute bottom-full left-0 z-20 mb-1 w-52 rounded-xl border border-white/20 bg-[#0c1728] p-2 shadow-xl">
+                  <button
+                    type="button"
+                    className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
+                    onClick={() => {
+                      setClearConfirm(
+                        (history.data ?? [])
+                          .filter((item) => item.status !== "processing")
+                          .map((item) => item.id),
+                      );
+                      setClearMenu(false);
+                    }}
+                  >
+                    Εκκαθάριση όλων
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
+                    onClick={() => {
+                      setClearMode("selected");
+                      setClearConfirm([]);
+                      setClearMenu(false);
+                    }}
+                  >
+                    Εκκαθάριση επιλεγμένων
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={saveResults}
+              disabled={!history.data?.length}
+              className="min-w-0 flex-1 whitespace-nowrap rounded-xl bg-cyan-500 px-2 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40"
+            >
+              Αποθήκευση
+            </button>
+          </div>
+          {clearMode === "selected" && (
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!clearSelected.length || clearing}
+                onClick={() => setClearConfirm(clearSelected)}
+                className="rounded-xl bg-rose-500/20 px-3 py-2 text-sm text-rose-200 disabled:opacity-40"
+              >
+                Επιβεβαίωση ({clearSelected.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClearMode("none");
+                  setClearSelected([]);
+                  setClearConfirm([]);
+                }}
+                className="rounded-xl border border-white/20 px-3 py-2 text-sm"
+              >
+                Ακύρωση
+              </button>
+            </div>
+          )}
+          {clearConfirm.length > 0 && (
+            <div className="mt-3 rounded-xl border border-rose-400/30 bg-[#0c1728] p-3">
+              <p className="text-sm">
+                Εκκαθάριση {clearConfirm.length} αναλύσεων από την προβολή; Τα στοιχεία ελέγχου
+                διατηρούνται.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={clearing}
+                  onClick={() => void clearResults()}
+                  className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  Επιβεβαίωση
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClearConfirm([])}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+                >
+                  Ακύρωση
+                </button>
+              </div>
+            </div>
+          )}
+          {clearError && (
+            <p role="alert" className="mt-2 text-sm text-rose-300">
+              {clearError}
+            </p>
+          )}
         </section>
       </main>
     </AppShell>
