@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Music Inspiration Generator-only result contract — IN_PROGRESS
+
+- **Scope / rationale:** User requires Music Inspiration research to populate Advanced Generator fields, not present bibliography or musicology reports. Live extended research IDs `93167967-20c5-40fe-b7b7-a01eb9b68b4f` and `409e2204-4842-4cb4-9c98-65c631a289b5` each reached the 6,000-token synthesis ceiling; planner timeout `754b7783-781c-4528-aae6-ea1249cae005` is a separate incident.
+- **Code candidate:** `fix/music-inspiration-generator-only-output` limits the model output contract to eight Generator-applicable fields, requires compact original musical guidance, retains server-owned retrieval metadata for internal audit and existing result persistence format, and suppresses evidence/source report presentation. Legacy full-format response parsing remains accepted for existing offline fixtures; no citations are invented by the compact path.
+- **Acceptance / safety:** Generator application and saved profiles remain compatible; invalid format/structure fails closed; no auto-retry or paid calls; retain existing source retrieval, receipts, access controls, budgets and historical stored results. Regression/typecheck/format/build, DB and Browser CI gates required; review any failures in the same PR.
+- **Release:** no production migration, feature-policy changes, merge or deployment authorized in this task. Code merge and Lovable publish are separate approval steps; production behavior must be verified before CLOSED.
+
 ## 2026-11-01 — PB-015 Beta-only AI dispatch admission regression — IN_PROGRESS
 
 - **Verified incident:** Supabase production job `0fa96595-7ef3-4882-83b2-3a1bb5f9d674` and two earlier description jobs reached `admit_feature_ai_dispatch_internal`, which rejected the pre-provider Planner admission (`Feature not available`; HTTP 400). `ai_music_inspiration` is present as `beta_features.stage=beta`, absent from `feature_access_policies`. Valid artist studies on 2026-10-30 preceded PB-015 migration from merged #473. This is a feature-authority regression, not a confirmed provider failure.
