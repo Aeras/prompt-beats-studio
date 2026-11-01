@@ -1090,11 +1090,7 @@ export function MusicInspirationPanel({
                 <p className="text-xs text-muted-foreground">
                   {origin?.kind === "profile" ? t.shownProfile : t.shownJob}
                 </p>
-                <p className="text-sm text-muted-foreground">{t.evidenceNote}</p>
                 {!!result.unresolvedQuestions.length && <p role="status">{t.partial}</p>}
-                <p className="whitespace-pre-wrap text-sm">
-                  {result.proposal.creativeChoices.join("\n")}
-                </p>
                 <div className={buttons}>
                   <Button
                     type="button"
@@ -1138,7 +1134,6 @@ export function MusicInspirationPanel({
                     </Button>
                   </>
                 )}
-
               </div>
             )}
             {(result || selectedProfile) && (
