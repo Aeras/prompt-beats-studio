@@ -16,6 +16,11 @@ import {
   refreshPrivateAiFixtureCandidates,
 } from "@/lib/football-ai-fixture.functions";
 import type { FootballAiDiscoveryLeagueId } from "@/lib/football-research.shared";
+import {
+  aiFixtureGateCode,
+  parseAiFixtureErrorCode,
+} from "@/lib/football-ai-fixture-errors.shared";
+import { aiFixtureFailureText } from "@/components/football/ai-search-messages";
 
 const COPY = {
   el: {
@@ -87,8 +92,14 @@ export function AiSearchPanel(props: {
   });
   const d = query.data;
   const quotaLeft = d ? Math.min(d.quota.hourRemaining, d.quota.dayRemaining) : 0;
+  const gateCode = d ? aiFixtureGateCode(d.availability) : null;
   const refreshDisabled =
-    refreshing || props.working || !d || d.maxCostUsd === null || quotaLeft <= 0;
+    refreshing ||
+    props.working ||
+    !d ||
+    d.maxCostUsd === null ||
+    gateCode !== null ||
+    quotaLeft <= 0;
 
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
@@ -103,8 +114,8 @@ export function AiSearchPanel(props: {
           consent: { acknowledged: true, estimatedMaxUsd: d.maxCostUsd },
         },
       });
-    } catch {
-      setError(c.failed);
+    } catch (err) {
+      setError(aiFixtureFailureText(parseAiFixtureErrorCode(err), language === "el" ? "el" : "en"));
     } finally {
       setRefreshing(false);
       await query.refetch();
@@ -136,8 +147,10 @@ export function AiSearchPanel(props: {
             {c.quota(d.quota.hourRemaining, d.quota.dayRemaining)}
           </span>
         )}
-        {d && d.maxCostUsd === null && (
-          <span className="text-xs text-amber-300">{c.noPricing}</span>
+        {gateCode && (
+          <span className="text-xs text-amber-300">
+            {aiFixtureFailureText(gateCode, language === "el" ? "el" : "en")}
+          </span>
         )}
         <button
           type="button"
