@@ -514,10 +514,13 @@ test("Generator-only synthesis returns trusted server metadata but no model-auth
   };
   let calls = 0;
   const result = await synthesizeMusicInspiration(
-    request, [{ source, text }],
+    request,
+    [{ source, text }],
     async (call) => {
       calls++;
-      expect(JSON.parse(call.prompt).schema).toEqual(z.toJSONSchema(inspirationGeneratorOutputSchema));
+      expect(JSON.parse(call.prompt).schema).toEqual(
+        z.toJSONSchema(inspirationGeneratorOutputSchema),
+      );
       expect(JSON.parse(call.prompt).requirements).toContain("Generator schema");
       return response;
     },
