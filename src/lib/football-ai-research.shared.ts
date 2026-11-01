@@ -5,11 +5,33 @@ import { FOOTBALL_LEAGUES } from "./football-research.shared";
 export const footballAiAssessmentSchema = z
   .object({
     summary: z.string().trim().min(20).max(3500),
-    estimates: z.array(z.object({
-      market: z.enum(["home_win","draw","away_win","double_chance_1x","double_chance_x2","double_chance_12","both_teams_score_yes","both_teams_score_no","goals_over_1_5","goals_under_1_5","goals_over_2_5","goals_under_2_5","goals_over_3_5","goals_under_3_5"]),
-      percent: z.number().int().min(0).max(100),
-      reason: z.string().trim().min(10).max(240),
-    }).strict()).max(12).optional(),
+    estimates: z
+      .array(
+        z
+          .object({
+            market: z.enum([
+              "home_win",
+              "draw",
+              "away_win",
+              "double_chance_1x",
+              "double_chance_x2",
+              "double_chance_12",
+              "both_teams_score_yes",
+              "both_teams_score_no",
+              "goals_over_1_5",
+              "goals_under_1_5",
+              "goals_over_2_5",
+              "goals_under_2_5",
+              "goals_over_3_5",
+              "goals_under_3_5",
+            ]),
+            percent: z.number().int().min(0).max(100),
+            reason: z.string().trim().min(10).max(240),
+          })
+          .strict(),
+      )
+      .max(12)
+      .optional(),
     deepDive: z
       .object({
         form: z.string().trim().min(20).max(1600),

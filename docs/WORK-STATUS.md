@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — PR #482 Football compact results and history controls — IN_PROGRESS
+
+- **Scope:** Source-informed subjective AI percentage estimates and bars; compact heading and summary; detailed paragraphs collapsed; same-row inline history clear/export controls, with per-result selection. Old qualitative analyses remain readable without invented historical figures.
+- **Security:** Soft-hide terminal results without deleting immutable audit/admission records; server validates owner and status and uses service role, migration restricted to service_role and RLS.
+- **Release:** Atomic Git commit prepared without updating branch. Existing branch HEAD must remain unchanged until explicit user approval. CI/build/typecheck and production migration/publish are pending; no paid AI calls.
+
+
 ## 2026-11-01 — Football AI quick percentages — IN_PROGRESS
 
 - **User-visible requirement:** Lead each opened stored match with percentage bars for estimated 1/X/2 and other supported markets, then concise summary, with extended text collapsed. Probabilities are explicitly labelled subjective AI estimates, not calibrated statistical probabilities or guarantees.
