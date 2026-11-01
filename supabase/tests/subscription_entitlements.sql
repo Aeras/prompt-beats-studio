@@ -419,12 +419,25 @@ SELECT pg_temp.assert(
   'Eligible super admin should pass registered Beta-only feature admission'
 );
 SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
-  'bd150000-0000-4000-8000-000000000002',
+  'bd150000-0000-4000-8000-000000000001',
   ARRAY['pb015_dispatch_beta_fixture']
 )$q$);
 SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
   'bd150000-0000-4000-8000-000000000004',
   ARRAY['pb015_dispatch_unknown_key']
+)$q$);
+
+-- Lifecycle changes are contained in the test transaction only.
+UPDATE public.beta_features SET stage='stable' WHERE feature_key='pb015_dispatch_beta_fixture';
+SELECT pg_temp.assert(
+  public.admit_feature_ai_dispatch_internal(
+    'bd150000-0000-4000-8000-000000000001', ARRAY['pb015_dispatch_beta_fixture']
+  ),
+  'Stable feature permits an eligible ordinary user without Beta Tester status'
+);
+UPDATE public.beta_features SET stage='archived' WHERE feature_key='pb015_dispatch_beta_fixture';
+SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
+  'bd150000-0000-4000-8000-000000000004', ARRAY['pb015_dispatch_beta_fixture']
 )$q$);
 
 UPDATE public.global_ai_usage_policy SET enabled=false;
