@@ -17,9 +17,9 @@ export const footballAiAssessmentSchema = z.object({
     ]),
     rationale: z.string().trim().min(12).max(1200),
     evidence: z.enum(["limited", "supported", "insufficient"]),
-  })).max(8),
+  }).strict()).max(8),
   limitations: z.array(z.string().max(500)).max(8),
-});
+}).strict();
 
 export const footballAnalysisRequestSchema = z.object({
   leagueId: z.enum(FOOTBALL_LEAGUES.map((x) => x.id) as [
