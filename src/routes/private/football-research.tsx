@@ -252,19 +252,35 @@ function PrivateFootballResearchPage() {
             Πολλαπλές αναλύσεις, τεκμηριωμένα συμπεράσματα και ιστορικό ανά αγώνα.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2" role="tablist" aria-label="Εργαλεία">
-            <button type="button" role="tab" aria-selected={activeTab === "predictions"} aria-controls="football-predictions" onClick={() => setActiveTab("predictions")} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "predictions" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "predictions"}
+              aria-controls="football-predictions"
+              onClick={() => setActiveTab("predictions")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "predictions" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}
+            >
               Προβλέψεις
             </button>
-            <button type="button" role="tab" aria-selected={activeTab === "kino"} aria-controls="football-kino" onClick={() => setActiveTab("kino")} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "kino" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "kino"}
+              aria-controls="football-kino"
+              onClick={() => setActiveTab("kino")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "kino" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}
+            >
               Κίνο
             </button>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-5 px-3 pb-10 pt-4 text-slate-100 sm:px-6">
-        {activeTab === "predictions" ? (
-          <div id="football-predictions" role="tabpanel" className="space-y-5">
-
+      <main
+        id="football-predictions"
+        role="tabpanel"
+        hidden={activeTab !== "predictions"}
+        className="mx-auto max-w-6xl space-y-5 px-3 pb-10 pt-4 text-slate-100 sm:px-6"
+      >
         <section
           className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
           aria-label="Επιλογές έρευνας"
@@ -805,11 +821,15 @@ function PrivateFootballResearchPage() {
             </p>
           )}
         </section>
-          </div>
-        ) : (
-          <section id="football-kino" role="tabpanel" className="rounded-2xl border border-white/10 bg-[#152137] p-8 text-center text-lg font-semibold">Σύντομα κοντά σας</section>
-        )}
       </main>
+      <section
+        id="football-kino"
+        role="tabpanel"
+        hidden={activeTab !== "kino"}
+        className="mx-auto mt-4 max-w-6xl rounded-2xl border border-white/10 bg-[#152137] p-8 text-center text-lg font-semibold"
+      >
+        Σύντομα κοντά σας
+      </section>
     </div>
   );
 }
