@@ -3,9 +3,16 @@ import { footballMarketOutcome } from "./football-market-outcome.shared";
 import type { FootballFixture } from "./football-research.shared";
 
 const final: FootballFixture = {
-  source: "api-football", sourceFixtureId: "1", leagueId: "GR-SL",
-  homeTeam: "Home", awayTeam: "Away", kickoffUtc: "2026-11-01T17:00:00Z",
-  state: "finished", providerStatus: "FT", homeGoals: 2, awayGoals: 1,
+  source: "api-football",
+  sourceFixtureId: "1",
+  leagueId: "GR-SL",
+  homeTeam: "Home",
+  awayTeam: "Away",
+  kickoffUtc: "2026-11-01T17:00:00Z",
+  state: "finished",
+  providerStatus: "FT",
+  homeGoals: 2,
+  awayGoals: 1,
   fetchedAtUtc: "2026-11-01T19:00:00Z",
 };
 

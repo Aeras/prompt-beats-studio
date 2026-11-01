@@ -22,10 +22,12 @@ const apiFixture = z.object({
     status: z.object({ short: z.string() }),
   }),
   league: z.object({ id: z.number().int().positive() }),
-  goals: z.object({
-    home: z.number().int().nonnegative().nullable(),
-    away: z.number().int().nonnegative().nullable(),
-  }).optional(),
+  goals: z
+    .object({
+      home: z.number().int().nonnegative().nullable(),
+      away: z.number().int().nonnegative().nullable(),
+    })
+    .optional(),
   teams: z.object({
     home: z.object({ name: z.string().min(1).max(200) }),
     away: z.object({ name: z.string().min(1).max(200) }),

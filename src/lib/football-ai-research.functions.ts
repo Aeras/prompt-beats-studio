@@ -16,8 +16,12 @@ async function requireFootballSuperAdmin(supabase: any) {
 }
 
 const LANGUAGE: Record<string, string> = {
-  "GR-SL": "ελληνικά", "EN-PL": "English", "ES-LL": "español",
-  "IT-SA": "italiano", "DE-BL": "Deutsch", "FR-L1": "français",
+  "GR-SL": "ελληνικά",
+  "EN-PL": "English",
+  "ES-LL": "español",
+  "IT-SA": "italiano",
+  "DE-BL": "Deutsch",
+  "FR-L1": "français",
 };
 
 /** One user-approved run. Every DB/provider operation is server-only. */
@@ -38,7 +42,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
 
     const { resolveAiModelForUser, modelCaller } = await import("@/lib/ai-provider.server");
     const resolved = await resolveAiModelForUser(context.userId, "ai_tools", data.modelId);
-    if (resolved.provider !== "openrouter") throw new Error("Select an installed OpenRouter model.");
+    if (resolved.provider !== "openrouter")
+      throw new Error("Select an installed OpenRouter model.");
 
     const fixtures = await getCachedFootballWeek(data.leagueId, data.weekDate);
     const fixture = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
@@ -91,14 +96,18 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             });
           }
         }
-        if (!sources.length) throw new Error("No independently retrieved match sources were available.");
+        if (!sources.length)
+          throw new Error("No independently retrieved match sources were available.");
         if (Date.now() >= Date.parse(fixture.kickoffUtc)) {
           throw new Error("Match kickoff passed before research completed.");
         }
         const evidenceCutoff = new Date().toISOString();
         const { data: marked, error: markError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
-          .update({ provider_started_at: evidenceCutoff, evidence_cutoff_at: evidenceCutoff } as never)
+          .update({
+            provider_started_at: evidenceCutoff,
+            evidence_cutoff_at: evidenceCutoff,
+          } as never)
           .eq("id", runId)
           .eq("user_id", context.userId)
           .eq("status", "processing")
@@ -122,7 +131,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               kickoffUtc: fixture.kickoffUtc,
             },
             sources: sources.map((doc) => ({
-              title: doc.title, url: doc.url, excerpt: doc.excerpt,
+              title: doc.title,
+              url: doc.url,
+              excerpt: doc.excerpt,
               retrievedAt: doc.accessedAt,
             })),
           }),
@@ -133,10 +144,17 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         });
         if (receipt.stopReason !== "end_turn") throw new Error("AI response was incomplete.");
         let raw: unknown;
-        try { raw = JSON.parse(receipt.text); }
-        catch { throw new Error("AI response was not valid JSON."); }
+        try {
+          raw = JSON.parse(receipt.text);
+        } catch {
+          throw new Error("AI response was not valid JSON.");
+        }
         const assessment = footballAiAssessmentSchema.parse(raw);
-        const savedSources = sources.map(({ title, url, accessedAt }) => ({ title, url, accessedAt }));
+        const savedSources = sources.map(({ title, url, accessedAt }) => ({
+          title,
+          url,
+          accessedAt,
+        }));
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
@@ -151,10 +169,18 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           .eq("user_id", context.userId)
           .eq("status", "processing");
         if (saveError) throw new Error("Could not persist the AI research result.");
-        return { id: runId, fixture, modelId: resolved.model, analysis: assessment, sources: savedSources, completedAt };
+        return {
+          id: runId,
+          fixture,
+          modelId: resolved.model,
+          analysis: assessment,
+          sources: savedSources,
+          completedAt,
+        };
       });
     } catch {
-      await supabaseAdmin.from("private_football_research_runs" as never)
+      await supabaseAdmin
+        .from("private_football_research_runs" as never)
         .update({
           status: "failed",
           error_code: providerCalled ? "provider_or_persistence_failed" : "research_unavailable",
@@ -163,7 +189,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         .eq("id", runId)
         .eq("user_id", context.userId)
         .eq("status", "processing");
-      throw new Error("Football research failed. The request was recorded and cannot be automatically retried.");
+      throw new Error(
+        "Football research failed. The request was recorded and cannot be automatically retried.",
+      );
     }
   });
 
@@ -174,16 +202,27 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("private_football_research_runs" as never)
-      .select("id,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,analysis,sources,usage")
+      .select(
+        "id,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,analysis,sources,usage",
+      )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(40);
     if (error) throw new Error("Football research history is unavailable.");
     const rows = (data ?? []) as unknown as Array<{
-      id: string; fixture_id: number; league_id: FootballLeagueId;
-      home_team: string; away_team: string; model_id: string;
-      kickoff_utc: string; created_at: string; evidence_cutoff_at: string | null;
-      status: string; analysis: unknown; sources: unknown; usage: unknown;
+      id: string;
+      fixture_id: number;
+      league_id: FootballLeagueId;
+      home_team: string;
+      away_team: string;
+      model_id: string;
+      kickoff_utc: string;
+      created_at: string;
+      evidence_cutoff_at: string | null;
+      status: string;
+      analysis: unknown;
+      sources: unknown;
+      usage: unknown;
     }>;
     // At most three unique league/weeks per screen load. Reuse the fixture
     // cache: do not burn 40 calls from the free daily API quota.
@@ -205,16 +244,18 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       const matches = scored.get(row.league_id + ":" + day);
       const match = matches?.find((f) => f.sourceFixtureId === String(row.fixture_id));
       const checked = footballAiAssessmentSchema.safeParse(row.analysis);
-      const eligible = Number.isFinite(Date.parse(row.created_at)) &&
+      const eligible =
+        Number.isFinite(Date.parse(row.created_at)) &&
         Date.parse(row.created_at) < Date.parse(row.kickoff_utc) &&
         !!row.evidence_cutoff_at &&
         Date.parse(row.evidence_cutoff_at) < Date.parse(row.kickoff_utc);
-      const outcomes = eligible && match && checked.success
-        ? checked.data.suggestions.map((item) => ({
-            market: item.market,
-            outcome: footballMarketOutcome(item.market, match),
-          }))
-        : [];
+      const outcomes =
+        eligible && match && checked.success
+          ? checked.data.suggestions.map((item) => ({
+              market: item.market,
+              outcome: footballMarketOutcome(item.market, match),
+            }))
+          : [];
       return { ...row, outcomes };
     });
   });

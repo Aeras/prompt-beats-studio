@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { getPrivateFootballResearchHistory, runPrivateFootballResearch } from "@/lib/football-ai-research.functions";
+import {
+  getPrivateFootballResearchHistory,
+  runPrivateFootballResearch,
+} from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/promptbeats/AppShell";
 import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
@@ -64,7 +67,9 @@ function PrivateFootballResearchPage() {
         },
       }),
     retry: false,
-    onSuccess: () => { void history.refetch(); },
+    onSuccess: () => {
+      void history.refetch();
+    },
   });
   const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
 
@@ -217,7 +222,11 @@ function PrivateFootballResearchPage() {
                     }
                     className="rounded-lg border border-input px-3 py-2 text-sm disabled:opacity-40"
                     onClick={() => {
-                      if (window.confirm("Η έρευνα Tavily και η ανάλυση OpenRouter ενδέχεται να χρεωθούν. Να εκτελεστεί μία ανάλυση αυτού του αγώνα;")) {
+                      if (
+                        window.confirm(
+                          "Η έρευνα Tavily και η ανάλυση OpenRouter ενδέχεται να χρεωθούν. Να εκτελεστεί μία ανάλυση αυτού του αγώνα;",
+                        )
+                      ) {
                         analysis.mutate(fixture.sourceFixtureId);
                       }
                     }}
@@ -229,7 +238,9 @@ function PrivateFootballResearchPage() {
             </ul>
           )}
           {!setup.data.aiAnalysisEnabled && (
-            <p className="mt-3 text-sm text-muted-foreground">Δεν είναι διαθέσιμη η ασφαλής AI ανάλυση στον τρέχοντα server.</p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Δεν είναι διαθέσιμη η ασφαλής AI ανάλυση στον τρέχοντα server.
+            </p>
           )}
           {analysis.isError && (
             <p role="alert" className="mt-4 text-sm text-destructive">
@@ -240,13 +251,17 @@ function PrivateFootballResearchPage() {
             <div className="mt-5 space-y-4 rounded-xl border border-border p-4">
               <h3 className="font-bold">Αποτέλεσμα AI · {analysis.data.modelId}</h3>
               <p className="text-sm">{analysis.data.analysis.summary}</p>
-              {analysis.data.analysis.suggestions.length === 0 && <p className="text-sm">Δεν προκύπτει τεκμηριωμένη πρόταση.</p>}
+              {analysis.data.analysis.suggestions.length === 0 && (
+                <p className="text-sm">Δεν προκύπτει τεκμηριωμένη πρόταση.</p>
+              )}
               <ul className="space-y-3">
                 {analysis.data.analysis.suggestions.map((item) => (
                   <li key={item.market} className="rounded-lg bg-background p-3">
                     <strong>{item.market.replaceAll("_", " ")}</strong>
                     <p className="mt-1 text-sm">{item.rationale}</p>
-                    <span className="text-xs text-muted-foreground">Τεκμηρίωση: {item.evidence}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Τεκμηρίωση: {item.evidence}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -254,7 +269,12 @@ function PrivateFootballResearchPage() {
               <ul className="space-y-2 text-sm">
                 {analysis.data.sources.map((source) => (
                   <li key={source.url}>
-                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline">
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
                       {source.title}
                     </a>
                   </li>
@@ -270,26 +290,50 @@ function PrivateFootballResearchPage() {
         <section className="glass space-y-3 rounded-2xl p-5" aria-label="Ιστορικό προβλέψεων">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-bold">Prediction Tracker</h2>
-            <button type="button" onClick={() => void history.refetch()} disabled={history.isFetching} className="rounded-lg border border-input px-3 py-2 text-sm disabled:opacity-40">
+            <button
+              type="button"
+              onClick={() => void history.refetch()}
+              disabled={history.isFetching}
+              className="rounded-lg border border-input px-3 py-2 text-sm disabled:opacity-40"
+            >
               {history.isFetching ? "Έλεγχος αποτελεσμάτων…" : "Ανανέωση αποτελεσμάτων"}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">Αυτόματη αξιολόγηση έως τριών πρόσφατων ομάδων αγώνων ανά ανανέωση, μόνο με επίσημα αποτελέσματα κανονικής διάρκειας (FT). Στα κόρνερ δεν υπολογίζεται αποτέλεσμα χωρίς δεδομένα.</p>
-          {history.isError && <p role="alert" className="text-sm text-muted-foreground">Το ιστορικό δεν είναι διαθέσιμο ή η migration δεν έχει εφαρμοστεί.</p>}
-          {history.data?.length === 0 && <p className="text-sm text-muted-foreground">Δεν έχουν καταχωριστεί αναλύσεις.</p>}
+          <p className="text-xs text-muted-foreground">
+            Αυτόματη αξιολόγηση έως τριών πρόσφατων ομάδων αγώνων ανά ανανέωση, μόνο με επίσημα
+            αποτελέσματα κανονικής διάρκειας (FT). Στα κόρνερ δεν υπολογίζεται αποτέλεσμα χωρίς
+            δεδομένα.
+          </p>
+          {history.isError && (
+            <p role="alert" className="text-sm text-muted-foreground">
+              Το ιστορικό δεν είναι διαθέσιμο ή η migration δεν έχει εφαρμοστεί.
+            </p>
+          )}
+          {history.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">Δεν έχουν καταχωριστεί αναλύσεις.</p>
+          )}
           <ul className="space-y-3">
             {history.data?.map((entry) => (
               <li key={entry.id} className="rounded-lg border border-border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong>{entry.home_team} — {entry.away_team}</strong>
-                  <span className="text-xs text-muted-foreground">{entry.status} · {new Date(entry.created_at).toLocaleDateString("el-GR")}</span>
+                  <strong>
+                    {entry.home_team} — {entry.away_team}
+                  </strong>
+                  <span className="text-xs text-muted-foreground">
+                    {entry.status} · {new Date(entry.created_at).toLocaleDateString("el-GR")}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Μοντέλο: {entry.model_id}</p>
                 {entry.outcomes.length > 0 && (
                   <ul className="mt-2 flex flex-wrap gap-2 text-xs">
                     {entry.outcomes.map((item) => (
                       <li key={item.market} className="rounded border border-border px-2 py-1">
-                        {item.market.replaceAll("_", " ")}: {item.outcome === true ? "Επιτυχία" : item.outcome === false ? "Αποτυχία" : "Εκκρεμεί"}
+                        {item.market.replaceAll("_", " ")}:{" "}
+                        {item.outcome === true
+                          ? "Επιτυχία"
+                          : item.outcome === false
+                            ? "Αποτυχία"
+                            : "Εκκρεμεί"}
                       </li>
                     ))}
                   </ul>
