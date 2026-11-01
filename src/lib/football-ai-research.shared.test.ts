@@ -22,7 +22,7 @@ describe("private football AI contracts", () => {
       limitations: ["Ανεπαρκή δεδομένα"],
     };
     expect(footballAiAssessmentSchema.safeParse(example).success).toBe(true);
-    expect(footballAiAssessmentSchema.safeParse({ ...example, probability: 0.97 }).success).toBe(true);
+    expect(footballAiAssessmentSchema.safeParse({ ...example, probability: 0.97 }).success).toBe(false);
     expect(footballAiAssessmentSchema.safeParse({ ...example, suggestions: [{ ...example.suggestions[0], market: "unknown" }] }).success).toBe(false);
     expect(footballAiAssessmentSchema.safeParse({ ...example, suggestions: Array(9).fill(example.suggestions[0]) }).success).toBe(false);
   });
