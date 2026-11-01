@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Football provider selection — IN_PROGRESS
+
+- **Goal:** Preserve API-Football, default fixture discovery to football-data.org using server-only FOOTBALL_DATA_API_KEY; show a provider selector at the top of the private page.
+- **Coverage:** football-data.org Free supports EN-PL/ES-LL/IT-SA/DE-BL/FR-L1; Greece is explicitly unsupported on this provider and remains selectable through API-Football. Both providers must preserve separate cache identity, persisted source and result reconciliation.
+- **Implementation:** Added a bounded football-data.org adapter, provider-aware server validation and cache, provider selector, provider-specific immutable claim RPC through a forward-only migration and tests. No new live secret inspection or paid AI requests were performed.
+- **Release gate:** Not ready for merge, production migration or publish until exact-head Regression, Browser Quality, Database Replay pass and a real authenticated football-data.org 2026–27 fixture response is verified in server runtime. Existing migration 20261101180000 is already on production; the new 20261101183000 migration is not applied.
+
 ## 2026-11-01 — Private AI Football Research Studio — IN_PROGRESS
 
 - **Independent ChatGPT review:** On earlier HEAD `d039f39`, Regression, Database Replay and Browser Quality all PASS. Review identified two uncovered release blockers: duplicate request keys with altered fixture payload, and completed predictions created after kickoff (including direct INSERT). Hardened the forward-only, not-yet-deployed migration with exact request identity, immutable evidence times and pre-kickoff completion constraints, and added replay assertions in the same PR. Fresh final-HEAD gates pending. No production migration, provider call or publish.
