@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FOOTBALL_LEAGUES } from "./football-research.shared";
+import { FOOTBALL_AI_LEAGUE_IDS } from "./football-research.shared";
 
 /** Subjective, explicitly labelled AI estimates. Historical qualitative results remain valid. */
 export const footballAiAssessmentSchema = z
@@ -76,13 +76,9 @@ export const footballAiAssessmentSchema = z
   .strict();
 
 export const footballAnalysisRequestSchema = z.object({
-  fixtureProvider: z.enum(["football-data", "api-football"]).default("football-data"),
-  leagueId: z.enum(
-    FOOTBALL_LEAGUES.map((x) => x.id) as [
-      (typeof FOOTBALL_LEAGUES)[number]["id"],
-      ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
-    ],
-  ),
+  fixtureProvider: z.enum(["football-data", "api-football", "ai-search"]).default("football-data"),
+  /** Legacy sources accept the six legacy leagues only (checked in the handler). */
+  leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   fixtureId: z.string().regex(/^\d{1,12}$/),
   requestKey: z.string().uuid(),
