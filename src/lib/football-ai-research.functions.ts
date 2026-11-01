@@ -45,7 +45,13 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     if (resolved.provider !== "openrouter")
       throw new Error("Select an installed OpenRouter model.");
 
-    const fixtures = await getCachedFootballWeek(data.leagueId, data.weekDate);
+    if (data.fixtureProvider === "football-data" && data.leagueId === "GR-SL") {
+      throw new Error("Greek Super League is unavailable on football-data.org Free.");
+    }
+    const loader = data.fixtureProvider === "football-data"
+      ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+      : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
+    const fixtures = await getCachedFootballWeek(data.leagueId, data.weekDate, loader, Date.now, data.fixtureProvider);
     const fixture = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
     if (!fixture || fixture.state !== "scheduled" || Date.parse(fixture.kickoffUtc) <= Date.now()) {
       throw new Error("Only verified upcoming fixtures can be analyzed.");
@@ -53,7 +59,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: claimed, error: claimError } = await supabaseAdmin.rpc(
-      "claim_private_football_research_run" as never,
+      "claim_private_football_research_run_v2" as never,
       {
         _user_id: context.userId,
         _request_key: data.requestKey,
@@ -63,6 +69,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         _away_team: fixture.awayTeam,
         _kickoff_utc: fixture.kickoffUtc,
         _model_id: resolved.model,
+        _source: data.fixtureProvider,
       } as never,
     );
     if (claimError) throw new Error("Research admission failed or hourly limit reached.");
@@ -125,6 +132,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           system: FOOTBALL_RESEARCH_SYSTEM,
           prompt: JSON.stringify({
             fixture: {
+              source: fixture.source,
               league: fixture.leagueId,
               home: fixture.homeTeam,
               away: fixture.awayTeam,
@@ -203,7 +211,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     const { data, error } = await supabaseAdmin
       .from("private_football_research_runs" as never)
       .select(
-        "id,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,analysis,sources,usage",
+        "id,source,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,analysis,sources,usage",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
@@ -212,6 +220,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     const rows = (data ?? []) as unknown as Array<{
       id: string;
       fixture_id: number;
+      source: string;
       league_id: FootballLeagueId;
       home_team: string;
       away_team: string;
@@ -230,10 +239,14 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     for (const row of rows) {
       if (row.status !== "completed" || Date.parse(row.kickoff_utc) > Date.now()) continue;
       const day = row.kickoff_utc.slice(0, 10);
-      const key = row.league_id + ":" + day;
+      const key = row.source + ":" + row.league_id + ":" + day;
       if (scored.has(key) || scored.size >= 3) continue;
       try {
-        scored.set(key, await getCachedFootballWeek(row.league_id, day));
+        const loader = row.source === "football-data"
+          ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+          : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
+        scored.set(key, await getCachedFootballWeek(row.league_id, day, loader, Date.now,
+          row.source === "football-data" ? "football-data" : "api-football"));
       } catch {
         // Historical scoring is best effort. A provider outage must not expose
         // any third-party error or erase persisted research evidence.
@@ -241,7 +254,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     }
     return rows.map((row) => {
       const day = row.kickoff_utc.slice(0, 10);
-      const matches = scored.get(row.league_id + ":" + day);
+      const matches = scored.get(row.source + ":" + row.league_id + ":" + day);
       const match = matches?.find((f) => f.sourceFixtureId === String(row.fixture_id));
       const checked = footballAiAssessmentSchema.safeParse(row.analysis);
       const eligible =
@@ -258,6 +271,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
           : [];
       return {
         id: row.id,
+        source: row.source,
         fixture_id: row.fixture_id,
         league_id: row.league_id,
         home_team: row.home_team,
