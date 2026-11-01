@@ -2,6 +2,8 @@
 
 ## 2026-11-01 — Private AI Football Research Studio — IN_PROGRESS
 
+- **Merge readiness 2026-11-01:** Regression on previous HEAD `43dd9afb` failed because PR description lacked four required agent-contract headings; updated PR #479 description to satisfy documented sections. Database Replay had passed on that previous HEAD; Browser Quality incomplete at time of verification. Added strict qualitative AI response/request validation and offline test files through `578d0e84d223b7f154e186e4b0b8f04dd7b31a31`; these are NOT a connected AI dispatch or permission to publish. Await exact-final-HEAD CI and all missing end-to-end scope. Do not merge yet.
+
 - **Latest update:** Added bounded process-local 15-minute fixtures cache with in-flight deduplication and isolated offline test source, through commit `3fb4c3270e871fea74153342876f02a13e8995b1`. This reduces duplicate calls against the free API's daily quota but does not guarantee a global quota limit across hosting instances. Tests not yet executed. Existing configured Secrets have been shown in Lovable screenshots, but runtime connectivity and league coverage are unverified.
 
 - **Progress 2026-11-01:** Added read-only API-Football fixture adapter with Super-Admin-guarded server endpoint, Greek-time weekly UI and offline fixture validation tests. Added pure immutable-prediction evaluation eligibility checks, calibration metrics and offline tests (commits through `60217d673a69680195c14e53244168522cb66b3d`). None of these tests has yet been executed; no live data coverage or provider call verified.
