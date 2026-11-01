@@ -7,9 +7,12 @@ import {
   runPrivateFootballResearch,
 } from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
+import { AiSearchPanel } from "@/components/football/AiSearchPanel";
 import {
+  FOOTBALL_AI_DISCOVERY_LEAGUES,
   FOOTBALL_LEAGUES,
   FOOTBALL_PROVIDERS,
+  type FootballAiDiscoveryLeagueId,
   FOOTBALL_DATA_LEAGUES,
   type FootballProviderId,
 } from "@/lib/football-research.shared";
@@ -69,7 +72,7 @@ function PrivateFootballResearchPage() {
     enabled: Boolean(user),
     retry: false,
   });
-  const [provider, setProvider] = useState<FootballProviderId>("football-data");
+  const [provider, setProvider] = useState<FootballProviderId | "ai-search">("football-data");
   const [league, setLeague] = useState<string>("EN-PL");
   const [model, setModel] = useState("");
   const [weekDate, setWeekDate] = useState(() =>
@@ -92,7 +95,7 @@ function PrivateFootballResearchPage() {
     queryFn: () =>
       getPrivateFootballWeek({
         data: {
-          fixtureProvider: provider,
+          fixtureProvider: provider === "ai-search" ? "football-data" : provider,
           leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"],
           weekDate,
         },
@@ -100,6 +103,7 @@ function PrivateFootballResearchPage() {
     enabled:
       Boolean(user) &&
       setup.isSuccess &&
+      provider !== "ai-search" &&
       Boolean(setup.data.fixtureProviders.find((item) => item.id === provider)?.configured) &&
       (provider !== "football-data" || league !== "GR-SL"),
     retry: false,
@@ -178,7 +182,8 @@ function PrivateFootballResearchPage() {
     );
 
   const selectedModel = setup.data.models.find((item) => item.id === model);
-  const configured = Boolean(
+  const isAi = provider === "ai-search";
+  const configured = isAi || Boolean(
     setup.data.fixtureProviders.find((item) => item.id === provider)?.configured,
   );
   const upcoming = (fixtures.data?.status === "ok" ? fixtures.data.fixtures : []).filter(
@@ -212,7 +217,7 @@ function PrivateFootballResearchPage() {
           await runPrivateFootballResearch({
             data: {
               fixtureProvider: provider,
-              leagueId: league as (typeof FOOTBALL_LEAGUES)[number]["id"],
+              leagueId: league as FootballAiDiscoveryLeagueId,
               weekDate,
               fixtureId: ids[i]!,
               modelId: selectedModel.id,
@@ -293,10 +298,12 @@ function PrivateFootballResearchPage() {
                 className={field}
                 value={provider}
                 onChange={(e) => {
-                  const v = e.target.value as FootballProviderId;
+                  const v = e.target.value as FootballProviderId | "ai-search";
                   setProvider(v);
                   setSelected([]);
                   if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
+                  if (v !== "ai-search" && !FOOTBALL_LEAGUES.some((x) => x.id === league))
+                    setLeague("EN-PL");
                 }}
               >
                 {FOOTBALL_PROVIDERS.map((x) => (
@@ -305,6 +312,7 @@ function PrivateFootballResearchPage() {
                     {x.id === "football-data" ? " · Προεπιλογή" : ""}
                   </option>
                 ))}
+                <option value="ai-search">AI Αναζήτηση BETA · Gemini 3.8 Flash</option>
               </select>
             </label>
             <label className="space-y-2 text-sm font-medium">
@@ -317,7 +325,13 @@ function PrivateFootballResearchPage() {
                   setSelected([]);
                 }}
               >
-                {FOOTBALL_LEAGUES.map((x) => (
+                {isAi &&
+                  FOOTBALL_AI_DISCOVERY_LEAGUES.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.symbol} {x.label}
+                    </option>
+                  ))}
+                {!isAi && FOOTBALL_LEAGUES.map((x) => (
                   <option
                     key={x.id}
                     value={x.id}
@@ -365,6 +379,17 @@ function PrivateFootballResearchPage() {
           </p>
         </section>
 
+        {isAi && (
+          <AiSearchPanel
+            leagueId={league as FootballAiDiscoveryLeagueId}
+            weekDate={weekDate}
+            enabled={Boolean(user) && setup.isSuccess}
+            working={working}
+            canAnalyze={Boolean(selectedModel) && setup.data.aiAnalysisEnabled}
+            onAnalyze={(ids) => void start(ids)}
+          />
+        )}
+        {!isAi && (
         <section
           className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
           aria-label="Αγώνες εβδομάδας"
@@ -488,6 +513,7 @@ function PrivateFootballResearchPage() {
               })}
           </ul>
         </section>
+        )}
 
         <section
           className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
