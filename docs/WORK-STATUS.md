@@ -2,6 +2,8 @@
 
 ## 2026-11-01 — Private AI Football Research Studio — IN_PROGRESS
 
+- **Latest update:** Added bounded process-local 15-minute fixtures cache with in-flight deduplication and isolated offline test source, through commit `3fb4c3270e871fea74153342876f02a13e8995b1`. This reduces duplicate calls against the free API's daily quota but does not guarantee a global quota limit across hosting instances. Tests not yet executed. Existing configured Secrets have been shown in Lovable screenshots, but runtime connectivity and league coverage are unverified.
+
 - **Progress 2026-11-01:** Added read-only API-Football fixture adapter with Super-Admin-guarded server endpoint, Greek-time weekly UI and offline fixture validation tests. Added pure immutable-prediction evaluation eligibility checks, calibration metrics and offline tests (commits through `60217d673a69680195c14e53244168522cb66b3d`). None of these tests has yet been executed; no live data coverage or provider call verified.
 - **Outstanding:** review fixture API contract and credential provisioning; finish guarded OpenRouter/Tavily, immutable DB snapshots and result reconciliation, test and release verification. No paid call, migration, merge or production deployment.
 
