@@ -402,6 +402,31 @@ SELECT pg_temp.assert(
   'Feature-aware dispatch admission should allow qualified Pro'
 );
 
+-- Beta-only dispatch admission: preserve registered Beta authority without a legacy policy.
+SELECT public.register_beta_feature(
+  'pb015_dispatch_beta_fixture', 'PB015 Dispatch Beta', 'Test-only Beta AI feature'
+);
+SELECT pg_temp.assert(
+  NOT EXISTS (SELECT 1 FROM public.feature_access_policies
+    WHERE feature_key='pb015_dispatch_beta_fixture'),
+  'Beta-only fixture must not require a Feature Access policy row'
+);
+SELECT pg_temp.assert(
+  public.admit_feature_ai_dispatch_internal(
+    'bd150000-0000-4000-8000-000000000004',
+    ARRAY['pb015_dispatch_beta_fixture']
+  ),
+  'Eligible super admin should pass registered Beta-only feature admission'
+);
+SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
+  'bd150000-0000-4000-8000-000000000002',
+  ARRAY['pb015_dispatch_beta_fixture']
+)$q$);
+SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
+  'bd150000-0000-4000-8000-000000000004',
+  ARRAY['pb015_dispatch_unknown_key']
+)$q$);
+
 UPDATE public.global_ai_usage_policy SET enabled=false;
 SELECT pg_temp.denied($q$SELECT public.admit_feature_ai_dispatch_internal(
   'bd150000-0000-4000-8000-000000000005',
