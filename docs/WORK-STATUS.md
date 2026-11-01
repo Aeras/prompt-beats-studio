@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Football standalone shell, tabs and history UI — IN_PROGRESS
+
+- **Scope:** Single-confirm selected history soft-hide, accurate Export label, route-only removal of PromptBeats chrome, edge-to-edge studio header and Predictions/Kino tabs. Kino displays a placeholder only; existing Super Admin access retained.
+- **Verification:** Final-head Regression, Browser Quality and Database Replay required before merge. No migration, production deployment or paid AI calls. Third-party access excluded from this task.
+
+
 ## 2026-11-01 — PR #482 Football compact results and history controls — IN_PROGRESS
 
 - **Scope:** Source-informed subjective AI percentage estimates and bars; compact heading and summary; detailed paragraphs collapsed; same-row inline history clear/export controls, with per-result selection. Old qualitative analyses remain readable without invented historical figures.
