@@ -67,6 +67,11 @@ BEGIN
   SELECT * INTO existing FROM public.private_football_research_runs
     WHERE user_id = _user_id AND request_key = _request_key;
   IF FOUND THEN
+    IF (existing.fixture_id, existing.league_id, existing.home_team, existing.away_team,
+        existing.kickoff_utc, existing.model_id) IS DISTINCT FROM
+       (_fixture_id, _league_id, _home_team, _away_team, _kickoff_utc, _model_id) THEN
+      RAISE EXCEPTION 'research request key reused with different payload';
+    END IF;
     RETURN jsonb_build_object('status', existing.status, 'id', existing.id);
   END IF;
 
@@ -113,8 +118,16 @@ BEGIN
   THEN
     RAISE EXCEPTION 'football research identity is immutable';
   END IF;
-  IF NEW.status = 'completed' AND (NEW.analysis IS NULL OR NEW.completed_at IS NULL OR NEW.provider_started_at IS NULL) THEN
-    RAISE EXCEPTION 'incomplete football research snapshot';
+  IF (OLD.provider_started_at IS NOT NULL AND NEW.provider_started_at IS DISTINCT FROM OLD.provider_started_at)
+     OR (OLD.evidence_cutoff_at IS NOT NULL AND NEW.evidence_cutoff_at IS DISTINCT FROM OLD.evidence_cutoff_at) THEN
+    RAISE EXCEPTION 'football research evidence timestamps are immutable';
+  END IF;
+  IF NEW.status = 'completed' THEN
+    IF NEW.analysis IS NULL OR NEW.completed_at IS NULL OR NEW.provider_started_at IS NULL
+       OR NEW.evidence_cutoff_at IS NULL OR NEW.completed_at >= NEW.kickoff_utc
+       OR NEW.evidence_cutoff_at >= NEW.kickoff_utc THEN
+      RAISE EXCEPTION 'invalid pre-kickoff football research snapshot';
+    END IF;
   END IF;
   RETURN NEW;
 END;
