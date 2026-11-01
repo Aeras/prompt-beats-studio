@@ -140,7 +140,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           maxTokens: 1800,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
-          reasoningEffort: resolved.reasoningEffort,
+          ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });
         if (receipt.stopReason !== "end_turn") throw new Error("AI response was incomplete.");
         let raw: unknown;
@@ -256,6 +256,18 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
               outcome: footballMarketOutcome(item.market, match),
             }))
           : [];
-      return { ...row, outcomes };
+      return {
+        id: row.id,
+        fixture_id: row.fixture_id,
+        league_id: row.league_id,
+        home_team: row.home_team,
+        away_team: row.away_team,
+        model_id: row.model_id,
+        kickoff_utc: row.kickoff_utc,
+        created_at: row.created_at,
+        evidence_cutoff_at: row.evidence_cutoff_at,
+        status: row.status,
+        outcomes,
+      };
     });
   });
