@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   inspirationRequestSchema,
   inspirationResearchSchema,
-  MUSIC_INSPIRATION_RESEARCH_SYSTEM_PROMPT,
   type InspirationResearch,
 } from "./music-inspiration.shared";
 import type { ModelCall, ModelResult } from "./ai-provider.server";
