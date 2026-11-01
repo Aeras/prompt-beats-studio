@@ -41,6 +41,10 @@ export type FootballFixture = {
   kickoffUtc: string;
   state: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
   fetchedAtUtc: string;
+  /** Official fixture status, including FT/AET/PEN distinctions for grading. */
+  providerStatus?: string;
+  homeGoals?: number | null;
+  awayGoals?: number | null;
 };
 
 export type FootballResearchSource = {
