@@ -40,6 +40,7 @@ import { Route as ApiAvatarRouteImport } from './routes/api/avatar'
 import { Route as ApiTrackDownloadRouteImport } from './routes/api/track-download'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ArtistIdRouteImport } from './routes/artist.$id'
+import { Route as PrivateFootballResearchRouteImport } from './routes/private/football-research'
 import { Route as ReviewTokenRouteImport } from './routes/review.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
@@ -204,6 +205,11 @@ const ArtistIdRoute = ArtistIdRouteImport.update({
   path: '/artist/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivateFootballResearchRoute = PrivateFootballResearchRouteImport.update({
+  id: '/private/football-research',
+  path: '/private/football-research',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReviewTokenRoute = ReviewTokenRouteImport.update({
   id: '/review/$token',
   path: '/review/$token',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/private/football-research': typeof PrivateFootballResearchRoute
   '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/private/football-research': typeof PrivateFootballResearchRoute
   '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/api/track-download': typeof ApiTrackDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/artist/$id': typeof ArtistIdRoute
+  '/private/football-research': typeof PrivateFootballResearchRoute
   '/review/$token': typeof ReviewTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/track/$id': typeof TrackIdRoute
@@ -403,6 +412,7 @@ export interface FileRouteTypes {
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
+    | '/private/football-research'
     | '/review/$token'
     | '/share/$token'
     | '/track/$id'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
+    | '/private/football-research'
     | '/review/$token'
     | '/share/$token'
     | '/track/$id'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/api/track-download'
     | '/api/upload'
     | '/artist/$id'
+    | '/private/football-research'
     | '/review/$token'
     | '/share/$token'
     | '/track/$id'
@@ -527,6 +539,7 @@ export interface RootRouteChildren {
   ApiTrackDownloadRoute: typeof ApiTrackDownloadRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ArtistIdRoute: typeof ArtistIdRoute
+  PrivateFootballResearchRoute: typeof PrivateFootballResearchRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   TrackIdRoute: typeof TrackIdRoute
@@ -756,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/private/football-research': {
+      id: '/private/football-research'
+      path: '/private/football-research'
+      fullPath: '/private/football-research'
+      preLoaderRoute: typeof PrivateFootballResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/review/$token': {
       id: '/review/$token'
       path: '/review/$token'
@@ -847,6 +867,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTrackDownloadRoute: ApiTrackDownloadRoute,
   ApiUploadRoute: ApiUploadRoute,
   ArtistIdRoute: ArtistIdRoute,
+  PrivateFootballResearchRoute: PrivateFootballResearchRoute,
   ReviewTokenRoute: ReviewTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   TrackIdRoute: TrackIdRoute,
