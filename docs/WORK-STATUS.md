@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Football Studio results UX and multilingual research — IN_PROGRESS
+
+- **Scope:** Premium mobile-first football dashboard, per-match expandable persisted results, hidden raw source URLs, explicit evidence quality, and English/Russian/league-native Tavily research.
+- **Batch:** Sequential in-page batch of at most 5 per hour under existing DB admission. Explicit per-batch consent, no automatic retry, no pretend background continuation. Live/in-progress fixtures remain ineligible under the existing immutable pre-kickoff rule; no invented probability bars without calibration.
+- **Release:** Draft PR, verification pending on final HEAD. No production schema changes, paid provider calls, deployment, or publish.
+
+
 ## 2026-11-01 — Football provider selection — IN_PROGRESS
 
 - **Goal:** Preserve API-Football, default fixture discovery to football-data.org using server-only FOOTBALL_DATA_API_KEY; show a provider selector at the top of the private page.
