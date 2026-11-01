@@ -31,17 +31,17 @@ DECLARE
   claimed jsonb;
   duplicate jsonb;
   rejected boolean := false;
-  id uuid;
+  v_run_id uuid;
 BEGIN
   claimed := public.claim_private_football_research_run(
     v,k,222,'GR-SL','Home','Away',now()+interval '2 days','openai/test'
   );
   PERFORM pg_temp.assert(claimed->>'status'='claimed','First research must claim once');
-  id := (claimed->>'id')::uuid;
+  v_run_id := (claimed->>'id')::uuid;
   duplicate := public.claim_private_football_research_run(
     v,k,222,'GR-SL','Home','Away',now()+interval '2 days','openai/test'
   );
-  PERFORM pg_temp.assert(duplicate->>'id'=id::text AND duplicate->>'status'='processing',
+  PERFORM pg_temp.assert(duplicate->>'id'=v_run_id::text AND duplicate->>'status'='processing',
     'Duplicate key must not dispatch again');
 
   BEGIN
@@ -57,15 +57,15 @@ BEGIN
       analysis='{"summary":"validated"}'::jsonb,
       sources='[]'::jsonb,
       completed_at=now(),status='completed'
-  WHERE public.private_football_research_runs.id=id;
+  WHERE public.private_football_research_runs.id=v_run_id;
   PERFORM pg_temp.assert(
-    (SELECT status='completed' FROM public.private_football_research_runs r WHERE r.id=id),
+    (SELECT status='completed' FROM public.private_football_research_runs r WHERE r.id=v_run_id),
     'Completed snapshot must persist'
   );
 
   rejected := false;
   BEGIN
-    UPDATE public.private_football_research_runs SET analysis='{}'::jsonb WHERE public.private_football_research_runs.id=id;
+    UPDATE public.private_football_research_runs SET analysis='{}'::jsonb WHERE public.private_football_research_runs.id=v_run_id;
   EXCEPTION WHEN OTHERS THEN rejected := true; END;
   PERFORM pg_temp.assert(rejected,'Completed prediction must be immutable');
 
