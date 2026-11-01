@@ -11,6 +11,13 @@ export const FOOTBALL_LEAGUES = [
   { id: "FR-L1", country: "FR", label: "Γαλλία — Ligue 1", timezone: "Europe/Paris" },
 ] as const;
 
+export const FOOTBALL_PROVIDERS = [
+  { id: "football-data", label: "football-data.org" },
+  { id: "api-football", label: "API-Football" },
+] as const;
+export type FootballProviderId = (typeof FOOTBALL_PROVIDERS)[number]["id"];
+export const FOOTBALL_DATA_LEAGUES = ["EN-PL", "ES-LL", "IT-SA", "DE-BL", "FR-L1"] as const;
+
 export type FootballLeagueId = (typeof FOOTBALL_LEAGUES)[number]["id"];
 export type FootballMarket =
   | "home_win"
