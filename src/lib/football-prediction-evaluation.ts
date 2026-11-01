@@ -6,19 +6,27 @@ import type { FootballFixture, FootballResearchResult } from "./football-researc
 
 export type PredictionEvaluation = {
   eligible: boolean;
-  reason: "eligible" | "not_finished" | "after_kickoff" | "different_fixture" | "invalid_timestamp" | "insufficient_evidence";
+  reason:
+    | "eligible"
+    | "not_finished"
+    | "after_kickoff"
+    | "different_fixture"
+    | "invalid_timestamp"
+    | "insufficient_evidence";
 };
 
 export function evaluatePredictionEligibility(
   prediction: FootballResearchResult,
   fixture: FootballFixture,
 ): PredictionEvaluation {
-  if (prediction.fixtureId !== fixture.sourceFixtureId) return { eligible: false, reason: "different_fixture" };
+  if (prediction.fixtureId !== fixture.sourceFixtureId)
+    return { eligible: false, reason: "different_fixture" };
   if (fixture.state !== "finished") return { eligible: false, reason: "not_finished" };
   const created = Date.parse(prediction.createdAtUtc);
   const cutoff = Date.parse(prediction.dataCutoffUtc);
   const kickoff = Date.parse(fixture.kickoffUtc);
-  if (![created, cutoff, kickoff].every(Number.isFinite)) return { eligible: false, reason: "invalid_timestamp" };
+  if (![created, cutoff, kickoff].every(Number.isFinite))
+    return { eligible: false, reason: "invalid_timestamp" };
   if (created >= kickoff || cutoff > created) return { eligible: false, reason: "after_kickoff" };
   if (!prediction.assessments.some((assessment) => assessment.estimatedProbability !== null)) {
     return { eligible: false, reason: "insufficient_evidence" };

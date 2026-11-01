@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { FOOTBALL_LEAGUES, type FootballFixture, type FootballLeagueId } from "./football-research.shared";
+import {
+  FOOTBALL_LEAGUES,
+  type FootballFixture,
+  type FootballLeagueId,
+} from "./football-research.shared";
 
 const API_ORIGIN = "https://v3.football.api-sports.io";
 const LEAGUE_IDS: Record<FootballLeagueId, number> = {
@@ -93,7 +97,8 @@ export async function fetchFootballWeek(
     const body = await response.text();
     if (body.length > 500_000) throw new Error("Football fixture response too large");
     const parsed = apiResponse.parse(JSON.parse(body));
-    if (parsed.errors && Object.keys(parsed.errors).length) throw new Error("Football fixture provider reported an error");
+    if (parsed.errors && Object.keys(parsed.errors).length)
+      throw new Error("Football fixture provider reported an error");
     const fetchedAtUtc = new Date().toISOString();
     for (const row of parsed.response) {
       if (row.league.id !== id) continue;
@@ -110,6 +115,7 @@ export async function fetchFootballWeek(
       });
     }
   }
-  return [...new Map(results.map((f) => [f.sourceFixtureId, f])).values()]
-    .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+  return [...new Map(results.map((f) => [f.sourceFixtureId, f])).values()].sort((a, b) =>
+    a.kickoffUtc.localeCompare(b.kickoffUtc),
+  );
 }

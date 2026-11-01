@@ -12,9 +12,7 @@ import { getInstalledRegistryModels } from "@/lib/ai-model-registry.server";
 export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: authorized, error } = await context.supabase.rpc(
-      "current_user_is_super_admin",
-    );
+    const { data: authorized, error } = await context.supabase.rpc("current_user_is_super_admin");
     if (error || authorized !== true) throw new Error("Not allowed");
 
     const models = await getInstalledRegistryModels();
@@ -40,10 +38,12 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
   });
 
 const weekInput = z.object({
-  leagueId: z.enum(FOOTBALL_LEAGUES.map((item) => item.id) as [
-    (typeof FOOTBALL_LEAGUES)[number]["id"],
-    ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
-  ]),
+  leagueId: z.enum(
+    FOOTBALL_LEAGUES.map((item) => item.id) as [
+      (typeof FOOTBALL_LEAGUES)[number]["id"],
+      ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
+    ],
+  ),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 

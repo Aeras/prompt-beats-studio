@@ -5,27 +5,50 @@ import { FOOTBALL_LEAGUES } from "./football-research.shared";
  * Output of a qualitative research pass. Probabilities require independently
  * calibrated numeric inputs; unsupported percent guesses are not accepted.
  */
-export const footballAiAssessmentSchema = z.object({
-  summary: z.string().trim().min(20).max(3500),
-  suggestions: z.array(z.object({
-    market: z.enum([
-      "home_win", "draw", "away_win", "double_chance_1x", "double_chance_x2",
-      "double_chance_12", "both_teams_score_yes", "both_teams_score_no",
-      "goals_over_1_5", "goals_under_1_5", "goals_over_2_5", "goals_under_2_5",
-      "goals_over_3_5", "goals_under_3_5", "corners_over_8_5",
-      "corners_under_8_5", "corners_over_9_5", "corners_under_9_5",
-    ]),
-    rationale: z.string().trim().min(12).max(1200),
-    evidence: z.enum(["limited", "supported", "insufficient"]),
-  }).strict()).max(8),
-  limitations: z.array(z.string().max(500)).max(8),
-}).strict();
+export const footballAiAssessmentSchema = z
+  .object({
+    summary: z.string().trim().min(20).max(3500),
+    suggestions: z
+      .array(
+        z
+          .object({
+            market: z.enum([
+              "home_win",
+              "draw",
+              "away_win",
+              "double_chance_1x",
+              "double_chance_x2",
+              "double_chance_12",
+              "both_teams_score_yes",
+              "both_teams_score_no",
+              "goals_over_1_5",
+              "goals_under_1_5",
+              "goals_over_2_5",
+              "goals_under_2_5",
+              "goals_over_3_5",
+              "goals_under_3_5",
+              "corners_over_8_5",
+              "corners_under_8_5",
+              "corners_over_9_5",
+              "corners_under_9_5",
+            ]),
+            rationale: z.string().trim().min(12).max(1200),
+            evidence: z.enum(["limited", "supported", "insufficient"]),
+          })
+          .strict(),
+      )
+      .max(8),
+    limitations: z.array(z.string().max(500)).max(8),
+  })
+  .strict();
 
 export const footballAnalysisRequestSchema = z.object({
-  leagueId: z.enum(FOOTBALL_LEAGUES.map((x) => x.id) as [
-    (typeof FOOTBALL_LEAGUES)[number]["id"],
-    ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
-  ]),
+  leagueId: z.enum(
+    FOOTBALL_LEAGUES.map((x) => x.id) as [
+      (typeof FOOTBALL_LEAGUES)[number]["id"],
+      ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
+    ],
+  ),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   fixtureId: z.string().regex(/^\d{1,12}$/),
   modelId: z.string().trim().min(1).max(240),

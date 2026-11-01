@@ -9,12 +9,18 @@ describe("football fixtures cache", () => {
     const loader = async (_league: unknown, _date: unknown): Promise<FootballFixture[]> => {
       calls++;
       await Promise.resolve();
-      return [{
-        source: "mock", sourceFixtureId: "777", leagueId: "DE-BL",
-        homeTeam: "Home", awayTeam: "Away",
-        kickoffUtc: "2026-11-02T18:00:00Z",
-        fetchedAtUtc: "2026-11-01T12:00:00Z", state: "scheduled",
-      }];
+      return [
+        {
+          source: "mock",
+          sourceFixtureId: "777",
+          leagueId: "DE-BL",
+          homeTeam: "Home",
+          awayTeam: "Away",
+          kickoffUtc: "2026-11-02T18:00:00Z",
+          fetchedAtUtc: "2026-11-01T12:00:00Z",
+          state: "scheduled",
+        },
+      ];
     };
     const [a, b] = await Promise.all([
       getCachedFootballWeek("DE-BL", "2026-11-02", loader, () => clock),

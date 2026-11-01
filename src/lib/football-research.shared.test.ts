@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  FOOTBALL_LEAGUES,
-  brierScore,
-  strictlyPredatesKickoff,
-} from "./football-research.shared";
+import { FOOTBALL_LEAGUES, brierScore, strictlyPredatesKickoff } from "./football-research.shared";
 
 describe("private football research foundations", () => {
   test("exactly six unique requested leagues", () => {
