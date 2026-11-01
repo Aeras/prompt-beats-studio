@@ -94,8 +94,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
         const common = `${fixture.homeTeam} vs ${fixture.awayTeam} ${kickoffDay}`;
         const queries = [
-          `${common} match preview team news recent form predictions`,
-          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match analysis preview`,
+          `${common} football match preview recent form injuries team news English sources`,
+          `${common} футбол прогноз форма команд травмы новости анализ матча`,
+          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview latest news tactical form`,
         ];
         const sources: { title: string; url: string; accessedAt: string; excerpt: string }[] = [];
         for (const query of queries) {
@@ -297,6 +298,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         created_at: row.created_at,
         evidence_cutoff_at: row.evidence_cutoff_at,
         status: row.status,
+        analysis: checked.success ? checked.data : null,
         outcomes,
       };
     });
