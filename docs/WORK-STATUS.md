@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Private AI Football Research Studio — IN_PROGRESS
+
+- **Scope:** isolated Super-Admin-only, unlisted/noindex football research UI for six leagues; verified fixture feeds, selectable installed OpenRouter model, optional Tavily multilingual research, bounded AI dispatch, markets/evidence, persisted immutable pre-match analysis and prediction evaluation. KINO explicitly postponed to an independent later phase.
+- **Branch:** `feature/private-ai-football-research-studio` from main `65293ea751a7e6252b44d6e3855bc295f425bd54`. Common contracts and scoring/no-lookahead tests committed; see [implementation contract](PRIVATE-FOOTBALL-RESEARCH-STUDIO.md). No operational integration, live fixture source, UI, persistence or end-to-end tests claimed complete.
+- **Remaining:** full guarded server/frontend/DB implementation, exact Super-Admin RLS, verified data-provider coverage, safe Tavily/OpenRouter existing transport integration with usage admission, final unit/CI/Browser/DB evidence. No provider calls or production deployment authorized.
+ 
+
 ## 2026-11-01 — PB-015 Beta-only AI dispatch admission regression — IN_PROGRESS
 
 - **Verified incident:** Supabase production job `0fa96595-7ef3-4882-83b2-3a1bb5f9d674` and two earlier description jobs reached `admit_feature_ai_dispatch_internal`, which rejected the pre-provider Planner admission (`Feature not available`; HTTP 400). `ai_music_inspiration` is present as `beta_features.stage=beta`, absent from `feature_access_policies`. Valid artist studies on 2026-10-30 preceded PB-015 migration from merged #473. This is a feature-authority regression, not a confirmed provider failure.
