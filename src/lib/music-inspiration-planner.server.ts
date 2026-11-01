@@ -1,5 +1,6 @@
 import type { RegistryModel } from "./ai-model-registry.server";
 import { z } from "zod";
+import { AiUsageUnavailableError } from "./global-ai-usage.server";
 import type { ModelCall, ModelResult } from "./ai-provider.server";
 import type { InspirationRequest } from "./music-inspiration.shared";
 import { InspirationFailure, inspirationDiagnostic } from "./music-inspiration-diagnostics.shared";
@@ -63,6 +64,13 @@ export async function requestInspirationPlan(
       abortSignal: signal,
     });
   } catch (error) {
+    // Feature admission happens before provider dispatch. Never describe its
+    // deterministic denial as a provider outcome with unknown billing.
+    if (error instanceof AiUsageUnavailableError)
+      throw new InspirationFailure(
+        { stage: "authorization", code: "configuration" },
+        "feature_unavailable_before_dispatch",
+      );
     throw new InspirationFailure(inspirationDiagnostic(error, "planner_request"));
   }
   return receipt;
