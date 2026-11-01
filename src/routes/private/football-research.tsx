@@ -548,7 +548,20 @@ function PrivateFootballResearchPage() {
                               Λεπτομέρειες ανάλυσης
                             </summary>
                             <div className="mt-3 space-y-3 text-sm leading-7 text-slate-300">
-                              <p>{entry.analysis.summary}</p>
+                              {entry.analysis.deepDive ? (
+                                <>
+                                  <h4 className="font-semibold text-white">Πρόσφατη φόρμα</h4>
+                                  <p>{entry.analysis.deepDive.form}</p>
+                                  <h4 className="font-semibold text-white">Τακτική εικόνα</h4>
+                                  <p>{entry.analysis.deepDive.tactics}</p>
+                                  <h4 className="font-semibold text-white">Ειδήσεις και απουσίες</h4>
+                                  <p>{entry.analysis.deepDive.teamNews}</p>
+                                  <h4 className="font-semibold text-amber-200">Αβεβαιότητες</h4>
+                                  <p>{entry.analysis.deepDive.uncertainty}</p>
+                                </>
+                              ) : (
+                                <p>{entry.analysis.summary}</p>
+                              )}
                               {entry.analysis.suggestions.map((item) => (
                                 <p key={item.market}>
                                   <strong>{MARKET_LABELS[item.market] ?? item.market}:</strong>{" "}
