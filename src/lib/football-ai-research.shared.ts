@@ -51,6 +51,7 @@ export const footballAnalysisRequestSchema = z.object({
   ),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   fixtureId: z.string().regex(/^\d{1,12}$/),
+  requestKey: z.string().uuid(),
   modelId: z.string().trim().min(1).max(240),
   withTavily: z.boolean().default(false),
   /** Explicit user consent for this single potentially billable execution. */
