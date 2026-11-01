@@ -79,7 +79,7 @@ $$;
 
 -- Preserve provider identity even before the analysis becomes terminal.
 CREATE OR REPLACE FUNCTION public.protect_private_football_research_snapshots()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 BEGIN
   IF OLD.status IN ('completed','failed') THEN
     RAISE EXCEPTION 'terminal football research snapshots are immutable';
@@ -104,7 +104,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.claim_private_football_research_run_v2(uuid,uuid,bigint,text,text,text,timestamptz,text,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_private_football_research_run_v2(uuid,uuid,bigint,text,text,text,timestamptz,text,text) TO service_role;
