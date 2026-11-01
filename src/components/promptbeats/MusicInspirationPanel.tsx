@@ -1,8 +1,4 @@
-import {
-  MusicInspirationPreview,
-  ResearchDisclosure,
-  displayInspirationGroup,
-} from "./MusicInspirationPreview";
+import { MusicInspirationPreview, displayInspirationGroup } from "./MusicInspirationPreview";
 import type { MusicGeneratorFrame } from "@/lib/music-inspiration-generator-state";
 import { decodeInspirationDiagnostic } from "@/lib/music-inspiration-diagnostics.shared";
 import { useEffect, useId, useRef, useState } from "react";
@@ -133,7 +129,7 @@ export function MusicInspirationPanel({
     setConfirm(null);
     setConfirmation(null);
   }
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(true);
   const [confirm, setConfirm] = useState<"replace" | "delete" | null>(null);
   // Mobile keyboards may resize/pan visualViewport without changing layout/dvh.
   // Keep both dialogs in the visible area; the existing CSS is the fallback.
@@ -233,7 +229,7 @@ export function MusicInspirationPanel({
     setProfileRevision(0);
     setOrigin(null);
     setOpen(false);
-    setPreview(false);
+    setPreview(true);
     setConfirm(null);
     setArtist("");
     setSong("");
@@ -303,7 +299,7 @@ export function MusicInspirationPanel({
     setJob(next);
     if (completed(next) && next.result) {
       if (originRef.current?.kind !== "profile") setOrigin({ kind: "job", id: next.id });
-      setPreview(false);
+      setPreview(true);
     }
   }, [poll.data, sameOwner, enabled, busy, job]);
 
@@ -372,7 +368,7 @@ export function MusicInspirationPanel({
             setOrigin(
               completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
             );
-          setPreview(false);
+          setPreview(true);
           setOpen(true);
           setRecoveredPrevious(true);
         }
@@ -433,7 +429,7 @@ export function MusicInspirationPanel({
               setOrigin(
                 completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
               );
-            setPreview(false);
+            setPreview(true);
             setOpen(true);
             setRecoveredPrevious(true);
           }
@@ -447,7 +443,7 @@ export function MusicInspirationPanel({
       setAttempt(candidate);
       setRecoveredPrevious(false);
       if (originRef.current?.kind !== "profile") setOrigin(null);
-      setPreview(false);
+      setPreview(true);
       setSummary(null);
       setJob(null);
       const next = await startMusicInspiration({
@@ -479,7 +475,7 @@ export function MusicInspirationPanel({
       if (!valid()) return;
       setJob(next);
       if (originRef.current?.kind === "job" && originRef.current.id === jobId) setOrigin(null);
-      setPreview(false);
+      setPreview(true);
     });
   }
   const research =
@@ -641,7 +637,7 @@ export function MusicInspirationPanel({
     setProfileRevision(p.revision);
     setName(p.name);
     setOrigin({ kind: "profile", id: p.id, revision: p.revision });
-    setPreview(false);
+    setPreview(true);
     setSummary(null);
     setOpen(true);
   }
@@ -748,7 +744,7 @@ export function MusicInspirationPanel({
           onClick={() => {
             setOrigin({ kind: "job", id: job!.id });
             setOpen(true);
-            setPreview(false);
+            setPreview(true);
           }}
         >
           {t.viewJob}
@@ -1091,11 +1087,7 @@ export function MusicInspirationPanel({
                 <p className="text-xs text-muted-foreground">
                   {origin?.kind === "profile" ? t.shownProfile : t.shownJob}
                 </p>
-                <p className="text-sm text-muted-foreground">{t.evidenceNote}</p>
                 {!!result.unresolvedQuestions.length && <p role="status">{t.partial}</p>}
-                <p className="whitespace-pre-wrap text-sm">
-                  {result.proposal.creativeChoices.join("\n")}
-                </p>
                 <div className={buttons}>
                   <Button
                     type="button"
@@ -1139,67 +1131,6 @@ export function MusicInspirationPanel({
                     </Button>
                   </>
                 )}
-                <ResearchDisclosure title={t.evidence + " · " + t.sources}>
-                  <h3 className="font-semibold">{t.evidence}</h3>
-                  {result.evidence.map((claim) => (
-                    <article key={claim.id} className="rounded border p-2">
-                      <p>
-                        {t[claim.classification]} · {claim.claim}
-                      </p>
-                      <p>{claim.limitation}</p>
-                      <ul>
-                        {claim.sourceIds.map((sid) => {
-                          const source = result.sources.find((s) => s.id === sid);
-                          return (
-                            source && (
-                              <li key={sid}>
-                                <a
-                                  className="underline"
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {source.title}
-                                </a>
-                              </li>
-                            )
-                          );
-                        })}
-                      </ul>
-                    </article>
-                  ))}
-                  <h3 className="font-semibold">{t.sources}</h3>
-                  <ul>
-                    {result.sources.map((s) => (
-                      <li key={s.id}>
-                        <a
-                          className="underline"
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {s.title}
-                        </a>{" "}
-                        · {s.publisher} · {s.locator} ·{" "}
-                        <time dateTime={s.accessedAt}>
-                          {new Date(s.accessedAt).toLocaleDateString(language)}
-                        </time>
-                      </li>
-                    ))}
-                  </ul>
-                  <h3 className="font-semibold">{t.unknown}</h3>
-                  <ul>
-                    {result.unresolvedQuestions.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                  <h3 className="font-semibold">{t.creative}</h3>
-                  <ul>
-                    {result.proposal.creativeChoices.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </ResearchDisclosure>
               </div>
             )}
             {(result || selectedProfile) && (
