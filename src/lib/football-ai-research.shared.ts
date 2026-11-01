@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FOOTBALL_LEAGUES } from "./football-research.shared";
+import { FOOTBALL_AI_LEAGUE_IDS, FOOTBALL_LEAGUES } from "./football-research.shared";
 
 /** Subjective, explicitly labelled AI estimates. Historical qualitative results remain valid. */
 export const footballAiAssessmentSchema = z
