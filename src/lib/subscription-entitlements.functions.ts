@@ -77,7 +77,8 @@ export const createSubscriptionManualGrant = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.rpc("subscription_manual_grant_create", {
       _user_id: data.userId,
       _plan: data.plan,
-      _expires_at: data.expiresAt,
+      // Generated RPC types omit nullability; null means a non-expiring grant.
+      _expires_at: data.expiresAt as string,
       _reason: data.reason,
     });
     if (error) throw new Error(error.message);
