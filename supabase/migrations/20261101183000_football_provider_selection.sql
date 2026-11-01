@@ -77,6 +77,35 @@ BEGIN
 END;
 $$;
 
+-- Preserve provider identity even before the analysis becomes terminal.
+CREATE OR REPLACE FUNCTION public.protect_private_football_research_snapshots()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $
+BEGIN
+  IF OLD.status IN ('completed','failed') THEN
+    RAISE EXCEPTION 'terminal football research snapshots are immutable';
+  END IF;
+  IF (OLD.user_id,OLD.request_key,OLD.fixture_id,OLD.league_id,OLD.home_team,OLD.away_team,
+      OLD.kickoff_utc,OLD.model_id,OLD.created_at,OLD.source)
+     IS DISTINCT FROM
+     (NEW.user_id,NEW.request_key,NEW.fixture_id,NEW.league_id,NEW.home_team,NEW.away_team,
+      NEW.kickoff_utc,NEW.model_id,NEW.created_at,NEW.source) THEN
+    RAISE EXCEPTION 'football research identity is immutable';
+  END IF;
+  IF (OLD.provider_started_at IS NOT NULL AND NEW.provider_started_at IS DISTINCT FROM OLD.provider_started_at)
+     OR (OLD.evidence_cutoff_at IS NOT NULL AND NEW.evidence_cutoff_at IS DISTINCT FROM OLD.evidence_cutoff_at) THEN
+    RAISE EXCEPTION 'football research evidence timestamps are immutable';
+  END IF;
+  IF NEW.status = 'completed' THEN
+    IF NEW.analysis IS NULL OR NEW.completed_at IS NULL OR NEW.provider_started_at IS NULL
+       OR NEW.evidence_cutoff_at IS NULL OR NEW.completed_at >= NEW.kickoff_utc
+       OR NEW.evidence_cutoff_at >= NEW.kickoff_utc THEN
+      RAISE EXCEPTION 'invalid pre-kickoff football research snapshot';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$;
+
 REVOKE ALL ON FUNCTION public.claim_private_football_research_run_v2(uuid,uuid,bigint,text,text,text,timestamptz,text,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_private_football_research_run_v2(uuid,uuid,bigint,text,text,text,timestamptz,text,text) TO service_role;
 COMMIT;
