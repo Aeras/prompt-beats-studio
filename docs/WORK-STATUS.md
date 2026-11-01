@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-01 — Football AI quick percentages — IN_PROGRESS
+
+- **User-visible requirement:** Lead each opened stored match with percentage bars for estimated 1/X/2 and other supported markets, then concise summary, with extended text collapsed. Probabilities are explicitly labelled subjective AI estimates, not calibrated statistical probabilities or guarantees.
+- **Compatibility:** Legacy persisted results without estimates render a truthful fallback rather than fabricated historic percentages. No migration, no paid API smoke test, no live batch change. New response asks for sources-consistent, rounded figures; preserves pre-kickoff immutable research and market outcome logic.
+- **Release:** Single atomic code commit and one CI cycle intended; final-head checks and production publish pending. This task is NOT CLOSED.
+
+
 ## 2026-11-01 — Football Studio results UX and multilingual research — IN_PROGRESS
 
 - **Scope:** Premium mobile-first football dashboard, per-match expandable persisted results, hidden raw source URLs, explicit evidence quality, and English/Russian/league-native Tavily research.

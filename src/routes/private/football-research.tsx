@@ -498,15 +498,35 @@ function PrivateFootballResearchPage() {
                     <div className="space-y-4 border-t border-white/10 p-4">
                       {entry.analysis ? (
                         <>
+                          <section className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-4">
+                            <h3 className="text-base font-bold text-cyan-200">Εκτιμώμενες πιθανότητες AI</h3>
+                            <p className="mb-4 mt-1 text-xs text-slate-400">Υποκειμενικές εκτιμήσεις από διασταύρωση πηγών — όχι στατιστικά βαθμονομημένες πιθανότητες.</p>
+                            {entry.analysis.estimates?.length ? (
+                              <div className="space-y-3">
+                                {entry.analysis.estimates.map((estimate) => (
+                                  <div key={estimate.market} className="space-y-1">
+                                    <div className="flex justify-between gap-3 text-sm">
+                                      <span className="font-medium text-slate-100">{MARKET_LABELS[estimate.market] ?? estimate.market}</span>
+                                      <strong className="tabular-nums text-cyan-200">{estimate.percent}%</strong>
+                                    </div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-700/80" role="progressbar" aria-label={MARKET_LABELS[estimate.market] ?? estimate.market} aria-valuenow={estimate.percent} aria-valuemin={0} aria-valuemax={100}>
+                                      <div className={`h-full rounded-full ${estimate.percent >= 65 ? "bg-emerald-400" : estimate.percent >= 40 ? "bg-cyan-400" : "bg-amber-400"}`} style={{ width: `${estimate.percent}%` }} />
+                                    </div>
+                                    <p className="text-xs text-slate-400">{estimate.reason}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : <p className="text-sm text-amber-200">Παλαιότερη ανάλυση χωρίς αριθμητικές εκτιμήσεις. Δεν κατασκευάζουμε ποσοστά εκ των υστέρων.</p>}
+                          </section>
                           <div className="rounded-xl bg-cyan-400/5 p-4">
                             <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
                             <p className="whitespace-pre-line text-sm leading-7 text-slate-200">
                               {entry.analysis.summary}
                             </p>
                           </div>
-                          <div>
-                            <h3 className="mb-3 font-semibold text-white">
-                              Πιθανότερες επιλογές · ποιοτική αξιολόγηση
+                          <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                            <summary className="mb-3 cursor-pointer font-semibold text-white">
+                              Προτεινόμενα σημεία και αιτιολόγηση
                             </h3>
                             <div className="space-y-2">
                               {entry.analysis.suggestions.length === 0 && (
@@ -542,7 +562,7 @@ function PrivateFootballResearchPage() {
                                 </div>
                               ))}
                             </div>
-                          </div>
+                          </details>
                           <details className="rounded-xl border border-white/10 bg-[#0d192b] p-4">
                             <summary className="cursor-pointer font-semibold text-cyan-200">
                               Λεπτομέρειες ανάλυσης
@@ -581,8 +601,7 @@ function PrivateFootballResearchPage() {
                             </div>
                           </details>
                           <p className="text-xs leading-5 text-slate-400">
-                            Δεν εμφανίζονται αριθμητικές πιθανότητες χωρίς ξεχωριστά βαθμονομημένο
-                            στατιστικό μοντέλο. Τα αποτελέσματα δεν αποτελούν εγγύηση.
+                            Τα ποσοστά είναι εκτιμήσεις της AI, όχι εγγυήσεις ή μετρημένες πιθανότητες. Δεν αποτελούν απόδειξη στοιχηματικού πλεονεκτήματος.
                           </p>
                         </>
                       ) : (
