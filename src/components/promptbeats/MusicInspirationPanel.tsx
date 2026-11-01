@@ -129,7 +129,7 @@ export function MusicInspirationPanel({
     setConfirm(null);
     setConfirmation(null);
   }
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(true);
   const [confirm, setConfirm] = useState<"replace" | "delete" | null>(null);
   // Mobile keyboards may resize/pan visualViewport without changing layout/dvh.
   // Keep both dialogs in the visible area; the existing CSS is the fallback.
@@ -229,7 +229,7 @@ export function MusicInspirationPanel({
     setProfileRevision(0);
     setOrigin(null);
     setOpen(false);
-    setPreview(false);
+    setPreview(true);
     setConfirm(null);
     setArtist("");
     setSong("");
@@ -299,7 +299,7 @@ export function MusicInspirationPanel({
     setJob(next);
     if (completed(next) && next.result) {
       if (originRef.current?.kind !== "profile") setOrigin({ kind: "job", id: next.id });
-      setPreview(false);
+      setPreview(true);
     }
   }, [poll.data, sameOwner, enabled, busy, job]);
 
@@ -368,7 +368,7 @@ export function MusicInspirationPanel({
             setOrigin(
               completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
             );
-          setPreview(false);
+          setPreview(true);
           setOpen(true);
           setRecoveredPrevious(true);
         }
@@ -429,7 +429,7 @@ export function MusicInspirationPanel({
               setOrigin(
                 completed(existing) && existing.result ? { kind: "job", id: existing.id } : null,
               );
-            setPreview(false);
+            setPreview(true);
             setOpen(true);
             setRecoveredPrevious(true);
           }
@@ -443,7 +443,7 @@ export function MusicInspirationPanel({
       setAttempt(candidate);
       setRecoveredPrevious(false);
       if (originRef.current?.kind !== "profile") setOrigin(null);
-      setPreview(false);
+      setPreview(true);
       setSummary(null);
       setJob(null);
       const next = await startMusicInspiration({
@@ -475,7 +475,7 @@ export function MusicInspirationPanel({
       if (!valid()) return;
       setJob(next);
       if (originRef.current?.kind === "job" && originRef.current.id === jobId) setOrigin(null);
-      setPreview(false);
+      setPreview(true);
     });
   }
   const research =
@@ -637,7 +637,7 @@ export function MusicInspirationPanel({
     setProfileRevision(p.revision);
     setName(p.name);
     setOrigin({ kind: "profile", id: p.id, revision: p.revision });
-    setPreview(false);
+    setPreview(true);
     setSummary(null);
     setOpen(true);
   }
@@ -744,7 +744,7 @@ export function MusicInspirationPanel({
           onClick={() => {
             setOrigin({ kind: "job", id: job!.id });
             setOpen(true);
-            setPreview(false);
+            setPreview(true);
           }}
         >
           {t.viewJob}
