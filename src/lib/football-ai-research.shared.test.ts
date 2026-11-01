@@ -42,6 +42,18 @@ describe("private football AI contracts", () => {
       limitations: ["Ανεπαρκή δεδομένα"],
     };
     expect(footballAiAssessmentSchema.safeParse(example).success).toBe(true);
+    expect(
+      footballAiAssessmentSchema.safeParse({
+        ...example,
+        deepDive: {
+          form: "Η πρόσφατη φόρμα εξετάζεται μόνο με επαληθευμένα αποτελέσματα αγώνων.",
+          tactics: "Η τακτική προσέγγιση παραμένει αβέβαιη χωρίς επαρκείς πηγές.",
+          teamNews: "Δεν εντοπίστηκε διασταυρωμένη πληροφορία για τις απουσίες.",
+          uncertainty: "Οι πηγές παρουσιάζουν ελλείψεις και χρειάζεται επιφύλαξη.",
+        },
+      }).success,
+    ).toBe(true);
+
     expect(footballAiAssessmentSchema.safeParse({ ...example, probability: 0.97 }).success).toBe(
       false,
     );
