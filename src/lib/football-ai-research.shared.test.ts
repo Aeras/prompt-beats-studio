@@ -10,6 +10,7 @@ describe("private football AI contracts", () => {
       leagueId: "GR-SL",
       weekDate: "2026-11-01",
       fixtureId: "123",
+      requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
       modelId: "openai/gpt-5.6-luna",
       withTavily: false,
     };
