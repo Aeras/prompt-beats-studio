@@ -33,7 +33,11 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
         })),
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
       liveFixturesConfigured: Boolean(process.env["API_FOOTBALL_KEY"]?.trim()),
-      aiAnalysisEnabled: false,
+      aiAnalysisEnabled: Boolean(
+        process.env["OPENROUTER_API_KEY"]?.trim() &&
+        process.env["TAVILY_API_KEY"]?.trim() &&
+        process.env["API_FOOTBALL_KEY"]?.trim(),
+      ),
     };
   });
 
