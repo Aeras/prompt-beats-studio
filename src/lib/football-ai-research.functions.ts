@@ -153,7 +153,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               retrievedAt: doc.accessedAt,
             })),
           }),
-          maxTokens: 1800,
+          maxTokens: 2600,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
