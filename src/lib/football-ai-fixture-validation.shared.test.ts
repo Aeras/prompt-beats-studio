@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { validateAiFixtureBatch } from "./football-ai-fixture-validation.shared";
 import { FOOTBALL_AI_DISCOVERY_LEAGUES, FOOTBALL_AI_REFRESH_QUOTA } from "./football-research.shared";
 
