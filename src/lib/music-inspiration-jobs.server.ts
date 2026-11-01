@@ -441,6 +441,11 @@ export async function executeMusicInspirationJob(
     });
     return { ran: true };
   } catch (error) {
+    // A feature-admission refusal is proven pre-dispatch, even if the
+    // planner dispatch reservation was already recorded. Do not turn it into
+    // an uncertain provider outcome or imply an AI request was sent.
+    if (error instanceof InspirationFailure && error.message === "feature_unavailable_before_dispatch")
+      uncertain = false;
     const diagnostic = pollFailure ?? inspirationDiagnostic(error, stage);
     logInspirationFailure(id, diagnostic);
     const name = error instanceof Error ? error.message : "research_failed";
