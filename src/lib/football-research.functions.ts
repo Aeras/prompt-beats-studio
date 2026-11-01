@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
+import { fetchFootballWeek } from "@/lib/football-fixtures.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getInstalledRegistryModels } from "@/lib/ai-model-registry.server";
@@ -31,7 +34,30 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
           status: model.status,
         })),
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
-      liveFixturesConfigured: false,
+      liveFixturesConfigured: Boolean(process.env["API_FOOTBALL_KEY"]?.trim()),
       aiAnalysisEnabled: false,
+    };
+  });
+
+const weekInput = z.object({
+  leagueId: z.enum(FOOTBALL_LEAGUES.map((item) => item.id) as [
+    (typeof FOOTBALL_LEAGUES)[number]["id"],
+    ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
+  ]),
+  weekDate: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+});
+
+export const getPrivateFootballWeek = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => weekInput.parse(input))
+  .handler(async ({ context, data }) => {
+    const { data: authorized, error } = await context.supabase.rpc("current_user_is_super_admin");
+    if (error || authorized !== true) throw new Error("Not allowed");
+    if (!process.env["API_FOOTBALL_KEY"]?.trim()) {
+      return { status: "not_configured" as const, fixtures: [] };
+    }
+    return {
+      status: "ok" as const,
+      fixtures: await fetchFootballWeek(data.leagueId, data.weekDate),
     };
   });
