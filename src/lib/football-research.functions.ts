@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { FOOTBALL_LEAGUES } from "@/lib/football-research.shared";
+import {
+  FOOTBALL_LEAGUES,
+  FOOTBALL_DATA_LEAGUES,
+  FOOTBALL_PROVIDERS,
+} from "@/lib/football-research.shared";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -32,16 +36,27 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
           status: model.status,
         })),
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
-      liveFixturesConfigured: Boolean(process.env["API_FOOTBALL_KEY"]?.trim()),
+      liveFixturesConfigured: Boolean(
+        process.env["API_FOOTBALL_KEY"]?.trim() || process.env["FOOTBALL_DATA_API_KEY"]?.trim(),
+      ),
+      fixtureProviders: FOOTBALL_PROVIDERS.map((provider) => ({
+        ...provider,
+        configured: Boolean(
+          process.env[
+            provider.id === "football-data" ? "FOOTBALL_DATA_API_KEY" : "API_FOOTBALL_KEY"
+          ]?.trim(),
+        ),
+      })),
       aiAnalysisEnabled: Boolean(
         process.env["OPENROUTER_API_KEY"]?.trim() &&
         process.env["TAVILY_API_KEY"]?.trim() &&
-        process.env["API_FOOTBALL_KEY"]?.trim(),
+        (process.env["API_FOOTBALL_KEY"]?.trim() || process.env["FOOTBALL_DATA_API_KEY"]?.trim()),
       ),
     };
   });
 
 const weekInput = z.object({
+  fixtureProvider: z.enum(["football-data", "api-football"]).default("football-data"),
   leagueId: z.enum(
     FOOTBALL_LEAGUES.map((item) => item.id) as [
       (typeof FOOTBALL_LEAGUES)[number]["id"],
@@ -57,11 +72,31 @@ export const getPrivateFootballWeek = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: authorized, error } = await context.supabase.rpc("current_user_is_super_admin");
     if (error || authorized !== true) throw new Error("Not allowed");
-    if (!process.env["API_FOOTBALL_KEY"]?.trim()) {
+    const apiKey =
+      data.fixtureProvider === "football-data"
+        ? process.env["FOOTBALL_DATA_API_KEY"]
+        : process.env["API_FOOTBALL_KEY"];
+    if (!apiKey?.trim()) {
       return { status: "not_configured" as const, fixtures: [] };
     }
+    if (
+      data.fixtureProvider === "football-data" &&
+      !FOOTBALL_DATA_LEAGUES.some((league) => league === data.leagueId)
+    ) {
+      return { status: "unsupported" as const, fixtures: [] };
+    }
+    const loader =
+      data.fixtureProvider === "football-data"
+        ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+        : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
     return {
       status: "ok" as const,
-      fixtures: await getCachedFootballWeek(data.leagueId, data.weekDate),
+      fixtures: await getCachedFootballWeek(
+        data.leagueId,
+        data.weekDate,
+        loader,
+        Date.now,
+        data.fixtureProvider,
+      ),
     };
   });

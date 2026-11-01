@@ -43,6 +43,7 @@ export const footballAiAssessmentSchema = z
   .strict();
 
 export const footballAnalysisRequestSchema = z.object({
+  fixtureProvider: z.enum(["football-data", "api-football"]).default("football-data"),
   leagueId: z.enum(
     FOOTBALL_LEAGUES.map((x) => x.id) as [
       (typeof FOOTBALL_LEAGUES)[number]["id"],

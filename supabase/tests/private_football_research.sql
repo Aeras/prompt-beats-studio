@@ -44,6 +44,7 @@ BEGIN
   PERFORM pg_temp.assert(duplicate->>'id'=v_run_id::text AND duplicate->>'status'='processing',
     'Duplicate key must not dispatch again');
 
+
   rejected := false;
   BEGIN
     PERFORM public.claim_private_football_research_run(
@@ -70,6 +71,31 @@ BEGIN
     (SELECT status='completed' FROM public.private_football_research_runs r WHERE r.id=v_run_id),
     'Completed snapshot must persist'
   );
+
+  -- New provider-specific admission uses the exact same immutable identity key.
+  DECLARE
+    other_key uuid := gen_random_uuid();
+    claimed_new jsonb;
+  BEGIN
+    claimed_new := public.claim_private_football_research_run_v2(
+      v,other_key,998,'EN-PL','Alpha','Beta',now()+interval '2 days','openai/test','football-data'
+    );
+    PERFORM pg_temp.assert(claimed_new->>'status'='claimed','New provider must be claimable');
+    rejected := false;
+    BEGIN
+      PERFORM public.claim_private_football_research_run_v2(
+        v,other_key,998,'EN-PL','Alpha','Beta',now()+interval '2 days','openai/test','api-football'
+      );
+    EXCEPTION WHEN OTHERS THEN rejected := true; END;
+    PERFORM pg_temp.assert(rejected,'A request key cannot change providers');
+    rejected := false;
+    BEGIN
+      UPDATE public.private_football_research_runs SET source='api-football'
+      WHERE id=(claimed_new->>'id')::uuid;
+    EXCEPTION WHEN OTHERS THEN rejected := true; END;
+    PERFORM pg_temp.assert(rejected,'Source must be immutable');
+  END;
+
 
   rejected := false;
   BEGIN
