@@ -7,7 +7,6 @@ import {
   runPrivateFootballResearch,
 } from "@/lib/football-ai-research.functions";
 import { useAuth } from "@/hooks/useAuth";
-import { AppShell } from "@/components/promptbeats/AppShell";
 import {
   FOOTBALL_LEAGUES,
   FOOTBALL_PROVIDERS,
@@ -85,6 +84,7 @@ function PrivateFootballResearchPage() {
   const [clearMode, setClearMode] = useState<"none" | "selected">("none");
   const [clearSelected, setClearSelected] = useState<string[]>([]);
   const [clearConfirm, setClearConfirm] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"predictions" | "kino">("predictions");
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState("");
   const fixtures = useQuery({
@@ -112,7 +112,6 @@ function PrivateFootballResearchPage() {
     retry: false,
     staleTime: 300000,
   });
-  const header = <span className="font-display text-lg font-bold">Football Research Studio</span>;
   const saveResults = () => {
     const records = history.data ?? [];
     if (!records.length) return;
@@ -127,12 +126,12 @@ function PrivateFootballResearchPage() {
     anchor.click();
     URL.revokeObjectURL(url);
   };
-  const clearResults = async () => {
-    if (clearing || working || !clearConfirm.length) return;
+  const clearResults = async (ids: string[]) => {
+    if (clearing || working || !ids.length) return;
     setClearing(true);
     setClearError("");
     try {
-      await hidePrivateFootballResearchHistory({ data: { ids: clearConfirm } });
+      await hidePrivateFootballResearchHistory({ data: { ids } });
       setClearMode("none");
       setClearSelected([]);
       setClearConfirm([]);
@@ -147,13 +146,13 @@ function PrivateFootballResearchPage() {
 
   if (loading)
     return (
-      <AppShell header={header}>
+      <div className="min-h-screen bg-[#090d16] text-slate-100">
         <main className="p-6">Φόρτωση…</main>
-      </AppShell>
+      </div>
     );
   if (!user)
     return (
-      <AppShell header={header}>
+      <div className="min-h-screen bg-[#090d16] text-slate-100">
         <main className="p-6">
           Απαιτείται{" "}
           <Link to="/auth" className="underline">
@@ -161,21 +160,21 @@ function PrivateFootballResearchPage() {
           </Link>
           .
         </main>
-      </AppShell>
+      </div>
     );
   if (setup.isPending)
     return (
-      <AppShell header={header}>
+      <div className="min-h-screen bg-[#090d16] text-slate-100">
         <main className="p-6">Έλεγχος πρόσβασης…</main>
-      </AppShell>
+      </div>
     );
   if (setup.isError || !setup.data)
     return (
-      <AppShell header={header}>
+      <div className="min-h-screen bg-[#090d16] text-slate-100">
         <main className="p-6" role="alert">
           Η πρόσβαση δεν επιτρέπεται ή η υπηρεσία δεν είναι διαθέσιμη.
         </main>
-      </AppShell>
+      </div>
     );
 
   const selectedModel = setup.data.models.find((item) => item.id === model);
@@ -243,17 +242,45 @@ function PrivateFootballResearchPage() {
     .map((f) => f.sourceFixtureId);
 
   return (
-    <AppShell header={header}>
-      <main className="mx-auto max-w-6xl space-y-5 px-3 pb-28 pt-4 text-slate-100 sm:px-6">
-        <div className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-[#102a48] via-[#142139] to-[#241b3e] p-5 shadow-xl shadow-cyan-950/20 sm:p-8">
+    <div className="min-h-screen bg-[#090d16] text-slate-100">
+      <header className="w-full border-b border-cyan-400/20 bg-gradient-to-br from-[#102a48] via-[#142139] to-[#241b3e] px-4 py-5 shadow-lg shadow-cyan-950/20 sm:px-8">
+        <div className="mx-auto max-w-6xl">
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-4xl">
             Football <span className="text-cyan-300">Research Studio</span>
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-            Πολλαπλές αναλύσεις, τεκμηριωμένα συμπεράσματα και οργανωμένο ιστορικό ανά αγώνα.
+          <p className="mt-1 text-xs leading-5 text-slate-300 sm:text-sm">
+            Πολλαπλές αναλύσεις, τεκμηριωμένα συμπεράσματα και ιστορικό ανά αγώνα.
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-2" role="tablist" aria-label="Εργαλεία">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "predictions"}
+              aria-controls="football-predictions"
+              onClick={() => setActiveTab("predictions")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "predictions" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}
+            >
+              Προβλέψεις
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "kino"}
+              aria-controls="football-kino"
+              onClick={() => setActiveTab("kino")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "kino" ? "bg-cyan-500 text-slate-950" : "border border-white/20 text-slate-200"}`}
+            >
+              Κίνο
+            </button>
+          </div>
         </div>
-
+      </header>
+      <main
+        id="football-predictions"
+        role="tabpanel"
+        hidden={activeTab !== "predictions"}
+        className="mx-auto max-w-6xl space-y-5 px-3 pb-10 pt-4 text-slate-100 sm:px-6"
+      >
         <section
           className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
           aria-label="Επιλογές έρευνας"
@@ -737,7 +764,7 @@ function PrivateFootballResearchPage() {
               disabled={!history.data?.length}
               className="min-w-0 flex-1 whitespace-nowrap rounded-xl bg-cyan-500 px-2 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40"
             >
-              Αποθήκευση
+              Εξαγωγή
             </button>
           </div>
           {clearMode === "selected" && (
@@ -745,7 +772,7 @@ function PrivateFootballResearchPage() {
               <button
                 type="button"
                 disabled={!clearSelected.length || clearing}
-                onClick={() => setClearConfirm(clearSelected)}
+                onClick={() => void clearResults(clearSelected)}
                 className="rounded-xl bg-rose-500/20 px-3 py-2 text-sm text-rose-200 disabled:opacity-40"
               >
                 Επιβεβαίωση ({clearSelected.length})
@@ -773,7 +800,7 @@ function PrivateFootballResearchPage() {
                 <button
                   type="button"
                   disabled={clearing}
-                  onClick={() => void clearResults()}
+                  onClick={() => void clearResults(clearConfirm)}
                   className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
                 >
                   Επιβεβαίωση
@@ -795,6 +822,14 @@ function PrivateFootballResearchPage() {
           )}
         </section>
       </main>
-    </AppShell>
+      <section
+        id="football-kino"
+        role="tabpanel"
+        hidden={activeTab !== "kino"}
+        className="mx-auto mt-4 max-w-6xl rounded-2xl border border-white/10 bg-[#152137] p-8 text-center text-lg font-semibold"
+      >
+        Σύντομα κοντά σας
+      </section>
+    </div>
   );
 }
