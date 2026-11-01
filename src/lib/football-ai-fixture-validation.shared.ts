@@ -1,67 +1,117 @@
 import { z } from "zod";
-import { FOOTBALL_AI_DISCOVERY_LEAGUES } from "./football-research.shared";
-import { footballWeekBounds } from "./football-fixtures.server";
+import { FOOTBALL_AI_LEAGUE_IDS, type FootballAiDiscoveryLeagueId } from "./football-research.shared";
 
-const leagueIds = FOOTBALL_AI_DISCOVERY_LEAGUES.map((league) => league.id) as [
-  (typeof FOOTBALL_AI_DISCOVERY_LEAGUES)[number]["id"],
-  ...(typeof FOOTBALL_AI_DISCOVERY_LEAGUES)[number]["id"][],
-];
-const httpsUrl = z.string().url().refine((url) => new URL(url).protocol === "https:");
-const source = z.object({
-  url: httpsUrl,
-  title: z.string().trim().min(4).max(250),
-}).strict();
-const proposedFixture = z.object({
-  leagueId: z.enum(leagueIds),
-  homeTeam: z.string().trim().min(2).max(200),
-  awayTeam: z.string().trim().min(2).max(200),
-  kickoffUtc: z.string().datetime({ offset: true }),
-  sources: z.array(source).min(2).max(8),
-}).strict();
-export const aiFixtureBatchSchema = z.object({
-  fixtures: z.array(proposedFixture).max(80),
-}).strict();
+/** Monday–Sunday UTC bounds; mirrors footballWeekBounds without a server import. */
+export function aiFixtureWeekBounds(date: string): { from: string; to: string } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date) {
+    throw new Error("Invalid week date");
+  }
+  const start = new Date(date + "T00:00:00Z");
+  start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
+}
+
+const httpsUrl = z
+  .string()
+  .max(2000)
+  .url()
+  .refine((url) => new URL(url).protocol === "https:");
+const source = z.object({ url: httpsUrl, title: z.string().trim().max(250).default("") }).strict();
+const proposedFixture = z
+  .object({
+    leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
+    homeTeam: z.string().trim().min(2).max(200),
+    awayTeam: z.string().trim().min(2).max(200),
+    kickoffUtc: z.string().datetime({ offset: true }),
+    sources: z.array(source).max(8).default([]),
+  })
+  .strict();
+export const aiFixtureBatchSchema = z.object({ fixtures: z.array(proposedFixture).max(80) }).strict();
+
+/** JSON schema sent to OpenRouter as `response_format` (structured output). */
+export const AI_FIXTURE_JSON_SCHEMA = {
+  name: "football_fixture_candidates",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["fixtures"],
+    properties: {
+      fixtures: {
+        type: "array",
+        maxItems: 80,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["leagueId", "homeTeam", "awayTeam", "kickoffUtc", "sources"],
+          properties: {
+            leagueId: { type: "string", enum: FOOTBALL_AI_LEAGUE_IDS },
+            homeTeam: { type: "string" },
+            awayTeam: { type: "string" },
+            kickoffUtc: { type: "string", description: "ISO 8601 with Z or offset" },
+            sources: {
+              type: "array",
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["url", "title"],
+                properties: { url: { type: "string" }, title: { type: "string" } },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
 
 export type AiFixtureCandidate = z.infer<typeof proposedFixture> & {
   normalizedKey: string;
   observedAtUtc: string;
 };
 
-function canonicalTeam(team: string): string {
+export function canonicalTeam(team: string): string {
   return team.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
 }
 
 /**
- * Strict, fail-closed parsing of model-proposed fixtures. These checks do not
- * prove a real match exists: independent server-side source verification is
- * mandatory before any fixture may become eligible for paid analysis.
+ * Fail-closed filtering of model-proposed fixtures. Invalid items are DROPPED
+ * (one bad item never poisons the batch). Passing this check proves nothing:
+ * only server HTTP corroboration may mark a fixture verified.
  */
 export function validateAiFixtureBatch(
   raw: unknown,
-  expectedLeague: (typeof leagueIds)[number],
+  expectedLeague: FootballAiDiscoveryLeagueId,
   date: string,
   now: Date,
 ): AiFixtureCandidate[] {
   const parsed = aiFixtureBatchSchema.parse(raw);
-  const { from, to } = footballWeekBounds(date);
-  const earliest = Date.parse(from + "T00:00:00Z") - 86400000;
-  const latest = Date.parse(to + "T23:59:59Z") + 86400000;
+  const { from, to } = aiFixtureWeekBounds(date);
+  const earliest = Date.parse(from + "T00:00:00Z");
+  const latest = Date.parse(to + "T23:59:59Z");
   const seen = new Set<string>();
   const observedAtUtc = now.toISOString();
-  return parsed.fixtures.map((fixture) => {
+  const out: AiFixtureCandidate[] = [];
+  for (const fixture of parsed.fixtures) {
     const kickoff = Date.parse(fixture.kickoffUtc);
-    if (fixture.leagueId !== expectedLeague) throw new Error("Unexpected competition");
-    if (!Number.isFinite(kickoff) || kickoff < earliest || kickoff > latest)
-      throw new Error("Fixture outside requested week");
-    if (kickoff <= now.getTime()) throw new Error("Historical or live fixture");
+    if (fixture.leagueId !== expectedLeague) continue;
+    if (!Number.isFinite(kickoff) || kickoff < earliest || kickoff > latest) continue;
+    if (kickoff <= now.getTime()) continue;
     const home = canonicalTeam(fixture.homeTeam);
     const away = canonicalTeam(fixture.awayTeam);
-    if (home === away) throw new Error("Identical teams");
-    if (new Set(fixture.sources.map((source) => new URL(source.url).hostname)).size < 2)
-      throw new Error("Independent source domains required");
-    const normalizedKey = [expectedLeague, home, away].join(":");
-    if (seen.has(normalizedKey)) throw new Error("Duplicate fixture");
+    if (home === away) continue;
+    const normalizedKey = [expectedLeague, home, away, from].join(":");
+    if (seen.has(normalizedKey)) continue;
     seen.add(normalizedKey);
-    return { ...fixture, kickoffUtc: new Date(kickoff).toISOString(), normalizedKey, observedAtUtc };
-  });
+    out.push({
+      ...fixture,
+      kickoffUtc: new Date(kickoff).toISOString(),
+      normalizedKey,
+      observedAtUtc,
+    });
+  }
+  return out;
 }
