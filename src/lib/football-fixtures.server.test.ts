@@ -13,6 +13,10 @@ describe("private football fixture adapter", () => {
     expect(footballSeasonStartYear("2026-07-01")).toBe(2026);
     expect(() => footballWeekBounds("2026-02-30")).toThrow();
   });
+  test("no-content response is an empty weekly schedule", async () => {
+    const mockFetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+    expect(await fetchFootballWeek("GR-SL", "2026-11-01", mockFetch, "test-key")).toEqual([]);
+  });
   test("never substitutes invented fixture data when provider missing", async () => {
     await expect(fetchFootballWeek("GR-SL", "2026-11-01", fetch, "")).rejects.toThrow(
       "not configured",
