@@ -87,6 +87,7 @@ export function AiSearchPanel(props: {
   const [allMode, setAllMode] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const stopRequested = useRef(false);
+  const [leagueResults, setLeagueResults] = useState<Record<string, "completed" | "failed" | "skipped">>({});
   const [error, setError] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const query = useQuery({
@@ -115,9 +116,11 @@ export function AiSearchPanel(props: {
     setOpen(false);
     setRefreshing(true);
     setProgress({ done: 0, total: leagues.length });
+    setLeagueResults({});
     stopRequested.current = false;
     setError("");
     const errors: string[] = [];
+    const completed = new Set<string>();
     try {
       for (let index = 0; index < leagues.length; index++) {
         if (stopRequested.current) break;
@@ -129,7 +132,16 @@ export function AiSearchPanel(props: {
               consent: { acknowledged: true, estimatedMaxUsd: d.maxCostUsd },
             },
           });
+          completed.add(leagues[index]!);
+          setLeagueResults((previous) => ({
+            ...previous,
+            [leagues[index]!]: "completed",
+          }));
         } catch (err) {
+          setLeagueResults((previous) => ({
+            ...previous,
+            [leagues[index]!]: "failed",
+          }));
           const code = parseAiFixtureErrorCode(err);
           errors.push(
             leagues[index]! +
@@ -155,6 +167,14 @@ export function AiSearchPanel(props: {
           }
         }
         setProgress({ done: index + 1, total: leagues.length });
+      }
+      if (stopRequested.current) {
+        setLeagueResults((previous) => ({
+          ...Object.fromEntries(leagues.filter((id) => !completed.has(id)).map((id) =>
+            [id, previous[id] ?? "skipped"] as const,
+          )),
+          ...previous,
+        }));
       }
       if (errors.length) setError(errors.join(" · "));
     } finally {
@@ -209,6 +229,13 @@ export function AiSearchPanel(props: {
                 className="text-xs font-semibold text-amber-300">{c.stop}</button>
             )}
           </>
+        )}
+        {progress.total > 1 && Object.keys(leagueResults).length > 0 && (
+          <p className="w-full text-xs text-slate-300" role="status">
+            {FOOTBALL_AI_DISCOVERY_LEAGUES.filter((league) => leagueResults[league.id])
+              .map((league) => `${league.label}: ${leagueResults[league.id] === "completed" ? "✓" : leagueResults[league.id] === "failed" ? "✕" : "—"}`)
+              .join(" · ")}
+          </p>
         )}
         {gateCode && (
           <span className="text-xs text-amber-300">
