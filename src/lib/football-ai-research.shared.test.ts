@@ -49,6 +49,18 @@ describe("private football AI contracts", () => {
     ).toBe(false);
   });
 
+  test("malformed AI output reports a safe schema field path", () => {
+    const invalid = footballAiAssessmentSchema.safeParse({
+      summary: "Η αξιολόγηση δεν μπορεί να ολοκληρωθεί χωρίς επαρκή ανάλυση.",
+      suggestions: [{ market: "home_win", rationale: "ok", evidence: "limited" }],
+      limitations: [],
+    });
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) {
+      expect(invalid.error.issues.some((issue) => issue.path.join(".") === "suggestions.0.rationale")).toBe(true);
+    }
+  });
+
   test("unknown betting markets, invented probability and excessive suggestions rejected", () => {
     const example = {
       summary: "Η διαθέσιμη τεκμηρίωση είναι περιορισμένη και δεν στηρίζει ασφαλή πρόβλεψη.",
