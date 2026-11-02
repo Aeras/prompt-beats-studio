@@ -125,8 +125,13 @@ export const FOOTBALL_AI_LEAGUE_IDS = FOOTBALL_AI_DISCOVERY_LEAGUES.map((x) => x
 export const FOOTBALL_PROVIDERS = [
   { id: "football-data", label: "football-data.org" },
   { id: "api-football", label: "API-Football" },
+  { id: "espn", label: "ESPN · χωρίς API key" },
 ] as const;
 export type FootballProviderId = (typeof FOOTBALL_PROVIDERS)[number]["id"];
+export const FOOTBALL_ESPN_LEAGUES = FOOTBALL_AI_DISCOVERY_LEAGUES.filter(
+  (league) => league.id !== "CH-SL",
+);
+export type FootballEspnLeagueId = (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"];
 export const FOOTBALL_DATA_LEAGUES = ["EN-PL", "ES-LL", "IT-SA", "DE-BL", "FR-L1"] as const;
 
 export type FootballLeagueId = (typeof FOOTBALL_LEAGUES)[number]["id"];
@@ -153,7 +158,7 @@ export type FootballMarket =
 export type FootballFixture = {
   source: string;
   sourceFixtureId: string;
-  leagueId: FootballLeagueId;
+  leagueId: FootballAiDiscoveryLeagueId;
   homeTeam: string;
   awayTeam: string;
   kickoffUtc: string;

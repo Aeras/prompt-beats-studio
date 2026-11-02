@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   FOOTBALL_LEAGUES,
   FOOTBALL_DATA_LEAGUES,
+  FOOTBALL_ESPN_LEAGUES,
   FOOTBALL_PROVIDERS,
 } from "@/lib/football-research.shared";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
@@ -36,31 +37,31 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
           status: model.status,
         })),
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
-      liveFixturesConfigured: Boolean(
-        process.env["API_FOOTBALL_KEY"]?.trim() || process.env["FOOTBALL_DATA_API_KEY"]?.trim(),
-      ),
+      liveFixturesConfigured: true,
       fixtureProviders: FOOTBALL_PROVIDERS.map((provider) => ({
         ...provider,
-        configured: Boolean(
-          process.env[
-            provider.id === "football-data" ? "FOOTBALL_DATA_API_KEY" : "API_FOOTBALL_KEY"
-          ]?.trim(),
-        ),
+        configured:
+          provider.id === "espn" ||
+          Boolean(
+            process.env[
+              provider.id === "football-data" ? "FOOTBALL_DATA_API_KEY" : "API_FOOTBALL_KEY"
+            ]?.trim(),
+          ),
       })),
       aiAnalysisEnabled: Boolean(
         process.env["OPENROUTER_API_KEY"]?.trim() &&
         process.env["TAVILY_API_KEY"]?.trim() &&
-        (process.env["API_FOOTBALL_KEY"]?.trim() || process.env["FOOTBALL_DATA_API_KEY"]?.trim()),
+        true,
       ),
     };
   });
 
 const weekInput = z.object({
-  fixtureProvider: z.enum(["football-data", "api-football"]).default("football-data"),
+  fixtureProvider: z.enum(["football-data", "api-football", "espn"]).default("football-data"),
   leagueId: z.enum(
-    FOOTBALL_LEAGUES.map((item) => item.id) as [
-      (typeof FOOTBALL_LEAGUES)[number]["id"],
-      ...(typeof FOOTBALL_LEAGUES)[number]["id"][],
+    FOOTBALL_ESPN_LEAGUES.map((item) => item.id) as [
+      (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"],
+      ...(typeof FOOTBALL_ESPN_LEAGUES)[number]["id"][],
     ],
   ),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -76,14 +77,27 @@ export const getPrivateFootballWeek = createServerFn({ method: "GET" })
       data.fixtureProvider === "football-data"
         ? process.env["FOOTBALL_DATA_API_KEY"]
         : process.env["API_FOOTBALL_KEY"];
-    if (!apiKey?.trim()) {
+    if (data.fixtureProvider !== "espn" && !apiKey?.trim()) {
       return { status: "not_configured" as const, fixtures: [] };
+    }
+    if (
+      data.fixtureProvider !== "espn" &&
+      !FOOTBALL_LEAGUES.some((league) => league.id === data.leagueId)
+    ) {
+      return { status: "unsupported" as const, fixtures: [] };
     }
     if (
       data.fixtureProvider === "football-data" &&
       !FOOTBALL_DATA_LEAGUES.some((league) => league === data.leagueId)
     ) {
       return { status: "unsupported" as const, fixtures: [] };
+    }
+    if (data.fixtureProvider === "espn") {
+      const { fetchEspnFootballWeek } = await import("@/lib/football-espn.server");
+      return {
+        status: "ok" as const,
+        fixtures: await fetchEspnFootballWeek(data.leagueId, data.weekDate),
+      };
     }
     const loader =
       data.fixtureProvider === "football-data"
@@ -92,7 +106,7 @@ export const getPrivateFootballWeek = createServerFn({ method: "GET" })
     return {
       status: "ok" as const,
       fixtures: await getCachedFootballWeek(
-        data.leagueId,
+        data.leagueId as (typeof FOOTBALL_LEAGUES)[number]["id"],
         data.weekDate,
         loader,
         Date.now,
