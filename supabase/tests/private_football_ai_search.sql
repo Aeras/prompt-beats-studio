@@ -81,27 +81,23 @@ BEGIN
   EXCEPTION WHEN others THEN failed := true; END;
   PERFORM pg_temp.assert(failed, 'refresh requires super admin');
 
-  -- quota: 3 per hour
-  FOR i IN 1..3 LOOP
+  -- Super Admin refresh has no hourly/daily numeric cap; journal still records every request.
+  FOR i IN 1..13 LOOP
     PERFORM public.finish_private_football_ai_fixture_refresh(
-      public.claim_private_football_ai_fixture_refresh(v,'EN-PL',current_date,'m',0.05), v, true, 0, 0, NULL);
+      public.claim_private_football_ai_fixture_refresh(v,'EN-PL',current_date,'m',0.05),
+      v, true, 0, 0, NULL);
   END LOOP;
-  failed := false;
-  BEGIN
-    PERFORM public.claim_private_football_ai_fixture_refresh(v,'EN-PL',current_date,'m',0.05);
-  EXCEPTION WHEN others THEN failed := SQLERRM LIKE '%hourly%'; END;
-  PERFORM pg_temp.assert(failed, 'fourth refresh within an hour must fail');
+  PERFORM pg_temp.assert(
+    (SELECT count(*) FROM public.private_football_ai_refresh_admissions WHERE user_id=v)=13,
+    'every unrestricted refresh still has a journal entry');
 
-  -- quota: 10 per day (age existing rows past the hour window)
-  UPDATE public.private_football_ai_refresh_admissions SET admitted_at = now() - interval '2 hours' WHERE user_id = v;
-  INSERT INTO public.private_football_ai_refresh_admissions(user_id,league_id,week_date,model_id,max_cost_usd,status,admitted_at)
-    SELECT v,'EN-PL',current_date,'m',0.05,'completed', now() - interval '3 hours' FROM generate_series(1,7);
+  -- An unfinished reservation still blocks parallel dispatch.
+  PERFORM public.claim_private_football_ai_fixture_refresh(v,'EN-PL',current_date,'m',0.05);
   failed := false;
   BEGIN
     PERFORM public.claim_private_football_ai_fixture_refresh(v,'EN-PL',current_date,'m',0.05);
-  EXCEPTION WHEN others THEN failed := SQLERRM LIKE '%daily%'; END;
-  PERFORM pg_temp.assert(failed, 'eleventh refresh within a day must fail');
-  PERFORM pg_temp.assert((public.private_football_ai_refresh_quota(v)->>'dayUsed')::int = 10, 'quota count');
+  EXCEPTION WHEN others THEN failed := SQLERRM LIKE '%already running%'; END;
+  PERFORM pg_temp.assert(failed, 'concurrent refresh must still be rejected');
 
   -- analysis admission: only verified AI fixtures
   failed := false;

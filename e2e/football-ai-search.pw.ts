@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 test.skip(!process.env["E2E_SUPER_ADMIN_STORAGE"], "needs a super-admin storage state");
 test.use({ storageState: process.env["E2E_SUPER_ADMIN_STORAGE"] ?? undefined });
 
-test("AI search shows paid-consent dialog with max cost and quota; candidates are not analyzable", async ({
+test("AI search shows single/bulk paid consent; candidates remain non-analyzable", async ({
   page,
 }) => {
   let refreshCalls = 0;
@@ -30,7 +30,17 @@ test("AI search shows paid-consent dialog with max cost and quota; candidates ar
     await refresh.click();
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toContainText("$");
-    await expect(dialog).toContainText("/3");
+    await expect(dialog).toContainText("Μέγιστο");
+    await dialog.getByRole("button", { name: "Ακύρωση" }).click();
+    expect(refreshCalls).toBe(0);
+  }
+  const refreshAll = page.getByRole("button", { name: "Ανανέωση όλων (12)" });
+  await expect(refreshAll).toBeVisible();
+  if (await refreshAll.isEnabled()) {
+    await refreshAll.click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toContainText("12");
+    await expect(dialog).toContainText("$");
     await dialog.getByRole("button", { name: "Ακύρωση" }).click();
     expect(refreshCalls).toBe(0);
   }

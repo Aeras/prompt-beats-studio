@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { FOOTBALL_AI_LEAGUE_IDS, FOOTBALL_AI_REFRESH_QUOTA } from "@/lib/football-research.shared";
+import { FOOTBALL_AI_LEAGUE_IDS } from "@/lib/football-research.shared";
 import {
   aiFixtureWeekBounds,
   validateAiFixtureBatch,
@@ -74,7 +74,7 @@ export const getPrivateAiFixtureCandidates = createServerFn({ method: "GET" })
     const { from, to } = aiFixtureWeekBounds(data.weekDate);
     const { AI_FIXTURE_MODEL } = await import("@/lib/football-ai-fixture-search.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: rows, error }, { data: quota }, maxCostUsd] = await Promise.all([
+    const [{ data: rows, error }, maxCostUsd] = await Promise.all([
       supabaseAdmin
         .from("private_football_ai_fixtures" as never)
         .select(
@@ -86,14 +86,9 @@ export const getPrivateAiFixtureCandidates = createServerFn({ method: "GET" })
         .lte("kickoff_utc", to + "T23:59:59Z")
         .order("kickoff_utc", { ascending: true })
         .limit(80),
-      supabaseAdmin.rpc(
-        "private_football_ai_refresh_quota" as never,
-        { _user_id: context.userId } as never,
-      ),
       pricingFor(AI_FIXTURE_MODEL),
     ]);
     if (error) throw new Error("AI candidate history unavailable");
-    const q = (quota ?? {}) as { hourUsed?: number; dayUsed?: number };
     const fixtures: AiFixtureRow[] = ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
       fixtureId: Number(r["fixture_id"]),
       leagueId: String(r["league_id"]),
@@ -115,10 +110,6 @@ export const getPrivateAiFixtureCandidates = createServerFn({ method: "GET" })
       model: AI_FIXTURE_MODEL,
       maxCostUsd,
       availability: aiFixtureAvailability(process.env, maxCostUsd !== null),
-      quota: {
-        hourRemaining: Math.max(0, FOOTBALL_AI_REFRESH_QUOTA.perHour - Number(q.hourUsed ?? 0)),
-        dayRemaining: Math.max(0, FOOTBALL_AI_REFRESH_QUOTA.perDay - Number(q.dayUsed ?? 0)),
-      },
     };
   });
 
