@@ -39,6 +39,10 @@ describe("AI fixture search payload", () => {
     expect(p.model).toBe(AI_FIXTURE_MODEL);
     expect(p.plugins).toEqual([{ id: "web", engine: "exa", max_results: 8 }]);
     expect(p.response_format.type).toBe("json_schema");
+    const schema = p.response_format.json_schema.schema;
+    expect("maxItems" in schema.properties.fixtures).toBe(false);
+    expect("maxItems" in schema.properties.fixtures.items.properties.sources).toBe(false);
+    expect(schema.properties.fixtures.items.properties.sources.items.type).toBe("object");
     expect(p.provider.allow_fallbacks).toBe(false);
     expect("tools" in p).toBe(false);
     expect(p.messages[1]!.content).toContain("2026-11-02 to 2026-11-08");
