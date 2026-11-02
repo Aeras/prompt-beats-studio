@@ -6,6 +6,7 @@ import {
   estimateAiFixtureMaxCostUsd,
   parseAiFixtureResponse,
   requestAiFixtureCandidates,
+  AiFixtureProviderError,
 } from "./football-ai-fixture-search.server";
 
 const ok = (body: unknown) =>
@@ -66,6 +67,24 @@ describe("AI fixture response parsing", () => {
       choices: [{ finish_reason: "length", message: { content: "{" } }],
     });
     expect(() => parseAiFixtureResponse(cut)).toThrow(/incomplete/);
+  });
+  it("classifies provider HTTP, network and malformed responses without exposing payloads", async () => {
+    const input = { leagueId: "EN-PL" as const, weekDate: "2026-11-04" };
+    const opts = (fetcher: typeof fetch) => ({
+      apiKey: "secret", model: AI_FIXTURE_MODEL, fetcher, signal: AbortSignal.timeout(1000),
+    });
+    for (const [status, kind] of [[400, "http_4xx"], [429, "http_4xx"], [502, "http_5xx"]] as const) {
+      try {
+        await requestAiFixtureCandidates(input, opts(async () => new Response("private body", { status })));
+        throw new Error("expected provider failure");
+      } catch (error) {
+        expect(error).toBeInstanceOf(AiFixtureProviderError);
+        expect((error as AiFixtureProviderError).kind).toBe(kind);
+        expect((error as Error).message).not.toContain("private body");
+      }
+    }
+    await expect(requestAiFixtureCandidates(input, opts(async () => { throw Error("private socket"); }))).rejects.toMatchObject({ kind: "network" });
+    await expect(requestAiFixtureCandidates(input, opts(async () => new Response("malformed")))).rejects.toMatchObject({ kind: "invalid_response" });
   });
   it("dispatches exactly once with manual redirects and never retries", async () => {
     const fetcher = vi.fn(async () => new Response("nope", { status: 502 }));

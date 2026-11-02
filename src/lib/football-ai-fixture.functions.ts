@@ -185,6 +185,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       );
     const { recordAiUsage } = await import("@/lib/ai-usage.server");
     const { consumeAiDispatchAdmission } = await import("@/lib/global-ai-usage.server");
+    const { AiFixtureProviderError } = search;
     let dispatched = false;
     let featurePermitted = false;
     let usageRecorded = false;
@@ -256,6 +257,12 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       return { candidatesStored: saved.stored, verified: saved.verified };
     } catch (error) {
       if (!featurePermitted || !dispatched) stage = "dispatch_admission_failed";
+      else if (error instanceof AiFixtureProviderError) {
+        stage =
+          error.kind === "http_4xx" ? "provider_http_4xx" :
+          error.kind === "http_5xx" ? "provider_http_5xx" :
+          error.kind === "network" ? "provider_network_failed" : "provider_response_invalid";
+      }
       if (dispatched && !usageRecorded) {
         await recordAiUsage({
           executionId: admissionId,
@@ -269,8 +276,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         }).catch(() => {});
       }
       await Promise.resolve(finish(false, null, null, stage)).catch(() => {});
-      const statusMatch =
-        error instanceof Error ? /unavailable \((\d{3})\)/.exec(error.message) : null;
+      const httpStatus = error instanceof AiFixtureProviderError ? error.httpStatus : null;
       console.error("football_ai_fixture_refresh_failed", {
         stage: "post_admission",
         code: stage,
@@ -279,7 +285,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         admissionId,
         elapsedMs: Date.now() - startedAt,
         name: error instanceof Error ? error.name : "unknown",
-        ...(statusMatch ? { httpStatus: Number(statusMatch[1]) } : {}),
+        ...(httpStatus !== null ? { httpStatus } : {}),
       });
       throw new Error(aiFixtureErrorMessage(stage));
     }

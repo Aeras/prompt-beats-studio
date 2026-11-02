@@ -50,6 +50,22 @@ const TEXT: Record<AiFixtureErrorCode, Record<Lang, string>> = {
     el: "Η ανανέωση δεν ξεκίνησε προσωρινά.",
     en: "The refresh could not start right now.",
   },
+  provider_http_4xx: {
+    el: "Ο πάροχος AI απέρριψε το αίτημα (HTTP 4xx).",
+    en: "The AI provider rejected the request (HTTP 4xx).",
+  },
+  provider_http_5xx: {
+    el: "Ο πάροχος AI παρουσίασε σφάλμα διακομιστή (HTTP 5xx).",
+    en: "The AI provider returned a server error (HTTP 5xx).",
+  },
+  provider_network_failed: {
+    el: "Η σύνδεση με τον πάροχο AI απέτυχε ή έληξε το χρονικό όριο.",
+    en: "Connection to the AI provider failed or timed out.",
+  },
+  provider_response_invalid: {
+    el: "Η τεχνική απόκριση του παρόχου AI δεν ήταν έγκυρη.",
+    en: "The AI provider response was not valid.",
+  },
   provider_failed: {
     el: "Ο πάροχος AI δεν απάντησε σωστά.",
     en: "The AI provider did not respond successfully.",
