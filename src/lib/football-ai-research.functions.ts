@@ -138,9 +138,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
         const common = `${fixture.homeTeam} vs ${fixture.awayTeam} ${kickoffDay}`;
         const queries = [
-          `${common} football match preview recent form injuries team news English sources`,
-          `${common} футбол прогноз форма команд травмы новости анализ матча`,
-          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview latest news tactical form`,
+          `${common} league table points standings recent form last five home away xG injuries expected lineups fixture congestion European rotation`,
+          `${common} футбол прогноз ставки коэффициенты анализ форма травмы составы`,
+          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview expert predictions odds tactical team news`,
         ];
         const sources: { title: string; url: string; accessedAt: string; excerpt: string }[] = [];
         for (const query of queries) {
