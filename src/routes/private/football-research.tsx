@@ -695,8 +695,7 @@ function PrivateFootballResearchPage() {
                                   <>
                                     <p>
                                       Εμπιστοσύνη: {entry.expertReview.decision.primary.confidence}{" "}
-                                        εκτίμηση: {entry.expertReview.decision.primary.percent ?? "—"}
-                                      %
+                                        εκτίμηση: {entry.expertReview.decision.primary.percent ?? "—"}%
                                     </p>
                                     <p>
                                       Κύριος κίνδυνος:{" "}
