@@ -57,7 +57,9 @@ describe("private football AI contracts", () => {
     });
     expect(invalid.success).toBe(false);
     if (!invalid.success) {
-      expect(invalid.error.issues.some((issue) => issue.path.join(".") === "suggestions.0.rationale")).toBe(true);
+      expect(
+        invalid.error.issues.some((issue) => issue.path.join(".") === "suggestions.0.rationale"),
+      ).toBe(true);
     }
   });
 
