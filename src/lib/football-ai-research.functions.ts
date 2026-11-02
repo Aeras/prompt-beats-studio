@@ -355,6 +355,18 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         evidence_cutoff_at: row.evidence_cutoff_at,
         status: row.status,
         analysis: checked.success ? checked.data : null,
+        sources: Array.isArray(row.sources)
+          ? row.sources.filter((source): source is Record<string, unknown> =>
+              !!source && typeof source === "object" && !Array.isArray(source),
+            ).map((source) => ({
+              title: String(source["title"] ?? "").slice(0, 180),
+              url: String(source["url"] ?? "").slice(0, 2000),
+              accessedAt: String(source["accessedAt"] ?? "").slice(0, 40),
+              researchIntent: source["researchIntent"] === "external_forecasts"
+                ? "external_forecasts" as const
+                : "match_facts" as const,
+            })).filter((source) => source.url.startsWith("https://"))
+          : [],
         outcomes,
       };
     });

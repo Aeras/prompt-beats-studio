@@ -643,6 +643,28 @@ function PrivateFootballResearchPage() {
                               </p>
                             )}
                           </section>
+                          {entry.sources.length > 0 && (
+                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                              <summary className="cursor-pointer font-semibold text-white">
+                                Πηγές έρευνας ({entry.sources.length})
+                              </summary>
+                              <p className="mt-2 text-xs text-slate-400">
+                                Τα δημοσιεύματα αποτελούν ερευνητικό υλικό, όχι αυτόματα επαληθευμένα γεγονότα.
+                              </p>
+                              <ul className="mt-2 space-y-2 text-sm">
+                                {entry.sources.map((source, index) => (
+                                  <li key={`${source.url}-${index}`}>
+                                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="break-all text-cyan-300 underline">
+                                      {source.title || source.url}
+                                    </a>
+                                    <span className="ml-2 text-xs text-slate-400">
+                                      {source.researchIntent === "external_forecasts" ? "Εξωτερική εκτίμηση" : "Στοιχεία αγώνα"}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
                           <div className="rounded-xl bg-cyan-400/5 p-4">
                             <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
                             <p className="line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-200">
