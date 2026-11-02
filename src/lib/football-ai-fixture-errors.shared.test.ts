@@ -73,12 +73,21 @@ describe("AI fixture failure codes", () => {
     ] as const)
       expect(aiFixtureCodeCountsTowardQuota(c)).toBe(false);
     for (const c of [
+      "dispatch_admission_failed",
       "provider_failed",
       "invalid_ai_output",
       "corroboration_failed",
       "persistence_failed",
     ] as const)
       expect(aiFixtureCodeCountsTowardQuota(c)).toBe(true);
+  });
+
+  it("post-SQL-admission dispatch denial is recorded as counted, not provider failure", () => {
+    expect(aiFixtureCodeCountsTowardQuota("dispatch_admission_failed")).toBe(true);
+    expect(aiFixtureFailureText("dispatch_admission_failed", "el")).toContain("μετράει στο όριο");
+    expect(
+      parseAiFixtureErrorCode(new Error(aiFixtureErrorMessage("dispatch_admission_failed"))),
+    ).toBe("dispatch_admission_failed");
   });
 
   it("round-trips through the error message and rejects unknown codes", () => {
