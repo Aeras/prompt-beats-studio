@@ -7,6 +7,14 @@ import {
   validateAiFixtureBatch,
 } from "@/lib/football-ai-fixture-validation.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
+import {
+  aiFixtureAvailability,
+  aiFixtureErrorMessage,
+  aiFixtureGateCode,
+  mapAdmissionRpcError,
+  type AiFixturePostAdmissionCode,
+  type AiFixturePreAdmissionCode,
+} from "@/lib/football-ai-fixture-errors.shared";
 
 const leagueWeek = z
   .object({
@@ -106,6 +114,7 @@ export const getPrivateAiFixtureCandidates = createServerFn({ method: "GET" })
       fixtures,
       model: AI_FIXTURE_MODEL,
       maxCostUsd,
+      availability: aiFixtureAvailability(process.env, maxCostUsd !== null),
       quota: {
         hourRemaining: Math.max(0, FOOTBALL_AI_REFRESH_QUOTA.perHour - Number(q.hourUsed ?? 0)),
         dayRemaining: Math.max(0, FOOTBALL_AI_REFRESH_QUOTA.perDay - Number(q.dayUsed ?? 0)),
@@ -119,20 +128,29 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
   .inputValidator((raw: unknown) => refreshInput.parse(raw))
   .handler(async ({ context, data }) => {
     await requireSuperAdmin(context.supabase as never);
-    if (process.env["PROMPTBEATS_AI_FIXTURE_BETA_ENABLED"] !== "true")
-      throw new Error("AI fixture discovery remains disabled by operator");
-    if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true")
-      throw new Error("AI dispatch disabled");
-    if (process.env["PROMPTBEATS_AI_FIXTURE_BETA_SPEND_APPROVED"] !== "true")
-      throw new Error("AI fixture paid refresh has not been approved by operator");
-    const key = process.env["OPENROUTER_API_KEY"]?.trim();
-    if (!key) throw new Error("OpenRouter unavailable");
+    const startedAt = Date.now();
+    const preFail = (code: AiFixturePreAdmissionCode, extra: Record<string, unknown> = {}) => {
+      console.info("football_ai_fixture_refresh_rejected", {
+        stage: "pre_admission",
+        code,
+        dispatched: false,
+        elapsedMs: Date.now() - startedAt,
+        ...extra,
+      });
+      return new Error(aiFixtureErrorMessage(code));
+    };
     const search = await import("@/lib/football-ai-fixture-search.server");
-    const maxCost = await pricingFor(search.AI_FIXTURE_MODEL);
-    if (maxCost === null)
-      throw new Error("AI fixture model is not installed with verified pricing");
-    if (Math.abs(maxCost - data.consent.estimatedMaxUsd) > 1e-9)
-      throw new Error("Cost estimate changed; review and confirm again");
+    const gate = aiFixtureGateCode(aiFixtureAvailability(process.env, true));
+    if (gate) throw preFail(gate);
+    const key = process.env["OPENROUTER_API_KEY"]!.trim();
+    let maxCost: number | null;
+    try {
+      maxCost = await pricingFor(search.AI_FIXTURE_MODEL);
+    } catch {
+      throw preFail("model_pricing_unavailable");
+    }
+    if (maxCost === null) throw preFail("model_pricing_unavailable");
+    if (Math.abs(maxCost - data.consent.estimatedMaxUsd) > 1e-9) throw preFail("cost_changed");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: admissionId, error: admissionError } = await supabaseAdmin.rpc(
@@ -146,7 +164,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       } as never,
     );
     if (admissionError || typeof admissionId !== "string")
-      throw new Error("AI fixture refresh limit reached or unavailable");
+      throw preFail(mapAdmissionRpcError((admissionError as { message?: string } | null)?.message));
 
     const finish = (
       ok: boolean,
@@ -169,6 +187,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
     const { aiProviderFetch } = await import("@/lib/global-ai-usage.server");
     let dispatched = false;
     let usageRecorded = false;
+    let stage: AiFixturePostAdmissionCode = "provider_failed";
     try {
       const result = await withFeatureAiDispatchAdmission(
         context.userId,
@@ -196,12 +215,14 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         success: true,
       });
       usageRecorded = true;
+      stage = "invalid_ai_output";
       const candidates = validateAiFixtureBatch(
         result.content,
         data.leagueId,
         data.weekDate,
         new Date(),
       );
+      stage = "corroboration_failed";
       const { corroborateAiFixture, MAX_FETCHES_PER_REFRESH } =
         await import("@/lib/football-ai-fixture-corroboration.server");
       const budget = { remaining: MAX_FETCHES_PER_REFRESH };
@@ -210,6 +231,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         const ok = await corroborateAiFixture(fixture, result.citations, fetch, budget);
         if (ok) corroborated.push(ok);
       }
+      stage = "persistence_failed";
       const { saveAiFixtureCandidates } =
         await import("@/lib/football-ai-fixture-persistence.server");
       const saved = await saveAiFixtureCandidates(
@@ -219,6 +241,13 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         corroborated,
       );
       await finish(true, saved.stored, saved.verified, null);
+      console.info("football_ai_fixture_refresh_completed", {
+        admissionId,
+        dispatched,
+        elapsedMs: Date.now() - startedAt,
+        stored: saved.stored,
+        verified: saved.verified,
+      });
       return { candidatesStored: saved.stored, verified: saved.verified };
     } catch (error) {
       if (dispatched && !usageRecorded) {
@@ -233,16 +262,18 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
           success: false,
         }).catch(() => {});
       }
-      await finish(
-        false,
-        null,
-        null,
-        dispatched ? "provider_or_corroboration_failed" : "admission_failed",
-      );
+      await Promise.resolve(finish(false, null, null, stage)).catch(() => {});
+      const statusMatch =
+        error instanceof Error ? /unavailable \((\d{3})\)/.exec(error.message) : null;
       console.error("football_ai_fixture_refresh_failed", {
+        stage: "post_admission",
+        code: stage,
         dispatched,
+        admissionId,
+        elapsedMs: Date.now() - startedAt,
         name: error instanceof Error ? error.name : "unknown",
+        ...(statusMatch ? { httpStatus: Number(statusMatch[1]) } : {}),
       });
-      throw new Error("AI fixture refresh failed; the attempt counts toward your quota.");
+      throw new Error(aiFixtureErrorMessage(stage));
     }
   });
