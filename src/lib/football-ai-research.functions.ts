@@ -12,6 +12,7 @@ import {
   footballResearchEvidenceSnapshotSchema,
   footballAnalysisRequestSchema,
   validateFootballMarketProbabilities,
+  filterResearchContextUrls,
 } from "@/lib/football-ai-research.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
 
@@ -216,7 +217,12 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         } catch {
           throw new Error("AI response was not valid JSON.");
         }
-        const assessment = footballAiAssessmentSchema.parse(raw);
+        const parsedAssessment = footballAiAssessmentSchema.parse(raw);
+        const assessment = parsedAssessment.matchContext
+          ? { ...parsedAssessment,
+              matchContext: filterResearchContextUrls(parsedAssessment.matchContext,
+                evidenceSnapshot.map((item) => item.url)), }
+          : parsedAssessment;
         const issues = validateFootballMarketProbabilities(assessment);
         if (issues.length) throw new Error("AI market probabilities are inconsistent.");
         const savedSources = evidenceSnapshot;
