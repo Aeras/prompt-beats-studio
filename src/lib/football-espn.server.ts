@@ -43,7 +43,7 @@ const event = z.object({
     completed: z.boolean().optional(),
   }) }).optional(),
 });
-const scoreboard = z.object({ events: z.array(event).max(200).default([]) });
+const scoreboard = z.object({ events: z.array(z.unknown()).max(200).default([]) });
 const cache = new Map<string, { expiresAt: number; fixtures: FootballFixture[] }>();
 const inFlight = new Map<string, Promise<FootballFixture[]>>();
 
@@ -56,7 +56,10 @@ export function parseEspnScoreboard(
 ): FootballFixture[] {
   const parsed = scoreboard.parse(body);
   const results: FootballFixture[] = [];
-  for (const item of parsed.events) {
+  for (const raw of parsed.events) {
+    const checked = event.safeParse(raw);
+    if (!checked.success) continue;
+    const item = checked.data;
     const match = item.competitions[0];
     const home = match?.competitors.find((c) => c.homeAway === "home");
     const away = match?.competitors.find((c) => c.homeAway === "away");
@@ -111,8 +114,11 @@ export async function fetchEspnFootballWeek(
     if (pending) return (await pending).map((f) => ({ ...f }));
   }
   const run = async () => {
-    const results: FootballFixture[] = [];
+    const days: number[] = [];
     for (let d = Date.parse(from + "T00:00:00Z"); d <= Date.parse(to + "T00:00:00Z"); d += 86400000) {
+      days.push(d);
+    }
+    const retrieve = async (d: number): Promise<FootballFixture[]> => {
       const day = new Date(d).toISOString().slice(0, 10).replaceAll("-", "");
       const url = new URL("https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard");
       url.searchParams.set("dates", day);
@@ -128,7 +134,13 @@ export async function fetchEspnFootballWeek(
       }
       const text = await response.text();
       if (text.length > 800000) throw new Error("ESPN response too large");
-      results.push(...parseEspnScoreboard(JSON.parse(text), leagueId, from, to, new Date(now()).toISOString()));
+      return parseEspnScoreboard(JSON.parse(text), leagueId, from, to, new Date(now()).toISOString());
+    };
+    // At most two outstanding ESPN HTTP requests at once.
+    const results: FootballFixture[] = [];
+    for (let i = 0; i < days.length; i += 2) {
+      const batch = await Promise.all(days.slice(i, i + 2).map(retrieve));
+      for (const fixtures of batch) results.push(...fixtures);
     }
     const fixtures = [...new Map(results.map((f) => [f.sourceFixtureId, f])).values()]
       .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));

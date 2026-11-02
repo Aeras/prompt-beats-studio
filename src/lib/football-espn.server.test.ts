@@ -30,7 +30,7 @@ describe("ESPN football schedule adapter", () => {
   });
   test("filters dates and rejects malformed payload", () => {
     expect(parseEspnScoreboard(fixture, "EN-PL", "2026-11-08", "2026-11-14", "2026-11-02T10:00:00Z")).toEqual([]);
-    expect(() => parseEspnScoreboard({ events: [{ id: "x" }] }, "EN-PL", "2026-11-02", "2026-11-08", "2026-11-02T10:00:00Z")).toThrow();
+    expect(parseEspnScoreboard({ events: [{ id: "x" }] }, "EN-PL", "2026-11-02", "2026-11-08", "2026-11-02T10:00:00Z")).toEqual([]);
   });
   test("requests each day once without an AI key", async () => {
     const urls: string[] = [];
