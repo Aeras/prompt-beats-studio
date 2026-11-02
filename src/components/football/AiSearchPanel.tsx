@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,7 +16,7 @@ import {
   getPrivateAiFixtureCandidates,
   refreshPrivateAiFixtureCandidates,
 } from "@/lib/football-ai-fixture.functions";
-import type { FootballAiDiscoveryLeagueId } from "@/lib/football-research.shared";
+import { FOOTBALL_AI_DISCOVERY_LEAGUES, type FootballAiDiscoveryLeagueId } from "@/lib/football-research.shared";
 import {
   aiFixtureGateCode,
   parseAiFixtureErrorCode,
@@ -29,10 +29,12 @@ const COPY = {
     note: "Η AI προτείνει αγώνες· ο server τους επαληθεύει ανεξάρτητα. «Επαληθευμένο» σημαίνει ότι τουλάχιστον 2 διαφορετικοί ιστότοποι επιβεβαιώνουν την ακριβή ώρα έναρξης (UTC). Ανάλυση μόνο για επαληθευμένους.",
     refresh: "Ανανέωση αγώνων (AI BETA)",
     refreshing: "Αναζήτηση…",
-    quota: (h: number, d: number) => `Υπόλοιπο: ${h}/3 ανά ώρα · ${d}/10 ανά ημέρα`,
+    all: "Ανανέωση όλων (12)",
+    stop: "Διακοπή μετά την τρέχουσα",
+    progress: (done: number, total: number) => `Ανανέωση ${done}/${total} πρωταθλημάτων`,
     dialogTitle: "Χρεώσιμη αναζήτηση AI",
-    dialogBody: (model: string, cost: string, h: number, d: number) =>
-      `Θα γίνει μία κλήση στο ${model} με αναζήτηση στο web μέσω OpenRouter. Μέγιστο εκτιμώμενο κόστος: $${cost}. Η προσπάθεια μετράει στο όριο ακόμη κι αν αποτύχει. Υπόλοιπο μετά: ${Math.max(0, h - 1)}/3 ανά ώρα, ${Math.max(0, d - 1)}/10 ανά ημέρα.`,
+    dialogBody: (model: string, cost: string, total: number) =>
+      `Θα γίνουν έως ${total} χρεώσιμες αναζητήσεις στο ${model} μέσω OpenRouter. Συνολικό μέγιστο εκτιμώμενο κόστος: ${cost}. Οι αναζητήσεις εκτελούνται μία-μία και δεν επαναλαμβάνονται αυτόματα.`,
     cancel: "Ακύρωση",
     confirm: "Επιβεβαίωση",
     verified: "Επαληθευμένο",
@@ -50,10 +52,12 @@ const COPY = {
     note: "AI proposes fixtures; the server verifies them independently. “Verified” means at least 2 different websites confirm the exact kickoff time (UTC). Analysis only for verified fixtures.",
     refresh: "Refresh fixtures (AI BETA)",
     refreshing: "Searching…",
-    quota: (h: number, d: number) => `Remaining: ${h}/3 per hour · ${d}/10 per day`,
+    all: "Refresh all (12)",
+    stop: "Stop after current",
+    progress: (done: number, total: number) => `Refreshed ${done}/${total} competitions`,
     dialogTitle: "Paid AI search",
-    dialogBody: (model: string, cost: string, h: number, d: number) =>
-      `One call to ${model} with web search via OpenRouter. Maximum estimated cost: $${cost}. The attempt counts toward your limit even if it fails. Remaining after: ${Math.max(0, h - 1)}/3 per hour, ${Math.max(0, d - 1)}/10 per day.`,
+    dialogBody: (model: string, cost: string, total: number) =>
+      `Up to ${total} paid web searches using ${model} through OpenRouter. Total estimated maximum: ${cost}. Calls run sequentially without automatic retries.`,
     cancel: "Cancel",
     confirm: "Confirm",
     verified: "Verified",
@@ -80,6 +84,9 @@ export function AiSearchPanel(props: {
   const c = language === "el" ? COPY.el : COPY.en;
   const [open, setOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [allMode, setAllMode] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const stopRequested = useRef(false);
   const [error, setError] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const query = useQuery({
@@ -92,31 +99,45 @@ export function AiSearchPanel(props: {
     retry: false,
   });
   const d = query.data;
-  const quotaLeft = d ? Math.min(d.quota.hourRemaining, d.quota.dayRemaining) : 0;
   const gateCode = d ? aiFixtureGateCode(d.availability) : null;
   const refreshDisabled =
     refreshing ||
     props.working ||
     !d ||
     d.maxCostUsd === null ||
-    gateCode !== null ||
-    quotaLeft <= 0;
+    gateCode !== null;
 
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
+    const leagues = allMode
+      ? FOOTBALL_AI_DISCOVERY_LEAGUES.map((item) => item.id)
+      : [props.leagueId];
     setOpen(false);
     setRefreshing(true);
+    setProgress({ done: 0, total: leagues.length });
+    stopRequested.current = false;
     setError("");
+    const errors: string[] = [];
     try {
-      await refreshPrivateAiFixtureCandidates({
-        data: {
-          leagueId: props.leagueId,
-          weekDate: props.weekDate,
-          consent: { acknowledged: true, estimatedMaxUsd: d.maxCostUsd },
-        },
-      });
-    } catch (err) {
-      setError(aiFixtureFailureText(parseAiFixtureErrorCode(err), language === "el" ? "el" : "en"));
+      for (let index = 0; index < leagues.length; index++) {
+        if (stopRequested.current) break;
+        try {
+          await refreshPrivateAiFixtureCandidates({
+            data: {
+              leagueId: leagues[index]!,
+              weekDate: props.weekDate,
+              consent: { acknowledged: true, estimatedMaxUsd: d.maxCostUsd },
+            },
+          });
+        } catch (err) {
+          errors.push(
+            leagues[index]! + ": " +
+            aiFixtureFailureText(parseAiFixtureErrorCode(err), language === "el" ? "el" : "en"),
+          );
+        }
+        setProgress({ done: index + 1, total: leagues.length });
+      }
+      if (errors.length) setError(errors.join(" · "));
     } finally {
       setRefreshing(false);
       await query.refetch();
@@ -138,15 +159,29 @@ export function AiSearchPanel(props: {
         <button
           type="button"
           disabled={refreshDisabled}
-          onClick={() => setOpen(true)}
+          onClick={() => { setAllMode(false); setOpen(true); }}
           className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
         >
           {refreshing ? c.refreshing : c.refresh}
         </button>
-        {d && (
-          <span className="text-xs text-slate-300">
-            {c.quota(d.quota.hourRemaining, d.quota.dayRemaining)}
-          </span>
+        <button
+          type="button"
+          disabled={refreshDisabled}
+          onClick={() => { setAllMode(true); setOpen(true); }}
+          className="rounded-xl border border-cyan-400/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-40"
+        >
+          {c.all}
+        </button>
+        {refreshing && (
+          <>
+            <span role="status" className="text-xs text-slate-300">
+              {c.progress(progress.done, progress.total)}
+            </span>
+            {progress.total > 1 && (
+              <button type="button" onClick={() => { stopRequested.current = true; }}
+                className="text-xs font-semibold text-amber-300">{c.stop}</button>
+            )}
+          </>
         )}
         {gateCode && (
           <span className="text-xs text-amber-300">
@@ -224,9 +259,8 @@ export function AiSearchPanel(props: {
               {d && d.maxCostUsd !== null
                 ? c.dialogBody(
                     d.model,
-                    d.maxCostUsd.toFixed(3),
-                    d.quota.hourRemaining,
-                    d.quota.dayRemaining,
+                    (d.maxCostUsd * (allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1)).toFixed(3),
+                    allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1,
                   )
                 : ""}
             </AlertDialogDescription>
