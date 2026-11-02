@@ -38,6 +38,8 @@ export const aiFixtureBatchSchema = z
   .object({ fixtures: z.array(proposedFixture).max(80) })
   .strict();
 
+/** Gemini constrained decoding can reject nested maxItems with HTTP 400.
+ * Keep both limits in the independent Zod post-response validator above. */
 /** JSON schema sent to OpenRouter as `response_format` (structured output). */
 export const AI_FIXTURE_JSON_SCHEMA = {
   name: "football_fixture_candidates",
@@ -49,7 +51,6 @@ export const AI_FIXTURE_JSON_SCHEMA = {
     properties: {
       fixtures: {
         type: "array",
-        maxItems: 80,
         items: {
           type: "object",
           additionalProperties: false,
@@ -61,7 +62,6 @@ export const AI_FIXTURE_JSON_SCHEMA = {
             kickoffUtc: { type: "string", description: "ISO 8601 with Z or offset" },
             sources: {
               type: "array",
-              maxItems: 8,
               items: {
                 type: "object",
                 additionalProperties: false,
