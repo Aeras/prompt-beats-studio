@@ -9,6 +9,7 @@ import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
   footballAnalysisRequestSchema,
+  validateFootballMarketProbabilities,
 } from "@/lib/football-ai-research.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
 
@@ -139,9 +140,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
         const common = `${fixture.homeTeam} vs ${fixture.awayTeam} ${kickoffDay}`;
         const queries = [
-          `${common} football match preview recent form injuries team news English sources`,
-          `${common} футбол прогноз форма команд травмы новости анализ матча`,
-          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview latest news tactical form`,
+          `${common} league table points standings recent form last five home away xG injuries expected lineups fixture congestion European rotation`,
+          `${common} футбол прогноз ставки коэффициенты анализ форма травмы составы`,
+          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview expert predictions odds tactical team news`,
         ];
         const sources: FootballSourceSnapshot[] = [];
         for (const [queryIndex, query] of queries.entries()) {
@@ -214,6 +215,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("AI response was not valid JSON.");
         }
         const assessment = footballAiAssessmentSchema.parse(raw);
+        const issues = validateFootballMarketProbabilities(assessment);
+        if (issues.length) throw new Error("AI market probabilities are inconsistent.");
         const savedSources = evidenceSnapshot;
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
