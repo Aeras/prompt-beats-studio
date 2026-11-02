@@ -259,9 +259,13 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       if (!featurePermitted || !dispatched) stage = "dispatch_admission_failed";
       else if (error instanceof AiFixtureProviderError) {
         stage =
-          error.kind === "http_4xx" ? "provider_http_4xx" :
-          error.kind === "http_5xx" ? "provider_http_5xx" :
-          error.kind === "network" ? "provider_network_failed" : "provider_response_invalid";
+          error.kind === "http_4xx"
+            ? "provider_http_4xx"
+            : error.kind === "http_5xx"
+              ? "provider_http_5xx"
+              : error.kind === "network"
+                ? "provider_network_failed"
+                : "provider_response_invalid";
       }
       if (dispatched && !usageRecorded) {
         await recordAiUsage({

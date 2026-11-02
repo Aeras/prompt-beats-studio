@@ -186,18 +186,21 @@ export async function requestAiFixtureCandidates(
   let response: Response;
   try {
     response = await options.fetcher(API_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify(buildAiFixtureSearchPayload(input, options.model)),
-    signal: options.signal,
-    redirect: "manual",
+      method: "POST",
+      headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(buildAiFixtureSearchPayload(input, options.model)),
+      signal: options.signal,
+      redirect: "manual",
     });
   } catch {
     throw new AiFixtureProviderError("network");
   }
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
-    throw new AiFixtureProviderError(response.status >= 500 ? "http_5xx" : "http_4xx", response.status);
+    throw new AiFixtureProviderError(
+      response.status >= 500 ? "http_5xx" : "http_4xx",
+      response.status,
+    );
   }
   if (Number(response.headers.get("content-length") ?? "0") > MAX_RESPONSE_BYTES) {
     await response.body?.cancel().catch(() => {});
