@@ -8,6 +8,7 @@ import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research
 import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
+  footballResearchEvidenceSnapshotSchema,
   footballAnalysisRequestSchema,
   validateFootballMarketProbabilities,
 } from "@/lib/football-ai-research.shared";
@@ -218,12 +219,19 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const issues = validateFootballMarketProbabilities(assessment);
         if (issues.length) throw new Error("AI market probabilities are inconsistent.");
         const savedSources = evidenceSnapshot;
+        const researchBrief = footballResearchEvidenceSnapshotSchema.parse({
+          collectedAtUtc: evidenceCutoff,
+          matchFacts: evidenceSnapshot.filter((x) => x.researchIntent === "match_facts"),
+          externalForecasts: evidenceSnapshot.filter((x) => x.researchIntent === "external_forecasts"),
+          evidenceStatus: "unverified_source_extracts",
+        });
+        const savedAnalysis = footballAiAssessmentSchema.parse({ ...assessment, researchBrief });
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
           .update({
             status: "completed",
-            analysis: assessment,
+            analysis: savedAnalysis,
             sources: savedSources,
             usage: receipt.usage,
             completed_at: completedAt,
@@ -236,7 +244,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           id: runId,
           fixture,
           modelId: resolved.model,
-          analysis: assessment,
+          analysis: savedAnalysis,
           sources: savedSources,
           completedAt,
         };

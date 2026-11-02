@@ -1,10 +1,27 @@
 import { z } from "zod";
 import { FOOTBALL_AI_LEAGUE_IDS } from "./football-research.shared";
 
+const footballSourceReferenceSchema = z.object({
+  title: z.string().max(180),
+  url: z.string().url().max(2000),
+  accessedAt: z.string().datetime(),
+  excerpt: z.string().max(650),
+  researchIntent: z.enum(["match_facts", "external_forecasts"]),
+}).strict();
+
+/** Research extracts are source claims, not independently verified match facts. */
+export const footballResearchEvidenceSnapshotSchema = z.object({
+  collectedAtUtc: z.string().datetime(),
+  matchFacts: z.array(footballSourceReferenceSchema).max(18),
+  externalForecasts: z.array(footballSourceReferenceSchema).max(18),
+  evidenceStatus: z.literal("unverified_source_extracts"),
+}).strict().refine((v) => v.matchFacts.length + v.externalForecasts.length <= 18);
+
 /** Subjective, explicitly labelled AI estimates. Historical qualitative results remain valid. */
 export const footballAiAssessmentSchema = z
   .object({
     summary: z.string().trim().min(20).max(3500),
+    researchBrief: footballResearchEvidenceSnapshotSchema.optional(),
     estimates: z
       .array(
         z
