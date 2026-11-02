@@ -712,6 +712,29 @@ function PrivateFootballResearchPage() {
                             )}
                             {expertError && expertBusy === null && <p className="mt-2 text-xs text-rose-300" role="alert">{expertError}</p>}
                           </section>
+                          {entry.analysis.matchContext && (
+                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                              <summary className="cursor-pointer font-semibold text-white">
+                                Δεδομένα αγώνα · βαθμολογία, φόρμα, κίνητρο και απουσίες
+                              </summary>
+                              <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                                {entry.analysis.matchContext.claims.map((claim, index) => (
+                                  <li key={index}>
+                                    <strong>{claim.category}:</strong> {claim.claim}
+                                    <a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer"
+                                      className="ml-2 text-cyan-300 underline">Πηγή</a>
+                                    {claim.status === "scenario" && <span className="ml-2 text-amber-200">(σενάριο)</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                              {entry.analysis.matchContext.missing.length > 0 && (
+                                <p className="mt-2 text-xs text-amber-100">Ελλείψεις: {entry.analysis.matchContext.missing.join(" · ")}</p>
+                              )}
+                              {entry.analysis.matchContext.conflicts.length > 0 && (
+                                <p className="mt-2 text-xs text-amber-100">Αντικρουόμενα: {entry.analysis.matchContext.conflicts.join(" · ")}</p>
+                              )}
+                            </details>
+                          )}
                           <div className="rounded-xl bg-cyan-400/5 p-4">
                             <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
                             <p className="line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-200">

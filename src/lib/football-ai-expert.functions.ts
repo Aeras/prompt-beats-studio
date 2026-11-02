@@ -69,6 +69,7 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
           system: FOOTBALL_EXPERT_ANALYST_SYSTEM,
           prompt: JSON.stringify({
             researchBrief: assessment.researchBrief,
+            matchContext: assessment.matchContext ?? null,
             baseAssessment: { summary: assessment.summary, estimates: assessment.estimates,
               suggestions: assessment.suggestions, limitations: assessment.limitations },
           }),
