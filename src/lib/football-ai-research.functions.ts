@@ -8,7 +8,11 @@ import {
   buildFootballSourceSnapshot,
   type FootballSourceSnapshot,
 } from "@/lib/football-ai-source-snapshot.shared";
-import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research.shared";
+import {
+  FOOTBALL_LEAGUES,
+  FOOTBALL_ESPN_LEAGUES,
+  type FootballLeagueId,
+} from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
@@ -93,24 +97,31 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         throw new Error("Only verified upcoming fixtures can be analyzed.");
       }
     } else {
-      if (!(FOOTBALL_LEAGUES as readonly { id: string }[]).some((l) => l.id === data.leagueId)) {
+      if (
+        !(data.fixtureProvider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES).some(
+          (league) => league.id === data.leagueId,
+        )
+      ) {
         throw new Error("Unsupported competition for this provider.");
       }
       const legacyLeague = data.leagueId as FootballLeagueId;
       if (data.fixtureProvider === "football-data" && legacyLeague === "GR-SL") {
         throw new Error("Greek Super League is unavailable on football-data.org Free.");
       }
-      const loader =
-        data.fixtureProvider === "football-data"
-          ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
-          : (await import("@/lib/football-fixtures.server")).fetchFootballWeek;
-      const fixtures = await getCachedFootballWeek(
-        legacyLeague,
-        data.weekDate,
-        loader,
-        Date.now,
-        data.fixtureProvider,
-      );
+      const fixtures =
+        data.fixtureProvider === "espn"
+          ? await (
+              await import("@/lib/football-espn.server")
+            ).fetchEspnFootballWeek(data.leagueId, data.weekDate)
+          : await getCachedFootballWeek(
+              legacyLeague,
+              data.weekDate,
+              data.fixtureProvider === "football-data"
+                ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+                : (await import("@/lib/football-fixtures.server")).fetchFootballWeek,
+              Date.now,
+              data.fixtureProvider,
+            );
       const legacy = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
       if (!legacy || legacy.state !== "scheduled" || Date.parse(legacy.kickoffUtc) <= Date.now()) {
         throw new Error("Only verified upcoming fixtures can be analyzed.");

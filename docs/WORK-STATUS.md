@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-02 — ESPN independent fixture provider (11 competitions) — IN_PROGRESS
+
+- **Base:** main `d1545c23` after PR #489; ESPN provider adapter, fixtures UI, separate cached source, existing AI research admission plus additive SQL compatibility for 11 leagues. Existing AI Search BETA remains untouched.
+- **Safety:** No paid AI for fetching fixture list, Super Admin server guard retained, paid Tavily/OpenRouter analysis still explicitly consented, no duplicate provider dispatch. ESPN endpoints are unofficial and live runtime availability must be verified before release.
+- **Release:** Code candidate only; local tests, 3 CI gates, approved production migration, Lovable publish and authenticated smoke test still required. No production changes.
+
 ## 2026-11-02 — Football Research Studio: staged evidence + experimental analyst — IN_PROGRESS
 
 - **Implementation candidate:** based on main `e0351a4a198cdd8103bde207372051584d2b3094`; separate prepared Git objects up to candidate HEAD `205eba44fa0d1dbd0931ee2bbc1e6dfd5cf20710` (not released).

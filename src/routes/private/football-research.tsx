@@ -12,6 +12,7 @@ import { AiSearchPanel } from "@/components/football/AiSearchPanel";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
   FOOTBALL_LEAGUES,
+  FOOTBALL_ESPN_LEAGUES,
   FOOTBALL_PROVIDERS,
   type FootballAiDiscoveryLeagueId,
   FOOTBALL_DATA_LEAGUES,
@@ -304,7 +305,13 @@ function PrivateFootballResearchPage() {
                   setProvider(v);
                   setSelected([]);
                   if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
-                  if (v !== "ai-search" && !FOOTBALL_LEAGUES.some((x) => x.id === league))
+                  if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
+                    setLeague("EN-PL");
+                  if (
+                    v !== "ai-search" &&
+                    v !== "espn" &&
+                    !FOOTBALL_LEAGUES.some((x) => x.id === league)
+                  )
                     setLeague("EN-PL");
                 }}
               >
@@ -334,7 +341,7 @@ function PrivateFootballResearchPage() {
                     </option>
                   ))}
                 {!isAi &&
-                  FOOTBALL_LEAGUES.map((x) => (
+                  (provider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES).map((x) => (
                     <option
                       key={x.id}
                       value={x.id}
@@ -378,7 +385,7 @@ function PrivateFootballResearchPage() {
           </div>
           <p className="mt-4 text-xs text-slate-400">
             Tavily: {setup.data.tavilyConfigured ? "Διαθέσιμο" : "Μη διαθέσιμο"} · Πάροχος:{" "}
-            {configured ? "Ρυθμισμένος" : "Δεν έχει ρυθμιστεί API key"}.
+            {configured ? "Διαθέσιμος" : "Δεν έχει ρυθμιστεί API key"}.
           </p>
         </section>
 
