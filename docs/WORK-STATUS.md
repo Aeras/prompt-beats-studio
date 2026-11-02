@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-02 — Football Research Studio: staged evidence + experimental analyst — IN_PROGRESS
+
+- **Implementation candidate:** based on main `e0351a4a198cdd8103bde207372051584d2b3094`; separate prepared Git objects up to candidate HEAD `205eba44fa0d1dbd0931ee2bbc1e6dfd5cf20710` (not released).
+- **Scope:** one Tavily-based source search per selected pre-match fixture; bounded persisted source snapshot (facts vs external forecasts), source-bound structured context on standings/form/xG/team news/schedule and explicit gaps; existing catalogue with logical percentage checks; optional independent Super Admin expert evaluation via a separately consented paid OpenRouter call and isolated forward-only service-role table; source-only no-AI-cost re-verification for saved fixture candidates. Existing 1–5 foreground sequential analysis, verified-only paid fixture admission, dispatch locks and history kept.
+- **Pending verification:** local frozen install, full Bun/TypeScript/lint/format/build and mandatory Regression / Browser Quality / Database Replay on exact final HEAD, private RLS and concurrency tests, browser flow and paid provider consent behavior. Do not assert external sports facts, calibration or all candidates as verified.
+- **Release boundary:** no Supabase production migration, no merge, no Lovable publish, no chargeable AI calls; require independent gates and coordinated migration → publish → owner-authenticated smoke checks. Keep status IN_PROGRESS until all acceptance criteria are evidenced.
+
+
 ## 2026-11-01 — Football Research Studio: AI Αναζήτηση BETA (third fixture source) — CODE_COMPLETE_RELEASE_PENDING
 
 - **PR #488 verification 2026-11-02:** First Regression run and retry failed at PR-body evidence gate because the original workflow event froze the initial description; the required four sections are now in live PR description. Database Replay PASS on 3a299d4a, Browser Quality cancelled to save CI budget. Consolidated candidate update corrects missing dollar currency symbol in single/all confirmation and removes obsolete quota-failure copy; next fresh PR synchronize event must verify all three CI gates at same final HEAD. Do not merge or deploy until verified.

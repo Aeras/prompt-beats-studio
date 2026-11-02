@@ -15,6 +15,7 @@ import { useI18n } from "@/i18n";
 import {
   getPrivateAiFixtureCandidates,
   refreshPrivateAiFixtureCandidates,
+  reverifyPrivateAiFixtureCandidates,
 } from "@/lib/football-ai-fixture.functions";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
@@ -31,6 +32,7 @@ const COPY = {
     title: "Αγώνες εβδομάδας · AI Αναζήτηση BETA",
     note: "Η AI προτείνει αγώνες· ο server τους επαληθεύει ανεξάρτητα. «Επαληθευμένο» σημαίνει ότι τουλάχιστον 2 διαφορετικοί ιστότοποι επιβεβαιώνουν την ακριβή ώρα έναρξης (UTC). Ανάλυση μόνο για επαληθευμένους.",
     refresh: "Ανανέωση αγώνων (AI BETA)",
+    reverify: "Επανέλεγχος υποψήφιων (χωρίς AI)",
     refreshing: "Αναζήτηση…",
     all: "Ανανέωση όλων (12)",
     stop: "Διακοπή μετά την τρέχουσα",
@@ -54,6 +56,7 @@ const COPY = {
     title: "Fixtures this week · AI Search BETA",
     note: "AI proposes fixtures; the server verifies them independently. “Verified” means at least 2 different websites confirm the exact kickoff time (UTC). Analysis only for verified fixtures.",
     refresh: "Refresh fixtures (AI BETA)",
+    reverify: "Recheck candidates (no AI charge)",
     refreshing: "Searching…",
     all: "Refresh all (12)",
     stop: "Stop after current",
@@ -87,6 +90,7 @@ export function AiSearchPanel(props: {
   const c = language === "el" ? COPY.el : COPY.en;
   const [open, setOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [reverifying, setReverifying] = useState(false);
   const [allMode, setAllMode] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const stopRequested = useRef(false);
@@ -109,6 +113,24 @@ export function AiSearchPanel(props: {
   const refreshDisabled =
     refreshing || props.working || !d || d.maxCostUsd === null || gateCode !== null;
 
+  const reverify = async () => {
+    setReverifying(true);
+    setError("");
+    try {
+      const result = await reverifyPrivateAiFixtureCandidates({
+        data: { leagueId: props.leagueId, weekDate: props.weekDate },
+      });
+      await query.refetch();
+      if (!result.verified)
+        setError(
+          "Δεν επιβεβαιώθηκαν ακόμη αγώνες από δύο ανεξάρτητες πηγές. Δεν έγινε χρεώσιμη AI κλήση.",
+        );
+    } catch {
+      setError("Η επανεπαλήθευση απέτυχε, χωρίς πληρωμένη αναζήτηση AI.");
+    } finally {
+      setReverifying(false);
+    }
+  };
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
     const leagues: FootballAiDiscoveryLeagueId[] = allMode
@@ -217,6 +239,14 @@ export function AiSearchPanel(props: {
           className="rounded-xl border border-cyan-400/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-40"
         >
           {c.all}
+        </button>
+        <button
+          type="button"
+          disabled={refreshing || reverifying || props.working || !d}
+          onClick={() => void reverify()}
+          className="rounded-xl border border-amber-400/40 px-4 py-2.5 text-sm font-bold text-amber-100 disabled:opacity-40"
+        >
+          {reverifying ? c.refreshing : c.reverify}
         </button>
         {refreshing && (
           <>
