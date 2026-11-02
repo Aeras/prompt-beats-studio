@@ -150,6 +150,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     }
     const runId = claim.id;
     let providerCalled = false;
+    let failureCode = "research_unavailable";
 
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
@@ -201,6 +202,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           executionId: runId,
         });
         providerCalled = true;
+        failureCode = "provider_failed";
         const receipt = await caller({
           system: FOOTBALL_RESEARCH_SYSTEM,
           prompt: JSON.stringify({
@@ -219,18 +221,23 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               researchIntent: doc.researchIntent,
             })),
           }),
-          maxTokens: 2600,
+          maxTokens: 4096,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });
-        if (receipt.stopReason !== "end_turn") throw new Error("AI response was incomplete.");
+        if (receipt.stopReason !== "end_turn") {
+          failureCode = receipt.stopReason === "max_tokens" ? "output_token_limit" : "incomplete_ai_output";
+          throw new Error("AI response was incomplete.");
+        }
         let raw: unknown;
         try {
           raw = JSON.parse(receipt.text);
         } catch {
+          failureCode = "invalid_ai_json";
           throw new Error("AI response was not valid JSON.");
         }
+        failureCode = "invalid_ai_schema";
         const parsedAssessment = footballAiAssessmentSchema.parse(raw);
         const assessment = parsedAssessment.matchContext
           ? {
@@ -242,7 +249,10 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             }
           : parsedAssessment;
         const issues = validateFootballMarketProbabilities(assessment);
-        if (issues.length) throw new Error("AI market probabilities are inconsistent.");
+        if (issues.length) {
+          failureCode = "inconsistent_market_probabilities";
+          throw new Error("AI market probabilities are inconsistent.");
+        }
         const savedSources = evidenceSnapshot;
         const researchBrief = footballResearchEvidenceSnapshotSchema.parse({
           collectedAtUtc: evidenceCutoff,
@@ -253,6 +263,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           evidenceStatus: "unverified_source_extracts",
         });
         const savedAnalysis = footballAiAssessmentSchema.parse({ ...assessment, researchBrief });
+        failureCode = "persistence_failed";
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
@@ -281,7 +292,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         .from("private_football_research_runs" as never)
         .update({
           status: "failed",
-          error_code: providerCalled ? "provider_or_persistence_failed" : "research_unavailable",
+          error_code: providerCalled ? failureCode : "research_unavailable",
           completed_at: new Date().toISOString(),
         } as never)
         .eq("id", runId)
@@ -301,7 +312,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     const { data, error } = await supabaseAdmin
       .from("private_football_research_runs" as never)
       .select(
-        "id,source,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,analysis,sources,usage",
+        "id,source,fixture_id,league_id,home_team,away_team,kickoff_utc,model_id,created_at,evidence_cutoff_at,status,error_code,analysis,sources,usage",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
@@ -319,6 +330,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       created_at: string;
       evidence_cutoff_at: string | null;
       status: string;
+      error_code: string | null;
       analysis: unknown;
       sources: unknown;
       usage: unknown;
@@ -410,6 +422,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         created_at: row.created_at,
         evidence_cutoff_at: row.evidence_cutoff_at,
         status: row.status,
+        error_code: row.status === "failed" ? row.error_code : null,
         expertReview: (() => {
           const raw = reviewsByRun.get(row.id);
           if (!raw) return null;

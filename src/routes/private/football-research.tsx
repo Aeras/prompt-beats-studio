@@ -58,6 +58,18 @@ const EVIDENCE: Record<string, string> = {
   limited: "Περιορισμένη τεκμηρίωση",
   insufficient: "Ανεπαρκή στοιχεία",
 };
+const FAILURE_REASON: Record<string, string> = {
+  output_token_limit: "Η απάντηση της AI ξεπέρασε το διαθέσιμο όριο tokens.",
+  incomplete_ai_output: "Η AI δεν ολοκλήρωσε την απάντησή της.",
+  invalid_ai_json: "Η AI επέστρεψε μη έγκυρη μορφή JSON.",
+  invalid_ai_schema: "Η απάντηση της AI δεν πληρούσε τις απαιτήσεις της ανάλυσης.",
+  inconsistent_market_probabilities: "Οι εκτιμήσεις πιθανοτήτων ήταν ασυνεπείς.",
+  persistence_failed: "Η αποθήκευση του αποτελέσματος απέτυχε.",
+  provider_failed: "Η επικοινωνία με το μοντέλο AI απέτυχε.",
+  research_unavailable: "Η έρευνα δεν ήταν διαθέσιμη ή δεν ολοκληρώθηκε.",
+  provider_or_persistence_failed: "Η προηγούμενη αποτυχία δεν έχει λεπτομερέστερη διάγνωση.",
+};
+
 const STATUS: Record<string, string> = {
   completed: "Ολοκληρώθηκε",
   processing: "Σε εξέλιξη",
@@ -900,7 +912,7 @@ function PrivateFootballResearchPage() {
                       ) : (
                         <p className="text-sm text-slate-400">
                           {entry.status === "failed"
-                            ? "Η ανάλυση απέτυχε και δεν επαναλαμβάνεται αυτόματα."
+                            ? `${FAILURE_REASON[entry.error_code ?? ""] ?? "Η ανάλυση απέτυχε."} Δεν επαναλαμβάνεται αυτόματα.`
                             : "Η ανάλυση δεν έχει ολοκληρωθεί."}
                         </p>
                       )}
