@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { buildFootballSourceSnapshot } from "./football-ai-source-snapshot.shared";
 
 const source = (url: string, excerpt = "some source text") => ({

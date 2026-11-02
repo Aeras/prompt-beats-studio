@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { validateFootballMarketProbabilities } from "./football-ai-research.shared";
 
 const estimate = (market: string, percent: number) => ({

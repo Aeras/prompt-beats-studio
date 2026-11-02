@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { footballResearchEvidenceSnapshotSchema } from "./football-ai-research.shared";
 
 const reference = (researchIntent: "match_facts" | "external_forecasts") => ({
