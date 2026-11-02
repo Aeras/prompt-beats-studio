@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { buildFootballSourceSnapshot } from "./football-ai-source-snapshot.shared";
 
 const source = (url: string, excerpt = "some source text") => ({
-  title: "Example", url, accessedAt: "2026-11-02T12:00:00Z", excerpt,
+  title: "Example",
+  url,
+  accessedAt: "2026-11-02T12:00:00Z",
+  excerpt,
   researchIntent: "match_facts" as const,
 });
 

@@ -652,16 +652,24 @@ function PrivateFootballResearchPage() {
                                 Πηγές έρευνας ({entry.sources.length})
                               </summary>
                               <p className="mt-2 text-xs text-slate-400">
-                                Τα δημοσιεύματα αποτελούν ερευνητικό υλικό, όχι αυτόματα επαληθευμένα γεγονότα.
+                                Τα δημοσιεύματα αποτελούν ερευνητικό υλικό, όχι αυτόματα
+                                επαληθευμένα γεγονότα.
                               </p>
                               <ul className="mt-2 space-y-2 text-sm">
                                 {entry.sources.map((source, index) => (
                                   <li key={`${source.url}-${index}`}>
-                                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="break-all text-cyan-300 underline">
+                                    <a
+                                      href={source.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="break-all text-cyan-300 underline"
+                                    >
                                       {source.title || source.url}
                                     </a>
                                     <span className="ml-2 text-xs text-slate-400">
-                                      {source.researchIntent === "external_forecasts" ? "Εξωτερική εκτίμηση" : "Στοιχεία αγώνα"}
+                                      {source.researchIntent === "external_forecasts"
+                                        ? "Εξωτερική εκτίμηση"
+                                        : "Στοιχεία αγώνα"}
                                     </span>
                                   </li>
                                 ))}
@@ -669,48 +677,98 @@ function PrivateFootballResearchPage() {
                             </details>
                           )}
                           <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">
-                            <h3 className="font-semibold text-amber-200">Έμπειρος Αναλυτής · Πειραματικό</h3>
+                            <h3 className="font-semibold text-amber-200">
+                              Έμπειρος Αναλυτής · Πειραματικό
+                            </h3>
                             {entry.expertReview?.decision ? (
                               <div className="mt-2 space-y-2 text-sm">
-                                <p>{entry.expertReview.decision.decision === "abstain"
-                                  ? "Αποχή — δεν προκύπτει τεκμηριωμένη επιλογή"
-                                  : `Προσωπική εκτίμηση: ${MARKET_LABELS[entry.expertReview.decision.primary?.market ?? ""] ?? entry.expertReview.decision.primary?.market}`}</p>
-                                <p>{entry.expertReview.decision.primary?.rationale
-                                  ?? entry.expertReview.decision.abstentionReason}</p>
+                                <p>
+                                  {entry.expertReview.decision.decision === "abstain"
+                                    ? "Αποχή — δεν προκύπτει τεκμηριωμένη επιλογή"
+                                    : `Προσωπική εκτίμηση: ${MARKET_LABELS[entry.expertReview.decision.primary?.market ?? ""] ?? entry.expertReview.decision.primary?.market}`}
+                                </p>
+                                <p>
+                                  {entry.expertReview.decision.primary?.rationale ??
+                                    entry.expertReview.decision.abstentionReason}
+                                </p>
                                 {entry.expertReview.decision.primary && (
                                   <>
-                                    <p>Εμπιστοσύνη: {entry.expertReview.decision.primary.confidence} · εκτίμηση: {entry.expertReview.decision.primary.percent ?? "—"}%</p>
-                                    <p>Κύριος κίνδυνος: {entry.expertReview.decision.primary.mainRisk}</p>
+                                    <p>
+                                      Εμπιστοσύνη: {entry.expertReview.decision.primary.confidence}{" "}
+                                        εκτίμηση:{" "}
+                                      {entry.expertReview.decision.primary.percent ?? "—"}%
+                                    </p>
+                                    <p>
+                                      Κύριος κίνδυνος:{" "}
+                                      {entry.expertReview.decision.primary.mainRisk}
+                                    </p>
                                   </>
                                 )}
-                                {entry.expertReview.decision.planB && <p>Εναλλακτική: {entry.expertReview.decision.planB.market} — {entry.expertReview.decision.planB.rationale}</p>}
+                                {entry.expertReview.decision.planB && (
+                                  <p>
+                                    Εναλλακτική: {entry.expertReview.decision.planB.market} —{" "}
+                                    {entry.expertReview.decision.planB.rationale}
+                                  </p>
+                                )}
                               </div>
                             ) : entry.expertReview ? (
-                              <p className="mt-2 text-sm text-slate-400">Κατάσταση αξιολόγησης: {STATUS[entry.expertReview.status] ?? entry.expertReview.status}</p>
-                            ) : entry.analysis.researchBrief && Date.parse(entry.kickoff_utc) > Date.now() ? (
-                              <button type="button" disabled={working || !!expertBusy || !model}
+                              <p className="mt-2 text-sm text-slate-400">
+                                Κατάσταση αξιολόγησης:{" "}
+                                {STATUS[entry.expertReview.status] ?? entry.expertReview.status}
+                              </p>
+                            ) : entry.analysis.researchBrief &&
+                              Date.parse(entry.kickoff_utc) > Date.now() ? (
+                              <button
+                                type="button"
+                                disabled={working || !!expertBusy || !model}
                                 className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm text-amber-100 disabled:opacity-40"
                                 onClick={async () => {
-                                  const selectedModel = setup.data?.models.find((m) => m.id === model);
-                                  if (!selectedModel || !window.confirm("Πειραματική ανεξάρτητη εκτίμηση με νέα χρεώσιμη AI κλήση, χωρίς νέα αναζήτηση. Συνέχεια;")) return;
+                                  const selectedModel = setup.data?.models.find(
+                                    (m) => m.id === model,
+                                  );
+                                  if (
+                                    !selectedModel ||
+                                    !window.confirm(
+                                      "Πειραματική ανεξάρτητη εκτίμηση με νέα χρεώσιμη AI κλήση, χωρίς νέα αναζήτηση. Συνέχεια;",
+                                    )
+                                  )
+                                    return;
                                   setExpertBusy(entry.id);
                                   setExpertError("");
                                   try {
-                                    await runPrivateFootballExpertReview({data: {
-                                      runId: entry.id, modelId: selectedModel.id, approvePaidRequest: true,
-                                    }});
+                                    await runPrivateFootballExpertReview({
+                                      data: {
+                                        runId: entry.id,
+                                        modelId: selectedModel.id,
+                                        approvePaidRequest: true,
+                                      },
+                                    });
                                     await history.refetch();
                                   } catch {
-                                    setExpertError("Η πειραματική ανάλυση απέτυχε ή καταχωρίστηκε ήδη. Δεν επαναλαμβάνεται αυτόματα.");
+                                    setExpertError(
+                                      "Η πειραματική ανάλυση απέτυχε ή καταχωρίστηκε ήδη. Δεν επαναλαμβάνεται αυτόματα.",
+                                    );
                                     await history.refetch();
-                                  } finally { setExpertBusy(null); }
-                                }}>
-                                {expertBusy === entry.id ? "Αξιολόγηση…" : "Εκτίμηση Έμπειρου Αναλυτή"}
+                                  } finally {
+                                    setExpertBusy(null);
+                                  }
+                                }}
+                              >
+                                {expertBusy === entry.id
+                                  ? "Αξιολόγηση…"
+                                  : "Εκτίμηση Έμπειρου Αναλυτή"}
                               </button>
                             ) : (
-                              <p className="mt-2 text-sm text-slate-400">Δεν υπάρχει κατάλληλο αποθηκευμένο ερευνητικό δελτίο ή ο αγώνας έχει αρχίσει.</p>
+                              <p className="mt-2 text-sm text-slate-400">
+                                Δεν υπάρχει κατάλληλο αποθηκευμένο ερευνητικό δελτίο ή ο αγώνας έχει
+                                αρχίσει.
+                              </p>
                             )}
-                            {expertError && expertBusy === null && <p className="mt-2 text-xs text-rose-300" role="alert">{expertError}</p>}
+                            {expertError && expertBusy === null && (
+                              <p className="mt-2 text-xs text-rose-300" role="alert">
+                                {expertError}
+                              </p>
+                            )}
                           </section>
                           {entry.analysis.matchContext && (
                             <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
@@ -721,17 +779,29 @@ function PrivateFootballResearchPage() {
                                 {entry.analysis.matchContext.claims.map((claim, index) => (
                                   <li key={index}>
                                     <strong>{claim.category}:</strong> {claim.claim}
-                                    <a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer"
-                                      className="ml-2 text-cyan-300 underline">Πηγή</a>
-                                    {claim.status === "scenario" && <span className="ml-2 text-amber-200">(σενάριο)</span>}
+                                    <a
+                                      href={claim.sourceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-2 text-cyan-300 underline"
+                                    >
+                                      Πηγή
+                                    </a>
+                                    {claim.status === "scenario" && (
+                                      <span className="ml-2 text-amber-200">(σενάριο)</span>
+                                    )}
                                   </li>
                                 ))}
                               </ul>
                               {entry.analysis.matchContext.missing.length > 0 && (
-                                <p className="mt-2 text-xs text-amber-100">Ελλείψεις: {entry.analysis.matchContext.missing.join(" · ")}</p>
+                                <p className="mt-2 text-xs text-amber-100">
+                                  Ελλείψεις: {entry.analysis.matchContext.missing.join(" · ")}
+                                </p>
                               )}
                               {entry.analysis.matchContext.conflicts.length > 0 && (
-                                <p className="mt-2 text-xs text-amber-100">Αντικρουόμενα: {entry.analysis.matchContext.conflicts.join(" · ")}</p>
+                                <p className="mt-2 text-xs text-amber-100">
+                                  Αντικρουόμενα: {entry.analysis.matchContext.conflicts.join(" · ")}
+                                </p>
                               )}
                             </details>
                           )}

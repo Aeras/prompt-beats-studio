@@ -1,36 +1,54 @@
 import { z } from "zod";
 import { FOOTBALL_AI_LEAGUE_IDS } from "./football-research.shared";
 
-const footballSourceReferenceSchema = z.object({
-  title: z.string().max(180),
-  url: z.string().url().max(2000),
-  accessedAt: z.string().datetime(),
-  excerpt: z.string().max(650),
-  researchIntent: z.enum(["match_facts", "external_forecasts"]),
-}).strict();
+const footballSourceReferenceSchema = z
+  .object({
+    title: z.string().max(180),
+    url: z.string().url().max(2000),
+    accessedAt: z.string().datetime(),
+    excerpt: z.string().max(650),
+    researchIntent: z.enum(["match_facts", "external_forecasts"]),
+  })
+  .strict();
 
 /** Research extracts are source claims, not independently verified match facts. */
-export const footballResearchEvidenceSnapshotSchema = z.object({
-  collectedAtUtc: z.string().datetime(),
-  matchFacts: z.array(footballSourceReferenceSchema).max(18),
-  externalForecasts: z.array(footballSourceReferenceSchema).max(18),
-  evidenceStatus: z.literal("unverified_source_extracts"),
-}).strict().refine((v) => v.matchFacts.length + v.externalForecasts.length <= 18);
+export const footballResearchEvidenceSnapshotSchema = z
+  .object({
+    collectedAtUtc: z.string().datetime(),
+    matchFacts: z.array(footballSourceReferenceSchema).max(18),
+    externalForecasts: z.array(footballSourceReferenceSchema).max(18),
+    evidenceStatus: z.literal("unverified_source_extracts"),
+  })
+  .strict()
+  .refine((v) => v.matchFacts.length + v.externalForecasts.length <= 18);
 
+const footballContextClaimSchema = z
+  .object({
+    category: z.enum([
+      "standings",
+      "motivation",
+      "form",
+      "home_away",
+      "xg_xga",
+      "squad_news",
+      "lineup",
+      "rest_rotation",
+      "tactics",
+      "external_prediction",
+    ]),
+    claim: z.string().trim().min(12).max(450),
+    sourceUrl: z.string().url().max(2000),
+    status: z.enum(["reported", "confirmed", "scenario"]),
+  })
+  .strict();
 
-const footballContextClaimSchema = z.object({
-  category: z.enum(["standings", "motivation", "form", "home_away", "xg_xga",
-    "squad_news", "lineup", "rest_rotation", "tactics", "external_prediction"]),
-  claim: z.string().trim().min(12).max(450),
-  sourceUrl: z.string().url().max(2000),
-  status: z.enum(["reported", "confirmed", "scenario"]),
-}).strict();
-
-export const footballResearchContextSchema = z.object({
-  claims: z.array(footballContextClaimSchema).max(20),
-  missing: z.array(z.string().trim().min(2).max(200)).max(12),
-  conflicts: z.array(z.string().trim().min(8).max(300)).max(8),
-}).strict();
+export const footballResearchContextSchema = z
+  .object({
+    claims: z.array(footballContextClaimSchema).max(20),
+    missing: z.array(z.string().trim().min(2).max(200)).max(12),
+    conflicts: z.array(z.string().trim().min(8).max(300)).max(8),
+  })
+  .strict();
 
 /** Evidence claims are not factual verification until corroborated independently. */
 export function filterResearchContextUrls(
@@ -181,8 +199,7 @@ export function validateFootballMarketProbabilities(
   ] as const) {
     const a = values.get(yes);
     const b = values.get(no);
-    if (a !== undefined && b !== undefined && a + b !== 100)
-      failures.push(`complement_${yes}`);
+    if (a !== undefined && b !== undefined && a + b !== 100) failures.push(`complement_${yes}`);
   }
   return failures;
 }
