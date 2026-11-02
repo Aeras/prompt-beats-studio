@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football AI output limit removal — IN_PROGRESS
+
+- **Baseline:** main `639f9070b096738e14dfe20c6186754bcfaf995a`; football explicitly sets `maxTokens: 4096` while common provider otherwise falls back to 8192.
+- **Change:** Football-only OpenRouter opt-in to omit the `max_tokens` request field; no application output ceiling. Provider/model limits and 90-second request timeout remain; other AI callers unchanged.
+- **Purpose:** Measure actual tokens and cost for one separately approved paid match analysis before considering multiple matches. Preserve Super Admin, source validation, immutable attempts, explicit spend consent, accounting and no automatic retry. No SQL migration.
+- **Release:** Source candidate only; verification, mandatory CI, review, merge, publish and paid pilot all outstanding. Not CLOSED.
+
+
 ## 2026-11-02 — Football research AI output-budget and failure diagnostics — IN_PROGRESS
 
 - **Evidence:** Production OpenRouter log for `openai/gpt-6.1-sol` reported `completion_budget_exhausted`, with 2600/2600 completion tokens and 206 reasoning tokens. Current handler enforced `maxTokens: 2600` and collapsed post-dispatch errors into `provider_or_persistence_failed`.

@@ -221,7 +221,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               researchIntent: doc.researchIntent,
             })),
           }),
-          maxTokens: 4096,
+          omitOpenRouterMaxTokens: true,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
