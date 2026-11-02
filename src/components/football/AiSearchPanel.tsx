@@ -109,7 +109,7 @@ export function AiSearchPanel(props: {
 
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
-    const leagues = allMode
+    const leagues: FootballAiDiscoveryLeagueId[] = allMode
       ? FOOTBALL_AI_DISCOVERY_LEAGUES.map((item) => item.id)
       : [props.leagueId];
     setOpen(false);
@@ -159,7 +159,10 @@ export function AiSearchPanel(props: {
         <button
           type="button"
           disabled={refreshDisabled}
-          onClick={() => { setAllMode(false); setOpen(true); }}
+          onClick={() => {
+            setAllMode(false);
+            setOpen(true);
+          }}
           className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
         >
           {refreshing ? c.refreshing : c.refresh}
@@ -167,7 +170,10 @@ export function AiSearchPanel(props: {
         <button
           type="button"
           disabled={refreshDisabled}
-          onClick={() => { setAllMode(true); setOpen(true); }}
+          onClick={() => {
+            setAllMode(true);
+            setOpen(true);
+          }}
           className="rounded-xl border border-cyan-400/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-40"
         >
           {c.all}
@@ -178,7 +184,9 @@ export function AiSearchPanel(props: {
               {c.progress(progress.done, progress.total)}
             </span>
             {progress.total > 1 && (
-              <button type="button" onClick={() => { stopRequested.current = true; }}
+              <button type="button" onClick={() => {
+                  stopRequested.current = true;
+                }}
                 className="text-xs font-semibold text-amber-300">{c.stop}</button>
             )}
           </>
@@ -259,7 +267,9 @@ export function AiSearchPanel(props: {
               {d && d.maxCostUsd !== null
                 ? c.dialogBody(
                     d.model,
-                    (d.maxCostUsd * (allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1)).toFixed(3),
+                    (
+                      d.maxCostUsd * (allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1)
+                    ).toFixed(3),
                     allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1,
                   )
                 : ""}
