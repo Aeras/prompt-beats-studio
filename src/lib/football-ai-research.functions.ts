@@ -3,12 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
+import { buildFootballSourceSnapshot, type FootballSourceSnapshot } from "@/lib/football-ai-source-snapshot.shared";
 import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
   footballAiAssessmentSchema,
   footballAnalysisRequestSchema,
-  validateFootballMarketProbabilities,
 } from "@/lib/football-ai-research.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
 
@@ -143,8 +143,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           `${common} футбол прогноз форма команд травмы новости анализ матча`,
           `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview latest news tactical form`,
         ];
-        const sources: { title: string; url: string; accessedAt: string; excerpt: string }[] = [];
-        for (const query of queries) {
+        const sources: FootballSourceSnapshot[] = [];
+        for (const [queryIndex, query] of queries.entries()) {
           const result = await searchInspirationWeb(query, AbortSignal.timeout(20_000));
           for (const doc of result.documents) {
             if (sources.some((existing) => existing.url === doc.source.url)) continue;
@@ -153,10 +153,12 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               url: doc.source.url,
               accessedAt: doc.source.accessedAt,
               excerpt: doc.text.slice(0, 2500),
+              researchIntent: queryIndex === 0 ? "match_facts" : "external_forecasts",
             });
           }
         }
-        if (!sources.length)
+        const evidenceSnapshot = buildFootballSourceSnapshot(sources);
+        if (!evidenceSnapshot.length)
           throw new Error("No independently retrieved match sources were available.");
         if (Date.now() >= Date.parse(fixture.kickoffUtc)) {
           throw new Error("Match kickoff passed before research completed.");
@@ -191,11 +193,12 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               away: fixture.awayTeam,
               kickoffUtc: fixture.kickoffUtc,
             },
-            sources: sources.map((doc) => ({
+            sources: evidenceSnapshot.map((doc) => ({
               title: doc.title,
               url: doc.url,
               excerpt: doc.excerpt,
               retrievedAt: doc.accessedAt,
+              researchIntent: doc.researchIntent,
             })),
           }),
           maxTokens: 2600,
@@ -211,13 +214,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("AI response was not valid JSON.");
         }
         const assessment = footballAiAssessmentSchema.parse(raw);
-        const probabilityIssues = validateFootballMarketProbabilities(assessment);
-        if (probabilityIssues.length) throw new Error("AI market estimates were internally inconsistent.");
-        const savedSources = sources.map(({ title, url, accessedAt }) => ({
-          title,
-          url,
-          accessedAt,
-        }));
+        const savedSources = evidenceSnapshot;
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
