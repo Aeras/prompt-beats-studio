@@ -29,19 +29,32 @@ const competitor = z.object({
 const event = z.object({
   id: z.string().regex(/^\d{1,12}$/),
   date: z.string(),
-  competitions: z.array(z.object({
-    competitors: z.array(competitor).max(4),
-    status: z.object({ type: z.object({
-      name: z.string().optional(),
-      state: z.string().optional(),
-      completed: z.boolean().optional(),
-    }) }).optional(),
-  })).min(1).max(4),
-  status: z.object({ type: z.object({
-    name: z.string().optional(),
-    state: z.string().optional(),
-    completed: z.boolean().optional(),
-  }) }).optional(),
+  competitions: z
+    .array(
+      z.object({
+        competitors: z.array(competitor).max(4),
+        status: z
+          .object({
+            type: z.object({
+              name: z.string().optional(),
+              state: z.string().optional(),
+              completed: z.boolean().optional(),
+            }),
+          })
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(4),
+  status: z
+    .object({
+      type: z.object({
+        name: z.string().optional(),
+        state: z.string().optional(),
+        completed: z.boolean().optional(),
+      }),
+    })
+    .optional(),
 });
 const scoreboard = z.object({ events: z.array(z.unknown()).max(200).default([]) });
 const cache = new Map<string, { expiresAt: number; fixtures: FootballFixture[] }>();
@@ -69,13 +82,17 @@ export function parseEspnScoreboard(
     if (kickoffUtc.slice(0, 10) < from || kickoffUtc.slice(0, 10) > to) continue;
     const status = match?.status?.type ?? item.status?.type;
     const name = status?.name ?? "";
-    const state = status?.completed || name.includes("FINAL") ? "finished"
-      : name.includes("POSTPONED") ? "postponed"
-      : name.includes("CANCELED") || name.includes("CANCELLED") ? "cancelled"
-      : status?.state === "in" ? "live" : "scheduled";
+    let state: FootballFixture["state"] = "scheduled";
+    if (status?.completed || name.includes("FINAL")) state = "finished";
+    else if (name.includes("POSTPONED")) state = "postponed";
+    else if (name.includes("CANCELED") || name.includes("CANCELLED")) state = "cancelled";
+    else if (status?.state === "in") state = "live";
     const goal = (v: string | number | null | undefined) => {
       const n = Number(v);
-      return v === null || v === undefined || v === "" || !Number.isInteger(n) || n < 0 ? null : n;
+      if (v === null || v === undefined || v === "" || !Number.isInteger(n) || n < 0) {
+        return null;
+      }
+      return n;
     };
     results.push({
       source: "espn",
@@ -115,14 +132,24 @@ export async function fetchEspnFootballWeek(
   }
   const run = async () => {
     const days: number[] = [];
-    for (let d = Date.parse(from + "T00:00:00Z"); d <= Date.parse(to + "T00:00:00Z"); d += 86400000) {
+    for (
+      let d = Date.parse(from + "T00:00:00Z");
+      d <= Date.parse(to + "T00:00:00Z");
+      d += 86400000
+    ) {
       days.push(d);
     }
     const retrieve = async (d: number): Promise<FootballFixture[]> => {
       const day = new Date(d).toISOString().slice(0, 10).replaceAll("-", "");
-      const url = new URL("https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard");
+      const url = new URL(
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard",
+      );
       url.searchParams.set("dates", day);
-      const response = await fetcher(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(10000) });
+      const response = await fetcher(url, {
+        method: "GET",
+        redirect: "manual",
+        signal: AbortSignal.timeout(10000),
+      });
       if (!response.ok) {
         await response.body?.cancel();
         throw new Error("ESPN fixture feed unavailable");
@@ -134,7 +161,13 @@ export async function fetchEspnFootballWeek(
       }
       const text = await response.text();
       if (text.length > 800000) throw new Error("ESPN response too large");
-      return parseEspnScoreboard(JSON.parse(text), leagueId, from, to, new Date(now()).toISOString());
+      return parseEspnScoreboard(
+        JSON.parse(text),
+        leagueId,
+        from,
+        to,
+        new Date(now()).toISOString(),
+      );
     };
     // At most two outstanding ESPN HTTP requests at once.
     const results: FootballFixture[] = [];
@@ -142,8 +175,9 @@ export async function fetchEspnFootballWeek(
       const batch = await Promise.all(days.slice(i, i + 2).map(retrieve));
       for (const fixtures of batch) results.push(...fixtures);
     }
-    const fixtures = [...new Map(results.map((f) => [f.sourceFixtureId, f])).values()]
-      .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+    const fixtures = [...new Map(results.map((f) => [f.sourceFixtureId, f])).values()].sort(
+      (a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc),
+    );
     return fixtures;
   };
   const task = run();
@@ -151,7 +185,10 @@ export async function fetchEspnFootballWeek(
   inFlight.set(key, task);
   try {
     const fixtures = await task;
-    if (cache.size >= 48) cache.delete(cache.keys().next().value!);
+    if (cache.size >= 48) {
+      const oldest = cache.keys().next().value;
+      if (oldest) cache.delete(oldest);
+    }
     cache.set(key, { fixtures, expiresAt: now() + 15 * 60 * 1000 });
     return fixtures.map((f) => ({ ...f }));
   } finally {
