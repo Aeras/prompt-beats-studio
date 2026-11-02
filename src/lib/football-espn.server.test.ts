@@ -46,13 +46,7 @@ describe("ESPN football schedule adapter", () => {
 
   test("filters dates and skips malformed items", () => {
     expect(
-      parseEspnScoreboard(
-        fixture,
-        "EN-PL",
-        "2026-11-08",
-        "2026-11-14",
-        "2026-11-02T10:00:00Z",
-      ),
+      parseEspnScoreboard(fixture, "EN-PL", "2026-11-08", "2026-11-14", "2026-11-02T10:00:00Z"),
     ).toEqual([]);
     expect(
       parseEspnScoreboard(
@@ -78,8 +72,6 @@ describe("ESPN football schedule adapter", () => {
   });
 
   test("does not admit unsupported ESPN league", async () => {
-    await expect(fetchEspnFootballWeek("CH-SL", "2026-11-07")).rejects.toThrow(
-      "Unsupported ESPN",
-    );
+    await expect(fetchEspnFootballWeek("CH-SL", "2026-11-07")).rejects.toThrow("Unsupported ESPN");
   });
 });

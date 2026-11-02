@@ -136,7 +136,9 @@ export const footballAiAssessmentSchema = z
   .strict();
 
 export const footballAnalysisRequestSchema = z.object({
-  fixtureProvider: z.enum(["football-data", "api-football", "espn", "ai-search"]).default("football-data"),
+  fixtureProvider: z
+    .enum(["football-data", "api-football", "espn", "ai-search"])
+    .default("football-data"),
   /** Legacy sources accept the six legacy leagues only (checked in the handler). */
   leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
   weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

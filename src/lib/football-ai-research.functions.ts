@@ -98,8 +98,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
       }
     } else {
       if (
-        !(data.fixtureProvider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES)
-          .some((league) => league.id === data.leagueId)
+        !(data.fixtureProvider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES).some(
+          (league) => league.id === data.leagueId,
+        )
       ) {
         throw new Error("Unsupported competition for this provider.");
       }
@@ -109,10 +110,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
       }
       const fixtures =
         data.fixtureProvider === "espn"
-          ? await (await import("@/lib/football-espn.server")).fetchEspnFootballWeek(
-              data.leagueId,
-              data.weekDate,
-            )
+          ? await (
+              await import("@/lib/football-espn.server")
+            ).fetchEspnFootballWeek(data.leagueId, data.weekDate)
           : await getCachedFootballWeek(
               legacyLeague,
               data.weekDate,

@@ -31,13 +31,22 @@ describe("private football AI contracts", () => {
   });
   test("ESPN accepts supported fixture identity without AI source corroboration", () => {
     const base = {
-      fixtureProvider: "espn", leagueId: "UEFA-CL", weekDate: "2026-11-02",
-      fixtureId: "123456", requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
-      modelId: "openai/gpt-5.6-luna", withTavily: true, approvePaidRequest: true,
+      fixtureProvider: "espn",
+      leagueId: "UEFA-CL",
+      weekDate: "2026-11-02",
+      fixtureId: "123456",
+      requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
+      modelId: "openai/gpt-5.6-luna",
+      withTavily: true,
+      approvePaidRequest: true,
     };
     expect(footballAnalysisRequestSchema.safeParse(base).success).toBe(true);
-    expect(footballAnalysisRequestSchema.safeParse({ ...base, leagueId: "CH-SL" }).success).toBe(true);
-    expect(footballAnalysisRequestSchema.safeParse({ ...base, fixtureProvider: "unknown" }).success).toBe(false);
+    expect(footballAnalysisRequestSchema.safeParse({ ...base, leagueId: "CH-SL" }).success).toBe(
+      true,
+    );
+    expect(
+      footballAnalysisRequestSchema.safeParse({ ...base, fixtureProvider: "unknown" }).success,
+    ).toBe(false);
   });
 
   test("unknown betting markets, invented probability and excessive suggestions rejected", () => {
