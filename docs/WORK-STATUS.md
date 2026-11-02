@@ -4,7 +4,7 @@
 
 - **Evidence:** Production OpenRouter log for `openai/gpt-6.1-sol` reported `completion_budget_exhausted`, with 2600/2600 completion tokens and 206 reasoning tokens. Current handler enforced `maxTokens: 2600` and collapsed post-dispatch errors into `provider_or_persistence_failed`.
 - **Candidate:** Raise only football analysis output cap to 4096; record bounded distinct diagnostic codes for truncated/incomplete output, JSON/schema/market validation, provider and persistence; surface sanitized reasons to Super Admin history. No migration: existing nullable `error_code` field; legacy codes keep safe fallback. Preserve immutable records, consent, authorization, provider usage journal, failure no-retry and dispatch quota.
-- **Verification and release:** Source-level changes prepared; local full Bun/TypeScript/lint/build and exact-head GitHub Regression, Browser Quality, Database Replay still required. No paid AI call, ref update/PR, migration or publish. Not CLOSED.
+- **Verification and release:** Draft PR #491, initial head `90cbc40f`: Regression gate stopped at PR-description headings before executing tests; Browser Quality and Database Replay were cancelled. The PR description has been corrected to include the four required headings. New exact-head Regression, Browser Quality and Database Replay plus full Bun/TypeScript/lint/build remain unverified. No paid AI call, migration, merge or publish. Not CLOSED.
 
 
 ## 2026-11-02 — ESPN independent fixture provider (11 competitions) — IN_PROGRESS
