@@ -75,6 +75,10 @@ describe("AI fixture failure codes", () => {
     for (const c of [
       "dispatch_admission_failed",
       "provider_failed",
+      "provider_http_4xx",
+      "provider_http_5xx",
+      "provider_network_failed",
+      "provider_response_invalid",
       "invalid_ai_output",
       "corroboration_failed",
       "persistence_failed",

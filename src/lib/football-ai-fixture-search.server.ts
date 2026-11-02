@@ -24,6 +24,17 @@ export const AI_FIXTURE_SEARCH_FEE_USD = 0.007;
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_RESPONSE_BYTES = 400_000;
 
+/** Safe, typed provider failure; never store upstream response bodies or credentials. */
+export class AiFixtureProviderError extends Error {
+  constructor(
+    public readonly kind: "http_4xx" | "http_5xx" | "network" | "invalid_response",
+    public readonly httpStatus: number | null = null,
+  ) {
+    super("AI fixture provider " + kind + (httpStatus === null ? "" : " (" + httpStatus + ")"));
+    this.name = "AiFixtureProviderError";
+  }
+}
+
 /** Upper bound shown in the consent dialog; uses registry prices per million. */
 export function estimateAiFixtureMaxCostUsd(price: {
   inputPerMillion: number;
@@ -172,20 +183,32 @@ export async function requestAiFixtureCandidates(
   if (!options.apiKey.trim()) throw new Error("OpenRouter is not configured");
   if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true")
     throw new Error("AI requests are disabled");
-  const response = await options.fetcher(API_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify(buildAiFixtureSearchPayload(input, options.model)),
-    signal: options.signal,
-    redirect: "manual",
-  });
+  let response: Response;
+  try {
+    response = await options.fetcher(API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(buildAiFixtureSearchPayload(input, options.model)),
+      signal: options.signal,
+      redirect: "manual",
+    });
+  } catch {
+    throw new AiFixtureProviderError("network");
+  }
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
-    throw new Error(`AI fixture search unavailable (${response.status})`);
+    throw new AiFixtureProviderError(
+      response.status >= 500 ? "http_5xx" : "http_4xx",
+      response.status,
+    );
   }
   if (Number(response.headers.get("content-length") ?? "0") > MAX_RESPONSE_BYTES) {
     await response.body?.cancel().catch(() => {});
-    throw new Error("AI fixture response too large");
+    throw new AiFixtureProviderError("invalid_response");
   }
-  return parseAiFixtureResponse(await response.text());
+  try {
+    return parseAiFixtureResponse(await response.text());
+  } catch {
+    throw new AiFixtureProviderError("invalid_response");
+  }
 }
