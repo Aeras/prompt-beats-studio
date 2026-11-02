@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football Research failed-run evidence — IN_PROGRESS
+
+- **Evidence:** The football handler discarded observed token usage when response validation failed, and strict schema failure lacked safe per-field diagnostics. A screenshot alone cannot identify the actual invalid field.
+- **Scope:** Football-only handler and football-only schema tests, plus required work ledger; no general app files, shared AI provider, database migrations or RLS modifications.
+- **Fix:** Retain provider-reported normalized usage on failed terminal attempts and log bounded schema issue paths, without logging raw model response or sensitive source data. Preserve strict schema/probability validation, provider consent, immutable attempts and no auto-retry.
+- **Acceptance:** Focused + full tests, typecheck, lint, build, all three final-HEAD CI gates; PR review/merge separate from Lovable publish and subsequent single consented paid analysis. Not CLOSED.
+
+
 ## 2026-11-03 — Football AI output limit removal — IN_PROGRESS
 
 - **Baseline:** main `639f9070b096738e14dfe20c6186754bcfaf995a`; football explicitly sets `maxTokens: 4096` while common provider otherwise falls back to 8192.

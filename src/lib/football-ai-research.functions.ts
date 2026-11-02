@@ -151,6 +151,11 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     const runId = claim.id;
     let providerCalled = false;
     let failureCode = "research_unavailable";
+    let observedUsage: {
+      inputTokens: number | null;
+      outputTokens: number | null;
+      totalTokens: number | null;
+    } | null = null;
 
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
@@ -226,6 +231,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });
+        observedUsage = receipt.usage;
         if (receipt.stopReason !== "end_turn") {
           failureCode =
             receipt.stopReason === "max_tokens" ? "output_token_limit" : "incomplete_ai_output";
@@ -239,7 +245,15 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("AI response was not valid JSON.");
         }
         failureCode = "invalid_ai_schema";
-        const parsedAssessment = footballAiAssessmentSchema.parse(raw);
+        const validated = footballAiAssessmentSchema.safeParse(raw);
+        if (!validated.success) {
+          console.error("[football-research] invalid_ai_schema", {
+            runId,
+            fields: validated.error.issues.map((issue) => issue.path.join(".")).slice(0, 16),
+          });
+          throw new Error("AI response did not match the football schema.");
+        }
+        const parsedAssessment = validated.data;
         const assessment = parsedAssessment.matchContext
           ? {
               ...parsedAssessment,
@@ -294,6 +308,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         .update({
           status: "failed",
           error_code: providerCalled ? failureCode : "research_unavailable",
+          ...(observedUsage ? { usage: observedUsage } : {}),
           completed_at: new Date().toISOString(),
         } as never)
         .eq("id", runId)
