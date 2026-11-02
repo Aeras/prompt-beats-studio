@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
+import { footballExpertDecisionSchema } from "@/lib/football-ai-research-phases.shared";
 import { buildFootballSourceSnapshot, type FootballSourceSnapshot } from "@/lib/football-ai-source-snapshot.shared";
 import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research.shared";
 import {
@@ -305,6 +306,16 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       ((hiddenRows ?? []) as Array<{ run_id: string }>).map((item) => item.run_id),
     );
     const visibleRows = rows.filter((row) => !hidden.has(row.id)).slice(0, 40);
+    const { data: reviews, error: expertError } = await supabaseAdmin
+      .from("private_football_expert_reviews" as never)
+      .select("run_id,status,decision,model_id")
+      .eq("user_id", context.userId)
+      .in("run_id", visibleRows.length ? visibleRows.map((r) => r.id) : ["00000000-0000-0000-0000-000000000000"]);
+    if (expertError) throw new Error("Expert review history unavailable.");
+    const reviewsByRun = new Map(
+      ((reviews ?? []) as Array<{run_id:string;status:string;decision:unknown;model_id:string}>)
+        .map((review) => [review.run_id, review]),
+    );
     // At most three unique league/weeks per screen load. Reuse the fixture
     // cache: do not burn 40 calls from the free daily API quota.
     const scored = new Map<string, Awaited<ReturnType<typeof getCachedFootballWeek>>>();
@@ -362,6 +373,13 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         created_at: row.created_at,
         evidence_cutoff_at: row.evidence_cutoff_at,
         status: row.status,
+        expertReview: (() => {
+          const raw = reviewsByRun.get(row.id);
+          if (!raw) return null;
+          const checkedExpert = footballExpertDecisionSchema.safeParse(raw.decision);
+          return { status: raw.status, modelId: raw.model_id,
+            decision: checkedExpert.success ? checkedExpert.data : null };
+        })(),
         analysis: checked.success ? checked.data : null,
         sources: Array.isArray(row.sources)
           ? row.sources.filter((source): source is Record<string, unknown> =>
