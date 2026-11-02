@@ -6,6 +6,10 @@ import {
 type Lang = "el" | "en";
 
 const TEXT: Record<AiFixtureErrorCode, Record<Lang, string>> = {
+  dispatch_admission_failed: {
+    el: "Η άδεια εκτέλεσης AI δεν ολοκληρώθηκε και δεν στάλθηκε αίτημα στον πάροχο.",
+    en: "AI dispatch authorization did not complete and no provider request was sent.",
+  },
   beta_disabled: {
     el: "Η AI Αναζήτηση BETA είναι απενεργοποιημένη από τον διαχειριστή.",
     en: "AI Search BETA is disabled by the operator.",

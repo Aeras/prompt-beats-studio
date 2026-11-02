@@ -12,6 +12,7 @@ export const AI_FIXTURE_PRE_ADMISSION_CODES = [
   "admission_unavailable",
 ] as const;
 export const AI_FIXTURE_POST_ADMISSION_CODES = [
+  "dispatch_admission_failed",
   "provider_failed",
   "invalid_ai_output",
   "corroboration_failed",

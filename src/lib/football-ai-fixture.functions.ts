@@ -184,8 +184,9 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         } as never,
       );
     const { recordAiUsage } = await import("@/lib/ai-usage.server");
-    const { aiProviderFetch } = await import("@/lib/global-ai-usage.server");
+    const { consumeAiDispatchAdmission } = await import("@/lib/global-ai-usage.server");
     let dispatched = false;
+    let featurePermitted = false;
     let usageRecorded = false;
     let stage: AiFixturePostAdmissionCode = "provider_failed";
     try {
@@ -193,13 +194,17 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         context.userId,
         ["ai_generator"],
         async () => {
-          dispatched = true;
+          featurePermitted = true;
           return search.requestAiFixtureCandidates(
             { leagueId: data.leagueId, weekDate: data.weekDate },
             {
               apiKey: key,
               model: search.AI_FIXTURE_MODEL,
-              fetcher: aiProviderFetch,
+              fetcher: async (input, init) => {
+                await consumeAiDispatchAdmission();
+                dispatched = true;
+                return globalThis.fetch(input, init);
+              },
               signal: AbortSignal.timeout(90_000),
             },
           );
@@ -250,6 +255,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       });
       return { candidatesStored: saved.stored, verified: saved.verified };
     } catch (error) {
+      if (!featurePermitted || !dispatched) stage = "dispatch_admission_failed";
       if (dispatched && !usageRecorded) {
         await recordAiUsage({
           executionId: admissionId,
@@ -269,6 +275,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
         stage: "post_admission",
         code: stage,
         dispatched,
+        featurePermitted,
         admissionId,
         elapsedMs: Date.now() - startedAt,
         name: error instanceof Error ? error.name : "unknown",
