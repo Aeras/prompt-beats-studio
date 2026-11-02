@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import { useQuery } from "@tanstack/react-query";
+import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,10 @@ import {
   getPrivateAiFixtureCandidates,
   refreshPrivateAiFixtureCandidates,
 } from "@/lib/football-ai-fixture.functions";
-import { FOOTBALL_AI_DISCOVERY_LEAGUES, type FootballAiDiscoveryLeagueId } from "@/lib/football-research.shared";
+import {
+  FOOTBALL_AI_DISCOVERY_LEAGUES,
+  type FootballAiDiscoveryLeagueId,
+} from "@/lib/football-research.shared";
 import {
   aiFixtureGateCode,
   parseAiFixtureErrorCode,
@@ -42,7 +45,7 @@ const COPY = {
     analyze: "Ανάλυση",
     analyzeSelected: (n: number) => `Ανάλυση επιλεγμένων επαληθευμένων (${n})`,
     empty: "Δεν υπάρχουν αποθηκευμένοι αγώνες για αυτή την εβδομάδα.",
-    failed: "Η ενημέρωση δεν ολοκληρώθηκε. Η προσπάθεια μετράει στο όριο.",
+    failed: "Η ενημέρωση δεν ολοκληρώθηκε. Μπορεί να έχει πραγματοποιηθεί χρεώσιμη κλήση.",
     noPricing: "Το μοντέλο δεν είναι εγκατεστημένο με επαληθευμένη τιμολόγηση.",
     loading: "Φόρτωση…",
     sources: "πηγές",
@@ -65,7 +68,7 @@ const COPY = {
     analyze: "Analyze",
     analyzeSelected: (n: number) => `Analyze selected verified (${n})`,
     empty: "No stored fixtures for this week.",
-    failed: "Refresh did not complete. The attempt counts toward your limit.",
+    failed: "Refresh did not complete. A paid request may have been dispatched.",
     noPricing: "Model is not installed with verified pricing.",
     loading: "Loading…",
     sources: "sources",
@@ -87,7 +90,9 @@ export function AiSearchPanel(props: {
   const [allMode, setAllMode] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const stopRequested = useRef(false);
-  const [leagueResults, setLeagueResults] = useState<Record<string, "completed" | "failed" | "skipped">>({});
+  const [leagueResults, setLeagueResults] = useState<
+    Record<string, "completed" | "failed" | "skipped">
+  >({});
   const [error, setError] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const query = useQuery({
@@ -102,11 +107,7 @@ export function AiSearchPanel(props: {
   const d = query.data;
   const gateCode = d ? aiFixtureGateCode(d.availability) : null;
   const refreshDisabled =
-    refreshing ||
-    props.working ||
-    !d ||
-    d.maxCostUsd === null ||
-    gateCode !== null;
+    refreshing || props.working || !d || d.maxCostUsd === null || gateCode !== null;
 
   const confirm = async () => {
     if (!d || d.maxCostUsd === null) return;
