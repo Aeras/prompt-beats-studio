@@ -315,7 +315,7 @@ export const reverifyPrivateAiFixtureCandidates = createServerFn({ method: "POST
       if (Date.parse(kickoffUtc) <= Date.now()) continue;
       const sources = (Array.isArray(item["source_evidence"]) ? item["source_evidence"] : [])
         .filter((v): v is Record<string, unknown> => !!v && typeof v === "object")
-        .filter((v) => typeof v["url"] === "string" && !!trustedPublicUrl(v["url"]))
+        .filter((v) => typeof v["url"] === "string" && !!trustedPublicUrl(String(v["url"])))
         .slice(0, 8)
         .map((v) => ({ url: String(v["url"]), title: String(v["title"] ?? "").slice(0, 250) }));
       if (sources.length < 2) { withoutEnoughSources++; continue; }
