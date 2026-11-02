@@ -2,6 +2,8 @@
 
 ## 2026-11-01 — Football Research Studio: AI Αναζήτηση BETA (third fixture source) — CODE_COMPLETE_RELEASE_PENDING
 
+- **2026-11-02 prepared improvement (offline, pending CI):** Successful AI discovery produced 11 candidates but zero verified fixtures. Add strict explicit-GMT/UTC match-date parsing to existing HTML verification and Greek club-name labels for display only. Preserve ≥2 independent trusted domains, exact UTC minute, RLS/server-only controls, and analysis gating. Does not yet guarantee the current 11 candidates can be verified; requires source compatibility tests and production rollout. No paid calls or production changes.
+
 - **2026-11-02 HTTP 400 research (candidate, not released):** Production request reached Google AI Studio with HTTP 400 and 563ms provider latency. Google documentation confirms complex nested `maxItems` in Gemini response JSON Schema can cause `INVALID_ARGUMENT` 400. Candidate removes ONLY `maxItems` 80 and 8 from outbound schema; preserves Zod max(80), max(8), independent corroboration and all AI spending/dispatch gates. No paid test; acceptance requires approved CI and separately approved production release. Exact root cause remains provisional.
 
 - **Scope:** Ports the 15 unlinked commits `af8223bc..96d4810f` (catalogue, validation, search, corroboration, persistence, server functions, UI) onto `main 63e999c9` and fixes all 13 issues of the approved plan. The broken draft migration `20261101233000` (`$` instead of `$$`) is **not** used; replaced by one forward-only migration `20261102000000_private_football_ai_search_beta.sql`.

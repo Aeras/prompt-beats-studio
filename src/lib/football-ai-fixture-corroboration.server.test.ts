@@ -27,6 +27,11 @@ describe("exact kickoff minute (UTC, zero tolerance)", () => {
     expect(judgeSource(page("2026-11-07T15:00:00Z"), fixture)).toBe("confirms");
     expect(judgeSource(page("2026-11-07T16:00:00+01:00"), fixture)).toBe("confirms");
   });
+  it("accepts only explicitly zoned GMT dates, preserving exact UTC minute", () => {
+    expect(judgeSource("<p>Arsenal v Chelsea 7 November 2026 15:00 GMT</p>", fixture)).toBe("confirms");
+    expect(judgeSource("<p>Arsenal v Chelsea 7 November 2026 15:01 GMT</p>", fixture)).toBe("contradicts");
+    expect(judgeSource("<p>Arsenal v Chelsea 7 November 2026 15:00</p>", fixture)).toBe("silent");
+  });
   it("a one-minute difference contradicts", () => {
     expect(judgeSource(page("2026-11-07T15:01:00Z"), fixture)).toBe("contradicts");
   });

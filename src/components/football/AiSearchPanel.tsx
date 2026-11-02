@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -194,7 +195,7 @@ export function AiSearchPanel(props: {
               />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-white">
-                  {f.homeTeam} – {f.awayTeam}
+                  {footballTeamDisplayName(f.homeTeam, language)} – {footballTeamDisplayName(f.awayTeam, language)}
                 </p>
                 <p className="text-xs text-slate-400">
                   {new Date(f.kickoffUtc).toLocaleString(language === "el" ? "el-GR" : "en-GB", {
