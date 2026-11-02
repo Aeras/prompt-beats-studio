@@ -130,10 +130,29 @@ export function AiSearchPanel(props: {
             },
           });
         } catch (err) {
+          const code = parseAiFixtureErrorCode(err);
           errors.push(
-            leagues[index]! + ": " +
-            aiFixtureFailureText(parseAiFixtureErrorCode(err), language === "el" ? "el" : "en"),
+            leagues[index]! +
+              ": " +
+              aiFixtureFailureText(code, language === "el" ? "el" : "en"),
           );
+          // Stop on a system-wide gate failure; continuing would only produce
+          // more rejected requests (or ambiguous provider-cost outcomes).
+          if (
+            code === null ||
+            code === "cost_changed" ||
+            code === "dispatch_disabled" ||
+            code === "spend_not_approved" ||
+            code === "beta_disabled" ||
+            code === "provider_key_missing" ||
+            code === "model_pricing_unavailable" ||
+            code === "dispatch_admission_failed" ||
+            code === "admission_unavailable" ||
+            code === "already_running"
+          ) {
+            setProgress({ done: index + 1, total: leagues.length });
+            break;
+          }
         }
         setProgress({ done: index + 1, total: leagues.length });
       }
