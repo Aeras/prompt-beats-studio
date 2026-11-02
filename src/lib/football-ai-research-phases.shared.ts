@@ -1,58 +1,76 @@
 import { z } from "zod";
 
 /** Evidence is retained as data, never as executable instructions to the model. */
-const evidenceItem = z.object({
-  claim: z.string().trim().min(1).max(1200),
-  classification: z.enum(["observed", "reported", "inferred", "unknown"]),
-  sourceUrl: z.string().url().optional(),
-  observedAt: z.string().datetime().optional(),
-  caveat: z.string().max(600).optional(),
-}).strict();
+const evidenceItem = z
+  .object({
+    claim: z.string().trim().min(1).max(1200),
+    classification: z.enum(["observed", "reported", "inferred", "unknown"]),
+    sourceUrl: z.string().url().optional(),
+    observedAt: z.string().datetime().optional(),
+    caveat: z.string().max(600).optional(),
+  })
+  .strict();
 
-export const footballResearchBriefSchema = z.object({
-  fixture: z.object({
-    leagueId: z.string().min(1).max(32),
-    homeTeam: z.string().min(1).max(150),
-    awayTeam: z.string().min(1).max(150),
-    kickoffUtc: z.string().datetime(),
-  }).strict(),
-  retrievedAtUtc: z.string().datetime(),
-  standingsAndMotivation: z.array(evidenceItem).max(20),
-  recentFormAndHomeAway: z.array(evidenceItem).max(20),
-  underlyingStats: z.array(evidenceItem).max(30),
-  teamNewsAndLineups: z.array(evidenceItem).max(20),
-  scheduleRotationAndConditions: z.array(evidenceItem).max(20),
-  externalPredictions: z.array(evidenceItem).max(20),
-  contradictoryEvidence: z.array(evidenceItem).max(15),
-  missingData: z.array(z.string().max(300)).max(20),
-}).strict();
+export const footballResearchBriefSchema = z
+  .object({
+    fixture: z
+      .object({
+        leagueId: z.string().min(1).max(32),
+        homeTeam: z.string().min(1).max(150),
+        awayTeam: z.string().min(1).max(150),
+        kickoffUtc: z.string().datetime(),
+      })
+      .strict(),
+    retrievedAtUtc: z.string().datetime(),
+    standingsAndMotivation: z.array(evidenceItem).max(20),
+    recentFormAndHomeAway: z.array(evidenceItem).max(20),
+    underlyingStats: z.array(evidenceItem).max(30),
+    teamNewsAndLineups: z.array(evidenceItem).max(20),
+    scheduleRotationAndConditions: z.array(evidenceItem).max(20),
+    externalPredictions: z.array(evidenceItem).max(20),
+    contradictoryEvidence: z.array(evidenceItem).max(15),
+    missingData: z.array(z.string().max(300)).max(20),
+  })
+  .strict();
 
-export const footballExpertDecisionSchema = z.object({
-  decision: z.enum(["pick", "abstain"]),
-  primary: z.object({
-    market: z.string().min(1).max(80),
-    percent: z.number().int().min(1).max(99).optional(),
-    confidence: z.enum(["low", "medium", "high"]),
-    rationale: z.string().min(25).max(1500),
-    strongestEvidence: z.string().min(10).max(700),
-    mainRisk: z.string().min(10).max(700),
-  }).strict().optional(),
-  abstentionReason: z.string().max(900).optional(),
-  avoid: z.string().max(900),
-  planB: z.object({
-    market: z.string().min(1).max(80),
-    rationale: z.string().min(15).max(800),
-  }).strict().optional(),
-  disagreementWithBaseAnalysis: z.string().max(1200).optional(),
-  limitations: z.array(z.string().max(400)).max(12),
-}).strict().superRefine((d, ctx) => {
-  if (d.decision === "pick" && !d.primary) {
-    ctx.addIssue({ code: "custom", message: "A pick requires a primary market." });
-  }
-  if (d.decision === "abstain" && (d.primary || d.planB || !d.abstentionReason)) {
-    ctx.addIssue({ code: "custom", message: "Abstention requires a reason and no suggested market." });
-  }
-});
+export const footballExpertDecisionSchema = z
+  .object({
+    decision: z.enum(["pick", "abstain"]),
+    primary: z
+      .object({
+        market: z.string().min(1).max(80),
+        percent: z.number().int().min(1).max(99).optional(),
+        confidence: z.enum(["low", "medium", "high"]),
+        rationale: z.string().min(25).max(1500),
+        strongestEvidence: z.string().min(10).max(700),
+        mainRisk: z.string().min(10).max(700),
+      })
+      .strict()
+      .optional(),
+    abstentionReason: z.string().max(900).optional(),
+    avoid: z.string().max(900),
+    planB: z
+      .object({
+        market: z.string().min(1).max(80),
+        rationale: z.string().min(15).max(800),
+      })
+      .strict()
+      .optional(),
+    disagreementWithBaseAnalysis: z.string().max(1200).optional(),
+    limitations: z.array(z.string().max(400)).max(12),
+  })
+  .strict()
+  .superRefine((d, ctx) => {
+    if (d.decision === "pick" && !d.primary) {
+      ctx.addIssue({ code: "custom", message: "A pick requires a primary market." });
+    }
+    if (d.decision === "abstain" && (d.primary || d.planB || !d.abstentionReason)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Abstention requires a reason and no suggested market.",
+      });
+    }
+  });
 
 /** Phase 1: independent pre-match research; no betting recommendations. */
 export const FOOTBALL_RESEARCH_BRIEF_SYSTEM = `You are an evidence-driven football researcher. Use ONLY the supplied independently retrieved documents and fixture identity. Never claim to have searched yourself or invent facts, statistics, sources, odds, or publication dates.

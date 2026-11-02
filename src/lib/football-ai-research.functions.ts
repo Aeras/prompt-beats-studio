@@ -4,7 +4,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCachedFootballWeek } from "@/lib/football-fixtures-cache.server";
 import { footballMarketOutcome } from "@/lib/football-market-outcome.shared";
 import { footballExpertDecisionSchema } from "@/lib/football-ai-research-phases.shared";
-import { buildFootballSourceSnapshot, type FootballSourceSnapshot } from "@/lib/football-ai-source-snapshot.shared";
+import {
+  buildFootballSourceSnapshot,
+  type FootballSourceSnapshot,
+} from "@/lib/football-ai-source-snapshot.shared";
 import { FOOTBALL_LEAGUES, type FootballLeagueId } from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
@@ -219,9 +222,13 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         }
         const parsedAssessment = footballAiAssessmentSchema.parse(raw);
         const assessment = parsedAssessment.matchContext
-          ? { ...parsedAssessment,
-              matchContext: filterResearchContextUrls(parsedAssessment.matchContext,
-                evidenceSnapshot.map((item) => item.url)), }
+          ? {
+              ...parsedAssessment,
+              matchContext: filterResearchContextUrls(
+                parsedAssessment.matchContext,
+                evidenceSnapshot.map((item) => item.url),
+              ),
+            }
           : parsedAssessment;
         const issues = validateFootballMarketProbabilities(assessment);
         if (issues.length) throw new Error("AI market probabilities are inconsistent.");
@@ -229,7 +236,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const researchBrief = footballResearchEvidenceSnapshotSchema.parse({
           collectedAtUtc: evidenceCutoff,
           matchFacts: evidenceSnapshot.filter((x) => x.researchIntent === "match_facts"),
-          externalForecasts: evidenceSnapshot.filter((x) => x.researchIntent === "external_forecasts"),
+          externalForecasts: evidenceSnapshot.filter(
+            (x) => x.researchIntent === "external_forecasts",
+          ),
           evidenceStatus: "unverified_source_extracts",
         });
         const savedAnalysis = footballAiAssessmentSchema.parse({ ...assessment, researchBrief });
@@ -316,11 +325,22 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       .from("private_football_expert_reviews" as never)
       .select("run_id,status,decision,model_id")
       .eq("user_id", context.userId)
-      .in("run_id", visibleRows.length ? visibleRows.map((r) => r.id) : ["00000000-0000-0000-0000-000000000000"]);
+      .in(
+        "run_id",
+        visibleRows.length
+          ? visibleRows.map((r) => r.id)
+          : ["00000000-0000-0000-0000-000000000000"],
+      );
     if (expertError) throw new Error("Expert review history unavailable.");
     const reviewsByRun = new Map(
-      ((reviews ?? []) as Array<{run_id:string;status:string;decision:unknown;model_id:string}>)
-        .map((review) => [review.run_id, review]),
+      (
+        (reviews ?? []) as Array<{
+          run_id: string;
+          status: string;
+          decision: unknown;
+          model_id: string;
+        }>
+      ).map((review) => [review.run_id, review]),
     );
     // At most three unique league/weeks per screen load. Reuse the fixture
     // cache: do not burn 40 calls from the free daily API quota.
@@ -383,21 +403,29 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
           const raw = reviewsByRun.get(row.id);
           if (!raw) return null;
           const checkedExpert = footballExpertDecisionSchema.safeParse(raw.decision);
-          return { status: raw.status, modelId: raw.model_id,
-            decision: checkedExpert.success ? checkedExpert.data : null };
+          return {
+            status: raw.status,
+            modelId: raw.model_id,
+            decision: checkedExpert.success ? checkedExpert.data : null,
+          };
         })(),
         analysis: checked.success ? checked.data : null,
         sources: Array.isArray(row.sources)
-          ? row.sources.filter((source): source is Record<string, unknown> =>
-              !!source && typeof source === "object" && !Array.isArray(source),
-            ).map((source) => ({
-              title: String(source["title"] ?? "").slice(0, 180),
-              url: String(source["url"] ?? "").slice(0, 2000),
-              accessedAt: String(source["accessedAt"] ?? "").slice(0, 40),
-              researchIntent: source["researchIntent"] === "external_forecasts"
-                ? "external_forecasts" as const
-                : "match_facts" as const,
-            })).filter((source) => source.url.startsWith("https://"))
+          ? row.sources
+              .filter(
+                (source): source is Record<string, unknown> =>
+                  !!source && typeof source === "object" && !Array.isArray(source),
+              )
+              .map((source) => ({
+                title: String(source["title"] ?? "").slice(0, 180),
+                url: String(source["url"] ?? "").slice(0, 2000),
+                accessedAt: String(source["accessedAt"] ?? "").slice(0, 40),
+                researchIntent:
+                  source["researchIntent"] === "external_forecasts"
+                    ? ("external_forecasts" as const)
+                    : ("match_facts" as const),
+              }))
+              .filter((source) => source.url.startsWith("https://"))
           : [],
         outcomes,
       };
