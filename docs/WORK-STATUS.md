@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football estimate schema mismatch — IN_PROGRESS
+
+- **Evidence:** Production football run `f0c653a9-7863-4cfb-af19-76d33d2ed552` reported `invalid_ai_schema`, field `estimates`. The prompt names fourteen permitted non-corners markets, while the schema capped estimates at twelve. The exact returned content is unavailable, so this is a proven inconsistency, not proof of the precise historical invalid value.
+- **Scoped fix:** Raise only football estimates array cap to fourteen, clarify prompt output rules, log safe Zod issue codes and paths, add 14/15-item contract test. No other platform code, SQL, or RLS changes. No automatic retries or paid runs.
+- **Release:** Candidate unmerged; requires CI Regression, Browser Quality, Database Replay, review, publish and production verification. Not CLOSED.
+
+
 ## 2026-11-03 — Football Research failed-run evidence — IN_PROGRESS
 
 - **Evidence:** The football handler discarded observed token usage when response validation failed, and strict schema failure lacked safe per-field diagnostics. A screenshot alone cannot identify the actual invalid field.

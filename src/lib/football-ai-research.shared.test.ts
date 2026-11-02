@@ -63,6 +63,12 @@ describe("private football AI contracts", () => {
     }
   });
 
+  test("14 supported markets are accepted", () => {
+    const example = { summary: "A fully explained football analysis summary with context.", suggestions: [], limitations: [], estimates: Array.from({ length: 14 }, (_, i) => ({ market: ["home_win","draw","away_win","double_chance_1x","double_chance_x2","double_chance_12","both_teams_score_yes","both_teams_score_no","goals_over_1_5","goals_under_1_5","goals_over_2_5","goals_under_2_5","goals_over_3_5","goals_under_3_5"][i], percent: 50, reason: "Conservative estimate from limited evidence" })) };
+    expect(footballAiAssessmentSchema.safeParse(example).success).toBe(true);
+    expect(footballAiAssessmentSchema.safeParse({ ...example, estimates: [...example.estimates, example.estimates[0]] }).success).toBe(false);
+  });
+
   test("unknown betting markets, invented probability and excessive suggestions rejected", () => {
     const example = {
       summary: "Η διαθέσιμη τεκμηρίωση είναι περιορισμένη και δεν στηρίζει ασφαλή πρόβλεψη.",
