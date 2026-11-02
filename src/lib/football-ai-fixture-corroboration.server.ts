@@ -78,8 +78,22 @@ function plain(value: string): string {
 
 /** Timestamps with an explicit zone only; zone-less local times are ignored (fail closed). */
 /** Explicit GMT/UTC dates only, never timezone-free times. */
-const GMT_DATE = /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*(GMT|UTC)\b/gi;
-const MONTH_NAMES = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+const GMT_DATE =
+  /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*(GMT|UTC)\b/gi;
+const MONTH_NAMES = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
 const ZONED =
   /\b(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\b/g;
 export function utcMinute(iso: string): string | null {
@@ -148,7 +162,8 @@ export function judgeSource(
     const minute = Number(match[5]);
     if (month < 0 || hour > 23 || minute > 59) continue;
     const dt = new Date(Date.UTC(year, month, day, hour, minute));
-    if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month || dt.getUTCDate() !== day) continue;
+    if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month || dt.getUTCDate() !== day)
+      continue;
     minutes.add(dt.toISOString().slice(0, 16));
   }
   if (minutes.size === 0) return "silent";

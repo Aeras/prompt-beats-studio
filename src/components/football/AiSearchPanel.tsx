@@ -145,9 +145,7 @@ export function AiSearchPanel(props: {
           }));
           const code = parseAiFixtureErrorCode(err);
           errors.push(
-            leagues[index]! +
-              ": " +
-              aiFixtureFailureText(code, language === "el" ? "el" : "en"),
+            leagues[index]! + ": " + aiFixtureFailureText(code, language === "el" ? "el" : "en"),
           );
           // Stop on a system-wide gate failure; continuing would only produce
           // more rejected requests (or ambiguous provider-cost outcomes).
@@ -171,9 +169,11 @@ export function AiSearchPanel(props: {
       }
       if (stopRequested.current) {
         setLeagueResults((previous) => ({
-          ...Object.fromEntries(leagues.filter((id) => !completed.has(id)).map((id) =>
-            [id, previous[id] ?? "skipped"] as const,
-          )),
+          ...Object.fromEntries(
+            leagues
+              .filter((id) => !completed.has(id))
+              .map((id) => [id, previous[id] ?? "skipped"] as const),
+          ),
           ...previous,
         }));
       }
@@ -224,10 +224,15 @@ export function AiSearchPanel(props: {
               {c.progress(progress.done, progress.total)}
             </span>
             {progress.total > 1 && (
-              <button type="button" onClick={() => {
+              <button
+                type="button"
+                onClick={() => {
                   stopRequested.current = true;
                 }}
-                className="text-xs font-semibold text-amber-300">{c.stop}</button>
+                className="text-xs font-semibold text-amber-300"
+              >
+                {c.stop}
+              </button>
             )}
           </>
         )}
@@ -288,7 +293,8 @@ export function AiSearchPanel(props: {
               />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-white">
-                  {footballTeamDisplayName(f.homeTeam, language)} – {footballTeamDisplayName(f.awayTeam, language)}
+                  {footballTeamDisplayName(f.homeTeam, language)} –{" "}
+                  {footballTeamDisplayName(f.awayTeam, language)}
                 </p>
                 <p className="text-xs text-slate-400">
                   {new Date(f.kickoffUtc).toLocaleString(language === "el" ? "el-GR" : "en-GB", {
@@ -317,9 +323,9 @@ export function AiSearchPanel(props: {
               {d && d.maxCostUsd !== null
                 ? c.dialogBody(
                     d.model,
-                    (
-                      d.maxCostUsd * (allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1)
-                    ).toFixed(3),
+                    (d.maxCostUsd * (allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1)).toFixed(
+                      3,
+                    ),
                     allMode ? FOOTBALL_AI_DISCOVERY_LEAGUES.length : 1,
                   )
                 : ""}
