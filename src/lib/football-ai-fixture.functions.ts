@@ -296,16 +296,19 @@ export const reverifyPrivateAiFixtureCandidates = createServerFn({ method: "POST
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("private_football_ai_fixtures" as never)
-      .select("fixture_id,league_id,normalized_key,home_team,away_team,kickoff_utc,source_evidence,verification_status")
-      .eq("user_id", context.userId).eq("league_id", data.leagueId)
+      .select(
+        "fixture_id,league_id,normalized_key,home_team,away_team,kickoff_utc,source_evidence,verification_status",
+      )
+      .eq("user_id", context.userId)
+      .eq("league_id", data.leagueId)
       .eq("verification_status", "candidate")
       .gte("kickoff_utc", from + "T00:00:00Z")
       .lte("kickoff_utc", to + "T23:59:59Z")
-      .order("kickoff_utc", { ascending: true }).limit(12);
+      .order("kickoff_utc", { ascending: true })
+      .limit(12);
     if (error) throw new Error("Candidate verification could not load saved records");
-    const {
-      corroborateAiFixture, MAX_FETCHES_PER_REFRESH, trustedPublicUrl,
-    } = await import("@/lib/football-ai-fixture-corroboration.server");
+    const { corroborateAiFixture, MAX_FETCHES_PER_REFRESH, trustedPublicUrl } =
+      await import("@/lib/football-ai-fixture-corroboration.server");
     const budget = { remaining: MAX_FETCHES_PER_REFRESH };
     let verified = 0;
     let attempted = 0;
@@ -318,7 +321,10 @@ export const reverifyPrivateAiFixtureCandidates = createServerFn({ method: "POST
         .filter((v) => typeof v["url"] === "string" && !!trustedPublicUrl(String(v["url"])))
         .slice(0, 8)
         .map((v) => ({ url: String(v["url"]), title: String(v["title"] ?? "").slice(0, 250) }));
-      if (sources.length < 2) { withoutEnoughSources++; continue; }
+      if (sources.length < 2) {
+        withoutEnoughSources++;
+        continue;
+      }
       const fixture = {
         leagueId: data.leagueId,
         homeTeam: String(item["home_team"]),
@@ -332,11 +338,16 @@ export const reverifyPrivateAiFixtureCandidates = createServerFn({ method: "POST
       const proof = await corroborateAiFixture(fixture, [], fetch, budget);
       if (proof) {
         const { error: saveError } = await supabaseAdmin.rpc(
-          "upsert_private_football_ai_fixture" as never, {
-            _user_id: context.userId, _league_id: fixture.leagueId,
-            _normalized_key: fixture.normalizedKey, _home_team: fixture.homeTeam,
-            _away_team: fixture.awayTeam, _kickoff_utc: fixture.kickoffUtc,
-            _verified: true, _source_evidence: proof.verifiedSources,
+          "upsert_private_football_ai_fixture" as never,
+          {
+            _user_id: context.userId,
+            _league_id: fixture.leagueId,
+            _normalized_key: fixture.normalizedKey,
+            _home_team: fixture.homeTeam,
+            _away_team: fixture.awayTeam,
+            _kickoff_utc: fixture.kickoffUtc,
+            _verified: true,
+            _source_evidence: proof.verifiedSources,
           } as never,
         );
         if (saveError) throw new Error("Verified fixture update failed");

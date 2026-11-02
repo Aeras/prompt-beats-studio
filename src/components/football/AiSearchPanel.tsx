@@ -121,7 +121,10 @@ export function AiSearchPanel(props: {
         data: { leagueId: props.leagueId, weekDate: props.weekDate },
       });
       await query.refetch();
-      if (!result.verified) setError("Δεν επιβεβαιώθηκαν ακόμη αγώνες από δύο ανεξάρτητες πηγές. Δεν έγινε χρεώσιμη AI κλήση.");
+      if (!result.verified)
+        setError(
+          "Δεν επιβεβαιώθηκαν ακόμη αγώνες από δύο ανεξάρτητες πηγές. Δεν έγινε χρεώσιμη AI κλήση.",
+        );
     } catch {
       setError("Η επανεπαλήθευση απέτυχε, χωρίς πληρωμένη αναζήτηση AI.");
     } finally {
@@ -237,10 +240,12 @@ export function AiSearchPanel(props: {
         >
           {c.all}
         </button>
-        <button type="button"
+        <button
+          type="button"
           disabled={refreshing || reverifying || props.working || !d}
           onClick={() => void reverify()}
-          className="rounded-xl border border-amber-400/40 px-4 py-2.5 text-sm font-bold text-amber-100 disabled:opacity-40">
+          className="rounded-xl border border-amber-400/40 px-4 py-2.5 text-sm font-bold text-amber-100 disabled:opacity-40"
+        >
           {reverifying ? c.refreshing : c.reverify}
         </button>
         {refreshing && (
