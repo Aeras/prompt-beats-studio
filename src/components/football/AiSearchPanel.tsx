@@ -234,7 +234,10 @@ export function AiSearchPanel(props: {
         {progress.total > 1 && Object.keys(leagueResults).length > 0 && (
           <p className="w-full text-xs text-slate-300" role="status">
             {FOOTBALL_AI_DISCOVERY_LEAGUES.filter((league) => leagueResults[league.id])
-              .map((league) => `${league.label}: ${leagueResults[league.id] === "completed" ? "✓" : leagueResults[league.id] === "failed" ? "✕" : "—"}`)
+              .map(
+                (league) =>
+                  `${league.label}: ${leagueResults[league.id] === "completed" ? "✓" : leagueResults[league.id] === "failed" ? "✕" : "—"}`,
+              )
               .join(" · ")}
           </p>
         )}
