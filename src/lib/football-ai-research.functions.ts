@@ -151,7 +151,11 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     const runId = claim.id;
     let providerCalled = false;
     let failureCode = "research_unavailable";
-    let observedUsage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null } | null = null;
+    let observedUsage: {
+      inputTokens: number | null;
+      outputTokens: number | null;
+      totalTokens: number | null;
+    } | null = null;
 
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
