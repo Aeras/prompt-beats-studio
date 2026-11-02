@@ -27,7 +27,7 @@ const competitor = z.object({
   score: z.union([z.string(), z.number()]).nullable().optional(),
 });
 const event = z.object({
-  id: z.string().regex(/^\\d{1,12}$/),
+  id: z.string().regex(/^\d{1,12}$/),
   date: z.string(),
   competitions: z.array(z.object({
     competitors: z.array(competitor).max(4),
