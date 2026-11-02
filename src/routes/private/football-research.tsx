@@ -307,7 +307,11 @@ function PrivateFootballResearchPage() {
                   if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
                   if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
                     setLeague("EN-PL");
-                  if (v !== "ai-search" && v !== "espn" && !FOOTBALL_LEAGUES.some((x) => x.id === league))
+                  if (
+                    v !== "ai-search" &&
+                    v !== "espn" &&
+                    !FOOTBALL_LEAGUES.some((x) => x.id === league)
+                  )
                     setLeague("EN-PL");
                 }}
               >
