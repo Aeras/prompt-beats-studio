@@ -227,7 +227,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });
         if (receipt.stopReason !== "end_turn") {
-          failureCode = receipt.stopReason === "max_tokens" ? "output_token_limit" : "incomplete_ai_output";
+          failureCode =
+            receipt.stopReason === "max_tokens" ? "output_token_limit" : "incomplete_ai_output";
           throw new Error("AI response was incomplete.");
         }
         let raw: unknown;
