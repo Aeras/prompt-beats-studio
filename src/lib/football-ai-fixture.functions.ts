@@ -285,3 +285,64 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
       throw new Error(aiFixtureErrorMessage(stage));
     }
   });
+
+/** Revalidate saved, untrusted candidates without any paid model search. */
+export const reverifyPrivateAiFixtureCandidates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => leagueWeek.parse(raw))
+  .handler(async ({ context, data }) => {
+    await requireSuperAdmin(context.supabase as never);
+    const { from, to } = aiFixtureWeekBounds(data.weekDate);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("private_football_ai_fixtures" as never)
+      .select("fixture_id,league_id,normalized_key,home_team,away_team,kickoff_utc,source_evidence,verification_status")
+      .eq("user_id", context.userId).eq("league_id", data.leagueId)
+      .eq("verification_status", "candidate")
+      .gte("kickoff_utc", from + "T00:00:00Z")
+      .lte("kickoff_utc", to + "T23:59:59Z")
+      .order("kickoff_utc", { ascending: true }).limit(12);
+    if (error) throw new Error("Candidate verification could not load saved records");
+    const {
+      corroborateAiFixture, MAX_FETCHES_PER_REFRESH, trustedPublicUrl,
+    } = await import("@/lib/football-ai-fixture-corroboration.server");
+    const budget = { remaining: MAX_FETCHES_PER_REFRESH };
+    let verified = 0;
+    let attempted = 0;
+    let withoutEnoughSources = 0;
+    for (const item of (rows ?? []) as Array<Record<string, unknown>>) {
+      const kickoffUtc = String(item["kickoff_utc"] ?? "");
+      if (Date.parse(kickoffUtc) <= Date.now()) continue;
+      const sources = (Array.isArray(item["source_evidence"]) ? item["source_evidence"] : [])
+        .filter((v): v is Record<string, unknown> => !!v && typeof v === "object")
+        .filter((v) => typeof v["url"] === "string" && !!trustedPublicUrl(v["url"]))
+        .slice(0, 8)
+        .map((v) => ({ url: String(v["url"]), title: String(v["title"] ?? "").slice(0, 250) }));
+      if (sources.length < 2) { withoutEnoughSources++; continue; }
+      const fixture = {
+        leagueId: data.leagueId,
+        homeTeam: String(item["home_team"]),
+        awayTeam: String(item["away_team"]),
+        kickoffUtc,
+        normalizedKey: String(item["normalized_key"]),
+        observedAtUtc: new Date().toISOString(),
+        sources,
+      };
+      attempted++;
+      const proof = await corroborateAiFixture(fixture, [], fetch, budget);
+      if (proof) {
+        const { error: saveError } = await supabaseAdmin.rpc(
+          "upsert_private_football_ai_fixture" as never, {
+            _user_id: context.userId, _league_id: fixture.leagueId,
+            _normalized_key: fixture.normalizedKey, _home_team: fixture.homeTeam,
+            _away_team: fixture.awayTeam, _kickoff_utc: fixture.kickoffUtc,
+            _verified: true, _source_evidence: proof.verifiedSources,
+          } as never,
+        );
+        if (saveError) throw new Error("Verified fixture update failed");
+        verified++;
+      }
+      if (budget.remaining === 0) break;
+    }
+    return { checked: attempted, verified, insufficientSources: withoutEnoughSources };
+  });
