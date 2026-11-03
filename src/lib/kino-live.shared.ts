@@ -189,7 +189,8 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
   const partial = snapshot.active?.numbers.length ? snapshot.active : null;
   // A newer active result must never be hidden by an older draw's animation.
   const animated = (partial ? [snapshot.active] : [snapshot.active, snapshot.last]).find(
-    (draw) => draw?.animation && at >= draw.animation.startTimestamp && at < draw.animation.endTimestamp,
+    (draw) =>
+      draw?.animation && at >= draw.animation.startTimestamp && at < draw.animation.endTimestamp,
   );
   const frame = animated?.animation ? getKinoFrame(animated.animation, at) : null;
   const confirmed = frame?.confirmed ?? partial?.numbers ?? [];
