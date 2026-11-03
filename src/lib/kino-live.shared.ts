@@ -314,7 +314,8 @@ export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
       // Explore the full grid, never re-lighting a settled yellow winner.
       // The last fifth of the step lands on the next verified winner.
       const hop = Math.min(4, Math.floor(stepElapsed / (KINO_VERIFIED_REVEAL_STEP_MS / 5)));
-      activeNumber = hop === 4 ? target : (getKinoRegularSearchPath(draw, count, target)[hop] ?? null);
+      activeNumber =
+        hop === 4 ? target : (getKinoRegularSearchPath(draw, count, target)[hop] ?? null);
     }
   } else if (elapsed < bonusIntroEnd) {
     phase = "bonus-intro";
