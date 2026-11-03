@@ -80,6 +80,19 @@ describe("real research transport, with offline network fixtures", () => {
     ])
       expect(() => publicInspirationUrl(url)).toThrow();
   });
+  test("advanced search forwards depth without changing the existing basic default", async () => {
+    const requests: string[] = [];
+    const fetcher = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      requests.push(JSON.parse(init?.body as string).search_depth);
+      return new Response(JSON.stringify({ results: [] }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+    await searchInspirationWeb("match preview", new AbortController().signal, fetcher, "offline", "advanced");
+    await searchInspirationWeb("match preview", new AbortController().signal, fetcher, "offline");
+    expect(requests).toEqual(["advanced", "basic"]);
+  });
+
   test("fixed-origin retrieval distinguishes accessible extracts from search snippets", async () => {
     let calls = 0;
     const found = await searchInspirationWeb(

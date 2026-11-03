@@ -65,6 +65,8 @@ export const footballAiAssessmentSchema = z
   .object({
     summary: z.string().trim().min(20).max(3500),
     espnData: footballEspnContextSchema.optional(),
+    /** Server-attached metadata for transparent Basic/Advanced comparisons. */
+    tavilySearchDepth: z.enum(["basic", "advanced"]).optional(),
     matchContext: footballResearchContextSchema.optional(),
     researchBrief: footballResearchEvidenceSnapshotSchema.optional(),
     estimates: z
@@ -148,6 +150,8 @@ export const footballAnalysisRequestSchema = z.object({
   requestKey: z.string().uuid(),
   modelId: z.string().trim().min(1).max(240),
   withTavily: z.boolean().default(false),
+  /** User-selected Tavily depth for the three football source searches. */
+  tavilySearchDepth: z.enum(["basic", "advanced"]).default("basic"),
   /** Explicit user consent for this single potentially billable execution. */
   approvePaidRequest: z.literal(true),
 });

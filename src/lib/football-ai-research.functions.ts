@@ -179,7 +179,13 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         ];
         const sources: FootballSourceSnapshot[] = [];
         for (const [queryIndex, query] of queries.entries()) {
-          const result = await searchInspirationWeb(query, AbortSignal.timeout(20_000));
+          const result = await searchInspirationWeb(
+            query,
+            AbortSignal.timeout(20_000),
+            undefined,
+            undefined,
+            data.tavilySearchDepth,
+          );
           for (const doc of result.documents) {
             if (sources.some((existing) => existing.url === doc.source.url)) continue;
             sources.push({
@@ -295,6 +301,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           ...assessment,
           researchBrief,
           ...(espnData ? { espnData } : {}),
+          tavilySearchDepth: data.tavilySearchDepth,
         });
         failureCode = "persistence_failed";
         const completedAt = new Date().toISOString();

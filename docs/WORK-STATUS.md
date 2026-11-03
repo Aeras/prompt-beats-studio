@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football Tavily Basic / Advanced manual selector — IN_PROGRESS
+
+- **Baseline:** main `5124bcfb6ff91baacd5a40a4182dcb84cae6d00f`; analysis always invokes three Tavily searches with hardcoded `search_depth: basic`; users cannot select depth. The separately consented Expert does not run Tavily.
+- **Scope:** Single shared radio selection above football analysis panels, Basic default (backwards compatible), Advanced optional; propagate the validated search depth to all three Tavily source searches per match, display depth and estimated 3/6 credits per match in existing paid consent dialog. Reuse the current search transport with an optional defaulted parameter so Music Inspiration stays Basic. Works for ESPN and AI Search BETA fixture analysis alike. Add offline request/schema tests; no SQL, new paid dispatch, auto retry, provider credential or production changes.
+- **Completion:** Test, lint/format, TypeScript, build, three CI gates on final HEAD, code review and merge, then separate publish and user-run weekend tests. No production claims before verification.
+
+
 ## 2026-11-03 — ESPN provider-first football research data — IN_PROGRESS
 
 - **Current main:** `229b90056fa1137394ea517d7c98c4bc1bca635a`; ESPN supports 11 configured leagues. Existing fixture adapter only consumes scoreboard; the paid base analysis otherwise uses three broad Tavily searches and does not ingest ESPN standings, recent form or squad data.
