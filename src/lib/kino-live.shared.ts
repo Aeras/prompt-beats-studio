@@ -22,9 +22,27 @@ export type KinoSnapshot = {
   active: KinoDraw | null;
   fetchedAt: number;
 };
-const object = (value: unknown): Record<string, unknown> | null =>
+type KinoProviderObject = Record<string, unknown> & {
+  drawId?: unknown;
+  drawTime?: unknown;
+  gameId?: unknown;
+  winningNumbers?: unknown;
+  list?: unknown;
+  bonus?: unknown;
+  animation?: unknown;
+  startTimestamp?: unknown;
+  endTimestamp?: unknown;
+  steps?: unknown;
+  hopToNumber?: unknown;
+  winningNumber?: unknown;
+  duration?: unknown;
+  status?: unknown;
+  last?: unknown;
+  active?: unknown;
+};
+const object = (value: unknown): KinoProviderObject | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
+    ? (value as KinoProviderObject)
     : null;
 const validNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 80;
