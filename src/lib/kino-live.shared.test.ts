@@ -4,8 +4,13 @@ import {
   getKinoFrame,
   getKinoLiveState,
   getKinoPreviousBallPosition,
+  getKinoTransitionDigit,
   getKinoVerifiedRevealFrame,
+  shouldTransferKinoHeldResult,
   hasKinoSecondChance,
+  KINO_STAGE_BANNER_MS,
+  KINO_STAGE_ENTER_MS,
+  KINO_TRANSITION_MS,
   KINO_VERIFIED_BONUS_MS,
   KINO_VERIFIED_GREEN_STEP_MS,
   KINO_VERIFIED_REVEAL_STEP_MS,
@@ -132,34 +137,47 @@ describe("KINO provider validation and animations", () => {
     ).toBe(true);
   });
 
-  test("reveals only confirmed numbers one by one and bonus after all 20", () => {
-    const verified = parseKinoDraw({ ...draw(101), animation: null });
-    expect(verified).not.toBeNull();
-    const first = getKinoVerifiedRevealFrame(verified!, 0);
+  test("each slower cursor hop visits only the twenty provider numbers", () => {
+    const verified = parseKinoDraw({ ...draw(101), animation: null })!;
+    expect(KINO_VERIFIED_REVEAL_STEP_MS).toBe(880);
+    const end = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
+    const first = getKinoVerifiedRevealFrame(verified, 0);
     expect(first.confirmed).toEqual([]);
-    expect(first.activeNumber).toBeGreaterThan(0);
     expect(first.phase).toBe("regular");
     expect(first.bonusShown).toBe(false);
-    expect(first.finished).toBe(false);
-    expect(getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_STEP_MS).confirmed).toEqual([
-      1,
-    ]);
-    const beforeBonus = getKinoVerifiedRevealFrame(
-      verified!,
-      20 * KINO_VERIFIED_REVEAL_STEP_MS - 1,
-    );
-    expect(beforeBonus.confirmed).toHaveLength(19);
-    expect(beforeBonus.bonusShown).toBe(false);
-    const withBonus = getKinoVerifiedRevealFrame(verified!, 20 * KINO_VERIFIED_REVEAL_STEP_MS);
-    expect(withBonus.confirmed).toEqual(numbers);
-    expect(withBonus.bonusShown).toBe(true);
-    expect(withBonus.finished).toBe(false);
-    const done = getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_TOTAL_MS);
-    expect(done.confirmed).toEqual(numbers);
-    expect(done.activeNumber).toBeNull();
-    expect(done.secondChance).toEqual([]);
-    expect(done.bonusShown).toBe(true);
-    expect(done.finished).toBe(true);
+    for (let ms = 0; ms < end; ms += 80) {
+      const frame = getKinoVerifiedRevealFrame(verified, ms);
+      expect(verified.numbers).toContain(frame.activeNumber);
+      expect(frame.confirmed).toEqual(
+        verified.numbers.slice(0, Math.floor(ms / KINO_VERIFIED_REVEAL_STEP_MS)),
+      );
+    }
+    expect(getKinoVerifiedRevealFrame(verified, end).confirmed).toEqual(numbers);
+  });
+
+  test("Bonus grows and fades, scans only actual drawn numbers, then turns red", () => {
+    const verified = parseKinoDraw({ ...draw(101), animation: null })!;
+    const end = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
+    const entrance = getKinoVerifiedRevealFrame(verified, end);
+    expect(entrance.phase).toBe("bonus-intro");
+    expect(entrance.bonusShown).toBe(false);
+    expect(entrance.banner?.opacity).toBe(0);
+    const full = getKinoVerifiedRevealFrame(verified, end + KINO_STAGE_ENTER_MS);
+    expect(full.banner?.opacity).toBe(1);
+    expect(full.banner?.scale).toBeCloseTo(1);
+    const exit = getKinoVerifiedRevealFrame(verified, end + KINO_STAGE_BANNER_MS - 1);
+    expect(exit.banner?.opacity).toBeLessThan(0.01);
+    const scanStart = end + KINO_STAGE_BANNER_MS;
+    for (let ms = scanStart; ms < scanStart + 1700; ms += 100) {
+      const frame = getKinoVerifiedRevealFrame(verified, ms);
+      expect(frame.phase).toBe("bonus-search");
+      expect(numbers).toContain(frame.activeNumber);
+      expect(frame.bonusShown).toBe(false);
+    }
+    const selected = getKinoVerifiedRevealFrame(verified, scanStart + 1700);
+    expect(selected.phase).toBe("bonus-reveal");
+    expect(selected.activeNumber).toBe(5);
+    expect(selected.bonusShown).toBe(true);
   });
 
   test("uses 12 above and 11 staggered half-column positions below", () => {
@@ -241,27 +259,35 @@ describe("KINO provider validation and animations", () => {
     expect(getKinoLiveState(snapshot, T).canPromoteLast).toBe(true);
   });
 
-  test("real OPAP draw #1348454 reveals 20, Bonus, then each green number", () => {
+  test("real OPAP results reveal Bonus and each green after their distinct titles", () => {
     const last = parseKinoSnapshot(opapDraw1348454, T).last!;
     const regularEnd = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
     const beforeBonus = getKinoVerifiedRevealFrame(last, regularEnd - 1);
     expect(beforeBonus.confirmed).toHaveLength(19);
-    expect(beforeBonus.bonusShown).toBe(false);
     expect(beforeBonus.secondChance).toEqual([]);
-    const bonus = getKinoVerifiedRevealFrame(last, regularEnd);
-    expect(bonus.confirmed).toEqual(last.numbers);
-    expect(bonus.bonusShown).toBe(true);
-    expect(bonus.secondChance).toEqual([]);
+    expect(beforeBonus.bonusShown).toBe(false);
+    const bonusIntro = getKinoVerifiedRevealFrame(last, regularEnd);
+    expect(bonusIntro.confirmed).toEqual(last.numbers);
+    expect(bonusIntro.bonusShown).toBe(false);
+    expect(bonusIntro.banner?.kind).toBe("bonus");
     const bonusEnd = regularEnd + KINO_VERIFIED_BONUS_MS;
-    expect(getKinoVerifiedRevealFrame(last, bonusEnd).secondChance).toEqual([]);
+    const selected = getKinoVerifiedRevealFrame(last, bonusEnd - 1);
+    expect(selected.bonusShown).toBe(true);
+    expect(selected.secondChance).toEqual([]);
+    const greenBanner = getKinoVerifiedRevealFrame(last, bonusEnd);
+    expect(greenBanner.phase).toBe("second-chance-intro");
+    expect(greenBanner.banner?.kind).toBe("second-chance");
+    expect(greenBanner.secondChance).toEqual([]);
+    const greenStart = bonusEnd + KINO_STAGE_BANNER_MS;
+    expect(getKinoVerifiedRevealFrame(last, greenStart).secondChance).toEqual([]);
     expect(
-      getKinoVerifiedRevealFrame(last, bonusEnd + KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+      getKinoVerifiedRevealFrame(last, greenStart + KINO_VERIFIED_GREEN_STEP_MS).secondChance,
     ).toEqual([36]);
     expect(
-      getKinoVerifiedRevealFrame(last, bonusEnd + 2 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+      getKinoVerifiedRevealFrame(last, greenStart + 2 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
     ).toEqual([36, 70]);
     expect(
-      getKinoVerifiedRevealFrame(last, bonusEnd + 3 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+      getKinoVerifiedRevealFrame(last, greenStart + 3 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
     ).toEqual([36, 70, 59]);
     expect(getKinoVerifiedRevealFrame(last, KINO_VERIFIED_REVEAL_TOTAL_MS - 1).finished).toBe(
       false,
@@ -270,6 +296,32 @@ describe("KINO provider validation and animations", () => {
     expect(done.confirmed).toEqual(last.numbers);
     expect(done.secondChance).toEqual([36, 70, 59]);
     expect(done.finished).toBe(true);
+  });
+
+  test("holds verified results to the official next time; 10-to-0 only then", () => {
+    const snap = parseKinoSnapshot(opapDraw1348454, T);
+    const next = snap.active!.drawTime;
+    expect(shouldTransferKinoHeldResult(next, next - 1)).toBe(false);
+    expect(shouldTransferKinoHeldResult(next, next)).toBe(true);
+    expect(shouldTransferKinoHeldResult(null, next + 100000)).toBe(false);
+    expect(getKinoTransitionDigit(null, next)).toBeNull();
+    expect(getKinoTransitionDigit(next, next - 1)).toBeNull();
+    expect(getKinoTransitionDigit(next, next)).toBe(10);
+    expect(getKinoTransitionDigit(next, next + 1000)).toBe(9);
+    expect(getKinoTransitionDigit(next, next + 9000)).toBe(1);
+    expect(getKinoTransitionDigit(next, next + 10000)).toBe(0);
+    expect(getKinoTransitionDigit(next, next + KINO_TRANSITION_MS)).toBeNull();
+  });
+
+  test("missing official greens cannot trigger a fictional 2nd-Chance reveal", () => {
+    const old = parseKinoDraw({ ...draw(205), animation: null })!;
+    const afterBonus = 20 * KINO_VERIFIED_REVEAL_STEP_MS + KINO_VERIFIED_BONUS_MS;
+    const frame = getKinoVerifiedRevealFrame(old, afterBonus);
+    expect(frame.bonusShown).toBe(true);
+    expect(frame.banner).toBeNull();
+    expect(frame.secondChance).toEqual([]);
+    expect(frame.activeNumber).toBeNull();
+    expect(getKinoVerifiedRevealFrame(old, afterBonus + 700).finished).toBe(true);
   });
 
   test("missing animation is not invented for a completed draw", () => {

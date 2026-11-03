@@ -221,14 +221,20 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
   };
 }
 
-/** A delayed display of verified results, never a claim about the OPAP broadcast. */
-export const KINO_VERIFIED_REVEAL_STEP_MS = 650;
-export const KINO_VERIFIED_BONUS_MS = 1100;
-export const KINO_VERIFIED_GREEN_STEP_MS = 850;
-export const KINO_VERIFIED_FINAL_HOLD_MS = 900;
+/** Timed replay of provider-confirmed numbers; cursor hops never invent winnings. */
+export const KINO_VERIFIED_REVEAL_STEP_MS = 880; // ~35% longer than 650ms
+export const KINO_STAGE_ENTER_MS = 350;
+export const KINO_STAGE_HOLD_MS = 1000;
+export const KINO_STAGE_EXIT_MS = 350;
+export const KINO_STAGE_BANNER_MS =
+  KINO_STAGE_ENTER_MS + KINO_STAGE_HOLD_MS + KINO_STAGE_EXIT_MS;
+export const KINO_VERIFIED_BONUS_MS = KINO_STAGE_BANNER_MS + 1700 + 700;
+export const KINO_VERIFIED_GREEN_STEP_MS = 1100;
+export const KINO_VERIFIED_FINAL_HOLD_MS = 700;
 export const KINO_VERIFIED_REVEAL_TOTAL_MS =
   20 * KINO_VERIFIED_REVEAL_STEP_MS +
   KINO_VERIFIED_BONUS_MS +
+  KINO_STAGE_BANNER_MS +
   3 * KINO_VERIFIED_GREEN_STEP_MS +
   KINO_VERIFIED_FINAL_HOLD_MS;
 
@@ -236,46 +242,111 @@ export function hasKinoSecondChance(draw: KinoDraw | null | undefined): draw is 
   return Boolean(draw && isCompleteKinoDraw(draw) && draw.secondChance.length === 3);
 }
 
+type KinoRevealPhase =
+  | "regular"
+  | "bonus-intro"
+  | "bonus-search"
+  | "bonus-reveal"
+  | "second-chance-intro"
+  | "second-chance"
+  | "complete";
+
+function kinoBannerMotion(elapsed: number) {
+  const opacity = Math.max(
+    0,
+    Math.min(
+      1,
+      elapsed / KINO_STAGE_ENTER_MS,
+      (KINO_STAGE_BANNER_MS - elapsed) / KINO_STAGE_EXIT_MS,
+    ),
+  );
+  const entrance = Math.max(0, Math.min(1, elapsed / KINO_STAGE_ENTER_MS));
+  return { opacity, scale: 0.72 + 0.28 * (1 - (1 - entrance) ** 3) };
+}
+
 export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
   const elapsed = Math.max(0, elapsedMs);
   const regularEnd = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
+  const bonusIntroEnd = regularEnd + KINO_STAGE_BANNER_MS;
+  const bonusSearchEnd = bonusIntroEnd + 1700;
   const bonusEnd = regularEnd + KINO_VERIFIED_BONUS_MS;
+  const secondChanceIntroEnd =
+    bonusEnd + (draw.secondChance.length === 3 ? KINO_STAGE_BANNER_MS : 0);
+  const greenEnd = secondChanceIntroEnd + draw.secondChance.length * KINO_VERIFIED_GREEN_STEP_MS;
+  const finishedAt = greenEnd + KINO_VERIFIED_FINAL_HOLD_MS;
   const count = Math.min(20, Math.floor(elapsed / KINO_VERIFIED_REVEAL_STEP_MS));
-  const bonusShown = elapsed >= regularEnd;
-  // Visual-only cursor: these transient hops are NOT additional draw results.
-  const cycle = Math.floor((elapsed % KINO_VERIFIED_REVEAL_STEP_MS) / 130);
-  const target = draw.numbers[count];
-  const activeNumber =
-    count < 20 && typeof target === "number"
-      ? cycle >= 4
-        ? target
-        : ((target + draw.drawId + cycle * 17) % 80) + 1
-      : null;
-  const greenCount = Math.min(
-    draw.secondChance.length,
-    Math.max(0, Math.floor((elapsed - bonusEnd) / KINO_VERIFIED_GREEN_STEP_MS)),
-  );
+  const bonusShown = elapsed >= bonusSearchEnd;
+  let phase: KinoRevealPhase = "complete";
+  let activeNumber: number | null = null;
+  let banner: { kind: "bonus" | "second-chance"; opacity: number; scale: number } | null = null;
+
+  if (elapsed < regularEnd) {
+    phase = "regular";
+    const stepElapsed = elapsed % KINO_VERIFIED_REVEAL_STEP_MS;
+    const target = draw.numbers[count];
+    if (target !== undefined) {
+      // Every visited cell belongs to this draw's twenty official numbers.
+      // Slower movement and a brief settling hold make the target legible.
+      const hop = Math.min(4, Math.floor(stepElapsed / 160));
+      const index = hop === 4 ? count : (count + hop * 7 + 3) % 20;
+      activeNumber = draw.numbers[index] ?? target;
+    }
+  } else if (elapsed < bonusIntroEnd) {
+    phase = "bonus-intro";
+    banner = { kind: "bonus", ...kinoBannerMotion(elapsed - regularEnd) };
+  } else if (elapsed < bonusSearchEnd) {
+    phase = "bonus-search";
+    const scan = Math.floor((elapsed - bonusIntroEnd) / 180);
+    const candidate = draw.numbers[(scan * 7 + draw.drawId) % 20];
+    activeNumber = candidate ?? null;
+  } else if (elapsed < bonusEnd) {
+    phase = "bonus-reveal";
+    activeNumber = draw.bonus;
+  } else if (draw.secondChance.length === 3 && elapsed < secondChanceIntroEnd) {
+    phase = "second-chance-intro";
+    banner = { kind: "second-chance", ...kinoBannerMotion(elapsed - bonusEnd) };
+  } else if (draw.secondChance.length === 3 && elapsed < greenEnd) {
+    phase = "second-chance";
+    const index = Math.min(
+      2,
+      Math.floor((elapsed - secondChanceIntroEnd) / KINO_VERIFIED_GREEN_STEP_MS),
+    );
+    activeNumber = draw.secondChance[index] ?? null;
+  }
+
+  const greenElapsed = Math.max(0, elapsed - secondChanceIntroEnd);
+  const greenCount =
+    draw.secondChance.length === 3
+      ? Math.min(3, Math.floor(greenElapsed / KINO_VERIFIED_GREEN_STEP_MS))
+      : 0;
+
   return {
     confirmed: draw.numbers.slice(0, count),
     activeNumber,
     bonusShown,
     secondChance: draw.secondChance.slice(0, greenCount),
-    phase:
-      elapsed < regularEnd
-        ? "regular"
-        : elapsed < bonusEnd
-          ? "bonus"
-          : greenCount < 3 && draw.secondChance.length === 3
-            ? "second-chance"
-            : "complete",
-    finished:
-      bonusShown &&
-      greenCount === draw.secondChance.length &&
-      elapsed >=
-        (draw.secondChance.length === 3
-          ? KINO_VERIFIED_REVEAL_TOTAL_MS
-          : bonusEnd + KINO_VERIFIED_FINAL_HOLD_MS),
+    phase,
+    banner,
+    finished: elapsed >= finishedAt,
   };
+}
+
+/**
+ * Official next draw time is the sole clock authority. The ten-second
+ * transition is a UI countdown AFTER the official draw boundary and does
+ * not imply the provider has published the next draw results.
+ */
+export const KINO_TRANSITION_MS = 10500;
+export function getKinoTransitionDigit(nextDrawTime: number | null, at: number): number | null {
+  if (nextDrawTime === null || at < nextDrawTime || at >= nextDrawTime + KINO_TRANSITION_MS) {
+    return null;
+  }
+  return Math.max(0, 10 - Math.floor((at - nextDrawTime) / 1000));
+}
+
+/** Hold every confirmed ball until the NEXT provider-owned draw boundary. */
+export function shouldTransferKinoHeldResult(nextDrawTime: number | null, at: number): boolean {
+  return nextDrawTime !== null && at >= nextDrawTime;
 }
 
 /** Exactly 23 positions on a 24-half-column grid: 12 above, 11 staggered below. */
