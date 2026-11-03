@@ -186,14 +186,15 @@ export function isCompleteKinoDraw(draw: KinoDraw | null | undefined): draw is K
 
 /** Isolated view model: use official animation or published partial results only. */
 export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
-  const animated = [snapshot.active, snapshot.last].find(
+  const partial = snapshot.active?.numbers.length ? snapshot.active : null;
+  // A newer active result must never be hidden by an older draw's animation.
+  const animated = (partial ? [snapshot.active] : [snapshot.active, snapshot.last]).find(
     (draw) =>
       draw?.animation &&
       at >= draw.animation.startTimestamp &&
       at < draw.animation.endTimestamp,
   );
   const frame = animated?.animation ? getKinoFrame(animated.animation, at) : null;
-  const partial = snapshot.active?.numbers.length ? snapshot.active : null;
   const confirmed = frame?.confirmed ?? partial?.numbers ?? [];
   const current = animated ?? partial ?? snapshot.active;
   return {
