@@ -70,6 +70,18 @@ const FAILURE_REASON: Record<string, string> = {
   provider_or_persistence_failed: "Η προηγούμενη αποτυχία δεν έχει λεπτομερέστερη διάγνωση.",
 };
 
+const EXPERT_FAILURE_REASON: Record<string, string> = {
+  output_token_limit: "Η απάντηση του Έμπειρου Αναλυτή έφτασε στο όριο tokens.",
+  incomplete_ai_output: "Το μοντέλο δεν ολοκλήρωσε την αξιολόγηση.",
+  invalid_ai_json: "Το μοντέλο επέστρεψε μη έγκυρο JSON.",
+  invalid_ai_schema: "Η αξιολόγηση δεν πληρούσε τη δομή που απαιτείται.",
+  persistence_failed: "Η αποθήκευση της αξιολόγησης απέτυχε.",
+  provider_failed: "Η κλήση προς το μοντέλο απέτυχε.",
+  dispatch_unavailable: "Η εκτέλεση δεν ήταν διαθέσιμη.",
+  provider_or_save_failed: "Η προηγούμενη αποτυχία δεν έχει ειδικότερη διάγνωση.",
+  unavailable: "Η προηγούμενη εκτέλεση δεν ήταν διαθέσιμη.",
+};
+
 const STATUS: Record<string, string> = {
   completed: "Ολοκληρώθηκε",
   processing: "Σε εξέλιξη",
@@ -732,6 +744,13 @@ function PrivateFootballResearchPage() {
                               <p className="mt-2 text-sm text-slate-400">
                                 Κατάσταση αξιολόγησης:{" "}
                                 {STATUS[entry.expertReview.status] ?? entry.expertReview.status}
+                                {entry.expertReview.status === "failed" && (
+                                  <>
+                                    {" · "}
+                                    {EXPERT_FAILURE_REASON[entry.expertReview.errorCode ?? ""] ??
+                                      "Δεν υπάρχουν επαρκή διαγνωστικά για αυτή την αποτυχία."}
+                                  </>
+                                )}
                               </p>
                             ) : entry.analysis.researchBrief &&
                               Date.parse(entry.kickoff_utc) > Date.now() ? (

@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football experimental expert failed-call diagnosis — IN_PROGRESS
+
+- **Production evidence:** Supabase expert reviews contains one failed expert attempt with provider_started_at set, error_code=provider_or_save_failed, and no usage receipt. Screenshot shows the Expert failed while the base analysis completed. Current catch collapses provider, output budget, JSON, schema and save failures; exact historical root cause is not recoverable.
+- **Scoped fix:** Football-only expert handler now distinguishes stage-specific errors, records bounded schema error path/code, preserves observed usage on failure, and gives explicit JSON contract. Bounded expert output cap becomes 4096 tokens (previously 1700), no auto retry or new paid request. Private history UI displays safe expert error reasons. Focused prompt and schema tests.
+- **Safety:** Existing Super Admin, per-call paid consent, immutable unique expert attempts, service-role boundary and base analysis remain unchanged. No SQL/RLS or shared provider modifications. Existing failed attempt is immutable.
+- **Release:** Candidate only; require three final-head CI gates, review and merge. Separate publish and consented paid smoke test; not CLOSED.
+
+
 ## 2026-11-03 — Football estimate schema mismatch — IN_PROGRESS
 
 - **Evidence:** Production football run `f0c653a9-7863-4cfb-af19-76d33d2ed552` reported `invalid_ai_schema`, field `estimates`. The prompt names fourteen permitted non-corners markets, while the schema capped estimates at twelve. The exact returned content is unavailable, so this is a proven inconsistency, not proof of the precise historical invalid value.
