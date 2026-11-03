@@ -222,7 +222,7 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
 }
 
 /** Timed replay of provider-confirmed numbers; cursor hops never invent winnings. */
-export const KINO_VERIFIED_REVEAL_STEP_MS = 880; // ~35% longer than 650ms
+export const KINO_VERIFIED_REVEAL_STEP_MS = 2000; // calibrated full cycle per confirmed number
 export const KINO_STAGE_ENTER_MS = 350;
 export const KINO_STAGE_HOLD_MS = 1000;
 export const KINO_STAGE_EXIT_MS = 350;
@@ -286,7 +286,7 @@ export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
     if (target !== undefined) {
       // Every visited cell belongs to this draw's twenty official numbers.
       // Slower movement and a brief settling hold make the target legible.
-      const hop = Math.min(4, Math.floor(stepElapsed / 160));
+      const hop = Math.min(4, Math.floor(stepElapsed / (KINO_VERIFIED_REVEAL_STEP_MS / 5)));
       const index = hop === 4 ? count : (count + hop * 7 + 3) % 20;
       activeNumber = draw.numbers[index] ?? target;
     }

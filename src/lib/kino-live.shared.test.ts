@@ -139,7 +139,7 @@ describe("KINO provider validation and animations", () => {
 
   test("each slower cursor hop visits only the twenty provider numbers", () => {
     const verified = parseKinoDraw({ ...draw(101), animation: null })!;
-    expect(KINO_VERIFIED_REVEAL_STEP_MS).toBe(880);
+    expect(KINO_VERIFIED_REVEAL_STEP_MS).toBe(2000);
     const end = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
     const first = getKinoVerifiedRevealFrame(verified, 0);
     expect(first.confirmed).toEqual([]);
@@ -152,6 +152,11 @@ describe("KINO provider validation and animations", () => {
         verified.numbers.slice(0, Math.floor(ms / KINO_VERIFIED_REVEAL_STEP_MS)),
       );
     }
+    // Four deliberate 400-ms hops followed by a 400-ms hold on the real winner.
+    const oneStep = KINO_VERIFIED_REVEAL_STEP_MS;
+    expect(getKinoVerifiedRevealFrame(verified, oneStep - 400).activeNumber).toBe(1);
+    expect(getKinoVerifiedRevealFrame(verified, oneStep - 1).confirmed).toEqual([]);
+    expect(getKinoVerifiedRevealFrame(verified, oneStep).confirmed).toEqual([1]);
     expect(getKinoVerifiedRevealFrame(verified, end).confirmed).toEqual(numbers);
   });
 

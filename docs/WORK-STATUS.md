@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — KINO 2-second verified-number cadence — IN_PROGRESS
+
+- **Owner-requested tuning:** Change the twenty regular KINO numbers' completed reveal cadence from 880 ms to **2,000 ms per number** (~40 seconds total), while keeping Bonus and 2η Ευκαιρία durations unchanged. Increase cursor-hop interval proportionately from 160 ms to 400 ms across the first four hops and the final hold to avoid a fast flurry followed by a long stationary pause.
+- **Baseline:** `main` `35c820a24c74c0c4ab966f0c61f44286bbb61422` (merged PR #502), previous official OPAP fixture #1348454 still authoritative; actual values never generated. The client already derives stage boundaries and total duration from `KINO_VERIFIED_REVEAL_STEP_MS`, so no manual timestamp drift or database/server/auth changes are required.
+- **First CI event on PR #503:** Regression stopped in the metadata contract gate because the PR body used `## Implementation` instead of the required exact `## Implementation and ownership`. The PR description has been corrected, with no product-code change. The failed workflow event retains the old body and cannot serve as a valid final sign-off; a new PR synchronize event after fresh explicit approval per `AGENTS.md` §7 is required. Browser Quality and Database Replay statuses must be verified separately.
+- **Verification / release:** Focused timing tests extended to cover 2,000-ms boundaries, winner settling, and existing official OPAP Bonus/green phases. Confirm full Bun regression, lint/Prettier, TypeScript, build, and all three final-HEAD CI gates before merge. No Lovable publish or real mobile draw verification yet; keep production acceptance pending. GitHub Actions §7 approval required before CI-triggering PR creation/branch updates.
+
 ## 2026-11-03 — KINO cinematic live result phases and draw-boundary handoff — IN_PROGRESS
 
 - **Owner-approved requirements 1–4:** ~35% slower individual confirmed-number reveal; smooth zoom/glow/fade for KINO Bonus with a search only among the twenty real drawn numbers before making the actual Bonus red; the same banner effect for 2η Ευκαιρία followed by three separately revealed, verified green numbers; hold all 19 yellow + 1 red + 3 green on the live grid until the following official OPAP draw timestamp, then an animated previous-card handoff and a prominent 10→0 countdown. No reload or fabricated lottery results.
