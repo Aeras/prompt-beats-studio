@@ -65,11 +65,13 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
   if (data.gameId !== undefined && data.gameId !== 1100) return null;
   const winning = object(data.winningNumbers);
   const list = winning?.list;
+  // Keep provider-confirmed partial results instead of discarding them until all 20 arrive.
   const numbers =
     Array.isArray(list) &&
-    list.length === 20 &&
+    list.length > 0 &&
+    list.length <= 20 &&
     list.every(validNumber) &&
-    new Set(list).size === 20
+    new Set(list).size === list.length
       ? (list as number[])
       : [];
   const bonus = winning?.bonus;
@@ -77,6 +79,7 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
     Array.isArray(bonus) &&
     bonus.length === 1 &&
     validNumber(bonus[0]) &&
+    numbers.length === 20 &&
     numbers.includes(bonus[0])
       ? bonus[0]
       : null;
@@ -122,7 +125,9 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
       Math.abs(totalDuration - declaredDuration) <= 5000 &&
       confirmed.length === 20 &&
       new Set(confirmed).size === 20 &&
-      (numbers.length === 0 || confirmed.every((n) => numbers.includes(n)))
+      (numbers.length < 20
+        ? numbers.every((n) => confirmed.includes(n))
+        : confirmed.every((n) => numbers.includes(n)))
     ) {
       animation = { startTimestamp: anim.startTimestamp, endTimestamp: anim.endTimestamp, steps };
     }
@@ -167,4 +172,37 @@ export function getKinoFrame(animation: KinoAnimation, at: number): KinoFrame {
       confirmed.push(step.hopToNumber);
   }
   return { activeNumber: null, confirmed, phase: "finished" };
+}
+
+/** Completed means twenty verified numbers, the provider bonus and final status. */
+export function isCompleteKinoDraw(draw: KinoDraw | null | undefined): draw is KinoDraw {
+  return Boolean(
+    draw &&
+      draw.numbers.length === 20 &&
+      draw.bonus !== null &&
+      (draw.status === "results" || draw.status === "completed"),
+  );
+}
+
+/** Isolated view model: use official animation or published partial results only. */
+export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
+  const animated = [snapshot.active, snapshot.last].find(
+    (draw) =>
+      draw?.animation &&
+      at >= draw.animation.startTimestamp &&
+      at < draw.animation.endTimestamp,
+  );
+  const frame = animated?.animation ? getKinoFrame(animated.animation, at) : null;
+  const partial = snapshot.active?.numbers.length ? snapshot.active : null;
+  const confirmed = frame?.confirmed ?? partial?.numbers ?? [];
+  const current = animated ?? partial ?? snapshot.active;
+  return {
+    drawId: current?.drawId ?? null,
+    activeNumber: frame?.activeNumber ?? null,
+    confirmed,
+    running: frame?.phase === "running" || Boolean(partial),
+    canPromoteLast:
+      isCompleteKinoDraw(snapshot.last) &&
+      !(snapshot.last.animation && at < snapshot.last.animation.endTimestamp),
+  };
 }

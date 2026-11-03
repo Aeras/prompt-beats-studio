@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — KINO mobile layout, bonus color, partial draw display — IN_PROGRESS
+
+- **Follow-up to merged #499:** Owner screenshots confirm previous results wrapping to three rows, wrong regular/bonus colors, mobile live board rendering 8×10, and absence of progressive live numbers when animation metadata is unavailable.
+- **Correction:** Fixed 10×2 previous draw (yellow regular / red bonus) and 10×8 1–80 live board. Validate and expose provider-supplied partial winning lists, preserve official animation frames when supplied, and promote last result only with 20 valid unique numbers, the bonus and completed status, after any official animation window. Added parser/state regression tests. No fabricated animation, numbers or misleading live replay; no football, DB, betting or AI changes.
+- **External dependency:** The public OPAP last-result-and-active endpoint is not established to publish partial numbers or animation before draw completion. Exact OPAP-like real-time animation is not proven feasible with that feed. An actual live draw must be checked before claiming this behavior complete.
+- **Release:** Requires one final-HEAD Regression, Browser Quality, Database Replay pass; independent review, explicit merge/publish and actual mobile draw observation. No production rollout is implied.
+
 ## 2026-11-03 — Private KINO live draw board — IN_PROGRESS
 
 - **Baseline:** main `d1190afa951cbdcaa6135f0a8b1d0e445e7f62ef`; KINO tab is a placeholder inside the private Super Admin Football Research Studio.
