@@ -126,21 +126,17 @@ export function KinoLivePanel() {
     transition !== null && providerNow < transition.startedAt + KINO_TRANSITION_MS;
   const liveDrawId =
     reveal?.draw.drawId ?? held?.draw.drawId ?? transition?.drawId ?? live?.drawId ?? null;
-  const activeNumber = reveal ? verifiedFrame?.activeNumber ?? null : null;
-  const confirmed = reveal
-    ? verifiedFrame?.confirmed ?? []
-    : held
-      ? held.draw.numbers
-      : [];
+  const activeNumber = reveal ? (verifiedFrame?.activeNumber ?? null) : null;
+  const confirmed = reveal ? (verifiedFrame?.confirmed ?? []) : held ? held.draw.numbers : [];
   const confirmedSet = new Set(confirmed);
   const highlightedBonus = reveal
     ? verifiedFrame?.bonusShown
       ? reveal.draw.bonus
       : null
-    : held?.draw.bonus ?? null;
+    : (held?.draw.bonus ?? null);
   const highlightedGreen = reveal
-    ? verifiedFrame?.secondChance ?? []
-    : held?.draw.secondChance ?? [];
+    ? (verifiedFrame?.secondChance ?? [])
+    : (held?.draw.secondChance ?? []);
   const greenSet = new Set(highlightedGreen);
   const waitingTime = snapshot?.active?.drawTime;
   const countdown =
@@ -168,17 +164,13 @@ export function KinoLivePanel() {
           // Never guess an unavailable older draw.
           setPrevious(latest);
           const next =
-            snapshot.active && snapshot.active.drawId > latest.drawId
-              ? snapshot.active
-              : null;
+            snapshot.active && snapshot.active.drawId > latest.drawId ? snapshot.active : null;
           if (next && providerNow < next.drawTime) {
             setHeld({
               draw: latest,
               nextDrawTime: next.drawTime,
               nextDrawId: next.drawId,
             });
-          } else {
-            setPrevious(latest);
           }
         }
         setReady(true);
@@ -217,9 +209,7 @@ export function KinoLivePanel() {
 
     if (held) {
       const upcoming =
-        snapshot.active && snapshot.active.drawId > held.draw.drawId
-          ? snapshot.active
-          : null;
+        snapshot.active && snapshot.active.drawId > held.draw.drawId ? snapshot.active : null;
       const nextTime = held.nextDrawTime ?? upcoming?.drawTime ?? null;
       const nextId = held.nextDrawId ?? upcoming?.drawId ?? null;
       if (
@@ -230,8 +220,7 @@ export function KinoLivePanel() {
       ) {
         // When green numbers arrive later, retain the 20+Bonus and present
         // the three greens sequentially rather than lighting them all at once.
-        const greenStageOffset =
-          20 * KINO_VERIFIED_REVEAL_STEP_MS + KINO_VERIFIED_BONUS_MS;
+        const greenStageOffset = 20 * KINO_VERIFIED_REVEAL_STEP_MS + KINO_VERIFIED_BONUS_MS;
         const greenStageDuration = KINO_VERIFIED_REVEAL_TOTAL_MS - greenStageOffset;
         if (nextTime !== null && providerNow + greenStageDuration >= nextTime) {
           // The official draw boundary takes priority over a late replay.
@@ -288,10 +277,7 @@ export function KinoLivePanel() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-3 pb-12 pt-4 sm:px-6">
-      <section
-        aria-label="Προηγούμενη κλήρωση ΚΙΝΟ"
-        className={previousCardClass}
-      >
+      <section aria-label="Προηγούμενη κλήρωση ΚΙΝΟ" className={previousCardClass}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-1">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-100">
             Προηγούμενη κλήρωση
