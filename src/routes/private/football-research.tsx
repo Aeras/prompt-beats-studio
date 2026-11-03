@@ -108,6 +108,7 @@ function PrivateFootballResearchPage() {
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
+  const [tavilySearchDepth, setTavilySearchDepth] = useState<"basic" | "advanced">("basic");
   const [expertBusy, setExpertBusy] = useState<string | null>(null);
   const [espnPreview, setEspnPreview] = useState<string | null>(null);
   const [expertError, setExpertError] = useState("");
@@ -247,7 +248,7 @@ function PrivateFootballResearchPage() {
     }
     if (
       !window.confirm(
-        `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Επιβεβαιώνεις;`,
+        `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily (${tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}, 3 αναζητήσεις ανά αγώνα, περίπου ${ids.length * (tavilySearchDepth === "advanced" ? 6 : 3)} credits συνολικά) και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Επιβεβαιώνεις;`,
       )
     )
       return;
@@ -267,6 +268,7 @@ function PrivateFootballResearchPage() {
               modelId: selectedModel.id,
               requestKey: crypto.randomUUID(),
               withTavily: true,
+              tavilySearchDepth,
               approvePaidRequest: true,
             },
           });
@@ -434,6 +436,43 @@ function PrivateFootballResearchPage() {
           </p>
         </section>
 
+        <fieldset
+          disabled={working}
+          className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
+        >
+          <legend className="px-1 text-sm font-semibold text-cyan-100">
+            Αναζήτηση Tavily για την ανάλυση
+          </legend>
+          <div className="mt-1 flex flex-wrap gap-5 text-sm text-slate-100">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="football-tavily-depth"
+                value="basic"
+                checked={tavilySearchDepth === "basic"}
+                onChange={() => setTavilySearchDepth("basic")}
+                className="h-4 w-4 accent-cyan-400"
+              />
+              Basic · ~3 credits/αγώνα
+            </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="football-tavily-depth"
+                value="advanced"
+                checked={tavilySearchDepth === "advanced"}
+                onChange={() => setTavilySearchDepth("advanced")}
+                className="h-4 w-4 accent-cyan-400"
+              />
+              Advanced · ~6 credits/αγώνα
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            Ισχύει για κάθε αγώνα που αναλύεις, με τρεις αναζητήσεις Tavily. Η επιλογή δεν επηρεάζει
+            την ξεχωριστή AI αναζήτηση αγώνων ούτε τη δεύτερη κλήση του Έμπειρου Αναλυτή. Τα credits
+            είναι εκτιμήσεις.
+          </p>
+        </fieldset>
         {isAi && (
           <AiSearchPanel
             leagueId={league as FootballAiDiscoveryLeagueId}
@@ -663,6 +702,14 @@ function PrivateFootballResearchPage() {
                         <span className="mt-1 block text-xs text-slate-400">
                           {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
                           {entry.model_id}
+                          {entry.analysis?.tavilySearchDepth && (
+                            <>
+                              {" · Tavily "}
+                              {entry.analysis.tavilySearchDepth === "advanced"
+                                ? "Advanced"
+                                : "Basic"}
+                            </>
+                          )}
                         </span>
                       </span>
                       <span className="flex items-center gap-2">

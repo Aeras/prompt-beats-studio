@@ -29,6 +29,27 @@ describe("private football AI contracts", () => {
       }).success,
     ).toBe(false);
   });
+  test("Tavily depth defaults to basic and rejects unsupported values", () => {
+    const input = {
+      fixtureProvider: "espn",
+      leagueId: "EN-PL",
+      weekDate: "2026-11-08",
+      fixtureId: "12345",
+      requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
+      modelId: "openai/gpt-6-luna",
+      withTavily: true,
+      approvePaidRequest: true,
+    };
+    expect(footballAnalysisRequestSchema.parse(input).tavilySearchDepth).toBe("basic");
+    expect(
+      footballAnalysisRequestSchema.parse({ ...input, tavilySearchDepth: "advanced" })
+        .tavilySearchDepth,
+    ).toBe("advanced");
+    expect(
+      footballAnalysisRequestSchema.safeParse({ ...input, tavilySearchDepth: "deeper" }).success,
+    ).toBe(false);
+  });
+
   test("ESPN accepts supported fixture identity without AI source corroboration", () => {
     const base = {
       fixtureProvider: "espn",

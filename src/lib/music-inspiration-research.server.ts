@@ -141,6 +141,7 @@ export async function searchInspirationWeb(
   signal: AbortSignal,
   fetcher: typeof fetch = fetch,
   apiKey = process.env["TAVILY_API_KEY"],
+  searchDepth: "basic" | "advanced" = "basic",
 ): Promise<{
   documents: RetrievedInspirationDocument[];
   credits: number | null;
@@ -162,7 +163,7 @@ export async function searchInspirationWeb(
       headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         query,
-        search_depth: "basic",
+        search_depth: searchDepth,
         max_results: 3,
         topic: "general",
         include_raw_content: "text",
