@@ -15,6 +15,7 @@ export type KinoDraw = {
   status: string;
   numbers: number[];
   bonus: number | null;
+  secondChance: number[];
   animation: KinoAnimation | null;
 };
 export type KinoSnapshot = {
@@ -29,6 +30,8 @@ type KinoProviderObject = Record<string, unknown> & {
   winningNumbers?: unknown;
   list?: unknown;
   bonus?: unknown;
+  secondChance?: unknown;
+  secondChanceNumbers?: unknown;
   animation?: unknown;
   startTimestamp?: unknown;
   endTimestamp?: unknown;
@@ -66,13 +69,27 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
   const winning = object(data.winningNumbers);
   const list = winning?.list;
   // Keep provider-confirmed partial results instead of discarding them until all 20 arrive.
-  const numbers =
+  const validList =
     Array.isArray(list) &&
     list.length > 0 &&
-    list.length <= 20 &&
+    list.length <= 23 &&
     list.every(validNumber) &&
-    new Set(list).size === list.length
-      ? (list as number[])
+    new Set(list).size === list.length;
+  const numbers = validList ? (list as number[]).slice(0, 20) : [];
+
+  // The three green values must come from an explicit provider field or
+  // from a 23-number ordered list. Never infer them from other side bets.
+  const explicitSecondChance =
+    winning?.secondChanceNumbers ?? winning?.secondChance ?? data.secondChanceNumbers;
+  const green = validList && list.length === 23 ? (list as number[]).slice(20) : explicitSecondChance;
+  const secondChance =
+    numbers.length === 20 &&
+    Array.isArray(green) &&
+    green.length === 3 &&
+    green.every(validNumber) &&
+    new Set(green).size === 3 &&
+    green.every((n: number) => !numbers.includes(n))
+      ? (green as number[])
       : [];
   const bonus = winning?.bonus;
   const bonusValue =
@@ -138,6 +155,7 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
     status: typeof data.status === "string" ? data.status.slice(0, 32) : "unknown",
     numbers,
     bonus: bonusValue,
+    secondChance,
     animation,
   };
 }
@@ -203,5 +221,71 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
     canPromoteLast:
       isCompleteKinoDraw(snapshot.last) &&
       !(snapshot.last.animation && at < snapshot.last.animation.endTimestamp),
+  };
+}
+
+/** A delayed display of verified results, never a claim about the OPAP broadcast. */
+export const KINO_VERIFIED_REVEAL_STEP_MS = 650;
+export const KINO_VERIFIED_BONUS_MS = 1100;
+export const KINO_VERIFIED_GREEN_STEP_MS = 850;
+export const KINO_VERIFIED_REVEAL_TOTAL_MS =
+  20 * KINO_VERIFIED_REVEAL_STEP_MS +
+  KINO_VERIFIED_BONUS_MS +
+  3 * KINO_VERIFIED_GREEN_STEP_MS;
+
+export function hasKinoSecondChance(draw: KinoDraw | null | undefined): draw is KinoDraw {
+  return Boolean(draw && isCompleteKinoDraw(draw) && draw.secondChance.length === 3);
+}
+
+export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
+  const elapsed = Math.max(0, elapsedMs);
+  const regularEnd = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
+  const bonusEnd = regularEnd + KINO_VERIFIED_BONUS_MS;
+  const count = Math.min(20, Math.floor(elapsed / KINO_VERIFIED_REVEAL_STEP_MS));
+  const bonusShown = elapsed >= regularEnd;
+  // Visual-only cursor: these transient hops are NOT additional draw results.
+  const cycle = Math.floor((elapsed % KINO_VERIFIED_REVEAL_STEP_MS) / 130);
+  const target = draw.numbers[count];
+  const activeNumber =
+    count < 20 && typeof target === "number"
+      ? cycle >= 4
+        ? target
+        : ((target + draw.drawId + cycle * 17) % 80) + 1
+      : null;
+  const greenCount = Math.min(
+    draw.secondChance.length,
+    Math.max(0, Math.floor((elapsed - bonusEnd) / KINO_VERIFIED_GREEN_STEP_MS)),
+  );
+  return {
+    confirmed: draw.numbers.slice(0, count),
+    activeNumber,
+    bonusShown,
+    secondChance: draw.secondChance.slice(0, greenCount),
+    phase:
+      elapsed < regularEnd
+        ? "regular"
+        : elapsed < bonusEnd
+          ? "bonus"
+          : greenCount < 3 && draw.secondChance.length === 3
+            ? "second-chance"
+            : "complete",
+    finished:
+      bonusShown &&
+      greenCount === draw.secondChance.length &&
+      elapsed >=
+        (draw.secondChance.length === 3
+          ? KINO_VERIFIED_REVEAL_TOTAL_MS
+          : bonusEnd),
+  };
+}
+
+/** Exactly 23 positions on a 24-half-column grid: 12 above, 11 staggered below. */
+export function getKinoPreviousBallPosition(index: number) {
+  if (!Number.isInteger(index) || index < 0 || index >= 23) {
+    throw new RangeError("KINO previous position must be 0–22");
+  }
+  return {
+    row: index < 12 ? 1 : 2,
+    column: index < 12 ? index * 2 + 1 : (index - 12) * 2 + 2,
   };
 }

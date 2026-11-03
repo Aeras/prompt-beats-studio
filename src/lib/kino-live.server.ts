@@ -16,7 +16,8 @@ export async function getKinoLiveSnapshot(
   const task = (async () => {
     const response = await request(KINO_URL, {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      cache: "no-store",
       signal: AbortSignal.timeout(5500),
     });
     if (!response.ok) throw new Error("KINO provider unavailable");

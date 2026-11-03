@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getPrivateKinoLiveSnapshot } from "@/lib/kino-live.functions";
-import { getKinoLiveState, isCompleteKinoDraw, type KinoDraw } from "@/lib/kino-live.shared";
+import {
+  getKinoLiveState,
+  getKinoPreviousBallPosition,
+  getKinoVerifiedRevealFrame,
+  isCompleteKinoDraw,
+  KINO_VERIFIED_REVEAL_STEP_MS,
+  type KinoDraw,
+} from "@/lib/kino-live.shared";
 
 const NUMBERS = Array.from({ length: 80 }, (_, index) => index + 1);
 const athensTime = new Intl.DateTimeFormat("el-GR", {
@@ -23,21 +30,53 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
   if (!isCompleteKinoDraw(draw)) {
     return <p className="py-2 text-sm text-slate-400">Αναμονή για επιβεβαιωμένα αποτελέσματα…</p>;
   }
+
+  const entries: Array<{ number: number | null; kind: "regular" | "bonus" | "green" }> = [
+    ...draw.numbers.map((number) => ({
+      number,
+      kind: number === draw.bonus ? ("bonus" as const) : ("regular" as const),
+    })),
+    ...Array.from({ length: 3 }, (_, index) => ({
+      number: draw.secondChance[index] ?? null,
+      kind: "green" as const,
+    })),
+  ];
+
   return (
-    <div
-      className="grid grid-cols-10 gap-1 sm:gap-2"
-      aria-label="Οι 20 αριθμοί της προηγούμενης κλήρωσης"
-    >
-      {draw.numbers.map((number) => (
-        <span
-          key={number}
-          className={`flex aspect-square w-full max-w-10 items-center justify-center rounded-full border text-xs font-bold tabular-nums sm:text-sm ${number === draw.bonus ? "border-red-300 bg-red-600 text-white" : "border-yellow-200 bg-yellow-400 text-slate-950"}`}
-          title={number === draw.bonus ? "ΚΙΝΟ Bonus" : undefined}
-        >
-          {number}
-        </span>
-      ))}
-    </div>
+    <>
+      <div
+        className="grid gap-y-1"
+        style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}
+        aria-label="Προηγούμενη κλήρωση: 20 αριθμοί και 3 θέσεις 2ης Ευκαιρίας"
+      >
+        {entries.map(({ number, kind }, index) => {
+          const { row, column } = getKinoPreviousBallPosition(index);
+          return (
+            <span
+              key={index}
+              style={{ gridColumn: `${column} / span 2`, gridRow: row }}
+              className={`flex aspect-square w-full items-center justify-center rounded-full border text-xs font-bold tabular-nums sm:text-sm ${
+                kind === "bonus"
+                  ? "border-red-200 bg-red-600 text-white"
+                  : kind === "green" && number !== null
+                    ? "border-green-200 bg-green-500 text-white"
+                    : kind === "green"
+                      ? "border-white/20 bg-white/10 text-slate-400"
+                      : "border-yellow-200 bg-yellow-400 text-slate-950"
+              }`}
+              title={kind === "bonus" ? "KINO Bonus" : kind === "green" ? "2η Ευκαιρία" : undefined}
+            >
+              {number ?? "–"}
+            </span>
+          );
+        })}
+      </div>
+      {draw.secondChance.length !== 3 && (
+        <p className="mt-2 text-xs text-slate-400">
+          Αναμονή επίσημων αριθμών 2ης Ευκαιρίας.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -45,18 +84,19 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
 export function KinoLivePanel() {
   const [tick, setTick] = useState(() => Date.now());
   const [previous, setPrevious] = useState<KinoDraw | null>(null);
+  const [reveal, setReveal] = useState<{ draw: KinoDraw; startedAt: number } | null>(null);
   const query = useQuery({
     queryKey: ["private-kino-live"],
     queryFn: () => getPrivateKinoLiveSnapshot(),
     retry: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     refetchIntervalInBackground: false,
     staleTime: 2000,
     refetchInterval: (state) => {
       const active = state.state.data?.active;
-      if (!active) return 8000;
+      if (!active) return 5000;
       const delta = active.drawTime - Date.now();
-      return delta <= 50000 && delta >= -120000 ? 2000 : 16000;
+      return delta <= 60000 && delta >= -180000 ? 2000 : 10000;
     },
   });
   const snapshot = query.data;
@@ -64,10 +104,18 @@ export function KinoLivePanel() {
   const clockCorrection = snapshot ? snapshot.fetchedAt - query.dataUpdatedAt : 0;
   const providerNow = tick + clockCorrection;
   const live = snapshot ? getKinoLiveState(snapshot, providerNow) : null;
-  const liveDrawId = live?.drawId ?? null;
-  const activeNumber = live?.activeNumber ?? null;
-  const confirmed = live?.confirmed ?? [];
+  const verifiedFrame = reveal
+    ? getKinoVerifiedRevealFrame(reveal.draw, providerNow - reveal.startedAt)
+    : null;
+  const liveDrawId = reveal?.draw.drawId ?? live?.drawId ?? null;
+  const activeNumber = reveal
+    ? (verifiedFrame?.activeNumber ?? null)
+    : (live?.activeNumber ?? null);
+  const confirmed = verifiedFrame?.confirmed ?? live?.confirmed ?? [];
   const confirmedSet = new Set(confirmed);
+  const highlightedBonus = verifiedFrame?.bonusShown ? reveal?.draw.bonus : null;
+  const highlightedGreen = verifiedFrame?.secondChance ?? [];
+  const greenSet = new Set(highlightedGreen);
   const waitingTime = snapshot?.active?.drawTime;
   const countdown =
     typeof waitingTime === "number"
@@ -82,9 +130,55 @@ export function KinoLivePanel() {
   }, []);
   useEffect(() => {
     const draw = snapshot?.last;
-    if (!isCompleteKinoDraw(draw) || !live?.canPromoteLast) return;
-    setPrevious((before) => (!before || draw.drawId > before.drawId ? draw : before));
-  }, [snapshot, live?.canPromoteLast]);
+    if (reveal) {
+      // If the same draw receives its 2nd-Chance data later, upgrade the ongoing
+      // presentation without restarting or losing its already displayed numbers.
+      if (
+        draw &&
+        draw.drawId === reveal.draw.drawId &&
+        draw.secondChance.length === 3 &&
+        reveal.draw.secondChance.length !== 3
+      ) {
+        setReveal({ ...reveal, draw });
+        return;
+      }
+      const frame = getKinoVerifiedRevealFrame(reveal.draw, providerNow - reveal.startedAt);
+      if (frame.finished) {
+        setPrevious((before) =>
+          !before || reveal.draw.drawId >= before.drawId ? reveal.draw : before,
+        );
+        setReveal(null);
+      }
+      return;
+    }
+
+    if (!isCompleteKinoDraw(draw)) return;
+    if (!previous) {
+      setPrevious(draw);
+      return;
+    }
+    if (draw.drawId === previous.drawId) {
+      if (draw.secondChance.length === 3 && previous.secondChance.length !== 3)
+        setPrevious(draw);
+      return;
+    }
+    if (draw.drawId < previous.drawId) return;
+
+    // Respect provider-owned animation for the first twenty.
+    // Afterwards display the verified Bonus and three green values.
+    if (draw.animation) {
+      if (providerNow >= draw.animation.endTimestamp) {
+        setReveal({
+          draw,
+          startedAt: providerNow - 20 * KINO_VERIFIED_REVEAL_STEP_MS,
+        });
+      }
+      return;
+    }
+
+    // New complete result: animate only verified numbers; never invent wins.
+    setReveal({ draw, startedAt: providerNow });
+  }, [snapshot?.last, previous, providerNow, reveal]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-3 pb-12 pt-4 sm:px-6">
@@ -109,47 +203,52 @@ export function KinoLivePanel() {
         aria-label="Ζωντανός πίνακας ΚΙΝΟ"
         className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-b from-[#152c45] via-[#0e1d31] to-[#10192a] shadow-2xl shadow-cyan-950/20"
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.23em] text-cyan-300">
-              KINO · ΟΠΑΠ
-            </p>
-            <h2 className="mt-1 text-xl font-extrabold tracking-tight text-white sm:text-2xl">
-              Live κλήρωση{" "}
-              <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
-            </h2>
-          </div>
-          <div className="text-right">
-            <p aria-live="polite" className="text-sm font-semibold text-slate-200">
-              {live?.running
-                ? `Παρουσίαση κλήρωσης · ${confirmed.length}/20`
-                : snapshot?.active
-                  ? `Επόμενη · ${time(snapshot.active.drawTime)}`
-                  : "Αναμονή επόμενης κλήρωσης"}
-            </p>
-            <p className="mt-1 font-mono text-sm tabular-nums text-cyan-200">
-              {live?.running
-                ? activeNumber !== null
-                  ? "Συγχρονισμός με βήματα ΟΠΑΠ"
-                  : "Επίσημοι ενδιάμεσοι αριθμοί"
-                : min === null
-                  ? "—"
-                  : `Σε ${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`}
-            </p>
+        <div className="border-b border-white/10 px-3 py-2.5 sm:px-5 sm:py-3">
+          <h2 className="text-base font-bold text-white sm:text-lg">
+            Live κλήρωση <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
+          </h2>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-200 sm:text-sm">
+            <span>Επόμενη κλήρωση · {time(waitingTime)}</span>
+            <span className="font-mono tabular-nums text-cyan-200">
+              {min === null
+                ? "—"
+                : `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`}
+            </span>
           </div>
         </div>
         <div className="px-2 py-4 sm:px-6 sm:py-6">
-          <div className="grid grid-cols-10 gap-1 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
+          <div className="relative">
+            {reveal && verifiedFrame?.phase === "bonus" && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <span className="rounded-xl border border-red-300 bg-red-700/90 px-4 py-2 text-xl font-extrabold text-white shadow-lg">
+                  KINO BONUS
+                </span>
+              </div>
+            )}
+            {reveal && verifiedFrame?.phase === "second-chance" && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <span className="rounded-xl border border-green-300 bg-green-700/90 px-4 py-2 text-xl font-extrabold text-white shadow-lg">
+                  2η ΕΥΚΑΙΡΙΑ
+                </span>
+              </div>
+            )}
+            <div className="grid grid-cols-10 gap-1 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
             {NUMBERS.map((number) => {
               const won = confirmedSet.has(number);
               const hopping = activeNumber === number;
+              const bonus = won && highlightedBonus === number;
+              const green = greenSet.has(number);
               return (
                 <div
                   key={number}
                   className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
-                    won
-                      ? "border-cyan-200 bg-cyan-400 text-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.35)]"
-                      : hopping
+                    green
+                      ? "border-green-200 bg-green-500 text-white"
+                      : bonus
+                        ? "border-red-200 bg-red-600 text-white"
+                        : won
+                        ? "border-yellow-200 bg-yellow-400 text-slate-950"
+                        : hopping
                         ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
                         : "border-white/10 bg-[#1e3550] text-slate-300"
                   }`}
@@ -159,13 +258,16 @@ export function KinoLivePanel() {
               );
             })}
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-            <p>
-              {live?.running
-                ? "Κυανό: επιβεβαιωμένος αριθμός · Χρυσό: τρέχον βήμα"
-                : "Ο πίνακας καθαρίζει μεταξύ των κληρώσεων."}
-            </p>
-            <p>Πηγή: OPAP API · Ώρα Ελλάδας</p>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+            <span aria-live="polite">
+              {reveal
+                ? `Επιβεβαιωμένη παρουσίαση · ${confirmed.length}/20 · 2η Ευκαιρία ${highlightedGreen.length}/3`
+                : live?.running
+                  ? `Επίσημα δεδομένα · ${confirmed.length}/20`
+                  : "Πηγή: OPAP API"}
+            </span>
+            <span>Ώρα Ελλάδας</span>
           </div>
         </div>
       </section>
@@ -192,10 +294,9 @@ export function KinoLivePanel() {
         </div>
       )}
       <p className="text-xs leading-5 text-slate-500">
-        Η κινούμενη παρουσίαση ενεργοποιείται μόνο όταν ο ΟΠΑΠ παρέχει έγκυρα χρονισμένα βήματα.
-        Όταν υπάρχουν επίσημα ενδιάμεσα αποτελέσματα προβάλλονται σταδιακά χωρίς επινοημένο
-        animation. Αν ο ΟΠΑΠ δημοσιεύσει τα δεδομένα μόνο στο τέλος, δεν είναι διαθέσιμη πραγματική
-        ζωντανή παρουσίαση και ενδέχεται να υπάρχει καθυστέρηση.
+        Η ζωντανή παρουσίαση χρησιμοποιεί αποκλειστικά επίσημα χρονισμένα δεδομένα, όταν υπάρχουν.
+        Διαφορετικά οι ήδη επιβεβαιωμένοι αριθμοί εμφανίζονται διαδοχικά με σαφή ένδειξη
+        καθυστέρησης. Δεν πρόκειται για συγχρονισμένη μετάδοση του ΟΠΑΠ.
       </p>
     </div>
   );

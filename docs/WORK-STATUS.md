@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — KINO 23-ball presentation, auto-refresh and compact header — IN_PROGRESS
+
+- **User-verified acceptance:** OPAP screenshot/recording shows 20 drawn numbers (19 yellow + 1 red Bonus), followed by 3 green Second Chance numbers; previous card must contain exactly 23 staggered positions (12 top, 11 bottom, lower row half-slot offset), compact two-line live header and a 10×8 live board.
+- **Actual main baseline:** `48a3294433e9f98990225685888e4ebb2c11b9d0` (merged PR #500). Owner reported no automatic previous-result refresh and no board transition.
+- **Prepared isolated implementation:** Safe, validated regular (20) + bonus + optional 3 Second Chance contract; only accept disjoint, unique 1–80 green numbers from explicit provider-specific fields or a 23-item ordered results list, never side-bets. Render three neutral unavailable placeholders, not fabricated green winners, while upstream data is missing. Compact 2-line header, staggered 23-position previous card, deterministic decorative cursor over the 80-number board, phased verified result presentation (20 → red Bonus → 3 green) when available; promote to previous automatically when presentation is complete. Read-only POST server function and no-store upstream fetch to mitigate stale intermediary GET caching; bounded server cache, Super Admin auth unchanged.
+- **Critical unverified integration:** Official OPAP confirms 3 extra numbers after 20 since 2026-10-07; actual `api.opap.gr/draws/v3.0/1100/last-result-and-active` production response for 2026-11-03 could not be retrieved and current Second Chance field schema is NOT validated. The adapter recognizes plausible explicit fields and a 23-element list but does **not** prove upstream actually provides them. Real 23-number correctness/live timing requires provider payload verification before CLOSED. Do not mark fully implemented or claim true real-time provider feed.
+- **Verification and release:** Focused parser, 23-position geometry, bonus/green ordering and timeline tests staged. No production publish. Full lint/format/TypeScript/build and three final-HEAD CI gates still required. Root AGENTS §7 requires specific approval before CI-triggering branch creation/PR or update. One cohesive PR when ready; no merge on red.
+
 ## 2026-11-03 — KINO mobile layout, bonus color, partial draw display — IN_PROGRESS
 
 - **Follow-up to merged #499:** Owner screenshots confirm previous results wrapping to three rows, wrong regular/bonus colors, mobile live board rendering 8×10, and absence of progressive live numbers when animation metadata is unavailable.

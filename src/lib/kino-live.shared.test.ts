@@ -2,6 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   getKinoFrame,
   getKinoLiveState,
+  getKinoPreviousBallPosition,
+  getKinoVerifiedRevealFrame,
+  hasKinoSecondChance,
+  KINO_VERIFIED_REVEAL_STEP_MS,
+  KINO_VERIFIED_REVEAL_TOTAL_MS,
   isCompleteKinoDraw,
   parseKinoDraw,
   parseKinoSnapshot,
@@ -122,6 +127,104 @@ describe("KINO provider validation and animations", () => {
     expect(
       getKinoLiveState({ last: oldDraw, active: null, fetchedAt: T }, T + 20000).canPromoteLast,
     ).toBe(true);
+  });
+
+  test("reveals only confirmed numbers one by one and bonus after all 20", () => {
+    const verified = parseKinoDraw({ ...draw(101), animation: null });
+    expect(verified).not.toBeNull();
+    const first = getKinoVerifiedRevealFrame(verified!, 0);
+    expect(first.confirmed).toEqual([]);
+    expect(first.activeNumber).toBeGreaterThan(0);
+    expect(first.phase).toBe("regular");
+    expect(first.bonusShown).toBe(false);
+    expect(first.finished).toBe(false);
+    expect(getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_STEP_MS).confirmed).toEqual([
+      1,
+    ]);
+    const beforeBonus = getKinoVerifiedRevealFrame(
+      verified!,
+      20 * KINO_VERIFIED_REVEAL_STEP_MS - 1,
+    );
+    expect(beforeBonus.confirmed).toHaveLength(19);
+    expect(beforeBonus.bonusShown).toBe(false);
+    const withBonus = getKinoVerifiedRevealFrame(
+      verified!,
+      20 * KINO_VERIFIED_REVEAL_STEP_MS,
+    );
+    expect(withBonus.confirmed).toEqual(numbers);
+    expect(withBonus.bonusShown).toBe(true);
+    expect(withBonus.finished).toBe(false);
+    const done = getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_TOTAL_MS);
+    expect(done.confirmed).toEqual(numbers);
+    expect(done.activeNumber).toBeNull();
+    expect(done.secondChance).toEqual([]);
+    expect(done.bonusShown).toBe(true);
+    expect(done.finished).toBe(true);
+  });
+
+  test("uses 12 above and 11 staggered half-column positions below", () => {
+    expect(getKinoPreviousBallPosition(0)).toEqual({ row: 1, column: 1 });
+    expect(getKinoPreviousBallPosition(11)).toEqual({ row: 1, column: 23 });
+    expect(getKinoPreviousBallPosition(12)).toEqual({ row: 2, column: 2 });
+    expect(getKinoPreviousBallPosition(22)).toEqual({ row: 2, column: 22 });
+    expect(() => getKinoPreviousBallPosition(23)).toThrow();
+  });
+
+  test("validates a 23-number provider sequence and its three unique green values", () => {
+    const green = [41, 72, 80];
+    const complete = parseKinoDraw({
+      ...draw(102, [...numbers, ...green]),
+      animation: null,
+    });
+    expect(complete?.numbers).toEqual(numbers);
+    expect(complete?.secondChance).toEqual(green);
+    expect(hasKinoSecondChance(complete)).toBe(true);
+    const duplicate = parseKinoDraw({
+      ...draw(103, [...numbers, 20, 72, 80]),
+      animation: null,
+    });
+    expect(duplicate?.secondChance).toEqual([]);
+    const explicit = parseKinoDraw({
+      ...draw(104),
+      winningNumbers: {
+        list: numbers,
+        bonus: [5],
+        secondChanceNumbers: green,
+      },
+      animation: null,
+    });
+    expect(explicit?.secondChance).toEqual(green);
+    expect(
+      parseKinoDraw({
+        ...draw(105),
+        winningNumbers: {
+          list: numbers,
+          bonus: [5],
+          secondChanceNumbers: [41, 41, 80],
+        },
+        animation: null,
+      })?.secondChance,
+    ).toEqual([]);
+  });
+
+  test("verified second-chance reveal shows 20 then bonus then 3 green numbers", () => {
+    const draw23 = parseKinoDraw({
+      ...draw(101, [...numbers, 41, 72, 80]),
+      animation: null,
+    })!;
+    const beforeBonus = getKinoVerifiedRevealFrame(draw23, 12999);
+    expect(beforeBonus.confirmed).toHaveLength(19);
+    expect(beforeBonus.bonusShown).toBe(false);
+    const bonus = getKinoVerifiedRevealFrame(draw23, 13000);
+    expect(bonus.confirmed).toHaveLength(20);
+    expect(bonus.bonusShown).toBe(true);
+    expect(bonus.secondChance).toEqual([]);
+    const firstGreen = getKinoVerifiedRevealFrame(draw23, 13000 + 1100 + 850);
+    expect(firstGreen.secondChance).toEqual([41]);
+    expect(firstGreen.finished).toBe(false);
+    const complete = getKinoVerifiedRevealFrame(draw23, KINO_VERIFIED_REVEAL_TOTAL_MS);
+    expect(complete.secondChance).toEqual([41, 72, 80]);
+    expect(complete.finished).toBe(true);
   });
 
   test("missing animation is not invented for a completed draw", () => {
