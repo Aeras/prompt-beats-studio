@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { runPrivateFootballExpertReview } from "@/lib/football-ai-expert.functions";
 import { AiSearchPanel } from "@/components/football/AiSearchPanel";
+import { KinoLivePanel } from "@/components/football/KinoLivePanel";
 import { EspnDataPanel } from "@/components/football/EspnDataPanel";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
@@ -1152,13 +1153,8 @@ function PrivateFootballResearchPage() {
           )}
         </section>
       </main>
-      <section
-        id="football-kino"
-        role="tabpanel"
-        hidden={activeTab !== "kino"}
-        className="mx-auto mt-4 max-w-6xl rounded-2xl border border-white/10 bg-[#152137] p-8 text-center text-lg font-semibold"
-      >
-        Σύντομα κοντά σας
+      <section id="football-kino" role="tabpanel" hidden={activeTab !== "kino"}>
+        {activeTab === "kino" && <KinoLivePanel />}
       </section>
     </div>
   );
