@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — ESPN provider-first football research data — IN_PROGRESS
+
+- **Current main:** `229b90056fa1137394ea517d7c98c4bc1bca635a`; ESPN supports 11 configured leagues. Existing fixture adapter only consumes scoreboard; the paid base analysis otherwise uses three broad Tavily searches and does not ingest ESPN standings, recent form or squad data.
+- **Scope:** Add football-only bounded, server-side ESPN reads for standings (the separate `/apis/v2/` soccer endpoint), match summary, per-team schedule, roster, injuries and team statistics. Match provider-owned team IDs against the validated scheduled fixture; show both teams' returned data before paid analysis, mark unavailable fields explicitly (including xG), cap and cache responses. Use the same normalized ESPN snapshot in the first AI call and the existing separately consented expert handoff, and display the immutable snapshot in saved history. Direct three existing Tavily queries to remaining data gaps. No new paid requests, background jobs, automatic retries, migrations, RLS or shared AI provider changes.
+- **Safety:** ESPN API is undocumented: per-league endpoint coverage and real runtime responses are not yet verified. Each unavailable resource degrades independently; do not treat missing as zero, or source extracts as verified facts. Same Super Admin and owner authorization, valid upcoming fixture, unique paid admission and explicit paid consent. Offline mock tests cover parsing, coverage gaps, boundaries and expert handoff.
+- **Acceptance:** Correctness of fixture/team identity, read-only data preview, source freshness, prompt handoff, current/historical UI, focused/full tests, TypeScript/lint/build, three exact-HEAD CI gates, review and one PR. Merge is not publish; Lovable rollout and a separately authorized paid pilot remain required before CLOSED.
+
+
 ## 2026-11-03 — Football expert judgment — IN_PROGRESS
 
 - Evidence: Expert received partial base assessment and omitted deepDive; one production review abstained.

@@ -12,6 +12,7 @@ import {
   FOOTBALL_LEAGUES,
   FOOTBALL_ESPN_LEAGUES,
   type FootballLeagueId,
+  type FootballAiDiscoveryLeagueId,
 } from "@/lib/football-research.shared";
 import {
   FOOTBALL_RESEARCH_SYSTEM,
@@ -22,6 +23,7 @@ import {
   filterResearchContextUrls,
 } from "@/lib/football-ai-research.shared";
 import { withFeatureAiDispatchAdmission } from "@/lib/global-ai-usage.server";
+import type { FootballFixture } from "@/lib/football-research.shared";
 
 async function requireFootballSuperAdmin(supabase: any) {
   const { data, error } = await supabase.rpc("current_user_is_super_admin");
@@ -159,13 +161,21 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
 
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
+        // Load current ESPN data before paid research, without bypassing the fixture admission.
+        const espnData = await (async () => {
+          if (data.fixtureProvider !== "espn") return null;
+          const { fetchEspnMatchContext } = await import("@/lib/football-espn-context.server");
+          return fetchEspnMatchContext(data.leagueId, fixture as FootballFixture).catch(() => null);
+        })();
         const { searchInspirationWeb } = await import("@/lib/music-inspiration-research.server");
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
         const common = `${fixture.homeTeam} vs ${fixture.awayTeam} ${kickoffDay}`;
+        // ESPN provides structured baseline data. Tavily targets gaps, not redundant tables.
+        const gaps = espnData?.missing.join(" ") ?? "standings form xG injuries";
         const queries = [
-          `${common} league table points standings recent form last five home away xG injuries expected lineups fixture congestion European rotation`,
-          `${common} футбол прогноз ставки коэффициенты анализ форма травмы составы`,
-          `${common} ${LANGUAGE[data.leagueId] ?? "English"} match preview expert predictions odds tactical team news`,
+          `${common} ${gaps} expected goals xG xGA recent form home away verified match statistics`,
+          `${common} ${LANGUAGE[data.leagueId] ?? "English"} latest injuries expected starting eleven rotation team news`,
+          `${common} футбол прогноз ставки коэффициенты анализ tactical match preview betting odds`,
         ];
         const sources: FootballSourceSnapshot[] = [];
         for (const [queryIndex, query] of queries.entries()) {
@@ -177,7 +187,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               url: doc.source.url,
               accessedAt: doc.source.accessedAt,
               excerpt: doc.text.slice(0, 2500),
-              researchIntent: queryIndex === 0 ? "match_facts" : "external_forecasts",
+              researchIntent: queryIndex < 2 ? "match_facts" : "external_forecasts",
             });
           }
         }
@@ -218,6 +228,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               away: fixture.awayTeam,
               kickoffUtc: fixture.kickoffUtc,
             },
+            espnData,
             sources: evidenceSnapshot.map((doc) => ({
               title: doc.title,
               url: doc.url,
@@ -280,7 +291,11 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           ),
           evidenceStatus: "unverified_source_extracts",
         });
-        const savedAnalysis = footballAiAssessmentSchema.parse({ ...assessment, researchBrief });
+        const savedAnalysis = footballAiAssessmentSchema.parse({
+          ...assessment,
+          researchBrief,
+          ...(espnData ? { espnData } : {}),
+        });
         failureCode = "persistence_failed";
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
@@ -394,6 +409,14 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       const key = row.source + ":" + row.league_id + ":" + day;
       if (scored.has(key) || scored.size >= 3) continue;
       try {
+        if (row.source === "espn") {
+          const { fetchEspnFootballWeek } = await import("@/lib/football-espn.server");
+          scored.set(
+            key,
+            await fetchEspnFootballWeek(row.league_id as FootballAiDiscoveryLeagueId, day),
+          );
+          continue;
+        }
         const loader =
           row.source === "football-data"
             ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
