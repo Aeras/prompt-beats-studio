@@ -282,7 +282,10 @@ function getKinoRegularSearchPath(draw: KinoDraw, count: number, target: number)
     seed ^= seed >>> 17;
     seed ^= seed << 5;
     const index = (seed >>> 0) % candidates.length;
-    path.push(candidates.splice(index, 1)[0]);
+    const candidate = candidates[index];
+    if (candidate === undefined) throw new RangeError("KINO cursor candidate pool exhausted");
+    path.push(candidate);
+    candidates.splice(index, 1);
   }
   return path;
 }
@@ -311,7 +314,7 @@ export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
       // Explore the full grid, never re-lighting a settled yellow winner.
       // The last fifth of the step lands on the next verified winner.
       const hop = Math.min(4, Math.floor(stepElapsed / (KINO_VERIFIED_REVEAL_STEP_MS / 5)));
-      activeNumber = hop === 4 ? target : getKinoRegularSearchPath(draw, count, target)[hop];
+      activeNumber = hop === 4 ? target : (getKinoRegularSearchPath(draw, count, target)[hop] ?? null);
     }
   } else if (elapsed < bonusIntroEnd) {
     phase = "bonus-intro";
