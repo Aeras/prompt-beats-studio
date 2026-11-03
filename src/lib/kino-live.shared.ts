@@ -81,7 +81,8 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
   // from a 23-number ordered list. Never infer them from other side bets.
   const explicitSecondChance =
     winning?.secondChanceNumbers ?? winning?.secondChance ?? data.secondChanceNumbers;
-  const green = validList && list.length === 23 ? (list as number[]).slice(20) : explicitSecondChance;
+  const green =
+    validList && list.length === 23 ? (list as number[]).slice(20) : explicitSecondChance;
   const secondChance =
     numbers.length === 20 &&
     Array.isArray(green) &&

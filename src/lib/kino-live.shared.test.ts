@@ -147,10 +147,7 @@ describe("KINO provider validation and animations", () => {
     );
     expect(beforeBonus.confirmed).toHaveLength(19);
     expect(beforeBonus.bonusShown).toBe(false);
-    const withBonus = getKinoVerifiedRevealFrame(
-      verified!,
-      20 * KINO_VERIFIED_REVEAL_STEP_MS,
-    );
+    const withBonus = getKinoVerifiedRevealFrame(verified!, 20 * KINO_VERIFIED_REVEAL_STEP_MS);
     expect(withBonus.confirmed).toEqual(numbers);
     expect(withBonus.bonusShown).toBe(true);
     expect(withBonus.finished).toBe(false);

@@ -64,9 +64,7 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
                       ? "border-white/20 bg-white/10 text-slate-400"
                       : "border-yellow-200 bg-yellow-400 text-slate-950"
               }`}
-              title={
-                kind === "bonus" ? "KINO Bonus" : kind === "green" ? "2η Ευκαιρία" : undefined
-              }
+              title={kind === "bonus" ? "KINO Bonus" : kind === "green" ? "2η Ευκαιρία" : undefined}
             >
               {number ?? "–"}
             </span>
@@ -74,9 +72,7 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
         })}
       </div>
       {draw.secondChance.length !== 3 && (
-        <p className="mt-2 text-xs text-slate-400">
-          Αναμονή επίσημων αριθμών 2ης Ευκαιρίας.
-        </p>
+        <p className="mt-2 text-xs text-slate-400">Αναμονή επίσημων αριθμών 2ης Ευκαιρίας.</p>
       )}
     </>
   );
@@ -160,8 +156,7 @@ export function KinoLivePanel() {
       return;
     }
     if (draw.drawId === previous.drawId) {
-      if (draw.secondChance.length === 3 && previous.secondChance.length !== 3)
-        setPrevious(draw);
+      if (draw.secondChance.length === 3 && previous.secondChance.length !== 3) setPrevious(draw);
       return;
     }
     if (draw.drawId < previous.drawId) return;
@@ -207,7 +202,8 @@ export function KinoLivePanel() {
       >
         <div className="border-b border-white/10 px-3 py-2.5 sm:px-5 sm:py-3">
           <h2 className="text-base font-bold text-white sm:text-lg">
-            Live κλήρωση <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
+            Live κλήρωση{" "}
+            <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
           </h2>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-200 sm:text-sm">
             <span>Επόμενη κλήρωση · {time(waitingTime)}</span>
@@ -251,8 +247,8 @@ export function KinoLivePanel() {
                           : won
                           ? "border-yellow-200 bg-yellow-400 text-slate-950"
                           : hopping
-                          ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
-                          : "border-white/10 bg-[#1e3550] text-slate-300"
+                            ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
+                            : "border-white/10 bg-[#1e3550] text-slate-300"
                     }`}
                   >
                     {number}
