@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getPrivateKinoLiveSnapshot } from "@/lib/kino-live.functions";
-import { getKinoFrame, type KinoDraw } from "@/lib/kino-live.shared";
+import { getKinoLiveState, isCompleteKinoDraw, type KinoDraw } from "@/lib/kino-live.shared";
 
 const NUMBERS = Array.from({ length: 80 }, (_, index) => index + 1);
 const athensTime = new Intl.DateTimeFormat("el-GR", {
@@ -19,19 +19,19 @@ const athensDate = new Intl.DateTimeFormat("el-GR", {
 function time(value: number | null | undefined): string {
   return typeof value === "number" ? athensTime.format(value) : "—";
 }
-function hasResults(draw: KinoDraw | null | undefined): draw is KinoDraw {
-  return Boolean(draw && draw.numbers.length === 20);
-}
 function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
-  if (!hasResults(draw)) {
+  if (!isCompleteKinoDraw(draw)) {
     return <p className="py-2 text-sm text-slate-400">Αναμονή για επιβεβαιωμένα αποτελέσματα…</p>;
   }
   return (
-    <div className="flex flex-wrap gap-1.5" aria-label="Οι 20 αριθμοί της προηγούμενης κλήρωσης">
+    <div
+      className="grid grid-cols-10 gap-1 sm:gap-2"
+      aria-label="Οι 20 αριθμοί της προηγούμενης κλήρωσης"
+    >
       {draw.numbers.map((number) => (
         <span
           key={number}
-          className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${number === draw.bonus ? "border-amber-200/80 bg-amber-400 text-slate-950" : "border-cyan-300/40 bg-cyan-400/15 text-cyan-100"}`}
+          className={`flex aspect-square w-full max-w-10 items-center justify-center rounded-full border text-xs font-bold tabular-nums sm:text-sm ${number === draw.bonus ? "border-red-300 bg-red-600 text-white" : "border-yellow-200 bg-yellow-400 text-slate-950"}`}
           title={number === draw.bonus ? "ΚΙΝΟ Bonus" : undefined}
         >
           {number}
@@ -56,24 +56,17 @@ export function KinoLivePanel() {
       const active = state.state.data?.active;
       if (!active) return 8000;
       const delta = active.drawTime - Date.now();
-      return delta <= 50000 && delta >= -120000 ? 4000 : 16000;
+      return delta <= 50000 && delta >= -120000 ? 2000 : 16000;
     },
   });
   const snapshot = query.data;
   // The client derives the frame from provider timestamps, not local timer order.
   const clockCorrection = snapshot ? snapshot.fetchedAt - query.dataUpdatedAt : 0;
   const providerNow = tick + clockCorrection;
-  const animated = [snapshot?.last, snapshot?.active].find(
-    (draw) =>
-      draw?.animation &&
-      providerNow >= draw.animation.startTimestamp &&
-      providerNow < draw.animation.endTimestamp,
-  );
-  const liveAnimation = animated?.animation ?? null;
-  const frame = liveAnimation ? getKinoFrame(liveAnimation, providerNow) : null;
-  const liveDrawId = animated?.drawId ?? snapshot?.active?.drawId ?? null;
-  const activeNumber = frame?.activeNumber ?? null;
-  const confirmed = frame?.confirmed ?? [];
+  const live = snapshot ? getKinoLiveState(snapshot, providerNow) : null;
+  const liveDrawId = live?.drawId ?? null;
+  const activeNumber = live?.activeNumber ?? null;
+  const confirmed = live?.confirmed ?? [];
   const confirmedSet = new Set(confirmed);
   const waitingTime = snapshot?.active?.drawTime;
   const countdown =
@@ -89,11 +82,9 @@ export function KinoLivePanel() {
   }, []);
   useEffect(() => {
     const draw = snapshot?.last;
-    if (!hasResults(draw)) return;
-    // Never promote a draw while its authoritative animation is on screen.
-    if (draw.animation && providerNow < draw.animation.endTimestamp) return;
+    if (!isCompleteKinoDraw(draw) || !live?.canPromoteLast) return;
     setPrevious((before) => (!before || draw.drawId > before.drawId ? draw : before));
-  }, [snapshot, providerNow]);
+  }, [snapshot, live?.canPromoteLast]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-3 pb-12 pt-4 sm:px-6">
@@ -130,15 +121,17 @@ export function KinoLivePanel() {
           </div>
           <div className="text-right">
             <p aria-live="polite" className="text-sm font-semibold text-slate-200">
-              {frame?.phase === "running"
+              {live?.running
                 ? `Παρουσίαση κλήρωσης · ${confirmed.length}/20`
                 : snapshot?.active
                   ? `Επόμενη · ${time(snapshot.active.drawTime)}`
                   : "Αναμονή επόμενης κλήρωσης"}
             </p>
             <p className="mt-1 font-mono text-sm tabular-nums text-cyan-200">
-              {frame?.phase === "running"
-                ? "Συγχρονισμός με βήματα ΟΠΑΠ"
+              {live?.running
+                ? activeNumber !== null
+                  ? "Συγχρονισμός με βήματα ΟΠΑΠ"
+                  : "Επίσημοι ενδιάμεσοι αριθμοί"
                 : min === null
                   ? "—"
                   : `Σε ${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`}
@@ -146,17 +139,14 @@ export function KinoLivePanel() {
           </div>
         </div>
         <div className="px-2 py-4 sm:px-6 sm:py-6">
-          <div
-            className="grid grid-cols-8 gap-1 sm:grid-cols-10 sm:gap-2"
-            aria-label="Πίνακας αριθμών 1 έως 80"
-          >
+          <div className="grid grid-cols-10 gap-1 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
             {NUMBERS.map((number) => {
               const won = confirmedSet.has(number);
               const hopping = activeNumber === number;
               return (
                 <div
                   key={number}
-                  className={`flex aspect-square items-center justify-center rounded-lg border text-sm font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
+                  className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
                     won
                       ? "border-cyan-200 bg-cyan-400 text-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.35)]"
                       : hopping
@@ -171,7 +161,7 @@ export function KinoLivePanel() {
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <p>
-              {frame?.phase === "running"
+              {live?.running
                 ? "Κυανό: επιβεβαιωμένος αριθμός · Χρυσό: τρέχον βήμα"
                 : "Ο πίνακας καθαρίζει μεταξύ των κληρώσεων."}
             </p>
@@ -203,8 +193,9 @@ export function KinoLivePanel() {
       )}
       <p className="text-xs leading-5 text-slate-500">
         Η κινούμενη παρουσίαση ενεργοποιείται μόνο όταν ο ΟΠΑΠ παρέχει έγκυρα χρονισμένα βήματα.
-        Διαφορετικά προβάλλονται μόνο επίσημα ολοκληρωμένα αποτελέσματα. Η ενημέρωση μπορεί να
-        καθυστερεί.
+        Όταν υπάρχουν επίσημα ενδιάμεσα αποτελέσματα προβάλλονται σταδιακά χωρίς επινοημένο
+        animation. Αν ο ΟΠΑΠ δημοσιεύσει τα δεδομένα μόνο στο τέλος, δεν είναι διαθέσιμη πραγματική
+        ζωντανή παρουσίαση και ενδέχεται να υπάρχει καθυστέρηση.
       </p>
     </div>
   );

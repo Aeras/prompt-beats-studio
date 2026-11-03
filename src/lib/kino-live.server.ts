@@ -1,7 +1,7 @@
 import { parseKinoSnapshot, type KinoSnapshot } from "@/lib/kino-live.shared";
 
 const KINO_URL = "https://api.opap.gr/draws/v3.0/1100/last-result-and-active";
-const CACHE_MS = 3500;
+const CACHE_MS = 1500;
 const MAX_BODY_CHARS = 120000;
 let cached: KinoSnapshot | null = null;
 let inFlight: Promise<KinoSnapshot> | null = null;
