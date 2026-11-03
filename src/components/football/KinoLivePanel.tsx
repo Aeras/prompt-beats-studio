@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getPrivateKinoLiveSnapshot } from "@/lib/kino-live.functions";
-import {
-  getKinoLiveState,
-  isCompleteKinoDraw,
-  type KinoDraw,
-} from "@/lib/kino-live.shared";
+import { getKinoLiveState, isCompleteKinoDraw, type KinoDraw } from "@/lib/kino-live.shared";
 
 const NUMBERS = Array.from({ length: 80 }, (_, index) => index + 1);
 const athensTime = new Intl.DateTimeFormat("el-GR", {
@@ -143,10 +139,7 @@ export function KinoLivePanel() {
           </div>
         </div>
         <div className="px-2 py-4 sm:px-6 sm:py-6">
-          <div
-            className="grid grid-cols-10 gap-1 sm:gap-2"
-            aria-label="Πίνακας αριθμών 1 έως 80"
-          >
+          <div className="grid grid-cols-10 gap-1 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
             {NUMBERS.map((number) => {
               const won = confirmedSet.has(number);
               const hopping = activeNumber === number;
@@ -201,8 +194,8 @@ export function KinoLivePanel() {
       <p className="text-xs leading-5 text-slate-500">
         Η κινούμενη παρουσίαση ενεργοποιείται μόνο όταν ο ΟΠΑΠ παρέχει έγκυρα χρονισμένα βήματα.
         Όταν υπάρχουν επίσημα ενδιάμεσα αποτελέσματα προβάλλονται σταδιακά χωρίς επινοημένο
-        animation. Αν ο ΟΠΑΠ δημοσιεύσει τα δεδομένα μόνο στο τέλος, δεν είναι διαθέσιμη
-        πραγματική ζωντανή παρουσίαση και ενδέχεται να υπάρχει καθυστέρηση.
+        animation. Αν ο ΟΠΑΠ δημοσιεύσει τα δεδομένα μόνο στο τέλος, δεν είναι διαθέσιμη πραγματική
+        ζωντανή παρουσίαση και ενδέχεται να υπάρχει καθυστέρηση.
       </p>
     </div>
   );

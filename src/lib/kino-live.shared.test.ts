@@ -110,9 +110,9 @@ describe("KINO provider validation and animations", () => {
     expect(
       getKinoLiveState({ last: unfinished, active: null, fetchedAt: T }, T).canPromoteLast,
     ).toBe(false);
-    expect(
-      getKinoLiveState({ last: noBonus, active: null, fetchedAt: T }, T).canPromoteLast,
-    ).toBe(false);
+    expect(getKinoLiveState({ last: noBonus, active: null, fetchedAt: T }, T).canPromoteLast).toBe(
+      false,
+    );
     expect(
       getKinoLiveState({ last: completed, active: null, fetchedAt: T }, T).canPromoteLast,
     ).toBe(true);

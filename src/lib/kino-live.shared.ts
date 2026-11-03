@@ -178,9 +178,9 @@ export function getKinoFrame(animation: KinoAnimation, at: number): KinoFrame {
 export function isCompleteKinoDraw(draw: KinoDraw | null | undefined): draw is KinoDraw {
   return Boolean(
     draw &&
-      draw.numbers.length === 20 &&
-      draw.bonus !== null &&
-      (draw.status === "results" || draw.status === "completed"),
+    draw.numbers.length === 20 &&
+    draw.bonus !== null &&
+    (draw.status === "results" || draw.status === "completed"),
   );
 }
 
@@ -189,10 +189,7 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
   const partial = snapshot.active?.numbers.length ? snapshot.active : null;
   // A newer active result must never be hidden by an older draw's animation.
   const animated = (partial ? [snapshot.active] : [snapshot.active, snapshot.last]).find(
-    (draw) =>
-      draw?.animation &&
-      at >= draw.animation.startTimestamp &&
-      at < draw.animation.endTimestamp,
+    (draw) => draw?.animation && at >= draw.animation.startTimestamp && at < draw.animation.endTimestamp,
   );
   const frame = animated?.animation ? getKinoFrame(animated.animation, at) : null;
   const confirmed = frame?.confirmed ?? partial?.numbers ?? [];
