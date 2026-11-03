@@ -245,10 +245,10 @@ export function KinoLivePanel() {
                         : bonus
                           ? "border-red-200 bg-red-600 text-white"
                           : won
-                          ? "border-yellow-200 bg-yellow-400 text-slate-950"
-                          : hopping
-                            ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
-                            : "border-white/10 bg-[#1e3550] text-slate-300"
+                            ? "border-yellow-200 bg-yellow-400 text-slate-950"
+                            : hopping
+                              ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
+                              : "border-white/10 bg-[#1e3550] text-slate-300"
                     }`}
                   >
                     {number}
