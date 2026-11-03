@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — Football expert judgment — IN_PROGRESS
+
+- Evidence: Expert received partial base assessment and omitted deepDive; one production review abstained.
+- Fix: Football-only complete evidence handoff and independent market opinion prompt. Keep abstention and current safety/paid consent controls; add unit tests.
+- Pending: CI, merge, release and authorized production pilot. Not CLOSED.
+
 ## 2026-11-03 — Football experimental expert failed-call diagnosis — IN_PROGRESS
 
 - **Production evidence:** Supabase expert reviews contains one failed expert attempt with provider_started_at set, error_code=provider_or_save_failed, and no usage receipt. Screenshot shows the Expert failed while the base analysis completed. Current catch collapses provider, output budget, JSON, schema and save failures; exact historical root cause is not recoverable.

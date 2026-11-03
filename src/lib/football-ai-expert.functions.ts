@@ -7,6 +7,7 @@ import {
   footballExpertDecisionSchema,
 } from "@/lib/football-ai-research-phases.shared";
 import { footballAiAssessmentSchema } from "@/lib/football-ai-research.shared";
+import { buildFootballExpertPayload } from "@/lib/football-ai-expert-payload.shared";
 
 const expertRequestSchema = z
   .object({
@@ -88,16 +89,7 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
         failureCode = "provider_failed";
         const receipt = await caller({
           system: FOOTBALL_EXPERT_ANALYST_SYSTEM,
-          prompt: JSON.stringify({
-            researchBrief: assessment.researchBrief,
-            matchContext: assessment.matchContext ?? null,
-            baseAssessment: {
-              summary: assessment.summary,
-              estimates: assessment.estimates,
-              suggestions: assessment.suggestions,
-              limitations: assessment.limitations,
-            },
-          }),
+          prompt: JSON.stringify(buildFootballExpertPayload(assessment)),
           maxTokens: 4096,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
