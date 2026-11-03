@@ -4,9 +4,14 @@ import { getPrivateKinoLiveSnapshot } from "@/lib/kino-live.functions";
 import {
   getKinoLiveState,
   getKinoPreviousBallPosition,
+  getKinoTransitionDigit,
   getKinoVerifiedRevealFrame,
+  shouldTransferKinoHeldResult,
+  KINO_TRANSITION_MS,
   isCompleteKinoDraw,
+  KINO_VERIFIED_BONUS_MS,
   KINO_VERIFIED_REVEAL_STEP_MS,
+  KINO_VERIFIED_REVEAL_TOTAL_MS,
   type KinoDraw,
 } from "@/lib/kino-live.shared";
 
@@ -82,7 +87,18 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
 export function KinoLivePanel() {
   const [tick, setTick] = useState(() => Date.now());
   const [previous, setPrevious] = useState<KinoDraw | null>(null);
+  const [ready, setReady] = useState(false);
   const [reveal, setReveal] = useState<{ draw: KinoDraw; startedAt: number } | null>(null);
+  const [held, setHeld] = useState<{
+    draw: KinoDraw;
+    nextDrawTime: number | null;
+    nextDrawId: number | null;
+  } | null>(null);
+  const [transition, setTransition] = useState<{
+    startedAt: number;
+    drawId: number | null;
+  } | null>(null);
+  const [handoff, setHandoff] = useState<{ draw: KinoDraw; startedAt: number } | null>(null);
   const query = useQuery({
     queryKey: ["private-kino-live"],
     queryFn: () => getPrivateKinoLiveSnapshot(),
@@ -98,21 +114,29 @@ export function KinoLivePanel() {
     },
   });
   const snapshot = query.data;
-  // The client derives the frame from provider timestamps, not local timer order.
+  // Source timestamps, never an assumed five-minute cycle, govern all boundaries.
   const clockCorrection = snapshot ? snapshot.fetchedAt - query.dataUpdatedAt : 0;
   const providerNow = tick + clockCorrection;
   const live = snapshot ? getKinoLiveState(snapshot, providerNow) : null;
   const verifiedFrame = reveal
     ? getKinoVerifiedRevealFrame(reveal.draw, providerNow - reveal.startedAt)
     : null;
-  const liveDrawId = reveal?.draw.drawId ?? live?.drawId ?? null;
-  const activeNumber = reveal
-    ? (verifiedFrame?.activeNumber ?? null)
-    : (live?.activeNumber ?? null);
-  const confirmed = verifiedFrame?.confirmed ?? live?.confirmed ?? [];
+  const transitionDigit = getKinoTransitionDigit(transition?.startedAt ?? null, providerNow);
+  const inTransition =
+    transition !== null && providerNow < transition.startedAt + KINO_TRANSITION_MS;
+  const liveDrawId =
+    reveal?.draw.drawId ?? held?.draw.drawId ?? transition?.drawId ?? live?.drawId ?? null;
+  const activeNumber = reveal ? (verifiedFrame?.activeNumber ?? null) : null;
+  const confirmed = reveal ? (verifiedFrame?.confirmed ?? []) : held ? held.draw.numbers : [];
   const confirmedSet = new Set(confirmed);
-  const highlightedBonus = verifiedFrame?.bonusShown ? reveal?.draw.bonus : null;
-  const highlightedGreen = verifiedFrame?.secondChance ?? [];
+  const highlightedBonus = reveal
+    ? verifiedFrame?.bonusShown
+      ? reveal.draw.bonus
+      : null
+    : (held?.draw.bonus ?? null);
+  const highlightedGreen = reveal
+    ? (verifiedFrame?.secondChance ?? [])
+    : (held?.draw.secondChance ?? []);
   const greenSet = new Set(highlightedGreen);
   const waitingTime = snapshot?.active?.drawTime;
   const countdown =
@@ -121,16 +145,47 @@ export function KinoLivePanel() {
       : null;
   const min = countdown === null ? null : Math.floor(countdown / 60);
   const sec = countdown === null ? null : countdown % 60;
+  const handoffClass = handoff ? "scale-[0.98] opacity-0" : "scale-100 opacity-100";
+  const previousCardClass = `rounded-2xl border border-white/10 bg-gradient-to-r from-[#15243b] via-[#172e45] to-[#15243b] px-4 py-3 shadow-lg shadow-black/10 transition-all duration-500 motion-reduce:transition-none sm:px-5 ${handoffClass}`;
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTick(Date.now()), 200);
+    const timer = window.setInterval(() => setTick(Date.now()), 100);
     return () => window.clearInterval(timer);
   }, []);
+
   useEffect(() => {
-    const draw = snapshot?.last;
+    if (!snapshot || !ready) {
+      if (snapshot && !ready) {
+        // On first entry, keep the last official result on the live board
+        // until the next provider time, without replaying it as a new draw.
+        const latest = snapshot.last;
+        if (isCompleteKinoDraw(latest)) {
+          // Both views may use this already-confirmed draw on first load.
+          // Never guess an unavailable older draw.
+          setPrevious(latest);
+          const next =
+            snapshot.active && snapshot.active.drawId > latest.drawId ? snapshot.active : null;
+          if (next && providerNow < next.drawTime) {
+            setHeld({
+              draw: latest,
+              nextDrawTime: next.drawTime,
+              nextDrawId: next.drawId,
+            });
+          }
+        }
+        setReady(true);
+      }
+      return;
+    }
+
+    if (handoff && providerNow >= handoff.startedAt + 450) {
+      setPrevious(handoff.draw);
+      setHandoff(null);
+      return;
+    }
+
+    const draw = snapshot.last;
     if (reveal) {
-      // If the same draw receives its 2nd-Chance data later, upgrade the ongoing
-      // presentation without restarting or losing its already displayed numbers.
       if (
         draw &&
         draw.drawId === reveal.draw.drawId &&
@@ -140,49 +195,89 @@ export function KinoLivePanel() {
         setReveal({ ...reveal, draw });
         return;
       }
-      const frame = getKinoVerifiedRevealFrame(reveal.draw, providerNow - reveal.startedAt);
-      if (frame.finished) {
-        setPrevious((before) =>
-          !before || reveal.draw.drawId >= before.drawId ? reveal.draw : before,
-        );
+      if (getKinoVerifiedRevealFrame(reveal.draw, providerNow - reveal.startedAt).finished) {
+        const next = snapshot.active;
+        setHeld({
+          draw: reveal.draw,
+          nextDrawTime: next && next.drawId > reveal.draw.drawId ? next.drawTime : null,
+          nextDrawId: next && next.drawId > reveal.draw.drawId ? next.drawId : null,
+        });
         setReveal(null);
       }
       return;
     }
 
-    if (!isCompleteKinoDraw(draw)) return;
-    if (!previous) {
-      setPrevious(draw);
-      return;
-    }
-    if (draw.drawId === previous.drawId) {
-      if (draw.secondChance.length === 3 && previous.secondChance.length !== 3) setPrevious(draw);
-      return;
-    }
-    if (draw.drawId < previous.drawId) return;
-
-    // Respect provider-owned animation for the first twenty.
-    // Afterwards display the verified Bonus and three green values.
-    if (draw.animation) {
-      if (providerNow >= draw.animation.endTimestamp) {
-        setReveal({
-          draw,
-          startedAt: providerNow - 20 * KINO_VERIFIED_REVEAL_STEP_MS,
-        });
+    if (held) {
+      const upcoming =
+        snapshot.active && snapshot.active.drawId > held.draw.drawId ? snapshot.active : null;
+      const nextTime = held.nextDrawTime ?? upcoming?.drawTime ?? null;
+      const nextId = held.nextDrawId ?? upcoming?.drawId ?? null;
+      if (
+        draw?.drawId === held.draw.drawId &&
+        draw.secondChance.length === 3 &&
+        held.draw.secondChance.length !== 3 &&
+        (nextTime === null || providerNow < nextTime)
+      ) {
+        // When green numbers arrive later, retain the 20+Bonus and present
+        // the three greens sequentially rather than lighting them all at once.
+        const greenStageOffset = 20 * KINO_VERIFIED_REVEAL_STEP_MS + KINO_VERIFIED_BONUS_MS;
+        const greenStageDuration = KINO_VERIFIED_REVEAL_TOTAL_MS - greenStageOffset;
+        if (nextTime !== null && providerNow + greenStageDuration >= nextTime) {
+          // The official draw boundary takes priority over a late replay.
+          setHeld({ ...held, draw });
+          return;
+        }
+        setReveal({ draw, startedAt: providerNow - greenStageOffset });
+        setHeld(null);
+        return;
+      }
+      if (nextTime === null) return;
+      if (shouldTransferKinoHeldResult(nextTime, providerNow)) {
+        // Keep the twenty-three results lit until this exact OPAP boundary.
+        // Fade the previous-result card out then in during the 10-second interlude.
+        setHandoff({ draw: held.draw, startedAt: providerNow });
+        setTransition({ startedAt: nextTime, drawId: nextId });
+        setHeld(null);
+      } else if (held.nextDrawTime === null && upcoming) {
+        setHeld({ ...held, nextDrawTime: upcoming.drawTime, nextDrawId: upcoming.drawId });
       }
       return;
     }
 
-    // New complete result: animate only verified numbers; never invent wins.
+    if (transition) {
+      if (inTransition) return;
+      setTransition(null);
+      // Continue to the actual published draw, if it has arrived.
+    }
+
+    // Support a first opening before any new completed result arrives:
+    // the current official active draw also gets the ten-second countdown.
+    if (
+      !transition &&
+      previous &&
+      snapshot.active &&
+      snapshot.active.drawId > previous.drawId &&
+      getKinoTransitionDigit(snapshot.active.drawTime, providerNow) !== null
+    ) {
+      setTransition({ startedAt: snapshot.active.drawTime, drawId: snapshot.active.drawId });
+      return;
+    }
+    if (!isCompleteKinoDraw(draw) || handoff) return;
+    if (previous?.drawId === draw.drawId) {
+      if (draw.secondChance.length === 3 && previous.secondChance.length !== 3) {
+        setPrevious(draw);
+      }
+      return;
+    }
+    if (previous && draw.drawId < previous.drawId) return;
+    // The 10-second interlude never displays invented results. A complete
+    // official response is required before any new reveal can start.
     setReveal({ draw, startedAt: providerNow });
-  }, [snapshot?.last, previous, providerNow, reveal]);
+  }, [snapshot, ready, handoff, reveal, held, transition, inTransition, previous, providerNow]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-3 pb-12 pt-4 sm:px-6">
-      <section
-        aria-label="Προηγούμενη κλήρωση ΚΙΝΟ"
-        className="rounded-2xl border border-white/10 bg-gradient-to-r from-[#15243b] via-[#172e45] to-[#15243b] px-4 py-3 shadow-lg shadow-black/10 sm:px-5"
-      >
+      <section aria-label="Προηγούμενη κλήρωση ΚΙΝΟ" className={previousCardClass}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-1">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-100">
             Προηγούμενη κλήρωση
@@ -216,17 +311,37 @@ export function KinoLivePanel() {
         </div>
         <div className="px-2 py-4 sm:px-6 sm:py-6">
           <div className="relative">
-            {reveal && verifiedFrame?.phase === "bonus" && (
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                <span className="rounded-xl border border-red-300 bg-red-700/90 px-4 py-2 text-xl font-extrabold text-white shadow-lg">
-                  KINO BONUS
+            {inTransition && transitionDigit !== null && (
+              <div
+                className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+                role="status"
+                aria-label={`Έναρξη κλήρωσης σε ${transitionDigit} δευτερόλεπτα`}
+              >
+                <span
+                  key={transitionDigit}
+                  className="animate-in zoom-in-75 fade-in rounded-3xl border border-cyan-200/60 bg-slate-950/85 px-8 py-4 text-6xl font-black tabular-nums text-cyan-100 shadow-[0_0_50px_rgba(34,211,238,0.5)] duration-300 motion-reduce:animate-none sm:text-8xl"
+                >
+                  {transitionDigit}
                 </span>
               </div>
             )}
-            {reveal && verifiedFrame?.phase === "second-chance" && (
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                <span className="rounded-xl border border-green-300 bg-green-700/90 px-4 py-2 text-xl font-extrabold text-white shadow-lg">
-                  2η ΕΥΚΑΙΡΙΑ
+            {reveal && verifiedFrame?.banner && (
+              <div
+                className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+                aria-live="polite"
+              >
+                <span
+                  className={`rounded-2xl border px-5 py-3 text-2xl font-black tracking-wide text-white shadow-2xl transition-[opacity,transform] duration-100 motion-reduce:transition-none sm:text-4xl ${
+                    verifiedFrame.banner.kind === "bonus"
+                      ? "border-red-300 bg-red-700/95 shadow-red-500/40"
+                      : "border-green-300 bg-green-700/95 shadow-green-500/40"
+                  }`}
+                  style={{
+                    opacity: verifiedFrame.banner.opacity,
+                    transform: `scale(${verifiedFrame.banner.scale})`,
+                  }}
+                >
+                  {verifiedFrame.banner.kind === "bonus" ? "KINO BONUS" : "2η ΕΥΚΑΙΡΙΑ"}
                 </span>
               </div>
             )}
@@ -236,10 +351,13 @@ export function KinoLivePanel() {
                 const hopping = activeNumber === number;
                 const bonus = won && highlightedBonus === number;
                 const green = greenSet.has(number);
+                const cursorClass = hopping
+                  ? "relative z-[1] scale-110 ring-4 ring-cyan-300 shadow-[0_0_24px_rgba(103,232,249,0.8)]"
+                  : "";
                 return (
                   <div
                     key={number}
-                    className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
+                    className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-300 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
                       green
                         ? "border-green-200 bg-green-500 text-white"
                         : bonus
@@ -249,7 +367,7 @@ export function KinoLivePanel() {
                             : hopping
                               ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
                               : "border-white/10 bg-[#1e3550] text-slate-300"
-                    }`}
+                    } ${cursorClass}`}
                   >
                     {number}
                   </div>
@@ -261,9 +379,11 @@ export function KinoLivePanel() {
             <span aria-live="polite">
               {reveal
                 ? `Επιβεβαιωμένη παρουσίαση · ${confirmed.length}/20 · 2η Ευκαιρία ${highlightedGreen.length}/3`
-                : live?.running
-                  ? `Επίσημα δεδομένα · ${confirmed.length}/20`
-                  : "Πηγή: OPAP API"}
+                : held
+                  ? "Ολοκληρωμένη κλήρωση · οι 23 αριθμοί παραμένουν μέχρι την επόμενη"
+                  : inTransition
+                    ? "Προετοιμασία νέας κλήρωσης · αναμονή επίσημων αποτελεσμάτων"
+                    : "Αναμονή επίσημων αποτελεσμάτων · Πηγή: OPAP API"}
             </span>
             <span>Ώρα Ελλάδας</span>
           </div>
