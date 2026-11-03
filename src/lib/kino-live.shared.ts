@@ -222,7 +222,7 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
 }
 
 /** Timed replay of provider-confirmed numbers; cursor hops never invent winnings. */
-export const KINO_VERIFIED_REVEAL_STEP_MS = 2000; // calibrated full cycle per confirmed number
+export const KINO_VERIFIED_REVEAL_STEP_MS = 2500; // full cycle per confirmed number
 export const KINO_STAGE_ENTER_MS = 350;
 export const KINO_STAGE_HOLD_MS = 1000;
 export const KINO_STAGE_EXIT_MS = 350;
@@ -263,6 +263,30 @@ function kinoBannerMotion(elapsed: number) {
   return { opacity, scale: 0.72 + 0.28 * (1 - (1 - entrance) ** 3) };
 }
 
+/**
+ * Decorative, stable pseudo-random cursor positions from the entire 1–80 grid.
+ * Excludes all already confirmed numbers and the next winner until its final
+ * settling hop. The four intermediate cells are unique for each winner.
+ * Never influences the actual provider-confirmed draw results.
+ */
+function getKinoRegularSearchPath(draw: KinoDraw, count: number, target: number): number[] {
+  const excluded = new Set(draw.numbers.slice(0, count));
+  excluded.add(target);
+  const candidates = Array.from({ length: 80 }, (_, index) => index + 1).filter(
+    (number) => !excluded.has(number),
+  );
+  let seed = (Math.imul(draw.drawId, 0x9e3779b1) ^ Math.imul(count + 1, 0x85ebca6b) ^ target) >>> 0;
+  const path: number[] = [];
+  for (let hop = 0; hop < 4; hop++) {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    const index = (seed >>> 0) % candidates.length;
+    path.push(candidates.splice(index, 1)[0]);
+  }
+  return path;
+}
+
 export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
   const elapsed = Math.max(0, elapsedMs);
   const regularEnd = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
@@ -284,11 +308,10 @@ export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
     const stepElapsed = elapsed % KINO_VERIFIED_REVEAL_STEP_MS;
     const target = draw.numbers[count];
     if (target !== undefined) {
-      // Every visited cell belongs to this draw's twenty official numbers.
-      // Slower movement and a brief settling hold make the target legible.
+      // Explore the full grid, never re-lighting a settled yellow winner.
+      // The last fifth of the step lands on the next verified winner.
       const hop = Math.min(4, Math.floor(stepElapsed / (KINO_VERIFIED_REVEAL_STEP_MS / 5)));
-      const index = hop === 4 ? count : (count + hop * 7 + 3) % 20;
-      activeNumber = draw.numbers[index] ?? target;
+      activeNumber = hop === 4 ? target : getKinoRegularSearchPath(draw, count, target)[hop];
     }
   } else if (elapsed < bonusIntroEnd) {
     phase = "bonus-intro";

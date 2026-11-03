@@ -137,26 +137,40 @@ describe("KINO provider validation and animations", () => {
     ).toBe(true);
   });
 
-  test("each slower cursor hop visits only the twenty provider numbers", () => {
+  test("regular search uses the full grid and never revisits confirmed yellow numbers", () => {
     const verified = parseKinoDraw({ ...draw(101), animation: null })!;
-    expect(KINO_VERIFIED_REVEAL_STEP_MS).toBe(2000);
+    expect(KINO_VERIFIED_REVEAL_STEP_MS).toBe(2500);
     const end = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
     const first = getKinoVerifiedRevealFrame(verified, 0);
     expect(first.confirmed).toEqual([]);
     expect(first.phase).toBe("regular");
     expect(first.bonusShown).toBe(false);
-    for (let ms = 0; ms < end; ms += 80) {
-      const frame = getKinoVerifiedRevealFrame(verified, ms);
-      expect(verified.numbers).toContain(frame.activeNumber);
-      expect(frame.confirmed).toEqual(
-        verified.numbers.slice(0, Math.floor(ms / KINO_VERIFIED_REVEAL_STEP_MS)),
-      );
+    const hopDuration = KINO_VERIFIED_REVEAL_STEP_MS / 5;
+    const allSearchCells: number[] = [];
+    for (let count = 0; count < 20; count++) {
+      const base = count * KINO_VERIFIED_REVEAL_STEP_MS;
+      const alreadyConfirmed = numbers.slice(0, count);
+      const searchCells = Array.from({ length: 4 }, (_, hop) => {
+        const frame = getKinoVerifiedRevealFrame(verified, base + hop * hopDuration);
+        expect(frame.confirmed).toEqual(alreadyConfirmed);
+        expect(frame.activeNumber).not.toBe(numbers[count]);
+        expect(alreadyConfirmed).not.toContain(frame.activeNumber);
+        expect(frame.activeNumber).toBeGreaterThanOrEqual(1);
+        expect(frame.activeNumber).toBeLessThanOrEqual(80);
+        expect(getKinoVerifiedRevealFrame(verified, base + hop * hopDuration)).toEqual(frame);
+        return frame.activeNumber!;
+      });
+      expect(new Set(searchCells).size).toBe(4);
+      allSearchCells.push(...searchCells);
+      const landing = getKinoVerifiedRevealFrame(verified, base + 4 * hopDuration);
+      expect(landing.activeNumber).toBe(numbers[count]);
+      expect(landing.confirmed).toEqual(alreadyConfirmed);
+      expect(
+        getKinoVerifiedRevealFrame(verified, base + KINO_VERIFIED_REVEAL_STEP_MS).confirmed,
+      ).toEqual(numbers.slice(0, count + 1));
     }
-    // Four deliberate 400-ms hops followed by a 400-ms hold on the real winner.
-    const oneStep = KINO_VERIFIED_REVEAL_STEP_MS;
-    expect(getKinoVerifiedRevealFrame(verified, oneStep - 400).activeNumber).toBe(1);
-    expect(getKinoVerifiedRevealFrame(verified, oneStep - 1).confirmed).toEqual([]);
-    expect(getKinoVerifiedRevealFrame(verified, oneStep).confirmed).toEqual([1]);
+    expect(allSearchCells.some((number) => number > 20)).toBe(true);
+    expect(getKinoVerifiedRevealFrame(verified, end - 1).confirmed).toHaveLength(19);
     expect(getKinoVerifiedRevealFrame(verified, end).confirmed).toEqual(numbers);
   });
 

@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-03 — KINO 2.5-second full-grid cursor, excluding previous winners — IN_PROGRESS
+
+- **Owner decisions:** Regular reveal full cycle **2,500 ms** per number (50 seconds for 20). Four visually pseudo-random, distinct hops across the full **1–80** grid, each 500 ms, excluding all already confirmed yellow winners and the upcoming target until the last 500-ms settlement. The fifth hop lands only on the actual provider-confirmed next number. A stable drawId/position seed prevents movement from changing on UI re-render or refresh. These intermediate cells are decorative and do not represent actual OPAP intermediate animation data.
+- **Code investigation:** On `main` `ded441c9d69db2660f3f658bbd2cc94ff6d70543` (merged #503), the existing path cycles only among all 20 true winners and therefore revisits already-highlighted numbers. `getKinoVerifiedRevealFrame` and `KINO_VERIFIED_REVEAL_STEP_MS` are the only required production-code changes; the UI uses this shared frame and derived total timing. Bonus/green logic, official values, Super Admin auth, server endpoint and provider schema remain unchanged.
+- **Acceptance tests:** For every one of the 20 steps, four candidate hops must be unique, within 1–80, not among earlier winners and not the current target; last hop must be the correct upcoming official result, with deterministic replay and exact 2,500-ms boundaries. Existing official OPAP fixture, Bonus, Second Chance and next-draw tests must pass.
+- **Release boundary:** No paid calls, database changes or deployment. Require local/focused validation, one consolidated PR, exact-HEAD Regression/Browser Quality/Database Replay, and separately authorized Lovable publish and live user verification before CLOSED. Per `AGENTS.md` §7, obtain explicit approval before any CI-triggering branch update or PR creation.
+
+
 ## 2026-11-03 — KINO 2-second verified-number cadence — IN_PROGRESS
 
 - **Owner-requested tuning:** Change the twenty regular KINO numbers' completed reveal cadence from 880 ms to **2,000 ms per number** (~40 seconds total), while keeping Bonus and 2η Ευκαιρία durations unchanged. Increase cursor-hop interval proportionately from 160 ms to 400 ms across the first four hops and the final hold to avoid a fast flurry followed by a long stationary pause.
