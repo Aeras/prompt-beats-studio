@@ -365,7 +365,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
     const visibleRows = rows.filter((row) => !hidden.has(row.id)).slice(0, 40);
     const { data: reviews, error: expertError } = await supabaseAdmin
       .from("private_football_expert_reviews" as never)
-      .select("run_id,status,decision,model_id")
+      .select("run_id,status,decision,model_id,error_code")
       .eq("user_id", context.userId)
       .in(
         "run_id",
@@ -381,6 +381,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
           status: string;
           decision: unknown;
           model_id: string;
+          error_code: string | null;
         }>
       ).map((review) => [review.run_id, review]),
     );
@@ -449,6 +450,7 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
           return {
             status: raw.status,
             modelId: raw.model_id,
+            errorCode: raw.status === "failed" ? raw.error_code : null,
             decision: checkedExpert.success ? checkedExpert.data : null,
           };
         })(),

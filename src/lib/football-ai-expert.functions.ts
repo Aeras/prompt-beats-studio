@@ -63,6 +63,8 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
     if (insertError || !inserted) throw new Error("Expert review already requested or unavailable");
     const reviewId = (inserted as { id: string }).id;
     let sent = false;
+    let observedUsage: unknown = null;
+    let failureCode = "dispatch_unavailable";
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
         if (Date.parse(base.kickoff_utc) <= Date.now())
@@ -83,6 +85,7 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
           executionId: reviewId,
         });
         sent = true;
+        failureCode = "provider_failed";
         const receipt = await caller({
           system: FOOTBALL_EXPERT_ANALYST_SYSTEM,
           prompt: JSON.stringify({
@@ -95,13 +98,38 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
               limitations: assessment.limitations,
             },
           }),
-          maxTokens: 1700,
+          maxTokens: 4096,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });
-        if (receipt.stopReason !== "end_turn") throw new Error("Incomplete expert response");
-        const decision = footballExpertDecisionSchema.parse(JSON.parse(receipt.text));
+        observedUsage = receipt.usage;
+        if (receipt.stopReason !== "end_turn") {
+          failureCode =
+            receipt.stopReason === "max_tokens" ? "output_token_limit" : "incomplete_ai_output";
+          throw new Error("Incomplete expert response");
+        }
+        let raw: unknown;
+        try {
+          raw = JSON.parse(receipt.text);
+        } catch {
+          failureCode = "invalid_ai_json";
+          throw new Error("Invalid expert JSON");
+        }
+        failureCode = "invalid_ai_schema";
+        const parsed = footballExpertDecisionSchema.safeParse(raw);
+        if (!parsed.success) {
+          console.error("[football-expert] invalid_ai_schema", {
+            reviewId,
+            issues: parsed.error.issues.slice(0, 12).map((issue) => ({
+              field: issue.path.join(".").slice(0, 120),
+              code: issue.code,
+            })),
+          });
+          throw new Error("Invalid expert decision");
+        }
+        const decision = parsed.data;
+        failureCode = "persistence_failed";
         const { error: saveError } = await supabaseAdmin
           .from("private_football_expert_reviews" as never)
           .update({
@@ -122,7 +150,8 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
         .update({
           status: "failed",
           completed_at: new Date().toISOString(),
-          error_code: sent ? "provider_or_save_failed" : "unavailable",
+          error_code: sent ? failureCode : "dispatch_unavailable",
+          ...(observedUsage ? { usage: observedUsage } : {}),
         } as never)
         .eq("id", reviewId)
         .eq("user_id", context.userId)

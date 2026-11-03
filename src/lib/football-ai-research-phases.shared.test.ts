@@ -1,10 +1,42 @@
 import { describe, expect, it } from "bun:test";
 import {
   footballExpertDecisionSchema,
+  FOOTBALL_EXPERT_ANALYST_SYSTEM,
   footballResearchBriefSchema,
 } from "./football-ai-research-phases.shared";
 
 describe("football phased research contracts", () => {
+  it("expert prompt specifies the mandatory JSON contract", () => {
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("strongestEvidence");
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("mainRisk");
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("abstentionReason");
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("limitations");
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("planB MUST be omitted");
+  });
+
+  it("accepts a fully structured independent pick and rejects missing evidence", () => {
+    const pick = {
+      decision: "pick",
+      primary: {
+        market: "double_chance_x2",
+        percent: 65,
+        confidence: "medium",
+        rationale: "The limited available context supports only a cautious subjective estimate.",
+        strongestEvidence: "Independent match source evidence",
+        mainRisk: "Unconfirmed lineups and rotation",
+      },
+      avoid: "Avoid unsupported exact-score markets.",
+      limitations: [],
+    };
+    expect(footballExpertDecisionSchema.safeParse(pick).success).toBe(true);
+    expect(
+      footballExpertDecisionSchema.safeParse({
+        ...pick,
+        primary: { ...pick.primary, strongestEvidence: "" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects unsourced invented-looking output fields", () => {
     expect(
       footballResearchBriefSchema.safeParse({
