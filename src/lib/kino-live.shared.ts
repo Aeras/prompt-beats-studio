@@ -228,10 +228,12 @@ export function getKinoLiveState(snapshot: KinoSnapshot, at: number) {
 export const KINO_VERIFIED_REVEAL_STEP_MS = 650;
 export const KINO_VERIFIED_BONUS_MS = 1100;
 export const KINO_VERIFIED_GREEN_STEP_MS = 850;
+export const KINO_VERIFIED_FINAL_HOLD_MS = 900;
 export const KINO_VERIFIED_REVEAL_TOTAL_MS =
   20 * KINO_VERIFIED_REVEAL_STEP_MS +
   KINO_VERIFIED_BONUS_MS +
-  3 * KINO_VERIFIED_GREEN_STEP_MS;
+  3 * KINO_VERIFIED_GREEN_STEP_MS +
+  KINO_VERIFIED_FINAL_HOLD_MS;
 
 export function hasKinoSecondChance(draw: KinoDraw | null | undefined): draw is KinoDraw {
   return Boolean(draw && isCompleteKinoDraw(draw) && draw.secondChance.length === 3);
@@ -275,7 +277,7 @@ export function getKinoVerifiedRevealFrame(draw: KinoDraw, elapsedMs: number) {
       elapsed >=
         (draw.secondChance.length === 3
           ? KINO_VERIFIED_REVEAL_TOTAL_MS
-          : bonusEnd),
+          : bonusEnd + KINO_VERIFIED_FINAL_HOLD_MS),
   };
 }
 

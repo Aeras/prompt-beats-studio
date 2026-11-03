@@ -64,7 +64,9 @@ function FinishedNumbers({ draw }: { draw: KinoDraw | null }) {
                       ? "border-white/20 bg-white/10 text-slate-400"
                       : "border-yellow-200 bg-yellow-400 text-slate-950"
               }`}
-              title={kind === "bonus" ? "KINO Bonus" : kind === "green" ? "2η Ευκαιρία" : undefined}
+              title={
+                kind === "bonus" ? "KINO Bonus" : kind === "green" ? "2η Ευκαιρία" : undefined
+              }
             >
               {number ?? "–"}
             </span>
@@ -233,31 +235,31 @@ export function KinoLivePanel() {
               </div>
             )}
             <div className="grid grid-cols-10 gap-1 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
-            {NUMBERS.map((number) => {
-              const won = confirmedSet.has(number);
-              const hopping = activeNumber === number;
-              const bonus = won && highlightedBonus === number;
-              const green = greenSet.has(number);
-              return (
-                <div
-                  key={number}
-                  className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
-                    green
-                      ? "border-green-200 bg-green-500 text-white"
-                      : bonus
-                        ? "border-red-200 bg-red-600 text-white"
-                        : won
-                        ? "border-yellow-200 bg-yellow-400 text-slate-950"
-                        : hopping
-                        ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
-                        : "border-white/10 bg-[#1e3550] text-slate-300"
-                  }`}
-                >
-                  {number}
-                </div>
-              );
-            })}
-          </div>
+              {NUMBERS.map((number) => {
+                const won = confirmedSet.has(number);
+                const hopping = activeNumber === number;
+                const bonus = won && highlightedBonus === number;
+                const green = greenSet.has(number);
+                return (
+                  <div
+                    key={number}
+                    className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs font-extrabold tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 motion-reduce:transition-none sm:rounded-xl sm:text-lg ${
+                      green
+                        ? "border-green-200 bg-green-500 text-white"
+                        : bonus
+                          ? "border-red-200 bg-red-600 text-white"
+                          : won
+                          ? "border-yellow-200 bg-yellow-400 text-slate-950"
+                          : hopping
+                          ? "scale-105 border-amber-200 bg-amber-300 text-slate-950 shadow-[0_0_18px_rgba(252,211,77,0.45)]"
+                          : "border-white/10 bg-[#1e3550] text-slate-300"
+                    }`}
+                  >
+                    {number}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span aria-live="polite">

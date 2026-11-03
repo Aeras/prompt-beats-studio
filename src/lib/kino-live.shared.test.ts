@@ -222,6 +222,9 @@ describe("KINO provider validation and animations", () => {
     const firstGreen = getKinoVerifiedRevealFrame(draw23, 13000 + 1100 + 850);
     expect(firstGreen.secondChance).toEqual([41]);
     expect(firstGreen.finished).toBe(false);
+    const lastGreen = getKinoVerifiedRevealFrame(draw23, KINO_VERIFIED_REVEAL_TOTAL_MS - 500);
+    expect(lastGreen.secondChance).toEqual([41, 72, 80]);
+    expect(lastGreen.finished).toBe(false);
     const complete = getKinoVerifiedRevealFrame(draw23, KINO_VERIFIED_REVEAL_TOTAL_MS);
     expect(complete.secondChance).toEqual([41, 72, 80]);
     expect(complete.finished).toBe(true);
