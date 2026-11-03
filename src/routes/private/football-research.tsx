@@ -468,9 +468,9 @@ function PrivateFootballResearchPage() {
             </label>
           </div>
           <p className="mt-2 text-xs text-slate-400">
-            Ισχύει για κάθε αγώνα που αναλύεις, με τρεις αναζητήσεις Tavily. Η επιλογή
-            δεν επηρεάζει την ξεχωριστή AI αναζήτηση αγώνων ούτε τη δεύτερη κλήση
-            του Έμπειρου Αναλυτή. Τα credits είναι εκτιμήσεις.
+            Ισχύει για κάθε αγώνα που αναλύεις, με τρεις αναζητήσεις Tavily. Η επιλογή δεν επηρεάζει
+            την ξεχωριστή AI αναζήτηση αγώνων ούτε τη δεύτερη κλήση του Έμπειρου Αναλυτή. Τα credits
+            είναι εκτιμήσεις.
           </p>
         </fieldset>
         {isAi && (
@@ -705,7 +705,9 @@ function PrivateFootballResearchPage() {
                           {entry.analysis?.tavilySearchDepth && (
                             <>
                               {" · Tavily "}
-                              {entry.analysis.tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}
+                              {entry.analysis.tavilySearchDepth === "advanced"
+                                ? "Advanced"
+                                : "Basic"}
                             </>
                           )}
                         </span>

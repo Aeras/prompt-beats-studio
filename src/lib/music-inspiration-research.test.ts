@@ -88,7 +88,13 @@ describe("real research transport, with offline network fixtures", () => {
         headers: { "Content-Type": "application/json" },
       });
     }) as typeof fetch;
-    await searchInspirationWeb("match preview", new AbortController().signal, fetcher, "offline", "advanced");
+    await searchInspirationWeb(
+      "match preview",
+      new AbortController().signal,
+      fetcher,
+      "offline",
+      "advanced",
+    );
     await searchInspirationWeb("match preview", new AbortController().signal, fetcher, "offline");
     expect(requests).toEqual(["advanced", "basic"]);
   });
