@@ -138,8 +138,7 @@ export type KinoFrame = {
 };
 /** Pure, deterministic replay of provider-owned timing, never a fabricated draw. */
 export function getKinoFrame(animation: KinoAnimation, at: number): KinoFrame {
-  if (at < animation.startTimestamp)
-    return { activeNumber: null, confirmed: [], phase: "waiting" };
+  if (at < animation.startTimestamp) return { activeNumber: null, confirmed: [], phase: "waiting" };
   const confirmed: number[] = [];
   let elapsed = at - animation.startTimestamp;
   for (const step of animation.steps) {

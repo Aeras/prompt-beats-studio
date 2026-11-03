@@ -190,8 +190,8 @@ export function KinoLivePanel() {
           role="alert"
           className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100"
         >
-          Η σύνδεση με τον ΟΠΑΠ δεν είναι διαθέσιμη αυτή τη στιγμή. Δεν εμφανίζονται μη επιβεβαιωμένοι
-          αριθμοί.
+          Η σύνδεση με τον ΟΠΑΠ δεν είναι διαθέσιμη αυτή τη στιγμή. Δεν εμφανίζονται μη
+          επιβεβαιωμένοι αριθμοί.
           <button
             type="button"
             className="ml-2 font-semibold underline"
