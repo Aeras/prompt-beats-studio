@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { runPrivateFootballExpertReview } from "@/lib/football-ai-expert.functions";
 import { AiSearchPanel } from "@/components/football/AiSearchPanel";
+import { EspnDataPanel } from "@/components/football/EspnDataPanel";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
   FOOTBALL_LEAGUES,
@@ -21,6 +22,7 @@ import {
 import {
   getPrivateFootballResearchSetup,
   getPrivateFootballWeek,
+  getPrivateFootballEspnContext,
 } from "@/lib/football-research.functions";
 
 export const Route = createFileRoute("/private/football-research")({
@@ -107,6 +109,7 @@ function PrivateFootballResearchPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
   const [expertBusy, setExpertBusy] = useState<string | null>(null);
+  const [espnPreview, setEspnPreview] = useState<string | null>(null);
   const [expertError, setExpertError] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [batchError, setBatchError] = useState("");
@@ -136,6 +139,20 @@ function PrivateFootballResearchPage() {
       (provider !== "football-data" || league !== "GR-SL"),
     retry: false,
     staleTime: 300000,
+  });
+  const espnDetails = useQuery({
+    queryKey: ["football-espn-details", user?.id, league, weekDate, espnPreview],
+    queryFn: () =>
+      getPrivateFootballEspnContext({
+        data: {
+          leagueId: league as (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"],
+          weekDate,
+          fixtureId: espnPreview!,
+        },
+      }),
+    enabled: Boolean(user) && setup.isSuccess && provider === "espn" && Boolean(espnPreview),
+    retry: false,
+    staleTime: 10 * 60 * 1000,
   });
   const history = useQuery({
     queryKey: ["football-research-history", user?.id],
@@ -266,6 +283,7 @@ function PrivateFootballResearchPage() {
     } finally {
       setWorking(false);
       setSelected([]);
+      setEspnPreview(null);
     }
   };
   const allIds = upcoming.map((f) => f.sourceFixtureId);
@@ -328,6 +346,7 @@ function PrivateFootballResearchPage() {
                   const v = e.target.value as FootballProviderId | "ai-search";
                   setProvider(v);
                   setSelected([]);
+                  setEspnPreview(null);
                   if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
                   if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
                     setLeague("EN-PL");
@@ -356,6 +375,7 @@ function PrivateFootballResearchPage() {
                 onChange={(e) => {
                   setLeague(e.target.value);
                   setSelected([]);
+                  setEspnPreview(null);
                 }}
               >
                 {isAi &&
@@ -388,6 +408,7 @@ function PrivateFootballResearchPage() {
                 onChange={(e) => {
                   setWeekDate(e.target.value);
                   setSelected([]);
+                  setEspnPreview(null);
                 }}
               />
             </label>
@@ -545,10 +566,33 @@ function PrivateFootballResearchPage() {
                             ? "Σε εξέλιξη"
                             : "Μη διαθέσιμος"}
                       </span>
+                      {provider === "espn" && canAnalyze && (
+                        <button
+                          type="button"
+                          onClick={() => setEspnPreview(f.sourceFixtureId)}
+                          className="rounded-lg border border-cyan-400/40 px-2 py-1.5 text-xs text-cyan-200"
+                          aria-label={`Στοιχεία ESPN ${f.homeTeam} – ${f.awayTeam}`}
+                        >
+                          Στοιχεία ESPN
+                        </button>
+                      )}
                     </li>
                   );
                 })}
             </ul>
+            {provider === "espn" && espnPreview && (
+              <div className="mt-4 space-y-2">
+                {espnDetails.isPending && (
+                  <p role="status" className="text-sm text-slate-300">Ανάκτηση δεδομένων ESPN…</p>
+                )}
+                {espnDetails.isError && (
+                  <p role="alert" className="text-sm text-amber-200">
+                    Τα πρόσθετα στοιχεία ESPN δεν είναι διαθέσιμα για τον αγώνα.
+                  </p>
+                )}
+                {espnDetails.data && <EspnDataPanel data={espnDetails.data} />}
+              </div>
+            )}
           </section>
         )}
 
@@ -633,6 +677,16 @@ function PrivateFootballResearchPage() {
                     <div className="space-y-4 border-t border-white/10 p-4">
                       {entry.analysis ? (
                         <>
+                          {entry.analysis.espnData && (
+                            <details className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-3">
+                              <summary className="cursor-pointer font-semibold text-cyan-200">
+                                Δεδομένα ESPN που χρησιμοποιήθηκαν
+                              </summary>
+                              <div className="mt-3">
+                                <EspnDataPanel data={entry.analysis.espnData} />
+                              </div>
+                            </details>
+                          )}
                           <section className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-4">
                             <h3 className="text-base font-bold text-cyan-200">
                               Εκτιμώμενες πιθανότητες AI

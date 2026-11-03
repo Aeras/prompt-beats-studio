@@ -112,3 +112,33 @@ export const getPrivateFootballWeek = createServerFn({ method: "GET" })
       ),
     };
   });
+
+const espnContextInput = z
+  .object({
+    leagueId: z.enum(
+      FOOTBALL_ESPN_LEAGUES.map((item) => item.id) as [
+        (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"],
+        ...(typeof FOOTBALL_ESPN_LEAGUES)[number]["id"][],
+      ],
+    ),
+    fixtureId: z.string().regex(/^\d{1,12}$/),
+    weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  })
+  .strict();
+
+/** Free, read-only ESPN provider facts preview. Requires the same Super Admin boundary. */
+export const getPrivateFootballEspnContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => espnContextInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: authorized, error } = await context.supabase.rpc("current_user_is_super_admin");
+    if (error || authorized !== true) throw new Error("Not allowed");
+    const { fetchEspnFootballWeek } = await import("@/lib/football-espn.server");
+    const { fetchEspnMatchContext } = await import("@/lib/football-espn-context.server");
+    const fixtures = await fetchEspnFootballWeek(data.leagueId, data.weekDate);
+    const fixture = fixtures.find((item) => item.sourceFixtureId === data.fixtureId);
+    if (!fixture || fixture.state !== "scheduled" || Date.parse(fixture.kickoffUtc) <= Date.now()) {
+      throw new Error("Only available pre-match ESPN fixtures can be inspected.");
+    }
+    return fetchEspnMatchContext(data.leagueId, fixture);
+  });

@@ -65,6 +65,40 @@ describe("independent football expert evidence handoff", () => {
     expect(input.baseAssessment.estimates).toEqual([]);
   });
 
+  test("passes stored ESPN provider facts to the independent expert unchanged", () => {
+    const side = {
+      id: "10",
+      name: "Test FC",
+      standing: { rank: 2, metrics: [{ name: "points", value: "25" }] },
+      recentResults: [],
+      roster: [],
+      injuries: [],
+      matchStatistics: [],
+      teamStatistics: [],
+    };
+    const espnData = {
+      provider: "espn" as const,
+      leagueId: "EN-PL",
+      fixtureId: "123456",
+      fetchedAtUtc: "2026-11-03T08:00:00.000Z",
+      home: side,
+      away: { ...side, id: "11", name: "Opponent FC" },
+      availability: {
+        standings: true,
+        schedules: false,
+        rosters: false,
+        injuries: false,
+        matchStatistics: false,
+        teamStatistics: false,
+      },
+      missing: ["xG/xGA: μη διαθέσιμο από ESPN"],
+    };
+    const assessment = footballAiAssessmentSchema.parse({ ...base, espnData });
+    const payload = buildFootballExpertPayload(assessment);
+    expect(payload.espnData).toEqual(espnData);
+    expect(payload.espnData?.missing).toEqual(["xG/xGA: μη διαθέσιμο από ESPN"]);
+  });
+
   test("experimental expert asks for independent football judgment without forced pick", () => {
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("independent");
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM.toLowerCase()).toContain("subjective");
