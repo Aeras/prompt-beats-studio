@@ -249,7 +249,10 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         if (!validated.success) {
           console.error("[football-research] invalid_ai_schema", {
             runId,
-            fields: validated.error.issues.map((issue) => issue.path.join(".")).slice(0, 16),
+            issues: validated.error.issues.slice(0, 16).map((issue) => ({
+              field: issue.path.join("."),
+              code: issue.code,
+            })),
           });
           throw new Error("AI response did not match the football schema.");
         }
