@@ -80,10 +80,7 @@ describe("ESPN provider-first pre-match data", () => {
   it("takes only completed pre-kickoff results, ordered and bounded", () => {
     const results = parseEspnRecentResults(
       {
-        events: [
-          resultEvent,
-          { ...resultEvent, id: "124", date: "2026-11-10T15:00:00Z" },
-        ],
+        events: [resultEvent, { ...resultEvent, id: "124", date: "2026-11-10T15:00:00Z" }],
       },
       "10",
       kickoffUtc,
@@ -100,8 +97,7 @@ describe("ESPN provider-first pre-match data", () => {
       requested.push(url.pathname);
       if (url.pathname.endsWith("/standings")) return new Response(JSON.stringify(standings));
       if (url.pathname.endsWith("/summary")) return new Response(JSON.stringify(summary));
-      if (url.pathname.endsWith("/scoreboard"))
-        return new Response(JSON.stringify({ events: [] }));
+      if (url.pathname.endsWith("/scoreboard")) return new Response(JSON.stringify({ events: [] }));
       if (url.pathname.endsWith("/teams/10/schedule"))
         return new Response(JSON.stringify({ events: [resultEvent] }));
       if (url.pathname.endsWith("/teams/10"))
@@ -120,11 +116,8 @@ describe("ESPN provider-first pre-match data", () => {
         );
       return new Response("{}", { status: 200 });
     }) as typeof fetch;
-    const data = await fetchEspnMatchContext(
-      "EN-PL",
-      fixture,
-      fetcher,
-      () => Date.parse("2026-11-03T08:00:00Z"),
+    const data = await fetchEspnMatchContext("EN-PL", fixture, fetcher, () =>
+      Date.parse("2026-11-03T08:00:00Z"),
     );
     expect(data.home.standing?.metrics.find((x) => x.name === "points")?.value).toBe("25");
     expect(data.away.standing?.rank).toBe(5);
@@ -134,9 +127,9 @@ describe("ESPN provider-first pre-match data", () => {
     expect(data.missing).toContain("xG/xGA: μη διαθέσιμο από ESPN");
     expect(data.availability.injuries).toBe(false);
     expect(requested).toHaveLength(11);
-    expect(
-      requested.some((url) => url.endsWith("/apis/v2/sports/soccer/eng.1/standings")),
-    ).toBe(true);
+    expect(requested.some((url) => url.endsWith("/apis/v2/sports/soccer/eng.1/standings"))).toBe(
+      true,
+    );
   });
 
   it("rejects a fixture from the wrong provider before any request", async () => {

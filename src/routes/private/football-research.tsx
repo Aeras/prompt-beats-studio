@@ -583,7 +583,9 @@ function PrivateFootballResearchPage() {
             {provider === "espn" && espnPreview && (
               <div className="mt-4 space-y-2">
                 {espnDetails.isPending && (
-                  <p role="status" className="text-sm text-slate-300">Ανάκτηση δεδομένων ESPN…</p>
+                  <p role="status" className="text-sm text-slate-300">
+                    Ανάκτηση δεδομένων ESPN…
+                  </p>
                 )}
                 {espnDetails.isError && (
                   <p role="alert" className="text-sm text-amber-200">

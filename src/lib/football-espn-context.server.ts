@@ -286,11 +286,9 @@ export async function fetchEspnMatchContext(
       .map(([name]) => (labels[name] ?? name) + ": μη διαθέσιμο από ESPN");
     // No xG assumption: generic ESPN tables do not guarantee the metric.
     const hasXg = [h, a].some((side) =>
-      [
-        ...(side.standing?.metrics ?? []),
-        ...side.matchStatistics,
-        ...side.teamStatistics,
-      ].some((m) => /^(xg|xga|expected goals|expected goals against)$/i.test(m.name)),
+      [...(side.standing?.metrics ?? []), ...side.matchStatistics, ...side.teamStatistics].some(
+        (m) => /^(xg|xga|expected goals|expected goals against)$/i.test(m.name),
+      ),
     );
     if (!hasXg) missing.push("xG/xGA: μη διαθέσιμο από ESPN");
     return footballEspnContextSchema.parse({
