@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import opapDraw1348454 from "./__fixtures__/kino-opap-1348454.json";
 import {
   getKinoFrame,
   getKinoLiveState,
+  getKinoPreviousBallPosition,
+  getKinoVerifiedRevealFrame,
+  hasKinoSecondChance,
+  KINO_VERIFIED_BONUS_MS,
+  KINO_VERIFIED_GREEN_STEP_MS,
+  KINO_VERIFIED_REVEAL_STEP_MS,
+  KINO_VERIFIED_REVEAL_TOTAL_MS,
   isCompleteKinoDraw,
   parseKinoDraw,
   parseKinoSnapshot,
@@ -122,6 +130,146 @@ describe("KINO provider validation and animations", () => {
     expect(
       getKinoLiveState({ last: oldDraw, active: null, fetchedAt: T }, T + 20000).canPromoteLast,
     ).toBe(true);
+  });
+
+  test("reveals only confirmed numbers one by one and bonus after all 20", () => {
+    const verified = parseKinoDraw({ ...draw(101), animation: null });
+    expect(verified).not.toBeNull();
+    const first = getKinoVerifiedRevealFrame(verified!, 0);
+    expect(first.confirmed).toEqual([]);
+    expect(first.activeNumber).toBeGreaterThan(0);
+    expect(first.phase).toBe("regular");
+    expect(first.bonusShown).toBe(false);
+    expect(first.finished).toBe(false);
+    expect(getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_STEP_MS).confirmed).toEqual([
+      1,
+    ]);
+    const beforeBonus = getKinoVerifiedRevealFrame(
+      verified!,
+      20 * KINO_VERIFIED_REVEAL_STEP_MS - 1,
+    );
+    expect(beforeBonus.confirmed).toHaveLength(19);
+    expect(beforeBonus.bonusShown).toBe(false);
+    const withBonus = getKinoVerifiedRevealFrame(verified!, 20 * KINO_VERIFIED_REVEAL_STEP_MS);
+    expect(withBonus.confirmed).toEqual(numbers);
+    expect(withBonus.bonusShown).toBe(true);
+    expect(withBonus.finished).toBe(false);
+    const done = getKinoVerifiedRevealFrame(verified!, KINO_VERIFIED_REVEAL_TOTAL_MS);
+    expect(done.confirmed).toEqual(numbers);
+    expect(done.activeNumber).toBeNull();
+    expect(done.secondChance).toEqual([]);
+    expect(done.bonusShown).toBe(true);
+    expect(done.finished).toBe(true);
+  });
+
+  test("uses 12 above and 11 staggered half-column positions below", () => {
+    expect(getKinoPreviousBallPosition(0)).toEqual({ row: 1, column: 1 });
+    expect(getKinoPreviousBallPosition(11)).toEqual({ row: 1, column: 23 });
+    expect(getKinoPreviousBallPosition(12)).toEqual({ row: 2, column: 2 });
+    expect(getKinoPreviousBallPosition(22)).toEqual({ row: 2, column: 22 });
+    expect(() => getKinoPreviousBallPosition(23)).toThrow();
+  });
+
+  test("rejects unverified second-chance aliases and 23-item regular lists", () => {
+    const green = [41, 72, 80];
+    const valid = parseKinoDraw({
+      ...draw(104),
+      winningNumbers: { list: numbers, bonus: [5], secondChance: green },
+      animation: null,
+    });
+    expect(valid?.secondChance).toEqual(green);
+    expect(hasKinoSecondChance(valid)).toBe(true);
+    expect(
+      parseKinoDraw({
+        ...draw(105),
+        winningNumbers: {
+          list: numbers,
+          bonus: [5],
+          secondChanceNumbers: green,
+        },
+        animation: null,
+      })?.secondChance,
+    ).toEqual([]);
+    expect(
+      parseKinoDraw({
+        ...draw(106, [...numbers, ...green]),
+        animation: null,
+      })?.numbers,
+    ).toEqual([]);
+    expect(
+      parseKinoDraw({
+        ...draw(107),
+        winningNumbers: {
+          list: numbers,
+          bonus: [5],
+          secondChance: [41, 41, 80],
+        },
+        animation: null,
+      })?.secondChance,
+    ).toEqual([]);
+    expect(
+      parseKinoDraw({
+        ...draw(108),
+        winningNumbers: {
+          list: numbers,
+          bonus: [5],
+          secondChance: [5, 72, 80],
+        },
+        animation: null,
+      })?.secondChance,
+    ).toEqual([]);
+  });
+
+  test("real OPAP draw #1348454: 20 regular, red 11, green 36/70/59", () => {
+    const snapshot = parseKinoSnapshot(opapDraw1348454, T);
+    const last = snapshot.last!;
+    expect(last.drawId).toBe(1348454);
+    expect(last.drawTime).toBe(1793726400000);
+    expect(last.status).toBe("results");
+    expect(last.numbers).toEqual([
+      61, 42, 4, 27, 68, 11, 9, 74, 8, 45, 25, 67, 63, 26, 33, 37, 13, 6, 32, 14,
+    ]);
+    expect(last.bonus).toBe(11);
+    expect(last.secondChance).toEqual([36, 70, 59]);
+    expect(isCompleteKinoDraw(last)).toBe(true);
+    expect(hasKinoSecondChance(last)).toBe(true);
+    expect(last.animation).toBeNull();
+    expect(snapshot.active?.drawId).toBe(1348455);
+    expect(snapshot.active?.status).toBe("active");
+    expect(snapshot.active?.numbers).toEqual([]);
+    expect(snapshot.active?.secondChance).toEqual([]);
+    expect(getKinoLiveState(snapshot, T).canPromoteLast).toBe(true);
+  });
+
+  test("real OPAP draw #1348454 reveals 20, Bonus, then each green number", () => {
+    const last = parseKinoSnapshot(opapDraw1348454, T).last!;
+    const regularEnd = 20 * KINO_VERIFIED_REVEAL_STEP_MS;
+    const beforeBonus = getKinoVerifiedRevealFrame(last, regularEnd - 1);
+    expect(beforeBonus.confirmed).toHaveLength(19);
+    expect(beforeBonus.bonusShown).toBe(false);
+    expect(beforeBonus.secondChance).toEqual([]);
+    const bonus = getKinoVerifiedRevealFrame(last, regularEnd);
+    expect(bonus.confirmed).toEqual(last.numbers);
+    expect(bonus.bonusShown).toBe(true);
+    expect(bonus.secondChance).toEqual([]);
+    const bonusEnd = regularEnd + KINO_VERIFIED_BONUS_MS;
+    expect(getKinoVerifiedRevealFrame(last, bonusEnd).secondChance).toEqual([]);
+    expect(
+      getKinoVerifiedRevealFrame(last, bonusEnd + KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+    ).toEqual([36]);
+    expect(
+      getKinoVerifiedRevealFrame(last, bonusEnd + 2 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+    ).toEqual([36, 70]);
+    expect(
+      getKinoVerifiedRevealFrame(last, bonusEnd + 3 * KINO_VERIFIED_GREEN_STEP_MS).secondChance,
+    ).toEqual([36, 70, 59]);
+    expect(getKinoVerifiedRevealFrame(last, KINO_VERIFIED_REVEAL_TOTAL_MS - 1).finished).toBe(
+      false,
+    );
+    const done = getKinoVerifiedRevealFrame(last, KINO_VERIFIED_REVEAL_TOTAL_MS);
+    expect(done.confirmed).toEqual(last.numbers);
+    expect(done.secondChance).toEqual([36, 70, 59]);
+    expect(done.finished).toBe(true);
   });
 
   test("missing animation is not invented for a completed draw", () => {
