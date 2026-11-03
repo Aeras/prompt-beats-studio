@@ -31,7 +31,6 @@ type KinoProviderObject = Record<string, unknown> & {
   list?: unknown;
   bonus?: unknown;
   secondChance?: unknown;
-  secondChanceNumbers?: unknown;
   animation?: unknown;
   startTimestamp?: unknown;
   endTimestamp?: unknown;
@@ -72,17 +71,14 @@ export function parseKinoDraw(raw: unknown): KinoDraw | null {
   const validList =
     Array.isArray(list) &&
     list.length > 0 &&
-    list.length <= 23 &&
+    list.length <= 20 &&
     list.every(validNumber) &&
     new Set(list).size === list.length;
-  const numbers = validList ? (list as number[]).slice(0, 20) : [];
+  const numbers = validList ? (list as number[]) : [];
 
-  // The three green values must come from an explicit provider field or
-  // from a 23-number ordered list. Never infer them from other side bets.
-  const explicitSecondChance =
-    winning?.secondChanceNumbers ?? winning?.secondChance ?? data.secondChanceNumbers;
-  const green =
-    validList && list.length === 23 ? (list as number[]).slice(20) : explicitSecondChance;
+  // Verified OPAP contract: only winningNumbers.secondChance supplies the
+  // three distinct green values. Side bets and speculative aliases are ignored.
+  const green = winning?.secondChance;
   const secondChance =
     numbers.length === 20 &&
     Array.isArray(green) &&

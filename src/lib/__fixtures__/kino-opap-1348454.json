@@ -1,0 +1,46 @@
+{
+  "last": {
+    "gameId": 1100,
+    "drawId": 1348454,
+    "drawTime": 1793726400000,
+    "status": "results",
+    "winningNumbers": {
+      "list": [
+        61,
+        42,
+        4,
+        27,
+        68,
+        11,
+        9,
+        74,
+        8,
+        45,
+        25,
+        67,
+        63,
+        26,
+        33,
+        37,
+        13,
+        6,
+        32,
+        14
+      ],
+      "bonus": [
+        11
+      ],
+      "secondChance": [
+        36,
+        70,
+        59
+      ]
+    }
+  },
+  "active": {
+    "gameId": 1100,
+    "drawId": 1348455,
+    "drawTime": 1793726700000,
+    "status": "active"
+  }
+}
