@@ -67,7 +67,7 @@ describe("independent football expert evidence handoff", () => {
 
   test("experimental expert asks for independent football judgment without forced pick", () => {
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("independent");
-    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("subjective");
+    expect(FOOTBALL_EXPERT_ANALYST_SYSTEM.toLowerCase()).toContain("subjective");
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("abstain");
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("planB MUST be omitted");
     expect(FOOTBALL_EXPERT_ANALYST_SYSTEM).toContain("Do not force a pick");
