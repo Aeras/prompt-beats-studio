@@ -41,9 +41,21 @@ describe("KINO provider validation and animations", () => {
 
   test("replays only provider steps, with no guessing before or after", () => {
     const animation = parseKinoDraw(draw())!.animation!;
-    expect(getKinoFrame(animation, T - 1)).toEqual({ phase: "waiting", confirmed: [], activeNumber: null });
-    expect(getKinoFrame(animation, T + 101)).toEqual({ phase: "running", confirmed: [], activeNumber: 1 });
-    expect(getKinoFrame(animation, T + 1001)).toEqual({ phase: "running", confirmed: [1], activeNumber: 32 });
+    expect(getKinoFrame(animation, T - 1)).toEqual({
+      phase: "waiting",
+      confirmed: [],
+      activeNumber: null,
+    });
+    expect(getKinoFrame(animation, T + 101)).toEqual({
+      phase: "running",
+      confirmed: [],
+      activeNumber: 1,
+    });
+    expect(getKinoFrame(animation, T + 1001)).toEqual({
+      phase: "running",
+      confirmed: [1],
+      activeNumber: 32,
+    });
     expect(getKinoFrame(animation, T + 20000)).toEqual({
       phase: "finished",
       confirmed: numbers,

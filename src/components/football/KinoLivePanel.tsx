@@ -76,7 +76,10 @@ export function KinoLivePanel() {
   const confirmed = frame?.confirmed ?? [];
   const confirmedSet = new Set(confirmed);
   const waitingTime = snapshot?.active?.drawTime;
-  const countdown = typeof waitingTime === "number" ? Math.max(0, Math.ceil((waitingTime - providerNow) / 1000)) : null;
+  const countdown =
+    typeof waitingTime === "number"
+      ? Math.max(0, Math.ceil((waitingTime - providerNow) / 1000))
+      : null;
   const min = countdown === null ? null : Math.floor(countdown / 60);
   const sec = countdown === null ? null : countdown % 60;
 
@@ -99,9 +102,13 @@ export function KinoLivePanel() {
         className="rounded-2xl border border-white/10 bg-gradient-to-r from-[#15243b] via-[#172e45] to-[#15243b] px-4 py-3 shadow-lg shadow-black/10 sm:px-5"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-1">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-100">Προηγούμενη κλήρωση</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-100">
+            Προηγούμενη κλήρωση
+          </h2>
           <p className="text-xs font-semibold text-slate-300 sm:text-sm">
-            {previous ? `#${previous.drawId} · ${athensDate.format(previous.drawTime)} · ${time(previous.drawTime)}` : "Αναμονή δεδομένων"}
+            {previous
+              ? `#${previous.drawId} · ${athensDate.format(previous.drawTime)} · ${time(previous.drawTime)}`
+              : "Αναμονή δεδομένων"}
           </p>
         </div>
         <FinishedNumbers draw={previous} />
@@ -113,9 +120,12 @@ export function KinoLivePanel() {
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.23em] text-cyan-300">KINO · ΟΠΑΠ</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.23em] text-cyan-300">
+              KINO · ΟΠΑΠ
+            </p>
             <h2 className="mt-1 text-xl font-extrabold tracking-tight text-white sm:text-2xl">
-              Live κλήρωση <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
+              Live κλήρωση{" "}
+              <span className="text-cyan-200">{liveDrawId ? `#${liveDrawId}` : "—"}</span>
             </h2>
           </div>
           <div className="text-right">
@@ -136,7 +146,10 @@ export function KinoLivePanel() {
           </div>
         </div>
         <div className="px-2 py-4 sm:px-6 sm:py-6">
-          <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 sm:gap-2" aria-label="Πίνακας αριθμών 1 έως 80">
+          <div
+            className="grid grid-cols-8 gap-1 sm:grid-cols-10 sm:gap-2"
+            aria-label="Πίνακας αριθμών 1 έως 80"
+          >
             {NUMBERS.map((number) => {
               const won = confirmedSet.has(number);
               const hopping = activeNumber === number;
@@ -157,22 +170,41 @@ export function KinoLivePanel() {
             })}
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-            <p>{frame?.phase === "running" ? "Κυανό: επιβεβαιωμένος αριθμός · Χρυσό: τρέχον βήμα" : "Ο πίνακας καθαρίζει μεταξύ των κληρώσεων."}</p>
+            <p>
+              {frame?.phase === "running"
+                ? "Κυανό: επιβεβαιωμένος αριθμός · Χρυσό: τρέχον βήμα"
+                : "Ο πίνακας καθαρίζει μεταξύ των κληρώσεων."}
+            </p>
             <p>Πηγή: OPAP API · Ώρα Ελλάδας</p>
           </div>
         </div>
       </section>
 
-      {query.isPending && <p role="status" className="text-sm text-cyan-200">Σύνδεση με αποτελέσματα ΟΠΑΠ…</p>}
+      {query.isPending && (
+        <p role="status" className="text-sm text-cyan-200">
+          Σύνδεση με αποτελέσματα ΟΠΑΠ…
+        </p>
+      )}
       {query.isError && (
-        <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
-          Η σύνδεση με τον ΟΠΑΠ δεν είναι διαθέσιμη αυτή τη στιγμή. Δεν εμφανίζονται μη επιβεβαιωμένοι αριθμοί.
-          <button type="button" className="ml-2 font-semibold underline" onClick={() => void query.refetch()}>Επανάληψη</button>
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100"
+        >
+          Η σύνδεση με τον ΟΠΑΠ δεν είναι διαθέσιμη αυτή τη στιγμή. Δεν εμφανίζονται μη επιβεβαιωμένοι
+          αριθμοί.
+          <button
+            type="button"
+            className="ml-2 font-semibold underline"
+            onClick={() => void query.refetch()}
+          >
+            Επανάληψη
+          </button>
         </div>
       )}
       <p className="text-xs leading-5 text-slate-500">
         Η κινούμενη παρουσίαση ενεργοποιείται μόνο όταν ο ΟΠΑΠ παρέχει έγκυρα χρονισμένα βήματα.
-        Διαφορετικά προβάλλονται μόνο επίσημα ολοκληρωμένα αποτελέσματα. Η ενημέρωση μπορεί να καθυστερεί.
+        Διαφορετικά προβάλλονται μόνο επίσημα ολοκληρωμένα αποτελέσματα. Η ενημέρωση μπορεί να
+        καθυστερεί.
       </p>
     </div>
   );
