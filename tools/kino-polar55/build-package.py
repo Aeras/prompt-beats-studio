@@ -16,8 +16,8 @@ allowed = {
 for directory, names in allowed.items():
     target = "kino-private" if directory == "private" else "kino-api"
     for name in names:
-        files[f"{target}/{name}"] = (root / directory / name).read_bytes()
-files["README.md"] = (root / "README.md").read_bytes()
+        files[f"{target}/{name}"] = (root / directory / name).read_bytes().replace(b"\r\n", b"\n")
+files["README.md"] = (root / "README.md").read_bytes().replace(b"\r\n", b"\n")
 manifest = {name: {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()} for name, data in files.items()}
 files["MANIFEST.json"] = json.dumps(manifest, indent=2, sort_keys=True).encode()
 with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
