@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { makePolar55Fixture } from "../src/lib/__fixtures__/kino-polar55-analysis";
 
 const user = {
   id: "bb000000-0000-4000-8000-000000000006",
@@ -233,28 +234,7 @@ test("Polar55 is explicit, default-off, bounded and keeps JSON/Live independent"
 test("Polar55 revoked access clears results; small stored history is honestly partial", async ({
   page,
 }) => {
-  const analysis = {
-    version: 1,
-    source: "polar55",
-    requested: 1000,
-    loaded: 11,
-    stored: 11,
-    cutoff: 11,
-    lastObserved: "2026-11-04 12:00:00.000",
-    snapshotAt: "2026-11-04T12:00:00Z",
-    sha256: "a".repeat(64),
-    rejected: 0,
-    coverage: "COMPLETENESS_UNVERIFIED",
-    partial: true,
-    backfill: "DISABLED",
-    result: {
-      stats: { counts: Array(80).fill(0) },
-      proposal: [1, 2, 3, 4, 5, 6, 7, 8],
-      backtest: { n: 0, uniformLift: null, pairedDiff: null },
-      first: { id: 1, time: 1793491200000 },
-      last: { id: 11, time: 1793494200000 },
-    },
-  };
+  const analysis = makePolar55Fixture();
   const f = await fixture(page, true, { status: "ok", analysis });
   await openLab(page);
   await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
@@ -312,4 +292,49 @@ test("cancelled Polar55 reads cannot restore stale data or trigger source reques
   release();
   await expect(page.getByLabel("Συχνότητες Polar55")).toHaveCount(0);
   expect(direct).toBe(0);
+});
+
+test("cancelled export preserves the snapshot and successful export only rechecks auth", async ({
+  page,
+}) => {
+  await fixture(page, true, { status: "ok", analysis: makePolar55Fixture() });
+  let hold = true,
+    reads = 0,
+    release!: () => void,
+    started!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+    requested = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (name.includes("queryPrivateKinoPolar55")) reads++;
+    if (!name.includes("getPrivateKinoLabAccess") || !hold) return route.fallback();
+    started();
+    await blocked;
+    await route
+      .fulfill({ json: { result: { allowed: true, mode: "offline-exploratory" }, context: {} } })
+      .catch(() => undefined);
+  });
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  await expect(page.getByLabel("Συχνότητες Polar55")).toBeVisible();
+  await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
+  await requested;
+  await page.getByRole("button", { name: "Ακύρωση αναμονής", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Η εξαγωγή ακυρώθηκε");
+  await expect(page.getByLabel("Συχνότητες Polar55").locator(":scope > div")).toHaveCount(80);
+  hold = false;
+  release();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
+  expect((await download).suggestedFilename()).toBe("kino-polar55-analysis.json");
+  expect(reads).toBe(1);
 });

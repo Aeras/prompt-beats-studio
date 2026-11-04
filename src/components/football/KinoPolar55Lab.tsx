@@ -8,6 +8,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { queryPrivateKinoPolar55 } from "@/lib/kino-polar55.functions";
+import { getPrivateKinoLabAccess } from "@/lib/kino-lab.functions";
 import { POLAR_WINDOWS, type PolarAnalysis } from "@/lib/kino-polar55.shared";
 
 const number = (v: number | null) =>
@@ -86,7 +87,7 @@ export default function KinoPolar55Lab() {
       else
         setMessage(
           response.status === "not_configured"
-            ? "Η σύνδεση Polar55 δεν έχει ενεργοποιηθεί. Η ιστορική συμπλήρωση παραμένει απενεργοποιημένη."
+            ? "Η σύνδεση Polar55 δεν έχει ενεργοποιηθεί. Δεν εκκινείται ιστορική συλλογή από εδώ."
             : "Η ανάγνωση δεν ολοκληρώθηκε. Μπορείτε να επαναλάβετε με ασφάλεια· δεν γίνεται συλλογή νέων κληρώσεων.",
         );
     } catch {
@@ -111,7 +112,8 @@ export default function KinoPolar55Lab() {
     controller.current = operation;
     setBusy(true);
     try {
-      await queryPrivateKinoPolar55({ data: { op: "status" }, signal: operation.signal });
+      const access = await getPrivateKinoLabAccess({ signal: operation.signal });
+      if (access.allowed !== true) throw Error("Not allowed");
       if (!mounted.current || operation.signal.aborted) return;
       const url = URL.createObjectURL(
         new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }),
@@ -123,6 +125,10 @@ export default function KinoPolar55Lab() {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       if (mounted.current) {
+        if (operation.signal.aborted) {
+          setMessage("Η εξαγωγή ακυρώθηκε. Το αποτέλεσμα διατηρήθηκε.");
+          return;
+        }
         setResult(null);
         setMessage("Δεν επιβεβαιώθηκε η πρόσβαση.");
       }

@@ -95,6 +95,108 @@ export const polarAnalysis = z
       v.loaded <= v.requested &&
       v.partial === v.loaded < v.requested &&
       v.result.backtest.n === v.result.backtest.results.length,
+  )
+  .refine(
+    (v) => {
+      const o = v.options,
+        s = v.result.stats,
+        b = v.result.backtest,
+        n = v.loaded;
+      if (o.op !== "analysis" || v.requested !== o.n || n > v.stored) return false;
+      const near = (a: number | null, expected: number) =>
+        a !== null && Math.abs(a - expected) <= 1e-8 * Math.max(1, Math.abs(expected));
+      if (
+        s.counts.some((c) => c > n) ||
+        s.gaps.some((g, i) => (s.counts[i] === 0) !== (g === null)) ||
+        s.gaps.some((g) => g !== null && g >= n) ||
+        s.counts.reduce((a, c) => a + c, 0) !== n * 20 ||
+        s.expected !== n / 4
+      )
+        return false;
+      const odd = s.counts.reduce((a, c, i) => a + (i % 2 === 0 ? c : 0), 0),
+        low = s.counts.slice(0, 40).reduce((a, c) => a + c, 0);
+      if (s.odd !== odd || s.even !== n * 20 - odd || s.low !== low || s.high !== n * 20 - low)
+        return false;
+      if (n <= 1 ? s.observedNeighborOverlap !== null : s.observedNeighborOverlap === null)
+        return false;
+      if (
+        n === 0
+          ? s.dispersion !== null
+          : !near(
+              s.dispersion,
+              s.counts.reduce((a, c) => a + (c - n / 4) ** 2 / (n / 4), 0),
+            )
+      )
+        return false;
+      const first = v.result.first,
+        last = v.result.last;
+      if (n === 0) {
+        if (first !== null || last !== null || v.result.proposal.length !== 0) return false;
+      } else {
+        if (
+          !first ||
+          !last ||
+          first.id > v.cutoff ||
+          last.id > v.cutoff ||
+          first.time > last.time ||
+          v.result.proposal.length !== o.k
+        )
+          return false;
+        if (
+          n === 1
+            ? first.id !== last.id || first.time !== last.time
+            : first.id === last.id || (first.time === last.time && first.id >= last.id)
+        )
+          return false;
+      }
+      if (
+        b.warmupExcluded > n ||
+        b.n !== Math.min(500, n - b.warmupExcluded) ||
+        b.uniformExpected !== o.k / 4
+      )
+        return false;
+      if (b.n === 0) return b.meanHits === null && b.uniformLift === null && b.pairedDiff === null;
+      const ids = new Set<number>();
+      let hits = 0,
+        comparators = 0;
+      for (const [i, row] of b.results.entries()) {
+        if (
+          ids.has(row.drawId) ||
+          row.drawId > v.cutoff ||
+          row.selected.length !== o.k ||
+          row.baseline.length !== o.k ||
+          row.hits > o.k ||
+          row.comparatorHits > o.k ||
+          row.trainingCount < 30 ||
+          row.trainingCount >= n ||
+          !first ||
+          !last ||
+          row.cutoff < first.time ||
+          row.cutoff > last.time
+        )
+          return false;
+        const previous = b.results[i - 1];
+        if (
+          previous &&
+          (previous.cutoff > row.cutoff ||
+            (previous.cutoff === row.cutoff && previous.drawId >= row.drawId) ||
+            previous.trainingCount > row.trainingCount)
+        )
+          return false;
+        const overlap = row.selected.filter((x) => row.baseline.includes(x)).length;
+        if (!near(row.pairedNullVariance, (2 * (o.k - overlap) * 0.25 * 0.75 * 80) / 79))
+          return false;
+        ids.add(row.drawId);
+        hits += row.hits;
+        comparators += row.comparatorHits;
+      }
+      return (
+        near(b.meanHits, hits / b.n) &&
+        near(b.uniformLift, hits / b.n - o.k / 4) &&
+        near(b.pairedDiff, (hits - comparators) / b.n)
+      );
+    },
+    { message: "Inconsistent analysis response" },
   );
 export const polarStatus = z.object(base).strict();
 export type PolarAnalysis = z.infer<typeof polarAnalysis>;

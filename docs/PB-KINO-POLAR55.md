@@ -129,9 +129,11 @@ still required for unattended backfill; none was configured or run here.
 
 ## Remaining approvals and exact release gates
 
-The local branch is reviewable; no remote PR/update or Actions has run for this
-change. AGENTS §7 requires one owner-approved consolidated push/PR creation,
-then exact-head Regression, Browser Quality and Database Replay. Earlier #505
+Owner approved the initial consolidated push and Draft #506 creation. All three
+gates passed on `8fd4bda9af896f3a4d1d3d53cabda474823c2a18`. The subsequent
+adversarial review found confirmed defects and corrected them locally; see the
+[final review](PB-KINO-POLAR55-FINAL-REVIEW-20261104.md). Those fixes require a
+new explicitly approved same-PR update and exact-head CI. Earlier #505 or #506
 checks do not substitute. Never label CLOSED based on local success.
 
 Production requires read-only comparison of actual deployed PHP hashes, DDL,
@@ -144,7 +146,12 @@ historical import was performed. Source-use/rate/retention approval and a separa
 backfill/scheduler activation remain BLOCKED operational gates. No claim of 100k
 collected data, live uptime or predictive advantage is made.
 
-Local additive delivery ZIP (10 allowlisted files including manifest), SHA-256:
+Original pre-review ZIP (superseded; do not deploy), SHA-256:
 `94b59ed4a24ea62f862e7d8de996d6c21ca6727d9f87bdd173dafbd2ee7fa944`.
 Rebuild with the supplied deterministic builder; no actual configuration,
 credentials or old writer is shipped. This fingerprint is not deployment evidence.
+
+Reviewed local additive package (10 allowlisted files), SHA-256:
+`bcedf4c1632d6c8e3db5eacb471918040bb2ef2ecef49c0117252c5e59bb94ba`.
+Still default-off and not deployed. Actual configs/credentials and legacy writers
+are excluded. Use the reviewed package, not the original delivery above.

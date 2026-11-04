@@ -11,7 +11,7 @@ $root->exec('CREATE TABLE kino_draws (draw_id BIGINT PRIMARY KEY, draw_time_ms B
 $root->exec('CREATE TABLE kino_draw_revisions (draw_id BIGINT, review_status VARCHAR(20), INDEX by_draw(draw_id,review_status)) ENGINE=InnoDB');
 $root->exec('ALTER TABLE kino_draws ADD draw_time_utc DATETIME(3), ADD draw_date_gr DATE, ADD draw_clock_gr TIME, ADD gr_utc_offset_minutes INT, ADD source_endpoint VARCHAR(250), ADD schema_version INT, ADD first_observed_at_utc DATETIME(3), ADD current_version_observed_at_utc DATETIME(3), ADD created_at_utc DATETIME(3), ADD updated_at_utc DATETIME(3)');
 $root->exec('ALTER TABLE kino_draw_revisions ADD observed_at_utc DATETIME(3), ADD old_content_sha256 CHAR(64), ADD new_content_sha256 CHAR(64), ADD old_main_numbers_json TEXT, ADD new_main_numbers_json TEXT, ADD old_bonus_number INT, ADD new_bonus_number INT, ADD old_second_chance_json TEXT, ADD new_second_chance_json TEXT, ADD source_endpoint VARCHAR(250)');
-$root->exec("CREATE USER 'lab_read'@'%' IDENTIFIED BY ''");
+$root->exec("CREATE USER 'lab_read'@'%' IDENTIFIED BY 'SYNTHETIC_FIXTURE_ONLY'");
 $root->exec("GRANT SELECT ON promptbe_kino_history.kino_draws TO 'lab_read'@'%'");
 $root->exec("GRANT SELECT ON promptbe_kino_history.kino_draw_revisions TO 'lab_read'@'%'");
 $insert=$root->prepare('INSERT INTO kino_draws (draw_id,draw_time_ms,main_numbers_json,bonus_number,second_chance_json,content_sha256,last_checked_at_utc) VALUES (?,?,?,?,?,?,?)');
@@ -35,9 +35,11 @@ class SnapshotPDO extends PDO {
         return $result;
     }
 }
-$read=new SnapshotPDO('mysql:host=127.0.0.1;dbname=promptbe_kino_history;charset=utf8mb4','lab_read','',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
+$read=new SnapshotPDO('mysql:host=127.0.0.1;dbname=promptbe_kino_history;charset=utf8mb4','lab_read','SYNTHETIC_FIXTURE_ONLY',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
 $read->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
 labAssertSchema($read);
+labAssertReadPrivileges($read);
+$denied=false;try{labAssertReadPrivileges($root);}catch(RuntimeException){$denied=true;}check($denied,'overprivileged_account_rejected');
 $denied=false;try{$read->exec('DELETE FROM kino_draws WHERE draw_id=1');}catch(PDOException){$denied=true;}check($denied,'read_only_grants');
 $read->afterSummary=static function()use($root):void{
     $root->exec('INSERT INTO kino_draws (draw_id,draw_time_ms,main_numbers_json,bonus_number,second_chance_json,content_sha256,last_checked_at_utc) SELECT 100004,draw_time_ms+300000,main_numbers_json,NULL,NULL,content_sha256,last_checked_at_utc FROM kino_draws WHERE draw_id=100003');
@@ -67,6 +69,13 @@ check(kinoStore($root,$changed)==='revision_pending','legacy_conflict');check(ki
 check($root->query('SELECT content_sha256 FROM kino_draws WHERE draw_id=200001')->fetchColumn()===$normal['content_sha256'],'no_silent_overwrite');
 check((int)$root->query('SELECT COUNT(*) FROM kino_draw_revisions WHERE draw_id=200001')->fetchColumn()===1,'revision_deduplication');
 echo "LEGACY_STORE_IDEMPOTENCY_CONFLICT_PASS\n";
+$native=labReadDb(['enabled'=>true,'schema_verified'=>true,'database'=>['host'=>'localhost','name'=>'promptbe_kino_history','user'=>'lab_read','password'=>'SYNTHETIC_FIXTURE_ONLY']]);
+$nativeResult=labReadAnalysis($native,['op'=>'analysis','n'=>1000,'method'=>'F00','k'=>5,'seed'=>'native-config-fixture'],sys_get_temp_dir());
+check($nativeResult['loaded']===1000&&count($nativeResult['result']['proposal'])===5,'real_read_config_and_unix_socket');
+echo "ACTUAL_READ_CONFIG_SOCKET_PRIVILEGE_AND_ANALYSIS_PASS\n";
+$root->exec('ALTER TABLE kino_draws MODIFY draw_id VARCHAR(20) NOT NULL');
+$denied=false;try{labAssertSchema($read);}catch(RuntimeException){$denied=true;}check($denied,'lexical_draw_identity_rejected');
+$root->exec('ALTER TABLE kino_draws MODIFY draw_id BIGINT NOT NULL');
 $root->exec('ALTER TABLE kino_draws DROP PRIMARY KEY');
 $denied=false;try{labAssertSchema($read);}catch(RuntimeException){$denied=true;}check($denied,'missing_unique_identity_rejected');
 echo "SCHEMA_IDENTITY_FAIL_CLOSED_PASS\n";

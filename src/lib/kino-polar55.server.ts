@@ -41,22 +41,18 @@ export async function readPolar55(
     )
       throw Error("unavailable");
     reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const bytes = new Uint8Array(300000);
     let size = 0;
     for (;;) {
       const part = await reader.read();
       if (part.done) break;
       size += part.value.byteLength;
       if (size > 300000) throw Error("too_large");
-      chunks.push(part.value);
+      bytes.set(part.value, size - part.value.byteLength);
     }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    const json: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    const json: unknown = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, size)),
+    );
     if (request.op === "status") return { status: "ok" as const, info: polarStatus.parse(json) };
     const analysis = polarAnalysis.parse(json);
     if (
@@ -73,7 +69,7 @@ export async function readPolar55(
     return { status: "unavailable" as const };
   } finally {
     controller.abort();
-    await reader?.cancel().catch(() => undefined);
     clearTimeout(timer);
+    void reader?.cancel().catch(() => undefined);
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readPolar55 } from "./kino-polar55.server";
-import { polarRequest } from "./kino-polar55.shared";
+import { polarRequest, polarAnalysis } from "./kino-polar55.shared";
 import { labBacktest, labPick, labRandomPick, labStats } from "./kino-lab.shared";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -241,6 +241,25 @@ test.skipIf(process.env["KINO_POLAR55_DOCKER_TEST"] !== "1")(
         });
         expect(code, errors).toBe(0);
         const actual = JSON.parse(text);
+        expect(
+          polarAnalysis.safeParse({
+            version: 1,
+            source: "polar55",
+            requested: n,
+            loaded: n,
+            stored: n,
+            cutoff: n,
+            lastObserved: null,
+            snapshotAt: "2026-11-04T12:00:00Z",
+            sha256: "a".repeat(64),
+            rejected: 0,
+            coverage: "COMPLETENESS_UNVERIFIED",
+            partial: false,
+            backfill: "DISABLED",
+            options: { ...request, n, method },
+            result: actual,
+          }).success,
+        ).toBe(true);
         expect(actual.stats.n).toBe(n);
         expect(actual.stats.counts).toEqual(counts);
         const tailStats = labStats(draws.slice(-Math.min(n, 5000)));

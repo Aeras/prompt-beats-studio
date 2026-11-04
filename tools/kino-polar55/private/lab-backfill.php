@@ -6,7 +6,7 @@ if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
 $path=__DIR__.'/.lab-backfill-state.json';
 $command=$argv[1]??'inspect';
 if($command==='inspect') {
-    $state=is_file($path)?json_decode((string)file_get_contents($path),true,32,JSON_THROW_ON_ERROR):null;
+    try{$state=labLoadCheckpoint($path);}catch(Throwable){fwrite(STDERR,"BACKFILL_BLOCKED: invalid checkpoint; preserve for review\n");exit(1);}
     echo json_encode(['mode'=>'DISABLED_UNLESS_SEPARATELY_APPROVED','status'=>$state['status']??'NOT_STARTED','accepted'=>$state?count($state['accepted']):0,'target'=>100000,'nextAt'=>$state['nextAt']??null],JSON_THROW_ON_ERROR)."\n";exit;
 }
 try {
@@ -20,20 +20,18 @@ try {
     // Never delay the existing five-minute cron. Yield near its scheduled slot.
     $untilSlot=300-(time()%300);if($untilSlot<35||$untilSlot>265)throw new RuntimeException('yield_to_incremental');
     kinoLocked(static function()use($command,$path,$cfg):void {
-        $state=is_file($path)?json_decode((string)file_get_contents($path),true,32,JSON_THROW_ON_ERROR):null;
+        $state=labLoadCheckpoint($path);
         if($command==='start') {
             if($state!==null)throw new RuntimeException('existing_checkpoint_must_be_preserved');
             $envelope=kinoGet(KINO_BASE.'last-result-and-active');
             if(!is_array($envelope['last']??null))throw new RuntimeException('missing_anchor');
             $anchor=kinoNormalize($envelope['last'],KINO_BASE.'last-result-and-active');
-            labSaveCheckpoint($path,labBackfillPlan($anchor['draw_id'],$anchor['draw_time_ms'],$cfg['verified_oldest_id']));return;
+            $state=labBackfillPlan($anchor['draw_id'],$anchor['draw_time_ms'],$cfg['verified_oldest_id']);
+            $state['nextAt']=labNextSourceAt(microtime(true),$cfg['verified_min_spacing_ms']);
+            labSaveCheckpoint($path,$state);return;
         }
         if(!is_array($state))throw new RuntimeException('missing_checkpoint');
-        if($command==='pause'){$state['status']='PAUSED_BY_OPERATOR';labSaveCheckpoint($path,$state);return;}
-        if($command==='resume') {
-            if($state['status']!=='PAUSED_BY_OPERATOR')throw new RuntimeException('not_paused_by_operator');
-            $state['status']='PAUSED';labSaveCheckpoint($path,$state);return;
-        }
+        if(in_array($command,['pause','resume'],true)){labSaveCheckpoint($path,labBackfillControl($state,$command));return;}
         if(!in_array($state['status'],['PAUSED','WAITING'],true)||time()<$state['nextAt'])return;
         require_once __DIR__.'/backfill-transport.php';
         $db=kinoDb();
@@ -48,11 +46,11 @@ try {
                 return $json;
             },static fn($r)=>kinoStore($db,$r),time());
             $state['failures']=0;
-            $state['nextAt']=time()+(int)ceil($cfg['verified_min_spacing_ms']/1000);
+            $state['nextAt']=labNextSourceAt(microtime(true),$cfg['verified_min_spacing_ms']);
         }catch(LabSourceRetry $e) {
             $state['failures']=($state['failures']??0)+1;
             $state['status']=$state['failures']>=3?'REVIEW_REQUIRED':'WAITING';
-            $state['nextAt']=time()+max($e->retryAfter,30*(2**$state['failures']))+random_int(0,10);
+            $state['nextAt']=(int)ceil(microtime(true))+max($e->retryAfter,30*(2**$state['failures']))+random_int(0,10);
         }catch(Throwable) {$state['status']='REVIEW_REQUIRED';}
         labSaveCheckpoint($path,$state);
         echo json_encode(['status'=>$state['status'],'accepted'=>count($state['accepted']),'target'=>$state['target'],'nextAt'=>$state['nextAt']],JSON_THROW_ON_ERROR)."\n";

@@ -2,6 +2,17 @@
 declare(strict_types=1);
 require_once __DIR__.'/lab-core.php';
 
+/** Caller holds the existing cross-process admission lock. Preserve subsecond spacing. */
+function labReadAdmission($lock,float $now):bool {
+    $raw=stream_get_contents($lock,65);if(!is_string($raw)||strlen($raw)>64)throw new RuntimeException('rate_state_invalid');
+    $last=$raw===''?0:json_decode($raw,true,4,JSON_THROW_ON_ERROR);
+    if((!is_int($last)&&!is_float($last))||!is_finite((float)$last)||$last<0)throw new RuntimeException('rate_state_invalid');
+    if($now-$last<2)return false;
+    $value=json_encode($now,JSON_THROW_ON_ERROR);
+    if(!ftruncate($lock,0)||!rewind($lock)||fwrite($lock,$value)!==strlen($value)||!fflush($lock))throw new RuntimeException('rate_state_unavailable');
+    return true;
+}
+
 /** Private bounded operational evidence; never store IP, credentials, raw SQL or results. */
 function labReadAudit(string $directory,string $owner,string $operation,string $status):void {
     $path=$directory.'/read-audit.json';$old=[];
@@ -30,8 +41,20 @@ function labReadDb(array $config): PDO {
     $pdo->exec("SET SESSION time_zone='+00:00'");
     $pdo->exec('SET SESSION max_statement_time=12');
     $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    labAssertReadPrivileges($pdo);
     labAssertSchema($pdo);
     return $pdo;
+}
+function labAssertReadPrivileges(PDO $pdo):void {
+    $tables=['kino_draws'=>false,'kino_draw_revisions'=>false];
+    foreach($pdo->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN) as $grant){
+        if(preg_match('/WITH\s+GRANT\s+OPTION/i',$grant))throw new RuntimeException('read_only_account_required');
+        if(preg_match('/^GRANT USAGE ON \*\.\* TO /i',$grant))continue;
+        if(!preg_match('/^GRANT SELECT ON `?promptbe_kino_history`?\.(\*|`?kino_draws`?|`?kino_draw_revisions`?) TO /i',$grant,$m))throw new RuntimeException('read_only_account_required');
+        $table=str_replace('`','',$m[1]);
+        if($table==='*')$tables=array_fill_keys(array_keys($tables),true);else $tables[$table]=true;
+    }
+    if(in_array(false,$tables,true))throw new RuntimeException('read_permissions_incomplete');
 }
 function labAssertSchema(PDO $pdo):void {
     // A nontransactional source could silently break the consistent snapshot guarantee.
@@ -39,6 +62,9 @@ function labAssertSchema(PDO $pdo):void {
     if (count($engines)!==2 || count(array_filter($engines,static fn($e)=>$e==='InnoDB'))!==2) throw new RuntimeException('incompatible_schema');
     $key=$pdo->query("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='kino_draws' AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX")->fetchAll(PDO::FETCH_COLUMN);
     if($key!==['draw_id'])throw new RuntimeException('unique_draw_identity_required');
+    $columns=$pdo->query("SELECT COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='kino_draws'")->fetchAll(PDO::FETCH_KEY_PAIR);
+    if(!in_array($columns['draw_id']??'', ['int','bigint'],true)||($columns['draw_time_ms']??'')!=='bigint'||!in_array($columns['last_checked_at_utc']??'', ['datetime','timestamp'],true))throw new RuntimeException('numeric_identity_and_time_required');
+    foreach(['main_numbers_json','second_chance_json','content_sha256','bonus_number']as $column)if(!isset($columns[$column]))throw new RuntimeException('required_column_missing');
 }
 
 /** Entire window is frozen inside ONE read-only consistent transaction, not across HTTP pages. */

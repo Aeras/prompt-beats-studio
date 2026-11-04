@@ -93,3 +93,34 @@ upload; do not replace an unrelated file. Preserve existing source history,
 revision/run tables and backups. Rollback disables the new read plane and future
 backfill steps; preserve checkpoints and never undo committed historical rows
 with deletion. No Supabase migration, new public raw-history route or AI service.
+
+## Final-review corrections (local, not deployed)
+
+Runtime preflight now requires INT/BIGINT draw identity, BIGINT millisecond time,
+DATETIME/TIMESTAMP observation time, the required payload columns and the existing
+single-column primary key/InnoDB boundary. The reader's own SHOW GRANTS must be
+direct USAGE/SELECT on the two tables or this history database. Global SELECT,
+write privileges, explicit roles and GRANT OPTION are rejected. Grant strings or
+authentication details are never logged; provision the limited account through
+the owner's safe mechanism, not by broadening permissions to bypass this check.
+
+Pagination must contain coherent `size=2`, page/first/last, totalElements,
+totalPages and numberOfElements. Each range's total is pinned. Missing, changing,
+empty-nonterminal or contradictory metadata halts for review before source writes.
+The whole page is prevalidated. Source compatibility still needs the separately
+approved tiny real range probe; fixtures cannot certify an undocumented API.
+
+Checkpoints are shape/count/range checked before use. Ambiguous older checkpoints
+(e.g. a nonzero page without its pinned range total) are preserved and blocked,
+never silently reset. `PAUSED` means between bounded automatic batches;
+`PAUSED_BY_OPERATOR` is the actual explicit pause. Resume preserves WAITING's
+deadline. REVIEW_REQUIRED/COMPLETE/INCOMPLETE are not reopened by pause/resume;
+unknown writes and revisions require independently approved operator recovery.
+Configured spacing is rounded upward from subsecond time, including after start.
+Invalid/overflowing or over-seven-day Retry-After values stop for review, never
+justify an earlier retry. Read admission also preserves subsecond spacing.
+
+The read API's `backfill=DISABLED` means it cannot start backfill; it does not
+assert the state of a separately configured CLI scheduler. Inspect that job
+directly. The unchanged original cron remains independent. Test actual batch
+headroom/coexistence before approving any backfill schedule.

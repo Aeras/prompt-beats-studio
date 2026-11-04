@@ -28,9 +28,7 @@ try {
     $lock=fopen($storage.'/analysis.lock','c+');
     if(!$lock||!flock($lock,LOCK_EX|LOCK_NB))labReply(429,['error'=>'busy']);
     try {
-        $last=(int)stream_get_contents($lock);
-        if(time()-$last<2)labReply(429,['error'=>'busy']);
-        ftruncate($lock,0);rewind($lock);fwrite($lock,(string)time());fflush($lock);
+        if(!labReadAdmission($lock,microtime(true)))labReply(429,['error'=>'busy']);
         $db=labReadDb($config);
         $result=labReadAnalysis($db,$request,$storage);
         labReadAudit($storage,$owner,$request['op'],'ok');
