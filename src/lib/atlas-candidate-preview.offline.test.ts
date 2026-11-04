@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import {
   atlasCompletionSummary,
   readOfflineAtlasCandidates,
@@ -37,7 +38,7 @@ describe("immutable offline completion package", () => {
     const bytes = readFileSync(
       new URL("../../research/atlas-v4-completion-20261031.zip", import.meta.url),
     );
-    bytes[100] ^= 1;
+    bytes[100] = bytes[100]! ^ 1;
     expect(() => validateAtlasCompletionArchive(bytes)).toThrow();
   });
   for (const n of Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(2, "0"))) {
@@ -83,6 +84,38 @@ describe("immutable offline completion package", () => {
   }
 });
 describe("offline fail closed boundaries", () => {
+  test("real render pipeline operates with network dispatch forbidden", () => {
+    const moduleUrl = new URL("./atlas-candidate-preview.offline.ts", import.meta.url).href;
+    const child = spawnSync(
+      process.execPath,
+      [
+        "--eval",
+        `
+      globalThis.fetch = () => { throw new Error("network_dispatch_forbidden"); };
+      const m = await import(${JSON.stringify(moduleUrl)});
+      const f = m.prepareOfflineAtlasPilot("ATLAS-OFFLINE-01");
+      const p = m.previewOfflineAtlasCandidate(f.text, f.request, {mode:"offline",permission:"local-review",actorId:"network-test"});
+      const r = m.renderOfflineCandidatePrompts(p);
+      if (Object.values(r).some(x => typeof x !== "string" || !x.length)) throw Error("missing_real_prompt");
+    `,
+      ],
+      { encoding: "utf8", timeout: 30000 },
+    );
+    expect(child.stderr).toBe("");
+    expect(child.status).toBe(0);
+  });
+  test("no live app, server or worker imports offline candidate modules", () => {
+    const root = new URL("../", import.meta.url);
+    const files = readdirSync(root, { recursive: true, encoding: "utf8" });
+    for (const file of files.filter(
+      (p) => /\.(ts|tsx)$/.test(p) && !/\.test\.|\.offline\./.test(p),
+    )) {
+      const source = readFileSync(new URL(file.replaceAll("\\", "/"), root), "utf8");
+      expect(source).not.toMatch(
+        /(?:from\s+|import\s*\()["'][^"']*atlas-(?:candidate|completion)[^"']*\.offline/,
+      );
+    }
+  });
   test("explicit consent, local permission, exact one candidate and source identity", () => {
     const f = fixture();
     for (const patch of [
@@ -197,9 +230,8 @@ describe("offline fail closed boundaries", () => {
           expect(String(error)).toMatch(/limit|long|length|characters|input|exceed/i);
         }
       }
-      // The actual authoring bounds remain authoritative even if no source instruction fits.
       expect(candidates.length).toBeGreaterThan(0);
-      if (field === "productionStyle") expect(successes).toBeGreaterThan(0);
+      expect(successes).toBe(candidates.length);
     }
   });
   test("static preview escapes synthetic injection and disables connections", () => {

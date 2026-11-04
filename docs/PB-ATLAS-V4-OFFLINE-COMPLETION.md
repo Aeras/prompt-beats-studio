@@ -71,9 +71,10 @@ Real Generator parser, language resolver, value merging, Blueprint serializer,
 authoring bounds and pure V5 builders are reused. Duplicate text, ambiguous
 Blueprint identities, unknown/held/multiple techniques, extra properties,
 stale/foreign/tampered confirmation and values requiring truncation are rejected.
-Some source instrument instructions exceed the existing 200-character authoring
-limit: they remain inspectable source candidates but cannot be materialized in
-that field. They are never silently rerouted into another field.
+All 20 instrument mappings and all 20 production mappings fit the tested control.
+An actual user's existing text can cause the combined value to exceed the
+200-character instrument or 2,000-character production/instructions bounds.
+That application is rejected, never silently rerouted into another field.
 
 ## Ten deterministic A/B contract pilots
 
