@@ -15,3 +15,7 @@ docs/prompts/PromptBeats_TEAM09_Creative_Master_Prompt_V2_CANDIDATE_2026-10-30.m
 
 docs/prompts/PromptBeats_V5_BETA_2_Master_Prompt_CANDIDATE.md -text
 supabase/migrations/20261030195702_secure_generator_prompt_registry.sql -text
+
+# Owner-provided legacy Polar55 writer fixtures; deployment hash checks are byte-exact.
+tools/kino-polar55/tests/legacy/kino-engine.php -text
+tools/kino-polar55/tests/legacy/kino-sync-lib.php -text

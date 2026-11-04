@@ -33,6 +33,11 @@ jobs:
       - name: Install locked registration tooling
         run: bun install --frozen-lockfile
 
+      - name: Polar55 isolated PHP/MariaDB read, security and backfill contracts
+        run: |
+          python3 tools/kino-polar55/tests/run-offline.py
+          KINO_POLAR55_DOCKER_TEST=1 bun test src/lib/kino-polar55.test.ts
+
       # The historical 20260921060300 bootstrap migration intentionally promoted
       # one already-existing verified admin account in production. A brand-new
       # database has no auth users, so the replay gate injects an ephemeral local
